@@ -97,6 +97,10 @@
               "target": "Package",
               "version": "[4.1.0, )"
             },
+            "OpenIddict.Validation.ServerIntegration": {
+              "target": "Package",
+              "version": "[4.1.0, )"
+            },
             "Serilog": {
               "target": "Package",
               "version": "[4.2.1-dev-02337, )"

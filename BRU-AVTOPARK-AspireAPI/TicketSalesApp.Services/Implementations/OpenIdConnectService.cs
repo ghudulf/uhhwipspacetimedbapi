@@ -9,6 +9,8 @@ using OpenIddict.Abstractions;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using System.Collections.Immutable;
+using OpenIddict.Core;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -65,19 +67,24 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Gets authorizations for a user and application
         /// </summary>
-        public async Task<(bool success, List<object>? authorizations, string? errorMessage)> GetAuthorizationsAsync(string subject, object application, string status, string type, IEnumerable<string> scopes)
+        public async Task<(bool success, List<object>? authorizations, string? errorMessage)> GetAuthorizationsAsync(string subject, object application, string status, string type, string[] scopes)
         {
             try
             {
                 _logger.LogInformation("Getting authorizations for subject: {Subject}", subject);
-
                 var applicationId = await _applicationManager.GetIdAsync(application);
-                var authorizations = await _authorizationManager.FindAsync(
+                var authorizationsQuery = _authorizationManager.FindAsync(
                     subject: subject,
                     client: applicationId,
                     status: status,
                     type: type,
-                    scopes: scopes).ToListAsync();
+                    scopes: ImmutableArray.Create(scopes));
+                
+                var authorizations = new List<object>();
+                await foreach (var authorization in authorizationsQuery)
+                {
+                    authorizations.Add(authorization);
+                }
 
                 return (true, authorizations, null);
             }
@@ -91,7 +98,7 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Creates an identity from a user
         /// </summary>
-        public async Task<(bool success, ClaimsIdentity? identity, string? errorMessage)> CreateIdentityFromUserAsync(UserProfile user, IEnumerable<string> scopes)
+        public async Task<(bool success, ClaimsIdentity? identity, string? errorMessage)> CreateIdentityFromUserAsync(UserProfile user, string[] scopes)
         {
             try
             {
@@ -137,7 +144,7 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Creates an authorization
         /// </summary>
-        public async Task<(bool success, object? authorization, string? errorMessage)> CreateAuthorizationAsync(ClaimsIdentity identity, string subject, object application, string type, IEnumerable<string> scopes)
+        public async Task<(bool success, object? authorization, string? errorMessage)> CreateAuthorizationAsync(ClaimsIdentity identity, string subject, object application, string type, string[] scopes)
         {
             try
             {
@@ -149,7 +156,7 @@ namespace TicketSalesApp.Services.Implementations
                     subject: subject,
                     client: applicationId,
                     type: type,
-                    scopes: scopes);
+                    scopes: ImmutableArray.Create(scopes));
 
                 return (true, authorization, null);
             }
@@ -177,18 +184,20 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        
         /// <summary>
         /// Gets resources for scopes
         /// </summary>
-        public async Task<(bool success, List<string>? resources, string? errorMessage)>
-        /// <summary>
-        /// Gets resources for scopes
-        /// </summary>
-        public async Task<(bool success, List<string>? resources, string? errorMessage)> GetResourcesAsync(IEnumerable<string> scopes)
+        public async Task<(bool success, List<string>? resources, string? errorMessage)> GetResourcesAsync(string[] scopes)
         {
             try
             {
-                var resources = await _scopeManager.ListResourcesAsync(scopes).ToListAsync();
+                var resourcesAsync = _scopeManager.ListResourcesAsync(ImmutableArray.Create(scopes));
+                var resources = new List<string>();
+                await foreach (var resource in resourcesAsync)
+                {
+                    resources.Add(resource);
+                }
                 return (true, resources, null);
             }
             catch (Exception ex)
@@ -218,13 +227,13 @@ namespace TicketSalesApp.Services.Implementations
                 var conn = _spacetimeService.GetConnection();
                 
                 // Register the client in SpacetimeDB
-                await conn.Reducers.RegisterOpenIdClientAsync(
+                conn.Reducers.RegisterOpenIdClient(
                     clientId,
                     clientSecret,
                     displayName,
-                    redirectUris,
-                    postLogoutRedirectUris,
-                    allowedScopes,
+                    redirectUris.ToList(),
+                    postLogoutRedirectUris.ToList(),
+                    allowedScopes.ToList(),
                     requireConsent ? "explicit" : "implicit",
                     "public"
                 );
@@ -249,14 +258,26 @@ namespace TicketSalesApp.Services.Implementations
                         Permissions.Scopes.Email,
                         Permissions.Scopes.Profile,
                         Permissions.Scopes.Roles
-                    },
-                    RedirectUris = redirectUris.Select(uri => new Uri(uri)).ToList(),
-                    PostLogoutRedirectUris = postLogoutRedirectUris.Select(uri => new Uri(uri)).ToList(),
-                    ConsentType = requireConsent ? 
-                        ConsentTypes.Explicit : 
-                        ConsentTypes.Implicit
+                    }
                 });
-                
+
+                // Add redirect URIs
+                foreach (var uri in redirectUris ?? Array.Empty<string>())
+                {
+                    ((OpenIddictApplicationDescriptor)application).RedirectUris.Add(new Uri(uri));
+                }
+
+                // Add post-logout redirect URIs
+                foreach (var uri in postLogoutRedirectUris)
+                {
+                    ((OpenIddictApplicationDescriptor)application).PostLogoutRedirectUris.Add(new Uri(uri));
+                }
+
+                // Set consent type
+                ((OpenIddictApplicationDescriptor)application).ConsentType = requireConsent ? 
+                    ConsentTypes.Explicit : 
+                    ConsentTypes.Implicit;
+
                 _logger.LogInformation("Client application registered successfully: {ClientId}", clientId);
                 return (true, null);
             }
@@ -296,13 +317,13 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Update the client in SpacetimeDB
-                await conn.Reducers.UpdateOpenIdClientAsync(
+                conn.Reducers.UpdateOpenIdClient(
                     clientId,
                     clientSecret ?? client.ClientSecret,
                     displayName ?? client.DisplayName,
-                    redirectUris ?? client.RedirectUris,
-                    postLogoutRedirectUris ?? client.PostLogoutRedirectUris,
-                    allowedScopes ?? client.AllowedScopes,
+                    (redirectUris ?? client.RedirectUris.ToArray()).ToList(),
+                    (postLogoutRedirectUris ?? client.PostLogoutRedirectUris.ToArray()).ToList(),
+                    (allowedScopes ?? client.AllowedScopes.ToArray()).ToList(),
                     requireConsent.HasValue ? (requireConsent.Value ? "explicit" : "implicit") : client.ConsentType
                 );
                 
@@ -332,9 +353,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    foreach (var uri in await _applicationManager.GetRedirectUrisAsync(application))
+                    var existingUris = await _applicationManager.GetRedirectUrisAsync(application);
+                    foreach (var uri in existingUris)
                     {
-                        descriptor.RedirectUris.Add(uri);
+                        descriptor.RedirectUris.Add(new Uri(uri));
                     }
                 }
                 
@@ -348,9 +370,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    foreach (var uri in await _applicationManager.GetPostLogoutRedirectUrisAsync(application))
+                    var existingUris = await _applicationManager.GetPostLogoutRedirectUrisAsync(application);
+                    foreach (var uri in existingUris)
                     {
-                        descriptor.PostLogoutRedirectUris.Add(uri);
+                        descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
                     }
                 }
                 
@@ -392,7 +415,9 @@ namespace TicketSalesApp.Services.Implementations
                 var conn = _spacetimeService.GetConnection();
                 
                 // Revoke the client in SpacetimeDB
-                await conn.Reducers.RevokeOpenIdClientAsync(clientId);
+                 conn.Reducers.RevokeOpenIdClient(clientId);
+
+                 //stupid ai made all the calls awaited - you  cant await a reducer
                 
                 // Delete the application in OpenIddict
                 await _applicationManager.DeleteAsync(application);
@@ -501,3 +526,9 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
+
+
+
+
+
+

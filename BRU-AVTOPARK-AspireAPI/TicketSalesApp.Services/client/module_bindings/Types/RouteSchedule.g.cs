@@ -31,6 +31,10 @@ namespace SpacetimeDB.Types
         public double Price;
         [DataMember(Name = "AvailableSeats")]
         public uint AvailableSeats;
+        [DataMember(Name = "SeatedCapacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "StandingCapacity")]
+        public uint? StandingCapacity;
         [DataMember(Name = "DaysOfWeek")]
         public System.Collections.Generic.List<string>? DaysOfWeek;
         [DataMember(Name = "BusTypes")]
@@ -57,6 +61,26 @@ namespace SpacetimeDB.Types
         public ulong? UpdatedAt;
         [DataMember(Name = "UpdatedBy")]
         public string? UpdatedBy;
+        [DataMember(Name = "PeakHourLoad")]
+        public double? PeakHourLoad;
+        [DataMember(Name = "OffPeakHourLoad")]
+        public double? OffPeakHourLoad;
+        [DataMember(Name = "IsSpecialEvent")]
+        public bool? IsSpecialEvent;
+        [DataMember(Name = "SpecialEventName")]
+        public string? SpecialEventName;
+        [DataMember(Name = "IsHoliday")]
+        public bool? IsHoliday;
+        [DataMember(Name = "HolidayName")]
+        public string? HolidayName;
+        [DataMember(Name = "IsWeekend")]
+        public bool? IsWeekend;
+        [DataMember(Name = "SeatConfigurationId")]
+        public uint? SeatConfigurationId;
+        [DataMember(Name = "RequiresSeatReservation")]
+        public bool? RequiresSeatReservation;
+        [DataMember(Name = "RouteType")]
+        public string? RouteType;
 
         public RouteSchedule(
             uint ScheduleId,
@@ -68,6 +92,8 @@ namespace SpacetimeDB.Types
             ulong ArrivalTime,
             double Price,
             uint AvailableSeats,
+            uint? SeatedCapacity,
+            uint? StandingCapacity,
             System.Collections.Generic.List<string>? DaysOfWeek,
             System.Collections.Generic.List<string>? BusTypes,
             bool IsActive,
@@ -80,7 +106,17 @@ namespace SpacetimeDB.Types
             string? Notes,
             ulong CreatedAt,
             ulong? UpdatedAt,
-            string? UpdatedBy
+            string? UpdatedBy,
+            double? PeakHourLoad,
+            double? OffPeakHourLoad,
+            bool? IsSpecialEvent,
+            string? SpecialEventName,
+            bool? IsHoliday,
+            string? HolidayName,
+            bool? IsWeekend,
+            uint? SeatConfigurationId,
+            bool? RequiresSeatReservation,
+            string? RouteType
         )
         {
             this.ScheduleId = ScheduleId;
@@ -92,6 +128,8 @@ namespace SpacetimeDB.Types
             this.ArrivalTime = ArrivalTime;
             this.Price = Price;
             this.AvailableSeats = AvailableSeats;
+            this.SeatedCapacity = SeatedCapacity;
+            this.StandingCapacity = StandingCapacity;
             this.DaysOfWeek = DaysOfWeek;
             this.BusTypes = BusTypes;
             this.IsActive = IsActive;
@@ -105,6 +143,16 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.UpdatedAt = UpdatedAt;
             this.UpdatedBy = UpdatedBy;
+            this.PeakHourLoad = PeakHourLoad;
+            this.OffPeakHourLoad = OffPeakHourLoad;
+            this.IsSpecialEvent = IsSpecialEvent;
+            this.SpecialEventName = SpecialEventName;
+            this.IsHoliday = IsHoliday;
+            this.HolidayName = HolidayName;
+            this.IsWeekend = IsWeekend;
+            this.SeatConfigurationId = SeatConfigurationId;
+            this.RequiresSeatReservation = RequiresSeatReservation;
+            this.RouteType = RouteType;
         }
 
         public RouteSchedule()

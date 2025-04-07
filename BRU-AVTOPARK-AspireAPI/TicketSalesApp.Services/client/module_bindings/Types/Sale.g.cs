@@ -29,6 +29,42 @@ namespace SpacetimeDB.Types
         public string? SaleLocation;
         [DataMember(Name = "SaleNotes")]
         public string? SaleNotes;
+        [DataMember(Name = "PaymentMethod")]
+        public string? PaymentMethod;
+        [DataMember(Name = "PaymentStatus")]
+        public string? PaymentStatus;
+        [DataMember(Name = "TransactionId")]
+        public string? TransactionId;
+        [DataMember(Name = "TaxAmount")]
+        public double? TaxAmount;
+        [DataMember(Name = "InvoiceNumber")]
+        public string? InvoiceNumber;
+        [DataMember(Name = "IsSubscription")]
+        public bool? IsSubscription;
+        [DataMember(Name = "SubscriptionType")]
+        public string? SubscriptionType;
+        [DataMember(Name = "SubscriptionStartDate")]
+        public ulong? SubscriptionStartDate;
+        [DataMember(Name = "SubscriptionEndDate")]
+        public ulong? SubscriptionEndDate;
+        [DataMember(Name = "IsGift")]
+        public bool? IsGift;
+        [DataMember(Name = "GiftRecipient")]
+        public string? GiftRecipient;
+        [DataMember(Name = "PromotionCode")]
+        public string? PromotionCode;
+        [DataMember(Name = "DiscountAmount")]
+        public double? DiscountAmount;
+        [DataMember(Name = "TotalAmount")]
+        public double TotalAmount;
+        [DataMember(Name = "PaymentTransactionId")]
+        public string? PaymentTransactionId;
+        [DataMember(Name = "ChangeAmount")]
+        public double? ChangeAmount;
+        [DataMember(Name = "PaymentProvider")]
+        public string? PaymentProvider;
+        [DataMember(Name = "PaymentReference")]
+        public string? PaymentReference;
 
         public Sale(
             uint SaleId,
@@ -38,7 +74,25 @@ namespace SpacetimeDB.Types
             string TicketSoldToUserPhone,
             SpacetimeDB.Identity? SellerId,
             string? SaleLocation,
-            string? SaleNotes
+            string? SaleNotes,
+            string? PaymentMethod,
+            string? PaymentStatus,
+            string? TransactionId,
+            double? TaxAmount,
+            string? InvoiceNumber,
+            bool? IsSubscription,
+            string? SubscriptionType,
+            ulong? SubscriptionStartDate,
+            ulong? SubscriptionEndDate,
+            bool? IsGift,
+            string? GiftRecipient,
+            string? PromotionCode,
+            double? DiscountAmount,
+            double TotalAmount,
+            string? PaymentTransactionId,
+            double? ChangeAmount,
+            string? PaymentProvider,
+            string? PaymentReference
         )
         {
             this.SaleId = SaleId;
@@ -49,6 +103,24 @@ namespace SpacetimeDB.Types
             this.SellerId = SellerId;
             this.SaleLocation = SaleLocation;
             this.SaleNotes = SaleNotes;
+            this.PaymentMethod = PaymentMethod;
+            this.PaymentStatus = PaymentStatus;
+            this.TransactionId = TransactionId;
+            this.TaxAmount = TaxAmount;
+            this.InvoiceNumber = InvoiceNumber;
+            this.IsSubscription = IsSubscription;
+            this.SubscriptionType = SubscriptionType;
+            this.SubscriptionStartDate = SubscriptionStartDate;
+            this.SubscriptionEndDate = SubscriptionEndDate;
+            this.IsGift = IsGift;
+            this.GiftRecipient = GiftRecipient;
+            this.PromotionCode = PromotionCode;
+            this.DiscountAmount = DiscountAmount;
+            this.TotalAmount = TotalAmount;
+            this.PaymentTransactionId = PaymentTransactionId;
+            this.ChangeAmount = ChangeAmount;
+            this.PaymentProvider = PaymentProvider;
+            this.PaymentReference = PaymentReference;
         }
 
         public Sale()

@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes);
+        public delegate void UpdateOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType);
         public event UpdateOpenIdClientHandler? OnUpdateOpenIdClient;
 
-        public void UpdateOpenIdClient(string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes)
+        public void UpdateOpenIdClient(string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType)
         {
-            conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, redirectUris, allowedScopes), this.SetCallReducerFlags.UpdateOpenIdClientFlags);
+            conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType), this.SetCallReducerFlags.UpdateOpenIdClientFlags);
         }
 
         public bool InvokeUpdateOpenIdClient(ReducerEventContext ctx, Reducer.UpdateOpenIdClient args)
@@ -27,8 +27,11 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.ClientId,
                 args.ClientSecret,
+                args.DisplayName,
                 args.RedirectUris,
-                args.AllowedScopes
+                args.PostLogoutRedirectUris,
+                args.AllowedScopes,
+                args.ConsentType
             );
             return true;
         }
@@ -44,30 +47,45 @@ namespace SpacetimeDB.Types
             public string ClientId;
             [DataMember(Name = "clientSecret")]
             public string ClientSecret;
+            [DataMember(Name = "displayName")]
+            public string DisplayName;
             [DataMember(Name = "redirectUris")]
             public System.Collections.Generic.List<string> RedirectUris;
+            [DataMember(Name = "postLogoutRedirectUris")]
+            public System.Collections.Generic.List<string> PostLogoutRedirectUris;
             [DataMember(Name = "allowedScopes")]
             public System.Collections.Generic.List<string> AllowedScopes;
+            [DataMember(Name = "consentType")]
+            public string ConsentType;
 
             public UpdateOpenIdClient(
                 string ClientId,
                 string ClientSecret,
+                string DisplayName,
                 System.Collections.Generic.List<string> RedirectUris,
-                System.Collections.Generic.List<string> AllowedScopes
+                System.Collections.Generic.List<string> PostLogoutRedirectUris,
+                System.Collections.Generic.List<string> AllowedScopes,
+                string ConsentType
             )
             {
                 this.ClientId = ClientId;
                 this.ClientSecret = ClientSecret;
+                this.DisplayName = DisplayName;
                 this.RedirectUris = RedirectUris;
+                this.PostLogoutRedirectUris = PostLogoutRedirectUris;
                 this.AllowedScopes = AllowedScopes;
+                this.ConsentType = ConsentType;
             }
 
             public UpdateOpenIdClient()
             {
                 this.ClientId = "";
                 this.ClientSecret = "";
+                this.DisplayName = "";
                 this.RedirectUris = new();
+                this.PostLogoutRedirectUris = new();
                 this.AllowedScopes = new();
+                this.ConsentType = "";
             }
 
             string IReducerArgs.ReducerName => "UpdateOpenIdClient";

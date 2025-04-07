@@ -1223,6 +1223,23 @@
           "Microsoft.AspNetCore.App"
         ]
       },
+      "OpenIddict.Validation.ServerIntegration/4.1.0": {
+        "type": "package",
+        "dependencies": {
+          "OpenIddict.Server": "4.1.0",
+          "OpenIddict.Validation": "4.1.0"
+        },
+        "compile": {
+          "lib/netstandard2.1/OpenIddict.Validation.ServerIntegration.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.1/OpenIddict.Validation.ServerIntegration.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "OpenTelemetry/1.9.0": {
         "type": "package",
         "dependencies": {
@@ -3731,6 +3748,24 @@
         "openiddict.validation.aspnetcore.nuspec"
       ]
     },
+    "OpenIddict.Validation.ServerIntegration/4.1.0": {
+      "sha512": "J9tsmVMB3JeedFadg3dXFDSJb1IVtxebE3GBWUePghLHKy3fvl1EI5FyN54jjv2+63cmJhW9ei7qpFBKHe+f0A==",
+      "type": "package",
+      "path": "openiddict.validation.serverintegration/4.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "lib/net461/OpenIddict.Validation.ServerIntegration.dll",
+        "lib/net461/OpenIddict.Validation.ServerIntegration.xml",
+        "lib/netstandard2.0/OpenIddict.Validation.ServerIntegration.dll",
+        "lib/netstandard2.0/OpenIddict.Validation.ServerIntegration.xml",
+        "lib/netstandard2.1/OpenIddict.Validation.ServerIntegration.dll",
+        "lib/netstandard2.1/OpenIddict.Validation.ServerIntegration.xml",
+        "openiddict.validation.serverintegration.4.1.0.nupkg.sha512",
+        "openiddict.validation.serverintegration.nuspec"
+      ]
+    },
     "OpenTelemetry/1.9.0": {
       "sha512": "7scS6BUhwYeSXEDGhCxMSezmvyCoDU5kFQbmfyW9iVvVTcWhec+1KIN33/LOCdBXRkzt2y7+g03mkdAB0XZ9Fw==",
       "type": "package",
@@ -4707,6 +4742,7 @@
       "OpenIddict.Core >= 4.1.0",
       "OpenIddict.Server.AspNetCore >= 4.1.0",
       "OpenIddict.Validation.AspNetCore >= 4.1.0",
+      "OpenIddict.Validation.ServerIntegration >= 4.1.0",
       "Serilog >= 4.2.1-dev-02337",
       "Serilog.AspNetCore >= 8.0.1",
       "Serilog.Settings.Configuration >= 9.0.1-dev-02317",
@@ -4814,6 +4850,10 @@
             "version": "[4.1.0, )"
           },
           "OpenIddict.Validation.AspNetCore": {
+            "target": "Package",
+            "version": "[4.1.0, )"
+          },
+          "OpenIddict.Validation.ServerIntegration": {
             "target": "Package",
             "version": "[4.1.0, )"
           },

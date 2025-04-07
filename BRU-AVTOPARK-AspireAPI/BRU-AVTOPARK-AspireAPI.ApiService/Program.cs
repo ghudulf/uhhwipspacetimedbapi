@@ -5,6 +5,8 @@ using Serilog;
 using OpenIddict.Validation.AspNetCore;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
+using OpenIddict.Validation.ServerIntegration;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +28,36 @@ builder.Services.AddProblemDetails();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+
+// Configure Swagger
+
+builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "TicketSalesApp Admin API", Version = "v1" });
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
 // Add SpacetimeDB services
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISpacetimeDBService, TicketSalesApp.Services.Implementations.SpacetimeDBService>();
 
@@ -45,7 +77,6 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteService, 
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteScheduleService, TicketSalesApp.Services.Implementations.RouteScheduleService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmployeeService, TicketSalesApp.Services.Implementations.EmployeeService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMaintenanceService, TicketSalesApp.Services.Implementations.MaintenanceService>();
-
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
 
@@ -55,13 +86,22 @@ builder.Services.AddHttpContextAccessor();
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
-if (key.Length < 32)
+
+// Ensure key is exactly 32 bytes (256 bits)
+if (key.Length != 32)
 {
-    Array.Resize(ref key, 32);
-}
-else if (key.Length > 64)
-{
-    Array.Resize(ref key, 64);
+    var newKey = new byte[32];
+    if (key.Length < 32)
+    {
+        // If key is too short, pad with zeros
+        Array.Copy(key, newKey, key.Length);
+    }
+    else
+    {
+        // If key is too long, truncate
+        Array.Copy(key, newKey, 32);
+    }
+    key = newKey;
 }
 
 // Configure OpenIddict
@@ -79,8 +119,21 @@ builder.Services.AddOpenIddict()
         options.AllowAuthorizationCodeFlow()
                .AllowRefreshTokenFlow();
 
-        options.AddEncryptionKey(new SymmetricSecurityKey(key))
-               .AddSigningKey(new SymmetricSecurityKey(key));
+        // Add symmetric signing key for access tokens, authorization codes, and refresh tokens
+        options.AddSigningKey(new SymmetricSecurityKey(key));
+
+        // Add asymmetric signing key for identity tokens (required)
+        if (builder.Environment.IsDevelopment())
+        {
+            options.AddDevelopmentSigningCertificate();
+        }
+        else
+        {
+            options.AddEphemeralSigningKey();
+        }
+
+        // Add encryption key
+        options.AddEncryptionKey(new SymmetricSecurityKey(key));
 
         options.UseAspNetCore()
                .EnableTokenEndpointPassthrough()
@@ -89,7 +142,14 @@ builder.Services.AddOpenIddict()
     })
     .AddValidation(options =>
     {
+        // Register the ASP.NET Core host
         options.UseAspNetCore();
+
+        // Import the configuration from the local OpenIddict server instance.
+        options.UseLocalServer();
+
+        // Configure the token validation parameters
+        options.Configure(options => options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(key));
     });
 
 builder.Services.AddAuthentication(options =>
@@ -119,12 +179,12 @@ builder.Services.AddAuthentication(options =>
             {
                 var spacetimeIdentity = identity.FindFirst("identity")?.Value;
                 var xuid = identity.FindFirst("xuid")?.Value;
-                
+
                 if (!string.IsNullOrEmpty(spacetimeIdentity))
                 {
                     identity.AddClaim(new System.Security.Claims.Claim("spacetime_identity", spacetimeIdentity));
                 }
-                
+
                 if (!string.IsNullOrEmpty(xuid))
                 {
                     identity.AddClaim(new System.Security.Claims.Claim("xuid", xuid));
@@ -145,6 +205,12 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BRU-AVTOPARK API V1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
 // Initialize SpacetimeDB connection

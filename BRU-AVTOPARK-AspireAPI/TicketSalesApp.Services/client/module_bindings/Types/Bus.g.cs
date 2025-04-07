@@ -21,23 +21,100 @@ namespace SpacetimeDB.Types
         public string? RegistrationNumber;
         [DataMember(Name = "IsActive")]
         public bool IsActive;
+        [DataMember(Name = "BusType")]
+        public string BusType;
+        [DataMember(Name = "Capacity")]
+        public uint Capacity;
+        [DataMember(Name = "SeatedCapacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "StandingCapacity")]
+        public uint? StandingCapacity;
+        [DataMember(Name = "Year")]
+        public uint Year;
+        [DataMember(Name = "VIN")]
+        public string? Vin;
+        [DataMember(Name = "LicensePlate")]
+        public string? LicensePlate;
+        [DataMember(Name = "CurrentStatus")]
+        public string? CurrentStatus;
+        [DataMember(Name = "CurrentLocation")]
+        public string? CurrentLocation;
+        [DataMember(Name = "LastLocationUpdate")]
+        public ulong? LastLocationUpdate;
+        [DataMember(Name = "FuelConsumption")]
+        public double? FuelConsumption;
+        [DataMember(Name = "CurrentFuelLevel")]
+        public double? CurrentFuelLevel;
+        [DataMember(Name = "FuelType")]
+        public string? FuelType;
+        [DataMember(Name = "MileageTotal")]
+        public uint? MileageTotal;
+        [DataMember(Name = "MileageSinceService")]
+        public uint? MileageSinceService;
+        [DataMember(Name = "HasAccessibility")]
+        public bool? HasAccessibility;
+        [DataMember(Name = "HasAirConditioning")]
+        public bool? HasAirConditioning;
+        [DataMember(Name = "HasWifi")]
+        public bool? HasWifi;
+        [DataMember(Name = "HasUSBCharging")]
+        public bool? HasUsbCharging;
 
         public Bus(
             uint BusId,
             string Model,
             string? RegistrationNumber,
-            bool IsActive
+            bool IsActive,
+            string BusType,
+            uint Capacity,
+            uint? SeatedCapacity,
+            uint? StandingCapacity,
+            uint Year,
+            string? Vin,
+            string? LicensePlate,
+            string? CurrentStatus,
+            string? CurrentLocation,
+            ulong? LastLocationUpdate,
+            double? FuelConsumption,
+            double? CurrentFuelLevel,
+            string? FuelType,
+            uint? MileageTotal,
+            uint? MileageSinceService,
+            bool? HasAccessibility,
+            bool? HasAirConditioning,
+            bool? HasWifi,
+            bool? HasUsbCharging
         )
         {
             this.BusId = BusId;
             this.Model = Model;
             this.RegistrationNumber = RegistrationNumber;
             this.IsActive = IsActive;
+            this.BusType = BusType;
+            this.Capacity = Capacity;
+            this.SeatedCapacity = SeatedCapacity;
+            this.StandingCapacity = StandingCapacity;
+            this.Year = Year;
+            this.Vin = Vin;
+            this.LicensePlate = LicensePlate;
+            this.CurrentStatus = CurrentStatus;
+            this.CurrentLocation = CurrentLocation;
+            this.LastLocationUpdate = LastLocationUpdate;
+            this.FuelConsumption = FuelConsumption;
+            this.CurrentFuelLevel = CurrentFuelLevel;
+            this.FuelType = FuelType;
+            this.MileageTotal = MileageTotal;
+            this.MileageSinceService = MileageSinceService;
+            this.HasAccessibility = HasAccessibility;
+            this.HasAirConditioning = HasAirConditioning;
+            this.HasWifi = HasWifi;
+            this.HasUsbCharging = HasUsbCharging;
         }
 
         public Bus()
         {
             this.Model = "";
+            this.BusType = "";
         }
     }
 }

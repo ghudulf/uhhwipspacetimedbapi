@@ -8,6 +8,7 @@ using Fido2NetLib.Objects;
 using Microsoft.Extensions.Logging;
 using SpacetimeDB;
 using SpacetimeDB.Types;
+using System.Text;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -54,7 +55,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Get existing credentials
                 var existingCredentials = await GetUserCredentialsAsync(userId);
                 var excludeCredentials = existingCredentials
-                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
+                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
                     .ToList();
 
                 // Create options
@@ -67,7 +68,7 @@ namespace TicketSalesApp.Services.Implementations
                 var options = _fido2.RequestNewCredential(
                     new Fido2User
                     {
-                        Id = userId.ToByteArray(),
+                        Id = System.Text.Encoding.UTF8.GetBytes(userId.ToString()),
                         Name = username,
                         DisplayName = username
                     },
@@ -78,10 +79,10 @@ namespace TicketSalesApp.Services.Implementations
                 );
 
                 // Store challenge in SpacetimeDB
-                await conn.Reducers.StoreWebAuthnChallengeAsync(
+                conn.Reducers.StoreWebAuthnChallenge(
                     userId,
-                    options.Challenge,
-                    DateTime.UtcNow.AddMinutes(5)
+                    Convert.ToBase64String(options.Challenge),
+                    (ulong)((DateTimeOffset)DateTime.UtcNow.AddMinutes(5)).ToUnixTimeMilliseconds()
                 );
 
                 return (true, options, null);
@@ -116,7 +117,7 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Get the challenge
                 var challenge = conn.Db.WebAuthnChallenge.Iter()
-                    .FirstOrDefault(c => c.UserId.Equals(userId) && c.ExpiryDate > DateTime.UtcNow);
+                    .FirstOrDefault(c => c.UserId.Equals(userId) && c.ExpiresAt > (ulong)((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds());
                 
                 if (challenge == null)
                 {
@@ -127,7 +128,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Get existing credentials
                 var existingCredentials = await GetUserCredentialsAsync(userId);
                 var excludeCredentials = existingCredentials
-                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
+                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
                     .ToList();
 
                 // Verify and make credential
@@ -137,11 +138,11 @@ namespace TicketSalesApp.Services.Implementations
                     {
                         User = new Fido2User
                         {
-                            Id = userId.ToByteArray(),
+                            Id = System.Text.Encoding.UTF8.GetBytes(userId.ToString()),
                             Name = username,
                             DisplayName = username
                         },
-                        Challenge = challenge.Challenge,
+                        Challenge = System.Text.Encoding.UTF8.GetBytes(challenge.Challenge),
                         ExcludeCredentials = excludeCredentials,
                         AuthenticatorSelection = new AuthenticatorSelection
                         {
@@ -154,21 +155,19 @@ namespace TicketSalesApp.Services.Implementations
                 );
 
                 // Store credential in SpacetimeDB
-                await conn.Reducers.StoreWebAuthnCredentialAsync(
+                conn.Reducers.RegisterWebAuthnCredential(
                     userId,
-                    success.Result.CredentialId,
-                    success.Result.PublicKey,
+                    success.Result.CredentialId.ToList(),
+                    Convert.ToBase64String(success.Result.PublicKey),
                     success.Result.Counter,
-                    attestationResponse.Response.AttestationObject,
-                    attestationResponse.Response.ClientDataJson,
-                    DateTime.UtcNow
+                    null // No device name provided
                 );
 
                 // Enable WebAuthn for the user
-                await conn.Reducers.EnableWebAuthnAsync(userId);
+                conn.Reducers.EnableWebAuthn(userId);
 
                 // Delete the challenge
-                await conn.Reducers.DeleteWebAuthnChallengeAsync(challenge.Id);
+                conn.Reducers.DeleteWebAuthnChallenge(challenge.Id);
 
                 _logger.LogInformation("WebAuthn registration completed successfully for user: {Username}", username);
                 return (true, null);
@@ -210,7 +209,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 var allowedCredentials = credentials
-                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
+                    .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
                     .ToList();
 
                 // Create options
@@ -221,10 +220,10 @@ namespace TicketSalesApp.Services.Implementations
                 );
 
                 // Store challenge in SpacetimeDB
-                await conn.Reducers.StoreWebAuthnChallengeAsync(
+                conn.Reducers.StoreWebAuthnChallenge(
                     user.UserId,
-                    options.Challenge,
-                    DateTime.UtcNow.AddMinutes(5)
+                    Convert.ToBase64String(options.Challenge),
+                    (ulong)((DateTimeOffset)DateTime.UtcNow.AddMinutes(5)).ToUnixTimeMilliseconds()
                 );
 
                 return (true, options, null);
@@ -259,7 +258,7 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Get the challenge
                 var challenge = conn.Db.WebAuthnChallenge.Iter()
-                    .FirstOrDefault(c => c.UserId.Equals(user.UserId) && c.ExpiryDate > DateTime.UtcNow);
+                    .FirstOrDefault(c => c.UserId.Equals(user.UserId) && c.ExpiresAt > (ulong)((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds());
                 
                 if (challenge == null)
                 {
@@ -285,26 +284,26 @@ namespace TicketSalesApp.Services.Implementations
                     assertionResponse,
                     new AssertionOptions
                     {
-                        Challenge = challenge.Challenge,
+                        Challenge = System.Text.Encoding.UTF8.GetBytes(challenge.Challenge),
                         AllowCredentials = new List<PublicKeyCredentialDescriptor>
                         {
-                            new PublicKeyCredentialDescriptor(credential.CredentialId)
+                            new PublicKeyCredentialDescriptor(credential.CredentialId.ToArray())
                         },
                         UserVerification = UserVerificationRequirement.Preferred
                     },
-                    credential.PublicKey,
+                    Convert.FromBase64String(credential.PublicKey),
                     storedCounter,
                     (_, _) => Task.FromResult(true)
                 );
 
                 // Update the counter
-                await conn.Reducers.UpdateWebAuthnCredentialCounterAsync(
+                conn.Reducers.UpdateWebAuthnCredentialCounter(
                     credential.Id,
                     result.Counter
                 );
 
                 // Delete the challenge
-                await conn.Reducers.DeleteWebAuthnChallengeAsync(challenge.Id);
+                conn.Reducers.DeleteWebAuthnChallenge(challenge.Id);
 
                 _logger.LogInformation("WebAuthn assertion completed successfully for user: {Username}", username);
                 return (true, user, null);
@@ -340,7 +339,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Find the credential
                 var credential = conn.Db.WebAuthnCredential.Iter()
                     .FirstOrDefault(c => c.UserId.Equals(userId) && 
-                                        Convert.ToBase64String(c.CredentialId) == credentialId && 
+                                        Convert.ToBase64String(c.CredentialId.ToArray()) == credentialId && 
                                         c.IsActive);
                 
                 if (credential == null)
@@ -350,7 +349,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Deactivate the credential
-                await conn.Reducers.DeactivateWebAuthnCredentialAsync(credential.Id);
+                conn.Reducers.DeactivateWebAuthnCredential(credential.Id);
 
                 // Check if this was the last credential
                 var remainingCredentials = conn.Db.WebAuthnCredential.Iter()
@@ -359,7 +358,7 @@ namespace TicketSalesApp.Services.Implementations
                 if (remainingCredentials == 0)
                 {
                     // Disable WebAuthn for the user
-                    await conn.Reducers.DisableWebAuthnAsync(userId);
+                    conn.Reducers.DisableWebAuthn(userId);
                 }
 
                 _logger.LogInformation("WebAuthn credential removed successfully for user ID: {UserId}", userId);
@@ -418,4 +417,9 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
+
+
+
+
+
 

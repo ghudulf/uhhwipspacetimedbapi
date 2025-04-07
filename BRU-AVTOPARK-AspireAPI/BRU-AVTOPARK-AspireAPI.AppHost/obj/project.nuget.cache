@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "lK02yH4z1yE=",
+  "dgSpecHash": "zvRLuwda82Y=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.AppHost\\BRU-AVTOPARK-AspireAPI.AppHost.csproj",
   "expectedPackageFiles": [
@@ -64,8 +64,8 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.0\\system.diagnostics.eventlog.9.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.identitymodel.tokens.jwt\\7.1.2\\system.identitymodel.tokens.jwt.7.1.2.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\yamldotnet\\16.0.0\\yamldotnet.16.0.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.1\\microsoft.windowsdesktop.app.ref.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.1\\microsoft.aspnetcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.1\\microsoft.netcore.app.host.win-x64.9.0.1.nupkg.sha512"
   ],

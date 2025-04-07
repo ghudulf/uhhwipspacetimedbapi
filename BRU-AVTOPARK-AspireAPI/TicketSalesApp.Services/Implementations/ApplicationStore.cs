@@ -76,8 +76,12 @@ namespace TicketSalesApp.Services.Implementations
                 conn.Reducers.RegisterOpenIdClient(
                     application.ClientId,
                     application.ClientSecret,
+                    application.DisplayName,
                     application.RedirectUris.ToList(),
-                    application.Permissions.ToList()
+                    application.PostLogoutRedirectUris.ToList(),
+                    application.Permissions.ToList(),
+                    application.ConsentType,
+                    application.Type
                 );
 
                 return default;
@@ -119,11 +123,12 @@ namespace TicketSalesApp.Services.Implementations
                         Id = c.ClientId,
                         ClientId = c.ClientId,
                         ClientSecret = c.ClientSecret,
+                        PostLogoutRedirectUris = ImmutableArray.Create(c.PostLogoutRedirectUris.ToArray()),
                         RedirectUris = ImmutableArray.Create(c.RedirectUris.ToArray()),
+                        ConsentType = c.ConsentType,
+                        Type = c.ClientType,
+                        DisplayName = c.DisplayName,
                         Permissions = ImmutableArray.Create(c.AllowedScopes.ToArray()),
-                        Type = "public",
-                        ConsentType = "explicit",
-                        DisplayName = c.ClientId
                     })
                     .FirstOrDefault();
 
@@ -407,8 +412,11 @@ namespace TicketSalesApp.Services.Implementations
                 conn.Reducers.UpdateOpenIdClient(
                     application.ClientId,
                     application.ClientSecret,
+                    application.DisplayName,
                     application.RedirectUris.ToList(),
-                    application.Permissions.ToList()
+                    application.PostLogoutRedirectUris.ToList(),
+                    application.Permissions.ToList(),
+                    application.ConsentType
                 );
 
                 return default;
@@ -421,3 +429,4 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
+

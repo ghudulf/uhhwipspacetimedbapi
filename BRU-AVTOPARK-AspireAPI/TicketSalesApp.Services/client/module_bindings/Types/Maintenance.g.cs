@@ -31,6 +31,30 @@ namespace SpacetimeDB.Types
         public ulong NextServiceDate;
         [DataMember(Name = "Roadworthiness")]
         public string? Roadworthiness;
+        [DataMember(Name = "MaintenanceCost")]
+        public double MaintenanceCost;
+        [DataMember(Name = "PartsReplaced")]
+        public string? PartsReplaced;
+        [DataMember(Name = "MaintenanceDuration")]
+        public ulong MaintenanceDuration;
+        [DataMember(Name = "IsScheduled")]
+        public bool IsScheduled;
+        [DataMember(Name = "MaintenanceLocation")]
+        public string? MaintenanceLocation;
+        [DataMember(Name = "ScheduledByEmployeeId")]
+        public uint? ScheduledByEmployeeId;
+        [DataMember(Name = "CompletedByEmployeeId")]
+        public uint? CompletedByEmployeeId;
+        [DataMember(Name = "MaintenanceNotes")]
+        public string? MaintenanceNotes;
+        [DataMember(Name = "MaintenanceStatus")]
+        public string? MaintenanceStatus;
+        [DataMember(Name = "DiagnosticCodes")]
+        public System.Collections.Generic.List<string>? DiagnosticCodes;
+        [DataMember(Name = "LaborCost")]
+        public double? LaborCost;
+        [DataMember(Name = "PartsCost")]
+        public double? PartsCost;
 
         public Maintenance(
             uint MaintenanceId,
@@ -41,7 +65,19 @@ namespace SpacetimeDB.Types
             string? ServiceEngineer,
             string? FoundIssues,
             ulong NextServiceDate,
-            string? Roadworthiness
+            string? Roadworthiness,
+            double MaintenanceCost,
+            string? PartsReplaced,
+            ulong MaintenanceDuration,
+            bool IsScheduled,
+            string? MaintenanceLocation,
+            uint? ScheduledByEmployeeId,
+            uint? CompletedByEmployeeId,
+            string? MaintenanceNotes,
+            string? MaintenanceStatus,
+            System.Collections.Generic.List<string>? DiagnosticCodes,
+            double? LaborCost,
+            double? PartsCost
         )
         {
             this.MaintenanceId = MaintenanceId;
@@ -53,6 +89,18 @@ namespace SpacetimeDB.Types
             this.FoundIssues = FoundIssues;
             this.NextServiceDate = NextServiceDate;
             this.Roadworthiness = Roadworthiness;
+            this.MaintenanceCost = MaintenanceCost;
+            this.PartsReplaced = PartsReplaced;
+            this.MaintenanceDuration = MaintenanceDuration;
+            this.IsScheduled = IsScheduled;
+            this.MaintenanceLocation = MaintenanceLocation;
+            this.ScheduledByEmployeeId = ScheduledByEmployeeId;
+            this.CompletedByEmployeeId = CompletedByEmployeeId;
+            this.MaintenanceNotes = MaintenanceNotes;
+            this.MaintenanceStatus = MaintenanceStatus;
+            this.DiagnosticCodes = DiagnosticCodes;
+            this.LaborCost = LaborCost;
+            this.PartsCost = PartsCost;
         }
 
         public Maintenance()

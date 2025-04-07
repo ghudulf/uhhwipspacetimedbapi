@@ -41,7 +41,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                     // Retrieve host and module name from configuration
                     var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
-                    var moduleName = _configuration["SpacetimeDB:ModuleName"] ?? "bru-avtopark"; // Default module name
+                    var moduleName = _configuration["SpacetimeDB:ModuleName"] ?? "avtopark"; // Default module name
 
                     // Log the connection attempt
                 _logger.LogInformation("Connecting to SpacetimeDB at {Host} module {Module}", host, moduleName);

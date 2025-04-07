@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2UfbvwqIymo=",
+  "dgSpecHash": "ikSZrLV49FQ=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
   "expectedPackageFiles": [
@@ -76,6 +76,7 @@
     "C:\\Users\\andrej\\.nuget\\packages\\openiddict.server.aspnetcore\\4.1.0\\openiddict.server.aspnetcore.4.1.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\openiddict.validation\\4.1.0\\openiddict.validation.4.1.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\openiddict.validation.aspnetcore\\4.1.0\\openiddict.validation.aspnetcore.4.1.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\openiddict.validation.serverintegration\\4.1.0\\openiddict.validation.serverintegration.4.1.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\opentelemetry\\1.9.0\\opentelemetry.1.9.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\opentelemetry.api\\1.9.0\\opentelemetry.api.1.9.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\opentelemetry.api.providerbuilderextensions\\1.9.0\\opentelemetry.api.providerbuilderextensions.1.9.0.nupkg.sha512",
@@ -115,8 +116,8 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.private.servicemodel\\4.5.3\\system.private.servicemodel.4.5.3.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.servicemodel.primitives\\4.5.3\\system.servicemodel.primitives.4.5.3.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.1\\microsoft.windowsdesktop.app.ref.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.1\\microsoft.aspnetcore.app.ref.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.1\\microsoft.netcore.app.host.win-x64.9.0.1.nupkg.sha512"
   ],

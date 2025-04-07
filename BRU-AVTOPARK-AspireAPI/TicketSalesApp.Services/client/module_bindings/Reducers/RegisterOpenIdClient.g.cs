@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void RegisterOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes);
+        public delegate void RegisterOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType, string clientType);
         public event RegisterOpenIdClientHandler? OnRegisterOpenIdClient;
 
-        public void RegisterOpenIdClient(string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes)
+        public void RegisterOpenIdClient(string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType, string clientType)
         {
-            conn.InternalCallReducer(new Reducer.RegisterOpenIdClient(clientId, clientSecret, redirectUris, allowedScopes), this.SetCallReducerFlags.RegisterOpenIdClientFlags);
+            conn.InternalCallReducer(new Reducer.RegisterOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType), this.SetCallReducerFlags.RegisterOpenIdClientFlags);
         }
 
         public bool InvokeRegisterOpenIdClient(ReducerEventContext ctx, Reducer.RegisterOpenIdClient args)
@@ -27,8 +27,12 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.ClientId,
                 args.ClientSecret,
+                args.DisplayName,
                 args.RedirectUris,
-                args.AllowedScopes
+                args.PostLogoutRedirectUris,
+                args.AllowedScopes,
+                args.ConsentType,
+                args.ClientType
             );
             return true;
         }
@@ -44,30 +48,50 @@ namespace SpacetimeDB.Types
             public string ClientId;
             [DataMember(Name = "clientSecret")]
             public string ClientSecret;
+            [DataMember(Name = "displayName")]
+            public string DisplayName;
             [DataMember(Name = "redirectUris")]
             public System.Collections.Generic.List<string> RedirectUris;
+            [DataMember(Name = "postLogoutRedirectUris")]
+            public System.Collections.Generic.List<string> PostLogoutRedirectUris;
             [DataMember(Name = "allowedScopes")]
             public System.Collections.Generic.List<string> AllowedScopes;
+            [DataMember(Name = "consentType")]
+            public string ConsentType;
+            [DataMember(Name = "clientType")]
+            public string ClientType;
 
             public RegisterOpenIdClient(
                 string ClientId,
                 string ClientSecret,
+                string DisplayName,
                 System.Collections.Generic.List<string> RedirectUris,
-                System.Collections.Generic.List<string> AllowedScopes
+                System.Collections.Generic.List<string> PostLogoutRedirectUris,
+                System.Collections.Generic.List<string> AllowedScopes,
+                string ConsentType,
+                string ClientType
             )
             {
                 this.ClientId = ClientId;
                 this.ClientSecret = ClientSecret;
+                this.DisplayName = DisplayName;
                 this.RedirectUris = RedirectUris;
+                this.PostLogoutRedirectUris = PostLogoutRedirectUris;
                 this.AllowedScopes = AllowedScopes;
+                this.ConsentType = ConsentType;
+                this.ClientType = ClientType;
             }
 
             public RegisterOpenIdClient()
             {
                 this.ClientId = "";
                 this.ClientSecret = "";
+                this.DisplayName = "";
                 this.RedirectUris = new();
+                this.PostLogoutRedirectUris = new();
                 this.AllowedScopes = new();
+                this.ConsentType = "";
+                this.ClientType = "";
             }
 
             string IReducerArgs.ReducerName => "RegisterOpenIdClient";

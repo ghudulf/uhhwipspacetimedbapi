@@ -1,21 +1,2628 @@
 [
   {
-    "ContainingType": "Program\u002B\u003C\u003Ec__DisplayClass0_0",
-    "Method": "\u003C\u003CMain\u003E$\u003Eb__0",
-    "RelativePath": "weatherforecast",
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "Authorize",
+    "RelativePath": "api/Auth/connect/authorize",
     "HttpMethod": "GET",
-    "IsController": false,
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "client_id",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "redirect_uri",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "response_type",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "scope",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "state",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "nonce",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "AuthorizeCallback",
+    "RelativePath": "api/Auth/connect/authorize/callback",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "RequestId",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Username",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Password",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GetClient",
+    "RelativePath": "api/Auth/connect/client/{clientId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.GetClientResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GetClients",
+    "RelativePath": "api/Auth/connect/clients",
+    "HttpMethod": "GET",
+    "IsController": true,
     "Order": 0,
     "Parameters": [],
     "ReturnTypes": [
       {
-        "Type": "WeatherForecast[]",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.GetClientsResponse",
         "MediaTypes": [
-          "application/json"
+          "text/plain",
+          "application/json",
+          "text/json"
         ],
         "StatusCode": 200
       }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "DeleteClient",
+    "RelativePath": "api/Auth/connect/delete-client/{clientId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
     ],
-    "EndpointName": "GetWeatherForecast"
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DeleteClientResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "RegisterClient",
+    "RelativePath": "api/Auth/connect/register-client",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RegisterClientRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RegisterClientResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "Token",
+    "RelativePath": "api/Auth/connect/token",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "GrantType",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Code",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RefreshToken",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ClientId",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ClientSecret",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RedirectUri",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.TokenResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "UpdateClient",
+    "RelativePath": "api/Auth/connect/update-client/{clientId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.UpdateClientRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.UpdateClientResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "UserInfo",
+    "RelativePath": "api/Auth/connect/userinfo",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.UserInfoResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "Login",
+    "RelativePath": "api/Auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "SendMagicLink",
+    "RelativePath": "api/Auth/magic-link/send",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.MagicLinkRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.MagicLinkResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "CheckDirectLoginStatus",
+    "RelativePath": "api/Auth/qr/direct/check",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "deviceId",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.CheckQrLoginResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GenerateDirectLoginQRCode",
+    "RelativePath": "api/Auth/qr/direct/generate",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "username",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "deviceType",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DirectQrCodeResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "DirectQRLogin",
+    "RelativePath": "api/Auth/qr/direct/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DirectQrLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DirectQrLoginResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GenerateQRCode",
+    "RelativePath": "api/Auth/qr/generate",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.QrCodeResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "QRLogin",
+    "RelativePath": "api/Auth/qr/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.QrLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.QrLoginResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "Register",
+    "RelativePath": "api/Auth/register",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RegisterRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RegisterResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "DisableTotp",
+    "RelativePath": "api/Auth/totp/disable",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DisableTotpResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "SetupTotp",
+    "RelativePath": "api/Auth/totp/setup",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.TotpSetupResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ValidateTotp",
+    "RelativePath": "api/Auth/totp/validate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ValidateTotpRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ValidateTotpResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "VerifyTotp",
+    "RelativePath": "api/Auth/totp/verify",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.VerifyTotpRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.VerifyTotpResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ValidateMagicLink",
+    "RelativePath": "api/Auth/validate-magic-link",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "token",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ValidateMagicLinkApi",
+    "RelativePath": "api/Auth/validate-magic-link",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ValidateMagicLinkRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ValidateMagicLinkResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GetWebAuthnCredentials",
+    "RelativePath": "api/Auth/webauthn/credentials",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnCredentialsResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "RemoveWebAuthnCredential",
+    "RelativePath": "api/Auth/webauthn/credentials/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnRemoveCredentialResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "CompleteWebAuthnLogin",
+    "RelativePath": "api/Auth/webauthn/login/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnLoginCompleteRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnLoginCompleteResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GetWebAuthnLoginOptions",
+    "RelativePath": "api/Auth/webauthn/login/options",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnLoginOptionsRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnLoginOptionsResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "CompleteWebAuthnRegistration",
+    "RelativePath": "api/Auth/webauthn/register/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnRegisterCompleteRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnRegisterCompleteResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "GetWebAuthnRegisterOptions",
+    "RelativePath": "api/Auth/webauthn/register/options",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnRegisterOptionsResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ValidateWebAuthn",
+    "RelativePath": "api/Auth/webauthn/validate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnValidateRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.WebAuthnValidateResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "GetBuses",
+    "RelativePath": "api/Buses",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Bus, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "CreateBus",
+    "RelativePath": "api/Buses",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateBusModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Bus",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "GetBus",
+    "RelativePath": "api/Buses/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Bus",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "UpdateBus",
+    "RelativePath": "api/Buses/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateBusModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "DeleteBus",
+    "RelativePath": "api/Buses/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "ActivateBus",
+    "RelativePath": "api/Buses/{id}/activate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "DeactivateBus",
+    "RelativePath": "api/Buses/{id}/deactivate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.BusesController",
+    "Method": "SearchBuses",
+    "RelativePath": "api/Buses/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "serviceStatus",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Bus, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "GetEmployees",
+    "RelativePath": "api/Employees",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Employee, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "CreateEmployee",
+    "RelativePath": "api/Employees",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateEmployeeModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Employee",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "GetEmployee",
+    "RelativePath": "api/Employees/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Employee",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "UpdateEmployee",
+    "RelativePath": "api/Employees/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateEmployeeModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "DeleteEmployee",
+    "RelativePath": "api/Employees/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "GetEmployeesByJob",
+    "RelativePath": "api/Employees/by-job/{jobId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Employee, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.EmployeesController",
+    "Method": "GetDrivers",
+    "RelativePath": "api/Employees/drivers",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Employee, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "GetJobs",
+    "RelativePath": "api/Jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Job, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "CreateJob",
+    "RelativePath": "api/Jobs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateJobModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Job",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "GetJob",
+    "RelativePath": "api/Jobs/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Job",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "UpdateJob",
+    "RelativePath": "api/Jobs/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateJobModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "DeleteJob",
+    "RelativePath": "api/Jobs/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.JobsController",
+    "Method": "SearchJobs",
+    "RelativePath": "api/Jobs/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobTitle",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "internship",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Job, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "GetMaintenanceRecords",
+    "RelativePath": "api/Maintenance",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Maintenance, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "CreateMaintenanceRecord",
+    "RelativePath": "api/Maintenance",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateMaintenanceModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Maintenance",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "GetMaintenanceRecord",
+    "RelativePath": "api/Maintenance/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Maintenance",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "UpdateMaintenanceRecord",
+    "RelativePath": "api/Maintenance/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateMaintenanceModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "DeleteMaintenanceRecord",
+    "RelativePath": "api/Maintenance/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "GetDueMaintenanceRecords",
+    "RelativePath": "api/Maintenance/due-maintenance",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Maintenance, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.MaintenanceController",
+    "Method": "SearchMaintenanceRecords",
+    "RelativePath": "api/Maintenance/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "startDate",
+        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "endDate",
+        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "busModel",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "engineer",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "roadworthiness",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Maintenance, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "GetPermissions",
+    "RelativePath": "api/Permissions",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Permission, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "CreatePermission",
+    "RelativePath": "api/Permissions",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreatePermissionModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Permission",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "GetPermission",
+    "RelativePath": "api/Permissions/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Permission",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "UpdatePermission",
+    "RelativePath": "api/Permissions/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdatePermissionModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "DeletePermission",
+    "RelativePath": "api/Permissions/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "GetCategories",
+    "RelativePath": "api/Permissions/categories",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.PermissionsController",
+    "Method": "GetPermissionsByCategory",
+    "RelativePath": "api/Permissions/category/{category}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "category",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Permission, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "GetRoles",
+    "RelativePath": "api/Roles",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Role, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "CreateRole",
+    "RelativePath": "api/Roles",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateRoleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Role",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "GetRole",
+    "RelativePath": "api/Roles/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Role",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "UpdateRole",
+    "RelativePath": "api/Roles/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateRoleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "DeleteRole",
+    "RelativePath": "api/Roles/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RolesController",
+    "Method": "GetRolePermissions",
+    "RelativePath": "api/Roles/{id}/permissions",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Permission, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "GetRoutes",
+    "RelativePath": "api/Routes",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Route, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "CreateRoute",
+    "RelativePath": "api/Routes",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateRouteModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Route",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "GetRoute",
+    "RelativePath": "api/Routes/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Route",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "UpdateRoute",
+    "RelativePath": "api/Routes/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateRouteModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "DeleteRoute",
+    "RelativePath": "api/Routes/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RoutesController",
+    "Method": "SearchRoutes",
+    "RelativePath": "api/Routes/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "startPoint",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "endPoint",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "busModel",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "driverName",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Route, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "GetRouteSchedules",
+    "RelativePath": "api/RouteSchedules",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.RouteSchedule, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "CreateRouteSchedule",
+    "RelativePath": "api/RouteSchedules",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateRouteScheduleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.RouteSchedule",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "GetRouteSchedule",
+    "RelativePath": "api/RouteSchedules/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.RouteSchedule",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "UpdateRouteSchedule",
+    "RelativePath": "api/RouteSchedules/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateRouteScheduleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "DeleteRouteSchedule",
+    "RelativePath": "api/RouteSchedules/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.RouteSchedulesController",
+    "Method": "SearchRouteSchedules",
+    "RelativePath": "api/RouteSchedules/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "routeId",
+        "Type": "System.Nullable\u00601[[System.UInt32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "date",
+        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "dayOfWeek",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "isActive",
+        "Type": "System.Nullable\u00601[[System.Boolean, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.RouteSchedule, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "GetTickets",
+    "RelativePath": "api/Tickets",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Ticket, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "CreateTicket",
+    "RelativePath": "api/Tickets",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateTicketModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Ticket",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "GetTicket",
+    "RelativePath": "api/Tickets/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.Ticket",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "UpdateTicket",
+    "RelativePath": "api/Tickets/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateTicketModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "DeleteTicket",
+    "RelativePath": "api/Tickets/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "GetAvailableTickets",
+    "RelativePath": "api/Tickets/available",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Ticket, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "GetTicketsByRoute",
+    "RelativePath": "api/Tickets/route/{routeId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "routeId",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Ticket, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketsController",
+    "Method": "SearchTickets",
+    "RelativePath": "api/Tickets/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "routeId",
+        "Type": "System.Nullable\u00601[[System.UInt32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "minPrice",
+        "Type": "System.Nullable\u00601[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "maxPrice",
+        "Type": "System.Nullable\u00601[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "isSold",
+        "Type": "System.Nullable\u00601[[System.Boolean, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Ticket, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "GetTicketSales",
+    "RelativePath": "api/TicketSales",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "CreateTicketSale",
+    "RelativePath": "api/TicketSales",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateTicketSaleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "GetTicketSale",
+    "RelativePath": "api/TicketSales/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "UpdateTicketSale",
+    "RelativePath": "api/TicketSales/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateTicketSaleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "DeleteTicketSale",
+    "RelativePath": "api/TicketSales/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "SearchSales",
+    "RelativePath": "api/TicketSales/search",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "startDate",
+        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "endDate",
+        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "minPrice",
+        "Type": "System.Nullable\u00601[[System.Decimal, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "maxPrice",
+        "Type": "System.Nullable\u00601[[System.Decimal, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "soldToUser",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "GetTotalIncome",
+    "RelativePath": "api/TicketSales/statistics/income",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "month",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Decimal",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.TicketSalesController",
+    "Method": "GetTopTransports",
+    "RelativePath": "api/TicketSales/statistics/top-transports",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "month",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[TicketSalesApp.Services.Interfaces.TransportStatistic, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "GetUsers",
+    "RelativePath": "api/Users",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.UserProfile, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "CreateUser",
+    "RelativePath": "api/Users",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.CreateUserModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.UserProfile",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "GetUser",
+    "RelativePath": "api/Users/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.UserProfile",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "UpdateUser",
+    "RelativePath": "api/Users/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateUserModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "DeleteUser",
+    "RelativePath": "api/Users/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "GetUserPermissions",
+    "RelativePath": "api/Users/{id}/permissions",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Permission, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "GetUserRoles",
+    "RelativePath": "api/Users/{id}/roles",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[SpacetimeDB.Types.Role, TicketSalesApp.Services, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "AssignRoleToUser",
+    "RelativePath": "api/Users/{id}/roles",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "model",
+        "Type": "TicketSalesApp.AdminServer.Controllers.AssignRoleModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "RemoveRoleFromUser",
+    "RelativePath": "api/Users/{id}/roles/{roleId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      },
+      {
+        "Name": "roleId",
+        "Type": "System.UInt32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.UsersController",
+    "Method": "GetCurrentUser",
+    "RelativePath": "api/Users/current",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "SpacetimeDB.Types.UserProfile",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   }
 ]

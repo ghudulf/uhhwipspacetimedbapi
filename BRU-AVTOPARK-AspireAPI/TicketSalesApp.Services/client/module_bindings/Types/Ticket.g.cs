@@ -33,6 +33,46 @@ namespace SpacetimeDB.Types
         public string? UpdatedBy;
         [DataMember(Name = "PurchaseTime")]
         public ulong PurchaseTime;
+        [DataMember(Name = "TicketType")]
+        public string? TicketType;
+        [DataMember(Name = "TicketStatus")]
+        public string? TicketStatus;
+        [DataMember(Name = "ValidationMethod")]
+        public string? ValidationMethod;
+        [DataMember(Name = "ValidationTime")]
+        public ulong? ValidationTime;
+        [DataMember(Name = "ValidationLocation")]
+        public string? ValidationLocation;
+        [DataMember(Name = "ValidatedByEmployeeId")]
+        public uint? ValidatedByEmployeeId;
+        [DataMember(Name = "IsReturn")]
+        public bool? IsReturn;
+        [DataMember(Name = "ReturnTicketId")]
+        public uint? ReturnTicketId;
+        [DataMember(Name = "DiscountType")]
+        public string? DiscountType;
+        [DataMember(Name = "DiscountAmount")]
+        public double? DiscountAmount;
+        [DataMember(Name = "DiscountReason")]
+        public string? DiscountReason;
+        [DataMember(Name = "RefundStatus")]
+        public string? RefundStatus;
+        [DataMember(Name = "RefundAmount")]
+        public double? RefundAmount;
+        [DataMember(Name = "RefundTime")]
+        public ulong? RefundTime;
+        [DataMember(Name = "RefundReason")]
+        public string? RefundReason;
+        [DataMember(Name = "DiscountId")]
+        public uint? DiscountId;
+        [DataMember(Name = "SeatType")]
+        public string? SeatType;
+        [DataMember(Name = "IsReserved")]
+        public bool IsReserved;
+        [DataMember(Name = "ReservationStatus")]
+        public string? ReservationStatus;
+        [DataMember(Name = "ReservationExpiry")]
+        public ulong? ReservationExpiry;
 
         public Ticket(
             uint TicketId,
@@ -44,7 +84,27 @@ namespace SpacetimeDB.Types
             ulong CreatedAt,
             ulong? UpdatedAt,
             string? UpdatedBy,
-            ulong PurchaseTime
+            ulong PurchaseTime,
+            string? TicketType,
+            string? TicketStatus,
+            string? ValidationMethod,
+            ulong? ValidationTime,
+            string? ValidationLocation,
+            uint? ValidatedByEmployeeId,
+            bool? IsReturn,
+            uint? ReturnTicketId,
+            string? DiscountType,
+            double? DiscountAmount,
+            string? DiscountReason,
+            string? RefundStatus,
+            double? RefundAmount,
+            ulong? RefundTime,
+            string? RefundReason,
+            uint? DiscountId,
+            string? SeatType,
+            bool IsReserved,
+            string? ReservationStatus,
+            ulong? ReservationExpiry
         )
         {
             this.TicketId = TicketId;
@@ -57,6 +117,26 @@ namespace SpacetimeDB.Types
             this.UpdatedAt = UpdatedAt;
             this.UpdatedBy = UpdatedBy;
             this.PurchaseTime = PurchaseTime;
+            this.TicketType = TicketType;
+            this.TicketStatus = TicketStatus;
+            this.ValidationMethod = ValidationMethod;
+            this.ValidationTime = ValidationTime;
+            this.ValidationLocation = ValidationLocation;
+            this.ValidatedByEmployeeId = ValidatedByEmployeeId;
+            this.IsReturn = IsReturn;
+            this.ReturnTicketId = ReturnTicketId;
+            this.DiscountType = DiscountType;
+            this.DiscountAmount = DiscountAmount;
+            this.DiscountReason = DiscountReason;
+            this.RefundStatus = RefundStatus;
+            this.RefundAmount = RefundAmount;
+            this.RefundTime = RefundTime;
+            this.RefundReason = RefundReason;
+            this.DiscountId = DiscountId;
+            this.SeatType = SeatType;
+            this.IsReserved = IsReserved;
+            this.ReservationStatus = ReservationStatus;
+            this.ReservationExpiry = ReservationExpiry;
         }
 
         public Ticket()

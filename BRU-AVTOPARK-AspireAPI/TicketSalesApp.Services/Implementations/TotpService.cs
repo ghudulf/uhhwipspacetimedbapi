@@ -100,10 +100,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Store the secret key
-                await conn.Reducers.StoreTotpSecretAsync(userId, secretKey);
+                conn.Reducers.StoreTotpSecret(userId, secretKey);
                 
                 // Enable TOTP for the user
-                await conn.Reducers.EnableTotpAsync(userId);
+                conn.Reducers.EnableTotp(userId);
 
                 _logger.LogInformation("TOTP enabled successfully for user ID: {UserId}", userId);
                 return (true, null);
@@ -137,10 +137,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Disable TOTP for the user
-                await conn.Reducers.DisableTotpAsync(userId);
+                conn.Reducers.DisableTotp(userId);
                 
                 // Deactivate the TOTP secret
-                await conn.Reducers.DeactivateTotpSecretAsync(userId);
+                conn.Reducers.DeactivateTotpSecret(userId);
 
                 _logger.LogInformation("TOTP disabled successfully for user ID: {UserId}", userId);
                 return (true, null);
@@ -213,7 +213,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 // Find the token
                 var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                    .FirstOrDefault(t => t.Token == tempToken && t.ExpiryDate > DateTime.UtcNow);
+                    .FirstOrDefault(t => t.Token == tempToken && t.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 
                 if (twoFactorToken == null)
                 {
@@ -249,7 +249,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Delete the token
-                await conn.Reducers.DeleteTwoFactorTokenAsync(twoFactorToken.Id);
+                conn.Reducers.DeleteTwoFactorToken(twoFactorToken.Id);
 
                 _logger.LogInformation("TOTP code validated successfully with token for user ID: {UserId}", user.UserId);
                 return (true, null);
@@ -404,4 +404,5 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
+
 

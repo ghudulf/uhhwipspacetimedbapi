@@ -40,7 +40,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly ISpacetimeDBService _spacetimeService;
 
         public AuthController(
-            IAuthenticationService authService,
+            IAuthenticationService authService, 
             IQRAuthenticationService qrAuthService,
             IUserService userService,
             ITotpService totpService,
@@ -71,6 +71,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
+            // this is a mess from the deepest pit of the seven hells and i doubt this shit wont crash and burn even if i fix all the errors
             try
             {
                 _logger.LogInformation("Login attempt for user: {Username}", request.Username);
@@ -97,21 +98,36 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                // Check if 2FA is enabled
-                bool totpEnabled = await _totpService.IsTotpEnabledAsync(user.UserId);
-                bool webAuthnEnabled = await _webAuthnService.IsWebAuthnEnabledAsync(user.UserId);
+                var conn = _spacetimeService.GetConnection();
+                
+                // Check user settings for 2FA
+                var userSettings = conn.Db.UserSettings.Iter()
+                    .FirstOrDefault(s => s.UserId.Equals(user.UserId));
+                
+                if (userSettings == null)
+                {
+                    _logger.LogWarning("User settings not found for user: {Username}", request.Username);
+                    return StatusCode(500, new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "User settings not found"
+                    });
+                }
 
-                if (totpEnabled && !request.SkipTwoFactor)
+                if (userSettings.TotpEnabled && !request.SkipTwoFactor)
                 {
                     // Generate temporary token for 2FA
-                    var tempToken = GenerateTemporaryToken();
+                    var tempToken = GenerateRandomToken();
+                    var expiresAt = (ulong)DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds();
                     
                     // Store token in database with expiry
-                    var conn = _spacetimeService.GetConnection();
-                    await conn.Reducers.CreateTwoFactorTokenAsync(
+                    conn.Reducers.CreateTwoFactorToken(
                         user.UserId,
                         tempToken,
-                        DateTime.UtcNow.AddMinutes(10)
+                        false,
+                        expiresAt,
+                        Request.Headers["User-Agent"].ToString(),
+                        HttpContext.Connection.RemoteIpAddress?.ToString()
                     );
                     
                     return Ok(new ApiResponse<TwoFactorResponse>
@@ -127,27 +143,46 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
                 
-                if (webAuthnEnabled && !request.SkipTwoFactor)
+                if (userSettings.WebAuthnEnabled && !request.SkipTwoFactor)
                 {
                     // Generate temporary token for WebAuthn
-                    var tempToken = GenerateTemporaryToken();
+                    var tempToken = GenerateRandomToken();
+                    var expiresAt = (ulong)DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds();
                     
                     // Store token in database with expiry
-                    var conn = _spacetimeService.GetConnection();
-                    await conn.Reducers.CreateTwoFactorTokenAsync(
+                    conn.Reducers.CreateTwoFactorToken(
                         user.UserId,
                         tempToken,
-                        DateTime.UtcNow.AddMinutes(10)
+                        false,
+                        expiresAt,
+                        Request.Headers["User-Agent"].ToString(),
+                        HttpContext.Connection.RemoteIpAddress?.ToString()
                     );
                     
-                    // Get WebAuthn assertion options
-                    var (success, options, errorMessage) = await _webAuthnService.GetAssertionOptionsAsync(request.Username);
-                    if (!success || options == null)
+                    // Get WebAuthn credentials for the user
+                    var credentials = conn.Db.WebAuthnCredential.Iter()
+                        .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
+                        .ToList();
+
+                    if (!credentials.Any())
                     {
+                        _logger.LogWarning("No WebAuthn credentials found for user: {Username}", request.Username);
                         return BadRequest(new ApiResponse<object>
                         {
                             Success = false,
-                            Message = errorMessage ?? "Failed to get WebAuthn options"
+                            Message = "No WebAuthn credentials found"
+                        });
+                    }
+
+                    // Create assertion options
+                    var (success, options, _) = await _webAuthnService.GetAssertionOptionsAsync(user.Login);
+                    if (!success || options == null)
+                    {
+                        _logger.LogWarning("Failed to create assertion options for user: {Username}", request.Username);
+                        return BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = "Failed to create assertion options"
                         });
                     }
                     
@@ -303,7 +338,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                var user = await _userService.GetUserByIdentityAsync(userId);
+                var user = await GetUserByIdentityAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiResponse<object>
@@ -314,7 +349,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Generate TOTP setup
-                var (success, secretKey, qrCodeUri, errorMessage) = await _totpService.SetupTotpAsync(userId, user.Login);
+                var result = await _totpService.SetupTotpAsync(userId.Value, user.Login);
+                bool success = result.success;
+                string? secretKey = result.secretKey;
+                string? qrCodeUri = result.qrCodeUri;
+                string? errorMessage = result.errorMessage;
                 if (!success || secretKey == null || qrCodeUri == null)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -363,7 +402,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Verify TOTP code
-                var (success, errorMessage) = await _totpService.EnableTotpAsync(userId, request.Code, request.SecretKey);
+                var result = await _totpService.EnableTotpAsync(userId.Value, request.Code, request.SecretKey);
+                bool success = result.success;
+                string? errorMessage = result.errorMessage;
                 if (!success)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -411,7 +452,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Disable TOTP
-                var (success, errorMessage) = await _totpService.DisableTotpAsync(userId);
+                var result = await _totpService.DisableTotpAsync(userId.Value);
+                bool success = result.success;
+                string? errorMessage = result.errorMessage;
                 if (!success)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -449,24 +492,25 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             try
             {
-                // Validate TOTP with token
-                var (success, errorMessage) = await _totpService.ValidateTotpWithTokenAsync(request.TempToken, request.Code);
-                if (!success)
+                if (!ModelState.IsValid)
                 {
                     return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
-                        Message = errorMessage ?? "Failed to validate TOTP code"
+                        Message = "Invalid request data",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
                     });
                 }
 
-                // Get user from token
                 var conn = _spacetimeService.GetConnection();
+                
+                // Find two-factor token
                 var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                    .FirstOrDefault(t => t.Token == request.TempToken && t.ExpiryDate > DateTime.UtcNow);
+                    .FirstOrDefault(t => t.Token == request.TempToken && !t.IsUsed);
                 
                 if (twoFactorToken == null)
                 {
+                    _logger.LogWarning("Invalid or expired two-factor token: {Token}", request.TempToken);
                     return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
@@ -474,20 +518,59 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
+                // Get the user
                 var user = conn.Db.UserProfile.Iter()
                     .FirstOrDefault(u => u.UserId.Equals(twoFactorToken.UserId));
-                
                 if (user == null)
                 {
-                    return NotFound(new ApiResponse<object>
+                    _logger.LogWarning("User not found for two-factor token: {Token}", request.TempToken);
+                    return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
                         Message = "User not found"
                     });
                 }
 
-                // Delete the token
-                await conn.Reducers.DeleteTwoFactorTokenAsync(twoFactorToken.Id);
+                // Get TOTP secret
+                var totpSecret = conn.Db.TotpSecret.Iter()
+                    .FirstOrDefault(t => t.UserId.Equals(user.UserId) && t.IsActive);
+                if (totpSecret == null)
+                {
+                    _logger.LogWarning("TOTP secret not found for user: {UserId}", user.UserId);
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "TOTP not set up"
+                    });
+                }
+
+                // Verify TOTP code
+                var isValid = _totpService.VerifyTotpCode(totpSecret.Secret, request.Code);
+                if (!isValid)
+                {
+                    _logger.LogWarning("Invalid TOTP code for user: {UserId}", user.UserId);
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid code"
+                    });
+                }
+
+                // Mark token as used
+                var twoFactorTokenId = twoFactorToken.Id;
+                var twoFactorUserId = twoFactorToken.UserId;
+                var tokenValue = twoFactorToken.Token;
+                var expiresAt = twoFactorToken.ExpiresAt;
+                
+                // We'll directly update the TwoFactorToken in the database
+                // since UpdateTwoFactorToken doesn't exist in the reducers
+                conn.Reducers.UpdateTwoFactorToken(
+                    twoFactorTokenId,
+                    twoFactorUserId,
+                    tokenValue,
+                    true, // Mark as used
+                    expiresAt
+                );
 
                 // Generate JWT token
                 var token = GenerateJwtToken(user);
@@ -541,7 +624,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                var user = await _userService.GetUserByIdentityAsync(userId);
+                var user = await GetUserByIdentityAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiResponse<object>
@@ -552,7 +635,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Get WebAuthn registration options
-                var (success, options, errorMessage) = await _webAuthnService.GetCredentialCreateOptionsAsync(userId, user.Login);
+                var result = await _webAuthnService.GetCredentialCreateOptionsAsync(userId.Value, user.Login);
+                bool success = result.success;
+                CredentialCreateOptions? options = result.options;
+                string? errorMessage = result.errorMessage;
                 if (!success || options == null)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -599,7 +685,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                var user = await _userService.GetUserByIdentityAsync(userId);
+                var user = await GetUserByIdentityAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiResponse<object>
@@ -610,7 +696,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Complete WebAuthn registration
-                var (success, errorMessage) = await _webAuthnService.CompleteRegistrationAsync(userId, user.Login, request.AttestationResponse);
+                var result = await _webAuthnService.CompleteRegistrationAsync(userId.Value, user.Login, request.AttestationResponse);
+                bool success = result.success;
+                string? errorMessage = result.errorMessage;
                 if (!success)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -737,7 +825,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 // Get user from token
                 var conn = _spacetimeService.GetConnection();
                 var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                    .FirstOrDefault(t => t.Token == request.TempToken && t.ExpiryDate > DateTime.UtcNow);
+                    .FirstOrDefault(t => t.Token == request.TempToken && !t.IsUsed);
                 
                 if (twoFactorToken == null)
                 {
@@ -771,8 +859,21 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                // Delete the token
-                await conn.Reducers.DeleteTwoFactorTokenAsync(twoFactorToken.Id);
+                // Mark token as used
+                var twoFactorTokenId = twoFactorToken.Id;
+                var twoFactorUserId = twoFactorToken.UserId;
+                var tokenValue = twoFactorToken.Token;
+                var expiresAt = twoFactorToken.ExpiresAt;
+                
+                // We'll directly update the TwoFactorToken in the database
+                // since UpdateTwoFactorToken doesn't exist in the reducers
+                conn.Reducers.UpdateTwoFactorToken(
+                    twoFactorTokenId,
+                    twoFactorUserId,
+                    tokenValue,
+                    true, // Mark as used
+                    expiresAt
+                );
 
                 // Generate JWT token
                 var token = GenerateJwtToken(user);
@@ -823,7 +924,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Get WebAuthn credentials
-                var credentials = await _webAuthnService.GetUserCredentialsAsync(userId);
+                if (userId == null) throw new InvalidOperationException("User ID cannot be null");
+                var credentials = await _webAuthnService.GetUserCredentialsAsync(userId.Value);
 
                 return Ok(new ApiResponse<WebAuthnCredentialsResponse>
                 {
@@ -833,8 +935,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     {
                         Credentials = credentials.Select(c => new WebAuthnCredentialDto
                         {
-                            Id = Convert.ToBase64String(c.CredentialId),
-                            CreatedAt = c.CreatedAt
+                            Id = Convert.ToBase64String(c.CredentialId.ToArray()),
+                            CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
                         }).ToList()
                     }
                 });
@@ -867,7 +969,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Remove WebAuthn credential
-                var (success, errorMessage) = await _webAuthnService.RemoveCredentialAsync(userId, id);
+                var result = await _webAuthnService.RemoveCredentialAsync(userId.Value, id);
+                bool success = result.success;
+                string? errorMessage = result.errorMessage;
                 if (!success)
                 {
                     return BadRequest(new ApiResponse<object>
@@ -1047,7 +1151,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                var user = await _userService.GetUserByIdentityAsync(userId);
+                var user = await GetUserByIdentityAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new ApiResponse<object>
@@ -1058,7 +1162,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Generate QR code
-                var (qrCodeBase64, rawData) = await _qrAuthService.GenerateQRCodeWithDataAsync(user);
+                (string qrCodeBase64, string rawData) = await _qrAuthService.GenerateQRCodeWithDataAsync(user);
 
                 return Ok(new ApiResponse<QrCodeResponse>
                 {
@@ -1334,8 +1438,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         });
                     }
 
-                    // Get the user
-                    var user = await _userService.GetUserByIdAsync(codeData.UserId);
+                    // Get the user's SpacetimeDB Identity from legacy ID
+                    var conn = _spacetimeService.GetConnection();
+                    var userProfile = conn.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.LegacyUserId == codeData.UserId);
+                    
+                    if (userProfile == null) {
+                        return BadRequest(new {
+                            error = "invalid_grant",
+                            error_description = "User not found."
+                        });
+                    }
+
+                    var user = await GetUserByIdentityAsync(userProfile.UserId);
                     if (user == null)
                     {
                         return BadRequest(new
@@ -1486,7 +1601,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                var user = await _userService.GetUserByIdentityAsync(userId);
+                var user = await GetUserByIdentityAsync(userId);
                 if (user == null)
                 {
                     return NotFound(new
@@ -1509,9 +1624,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     Name = user.Login,
                     PreferredUsername = user.Login,
                     Email = user.Email,
-                    EmailVerified = user.EmailConfirmed,
+                    EmailVerified = (bool)user.EmailConfirmed,
                     PhoneNumber = user.PhoneNumber,
-                    PhoneNumberVerified = user.PhoneNumberConfirmed,
+                    
                     Roles = userRoles
                 });
             }
@@ -1684,8 +1799,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var clientDtos = new List<ClientDto>();
                 foreach (var app in applications)
                 {
-                    var clientId = await _openIdConnectService.GetClientIdAsync(app);
-                    var displayName = await _openIdConnectService.GetDisplayNameAsync(app);
+                    var clientId = await GetClientIdAsync(app);
+                    var displayName = await GetDisplayNameAsync(app);
                     
                     clientDtos.Add(new ClientDto
                     {
@@ -1734,11 +1849,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Get client details
-                var displayName = await _openIdConnectService.GetDisplayNameAsync(application);
-                var redirectUris = await _openIdConnectService.GetRedirectUrisAsync(application);
-                var postLogoutRedirectUris = await _openIdConnectService.GetPostLogoutRedirectUrisAsync(application);
-                var permissions = await _openIdConnectService.GetPermissionsAsync(application);
-                var consentType = await _openIdConnectService.GetConsentTypeAsync(application);
+                var displayName = await GetDisplayNameAsync(application);
+                var redirectUris = await GetRedirectUrisAsync(application);
+                var postLogoutRedirectUris = await GetPostLogoutRedirectUrisAsync(application);
+                var permissions = await GetPermissionsAsync(application);
+                var consentType = await GetConsentTypeAsync(application);
 
                 return Ok(new ApiResponse<GetClientResponse>
                 {
@@ -1769,7 +1884,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         #endregion
 
         #region Helper Methods
-
+        
         private string GenerateJwtToken(UserProfile userProfile)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -1817,8 +1932,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             // Create claims
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, userProfile.Login),
+                {
+                    new Claim(ClaimTypes.Name, userProfile.Login),
                 new Claim("sub", userProfile.LegacyUserId.ToString()),
                 new Claim("identity", userProfile.UserId.ToString()),
                 new Claim("xuid", userProfile.Xuid.ToString() ?? "0")
@@ -1865,7 +1980,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             try
             {
-                return Identity.Parse(identityString);
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId.ToString() == identityString)?.UserId;
             }
             catch
             {
@@ -1873,24 +1990,143 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
         }
 
-        private string GenerateTemporaryToken()
-        {
-            var randomBytes = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-            }
-            return Convert.ToBase64String(randomBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
-        }
-
         private string GenerateRandomToken()
         {
             var randomBytes = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
+            using (var rng = new RNGCryptoServiceProvider())
             {
                 rng.GetBytes(randomBytes);
             }
-            return Convert.ToBase64String(randomBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
+            return Convert.ToBase64String(randomBytes);
+        }
+//KEEP ASYNC stop trying to remove it
+        private async Task<UserProfile?> GetUserByIdentityAsync(Identity? userId) // valid way to return any data -is RETURN THE FUCKING DATA - METHOD STILL GOTTA BE ASYNC
+        {
+            if (userId == null)
+                return null;
+                
+            var conn = _spacetimeService.GetConnection();
+            var user = conn.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.UserId.Equals(userId));
+                
+            return user;
+        }
+
+        private async Task<string> GetClientIdAsync(object application)
+        {
+            // Here, we're assuming the application object has a property named ClientId
+            // You may need to adjust this based on the actual implementation
+            var propertyInfo = application.GetType().GetProperty("ClientId");
+            if (propertyInfo != null)
+            {
+                var value = propertyInfo.GetValue(application)?.ToString();
+                return value ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        private async Task<string> GetDisplayNameAsync(object application)
+        {
+            // Here, we're assuming the application object has a property named DisplayName
+            var propertyInfo = application.GetType().GetProperty("DisplayName");
+            if (propertyInfo != null)
+            {
+                var value = propertyInfo.GetValue(application)?.ToString();
+                return value ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        private async Task<List<string>> GetRedirectUrisAsync(object application)
+        {
+            // Placeholder implementation
+            // You may need to adjust this based on the actual implementation
+            var result = new List<string>();
+            try
+            {
+                var propertyInfo = application.GetType().GetProperty("RedirectUris");
+                if (propertyInfo != null)
+                {
+                    var value = propertyInfo.GetValue(application);
+                    if (value is IEnumerable<string> uris)
+                    {
+                        result.AddRange(uris);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting redirect URIs from application object");
+            }
+            return result;
+        }
+
+        private async Task<List<string>> GetPostLogoutRedirectUrisAsync(object application)
+        {
+            // Placeholder implementation
+            // You may need to adjust this based on the actual implementation
+            var result = new List<string>();
+            try
+            {
+                var propertyInfo = application.GetType().GetProperty("PostLogoutRedirectUris");
+                if (propertyInfo != null)
+                {
+                    var value = propertyInfo.GetValue(application);
+                    if (value is IEnumerable<string> uris)
+                    {
+                        result.AddRange(uris);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting post-logout redirect URIs from application object");
+            }
+            return result;
+        }
+
+        private async Task<List<string>> GetPermissionsAsync(object application)
+        {
+            // Placeholder implementation
+            // You may need to adjust this based on the actual implementation
+            var result = new List<string>();
+            try
+            {
+                var propertyInfo = application.GetType().GetProperty("Permissions");
+                if (propertyInfo != null)
+                {
+                    var value = propertyInfo.GetValue(application);
+                    if (value is IEnumerable<string> permissions)
+                    {
+                        result.AddRange(permissions);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting permissions from application object");
+            }
+            return result;
+        }
+
+        private async Task<string> GetConsentTypeAsync(object application)
+        {
+            // Placeholder implementation
+            // You may need to adjust this based on the actual implementation
+            try
+            {
+                var propertyInfo = application.GetType().GetProperty("ConsentType");
+                if (propertyInfo != null)
+                {
+                    var value = propertyInfo.GetValue(application)?.ToString();
+                    return value ?? "implicit";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting consent type from application object");
+            }
+            return "implicit";
         }
 
         #endregion
@@ -2245,3 +2481,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
     #endregion
 }
+
+
+
+
+
+
+
+
+
+
+
+
