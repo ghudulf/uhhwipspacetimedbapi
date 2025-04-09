@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void LogAdminActionHandler(ReducerEventContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent);
+        public delegate void LogAdminActionHandler(ReducerEventContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent, SpacetimeDB.Identity? actingUser);
         public event LogAdminActionHandler? OnLogAdminAction;
 
-        public void LogAdminAction(string userId, string action, string details, string timestamp, string ipAddress, string userAgent)
+        public void LogAdminAction(string userId, string action, string details, string timestamp, string ipAddress, string userAgent, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent), this.SetCallReducerFlags.LogAdminActionFlags);
+            conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent, actingUser), this.SetCallReducerFlags.LogAdminActionFlags);
         }
 
         public bool InvokeLogAdminAction(ReducerEventContext ctx, Reducer.LogAdminAction args)
@@ -30,7 +30,8 @@ namespace SpacetimeDB.Types
                 args.Details,
                 args.Timestamp,
                 args.IpAddress,
-                args.UserAgent
+                args.UserAgent,
+                args.ActingUser
             );
             return true;
         }
@@ -54,6 +55,8 @@ namespace SpacetimeDB.Types
             public string IpAddress;
             [DataMember(Name = "userAgent")]
             public string UserAgent;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public LogAdminAction(
                 string UserId,
@@ -61,7 +64,8 @@ namespace SpacetimeDB.Types
                 string Details,
                 string Timestamp,
                 string IpAddress,
-                string UserAgent
+                string UserAgent,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
@@ -70,6 +74,7 @@ namespace SpacetimeDB.Types
                 this.Timestamp = Timestamp;
                 this.IpAddress = IpAddress;
                 this.UserAgent = UserAgent;
+                this.ActingUser = ActingUser;
             }
 
             public LogAdminAction()

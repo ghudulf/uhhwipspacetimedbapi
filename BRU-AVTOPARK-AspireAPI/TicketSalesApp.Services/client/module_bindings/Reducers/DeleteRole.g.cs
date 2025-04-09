@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteRoleHandler(ReducerEventContext ctx, uint roleId);
+        public delegate void DeleteRoleHandler(ReducerEventContext ctx, uint roleId, SpacetimeDB.Identity? actingUserId);
         public event DeleteRoleHandler? OnDeleteRole;
 
-        public void DeleteRole(uint roleId)
+        public void DeleteRole(uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.DeleteRole(roleId), this.SetCallReducerFlags.DeleteRoleFlags);
+            conn.InternalCallReducer(new Reducer.DeleteRole(roleId, actingUserId), this.SetCallReducerFlags.DeleteRoleFlags);
         }
 
         public bool InvokeDeleteRole(ReducerEventContext ctx, Reducer.DeleteRole args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteRole == null) return false;
             OnDeleteRole(
                 ctx,
-                args.RoleId
+                args.RoleId,
+                args.ActingUserId
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "roleId")]
             public uint RoleId;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
-            public DeleteRole(uint RoleId)
+            public DeleteRole(
+                uint RoleId,
+                SpacetimeDB.Identity? ActingUserId
+            )
             {
                 this.RoleId = RoleId;
+                this.ActingUserId = ActingUserId;
             }
 
             public DeleteRole()

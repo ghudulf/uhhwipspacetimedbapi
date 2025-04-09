@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteTicketHandler(ReducerEventContext ctx, uint ticketId);
+        public delegate void DeleteTicketHandler(ReducerEventContext ctx, uint ticketId, SpacetimeDB.Identity? actingUser);
         public event DeleteTicketHandler? OnDeleteTicket;
 
-        public void DeleteTicket(uint ticketId)
+        public void DeleteTicket(uint ticketId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteTicket(ticketId), this.SetCallReducerFlags.DeleteTicketFlags);
+            conn.InternalCallReducer(new Reducer.DeleteTicket(ticketId, actingUser), this.SetCallReducerFlags.DeleteTicketFlags);
         }
 
         public bool InvokeDeleteTicket(ReducerEventContext ctx, Reducer.DeleteTicket args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteTicket == null) return false;
             OnDeleteTicket(
                 ctx,
-                args.TicketId
+                args.TicketId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "ticketId")]
             public uint TicketId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteTicket(uint TicketId)
+            public DeleteTicket(
+                uint TicketId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.TicketId = TicketId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteTicket()

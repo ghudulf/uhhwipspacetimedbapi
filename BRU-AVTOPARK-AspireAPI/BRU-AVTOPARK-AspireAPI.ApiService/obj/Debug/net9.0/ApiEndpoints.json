@@ -1,5 +1,21 @@
 [
   {
+    "ContainingType": "Program\u002B\u003C\u003Ec",
+    "Method": "\u003C\u003CMain\u003E$\u003Eb__0_13",
+    "RelativePath": "",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "Authorize",
     "RelativePath": "api/Auth/connect/authorize",
@@ -114,6 +130,74 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ClientsListPage",
+    "RelativePath": "api/Auth/connect/clients",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ClientDetailsPage",
+    "RelativePath": "api/Auth/connect/clients/{clientId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "DeleteClientSubmit",
+    "RelativePath": "api/Auth/connect/clients/{clientId}/delete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "EditClientPage",
+    "RelativePath": "api/Auth/connect/clients/{clientId}/edit",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "NewClientPage",
+    "RelativePath": "api/Auth/connect/clients/new",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "DeleteClient",
     "RelativePath": "api/Auth/connect/delete-client/{clientId}",
     "HttpMethod": "DELETE",
@@ -140,8 +224,54 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
-    "Method": "RegisterClient",
+    "Method": "RegisterClientSubmit",
     "RelativePath": "api/Auth/connect/register-client",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ClientId",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ClientSecret",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "DisplayName",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RedirectUris",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "PostLogoutRedirectUris",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "AllowedScopes",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RequireConsent",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "RegisterClient",
+    "RelativePath": "api/Auth/connect/registerclient",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -248,6 +378,52 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "UpdateClientSubmit",
+    "RelativePath": "api/Auth/connect/update-client/{clientId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "DisplayName",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ClientSecret",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RedirectUris",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "PostLogoutRedirectUris",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "AllowedScopes",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "RequireConsent",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "UserInfo",
     "RelativePath": "api/Auth/connect/userinfo",
     "HttpMethod": "GET",
@@ -268,6 +444,43 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ErrorPage",
+    "RelativePath": "api/Auth/error",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "message",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "LoginPage",
+    "RelativePath": "api/Auth/login",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "error",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "message",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "Login",
     "RelativePath": "api/Auth/login",
     "HttpMethod": "POST",
@@ -275,22 +488,53 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "request",
-        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest",
-        "IsRequired": true
+        "Name": "Username",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Password",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "SkipTwoFactor",
+        "Type": "System.Boolean",
+        "IsRequired": false
       }
     ],
-    "ReturnTypes": [
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "Logout",
+    "RelativePath": "api/Auth/logout",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "MagicLinkPage",
+    "RelativePath": "api/Auth/magic-link",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
       {
-        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
+        "Name": "error",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "message",
+        "Type": "System.String",
+        "IsRequired": false
       }
-    ]
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
@@ -301,22 +545,48 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "request",
+        "Name": "jsonRequest",
         "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.MagicLinkRequest",
         "IsRequired": true
+      },
+      {
+        "Name": "Email",
+        "Type": "System.String",
+        "IsRequired": false
       }
     ],
-    "ReturnTypes": [
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "OAuthLoginPage",
+    "RelativePath": "api/Auth/oauth/login",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
       {
-        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.MagicLinkResponse",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
+        "Name": "request_id",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "error",
+        "Type": "System.String",
+        "IsRequired": false
       }
-    ]
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "ProfilePage",
+    "RelativePath": "api/Auth/profile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
@@ -423,6 +693,16 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "QrLoginPage",
+    "RelativePath": "api/Auth/qr/login",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "QRLogin",
     "RelativePath": "api/Auth/qr/login",
     "HttpMethod": "POST",
@@ -475,6 +755,48 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "RegisterPage",
+    "RelativePath": "api/Auth/register",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "error",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "message",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "attempt",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "SuccessPage",
+    "RelativePath": "api/Auth/success",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "token",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "DisableTotp",
     "RelativePath": "api/Auth/totp/disable",
     "HttpMethod": "POST",
@@ -495,23 +817,13 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
-    "Method": "SetupTotp",
+    "Method": "TotpSetup",
     "RelativePath": "api/Auth/totp/setup",
-    "HttpMethod": "POST",
+    "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [],
-    "ReturnTypes": [
-      {
-        "Type": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.TotpSetupResponse",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
+    "ReturnTypes": []
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
@@ -652,6 +964,27 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "RemoveWebAuthnCredentialForm",
+    "RelativePath": "api/Auth/webauthn/credentials/{id}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "_method",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
@@ -2621,6 +2954,22 @@
           "application/json",
           "text/json"
         ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Program\u002B\u003C\u003Ec",
+    "Method": "\u003C\u003CMain\u003E$\u003Eb__0_14",
+    "RelativePath": "health",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
         "StatusCode": 200
       }
     ]

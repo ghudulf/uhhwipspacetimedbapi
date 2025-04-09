@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateJobHandler(ReducerEventContext ctx, uint jobId, string? jobTitle, string? internship);
+        public delegate void UpdateJobHandler(ReducerEventContext ctx, uint jobId, string? jobTitle, string? internship, SpacetimeDB.Identity? actingUser);
         public event UpdateJobHandler? OnUpdateJob;
 
-        public void UpdateJob(uint jobId, string? jobTitle, string? internship)
+        public void UpdateJob(uint jobId, string? jobTitle, string? internship, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship), this.SetCallReducerFlags.UpdateJobFlags);
+            conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship, actingUser), this.SetCallReducerFlags.UpdateJobFlags);
         }
 
         public bool InvokeUpdateJob(ReducerEventContext ctx, Reducer.UpdateJob args)
@@ -27,7 +27,8 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.JobId,
                 args.JobTitle,
-                args.Internship
+                args.Internship,
+                args.ActingUser
             );
             return true;
         }
@@ -45,16 +46,20 @@ namespace SpacetimeDB.Types
             public string? JobTitle;
             [DataMember(Name = "internship")]
             public string? Internship;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateJob(
                 uint JobId,
                 string? JobTitle,
-                string? Internship
+                string? Internship,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.JobId = JobId;
                 this.JobTitle = JobTitle;
                 this.Internship = Internship;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateJob()

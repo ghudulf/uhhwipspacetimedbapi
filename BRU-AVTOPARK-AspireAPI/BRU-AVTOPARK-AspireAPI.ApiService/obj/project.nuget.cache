@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ikSZrLV49FQ=",
+  "dgSpecHash": "0F+cjRPxqDE=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
   "expectedPackageFiles": [
@@ -22,6 +22,7 @@
     "C:\\Users\\andrej\\.nuget\\packages\\app.metrics.formatters.prometheus\\4.3.0\\app.metrics.formatters.prometheus.4.3.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\csvhelper\\33.0.1\\csvhelper.33.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\fido2\\3.0.1\\fido2.3.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\fido2.aspnet\\3.0.1\\fido2.aspnet.3.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\fido2.models\\3.0.1\\fido2.models.3.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\google.protobuf\\3.22.5\\google.protobuf.3.22.5.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\grpc.core.api\\2.52.0\\grpc.core.api.2.52.0.nupkg.sha512",

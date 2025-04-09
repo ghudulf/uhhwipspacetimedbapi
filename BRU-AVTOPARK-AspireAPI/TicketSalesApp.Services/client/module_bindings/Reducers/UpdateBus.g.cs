@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateBusHandler(ReducerEventContext ctx, uint busId, string? model, string? registrationNumber);
+        public delegate void UpdateBusHandler(ReducerEventContext ctx, uint busId, string? model, string? registrationNumber, SpacetimeDB.Identity? actingUser);
         public event UpdateBusHandler? OnUpdateBus;
 
-        public void UpdateBus(uint busId, string? model, string? registrationNumber)
+        public void UpdateBus(uint busId, string? model, string? registrationNumber, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber), this.SetCallReducerFlags.UpdateBusFlags);
+            conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber, actingUser), this.SetCallReducerFlags.UpdateBusFlags);
         }
 
         public bool InvokeUpdateBus(ReducerEventContext ctx, Reducer.UpdateBus args)
@@ -27,7 +27,8 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.BusId,
                 args.Model,
-                args.RegistrationNumber
+                args.RegistrationNumber,
+                args.ActingUser
             );
             return true;
         }
@@ -45,16 +46,20 @@ namespace SpacetimeDB.Types
             public string? Model;
             [DataMember(Name = "registrationNumber")]
             public string? RegistrationNumber;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateBus(
                 uint BusId,
                 string? Model,
-                string? RegistrationNumber
+                string? RegistrationNumber,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.BusId = BusId;
                 this.Model = Model;
                 this.RegistrationNumber = RegistrationNumber;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateBus()

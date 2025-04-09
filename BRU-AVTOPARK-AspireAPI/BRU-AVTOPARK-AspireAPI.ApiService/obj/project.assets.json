@@ -312,6 +312,26 @@
           "build/fido2.targets": {}
         }
       },
+      "Fido2.AspNet/3.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Fido2": "3.0.1",
+          "Fido2.Models": "3.0.1"
+        },
+        "compile": {
+          "lib/net6.0/Fido2.AspNet.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/Fido2.AspNet.dll": {
+            "related": ".pdb"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
       "Fido2.Models/3.0.1": {
         "type": "package",
         "compile": {
@@ -2295,6 +2315,19 @@
         "fido2.nuspec",
         "lib/net6.0/Fido2.dll",
         "lib/net6.0/Fido2.pdb"
+      ]
+    },
+    "Fido2.AspNet/3.0.1": {
+      "sha512": "5n5shEXD7RFUyTesjUHGDjkpgES7j4KotQo1GwUcS08k+fx+1tl/zCFHJ9RFDuUwO+S681ZILT2PyA67IPYpaA==",
+      "type": "package",
+      "path": "fido2.aspnet/3.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "fido2.aspnet.3.0.1.nupkg.sha512",
+        "fido2.aspnet.nuspec",
+        "lib/net6.0/Fido2.AspNet.dll",
+        "lib/net6.0/Fido2.AspNet.pdb"
       ]
     },
     "Fido2.Models/3.0.1": {
@@ -4736,6 +4769,7 @@
       "App.Metrics.Formatters.Prometheus >= 4.3.0",
       "BRU-AVTOPARK-AspireAPI.ServiceDefaults >= 1.0.0",
       "Fido2 >= 3.0.1",
+      "Fido2.AspNet >= 3.0.1",
       "Fido2.Models >= 3.0.1",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 9.0.1",
       "Microsoft.AspNetCore.OpenApi >= 9.0.0",
@@ -4826,6 +4860,10 @@
             "version": "[4.3.0, )"
           },
           "Fido2": {
+            "target": "Package",
+            "version": "[3.0.1, )"
+          },
+          "Fido2.AspNet": {
             "target": "Package",
             "version": "[3.0.1, )"
           },

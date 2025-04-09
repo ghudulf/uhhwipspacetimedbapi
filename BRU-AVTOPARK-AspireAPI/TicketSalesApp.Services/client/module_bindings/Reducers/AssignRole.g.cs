@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void AssignRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId);
+        public delegate void AssignRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId);
         public event AssignRoleHandler? OnAssignRole;
 
-        public void AssignRole(SpacetimeDB.Identity userId, uint roleId)
+        public void AssignRole(SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId), this.SetCallReducerFlags.AssignRoleFlags);
+            conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId, actingUserId), this.SetCallReducerFlags.AssignRoleFlags);
         }
 
         public bool InvokeAssignRole(ReducerEventContext ctx, Reducer.AssignRole args)
@@ -26,7 +26,8 @@ namespace SpacetimeDB.Types
             OnAssignRole(
                 ctx,
                 args.UserId,
-                args.RoleId
+                args.RoleId,
+                args.ActingUserId
             );
             return true;
         }
@@ -42,14 +43,18 @@ namespace SpacetimeDB.Types
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "roleId")]
             public uint RoleId;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public AssignRole(
                 SpacetimeDB.Identity UserId,
-                uint RoleId
+                uint RoleId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.UserId = UserId;
                 this.RoleId = RoleId;
+                this.ActingUserId = ActingUserId;
             }
 
             public AssignRole()

@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void AddNewPermissionHandler(ReducerEventContext ctx, string name, string description, string category);
+        public delegate void AddNewPermissionHandler(ReducerEventContext ctx, string name, string description, string category, SpacetimeDB.Identity? actingUserId);
         public event AddNewPermissionHandler? OnAddNewPermission;
 
-        public void AddNewPermission(string name, string description, string category)
+        public void AddNewPermission(string name, string description, string category, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.AddNewPermission(name, description, category), this.SetCallReducerFlags.AddNewPermissionFlags);
+            conn.InternalCallReducer(new Reducer.AddNewPermission(name, description, category, actingUserId), this.SetCallReducerFlags.AddNewPermissionFlags);
         }
 
         public bool InvokeAddNewPermission(ReducerEventContext ctx, Reducer.AddNewPermission args)
@@ -27,7 +27,8 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.Name,
                 args.Description,
-                args.Category
+                args.Category,
+                args.ActingUserId
             );
             return true;
         }
@@ -45,16 +46,20 @@ namespace SpacetimeDB.Types
             public string Description;
             [DataMember(Name = "category")]
             public string Category;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public AddNewPermission(
                 string Name,
                 string Description,
-                string Category
+                string Category,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.Name = Name;
                 this.Description = Description;
                 this.Category = Category;
+                this.ActingUserId = ActingUserId;
             }
 
             public AddNewPermission()

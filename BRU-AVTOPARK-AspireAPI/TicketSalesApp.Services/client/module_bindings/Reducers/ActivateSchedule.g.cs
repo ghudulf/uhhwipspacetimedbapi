@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ActivateScheduleHandler(ReducerEventContext ctx, uint scheduleId);
+        public delegate void ActivateScheduleHandler(ReducerEventContext ctx, uint scheduleId, SpacetimeDB.Identity? actingUser);
         public event ActivateScheduleHandler? OnActivateSchedule;
 
-        public void ActivateSchedule(uint scheduleId)
+        public void ActivateSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.ActivateSchedule(scheduleId), this.SetCallReducerFlags.ActivateScheduleFlags);
+            conn.InternalCallReducer(new Reducer.ActivateSchedule(scheduleId, actingUser), this.SetCallReducerFlags.ActivateScheduleFlags);
         }
 
         public bool InvokeActivateSchedule(ReducerEventContext ctx, Reducer.ActivateSchedule args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnActivateSchedule == null) return false;
             OnActivateSchedule(
                 ctx,
-                args.ScheduleId
+                args.ScheduleId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "scheduleId")]
             public uint ScheduleId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public ActivateSchedule(uint ScheduleId)
+            public ActivateSchedule(
+                uint ScheduleId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.ScheduleId = ScheduleId;
+                this.ActingUser = ActingUser;
             }
 
             public ActivateSchedule()

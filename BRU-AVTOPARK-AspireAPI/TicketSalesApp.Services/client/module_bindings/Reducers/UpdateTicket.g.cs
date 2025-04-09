@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateTicketHandler(ReducerEventContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive);
+        public delegate void UpdateTicketHandler(ReducerEventContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateTicketHandler? OnUpdateTicket;
 
-        public void UpdateTicket(uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive)
+        public void UpdateTicket(uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive), this.SetCallReducerFlags.UpdateTicketFlags);
+            conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive, actingUser), this.SetCallReducerFlags.UpdateTicketFlags);
         }
 
         public bool InvokeUpdateTicket(ReducerEventContext ctx, Reducer.UpdateTicket args)
@@ -30,7 +30,8 @@ namespace SpacetimeDB.Types
                 args.SeatNumber,
                 args.TicketPrice,
                 args.PaymentMethod,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -54,6 +55,8 @@ namespace SpacetimeDB.Types
             public string? PaymentMethod;
             [DataMember(Name = "isActive")]
             public bool? IsActive;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateTicket(
                 uint TicketId,
@@ -61,7 +64,8 @@ namespace SpacetimeDB.Types
                 uint? SeatNumber,
                 double? TicketPrice,
                 string? PaymentMethod,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.TicketId = TicketId;
@@ -70,6 +74,7 @@ namespace SpacetimeDB.Types
                 this.TicketPrice = TicketPrice;
                 this.PaymentMethod = PaymentMethod;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateTicket()

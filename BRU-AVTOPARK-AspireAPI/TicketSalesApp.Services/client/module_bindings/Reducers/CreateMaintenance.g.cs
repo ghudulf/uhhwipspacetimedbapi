@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateMaintenanceHandler(ReducerEventContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType);
+        public delegate void CreateMaintenanceHandler(ReducerEventContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, SpacetimeDB.Identity? actingUser);
         public event CreateMaintenanceHandler? OnCreateMaintenance;
 
-        public void CreateMaintenance(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType)
+        public void CreateMaintenance(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType), this.SetCallReducerFlags.CreateMaintenanceFlags);
+            conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser), this.SetCallReducerFlags.CreateMaintenanceFlags);
         }
 
         public bool InvokeCreateMaintenance(ReducerEventContext ctx, Reducer.CreateMaintenance args)
@@ -31,7 +31,8 @@ namespace SpacetimeDB.Types
                 args.FoundIssues,
                 args.NextServiceDate,
                 args.Roadworthiness,
-                args.MaintenanceType
+                args.MaintenanceType,
+                args.ActingUser
             );
             return true;
         }
@@ -57,6 +58,8 @@ namespace SpacetimeDB.Types
             public string Roadworthiness;
             [DataMember(Name = "maintenanceType")]
             public string MaintenanceType;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public CreateMaintenance(
                 uint BusId,
@@ -65,7 +68,8 @@ namespace SpacetimeDB.Types
                 string FoundIssues,
                 ulong NextServiceDate,
                 string Roadworthiness,
-                string MaintenanceType
+                string MaintenanceType,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.BusId = BusId;
@@ -75,6 +79,7 @@ namespace SpacetimeDB.Types
                 this.NextServiceDate = NextServiceDate;
                 this.Roadworthiness = Roadworthiness;
                 this.MaintenanceType = MaintenanceType;
+                this.ActingUser = ActingUser;
             }
 
             public CreateMaintenance()

@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive);
+        public delegate void UpdateUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateUserHandler? OnUpdateUser;
 
-        public void UpdateUser(SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive)
+        public void UpdateUser(SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive), this.SetCallReducerFlags.UpdateUserFlags);
+            conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive, actingUser), this.SetCallReducerFlags.UpdateUserFlags);
         }
 
         public bool InvokeUpdateUser(ReducerEventContext ctx, Reducer.UpdateUser args)
@@ -31,7 +31,8 @@ namespace SpacetimeDB.Types
                 args.Role,
                 args.PhoneNumber,
                 args.Email,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -57,6 +58,8 @@ namespace SpacetimeDB.Types
             public string? Email;
             [DataMember(Name = "isActive")]
             public bool? IsActive;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateUser(
                 SpacetimeDB.Identity UserId,
@@ -65,7 +68,8 @@ namespace SpacetimeDB.Types
                 int? Role,
                 string? PhoneNumber,
                 string? Email,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
@@ -75,6 +79,7 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = PhoneNumber;
                 this.Email = Email;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateUser()

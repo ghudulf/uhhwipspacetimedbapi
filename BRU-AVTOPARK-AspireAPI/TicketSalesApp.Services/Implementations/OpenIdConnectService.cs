@@ -11,6 +11,7 @@ using SpacetimeDB.Types;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Collections.Immutable;
 using OpenIddict.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -20,23 +21,32 @@ namespace TicketSalesApp.Services.Implementations
     public class OpenIdConnectService : IOpenIdConnectService
     {
         private readonly ISpacetimeDBService _spacetimeService;
-        private readonly IOpenIddictApplicationManager _applicationManager;
-        private readonly IOpenIddictAuthorizationManager _authorizationManager;
-        private readonly IOpenIddictScopeManager _scopeManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OpenIdConnectService> _logger;
 
         public OpenIdConnectService(
             ISpacetimeDBService spacetimeService,
-            IOpenIddictApplicationManager applicationManager,
-            IOpenIddictAuthorizationManager authorizationManager,
-            IOpenIddictScopeManager scopeManager,
+            IServiceProvider serviceProvider,
             ILogger<OpenIdConnectService> logger)
         {
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-            _applicationManager = applicationManager ?? throw new ArgumentNullException(nameof(applicationManager));
-            _authorizationManager = authorizationManager ?? throw new ArgumentNullException(nameof(authorizationManager));
-            _scopeManager = scopeManager ?? throw new ArgumentNullException(nameof(scopeManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        private IOpenIddictApplicationManager GetApplicationManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        }
+
+        private IOpenIddictAuthorizationManager GetAuthorizationManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        }
+
+        private IOpenIddictScopeManager GetScopeManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictScopeManager>();
         }
 
         /// <summary>
@@ -48,7 +58,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting application by client ID: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -72,8 +83,11 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Getting authorizations for subject: {Subject}", subject);
-                var applicationId = await _applicationManager.GetIdAsync(application);
-                var authorizationsQuery = _authorizationManager.FindAsync(
+                var applicationManager = GetApplicationManager();
+                var authorizationManager = GetAuthorizationManager();
+                
+                var applicationId = await applicationManager.GetIdAsync(application);
+                var authorizationsQuery = authorizationManager.FindAsync(
                     subject: subject,
                     client: applicationId,
                     status: status,
@@ -150,8 +164,11 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Creating authorization for subject: {Subject}", subject);
 
-                var applicationId = await _applicationManager.GetIdAsync(application);
-                var authorization = await _authorizationManager.CreateAsync(
+                var applicationManager = GetApplicationManager();
+                var authorizationManager = GetAuthorizationManager();
+                
+                var applicationId = await applicationManager.GetIdAsync(application);
+                var authorization = await authorizationManager.CreateAsync(
                     identity: identity,
                     subject: subject,
                     client: applicationId,
@@ -174,7 +191,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var id = await _authorizationManager.GetIdAsync(authorization);
+                var authorizationManager = GetAuthorizationManager();
+                var id = await authorizationManager.GetIdAsync(authorization);
                 return (true, id, null);
             }
             catch (Exception ex)
@@ -192,7 +210,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var resourcesAsync = _scopeManager.ListResourcesAsync(ImmutableArray.Create(scopes));
+                var scopeManager = GetScopeManager();
+                var resourcesAsync = scopeManager.ListResourcesAsync(ImmutableArray.Create(scopes));
                 var resources = new List<string>();
                 await foreach (var resource in resourcesAsync)
                 {
@@ -217,7 +236,8 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Registering client application: {ClientId}", clientId);
 
                 // Check if application with the same client ID already exists
-                var existingApp = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var existingApp = await applicationManager.FindByClientIdAsync(clientId);
                 if (existingApp != null)
                 {
                     _logger.LogWarning("An application with this client ID already exists: {ClientId}", clientId);
@@ -239,7 +259,7 @@ namespace TicketSalesApp.Services.Implementations
                 );
                 
                 // Create a new OpenIddict application
-                var application = await _applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+                var application = await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
                     ClientSecret = clientSecret,
@@ -297,7 +317,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Updating client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -331,10 +352,10 @@ namespace TicketSalesApp.Services.Implementations
                 var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
-                    DisplayName = displayName ?? await _applicationManager.GetDisplayNameAsync(application),
+                    DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application),
                     ConsentType = requireConsent.HasValue ? 
                         (requireConsent.Value ? ConsentTypes.Explicit : ConsentTypes.Implicit) : 
-                        await _applicationManager.GetConsentTypeAsync(application)
+                        await applicationManager.GetConsentTypeAsync(application)
                 };
                 
                 // Update client secret if provided
@@ -353,7 +374,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    var existingUris = await _applicationManager.GetRedirectUrisAsync(application);
+                    var existingUris = await applicationManager.GetRedirectUrisAsync(application);
                     foreach (var uri in existingUris)
                     {
                         descriptor.RedirectUris.Add(new Uri(uri));
@@ -370,7 +391,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    var existingUris = await _applicationManager.GetPostLogoutRedirectUrisAsync(application);
+                    var existingUris = await applicationManager.GetPostLogoutRedirectUrisAsync(application);
                     foreach (var uri in existingUris)
                     {
                         descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
@@ -378,13 +399,13 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Copy existing permissions
-                foreach (var permission in await _applicationManager.GetPermissionsAsync(application))
+                foreach (var permission in await applicationManager.GetPermissionsAsync(application))
                 {
                     descriptor.Permissions.Add(permission);
                 }
                 
                 // Update the application
-                await _applicationManager.UpdateAsync(application, descriptor);
+                await applicationManager.UpdateAsync(application, descriptor);
                 
                 _logger.LogInformation("Client application updated successfully: {ClientId}", clientId);
                 return (true, null);
@@ -405,7 +426,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Deleting client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -420,7 +442,7 @@ namespace TicketSalesApp.Services.Implementations
                  //stupid ai made all the calls awaited - you  cant await a reducer
                 
                 // Delete the application in OpenIddict
-                await _applicationManager.DeleteAsync(application);
+                await applicationManager.DeleteAsync(application);
                 
                 _logger.LogInformation("Client application deleted successfully: {ClientId}", clientId);
                 return (true, null);
@@ -441,8 +463,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting all client applications");
 
+                var applicationManager = GetApplicationManager();
                 var applications = new List<object>();
-                await foreach (var application in _applicationManager.ListAsync())
+                await foreach (var application in applicationManager.ListAsync())
                 {
                     applications.Add(application);
                 }
@@ -465,7 +488,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);

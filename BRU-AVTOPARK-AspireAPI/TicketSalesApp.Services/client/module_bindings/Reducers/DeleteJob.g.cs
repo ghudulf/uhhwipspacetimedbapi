@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteJobHandler(ReducerEventContext ctx, uint jobId);
+        public delegate void DeleteJobHandler(ReducerEventContext ctx, uint jobId, SpacetimeDB.Identity? actingUser);
         public event DeleteJobHandler? OnDeleteJob;
 
-        public void DeleteJob(uint jobId)
+        public void DeleteJob(uint jobId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteJob(jobId), this.SetCallReducerFlags.DeleteJobFlags);
+            conn.InternalCallReducer(new Reducer.DeleteJob(jobId, actingUser), this.SetCallReducerFlags.DeleteJobFlags);
         }
 
         public bool InvokeDeleteJob(ReducerEventContext ctx, Reducer.DeleteJob args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteJob == null) return false;
             OnDeleteJob(
                 ctx,
-                args.JobId
+                args.JobId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "jobId")]
             public uint JobId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteJob(uint JobId)
+            public DeleteJob(
+                uint JobId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.JobId = JobId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteJob()

@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateSaleHandler(ReducerEventContext ctx, uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes);
+        public delegate void UpdateSaleHandler(ReducerEventContext ctx, uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes, SpacetimeDB.Identity? actingUser);
         public event UpdateSaleHandler? OnUpdateSale;
 
-        public void UpdateSale(uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes)
+        public void UpdateSale(uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes), this.SetCallReducerFlags.UpdateSaleFlags);
+            conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes, actingUser), this.SetCallReducerFlags.UpdateSaleFlags);
         }
 
         public bool InvokeUpdateSale(ReducerEventContext ctx, Reducer.UpdateSale args)
@@ -30,7 +30,8 @@ namespace SpacetimeDB.Types
                 args.TicketSoldToUser,
                 args.TicketSoldToUserPhone,
                 args.SaleLocation,
-                args.SaleNotes
+                args.SaleNotes,
+                args.ActingUser
             );
             return true;
         }
@@ -54,6 +55,8 @@ namespace SpacetimeDB.Types
             public string? SaleLocation;
             [DataMember(Name = "saleNotes")]
             public string? SaleNotes;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateSale(
                 uint SaleId,
@@ -61,7 +64,8 @@ namespace SpacetimeDB.Types
                 string? TicketSoldToUser,
                 string? TicketSoldToUserPhone,
                 string? SaleLocation,
-                string? SaleNotes
+                string? SaleNotes,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.SaleId = SaleId;
@@ -70,6 +74,7 @@ namespace SpacetimeDB.Types
                 this.TicketSoldToUserPhone = TicketSoldToUserPhone;
                 this.SaleLocation = SaleLocation;
                 this.SaleNotes = SaleNotes;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateSale()

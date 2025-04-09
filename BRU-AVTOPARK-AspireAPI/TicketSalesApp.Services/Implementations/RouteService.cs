@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
 using System.Collections.Generic;
@@ -84,7 +85,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateRouteAsync(string startPoint, string endPoint, uint driverId, uint busId, string travelTime, bool isActive)
+        public async Task<bool> CreateRouteAsync(string startPoint, string endPoint, uint driverId, uint busId, string travelTime, bool isActive, Identity? actingUser = null)
         {
             try
             {
@@ -110,7 +111,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateRouteAsync(uint routeId, string? startPoint = null, string? endPoint = null, uint? driverId = null, uint? busId = null, string? travelTime = null, bool? isActive = null)
+        public async Task<bool> UpdateRouteAsync(uint routeId, string? startPoint = null, string? endPoint = null, uint? driverId = null, uint? busId = null, string? travelTime = null, bool? isActive = null, Identity? actingUser = null)
         {
             try
             {
@@ -133,7 +134,8 @@ namespace TicketSalesApp.Services.Implementations
                     driverId, // Pass driverId as is
                     busId, // Pass busId as is
                     travelTime, // Pass travelTime as is
-                    isActive ?? route.IsActive // Pass isActive as is
+                    isActive ?? route.IsActive, // Pass isActive as is
+                    actingUser
                 );
 
                 return true;
@@ -145,7 +147,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteRouteAsync(uint routeId)
+        public async Task<bool> DeleteRouteAsync(uint routeId, Identity? actingUser = null)
         {
             try
             {
@@ -171,7 +173,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteRoute reducer
-                connection.Reducers.DeleteRoute(routeId);
+                connection.Reducers.DeleteRoute(routeId, actingUser);
 
                 return true;
             }

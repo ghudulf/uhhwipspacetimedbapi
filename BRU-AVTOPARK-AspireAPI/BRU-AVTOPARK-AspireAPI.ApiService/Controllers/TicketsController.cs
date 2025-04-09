@@ -9,36 +9,30 @@ using Microsoft.Extensions.Logging;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using System.Security.Claims;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize] // Allow all authenticated users to read
-    public class TicketsController : ControllerBase
+    public class TicketsController : BaseController
     {
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<TicketsController> _logger;
         private readonly ITicketService _ticketService;
+        private readonly IAuthenticationService _authService;
 
-        public TicketsController(ISpacetimeDBService spacetimeService, ILogger<TicketsController> logger, ITicketService ticketService)
+        public TicketsController(
+            ISpacetimeDBService spacetimeService, 
+            ILogger<TicketsController> logger, 
+            ITicketService ticketService,
+            IAuthenticationService authService)
         {
             _spacetimeService = spacetimeService;
             _logger = logger;
             _ticketService = ticketService;
-        }
-
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
+            _authService = authService;
         }
 
         [HttpGet]
@@ -106,9 +100,33 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     return BadRequest("Seat is already taken");
                 }
+                
+                // Get user login from JWT token
+                var userLogin = User.Identity?.Name;
+                if (string.IsNullOrEmpty(userLogin))
+                {
+                    _logger.LogWarning("User login not found in JWT token");
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                // Get user identity from login
+                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
+                if (userIdentity == null)
+                {
+                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                _logger.LogInformation("Creating ticket with user identity: {UserIdentity}", userIdentity);
 
-                // Call the CreateTicket reducer
-                conn.Reducers.CreateTicket(model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                // Call the CreateTicket reducer with the user identity
+                conn.Reducers.CreateTicket(
+                    model.RouteId, 
+                    model.TicketPrice, 
+                    model.SeatNumber, 
+                    model.PaymentMethod, 
+                    (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), 
+                    userIdentity);
                 
                 // Wait a moment for the reducer to complete and the subscription to update
                 await Task.Delay(100);
@@ -167,8 +185,33 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Call the UpdateTicket reducer
-                conn.Reducers.UpdateTicket(id, model.RouteId ?? ticket.RouteId, model.SeatNumber ?? ticket.SeatNumber, model.TicketPrice ?? ticket.TicketPrice, model.PaymentMethod ?? ticket.PaymentMethod, model.IsActive ?? ticket.IsActive);
+                // Get user login from JWT token
+                var userLogin = User.Identity?.Name;
+                if (string.IsNullOrEmpty(userLogin))
+                {
+                    _logger.LogWarning("User login not found in JWT token");
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                // Get user identity from login
+                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
+                if (userIdentity == null)
+                {
+                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                _logger.LogInformation("Updating ticket with user identity: {UserIdentity}", userIdentity);
+
+                // Call the UpdateTicket reducer with the user identity
+                conn.Reducers.UpdateTicket(
+                    id, 
+                    model.RouteId ?? ticket.RouteId, 
+                    model.SeatNumber ?? ticket.SeatNumber, 
+                    model.TicketPrice ?? ticket.TicketPrice, 
+                    model.PaymentMethod ?? ticket.PaymentMethod, 
+                    model.IsActive ?? ticket.IsActive,
+                    userIdentity);
 
                 return NoContent();
             }
@@ -201,8 +244,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return BadRequest("Cannot delete a sold ticket");
                 }
 
-                // Call the DeleteTicket reducer
-                conn.Reducers.DeleteTicket(id);
+                // Get user login from JWT token
+                var userLogin = User.Identity?.Name;
+                if (string.IsNullOrEmpty(userLogin))
+                {
+                    _logger.LogWarning("User login not found in JWT token");
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                // Get user identity from login
+                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
+                if (userIdentity == null)
+                {
+                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
+                    return Unauthorized("User identity could not be determined");
+                }
+                
+                _logger.LogInformation("Deleting ticket with user identity: {UserIdentity}", userIdentity);
+
+                // Call the DeleteTicket reducer with the user identity
+                conn.Reducers.DeleteTicket(id, userIdentity);
 
                 return NoContent();
             }

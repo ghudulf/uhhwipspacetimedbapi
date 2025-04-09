@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteRouteScheduleHandler(ReducerEventContext ctx, uint scheduleId);
+        public delegate void DeleteRouteScheduleHandler(ReducerEventContext ctx, uint scheduleId, SpacetimeDB.Identity? actingUser);
         public event DeleteRouteScheduleHandler? OnDeleteRouteSchedule;
 
-        public void DeleteRouteSchedule(uint scheduleId)
+        public void DeleteRouteSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteRouteSchedule(scheduleId), this.SetCallReducerFlags.DeleteRouteScheduleFlags);
+            conn.InternalCallReducer(new Reducer.DeleteRouteSchedule(scheduleId, actingUser), this.SetCallReducerFlags.DeleteRouteScheduleFlags);
         }
 
         public bool InvokeDeleteRouteSchedule(ReducerEventContext ctx, Reducer.DeleteRouteSchedule args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteRouteSchedule == null) return false;
             OnDeleteRouteSchedule(
                 ctx,
-                args.ScheduleId
+                args.ScheduleId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "scheduleId")]
             public uint ScheduleId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteRouteSchedule(uint ScheduleId)
+            public DeleteRouteSchedule(
+                uint ScheduleId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.ScheduleId = ScheduleId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteRouteSchedule()

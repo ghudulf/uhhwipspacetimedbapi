@@ -155,3 +155,4 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BR
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\bin\Debug\net9.0\TicketSalesApp.Services.dll
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\bin\Debug\net9.0\TicketSalesApp.Services.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\bin\Debug\net9.0\OpenIddict.Validation.ServerIntegration.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\bin\Debug\net9.0\Fido2.AspNet.dll

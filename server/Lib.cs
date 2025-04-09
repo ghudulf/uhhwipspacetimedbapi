@@ -4,11 +4,11 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    // ---------- Table Definitions ----------
-    [SpacetimeDB.Table(Public = true)]
+	// ---------- Table Definitions ----------
+	[SpacetimeDB.Table(Public = true)]
     public partial class Incident
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public uint IncidentId;         // Auto-incremented
         public ulong IncidentTime;      // When the incident occurred
         public uint? BusId;             // References Bus.BusId
@@ -35,8 +35,8 @@ public static partial class Module
 
     [SpacetimeDB.Table(Name = "admin_action_log", Public = true)]
     public partial class AdminActionLog
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public uint LogId;              // Auto-incremented
         public Identity UserId;         // References UserProfile.UserId
         public string Action;
@@ -50,7 +50,7 @@ public static partial class Module
     {
         [PrimaryKey, AutoInc]           // Changed from SpacetimeDB.PrimaryKey to PrimaryKey
         public int Id;
-        public string Name;
+		public string Name;
         public int Age;
 
 
@@ -74,16 +74,16 @@ public static partial class Module
         public string Name;
         public string Email;
         public string PhoneNumber;
-        public bool IsActive;
-        public ulong CreatedAt;
-        public ulong? UpdatedAt;
-        public string? UpdatedBy;
-    }
+		public bool IsActive;
+		public ulong CreatedAt;
+		public ulong? UpdatedAt;
+		public string? UpdatedBy;
+	}
 
     [SpacetimeDB.Table]
     public partial class PassengerIdCounter
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public string Key = "passengerId";
         public uint NextId = 0;
     }
@@ -91,26 +91,26 @@ public static partial class Module
 
     [SpacetimeDB.Table]
     public partial class DiscountIdCounter
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public string Key = "discountId";
         public uint NextId = 0;
-    }
+	}
 
     [SpacetimeDB.Table]
     public partial class SeatConfigurationIdCounter
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public string Key = "seatConfigurationId";
         public uint NextId = 0;
     }
 
 
     // Counter tables for auto-incrementing IDs
-    [SpacetimeDB.Table]
+	[SpacetimeDB.Table] 
     public partial class UserIdCounter
     {
-        [PrimaryKey]
+		[PrimaryKey]
         public string Key = "userId";
         public uint NextId = 0;
     }
@@ -129,12 +129,12 @@ public static partial class Module
         [PrimaryKey]
         public string Key = "permissionId";
         public uint NextId = 0;
-    }
-
-    [SpacetimeDB.Table]
+	}
+	
+	[SpacetimeDB.Table] 
     public partial class BusIdCounter
     {
-        [PrimaryKey]
+		[PrimaryKey]
         public string Key = "busId";
         public uint NextId = 0;
     }
@@ -153,12 +153,12 @@ public static partial class Module
         [PrimaryKey]
         public string Key = "routeId";
         public uint NextId = 0;
-    }
-
-    [SpacetimeDB.Table]
+	}
+	
+	[SpacetimeDB.Table] 
     public partial class ScheduleIdCounter
     {
-        [PrimaryKey]
+		[PrimaryKey]
         public string Key = "scheduleId";
         public uint NextId = 0;
     }
@@ -177,12 +177,12 @@ public static partial class Module
         [PrimaryKey]
         public string Key = "jobId";
         public uint NextId = 0;
-    }
-
-    [SpacetimeDB.Table]
+	}
+	
+	[SpacetimeDB.Table] 
     public partial class TicketIdCounter
     {
-        [PrimaryKey]
+		[PrimaryKey]
         public string Key = "ticketId";
         public uint NextId = 0;
     }
@@ -193,12 +193,12 @@ public static partial class Module
         [PrimaryKey]
         public string Key = "saleId";
         public uint NextId = 0;
-    }
-
-    [SpacetimeDB.Table]
+	}
+	
+	[SpacetimeDB.Table]
     public partial class LogIdCounter
-    {
-        [PrimaryKey]
+	{
+		[PrimaryKey]
         public string Key = "logId";
         public uint NextId = 0;
     }
@@ -209,12 +209,12 @@ public static partial class Module
         [PrimaryKey]
         public string Key = "userRoleId";
         public uint NextId = 0;
-    }
-
-    [SpacetimeDB.Table]
+	}
+	
+	[SpacetimeDB.Table] 
     public partial class RolePermissionIdCounter
     {
-        [PrimaryKey]
+		[PrimaryKey]
         public string Key = "rolePermissionId";
         public uint NextId = 0;
     }
@@ -254,13 +254,13 @@ public static partial class Module
     private static readonly int SaltSize = 16; // 128 bits minimum recommended salt size
     private static readonly int Iterations = 200;  // ADJUST THIS IF YOU WANT MORE SECURITY, THIS IS SPACETIME DB , 5000 IS LITERALLY MAKING THE SERVER DIE AND CRASH AND BURN 
     private static readonly int HashSize = 32; // 256 bits (32 bytes) for the derived key
-
+    
 
     private static string HashPassword(string password, bool useStaticSalt = false, byte[] staticSalt = null)
     {
         if (string.IsNullOrEmpty(password))
             return string.Empty;
-
+        
         try
         {
             // SHA-256 implementation for WebAssembly environment
@@ -279,7 +279,7 @@ public static partial class Module
                 r.NextBytes(salt);
                 Log.Debug("Using random salt for password hashing");
             }
-
+            
             // Return the salt and hash, concatenated with a colon separator.  This is the format
             // that should be stored in the database.
             byte[] hash = PBKDF2(password, salt, Iterations, HashSize);
@@ -337,10 +337,10 @@ public static partial class Module
     {
         Log.Info("PBKDF2: Starting password hashing");
         Log.Debug($"PBKDF2: Parameters - iterations: {iterations}, outputBytes: {outputBytes}");
-
+        
         Log.Debug("PBKDF2: Converting password to UTF-8 bytes");
         byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
-
+        
         Log.Debug("PBKDF2: Generating initial hash with HMACSHA256");
         byte[] hash = HMACSHA256(passwordBytes, salt); // Initial hash
 
@@ -357,14 +357,14 @@ public static partial class Module
         Log.Debug($"PBKDF2: Iterations complete, resizing hash to {outputBytes} bytes");
         // Truncate or pad to the desired output size (optional, but good practice)
         Array.Resize(ref hash, outputBytes);
-
+        
         Log.Info("PBKDF2: Password hashing complete");
         return hash;
     }
     private static byte[] HMACSHA256(byte[] key, byte[] message)
     {
         Log.Debug("HMACSHA256: Starting HMAC operation");
-
+        
         // Simplified HMAC (NOT cryptographically secure as a standalone HMAC).
         // This is acceptable ONLY within the context of PBKDF2.
         Log.Debug($"HMACSHA256: Combining key ({key.Length} bytes) and message ({message.Length} bytes)");
@@ -383,7 +383,7 @@ public static partial class Module
         // Convert the hexadecimal hash string back to a byte array
         Log.Debug("HMACSHA256: Converting hash string back to byte array");
         byte[] result = Convert.FromHexString(hashString);
-
+        
         Log.Debug($"HMACSHA256: HMAC operation complete, returning {result.Length} bytes");
         return result;
     }
@@ -393,7 +393,7 @@ public static partial class Module
     {
         Log.Debug("ComputeSha256: Starting SHA-256 computation");
         Log.Debug($"ComputeSha256: Input string length: {input.Length} characters");
-
+        
         // Convert the input string to bytes using UTF-8 encoding.
         Log.Debug("ComputeSha256: Converting input to UTF-8 bytes");
         byte[] inputBytes = Encoding.UTF8.GetBytes(input);
@@ -458,11 +458,11 @@ public static partial class Module
         byte[] message = paddedBytes.ToArray();
         int chunkCount = message.Length / 64;
         Log.Debug($"ComputeSha256: Processing {chunkCount} chunks");
-
+        
         for (int i = 0; i < message.Length; i += 64)
         {
             Log.Debug($"ComputeSha256: Processing chunk {i / 64 + 1} of {chunkCount}");
-
+            
             // a. Create message schedule w[0..63]
             uint[] w = new uint[64];
 
@@ -556,28 +556,28 @@ public static partial class Module
         byte[] data = System.Text.Encoding.UTF8.GetBytes(key);
         int length = data.Length;
         int nblocks = length / 4;
-
+        
         uint seed = 42; // Fixed seed for consistency
         uint h1 = seed;
-
+        
         const uint c1 = 0xcc9e2d51;
         const uint c2 = 0x1b873593;
-
+        
         // Body
         for (int i = 0; i < nblocks; i++)
         {
             int index = i * 4;
             uint k1 = BitConverter.ToUInt32(data, index);
-
+            
             k1 *= c1;
             k1 = RotateLeft(k1, 15);
             k1 *= c2;
-
+            
             h1 ^= k1;
             h1 = RotateLeft(h1, 13);
             h1 = h1 * 5 + 0xe6546b64;
         }
-
+        
         // Tail
         uint tail = 0;
         int remainder = length & 3;
@@ -587,17 +587,17 @@ public static partial class Module
             if (remainder >= 3) tail |= (uint)data[index + 2] << 16;
             if (remainder >= 2) tail |= (uint)data[index + 1] << 8;
             if (remainder >= 1) tail |= data[index];
-
+            
             tail *= c1;
             tail = RotateLeft(tail, 15);
             tail *= c2;
             h1 ^= tail;
         }
-
+        
         // Finalization
         h1 ^= (uint)length;
         h1 = FMix(h1);
-
+        
         return h1.ToString();
     }
 
@@ -831,9 +831,9 @@ public static partial class Module
         {
             return; // Permission already exists
         }
-
+        
         uint permissionId = GetNextId(ctx, "permissionId");
-
+        
         var permission = new Permission
         {
             PermissionId = permissionId,
@@ -852,9 +852,9 @@ public static partial class Module
         {
             return; // Role already exists
         }
-
+        
         uint roleId = GetNextId(ctx, "roleId");
-
+        
         var role = new Role
         {
             RoleId = roleId,
@@ -878,14 +878,14 @@ public static partial class Module
     {
         // Check if this identity has already claimed a user
         var existingUser = ctx.Db.UserProfile.UserId.Find(ctx.Sender);
-
+        
         if (existingUser != null && existingUser.IsActive)
         {
             // User already exists and is active
             Log.Info($"User {existingUser.Login} connected with identity {ctx.Sender}");
             return;
         }
-
+        
         // This is a new connection - they'll need to authenticate through your API
         // and then call a reducer to claim their account
         Log.Info($"New client connected with identity {ctx.Sender}");
@@ -954,10 +954,10 @@ public static partial class Module
         else
         {
             // Assign default "User" role if no role specified
-            var userRole = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "User");
-            if (userRole != null)
-            {
-                AssignRole(ctx, user.UserId, userRole.RoleId);
+        var userRole = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "User");
+        if (userRole != null)
+        {
+            AssignRole(ctx, user.UserId, userRole.RoleId);
                 Log.Info($"Assigned default 'User' role to user {login}");
             }
             else
@@ -971,7 +971,7 @@ public static partial class Module
     public static void AuthenticateUser(ReducerContext ctx, string login, string password)
     {
         var user = ctx.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == login);
-
+        
         // Check all cases when authentication should return as unsuccessful
         if (user == null || !user.IsActive)
         {
@@ -1153,48 +1153,16 @@ public static partial class Module
 
     
 
-    [SpacetimeDB.Reducer]
-    public static void CreateBus(ReducerContext ctx, string model, string? registrationNumber)
-    {
-        // Authorization check - verify the sender has the required permission
-        if (!HasPermission(ctx, ctx.Sender, "create_bus"))
-        {
-            throw new Exception("Unauthorized: Missing create_bus permission");
-        }
-
-        // Get the next bus ID from the counter
-        uint busId = 0;
-        var counter = ctx.Db.BusIdCounter.Key.Find("busId");
-        if (counter == null)
-        {
-            // If counter doesn't exist, create it with initial value 1
-            counter = ctx.Db.BusIdCounter.Insert(new BusIdCounter { Key = "busId", NextId = 1 });
-        }
-        else
-        {
-            // Increment the counter
-            counter.NextId++;
-            ctx.Db.BusIdCounter.Key.Update(counter);
-        }
-        busId = counter.NextId;  // Use the counter value
-
-        // Create a new bus with the provided information
-        var bus = new Bus
-        {
-            BusId = busId,                       // Set the bus ID
-            Model = model,                       // Set the model
-            RegistrationNumber = registrationNumber,  // Set the registration number (can be null)
-            IsActive = true                      // Set as active by default
-        };
-        // Insert the new bus into the database
-        ctx.Db.Bus.Insert(bus);
-    }
+   
 
     [SpacetimeDB.Reducer]
-    public static void CreateMaintenance(ReducerContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType)
+    public static void CreateMaintenance(ReducerContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null)
     {
-        // Authorization check - verify the sender has the required permission
-        if (!HasPermission(ctx, ctx.Sender, "schedule_maintenance"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Authorization check - verify the effective user has the required permission
+        if (!HasPermission(ctx, effectiveUser, "schedule_maintenance")) // CreateMaintenance PERM CHECK
         {
             throw new Exception("Unauthorized: Missing schedule_maintenance permission");
         }
@@ -1417,119 +1385,7 @@ public static partial class Module
         ctx.Db.Job.Insert(job);
     }
 
-    [SpacetimeDB.Reducer]
-    public static void CreateTicket(ReducerContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime = null)
-    {
-        // Authorization check - verify the sender has the required permission
-        if (!HasPermission(ctx, ctx.Sender, "create_ticket"))
-        {
-            throw new Exception("Unauthorized: Missing CREATE_TICKET permission");
-        }
-
-        // Validate that the route exists
-        if (!ctx.Db.Route.Iter().Any(r => r.RouteId == routeId))
-        {
-            throw new Exception("Route not found");
-        }
-
-        // Check if the seat is already taken
-        if (ctx.Db.Ticket.Iter().Any(t => t.RouteId == routeId && t.SeatNumber == seatNumber && t.IsActive))
-        {
-            throw new Exception("Seat is already taken");
-        }
-
-        // Get the next ticket ID from the counter
-        uint ticketId = 0;
-        var counter = ctx.Db.TicketIdCounter.Key.Find("ticketId");
-        if (counter == null)
-        {
-            // If counter doesn't exist, create it with initial value 1
-            counter = ctx.Db.TicketIdCounter.Insert(new TicketIdCounter { Key = "ticketId", NextId = 1 });
-        }
-        else
-        {
-            // Increment the counter
-            counter.NextId++;
-            ctx.Db.TicketIdCounter.Key.Update(counter);
-        }
-        ticketId = counter.NextId;  // Use the counter value
-
-        // Create a new ticket with the provided information
-        var ticket = new Ticket
-        {
-            TicketId = ticketId,         // Set the ticket ID
-            RouteId = routeId,           // Set the route ID
-            TicketPrice = price,         // Set the ticket price
-            SeatNumber = seatNumber,     // Set the seat number
-            PaymentMethod = paymentMethod, // Set the payment method
-            IsActive = true,             // Set the ticket as active
-            CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000, // Set creation time
-            UpdatedAt = null,            // No updates yet
-            UpdatedBy = null,            // No updates yet
-            PurchaseTime = purchaseTime ?? (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000 // Set purchase time
-        };
-        // Insert the new ticket into the database
-        ctx.Db.Ticket.Insert(ticket);
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void CreateSale(ReducerContext ctx, uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null)
-    {
-        // Validate that the ticket exists
-        if (!ctx.Db.Ticket.Iter().Any(t => t.TicketId == ticketId))
-            throw new Exception("Ticket not found.");
-
-        uint saleId = 0;
-        var counter = ctx.Db.SaleIdCounter.Key.Find("saleId");
-        if (counter == null)
-        {
-            counter = ctx.Db.SaleIdCounter.Insert(new SaleIdCounter { Key = "saleId", NextId = 1 });
-        }
-        else
-        {
-            counter.NextId++;
-            ctx.Db.SaleIdCounter.Key.Update(counter);
-        }
-        saleId = counter.NextId;
-
-        var sale = new Sale
-        {
-            SaleId = saleId,
-            TicketId = ticketId,
-            SaleDate = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-            TicketSoldToUser = buyerName,
-            TicketSoldToUserPhone = buyerPhone,
-            SellerId = ctx.Sender,
-            SaleLocation = saleLocation,
-            SaleNotes = saleNotes
-        };
-        ctx.Db.Sale.Insert(sale);
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void CancelTicket(ReducerContext ctx, uint ticketId)
-    {
-        var ticket = ctx.Db.Ticket.Iter().FirstOrDefault(t => t.TicketId == ticketId);
-        if (ticket == null)
-        {
-            throw new Exception("Ticket not found");
-        }
-
-        // Only ticket owner or admin can cancel
-        if (!HasPermission(ctx, ctx.Sender, "cancel_ticket"))
-        {
-            throw new Exception("Unauthorized: Cannot cancel ticket");
-        }
-
-        // Update the ticket to set IsActive to false and record the update details
-        ticket.IsActive = false;
-        ticket.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        ticket.UpdatedBy = ctx.Sender.ToString();
-
-        ctx.Db.Ticket.TicketId.Update(ticket);
-
-        Log.Info($"Ticket {ticketId} cancelled by {ctx.Sender}");
-    }
+    
 
     [SpacetimeDB.Reducer]
     public static void CreatePassenger(ReducerContext ctx, string name, string email, string phoneNumber)
@@ -1550,7 +1406,7 @@ public static partial class Module
         var passenger = new Passenger
         {
             PassengerId = passengerId,
-            Name = name,
+                Name = name,
             Email = email,
             PhoneNumber = phoneNumber,
             IsActive = true,
@@ -1634,20 +1490,20 @@ public static partial class Module
             Log.Error($"Attempt to claim non-existent account: {login}");
             return;
         }
-
+        
         // Verify password using the VerifyPassword method
         if (!VerifyPassword(password, user.PasswordHash))
         {
             Log.Error($"Invalid password for account claim: {login}");
             return;
         }
-
+        
         if (user.IsActive && user.UserId != ctx.Sender)
         {
             Log.Error($"Account {login} is already claimed by another identity");
             return;
         }
-
+        
         // Update the user with the caller's identity
         user.UserId = ctx.Sender;
         user.IsActive = true;
@@ -1668,15 +1524,20 @@ public static partial class Module
     
 
     // ---------- Reducers ----------
-
+    
     
 
     [SpacetimeDB.Reducer]
     public static void UpdateUser(ReducerContext ctx, Identity userId, string? login, string? passwordHash,
-        int? role, string? phoneNumber, string? email, bool? isActive)
+        int? role, string? phoneNumber, string? email, bool? isActive, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "users.edit"))
+        if (!HasPermission(ctx, effectiveUser, "users.edit")) // UpdateUser PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to edit users.");
         }
@@ -1697,7 +1558,7 @@ public static partial class Module
         }
         if (passwordHash != null)
         {
-            user.PasswordHash = HashPassword(passwordHash);
+           user.PasswordHash = HashPassword(passwordHash);
         }
         if (email != null)
         {
@@ -1740,47 +1601,57 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void ActivateUser(ReducerContext ctx, Identity userId)
+    public static void ActivateUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "users.edit"))
+        if (!HasPermission(ctx, effectiveUser, "users.edit")) // ActivateUser PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to activate users.");
         }
-
+        
         var user = ctx.Db.UserProfile.UserId.Find(userId);
         if (user == null)
         {
             throw new Exception("User not found.");
         }
-
+        
         if (user.IsActive)
         {
             // User is already active, just log and return
             Log.Info($"User {userId} is already active");
             return;
         }
-
+        
         user.IsActive = true;
         ctx.Db.UserProfile.UserId.Update(user);
-        Log.Info($"User {userId} activated by {ctx.Sender}");
+        Log.Info($"User {userId} activated by {effectiveUser}");
     }
-
+    
     [SpacetimeDB.Reducer]
-    public static void DeactivateUser(ReducerContext ctx, Identity userId)
+    public static void DeactivateUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "users.edit"))
+        if (!HasPermission(ctx, effectiveUser, "users.edit")) // DeactivateUser PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to deactivate users.");
         }
-
+        
         var user = ctx.Db.UserProfile.UserId.Find(userId);
         if (user == null)
         {
             throw new Exception("User not found.");
         }
-
+        
         // Prevent deactivating the last admin
         if (user.Login == "admin")
         {
@@ -1792,44 +1663,49 @@ public static partial class Module
                     .Join(ctx.Db.UserProfile.Iter(), ur => ur.UserId, u => u.UserId, (ur, u) => u)
                     .Where(u => u.IsActive)
                     .Count();
-
+                
                 if (adminCount <= 1)
                 {
                     throw new Exception("Cannot deactivate the last active administrator.");
                 }
             }
         }
-
+        
         if (!user.IsActive)
         {
             // User is already inactive, just log and return
             Log.Info($"User {userId} is already inactive");
             return;
         }
-
+        
         user.IsActive = false;
         ctx.Db.UserProfile.UserId.Update(user);
-        Log.Info($"User {userId} deactivated by {ctx.Sender}");
+        Log.Info($"User {userId} deactivated by {effectiveUser}");
     }
-
+    
     [SpacetimeDB.Reducer]
-    public static void ChangePassword(ReducerContext ctx, Identity userId, string currentPassword, string newPassword)
+    public static void ChangePassword(ReducerContext ctx, Identity userId, string currentPassword, string newPassword, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         var user = ctx.Db.UserProfile.UserId.Find(userId);
         if (user == null)
         {
             throw new Exception("User not found.");
         }
-
+        
         // Check if this is the user changing their own password or an admin
-        bool isAdmin = HasPermission(ctx, ctx.Sender, "users.edit");
-        bool isSelf = ctx.Sender.Equals(userId);
-
+        bool isAdmin = HasPermission(ctx, effectiveUser, "users.edit"); // ChangePassword PERM CHECK
+        bool isSelf = effectiveUser.Equals(userId);
+        
         if (!isAdmin && !isSelf)
         {
             throw new Exception("Unauthorized: You can only change your own password unless you have admin privileges.");
         }
-
+        
         // If it's the user changing their own password, verify the current password
         if (isSelf && !isAdmin)
         {
@@ -1839,24 +1715,29 @@ public static partial class Module
                 throw new Exception("Current password is incorrect.");
             }
         }
-
+        
         // Validate new password (you might want to add more validation rules)
         if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 6)
         {
             throw new Exception("New password must be at least 6 characters long.");
         }
-
+        
         // Update the password
         user.PasswordHash = HashPassword(newPassword);
         ctx.Db.UserProfile.UserId.Update(user);
-
+        
         Log.Info($"Password changed for user {userId}");
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeleteUser(ReducerContext ctx, Identity userId)
+    public static void DeleteUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "users.delete"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "users.delete")) // DeleteUser PERM CHECK
         {
             throw new Exception("Unauthorized: Missing users.delete permission");
         }
@@ -1897,222 +1778,20 @@ public static partial class Module
         Log.Info($"User {userId} has been deleted, with all associated roles removed.");
     }
 
+    
+    
+    
+
     [SpacetimeDB.Reducer]
-    public static void UpdateBus(ReducerContext ctx, uint busId, string? model, string? registrationNumber)
+    public static void UpdateRoute(ReducerContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "buses.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to edit buses.");
-        }
-
-        var bus = ctx.Db.Bus.BusId.Find(busId);
-        if (bus == null)
-        {
-            throw new Exception("Bus not found.");
-        }
-
-        // Update only if new value is not null
-        if (model != null)
-        {
-            bus.Model = model;
-        }
-        if (registrationNumber != null)
-        {
-            bus.RegistrationNumber = registrationNumber;
-        }
-
-        ctx.Db.Bus.BusId.Update(bus);
-        Log.Info($"Bus {busId} updated");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void DeleteBus(ReducerContext ctx, uint busId)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "buses.delete"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to delete buses.");
-        }
-        if (ctx.Db.Bus.BusId.Find(busId) == null)
-        {
-            throw new Exception("Bus Not found");
-        }
-        ctx.Db.Bus.BusId.Delete(busId);
-        Log.Info($"Bus {busId} has been deleted.");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void ActivateBus(ReducerContext ctx, uint busId)
-    {
-        // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "buses.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to activate buses.");
-        }
-
-        var bus = ctx.Db.Bus.BusId.Find(busId);
-        if (bus == null)
-        {
-            throw new Exception("Bus not found.");
-        }
-
-        if (bus.IsActive)
-        {
-            // Bus is already active, just log and return
-            Log.Info($"Bus {busId} is already active");
-            return;
-        }
-
-        bus.IsActive = true;
-        ctx.Db.Bus.BusId.Update(bus);
-        Log.Info($"Bus {busId} activated by {ctx.Sender}");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void DeactivateBus(ReducerContext ctx, uint busId)
-    {
-        // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "buses.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to deactivate buses.");
-        }
-
-        var bus = ctx.Db.Bus.BusId.Find(busId);
-        if (bus == null)
-        {
-            throw new Exception("Bus not found.");
-        }
-
-        // Check if the bus is used in any active routes
-        var activeRoutes = ctx.Db.Route.Iter()
-            .Where(r => r.BusId == busId && r.IsActive)
-            .ToList();
-
-        if (activeRoutes.Count > 0)
-        {
-            throw new Exception($"Cannot deactivate bus: it is used in {activeRoutes.Count} active routes. Deactivate the routes first.");
-        }
-
-        if (!bus.IsActive)
-        {
-            // Bus is already inactive, just log and return
-            Log.Info($"Bus {busId} is already inactive");
-            return;
-        }
-
-        bus.IsActive = false;
-        ctx.Db.Bus.BusId.Update(bus);
-        Log.Info($"Bus {busId} deactivated by {ctx.Sender}");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void GetBusMaintenanceHistory(ReducerContext ctx, uint busId)
-    {
-        // This is a query reducer that doesn't modify state but returns data
-        // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "maintenance.view"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to view maintenance records.");
-        }
-
-        var bus = ctx.Db.Bus.BusId.Find(busId);
-        if (bus == null)
-        {
-            throw new Exception("Bus not found.");
-        }
-
-        // Get all maintenance records for this bus
-        var maintenanceRecords = ctx.Db.Maintenance.Iter()
-            .Where(m => m.BusId == busId)
-            .OrderByDescending(m => m.LastServiceDate)
-            .ToList();
-
-        // Log the result (in a real system, this would return data to the client)
-        Log.Info($"Found {maintenanceRecords.Count} maintenance records for bus {busId}");
-
-        foreach (var record in maintenanceRecords)
-        {
-            Log.Info($"Maintenance ID: {record.MaintenanceId}, " +
-                     $"Date: {record.LastServiceDate}, " +
-                     $"Type: {record.MaintenanceType}, " +
-                     $"Engineer: {record.ServiceEngineer}, " +
-                     $"Issues: {record.FoundIssues}, " +
-                     $"Roadworthiness: {record.Roadworthiness}");
-        }
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void UpdateMaintenance(ReducerContext ctx, uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer,
-    string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage)
-    {
-        // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "maintenance.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to edit maintenance.");
-        }
-        var maintenance = ctx.Db.Maintenance.MaintenanceId.Find(maintenanceId);
-        if (maintenance == null)
-        {
-            throw new Exception("Maintenance Record not found.");
-        }
-        //Update each property if and only if it's not null
-        if (busId.HasValue)
-        {
-            maintenance.BusId = busId.Value;
-        }
-        if (lastServiceDate.HasValue)
-        {
-            maintenance.LastServiceDate = lastServiceDate.Value;
-        }
-        if (nextServiceDate.HasValue)
-        {
-            maintenance.NextServiceDate = nextServiceDate.Value;
-        }
-        if (serviceEngineer != null)
-        {
-            maintenance.ServiceEngineer = serviceEngineer;
-        }
-        if (foundIssues != null)
-        {
-            maintenance.FoundIssues = foundIssues;
-        }
-
-        if (roadworthiness != null)
-        {
-            maintenance.Roadworthiness = roadworthiness;
-        }
-        if (maintenanceType != null)
-        {
-            maintenance.MaintenanceType = maintenanceType;
-        }
-        if (mileage != null)
-        {
-            maintenance.MileageThreshold = mileage;
-        }
-        ctx.Db.Maintenance.MaintenanceId.Update(maintenance);
-        Log.Info($"Maintenance {maintenanceId} updated");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void DeleteMaintenance(ReducerContext ctx, uint maintenanceId)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "maintenance.delete"))
-        {
-            throw new Exception("Unauthorized: Missing maintenance.delete permission");
-        }
-        if (ctx.Db.Maintenance.MaintenanceId.Find(maintenanceId) == null)
-        {
-            throw new Exception("Maintenance record not found");
-        }
-        ctx.Db.Maintenance.MaintenanceId.Delete(maintenanceId);
-        Log.Info($"Maintenance {maintenanceId} has been deleted.");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void UpdateRoute(ReducerContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive)
-    {
-        // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "routes.edit"))
+        if (!HasPermission(ctx, effectiveUser, "routes.edit")) // UpdateRoute PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to edit routes.");
         }
@@ -2162,9 +1841,14 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeleteRoute(ReducerContext ctx, uint routeId)
+    public static void DeleteRoute(ReducerContext ctx, uint routeId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "routes.delete"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "routes.delete")) // DeleteRoute PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to delete routes.");
         }
@@ -2178,74 +1862,84 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void ActivateRoute(ReducerContext ctx, uint routeId)
+    public static void ActivateRoute(ReducerContext ctx, uint routeId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "routes.edit"))
+        if (!HasPermission(ctx, effectiveUser, "routes.edit")) // ActivateRoute PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to activate routes.");
         }
-
+        
         var route = ctx.Db.Route.RouteId.Find(routeId);
         if (route == null)
         {
             throw new Exception("Route not found.");
         }
-
+        
         // Check if the bus is active
         var bus = ctx.Db.Bus.BusId.Find(route.BusId);
         if (bus == null || !bus.IsActive)
         {
             throw new Exception("Cannot activate route: the assigned bus is inactive or not found.");
         }
-
+        
         if (route.IsActive)
         {
             // Route is already active, just log and return
             Log.Info($"Route {routeId} is already active");
             return;
         }
-
+        
         route.IsActive = true;
         ctx.Db.Route.RouteId.Update(route);
-        Log.Info($"Route {routeId} activated by {ctx.Sender}");
+        Log.Info($"Route {routeId} activated by {effectiveUser}");
     }
-
+    
     [SpacetimeDB.Reducer]
-    public static void DeactivateRoute(ReducerContext ctx, uint routeId)
+    public static void DeactivateRoute(ReducerContext ctx, uint routeId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "routes.edit"))
+        if (!HasPermission(ctx, effectiveUser, "routes.edit")) // DeactivateRoute PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to deactivate routes.");
         }
-
+        
         var route = ctx.Db.Route.RouteId.Find(routeId);
         if (route == null)
         {
             throw new Exception("Route not found.");
         }
-
+        
         // Check if there are active schedules for this route
         var activeSchedules = ctx.Db.RouteSchedule.Iter()
             .Where(s => s.RouteId == routeId && s.IsActive)
             .ToList();
-
+            
         if (activeSchedules.Count > 0)
         {
             throw new Exception($"Cannot deactivate route: it has {activeSchedules.Count} active schedules. Deactivate the schedules first.");
         }
-
+        
         if (!route.IsActive)
         {
             // Route is already inactive, just log and return
             Log.Info($"Route {routeId} is already inactive");
             return;
         }
-
+        
         route.IsActive = false;
         ctx.Db.Route.RouteId.Update(route);
-        Log.Info($"Route {routeId} deactivated by {ctx.Sender}");
+        Log.Info($"Route {routeId} deactivated by {effectiveUser}");
     }
 
     [SpacetimeDB.Reducer]
@@ -2253,10 +1947,15 @@ public static partial class Module
         string? endPoint, string[]? routeStops, ulong? departureTime, ulong? arrivalTime,
         double? price, uint? availableSeats, string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes,
         bool? isRecurring, string[]? estimatedStopTimes,
-        double[]? stopDistances, string? notes)
+        double[]? stopDistances, string? notes, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "schedules.edit"))
+        if (!HasPermission(ctx, effectiveUser, "schedules.edit")) // UpdateRouteSchedule PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to edit schedules.");
         }
@@ -2294,16 +1993,21 @@ public static partial class Module
 
         // Update the "updated" fields
         schedule.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        schedule.UpdatedBy = ctx.Sender.ToString(); // Or a specific admin user
+        schedule.UpdatedBy = effectiveUser.ToString(); // Use the effective user identity
 
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
         Log.Info($"Route schedule {scheduleId} updated");
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeleteRouteSchedule(ReducerContext ctx, uint scheduleId)
+    public static void DeleteRouteSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "schedules.delete"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "schedules.delete")) // DeleteRouteSchedule PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to delete schedules.");
         }
@@ -2318,56 +2022,66 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void ActivateSchedule(ReducerContext ctx, uint scheduleId)
+    public static void ActivateSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "schedules.edit"))
+        if (!HasPermission(ctx, effectiveUser, "schedules.edit")) // ActivateSchedule PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to activate schedules.");
         }
-
+        
         var schedule = ctx.Db.RouteSchedule.ScheduleId.Find(scheduleId);
         if (schedule == null)
         {
             throw new Exception("Schedule not found.");
         }
-
+        
         // Check if the route is active
         var route = ctx.Db.Route.RouteId.Find(schedule.RouteId);
         if (route == null || !route.IsActive)
         {
             throw new Exception("Cannot activate schedule: the associated route is inactive or not found.");
         }
-
+        
         if (schedule.IsActive)
         {
             // Schedule is already active, just log and return
             Log.Info($"Schedule {scheduleId} is already active");
             return;
         }
-
+        
         schedule.IsActive = true;
         schedule.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        schedule.UpdatedBy = ctx.Sender.ToString();
+        schedule.UpdatedBy = effectiveUser.ToString();
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
-        Log.Info($"Schedule {scheduleId} activated by {ctx.Sender}");
+        Log.Info($"Schedule {scheduleId} activated by {effectiveUser}");
     }
-
+    
     [SpacetimeDB.Reducer]
-    public static void DeactivateSchedule(ReducerContext ctx, uint scheduleId)
+    public static void DeactivateSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         // Check for the required permission
-        if (!HasPermission(ctx, ctx.Sender, "schedules.edit"))
+        if (!HasPermission(ctx, effectiveUser, "schedules.edit")) // DeactivateSchedule PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to deactivate schedules.");
         }
-
+        
         var schedule = ctx.Db.RouteSchedule.ScheduleId.Find(scheduleId);
         if (schedule == null)
         {
             throw new Exception("Schedule not found.");
         }
-
+        
         // Check if there are active sales for this schedule's route
         var route = ctx.Db.Route.RouteId.Find(schedule.RouteId);
         if (route != null)
@@ -2375,7 +2089,7 @@ public static partial class Module
             var tickets = ctx.Db.Ticket.Iter()
                 .Where(t => t.RouteId == route.RouteId)
                 .ToList();
-
+                
             if (tickets.Count > 0)
             {
                 var ticketIds = tickets.Select(t => t.TicketId).ToList();
@@ -2383,32 +2097,37 @@ public static partial class Module
                     .Where(s => ticketIds.Contains(s.TicketId))
                     .Where(s => s.SaleDate > (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000 - 86400000) // Sales in the last 24 hours
                     .ToList();
-
+                    
                 if (recentSales.Count > 0)
                 {
                     throw new Exception($"Cannot deactivate schedule: there are {recentSales.Count} recent ticket sales for this route. Wait until all tickets are used or refund them first.");
                 }
             }
         }
-
+        
         if (!schedule.IsActive)
         {
             // Schedule is already inactive, just log and return
             Log.Info($"Schedule {scheduleId} is already inactive");
             return;
         }
-
+        
         schedule.IsActive = false;
         schedule.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        schedule.UpdatedBy = ctx.Sender.ToString();
+        schedule.UpdatedBy = effectiveUser.ToString();
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
-        Log.Info($"Schedule {scheduleId} deactivated by {ctx.Sender}");
+        Log.Info($"Schedule {scheduleId} deactivated by {effectiveUser}");
     }
 
     [SpacetimeDB.Reducer]
-    public static void UpdateJob(ReducerContext ctx, uint jobId, string? jobTitle, string? internship)
+    public static void UpdateJob(ReducerContext ctx, uint jobId, string? jobTitle, string? internship, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "jobs.edit"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "jobs.edit")) // UpdateJob PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to edit jobs.");
         }
@@ -2433,9 +2152,14 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeleteJob(ReducerContext ctx, uint jobId)
+    public static void DeleteJob(ReducerContext ctx, uint jobId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "jobs.delete"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "jobs.delete")) // DeleteJob PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to delete jobs.");
         }
@@ -2448,9 +2172,14 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void UpdateEmployee(ReducerContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId)
+    public static void UpdateEmployee(ReducerContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "employees.edit"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "employees.edit")) // UpdateEmployee PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to edit employees.");
         }
@@ -2485,9 +2214,14 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeleteEmployee(ReducerContext ctx, uint employeeId)
+    public static void DeleteEmployee(ReducerContext ctx, uint employeeId, Identity? actingUser = null)
     {
-        if (!HasPermission(ctx, ctx.Sender, "employees.delete"))
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "employees.delete")) // DeleteEmployee PERM CHECK
         {
             throw new Exception("Unauthorized: You do not have permission to delete employees.");
         }
@@ -2499,135 +2233,23 @@ public static partial class Module
         Log.Info($"Employee {employeeId} has been deleted.");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void UpdateTicket(ReducerContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "tickets.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to edit tickets.");
-        }
-        var ticket = ctx.Db.Ticket.TicketId.Find(ticketId);
-        if (ticket == null)
-        {
-            throw new Exception("Ticket not found.");
-        }
-        if (routeId.HasValue)
-        {
-            // Validate route
-            if (!ctx.Db.Route.Iter().Any(r => r.RouteId == routeId))
-            {
-                throw new Exception("Route not found");
-            }
-            ticket.RouteId = routeId.Value;
-        }
-        if (ticketPrice.HasValue)
-        {
-            ticket.TicketPrice = ticketPrice.Value;
-        }
-        if (seatNumber.HasValue)
-        {
-            ticket.SeatNumber = seatNumber.Value;
-        }
-        if (paymentMethod != null)
-        {
-            ticket.PaymentMethod = paymentMethod;
-        }
-        if (isActive.HasValue)
-        {
-            ticket.IsActive = isActive.Value;
-        }
-
-        ticket.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        ticket.UpdatedBy = ctx.Sender.ToString();
-
-        ctx.Db.Ticket.TicketId.Update(ticket);
-        Log.Info($"Ticket {ticketId} updated");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void DeleteTicket(ReducerContext ctx, uint ticketId)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "tickets.delete"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to delete tickets.");
-        }
-        if (ctx.Db.Ticket.TicketId.Find(ticketId) == null)
-        {
-            throw new Exception("Ticket not found.");
-        }
-        ctx.Db.Ticket.TicketId.Delete(ticketId);
-        Log.Info($"Ticket {ticketId} has been deleted.");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void UpdateSale(ReducerContext ctx, uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "sales.edit"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to edit sales.");
-        }
-        var sale = ctx.Db.Sale.SaleId.Find(saleId);
-        if (sale == null)
-        {
-            throw new Exception("Sale not found.");
-        }
-
-        // Update only if new value is not null
-        if (ticketId.HasValue)
-        {
-            if (!ctx.Db.Ticket.Iter().Any(t => t.TicketId == ticketId))
-            {
-                throw new Exception("Ticket not found.");
-            }
-            sale.TicketId = ticketId.Value;
-        }
-        if (ticketSoldToUser != null)
-        {
-            sale.TicketSoldToUser = ticketSoldToUser;
-        }
-        if (ticketSoldToUserPhone != null)
-        {
-            sale.TicketSoldToUserPhone = ticketSoldToUserPhone;
-        }
-        if (saleLocation != null)
-        {
-            sale.SaleLocation = saleLocation;
-        }
-        if (saleNotes != null)
-        {
-            sale.SaleNotes = saleNotes;
-        }
-
-        ctx.Db.Sale.SaleId.Update(sale);
-        Log.Info($"Sale {saleId} updated");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void DeleteSale(ReducerContext ctx, uint saleId)
-    {
-        if (!HasPermission(ctx, ctx.Sender, "sales.delete"))
-        {
-            throw new Exception("Unauthorized: You do not have permission to delete sales.");
-        }
-        // Check if the sale exists
-        if (ctx.Db.Sale.SaleId.Find(saleId) == null)
-        {
-            throw new Exception("Sale not found.");
-        }
-        ctx.Db.Sale.SaleId.Delete(saleId);
-        Log.Info($"Sale {saleId} has been deleted.");
-    }
+    
 
     
 
     [SpacetimeDB.Reducer]
-    public static void LogAdminAction(ReducerContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent)
+    public static void LogAdminAction(ReducerContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent, Identity? actingUser = null)
     {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
         uint logId = GetNextId(ctx, "logId");
         var logEntry = new AdminActionLog
         {
             LogId = logId,
-            UserId = ctx.Sender,
+            UserId = effectiveUser,
             Action = action,
             Details = details,
             Timestamp = (ulong)DateTimeOffset.Parse(timestamp).ToUnixTimeMilliseconds(), // Convert back to timestamp,
@@ -2636,7 +2258,7 @@ public static partial class Module
         };
         ctx.Db.admin_action_log.Insert(logEntry);
         Log.Info($"Logged Action {logEntry.Action} for user {logEntry.UserId} at: {logEntry.Timestamp}");
-    }
+	}
 
     
 
@@ -2645,12 +2267,12 @@ public static partial class Module
     {
         // This reducer is for debugging purposes only
         // It allows direct testing of the VerifyPassword function
-
+        
         bool isValid = VerifyPassword(password, storedHash);
-
+        
         // Also compute a new hash for the same password for comparison
         string newHash = HashPassword(password);
-
+        
         // Log the results for debugging
         Log.Info($"Debug VerifyPassword Results:");
         Log.Info($"Password: {password}");
@@ -2658,13 +2280,13 @@ public static partial class Module
         Log.Info($"Verification Result: {isValid}");
         Log.Info($"New Hash for Same Password: {newHash}");
         Log.Info($"Would New Hash Verify: {VerifyPassword(password, newHash)}");
-
+        
         // Compare the internal structure of the hashes (for debugging only)
-        try
+        try 
         {
             var storedParts = storedHash.Split(':');
             var newParts = newHash.Split(':');
-
+            
             if (storedParts.Length >= 2 && newParts.Length >= 2)
             {
                 Log.Info($"Stored Hash Salt Length: {Convert.FromBase64String(storedParts[0]).Length}");
@@ -2677,7 +2299,7 @@ public static partial class Module
         {
             Log.Error($"Error analyzing hash structure: {ex.Message}");
         }
-    }
+	}
 
     
 

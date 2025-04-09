@@ -175,7 +175,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
 
                     // Call the CreateRole reducer
-                    conn.Reducers.CreateRoleReducer(role.LegacyRoleId, role.Name, role.Description, role.IsSystem, role.Priority);
+                    conn.Reducers.CreateRoleReducer(role.LegacyRoleId, role.Name, role.Description, role.IsSystem, role.Priority, null);
                     
                     // Find the newly created role
                     var newRole = conn.Db.Role.Iter()
@@ -190,7 +190,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the AddNewPermission reducer
-                    conn.Reducers.AddNewPermission(permission.Name, permission.Description, permission.Category);
+                    conn.Reducers.AddNewPermission(permission.Name, permission.Description, permission.Category, null);
                     
                     // Find the newly created permission
                     var newPermission = conn.Db.Permission.Iter()
@@ -205,7 +205,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the CreateBus reducer
-                    conn.Reducers.CreateBus(bus.Model, bus.RegistrationNumber);
+                    conn.Reducers.CreateBus(bus.Model, bus.RegistrationNumber, null);
                     
                     // Find the newly created bus
                     var newBus = conn.Db.Bus.Iter()
@@ -245,7 +245,8 @@ namespace TicketSalesApp.Services.Implementations
                         null, // role
                         user.PhoneNumber,
                         user.Email,
-                        user.IsActive
+                        user.IsActive,
+                        null  // actingUser
                     );
                     
                     // Return the updated user
@@ -258,7 +259,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
 
                     // Call the UpdateRole reducer
-                    conn.Reducers.UpdateRoleReducer(role.RoleId, role.Name, role.Description, role.LegacyRoleId, role.Priority);
+                    conn.Reducers.UpdateRoleReducer(role.RoleId, role.Name, role.Description, role.LegacyRoleId, role.Priority, null);
                     
                     // Return the updated role
                     return await GetAsync<T>((uint)role.LegacyRoleId);
@@ -270,7 +271,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the UpdatePermission reducer
-                    conn.Reducers.UpdatePermission(permission.PermissionId, permission.Name, permission.Description, permission.Category, permission.IsActive);
+                    conn.Reducers.UpdatePermission(permission.PermissionId, permission.Name, permission.Description, permission.Category, permission.IsActive, null);
                     
                     // Return the updated permission
                     return await GetAsync<T>(permission.PermissionId);
@@ -282,7 +283,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the UpdateBus reducer
-                    conn.Reducers.UpdateBus(bus.BusId, bus.Model, bus.RegistrationNumber);
+                    conn.Reducers.UpdateBus(bus.BusId, bus.Model, bus.RegistrationNumber, null);
                     
                     // Return the updated bus
                     return await GetAsync<T>(bus.BusId);
@@ -315,7 +316,7 @@ namespace TicketSalesApp.Services.Implementations
                         return false;
                     
                     // Call the DeleteUser reducer
-                    conn.Reducers.DeleteUser(userProfile.UserId);
+                    conn.Reducers.DeleteUser(userProfile.UserId, null);
                     return true;
                 }
                 else if (typeof(T) == typeof(Role))
@@ -326,7 +327,7 @@ namespace TicketSalesApp.Services.Implementations
                         return false;
                     
                     // Call the DeleteRole reducer
-                    conn.Reducers.DeleteRole(role.RoleId);
+                    conn.Reducers.DeleteRole(role.RoleId, null);
                     return true;
                 }
                 else if (typeof(T) == typeof(Permission))
@@ -337,7 +338,7 @@ namespace TicketSalesApp.Services.Implementations
                         return false;
                     
                     // Call the DeletePermission reducer
-                    conn.Reducers.DeletePermission(permission.PermissionId);
+                    conn.Reducers.DeletePermission(permission.PermissionId, null);
                     return true;
                 }
                 else if (typeof(T) == typeof(Bus))
@@ -348,7 +349,7 @@ namespace TicketSalesApp.Services.Implementations
                         return false;
                     
                     // Call the DeleteBus reducer
-                    conn.Reducers.DeleteBus(bus.BusId);
+                    conn.Reducers.DeleteBus(bus.BusId, null);
                     return true;
                 }
                 

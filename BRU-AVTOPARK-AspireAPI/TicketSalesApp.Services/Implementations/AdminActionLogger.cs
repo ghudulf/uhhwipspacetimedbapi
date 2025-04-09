@@ -27,7 +27,7 @@ public class AdminActionLogger : IAdminActionLogger
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
     }
 
-    public async Task LogActionAsync(string userId, string action, string details)
+    public async Task LogActionAsync(string userId, string action, string details, Identity? actingUser = null)
     {
         try
         {
@@ -51,7 +51,9 @@ public class AdminActionLogger : IAdminActionLogger
                     "Created admin log counter",
                     DateTimeOffset.UtcNow.ToString("o"),
                     httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown",
-                    httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown"
+                    httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown",
+                    actingUser
+
                 );
                 logId = 1;
             }
@@ -68,7 +70,8 @@ public class AdminActionLogger : IAdminActionLogger
                 details ?? string.Empty,
                 DateTimeOffset.UtcNow.ToString("o"),
                 httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown",
-                httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown"
+                httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown",
+                actingUser
             );
 
             _logger.LogInformation(
@@ -87,7 +90,8 @@ public class AdminActionLogger : IAdminActionLogger
     public async Task<List<AdminActionLog>> GetUserActionsAsync(
         string userId, 
         DateTime? startDate = null, 
-        DateTime? endDate = null)
+        DateTime? endDate = null,
+        Identity? actingUser = null)
     {
         try
         {
@@ -107,7 +111,7 @@ public class AdminActionLogger : IAdminActionLogger
             
             // Query logs
             var logs = conn.Db.AdminActionLog.Iter()
-                .Where(l => l.UserId.ToString() == userId)
+                .Where(l => l.UserId.ToString() == userId && (actingUser == null || l.UserId == actingUser))
                 .ToList();
                 
             if (startTimestamp.HasValue)
@@ -129,7 +133,8 @@ public class AdminActionLogger : IAdminActionLogger
     public async Task<List<AdminActionLog>> GetActionsByTypeAsync(
         string actionType, 
         DateTime? startDate = null, 
-        DateTime? endDate = null)
+        DateTime? endDate = null,
+        Identity? actingUser = null)
     {
         try
         {
@@ -149,7 +154,7 @@ public class AdminActionLogger : IAdminActionLogger
             
             // Query logs
             var logs = conn.Db.AdminActionLog.Iter()
-                .Where(l => l.Action == actionType)
+                .Where(l => l.Action == actionType && (actingUser == null || l.UserId == actingUser))
                 .ToList();
                 
             if (startTimestamp.HasValue)

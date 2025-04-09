@@ -25,6 +25,7 @@
     <PackageReference Include="App.Metrics.AspNetCore" Version="4.3.0" />
     <PackageReference Include="App.Metrics.Formatters.Prometheus" Version="4.3.0" />
     <PackageReference Include="Fido2" Version="3.0.1" />
+    <PackageReference Include="Fido2.AspNet" Version="3.0.1" />
     <PackageReference Include="Fido2.Models" Version="3.0.1" />
     <PackageReference Include="OpenIddict.Core" Version="4.1.0" />
     <PackageReference Include="OpenIddict.Server.AspNetCore" Version="4.1.0" />

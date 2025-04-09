@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateTicketHandler(ReducerEventContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime);
+        public delegate void CreateTicketHandler(ReducerEventContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, SpacetimeDB.Identity? actingUser);
         public event CreateTicketHandler? OnCreateTicket;
 
-        public void CreateTicket(uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime)
+        public void CreateTicket(uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime), this.SetCallReducerFlags.CreateTicketFlags);
+            conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime, actingUser), this.SetCallReducerFlags.CreateTicketFlags);
         }
 
         public bool InvokeCreateTicket(ReducerEventContext ctx, Reducer.CreateTicket args)
@@ -29,7 +29,8 @@ namespace SpacetimeDB.Types
                 args.Price,
                 args.SeatNumber,
                 args.PaymentMethod,
-                args.PurchaseTime
+                args.PurchaseTime,
+                args.ActingUser
             );
             return true;
         }
@@ -51,13 +52,16 @@ namespace SpacetimeDB.Types
             public string PaymentMethod;
             [DataMember(Name = "purchaseTime")]
             public ulong? PurchaseTime;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public CreateTicket(
                 uint RouteId,
                 double Price,
                 uint SeatNumber,
                 string PaymentMethod,
-                ulong? PurchaseTime
+                ulong? PurchaseTime,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.RouteId = RouteId;
@@ -65,6 +69,7 @@ namespace SpacetimeDB.Types
                 this.SeatNumber = SeatNumber;
                 this.PaymentMethod = PaymentMethod;
                 this.PurchaseTime = PurchaseTime;
+                this.ActingUser = ActingUser;
             }
 
             public CreateTicket()

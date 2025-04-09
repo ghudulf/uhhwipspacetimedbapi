@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ChangePasswordHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string currentPassword, string newPassword);
+        public delegate void ChangePasswordHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser);
         public event ChangePasswordHandler? OnChangePassword;
 
-        public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword)
+        public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword), this.SetCallReducerFlags.ChangePasswordFlags);
+            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser), this.SetCallReducerFlags.ChangePasswordFlags);
         }
 
         public bool InvokeChangePassword(ReducerEventContext ctx, Reducer.ChangePassword args)
@@ -27,7 +27,8 @@ namespace SpacetimeDB.Types
                 ctx,
                 args.UserId,
                 args.CurrentPassword,
-                args.NewPassword
+                args.NewPassword,
+                args.ActingUser
             );
             return true;
         }
@@ -45,16 +46,20 @@ namespace SpacetimeDB.Types
             public string CurrentPassword;
             [DataMember(Name = "newPassword")]
             public string NewPassword;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public ChangePassword(
                 SpacetimeDB.Identity UserId,
                 string CurrentPassword,
-                string NewPassword
+                string NewPassword,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
                 this.CurrentPassword = CurrentPassword;
                 this.NewPassword = NewPassword;
+                this.ActingUser = ActingUser;
             }
 
             public ChangePassword()

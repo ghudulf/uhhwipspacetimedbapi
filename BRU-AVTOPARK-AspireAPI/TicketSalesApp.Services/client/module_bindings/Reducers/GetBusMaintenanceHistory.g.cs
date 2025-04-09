@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void GetBusMaintenanceHistoryHandler(ReducerEventContext ctx, uint busId);
+        public delegate void GetBusMaintenanceHistoryHandler(ReducerEventContext ctx, uint busId, SpacetimeDB.Identity? actingUser);
         public event GetBusMaintenanceHistoryHandler? OnGetBusMaintenanceHistory;
 
-        public void GetBusMaintenanceHistory(uint busId)
+        public void GetBusMaintenanceHistory(uint busId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId), this.SetCallReducerFlags.GetBusMaintenanceHistoryFlags);
+            conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId, actingUser), this.SetCallReducerFlags.GetBusMaintenanceHistoryFlags);
         }
 
         public bool InvokeGetBusMaintenanceHistory(ReducerEventContext ctx, Reducer.GetBusMaintenanceHistory args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnGetBusMaintenanceHistory == null) return false;
             OnGetBusMaintenanceHistory(
                 ctx,
-                args.BusId
+                args.BusId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "busId")]
             public uint BusId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public GetBusMaintenanceHistory(uint BusId)
+            public GetBusMaintenanceHistory(
+                uint BusId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.BusId = BusId;
+                this.ActingUser = ActingUser;
             }
 
             public GetBusMaintenanceHistory()

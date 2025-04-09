@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeactivateScheduleHandler(ReducerEventContext ctx, uint scheduleId);
+        public delegate void DeactivateScheduleHandler(ReducerEventContext ctx, uint scheduleId, SpacetimeDB.Identity? actingUser);
         public event DeactivateScheduleHandler? OnDeactivateSchedule;
 
-        public void DeactivateSchedule(uint scheduleId)
+        public void DeactivateSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeactivateSchedule(scheduleId), this.SetCallReducerFlags.DeactivateScheduleFlags);
+            conn.InternalCallReducer(new Reducer.DeactivateSchedule(scheduleId, actingUser), this.SetCallReducerFlags.DeactivateScheduleFlags);
         }
 
         public bool InvokeDeactivateSchedule(ReducerEventContext ctx, Reducer.DeactivateSchedule args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeactivateSchedule == null) return false;
             OnDeactivateSchedule(
                 ctx,
-                args.ScheduleId
+                args.ScheduleId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "scheduleId")]
             public uint ScheduleId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeactivateSchedule(uint ScheduleId)
+            public DeactivateSchedule(
+                uint ScheduleId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.ScheduleId = ScheduleId;
+                this.ActingUser = ActingUser;
             }
 
             public DeactivateSchedule()

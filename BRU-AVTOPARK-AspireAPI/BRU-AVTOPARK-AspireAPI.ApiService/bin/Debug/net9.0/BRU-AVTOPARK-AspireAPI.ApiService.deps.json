@@ -12,6 +12,7 @@
           "App.Metrics.Formatters.Prometheus": "4.3.0",
           "BRU-AVTOPARK-AspireAPI.ServiceDefaults": "1.0.0",
           "Fido2": "3.0.1",
+          "Fido2.AspNet": "3.0.1",
           "Fido2.Models": "3.0.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.1",
           "Microsoft.AspNetCore.OpenApi": "9.0.0",
@@ -234,6 +235,18 @@
         },
         "runtime": {
           "lib/net6.0/Fido2.dll": {
+            "assemblyVersion": "3.0.1.0",
+            "fileVersion": "3.0.1.0"
+          }
+        }
+      },
+      "Fido2.AspNet/3.0.1": {
+        "dependencies": {
+          "Fido2": "3.0.1",
+          "Fido2.Models": "3.0.1"
+        },
+        "runtime": {
+          "lib/net6.0/Fido2.AspNet.dll": {
             "assemblyVersion": "3.0.1.0",
             "fileVersion": "3.0.1.0"
           }
@@ -1458,6 +1471,13 @@
       "sha512": "sha512-S0Bz1vfcKlO4Jase3AWp5XnQ746psf4oGx5kL+D2A10j1SsjoAOAIIpanSwfi0cEepDHgk1bClcOKY5TjOzGdA==",
       "path": "fido2/3.0.1",
       "hashPath": "fido2.3.0.1.nupkg.sha512"
+    },
+    "Fido2.AspNet/3.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-5n5shEXD7RFUyTesjUHGDjkpgES7j4KotQo1GwUcS08k+fx+1tl/zCFHJ9RFDuUwO+S681ZILT2PyA67IPYpaA==",
+      "path": "fido2.aspnet/3.0.1",
+      "hashPath": "fido2.aspnet.3.0.1.nupkg.sha512"
     },
     "Fido2.Models/3.0.1": {
       "type": "package",

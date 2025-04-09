@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
 using System.Collections.Generic;
@@ -84,7 +85,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateTicketAsync(uint routeId, uint seatNumber, double ticketPrice, string paymentMethod, ulong purchaseTime)
+        public async Task<bool> CreateTicketAsync(uint routeId, uint seatNumber, double ticketPrice, string paymentMethod, ulong purchaseTime,Identity loggedinuser)
         {
             try
             {
@@ -116,7 +117,8 @@ namespace TicketSalesApp.Services.Implementations
                     seatNumber, // Removed passengerId
                     
                     paymentMethod,
-                    (ulong?)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() // PurchaseTime
+                    (ulong?)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), // PurchaseTime
+                    loggedinuser// logged in identity
 
 
 
@@ -131,7 +133,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateTicketAsync(uint ticketId, uint? routeId = null, double? ticketPrice = null, uint? seatNumber = null, string? paymentMethod = null, bool? isActive = null, ulong? updatedAt = null, string? updatedBy = null)
+        public async Task<bool> UpdateTicketAsync(uint ticketId, uint? routeId = null, double? ticketPrice = null, uint? seatNumber = null, string? paymentMethod = null, bool? isActive = null, ulong? updatedAt = null, string? updatedBy = null, Identity? actingUser = null)
         {
             try
             {
@@ -167,7 +169,8 @@ namespace TicketSalesApp.Services.Implementations
                     seatNumber ?? ticket.SeatNumber,
                     ticketPrice ?? ticket.TicketPrice,
                     paymentMethod ?? ticket.PaymentMethod,
-                    isActive // Pass the isActive parameter directly
+                    isActive, // Pass the isActive parameter directly
+                    actingUser
                 );
 
                 return true;
@@ -179,7 +182,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteTicketAsync(uint ticketId)
+        public async Task<bool> DeleteTicketAsync(uint ticketId, Identity? actingUser = null)
         {
             try
             {
@@ -195,7 +198,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteTicket reducer
-                connection.Reducers.DeleteTicket(ticketId);
+                connection.Reducers.DeleteTicket(ticketId, actingUser);
 
                 return true;
             }
@@ -246,7 +249,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CancelTicketAsync(uint ticketId)
+        public async Task<bool> CancelTicketAsync(uint ticketId, Identity? actingUser = null)
         {
             try
             {
@@ -262,7 +265,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the CancelTicket reducer
-                connection.Reducers.CancelTicket(ticketId);
+                connection.Reducers.CancelTicket(ticketId, actingUser);
 
                 return true;
             }
@@ -355,7 +358,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteSale reducer
-                connection.Reducers.DeleteSale(saleId);
+                connection.Reducers.DeleteSale(saleId,null);
 
                 return true;
             }

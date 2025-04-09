@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateEmployeeHandler(ReducerEventContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId);
+        public delegate void UpdateEmployeeHandler(ReducerEventContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, SpacetimeDB.Identity? actingUser);
         public event UpdateEmployeeHandler? OnUpdateEmployee;
 
-        public void UpdateEmployee(uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId)
+        public void UpdateEmployee(uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId), this.SetCallReducerFlags.UpdateEmployeeFlags);
+            conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId, actingUser), this.SetCallReducerFlags.UpdateEmployeeFlags);
         }
 
         public bool InvokeUpdateEmployee(ReducerEventContext ctx, Reducer.UpdateEmployee args)
@@ -29,7 +29,8 @@ namespace SpacetimeDB.Types
                 args.EmployeeName,
                 args.EmployeeSurname,
                 args.EmployeePatronym,
-                args.JobId
+                args.JobId,
+                args.ActingUser
             );
             return true;
         }
@@ -51,13 +52,16 @@ namespace SpacetimeDB.Types
             public string? EmployeePatronym;
             [DataMember(Name = "jobId")]
             public uint? JobId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateEmployee(
                 uint EmployeeId,
                 string? EmployeeName,
                 string? EmployeeSurname,
                 string? EmployeePatronym,
-                uint? JobId
+                uint? JobId,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.EmployeeId = EmployeeId;
@@ -65,6 +69,7 @@ namespace SpacetimeDB.Types
                 this.EmployeeSurname = EmployeeSurname;
                 this.EmployeePatronym = EmployeePatronym;
                 this.JobId = JobId;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateEmployee()

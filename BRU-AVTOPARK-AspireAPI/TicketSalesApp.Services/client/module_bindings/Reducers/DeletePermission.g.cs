@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeletePermissionHandler(ReducerEventContext ctx, uint permissionId);
+        public delegate void DeletePermissionHandler(ReducerEventContext ctx, uint permissionId, SpacetimeDB.Identity? actingUserId);
         public event DeletePermissionHandler? OnDeletePermission;
 
-        public void DeletePermission(uint permissionId)
+        public void DeletePermission(uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.DeletePermission(permissionId), this.SetCallReducerFlags.DeletePermissionFlags);
+            conn.InternalCallReducer(new Reducer.DeletePermission(permissionId, actingUserId), this.SetCallReducerFlags.DeletePermissionFlags);
         }
 
         public bool InvokeDeletePermission(ReducerEventContext ctx, Reducer.DeletePermission args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeletePermission == null) return false;
             OnDeletePermission(
                 ctx,
-                args.PermissionId
+                args.PermissionId,
+                args.ActingUserId
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "permissionId")]
             public uint PermissionId;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
-            public DeletePermission(uint PermissionId)
+            public DeletePermission(
+                uint PermissionId,
+                SpacetimeDB.Identity? ActingUserId
+            )
             {
                 this.PermissionId = PermissionId;
+                this.ActingUserId = ActingUserId;
             }
 
             public DeletePermission()

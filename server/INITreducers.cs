@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using SpacetimeDB;
 
@@ -63,6 +64,56 @@ public static partial class Module
         Log.Info("Starting Sales initialization...");
         InitializeSales(ctx);
         Log.Info("Sales initialization completed");
+
+        // 12. Log permission counts and assignment status
+        Log.Info("Checking permission assignments...");
+        
+        // Count total permissions in the system
+        int totalPermissions = ctx.Db.Permission.Iter().Count();
+        Log.Info($"Total permissions in system: {totalPermissions}");
+        
+        // Count users and check their role assignments
+        var users = ctx.Db.UserProfile.Iter().ToList();
+        int totalUsers = users.Count;
+        int usersWithRoles = 0;
+        
+        foreach (var user in users)
+        {
+            // Check if user has any roles assigned
+            bool hasRoles = ctx.Db.UserRole.Iter().Any(ur => ur.UserId == user.UserId);
+            if (hasRoles)
+            {
+                usersWithRoles++;
+                
+                // Get all roles for this user
+                var userRoles = ctx.Db.UserRole.Iter()
+                    .Where(ur => ur.UserId == user.UserId)
+                    .Select(ur => ur.RoleId)
+                    .ToList();
+                
+                // Count permissions for this user through their roles
+                var userPermissions = new HashSet<uint>();
+                foreach (var roleId in userRoles)
+                {
+                    var rolePermissions = ctx.Db.RolePermission.Iter()
+                        .Where(rp => rp.RoleId == roleId)
+                        .Select(rp => rp.PermissionId);
+                    
+                    foreach (var permId in rolePermissions)
+                    {
+                        userPermissions.Add(permId);
+                    }
+                }
+                
+                Log.Info($"User {user.Login} has {userRoles.Count} roles with access to {userPermissions.Count} permissions");
+            }
+            else
+            {
+                Log.Warn($"User {user.Login} has no roles assigned");
+            }
+        }
+        
+        Log.Info($"Role assignment summary: {usersWithRoles} out of {totalUsers} users have roles assigned");
 
         // Log successful initialization
         Log.Info("System initialized successfully");
@@ -323,6 +374,27 @@ public static partial class Module
             CreatePermission(ctx, name, description, category);
         }
 
+        // Create assign_roles permission if it doesn't exist
+        var assignRolesPermission = ctx.Db.Permission.Iter().FirstOrDefault(p => p.Name == "assign_roles");
+        if (assignRolesPermission == null)
+        {
+            Log.Info("Creating assign_roles permission");
+            uint assignRolesPermId = GetNextId(ctx, "permissionId");
+            Log.Debug($"Generated permissionId: {assignRolesPermId}");
+
+            assignRolesPermission = new Permission
+            {
+                PermissionId = assignRolesPermId,
+                Name = "assign_roles",
+                Description = "Assign roles to users",
+                Category = "Role Management",
+                IsActive = true,
+                CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000
+            };
+            ctx.Db.Permission.Insert(assignRolesPermission);
+            Log.Info("assign_roles permission created successfully");
+        }
+
         // Directly grant the admin user the necessary permissions
         Log.Info("Granting permissions to admin user");
         var adminUser = ctx.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == "admin");
@@ -356,7 +428,7 @@ public static partial class Module
                 Log.Info("grant_permissions permission already exists");
             }
 
-            // Directly create the role permission without using GrantPermissionToRole
+            // Directly create the role permission for grant_permissions
             if (!ctx.Db.RolePermission.Iter().Any(rp => rp.RoleId == adminRole.RoleId && rp.PermissionId == grantPermission.PermissionId))
             {
                 Log.Info("Assigning grant_permissions to admin role");
@@ -377,6 +449,51 @@ public static partial class Module
             else
             {
                 Log.Info("grant_permissions already assigned to admin role");
+            }
+
+            // Directly create the role permission for assign_roles
+            if (!ctx.Db.RolePermission.Iter().Any(rp => rp.RoleId == adminRole.RoleId && rp.PermissionId == assignRolesPermission.PermissionId))
+            {
+                Log.Info("Assigning assign_roles to admin role");
+                uint rolePermId = GetNextId(ctx, "rolePermissionId");
+                Log.Debug($"Generated rolePermissionId: {rolePermId}");
+
+                var rolePermission = new RolePermission
+                {
+                    Id = rolePermId,
+                    RoleId = adminRole.RoleId,
+                    PermissionId = assignRolesPermission.PermissionId,
+                    GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    GrantedBy = "System"
+                };
+                ctx.Db.RolePermission.Insert(rolePermission);
+                Log.Info("assign_roles assigned to admin role successfully");
+            }
+            
+            // Assign all other permissions to admin role
+            Log.Info("Assigning all permissions to admin role");
+            foreach (var permission in ctx.Db.Permission.Iter())
+            {
+                // Skip grant_permissions and assign_roles as they were handled separately
+                if (permission.Name == "grant_permissions" || permission.Name == "assign_roles")
+                {
+                    continue;
+                }
+                
+                if (!ctx.Db.RolePermission.Iter().Any(rp => rp.RoleId == adminRole.RoleId && rp.PermissionId == permission.PermissionId))
+                {
+                    uint rolePermId = GetNextId(ctx, "rolePermissionId");
+                    var rolePermission = new RolePermission
+                    {
+                        Id = rolePermId,
+                        RoleId = adminRole.RoleId,
+                        PermissionId = permission.PermissionId,
+                        GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                        GrantedBy = "System"
+                    };
+                    ctx.Db.RolePermission.Insert(rolePermission);
+                    Log.Debug($"Assigned permission {permission.Name} to admin role");
+                }
             }
         }
         else

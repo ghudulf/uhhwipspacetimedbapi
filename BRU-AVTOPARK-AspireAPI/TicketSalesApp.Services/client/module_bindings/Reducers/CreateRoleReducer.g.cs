@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateRoleReducerHandler(ReducerEventContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority);
+        public delegate void CreateRoleReducerHandler(ReducerEventContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority, SpacetimeDB.Identity? actingUserId);
         public event CreateRoleReducerHandler? OnCreateRoleReducer;
 
-        public void CreateRoleReducer(int legacyRoleId, string name, string description, bool isSystem, uint priority)
+        public void CreateRoleReducer(int legacyRoleId, string name, string description, bool isSystem, uint priority, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.CreateRoleReducer(legacyRoleId, name, description, isSystem, priority), this.SetCallReducerFlags.CreateRoleReducerFlags);
+            conn.InternalCallReducer(new Reducer.CreateRoleReducer(legacyRoleId, name, description, isSystem, priority, actingUserId), this.SetCallReducerFlags.CreateRoleReducerFlags);
         }
 
         public bool InvokeCreateRoleReducer(ReducerEventContext ctx, Reducer.CreateRoleReducer args)
@@ -29,7 +29,8 @@ namespace SpacetimeDB.Types
                 args.Name,
                 args.Description,
                 args.IsSystem,
-                args.Priority
+                args.Priority,
+                args.ActingUserId
             );
             return true;
         }
@@ -51,13 +52,16 @@ namespace SpacetimeDB.Types
             public bool IsSystem;
             [DataMember(Name = "priority")]
             public uint Priority;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public CreateRoleReducer(
                 int LegacyRoleId,
                 string Name,
                 string Description,
                 bool IsSystem,
-                uint Priority
+                uint Priority,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.LegacyRoleId = LegacyRoleId;
@@ -65,6 +69,7 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.IsSystem = IsSystem;
                 this.Priority = Priority;
+                this.ActingUserId = ActingUserId;
             }
 
             public CreateRoleReducer()

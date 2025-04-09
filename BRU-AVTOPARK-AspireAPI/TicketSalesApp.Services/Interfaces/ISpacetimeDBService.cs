@@ -39,17 +39,8 @@ namespace TicketSalesApp.Services.Interfaces
         void EnqueueCommand(string command, Dictionary<string, object> args);
         
         /// <summary>
-        /// Starts the message processing thread
-        /// </summary>
-        void StartMessageProcessing();
-        
-        /// <summary>
-        /// Stops the message processing thread
-        /// </summary>
-        void StopMessageProcessing();
-        
-        /// <summary>
-        /// Processes a single frame tick for the connection
+        /// Processes a single frame tick for the connection and any pending commands
+        /// This should be called regularly from the main thread
         /// </summary>
         void ProcessFrameTick();
         
@@ -64,5 +55,11 @@ namespace TicketSalesApp.Services.Interfaces
         /// <param name="queries">The SQL queries to subscribe to</param>
         /// <returns>The subscription handle</returns>
         SubscriptionHandle SubscribeToQueries(string[] queries);
+        
+        /// <summary>
+        /// Indicates whether the connection is active
+        /// </summary>
+        /// <returns>True if the connection is active, false otherwise</returns>
+        bool IsConnected();
     }
 } 

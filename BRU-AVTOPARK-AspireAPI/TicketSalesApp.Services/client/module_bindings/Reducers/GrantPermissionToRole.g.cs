@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void GrantPermissionToRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId);
+        public delegate void GrantPermissionToRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId);
         public event GrantPermissionToRoleHandler? OnGrantPermissionToRole;
 
-        public void GrantPermissionToRole(uint roleId, uint permissionId)
+        public void GrantPermissionToRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId), this.SetCallReducerFlags.GrantPermissionToRoleFlags);
+            conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId, actingUserId), this.SetCallReducerFlags.GrantPermissionToRoleFlags);
         }
 
         public bool InvokeGrantPermissionToRole(ReducerEventContext ctx, Reducer.GrantPermissionToRole args)
@@ -26,7 +26,8 @@ namespace SpacetimeDB.Types
             OnGrantPermissionToRole(
                 ctx,
                 args.RoleId,
-                args.PermissionId
+                args.PermissionId,
+                args.ActingUserId
             );
             return true;
         }
@@ -42,14 +43,18 @@ namespace SpacetimeDB.Types
             public uint RoleId;
             [DataMember(Name = "permissionId")]
             public uint PermissionId;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public GrantPermissionToRole(
                 uint RoleId,
-                uint PermissionId
+                uint PermissionId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.RoleId = RoleId;
                 this.PermissionId = PermissionId;
+                this.ActingUserId = ActingUserId;
             }
 
             public GrantPermissionToRole()

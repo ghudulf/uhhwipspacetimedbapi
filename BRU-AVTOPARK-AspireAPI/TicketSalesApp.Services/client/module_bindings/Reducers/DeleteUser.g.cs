@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId);
+        public delegate void DeleteUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, SpacetimeDB.Identity? actingUser);
         public event DeleteUserHandler? OnDeleteUser;
 
-        public void DeleteUser(SpacetimeDB.Identity userId)
+        public void DeleteUser(SpacetimeDB.Identity userId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteUser(userId), this.SetCallReducerFlags.DeleteUserFlags);
+            conn.InternalCallReducer(new Reducer.DeleteUser(userId, actingUser), this.SetCallReducerFlags.DeleteUserFlags);
         }
 
         public bool InvokeDeleteUser(ReducerEventContext ctx, Reducer.DeleteUser args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteUser == null) return false;
             OnDeleteUser(
                 ctx,
-                args.UserId
+                args.UserId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteUser(SpacetimeDB.Identity UserId)
+            public DeleteUser(
+                SpacetimeDB.Identity UserId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.UserId = UserId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteUser()

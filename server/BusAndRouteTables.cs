@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
  using System.Text;
 using SpacetimeDB;
 
@@ -226,6 +228,294 @@ public static partial class Module
         public uint PassengerCountNumber;    // Number of passengers counted during the stop
         public string? Notes;           // Additional notes
         public uint? EmployeeId;        // Who recorded the passenger count
+    }
+
+     [SpacetimeDB.Reducer]
+    public static void CreateBus(ReducerContext ctx, string model, string? registrationNumber, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Authorization check - verify the effective user has the required permission
+        if (!HasPermission(ctx, effectiveUser, "create_bus")) // CreateBus permission CHECK
+        {
+            throw new Exception("Unauthorized: Missing create_bus permission");
+        }
+
+        // Get the next bus ID from the counter
+        uint busId = 0;
+        var counter = ctx.Db.BusIdCounter.Key.Find("busId");
+        if (counter == null)
+        {
+            // If counter doesn't exist, create it with initial value 1
+            counter = ctx.Db.BusIdCounter.Insert(new BusIdCounter { Key = "busId", NextId = 1 });
+        }
+        else
+        {
+            // Increment the counter
+            counter.NextId++;
+            ctx.Db.BusIdCounter.Key.Update(counter);
+        }
+        busId = counter.NextId;  // Use the counter value
+
+        // Create a new bus with the provided information
+        var bus = new Bus
+        {
+            BusId = busId,                       // Set the bus ID
+            Model = model,                       // Set the model
+            RegistrationNumber = registrationNumber,  // Set the registration number (can be null)
+            IsActive = true                      // Set as active by default
+        };
+        // Insert the new bus into the database
+        ctx.Db.Bus.Insert(bus);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UpdateBus(ReducerContext ctx, uint busId, string? model, string? registrationNumber, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Check for the required permission
+        if (!HasPermission(ctx, effectiveUser, "buses.edit")) // UpdateBus PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to edit buses.");
+        }
+
+        var bus = ctx.Db.Bus.BusId.Find(busId);
+        if (bus == null)
+        {
+            throw new Exception("Bus not found.");
+        }
+
+        // Update only if new value is not null
+        if (model != null)
+        {
+            bus.Model = model;
+        }
+        if (registrationNumber != null)
+        {
+            bus.RegistrationNumber = registrationNumber;
+        }
+
+        ctx.Db.Bus.BusId.Update(bus);
+        Log.Info($"Bus {busId} updated");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void DeleteBus(ReducerContext ctx, uint busId, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "buses.delete")) // DeleteBus PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to delete buses.");
+        }
+        if (ctx.Db.Bus.BusId.Find(busId) == null)
+        {
+            throw new Exception("Bus Not found");
+        }
+        ctx.Db.Bus.BusId.Delete(busId);
+        Log.Info($"Bus {busId} has been deleted.");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void ActivateBus(ReducerContext ctx, uint busId, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Check for the required permission
+        if (!HasPermission(ctx, effectiveUser, "buses.edit")) // ActivateBus PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to activate buses.");
+        }
+        
+        var bus = ctx.Db.Bus.BusId.Find(busId);
+        if (bus == null)
+        {
+            throw new Exception("Bus not found.");
+        }
+        
+        if (bus.IsActive)
+        {
+            // Bus is already active, just log and return
+            Log.Info($"Bus {busId} is already active");
+            return;
+        }
+        
+        bus.IsActive = true;
+        ctx.Db.Bus.BusId.Update(bus);
+        Log.Info($"Bus {busId} activated by {effectiveUser}");
+    }
+    
+    [SpacetimeDB.Reducer]
+    public static void DeactivateBus(ReducerContext ctx, uint busId, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Check for the required permission
+        if (!HasPermission(ctx, effectiveUser, "buses.edit")) // DeactivateBus PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to deactivate buses.");
+        }
+        
+        var bus = ctx.Db.Bus.BusId.Find(busId);
+        if (bus == null)
+        {
+            throw new Exception("Bus not found.");
+        }
+        
+        // Check if the bus is used in any active routes
+        var activeRoutes = ctx.Db.Route.Iter()
+            .Where(r => r.BusId == busId && r.IsActive)
+            .ToList();
+            
+        if (activeRoutes.Count > 0)
+        {
+            throw new Exception($"Cannot deactivate bus: it is used in {activeRoutes.Count} active routes. Deactivate the routes first.");
+        }
+        
+        if (!bus.IsActive)
+        {
+            // Bus is already inactive, just log and return
+            Log.Info($"Bus {busId} is already inactive");
+            return;
+        }
+        
+        bus.IsActive = false;
+        ctx.Db.Bus.BusId.Update(bus);
+        Log.Info($"Bus {busId} deactivated by {effectiveUser}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void GetBusMaintenanceHistory(ReducerContext ctx, uint busId, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // This is a query reducer that doesn't modify state but returns data
+        // Check for the required permission
+        if (!HasPermission(ctx, effectiveUser, "maintenance.view")) // GetBusMaintenanceHistory PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to view maintenance records.");
+        }
+        
+        var bus = ctx.Db.Bus.BusId.Find(busId);
+        if (bus == null)
+        {
+            throw new Exception("Bus not found.");
+        }
+        
+        // Get all maintenance records for this bus
+        var maintenanceRecords = ctx.Db.Maintenance.Iter()
+            .Where(m => m.BusId == busId)
+            .OrderByDescending(m => m.LastServiceDate)
+            .ToList();
+            
+        // Log the result (in a real system, this would return data to the client)
+        Log.Info($"Found {maintenanceRecords.Count} maintenance records for bus {busId}");
+        
+        foreach (var record in maintenanceRecords)
+        {
+            Log.Info($"Maintenance ID: {record.MaintenanceId}, " +
+                     $"Date: {record.LastServiceDate}, " +
+                     $"Type: {record.MaintenanceType}, " +
+                     $"Engineer: {record.ServiceEngineer}, " +
+                     $"Issues: {record.FoundIssues}, " +
+                     $"Roadworthiness: {record.Roadworthiness}");
+        }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UpdateMaintenance(ReducerContext ctx, uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer,
+    string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        // Check for the required permission
+        if (!HasPermission(ctx, effectiveUser, "maintenance.edit")) // UpdateMaintenance PERM CHECK
+        {
+            throw new Exception("Unauthorized: You do not have permission to edit maintenance.");
+        }
+        var maintenance = ctx.Db.Maintenance.MaintenanceId.Find(maintenanceId);
+        if (maintenance == null)
+        {
+            throw new Exception("Maintenance Record not found.");
+        }
+        //Update each property if and only if it's not null
+        if (busId.HasValue)
+        {
+            maintenance.BusId = busId.Value;
+        }
+        if (lastServiceDate.HasValue)
+        {
+            maintenance.LastServiceDate = lastServiceDate.Value;
+        }
+        if (nextServiceDate.HasValue)
+        {
+            maintenance.NextServiceDate = nextServiceDate.Value;
+        }
+        if (serviceEngineer != null)
+        {
+            maintenance.ServiceEngineer = serviceEngineer;
+        }
+        if (foundIssues != null)
+        {
+            maintenance.FoundIssues = foundIssues;
+        }
+
+        if (roadworthiness != null)
+        {
+            maintenance.Roadworthiness = roadworthiness;
+        }
+        if (maintenanceType != null)
+        {
+            maintenance.MaintenanceType = maintenanceType;
+        }
+        if (mileage != null)
+        {
+            maintenance.MileageThreshold = mileage;
+        }
+        ctx.Db.Maintenance.MaintenanceId.Update(maintenance);
+        Log.Info($"Maintenance {maintenanceId} updated");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void DeleteMaintenance(ReducerContext ctx, uint maintenanceId, Identity? actingUser = null)
+    {
+        // Get the effective user identity - either the provided actingUser or ctx.Sender
+        // This is a workaround because ctx.Sender will return the API server identity
+        // when called through the API, not the actual logged-in user's identity
+        var effectiveUser = actingUser ?? ctx.Sender;
+        
+        if (!HasPermission(ctx, effectiveUser, "maintenance.delete")) // DeleteMaintenance PERM CHECK
+        {
+            throw new Exception("Unauthorized: Missing maintenance.delete permission");
+        }
+        if (ctx.Db.Maintenance.MaintenanceId.Find(maintenanceId) == null)
+        {
+            throw new Exception("Maintenance record not found");
+        }
+        ctx.Db.Maintenance.MaintenanceId.Delete(maintenanceId);
+        Log.Info($"Maintenance {maintenanceId} has been deleted.");
     }
 
 }

@@ -131,7 +131,8 @@ namespace TicketSalesApp.Services.Implementations
                         role,
                         phoneNumber,
                         email,
-                        isActive
+                        isActive,
+                        userProfile.UserId
                     );
                     
                     _logger.LogInformation("Successfully updated user with ID: {UserId}", userId);
@@ -171,7 +172,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Call the DeleteUser reducer
                 try
                 {
-                    conn.Reducers.DeleteUser(userProfile.UserId);
+                    conn.Reducers.DeleteUser(userProfile.UserId,userProfile.UserId);
                     
                     _logger.LogInformation("Successfully deleted user with ID: {UserId}", userId);
                     return true;

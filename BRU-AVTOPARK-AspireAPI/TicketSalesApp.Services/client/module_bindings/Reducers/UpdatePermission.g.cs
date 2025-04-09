@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdatePermissionHandler(ReducerEventContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive);
+        public delegate void UpdatePermissionHandler(ReducerEventContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive, SpacetimeDB.Identity? actingUserId);
         public event UpdatePermissionHandler? OnUpdatePermission;
 
-        public void UpdatePermission(uint permissionId, string? name, string? description, string? category, bool? isActive)
+        public void UpdatePermission(uint permissionId, string? name, string? description, string? category, bool? isActive, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive), this.SetCallReducerFlags.UpdatePermissionFlags);
+            conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive, actingUserId), this.SetCallReducerFlags.UpdatePermissionFlags);
         }
 
         public bool InvokeUpdatePermission(ReducerEventContext ctx, Reducer.UpdatePermission args)
@@ -29,7 +29,8 @@ namespace SpacetimeDB.Types
                 args.Name,
                 args.Description,
                 args.Category,
-                args.IsActive
+                args.IsActive,
+                args.ActingUserId
             );
             return true;
         }
@@ -51,13 +52,16 @@ namespace SpacetimeDB.Types
             public string? Category;
             [DataMember(Name = "isActive")]
             public bool? IsActive;
+            [DataMember(Name = "actingUserId")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public UpdatePermission(
                 uint PermissionId,
                 string? Name,
                 string? Description,
                 string? Category,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.PermissionId = PermissionId;
@@ -65,6 +69,7 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.Category = Category;
                 this.IsActive = IsActive;
+                this.ActingUserId = ActingUserId;
             }
 
             public UpdatePermission()

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
 using System.Collections.Generic;
@@ -87,7 +88,8 @@ namespace TicketSalesApp.Services.Implementations
             bool? isActive = null,
             ulong? validFrom = null,
             ulong? validUntil = null,
-            string? updatedBy = null
+            string? updatedBy = null,
+            Identity? actingUser = null
         )
         {
             try
@@ -119,6 +121,7 @@ namespace TicketSalesApp.Services.Implementations
                     estimatedStopTimes?.ToList() ?? new List<string>(), // estimatedStopTimes, convert to List<string> if not null, default to empty list
                     stopDistances?.ToList() ?? new List<double>(), // stopDistances, convert to List<double> if not null, default to empty list
                     notes // notes
+                    
                 );
 
                 return true;
@@ -150,7 +153,8 @@ namespace TicketSalesApp.Services.Implementations
             bool? isActive = null,
             ulong? validFrom = null,
             ulong? validUntil = null,
-            string? updatedBy = null
+            string? updatedBy = null,
+            Identity? actingUser = null
         )
         {
             try
@@ -194,7 +198,8 @@ namespace TicketSalesApp.Services.Implementations
                     isRecurring ?? schedule.IsRecurring,
                     estimatedStopTimes ?? schedule.EstimatedStopTimes,
                     stopDistances ?? schedule.StopDistances,
-                    notes ?? schedule.Notes
+                    notes ?? schedule.Notes,
+                    actingUser
                 );
 
                 return true;
@@ -206,7 +211,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteScheduleAsync(uint scheduleId)
+        public async Task<bool> DeleteScheduleAsync(uint scheduleId, Identity? actingUser = null)
         {
             try
             {
@@ -232,7 +237,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteRouteSchedule reducer
-                connection.Reducers.DeleteRouteSchedule(scheduleId);
+                connection.Reducers.DeleteRouteSchedule(scheduleId, actingUser);
 
                 return true;
             }

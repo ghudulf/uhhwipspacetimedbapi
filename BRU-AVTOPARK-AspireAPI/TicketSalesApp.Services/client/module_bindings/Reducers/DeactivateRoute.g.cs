@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeactivateRouteHandler(ReducerEventContext ctx, uint routeId);
+        public delegate void DeactivateRouteHandler(ReducerEventContext ctx, uint routeId, SpacetimeDB.Identity? actingUser);
         public event DeactivateRouteHandler? OnDeactivateRoute;
 
-        public void DeactivateRoute(uint routeId)
+        public void DeactivateRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId), this.SetCallReducerFlags.DeactivateRouteFlags);
+            conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId, actingUser), this.SetCallReducerFlags.DeactivateRouteFlags);
         }
 
         public bool InvokeDeactivateRoute(ReducerEventContext ctx, Reducer.DeactivateRoute args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeactivateRoute == null) return false;
             OnDeactivateRoute(
                 ctx,
-                args.RouteId
+                args.RouteId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "routeId")]
             public uint RouteId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeactivateRoute(uint RouteId)
+            public DeactivateRoute(
+                uint RouteId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.RouteId = RouteId;
+                this.ActingUser = ActingUser;
             }
 
             public DeactivateRoute()

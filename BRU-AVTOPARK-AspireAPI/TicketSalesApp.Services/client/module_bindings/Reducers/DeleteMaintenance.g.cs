@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId);
+        public delegate void DeleteMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId, SpacetimeDB.Identity? actingUser);
         public event DeleteMaintenanceHandler? OnDeleteMaintenance;
 
-        public void DeleteMaintenance(uint maintenanceId)
+        public void DeleteMaintenance(uint maintenanceId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteMaintenance(maintenanceId), this.SetCallReducerFlags.DeleteMaintenanceFlags);
+            conn.InternalCallReducer(new Reducer.DeleteMaintenance(maintenanceId, actingUser), this.SetCallReducerFlags.DeleteMaintenanceFlags);
         }
 
         public bool InvokeDeleteMaintenance(ReducerEventContext ctx, Reducer.DeleteMaintenance args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteMaintenance == null) return false;
             OnDeleteMaintenance(
                 ctx,
-                args.MaintenanceId
+                args.MaintenanceId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "maintenanceId")]
             public uint MaintenanceId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteMaintenance(uint MaintenanceId)
+            public DeleteMaintenance(
+                uint MaintenanceId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.MaintenanceId = MaintenanceId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteMaintenance()

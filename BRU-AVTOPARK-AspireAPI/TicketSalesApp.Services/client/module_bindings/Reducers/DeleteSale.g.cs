@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteSaleHandler(ReducerEventContext ctx, uint saleId);
+        public delegate void DeleteSaleHandler(ReducerEventContext ctx, uint saleId, SpacetimeDB.Identity? actingUser);
         public event DeleteSaleHandler? OnDeleteSale;
 
-        public void DeleteSale(uint saleId)
+        public void DeleteSale(uint saleId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteSale(saleId), this.SetCallReducerFlags.DeleteSaleFlags);
+            conn.InternalCallReducer(new Reducer.DeleteSale(saleId, actingUser), this.SetCallReducerFlags.DeleteSaleFlags);
         }
 
         public bool InvokeDeleteSale(ReducerEventContext ctx, Reducer.DeleteSale args)
@@ -25,7 +25,8 @@ namespace SpacetimeDB.Types
             if (OnDeleteSale == null) return false;
             OnDeleteSale(
                 ctx,
-                args.SaleId
+                args.SaleId,
+                args.ActingUser
             );
             return true;
         }
@@ -39,10 +40,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "saleId")]
             public uint SaleId;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteSale(uint SaleId)
+            public DeleteSale(
+                uint SaleId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.SaleId = SaleId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteSale()

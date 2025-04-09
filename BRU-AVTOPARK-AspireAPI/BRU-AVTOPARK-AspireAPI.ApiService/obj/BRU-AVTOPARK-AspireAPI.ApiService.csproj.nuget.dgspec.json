@@ -73,6 +73,10 @@
               "target": "Package",
               "version": "[3.0.1, )"
             },
+            "Fido2.AspNet": {
+              "target": "Package",
+              "version": "[3.0.1, )"
+            },
             "Fido2.Models": {
               "target": "Package",
               "version": "[3.0.1, )"

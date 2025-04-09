@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateRouteHandler(ReducerEventContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive);
+        public delegate void UpdateRouteHandler(ReducerEventContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateRouteHandler? OnUpdateRoute;
 
-        public void UpdateRoute(uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive)
+        public void UpdateRoute(uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive), this.SetCallReducerFlags.UpdateRouteFlags);
+            conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive, actingUser), this.SetCallReducerFlags.UpdateRouteFlags);
         }
 
         public bool InvokeUpdateRoute(ReducerEventContext ctx, Reducer.UpdateRoute args)
@@ -31,7 +31,8 @@ namespace SpacetimeDB.Types
                 args.DriverId,
                 args.BusId,
                 args.TravelTime,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -57,6 +58,8 @@ namespace SpacetimeDB.Types
             public string? TravelTime;
             [DataMember(Name = "isActive")]
             public bool? IsActive;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateRoute(
                 uint RouteId,
@@ -65,7 +68,8 @@ namespace SpacetimeDB.Types
                 uint? DriverId,
                 uint? BusId,
                 string? TravelTime,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.RouteId = RouteId;
@@ -75,6 +79,7 @@ namespace SpacetimeDB.Types
                 this.BusId = BusId;
                 this.TravelTime = TravelTime;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateRoute()
