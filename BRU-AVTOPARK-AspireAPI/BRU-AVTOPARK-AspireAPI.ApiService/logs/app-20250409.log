@@ -751,3 +751,130 @@ System.FormatException: Index (zero based) must be greater than or equal to zero
 2025-04-09 18:06:35.376 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
 2025-04-09 18:06:35.379 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 4.1009ms
 2025-04-09 18:06:35.382 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 7.5907ms
+2025-04-09 18:16:43.622 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-09 18:16:43.652 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 30.1062ms
+2025-04-09 18:16:43.683 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-09 18:16:43.748 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 64.8245ms
+2025-04-09 18:16:57.302 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/Login - application/json; charset=utf-8 null
+2025-04-09 18:16:57.343 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 18:16:57.345 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 18:16:57.395 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-09 18:16:57.411 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 58.4919ms
+2025-04-09 18:16:57.413 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 18:16:57.416 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/Login - 400 null application/problem+json; charset=utf-8 113.9844ms
+2025-04-09 19:22:33.881 +03:00 [INF] SpacetimeDBService initialized
+2025-04-09 19:22:33.900 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-09 19:22:33.943 +03:00 [INF] Database connection built successfully
+2025-04-09 19:22:33.980 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-09 19:22:34.268 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-09 19:22:34.444 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-09 19:22:34.467 +03:00 [INF] Now listening on: http://0.0.0.0:53728
+2025-04-09 19:22:34.468 +03:00 [INF] Now listening on: https://0.0.0.0:53727
+2025-04-09 19:22:34.522 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-09 19:22:34.524 +03:00 [INF] Hosting environment: Development
+2025-04-09 19:22:34.525 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-09 19:22:36.697 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-09 19:22:38.244 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/api/auth/register?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6ImFkbWluIiwic3ViIjoiMSIsImlkZW50aXR5IjoiQzIwMEE2MTJDNTJENjk4N0IxMERFQzcwOTFGRDQwMzREQzE3MDc2QzI4Q0Q5QTcyRTc4RTEwRUY1MkRBRDE2NyIsInh1aWQiOiIiLCJyb2xlIjpbIkFkbWluaXN0cmF0b3IiLCIxIl0sInBlcm1pc3Npb24iOlsidXNlcnMudmlldyIsInVzZXJzLmNyZWF0ZSIsInVzZXJzLmVkaXQiLCJ1c2Vycy5kZWxldGUiLCJyb2xlcy52aWV3Iiwicm9sZXMuY3JlYXRlIiwicm9sZXMuZWRpdCIsInJvbGVzLmRlbGV0ZSIsImFzc2lnbl9yb2xlcyIsImdyYW50X3Blcm1pc3Npb25zIiwiZW1wbG95ZWVzLnZpZXciLCJlbXBsb3llZXMuY3JlYXRlIiwiZW1wbG95ZWVzLmVkaXQiLCJlbXBsb3llZXMuZGVsZXRlIiwiYnVzZXMudmlldyIsImJ1c2VzLmNyZWF0ZSIsImJ1c2VzLmVkaXQiLCJidXNlcy5kZWxldGUiLCJyb3V0ZXMudmlldyIsInJvdXRlcy5jcmVhdGUiLCJyb3V0ZXMuZWRpdCIsInJvdXRlcy5kZWxldGUiLCJ0aWNrZXRzLnZpZXciLCJ0aWNrZXRzLmNyZWF0ZSIsInRpY2tldHMuZWRpdCIsInRpY2tldHMuZGVsZXRlIiwic2FsZXMudmlldyIsInNhbGVzLmNyZWF0ZSIsInNhbGVzLmVkaXQiLCJzYWxlcy5kZWxldGUiLCJ0aWNrZXRzLmJ1eSIsInRpY2tldHMucmVzZXJ2ZSIsIm1haW50ZW5hbmNlLnZpZXciLCJtYWludGVuYW5jZS5jcmVhdGUiLCJtYWludGVuYW5jZS5lZGl0IiwibWFpbnRlbmFuY2UuZGVsZXRlIiwicmVwb3J0cy52aWV3IiwicmVwb3J0cy5jcmVhdGUiLCJyZXBvcnRzLmV4cG9ydCIsIm9wZW5pZC5jb25uZWN0LnZpZXciLCJvcGVuaWQuY29ubmVjdC5jcmVhdGUiLCJvcGVuaWQuY29ubmVjdC5lZGl0Iiwib3BlbmlkLmNvbm5lY3QuZGVsZXRlIiwib3BlbmlkLmNvbm5lY3QuZ3JhbnQiLCJvcGVuaWQuY29ubmVjdC5yZXZva2UiLCJvcGVuaWQuY29ubmVjdC5saXN0Iiwib3BlbmlkLmNvbm5lY3QucmVmcmVzaCIsIm1hZ2ljbGluay52aWV3IiwibWFnaWNsaW5rLmNyZWF0ZSIsIm1hZ2ljbGluay5lZGl0IiwibWFnaWNsaW5rLmRlbGV0ZSIsIm1hZ2ljbGluay5ncmFudCIsIm1hZ2ljbGluay5yZXZva2UiLCJtYWdpY2xpbmsubGlzdCIsIm1hZ2ljbGluay5yZWZyZXNoIl0sInByaW1hcnlfcm9sZSI6IjEiLCJuYmYiOjE3NDQyMTExNDAsImV4cCI6MTc0NDIxODM0MCwiaWF0IjoxNzQ0MjExMTQwfQ.wi613kQpxcr0uvn3CbQXMfYYLTUToW6vFESS-I-6fC4 - null null
+2025-04-09 19:22:38.419 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.RegisterPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:22:38.436 +03:00 [INF] Route matched with {action = "RegisterPage", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] RegisterPage(System.String, System.String, System.Nullable`1[System.Int32]) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 19:22:38.491 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.RegisterPage (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-09 19:22:38.532 +03:00 [INF] Token claims during admin check: Primary Role = 1, Roles = Administrator, 1
+2025-04-09 19:22:38.534 +03:00 [INF] Admin access verified for registration page
+2025-04-09 19:22:38.537 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.RegisterPage (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.ContentResult in 42.8971ms.
+2025-04-09 19:22:38.547 +03:00 [INF] Executing ContentResult with HTTP Response ContentType of text/html
+2025-04-09 19:22:38.565 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.RegisterPage (BRU-AVTOPARK-AspireAPI.ApiService) in 117.1656ms
+2025-04-09 19:22:38.567 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.RegisterPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:22:38.574 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/api/auth/register?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6ImFkbWluIiwic3ViIjoiMSIsImlkZW50aXR5IjoiQzIwMEE2MTJDNTJENjk4N0IxMERFQzcwOTFGRDQwMzREQzE3MDc2QzI4Q0Q5QTcyRTc4RTEwRUY1MkRBRDE2NyIsInh1aWQiOiIiLCJyb2xlIjpbIkFkbWluaXN0cmF0b3IiLCIxIl0sInBlcm1pc3Npb24iOlsidXNlcnMudmlldyIsInVzZXJzLmNyZWF0ZSIsInVzZXJzLmVkaXQiLCJ1c2Vycy5kZWxldGUiLCJyb2xlcy52aWV3Iiwicm9sZXMuY3JlYXRlIiwicm9sZXMuZWRpdCIsInJvbGVzLmRlbGV0ZSIsImFzc2lnbl9yb2xlcyIsImdyYW50X3Blcm1pc3Npb25zIiwiZW1wbG95ZWVzLnZpZXciLCJlbXBsb3llZXMuY3JlYXRlIiwiZW1wbG95ZWVzLmVkaXQiLCJlbXBsb3llZXMuZGVsZXRlIiwiYnVzZXMudmlldyIsImJ1c2VzLmNyZWF0ZSIsImJ1c2VzLmVkaXQiLCJidXNlcy5kZWxldGUiLCJyb3V0ZXMudmlldyIsInJvdXRlcy5jcmVhdGUiLCJyb3V0ZXMuZWRpdCIsInJvdXRlcy5kZWxldGUiLCJ0aWNrZXRzLnZpZXciLCJ0aWNrZXRzLmNyZWF0ZSIsInRpY2tldHMuZWRpdCIsInRpY2tldHMuZGVsZXRlIiwic2FsZXMudmlldyIsInNhbGVzLmNyZWF0ZSIsInNhbGVzLmVkaXQiLCJzYWxlcy5kZWxldGUiLCJ0aWNrZXRzLmJ1eSIsInRpY2tldHMucmVzZXJ2ZSIsIm1haW50ZW5hbmNlLnZpZXciLCJtYWludGVuYW5jZS5jcmVhdGUiLCJtYWludGVuYW5jZS5lZGl0IiwibWFpbnRlbmFuY2UuZGVsZXRlIiwicmVwb3J0cy52aWV3IiwicmVwb3J0cy5jcmVhdGUiLCJyZXBvcnRzLmV4cG9ydCIsIm9wZW5pZC5jb25uZWN0LnZpZXciLCJvcGVuaWQuY29ubmVjdC5jcmVhdGUiLCJvcGVuaWQuY29ubmVjdC5lZGl0Iiwib3BlbmlkLmNvbm5lY3QuZGVsZXRlIiwib3BlbmlkLmNvbm5lY3QuZ3JhbnQiLCJvcGVuaWQuY29ubmVjdC5yZXZva2UiLCJvcGVuaWQuY29ubmVjdC5saXN0Iiwib3BlbmlkLmNvbm5lY3QucmVmcmVzaCIsIm1hZ2ljbGluay52aWV3IiwibWFnaWNsaW5rLmNyZWF0ZSIsIm1hZ2ljbGluay5lZGl0IiwibWFnaWNsaW5rLmRlbGV0ZSIsIm1hZ2ljbGluay5ncmFudCIsIm1hZ2ljbGluay5yZXZva2UiLCJtYWdpY2xpbmsubGlzdCIsIm1hZ2ljbGluay5yZWZyZXNoIl0sInByaW1hcnlfcm9sZSI6IjEiLCJuYmYiOjE3NDQyMTExNDAsImV4cCI6MTc0NDIxODM0MCwiaWF0IjoxNzQ0MjExMTQwfQ.wi613kQpxcr0uvn3CbQXMfYYLTUToW6vFESS-I-6fC4 - 200 null text/html 338.517ms
+2025-04-09 19:22:38.822 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-09 19:22:38.822 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_vs/browserLink - null null
+2025-04-09 19:22:38.835 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 13.1794ms
+2025-04-09 19:22:38.890 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 68.5841ms
+2025-04-09 19:22:41.319 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/ - null null
+2025-04-09 19:22:41.376 +03:00 [INF] Executing endpoint 'HTTP: GET /'
+2025-04-09 19:22:41.390 +03:00 [INF] Write content with HTTP Response ContentType of text/html
+2025-04-09 19:22:41.395 +03:00 [INF] Executed endpoint 'HTTP: GET /'
+2025-04-09 19:22:41.399 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/ - 200 null text/html 79.8362ms
+2025-04-09 19:22:41.415 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_vs/browserLink - null null
+2025-04-09 19:22:41.417 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-09 19:22:41.421 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 3.7935ms
+2025-04-09 19:22:41.425 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 9.2877ms
+2025-04-09 19:22:47.331 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/api/Auth/login/ - null null
+2025-04-09 19:22:47.414 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.LoginPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:22:47.419 +03:00 [INF] Route matched with {action = "LoginPage", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult LoginPage(System.String, System.String) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 19:22:47.519 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.LoginPage (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-09 19:22:47.521 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.LoginPage (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.ContentResult in 0.6911ms.
+2025-04-09 19:22:47.522 +03:00 [INF] Executing ContentResult with HTTP Response ContentType of text/html
+2025-04-09 19:22:47.526 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.LoginPage (BRU-AVTOPARK-AspireAPI.ApiService) in 100.3614ms
+2025-04-09 19:22:47.528 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.LoginPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:22:47.534 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/api/Auth/login/ - 200 null text/html 203.2479ms
+2025-04-09 19:22:47.552 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_vs/browserLink - null null
+2025-04-09 19:22:47.554 +03:00 [INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-09 19:22:47.557 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 3.1212ms
+2025-04-09 19:22:47.560 +03:00 [INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 8.1185ms
+2025-04-09 19:23:00.251 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-09 19:23:32.456 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-09 19:23:32.488 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 32.1152ms
+2025-04-09 19:23:32.554 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-09 19:23:32.621 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 67.4685ms
+2025-04-09 19:23:45.548 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/Login - application/json; charset=utf-8 null
+2025-04-09 19:23:45.584 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:23:45.590 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(System.Object, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 19:23:45.686 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-09 19:23:45.698 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 97.1014ms
+2025-04-09 19:23:45.700 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:23:45.703 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/Login - 400 null application/problem+json; charset=utf-8 156.1238ms
+2025-04-09 19:32:28.391 +03:00 [INF] SpacetimeDBService initialized
+2025-04-09 19:32:28.408 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-09 19:32:28.455 +03:00 [INF] Database connection built successfully
+2025-04-09 19:32:28.516 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-09 19:32:28.731 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-09 19:32:28.867 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-09 19:32:28.893 +03:00 [INF] Now listening on: http://0.0.0.0:54298
+2025-04-09 19:32:28.895 +03:00 [INF] Now listening on: https://0.0.0.0:54297
+2025-04-09 19:32:28.953 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-09 19:32:28.955 +03:00 [INF] Hosting environment: Development
+2025-04-09 19:32:28.956 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-09 19:32:30.839 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-09 19:32:51.773 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-09 19:33:03.441 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/Login - application/json; charset=utf-8 null
+2025-04-09 19:33:03.623 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:33:03.649 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(System.Object, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 19:33:03.749 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-09 19:33:03.775 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 115.4282ms
+2025-04-09 19:33:03.784 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:33:03.788 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/Login - 400 null application/problem+json; charset=utf-8 356.4774ms
+2025-04-09 19:33:42.585 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-09 19:33:42.615 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 30.0443ms
+2025-04-09 19:33:42.645 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-09 19:33:42.693 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 48.1727ms
+2025-04-09 19:33:54.130 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/Login - application/json; charset=utf-8 null
+2025-04-09 19:33:54.193 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:33:54.195 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(System.Object, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 19:33:54.259 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-09 19:33:54.284 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 76.118ms
+2025-04-09 19:33:54.286 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 19:33:54.289 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/Login - 400 null application/problem+json; charset=utf-8 159.1506ms
+2025-04-09 20:21:34.550 +03:00 [INF] SpacetimeDBService initialized
+2025-04-09 20:21:34.567 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-09 20:21:34.614 +03:00 [INF] Database connection built successfully
+2025-04-09 20:21:34.672 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-09 20:21:34.955 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-09 20:21:35.112 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-09 20:21:35.130 +03:00 [INF] Now listening on: http://0.0.0.0:56828
+2025-04-09 20:21:35.132 +03:00 [INF] Now listening on: https://0.0.0.0:56829
+2025-04-09 20:21:35.215 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-09 20:21:35.241 +03:00 [INF] Hosting environment: Development
+2025-04-09 20:21:35.243 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-09 20:21:37.408 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-09 20:22:02.482 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-09 20:22:27.605 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-09 20:22:27.824 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 247.7571ms
+2025-04-09 20:22:27.903 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-09 20:22:28.033 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 130.7944ms
+2025-04-09 20:22:41.354 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/Login - application/json; charset=utf-8 null
+2025-04-09 20:22:41.392 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 20:22:41.412 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(System.Text.Json.JsonDocument, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-09 20:22:41.506 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-09 20:22:41.524 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 101.0036ms
+2025-04-09 20:22:41.526 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-09 20:22:41.528 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/Login - 400 null application/problem+json; charset=utf-8 174.0374ms

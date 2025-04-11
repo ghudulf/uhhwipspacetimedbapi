@@ -533,11 +533,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             margin: 0 auto;
             padding: 1.5rem;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }}
 
         /* Yandex ID specific styles */
         .profile-content-wrapper {{
             display: flex;
+            width: 100%;
             min-height: calc(100vh - 64px);
         }}
 
@@ -552,16 +556,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             padding: 24px;
             margin-bottom: 6px;
             border-radius: var(--id-card-border-radius);
+            width: 100%;
         }}
 
         .Section_inner__N7MeR {{
             max-width: 520px;
+            margin: 0 auto;
         }}
 
         .Heading_root__P0ine {{
             margin-bottom: 16px;
         }}
-
         .Text_root__J8eOj {{
             display: block;
         }}
@@ -587,7 +592,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }}
 
         .Text_root__J8eOj[data-color=""tertiary""] {{
-            color: #999;
+            color: var(--text-muted-secondary, rgba(60, 60, 60, 0.7));
+        }}
+
+        [data-theme=""dark""] .Text_root__J8eOj[data-color=""tertiary""] {{
+            color: var(--text-muted-secondary, rgba(200, 200, 200, 0.7));
         }}
 
         .UnstyledListItem_root__xsw4w {{
@@ -1004,19 +1013,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         </div>
                         
                         <h2 style=""text-align: center; margin-bottom: 1.5rem; color: white;"">Войдите с BRU ID</h2>
+            
+            {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
+            {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
                         
-                        {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
-                        {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
-                        
-                        <form method=""POST"" action=""/api/auth/login"" id=""loginForm"">
-                            <div class=""form-group"">
-                                <label for=""username"">Username</label>
+            <form method=""POST"" action=""/api/auth/login"" id=""loginForm"">
+                <div class=""form-group"">
+                    <label for=""username"">Username</label>
                                 <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"">
-                            </div>
-                            <div class=""form-group"">
-                                <label for=""password"">Password</label>
+                </div>
+                <div class=""form-group"">
+                    <label for=""password"">Password</label>
                                 <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
-                            </div>
+                </div>
                             <button type=""button"" onclick=""submitLoginForm()"" id=""loginButton"">Log in</button>
                             
                             <div class=""secondary-option"" style=""margin-top: 1rem;"" onclick=""window.location.href='/api/auth/webauthn/login'"">
@@ -1036,9 +1045,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 </svg>
                                 <span>Login with QR Code</span>
                             </div>
-                        </form>
+            </form>
                         
-                        <div id=""statusDiv"" class=""mt-3""></div>
+            <div id=""statusDiv"" class=""mt-3""></div>
                         
                         <div class=""divider"">
                             <span>or</span>
@@ -1067,6 +1076,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         <a href=""/api/auth/register"" class=""link"" style=""color: white; margin: 0 0.5rem;"">Create account</a>
                         <span style=""color: #555;"">|</span>
                         <a href=""/api/auth/magic-link"" class=""link"" style=""color: white; margin: 0 0.5rem;"">Magic Link</a>
+                        <span style=""color: #555;"">|</span>
+                        <a href=""/api/auth/claim-account"" class=""link"" style=""color: white; margin: 0 0.5rem;"">Claim Account</a>
                     </div>
                     <div style=""margin-top: 1rem; color: #555;"">
                         BRU ID — ключ от всех сервисов
@@ -1146,26 +1157,26 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         <h1>Two-Factor Authentication Setup</h1>
                     </div>
                     <div class=""card-body"">
-                        <div class=""info-box"">
-                            <p>Set up two-factor authentication to increase your account security. Scan the QR code with your authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
-                        </div>
-                        <div class=""qr-code"">
-                            <img src=""{qrCodeUri}"" alt=""TOTP QR Code"">
-                        </div>
-                        <div class=""text-center my-4"">
-                            <p>Can't scan the QR code? Manually enter this code in your app:</p>
-                            <div class=""code-display text-center"">{secretKey}</div>
-                        </div>
-                        <form method=""POST"" action=""/api/auth/totp/verify"">
-                            <div class=""form-group"">
-                                <label for=""code"">Enter the 6-digit code from your app</label>
-                                <input type=""text"" id=""code"" name=""code"" required pattern=""[0-9]{{6}}"" placeholder=""Enter 6-digit code"" autocomplete=""one-time-code"">
-                            </div>
-                            <input type=""hidden"" name=""secretKey"" value=""{secretKey}"">
-                            <button type=""submit"" class=""btn btn-block"">Verify and Enable</button>
-                        </form>
-                        <div class=""text-center mt-4"">
-                            <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
+            <div class=""info-box"">
+                <p>Set up two-factor authentication to increase your account security. Scan the QR code with your authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
+            </div>
+            <div class=""qr-code"">
+                <img src=""{qrCodeUri}"" alt=""TOTP QR Code"">
+            </div>
+            <div class=""text-center my-4"">
+                <p>Can't scan the QR code? Manually enter this code in your app:</p>
+                <div class=""code-display text-center"">{secretKey}</div>
+            </div>
+            <form method=""POST"" action=""/api/auth/totp/verify"">
+                <div class=""form-group"">
+                    <label for=""code"">Enter the 6-digit code from your app</label>
+                    <input type=""text"" id=""code"" name=""code"" required pattern=""[0-9]{{6}}"" placeholder=""Enter 6-digit code"" autocomplete=""one-time-code"">
+                </div>
+                <input type=""hidden"" name=""secretKey"" value=""{secretKey}"">
+                <button type=""submit"" class=""btn btn-block"">Verify and Enable</button>
+            </form>
+            <div class=""text-center mt-4"">
+                <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
                         </div>
                     </div>
                 </div>
@@ -1179,82 +1190,82 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         <h1>Register Security Key</h1>
                     </div>
                     <div class=""card-body"">
-                        <div class=""info-box"">
-                            <p>Register your security key or biometric authentication (fingerprint, face ID) for passwordless login.</p>
-                        </div>
-                        <div id=""options"" data-options=""{options}"" class=""hidden""></div>
-                        <div class=""flex flex-col items-center gap-4 my-4"">
-                            <div id=""status"" class=""text-center"">
-                                <p>Click the button below to register your security key.</p>
-                            </div>
-                            <button onclick=""registerWebAuthn()"" id=""registerButton"" class=""btn"">Register Security Key</button>
-                            <div id=""loader"" class=""loader hidden""></div>
-                        </div>
-                        <div class=""text-center mt-4"">
-                            <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
-                        </div>
-                        <script>
-                            async function registerWebAuthn() {{
-                                try {{
-                                    document.getElementById('registerButton').disabled = true;
-                                    document.getElementById('loader').classList.remove('hidden');
-                                    document.getElementById('status').innerHTML = '<p>Please follow your browser\'s instructions to register your security key...</p>';
-                                    
-                                    const options = JSON.parse(document.getElementById('options').dataset.options);
-                                    const credential = await navigator.credentials.create({{
-                                        publicKey: options.publicKey
-                                    }});
-                                    
-                                    // Prepare the credential response for the server
-                                    const credentialResponse = {{
-                                        id: credential.id,
-                                        rawId: arrayBufferToBase64(credential.rawId),
-                                        type: credential.type,
-                                        response: {{
-                                            attestationObject: arrayBufferToBase64(credential.response.attestationObject),
-                                            clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON)
-                                        }}
-                                    }};
-                                    
-                                    // Send the credential to the server
-                                    const response = await fetch('/api/auth/webauthn/register/complete', {{
-                                        method: 'POST',
-                                        headers: {{ 'Content-Type': 'application/json' }},
-                                        body: JSON.stringify({{ attestationResponse: credentialResponse }})
-                                    }});
-                                    
-                                    if (response.ok) {{
-                                        document.getElementById('status').innerHTML = '<p class=""success-message"">Security key registered successfully!</p>';
-                                        setTimeout(() => {{
-                                            window.location.href = '/api/auth/profile';
-                                        }}, 1500);
-                                    }} else {{
-                                        const error = await response.json();
-                                        throw new Error(error.message || 'Registration failed');
-                                    }}
-                                }} catch (error) {{
-                                    console.error('WebAuthn registration failed:', error);
-                                    document.getElementById('status').innerHTML = `<p class=""error-message"">Failed to register security key: ${{error.message || error}}</p>`;
-                                }} finally {{
-                                    document.getElementById('registerButton').disabled = false;
-                                    document.getElementById('loader').classList.add('hidden');
-                                }}
+            <div class=""info-box"">
+                <p>Register your security key or biometric authentication (fingerprint, face ID) for passwordless login.</p>
+            </div>
+            <div id=""options"" data-options=""{options}"" class=""hidden""></div>
+            <div class=""flex flex-col items-center gap-4 my-4"">
+                <div id=""status"" class=""text-center"">
+                    <p>Click the button below to register your security key.</p>
+                </div>
+                <button onclick=""registerWebAuthn()"" id=""registerButton"" class=""btn"">Register Security Key</button>
+                <div id=""loader"" class=""loader hidden""></div>
+            </div>
+            <div class=""text-center mt-4"">
+                <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
+            </div>
+            <script>
+                async function registerWebAuthn() {{
+                    try {{
+                        document.getElementById('registerButton').disabled = true;
+                        document.getElementById('loader').classList.remove('hidden');
+                        document.getElementById('status').innerHTML = '<p>Please follow your browser\'s instructions to register your security key...</p>';
+                        
+                        const options = JSON.parse(document.getElementById('options').dataset.options);
+                        const credential = await navigator.credentials.create({{
+                            publicKey: options.publicKey
+                        }});
+                        
+                        // Prepare the credential response for the server
+                        const credentialResponse = {{
+                            id: credential.id,
+                            rawId: arrayBufferToBase64(credential.rawId),
+                            type: credential.type,
+                            response: {{
+                                attestationObject: arrayBufferToBase64(credential.response.attestationObject),
+                                clientDataJSON: arrayBufferToBase64(credential.response.clientDataJSON)
                             }}
-                            
-                            // Helper function to convert ArrayBuffer to Base64 string
-                            function arrayBufferToBase64(buffer) {{
-                                const bytes = new Uint8Array(buffer);
-                                let binary = '';
-                                for (let i = 0; i < bytes.byteLength; i++) {{
-                                    binary += String.fromCharCode(bytes[i]);
-                                }}
-                                return btoa(binary);
-                            }}
-                        </script>
-                        <style>
-                            .hidden {{
-                                display: none;
-                            }}
+                        }};
+                        
+                        // Send the credential to the server
+                        const response = await fetch('/api/auth/webauthn/register/complete', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ attestationResponse: credentialResponse }})
+                        }});
+                        
+                        if (response.ok) {{
+                            document.getElementById('status').innerHTML = '<p class=""success-message"">Security key registered successfully!</p>';
+                            setTimeout(() => {{
+                                window.location.href = '/api/auth/profile';
+                            }}, 1500);
+                        }} else {{
+                            const error = await response.json();
+                            throw new Error(error.message || 'Registration failed');
+                        }}
+                    }} catch (error) {{
+                        console.error('WebAuthn registration failed:', error);
+                        document.getElementById('status').innerHTML = `<p class=""error-message"">Failed to register security key: ${{error.message || error}}</p>`;
+                    }} finally {{
+                        document.getElementById('registerButton').disabled = false;
+                        document.getElementById('loader').classList.add('hidden');
+                    }}
+                }}
+                
+                // Helper function to convert ArrayBuffer to Base64 string
+                function arrayBufferToBase64(buffer) {{
+                    const bytes = new Uint8Array(buffer);
+                    let binary = '';
+                    for (let i = 0; i < bytes.byteLength; i++) {{
+                        binary += String.fromCharCode(bytes[i]);
+                    }}
+                    return btoa(binary);
+                }}
+            </script>
+            <style>
+                .hidden {{
+                    display: none;
+                }}
                         </style>
                     </div>
                 </div>
@@ -1274,20 +1285,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         
                         <h2 style=""text-align: center; margin-bottom: 1.5rem; color: white;"">Login with Magic Link</h2>
                         
-                        {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
-                        {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
+            {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
+            {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
                         
                         <div class=""info-box"" style=""background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;"">
                             <p>Enter your email address to receive a secure login link. No password required!</p>
                         </div>
                         
-                        <form method=""POST"" action=""/api/auth/magic-link/send"">
-                            <div class=""form-group"">
-                                <label for=""email"">Email Address</label>
+            <form method=""POST"" action=""/api/auth/magic-link/send"">
+                <div class=""form-group"">
+                    <label for=""email"">Email Address</label>
                                 <input type=""email"" id=""email"" name=""email"" required placeholder=""Enter your email address"">
-                            </div>
-                            <button type=""submit"">Send Magic Link</button>
-                        </form>
+                </div>
+                <button type=""submit"">Send Magic Link</button>
+            </form>
                         
                         <div class=""divider"">
                             <span>or</span>
@@ -1319,17 +1330,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         <h2 style=""text-align: center; margin-bottom: 1.5rem; color: white;"">Login with QR Code</h2>
                         
                         <div class=""info-box"" style=""background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;"">
-                            <p>Scan this QR code with your mobile device to log in instantly without entering your password.</p>
-                        </div>
+                <p>Scan this QR code with your mobile device to log in instantly without entering your password.</p>
+            </div>
                         
                         <div class=""qr-code qr-login-container"">
-                            <img src=""data:image/png;base64,{qrCode}"" alt=""Login QR Code"">
-                        </div>
+                <img src=""data:image/png;base64,{qrCode}"" alt=""Login QR Code"">
+            </div>
                         
                         <div id=""status"" class=""text-center my-4"" style=""color: #b3b3b3;"">
-                            <p>Waiting for you to scan the QR code...</p>
+                <p>Waiting for you to scan the QR code...</p>
                             <div class=""loader"" style=""margin-top: 1rem;""></div>
-                        </div>
+            </div>
                         
                         <div class=""secondary-option"" onclick=""window.location.href='/api/auth/login'"">
                             <svg width=""20"" height=""20"" viewBox=""0 0 20 20"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"">
@@ -1337,38 +1348,38 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 <path d=""M17.1432 18.0357C17.1432 14.9167 13.9384 12.3809 10.0003 12.3809C6.06211 12.3809 2.85742 14.9167 2.85742 18.0357"" stroke=""white"" stroke-width=""1.5"" stroke-linecap=""round"" stroke-linejoin=""round""/>
                             </svg>
                             <span>Back to Login</span>
-                        </div>
+            </div>
                     </div>
                 </div>
 
-                <script>
-                    function checkLoginStatus(deviceId) {{
-                        fetch(`/api/auth/qr/direct/check?deviceId=${{deviceId}}`)
-                            .then(response => response.json())
-                            .then(data => {{
-                                if (data.success && data.data && data.data.token) {{
-                                    document.getElementById('status').innerHTML = '<p class=""success-message"">Login successful! Redirecting...</p>';
-                                    // Store token in localStorage
-                                    localStorage.setItem('auth_token', data.data.token);
-                                    setTimeout(() => {{
-                                        window.location.href = `/api/auth/success?token=${{data.data.token}}`;
-                                    }}, 1000);
-                                }} else {{
-                                    setTimeout(() => checkLoginStatus(deviceId), 2000);
-                                }}
-                            }})
-                            .catch(error => {{
-                                console.error('Error checking login status:', error);
-                                document.getElementById('status').innerHTML = `<p class=""error-message"">Error checking login status: ${{error.message || 'Unknown error'}}</p>`;
-                                setTimeout(() => checkLoginStatus(deviceId), 5000);
-                            }});
-                    }}
-                    
-                    // Start polling when page loads
-                    const deviceId = new URLSearchParams(window.location.search).get('deviceId');
-                    if (deviceId) {{
-                        checkLoginStatus(deviceId);
-                    }}
+            <script>
+                function checkLoginStatus(deviceId) {{
+                    fetch(`/api/auth/qr/direct/check?deviceId=${{deviceId}}`)
+                        .then(response => response.json())
+                        .then(data => {{
+                            if (data.success && data.data && data.data.token) {{
+                                document.getElementById('status').innerHTML = '<p class=""success-message"">Login successful! Redirecting...</p>';
+                                // Store token in localStorage
+                                localStorage.setItem('auth_token', data.data.token);
+                                setTimeout(() => {{
+                                    window.location.href = `/api/auth/success?token=${{data.data.token}}`;
+                                }}, 1000);
+                            }} else {{
+                                setTimeout(() => checkLoginStatus(deviceId), 2000);
+                            }}
+                        }})
+                        .catch(error => {{
+                            console.error('Error checking login status:', error);
+                            document.getElementById('status').innerHTML = `<p class=""error-message"">Error checking login status: ${{error.message || 'Unknown error'}}</p>`;
+                            setTimeout(() => checkLoginStatus(deviceId), 5000);
+                        }});
+                }}
+                
+                // Start polling when page loads
+                const deviceId = new URLSearchParams(window.location.search).get('deviceId');
+                if (deviceId) {{
+                    checkLoginStatus(deviceId);
+                }}
                 </script>
             </div>
         ", "auth-page-body");
@@ -1455,7 +1466,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             return Ok(new { message = "Use POST method to login" });
         }
 
-        [HttpPost("login")]
+         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromForm] LoginRequest request)
         {
@@ -1738,35 +1749,45 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous] // Allow anonymous and check manually
         public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest request)
         {
+            _logger.LogInformation("Starting registration process for user: {Username}", request.Username);
+            
             try
             {
                 _logger.LogInformation("Registration attempt for user: {Username}", request.Username);
 
                 // Check admin status manually using JWT token
+                _logger.LogInformation("Checking admin status from JWT token");
                 bool isAdmin = false;
                 string? token = null;
 
                 // Check Authorization header
+                _logger.LogInformation("Checking Authorization header");
                 if (Request.Headers.Authorization.Count > 0)
                 {
                     var authHeader = Request.Headers.Authorization.ToString();
+                    _logger.LogDebug("Authorization header found: {AuthHeader}", authHeader);
                     if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                     {
                         token = authHeader.Substring("Bearer ".Length).Trim();
+                        _logger.LogDebug("Bearer token extracted");
                     }
                 }
 
                 if (!string.IsNullOrEmpty(token))
                 {
+                    _logger.LogInformation("Validating JWT token");
                     try
                     {
                         var handler = new JwtSecurityTokenHandler();
                         var jwtToken = handler.ReadJwtToken(token);
+                        _logger.LogDebug("JWT token successfully parsed");
 
                         // Check for admin role in claims
+                        _logger.LogInformation("Checking for admin role in token claims");
                         var primaryRoleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
                         isAdmin = primaryRoleClaim?.Value == "1" || 
                                 jwtToken.Claims.Any(c => c.Type == "role" && c.Value == "1");
+                        _logger.LogInformation("Admin status determined: {IsAdmin}", isAdmin);
                     }
                     catch (Exception ex)
                     {
@@ -1786,9 +1807,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Check if user already exists
+                _logger.LogInformation("Checking if user already exists: {Username}", request.Username);
                 var existingUser = await _userService.GetUserByLoginAsync(request.Username);
                 if (existingUser != null)
                 {
+                    _logger.LogWarning("Username already exists: {Username}", request.Username);
                     return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
@@ -1797,8 +1820,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Check if role is valid - only admins can create admins
+                _logger.LogInformation("Validating role assignment: {RequestedRole}", request.Role);
                 if (request.Role == 1 && !isAdmin)
                 {
+                    _logger.LogWarning("Non-admin user attempted to create admin account");
                     return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
@@ -1806,47 +1831,119 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     });
                 }
 
-                // Register user - pass the identity from the token to ensure proper authorization
-                string? identityFromToken = null;
+                // Extract the identity of the LOGGED IN user (not the one being registered)
+                _logger.LogInformation("Extracting logged-in user identity from token");
+                Identity? userIdentity = null;
                 if (!string.IsNullOrEmpty(token))
                 {
-                    var handler = new JwtSecurityTokenHandler();
-                    var jwtToken = handler.ReadJwtToken(token);
-                    identityFromToken = jwtToken.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
+                    try
+                    {
+                        var handler = new JwtSecurityTokenHandler();
+                        var jwtToken = handler.ReadJwtToken(token);
+                        _logger.LogDebug("JWT token parsed successfully");
+                        
+                        // Get the currently logged-in user's login from JWT token claims
+                        _logger.LogInformation("Extracting logged-in user's login from token claims");
+                        var loggedInUserLogin = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                        _logger.LogDebug("Found unique_name claim with value: {Login}", loggedInUserLogin);
+                        
+                        if (string.IsNullOrEmpty(loggedInUserLogin))
+                        {
+                            // Fallback to standard name claim if unique_name not found
+                            _logger.LogInformation("unique_name claim not found, trying ClaimTypes.Name");
+                            loggedInUserLogin = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                            _logger.LogDebug("Found Name claim with value: {Login}", loggedInUserLogin);
+                        }
+                        
+                        if (!string.IsNullOrEmpty(loggedInUserLogin))
+                        {
+                            // Get identity of the logged-in user using their login
+                            _logger.LogInformation("Retrieving identity for logged-in user: {Login}", loggedInUserLogin);
+                            
+                            // Get the connection
+                            var conn = _spacetimeService.GetConnection();
+                            _logger.LogDebug("Retrieved SpacetimeDB connection");
+                            
+                            // Find user by login
+                            var userProfile = conn.Db.UserProfile.Iter()
+                                .FirstOrDefault(u => u.Login == loggedInUserLogin && u.IsActive);
+                            
+                            if (userProfile != null)
+                            {
+                                userIdentity = userProfile.UserId;
+                                _logger.LogInformation("Successfully retrieved identity for logged-in user: {Login}", loggedInUserLogin);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Could not find user profile for logged-in user: {Login}", loggedInUserLogin);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Could not extract logged-in user's login from any token claims");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error extracting logged-in user identity from JWT token");
+                    }
                 }
+                
 
+                var identity = await GenerateIdentityAsync();
+                if (identity == null)
+                {
+                    _logger.LogWarning("Failed to generate identity");
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Failed to generate user identity"
+                    });
+                }
+                string NewUserIdentity = identity;
+                _logger.LogInformation("Successfully generated new user identity: {Identity}", NewUserIdentity);
+
+                _logger.LogInformation("Attempting to register new user: {Username}", request.Username);
                 try
                 {
                     // Register user
+                    _logger.LogInformation("Calling authentication service to register user");
                     var success = await _authService.RegisterAsync(
                         request.Username,
                         request.Password,
                         request.Role,
                         request.Email,
-                        request.PhoneNumber
+                        request.PhoneNumber,
+                        userIdentity,
+                        NewUserIdentity
                     );
 
                     if (!success)
                     {
+                        _logger.LogWarning("User registration failed through auth service");
                         return BadRequest(new ApiResponse<object>
                         {
                             Success = false,
                             Message = "Failed to register user"
                         });
                     }
+                    _logger.LogInformation("User registration successful through auth service");
                 }
                 catch (Exception ex)
                 {
                     // Check if the error is from SpacetimeDB role assignment
+                    _logger.LogError(ex, "Exception during user registration");
                     if (ex.Message?.Contains("Unauthorized") == true || 
                         ex.InnerException?.Message?.Contains("Unauthorized") == true)
                     {
                         _logger.LogWarning("Role assignment failed due to authorization: {Error}", ex.Message);
                         
                         // Check if the user was actually created despite the role error
+                        _logger.LogInformation("Checking if user was created despite role error");
                         var newUser = await _userService.GetUserByLoginAsync(request.Username);
                         if (newUser != null)
                         {
+                            _logger.LogInformation("User created with default role: {Username}", request.Username);
                             return Ok(new ApiResponse<RegisterResponse>
                             {
                                 Success = true,
@@ -1865,6 +1962,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             });
                         }
                         
+                        _logger.LogWarning("User creation failed during role assignment");
                         return BadRequest(new ApiResponse<object>
                         {
                             Success = false,
@@ -1873,13 +1971,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }
                     
                     // For other errors, rethrow to be caught by outer catch
+                    _logger.LogError("Rethrowing exception for outer catch handler");
                     throw;
                 }
 
                 // Get the newly created user
+                _logger.LogInformation("Retrieving newly created user: {Username}", request.Username);
                 var newlyCreatedUser = await _userService.GetUserByLoginAsync(request.Username);
                 if (newlyCreatedUser == null)
                 {
+                    _logger.LogError("User was created but could not be retrieved: {Username}", request.Username);
                     return StatusCode(500, new ApiResponse<object>
                     {
                         Success = false,
@@ -2097,11 +2198,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     <path d=""M8 12L11 15L16 9"" stroke=""var(--success-color)"" stroke-width=""2""/>
                 </svg>
                 <span>You have been successfully logged in!</span>
-            </div>
-            <div class=""text-center mt-4"">
-                <a href=""/api/auth/profile"" class=""btn"">Go to Profile</a>
-            </div>
-            <script>
+        </div>
+                    <div class=""text-center mt-4"">
+                        <a href=""/api/auth/profile"" class=""btn"">Go to Profile</a>
+        </div>
+    <script>
                 // Store the token securely
                 const token = '{token.Replace("'", "\\'")}';
                 if (token && token !== 'null') {{
@@ -3669,6 +3770,121 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         #endregion
 
         #region Helper Methods
+
+        private async Task<string> GenerateIdentityAsync()
+        {
+            try
+            {
+                _logger.LogDebug("Creating new HttpClient instance with SSL disabled");
+                
+                // Create handler that explicitly disables SSL certificate validation
+                var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true,
+                    SslProtocols = System.Security.Authentication.SslProtocols.None,
+                    CheckCertificateRevocationList = false
+                };
+                
+                // Create client with the custom handler
+                using var client = new HttpClient(handler);
+                
+                // Generate JWT token for registration to authenticate with SpacetimeDB
+                var registrationJwt = GenerateJwtForRegistration();
+                _logger.LogDebug("Generated JWT for SpacetimeDB identity request: {Token}", registrationJwt);
+                
+                // Create request message with JWT authentication
+                var request = new HttpRequestMessage
+                {
+                    Method = HttpMethod.Post,
+                    RequestUri = new Uri("http://localhost:3000/v1/identity"),
+                    Headers = { { "Authorization", $"Bearer {registrationJwt}" } }
+                };
+                
+                // Explicitly set HTTP/1.1 to avoid HTTP/2 which might try to use SSL
+                request.Version = new System.Version(1, 1);
+                
+                _logger.LogInformation("Sending POST request to generate identity with HTTP/1.1 and JWT authentication");
+                var response = await client.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to generate identity, response status code: {StatusCode}", response.StatusCode);
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Error message from response: {ErrorMessage}", errorMessage);
+                    return errorMessage;
+                }
+
+                _logger.LogInformation("Successfully received response for identity generation");
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("Raw JSON response: {JsonResponse}", jsonResponse);
+                
+                try
+                {
+                    _logger.LogDebug("Attempting to deserialize JSON response");
+                    var identityResponse = JsonSerializer.Deserialize<IdentityResponse>(jsonResponse);
+
+                    if (identityResponse == null || string.IsNullOrEmpty(identityResponse.Identity))
+                    {
+                        _logger.LogError("Received null or empty identity from server");
+                        
+                        // Try alternative parsing if the structure doesn't match
+                        _logger.LogDebug("Attempting alternative JSON parsing");
+                        using var document = JsonDocument.Parse(jsonResponse);
+                        
+                        if (document.RootElement.TryGetProperty("identity", out var identityElement))
+                        {
+                            var identity = identityElement.GetString();
+                            _logger.LogInformation("Identity extracted using alternative parsing: {Identity}", identity);
+                            return identity;
+                        }
+                        
+                        return "Received invalid identity response";
+                    }
+
+                    _logger.LogInformation("Identity generated successfully: {Identity}", identityResponse.Identity);
+                    return identityResponse.Identity;
+                }
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError(jsonEx, "JSON deserialization failed. Raw response: {JsonResponse}", jsonResponse);
+                    
+                    // Try manual parsing as fallback
+                    try
+                    {
+                        using var document = JsonDocument.Parse(jsonResponse);
+                        foreach (var property in document.RootElement.EnumerateObject())
+                        {
+                            _logger.LogDebug("Found JSON property: {PropertyName} with value type: {ValueKind}", 
+                                property.Name, property.Value.ValueKind);
+                        }
+                        
+                        if (document.RootElement.TryGetProperty("identity", out var identityElement))
+                        {
+                            var identity = identityElement.GetString();
+                            _logger.LogInformation("Identity extracted using manual parsing: {Identity}", identity);
+                            return identity;
+                        }
+                    }
+                    catch (Exception parseEx)
+                    {
+                        _logger.LogError(parseEx, "Manual JSON parsing also failed");
+                    }
+                    
+                    return "Failed to parse identity response";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating identity");
+                return "An error occurred while generating identity";
+            }
+        }
+
+        private class IdentityResponse
+        {
+            public string Identity { get; set; }
+            public string Token { get; set; }
+        }
         
         private string GenerateJwtToken(UserProfile userProfile)
         {
@@ -3717,11 +3933,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             // Create claims
             var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, userProfile.Login),
+            {
+                new Claim("unique_name", userProfile.Login),
+                new Claim(ClaimTypes.Name, userProfile.Login), // Keep for backward compatibility
                 new Claim("sub", userProfile.LegacyUserId.ToString()),
                 new Claim("identity", userProfile.UserId.ToString()),
-                new Claim("xuid", userProfile.Xuid.ToString() ?? "0")
+                new Claim("xuid", userProfile.Xuid?.ToString() ?? "")
             };
             
             // Add role claims
@@ -3753,6 +3970,45 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+        private async Task<string> GenerateJwtForRegistration()
+        {
+            _logger.LogInformation("Generating temporary JWT for registration");
+            
+            // Create a temporary JWT token handler
+            var tokenHandler = new JwtSecurityTokenHandler();
+            
+            // Generate a secure key for signing
+            var keyBytes = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "DefaultSecureKeyForTemporaryRegistrationToken");
+            var key = new SymmetricSecurityKey(keyBytes);
+            
+            // Create minimal claims required for identity generation
+            var claims = new List<Claim>
+            {
+                // Required claims for SpacetimeDB identity generation
+                new Claim(JwtRegisteredClaimNames.Iss, "temporary-registration-issuer"),
+                new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
+                
+                // Additional claims that might be useful
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
+            };
+            
+            // Create token descriptor with short expiration time
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(5), // Short expiration for security
+                SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
+            };
+            
+            _logger.LogDebug("Creating temporary JWT token with minimal claims");
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+            
+            _logger.LogInformation("Temporary JWT token generated successfully");
+            return tokenString;
         }
 
         private Identity? GetUserIdentity()
@@ -3930,12 +4186,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                          <div class=""Slot_root__jYlNI Slot_direction_vertical__I3MEt Slot_content__XYDYF color-primary_root__olFUv alignment-center_root__ndulA"">
                              <span class=""Text_root__J8eOj"" data-variant=""text-m"">{System.Web.HttpUtility.HtmlEncode(title)}</span>
                              <span class=""Text_root__J8eOj"" data-variant=""text-s"" data-color=""secondary"">{System.Web.HttpUtility.HtmlEncode(description)}</span>
-                         </div>
+                </div>
                          <div class=""Slot_root__jYlNI Slot_direction_horizontal__aDFeG Slot_after____mkr color-primary_root__olFUv alignment-center_root__ndulA"">
                              {actionHtml} 
-                         </div>
-                     </div>
-                 </div>
+                    </div>
+                    </div>
+                    </div>
                  <hr style='border: none; height: 1px; background-color: var(--id-color-line-normal); margin: 0;'/>";
 
              // Helper function to render WebAuthn Key List Item
@@ -3946,16 +4202,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                              <span class=""Text_root__J8eOj"" data-variant=""text-m"">Ключ безопасности</span>
                              <span class=""Text_root__J8eOj"" data-variant=""text-s"" data-color=""secondary"">Добавлен: {c.CreatedAt:dd.MM.yyyy}</span>
                              <span class=""Text_root__J8eOj"" data-variant=""text-xs"" data-color=""tertiary"" style=""word-break: break-all;"">ID: {c.Id.Substring(0, Math.Min(12, c.Id.Length))}...</span> 
-                        </div>
+                </div>
                          <div class=""Slot_root__jYlNI Slot_direction_horizontal__aDFeG Slot_after____mkr color-primary_root__olFUv alignment-center_root__ndulA"">
                              <form method=""POST"" action=""/api/auth/webauthn/credentials/{System.Web.HttpUtility.UrlEncode(c.Id)}"" onsubmit=""return confirm('Удалить этот ключ безопасности?');"">
                                  <input type=""hidden"" name=""_method"" value=""DELETE"">
-                             
+            
                                  <button type=""submit"" class=""Button_root__rneDS text-button_root__doKoA size-s_root__CoSn6"" style=""color: var(--id-color-status-negative);"">Удалить</button>
                              </form>
-                        </div>
-                    </div>
-                 </div>
+                </div>
+                                    </div>
+                                    </div>
                  <hr style='border: none; height: 1px; background-color: var(--id-color-line-normal); margin: 0;'/>";
 
 
@@ -3971,8 +4227,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                      <div class=""user-avatar_root__CsKdB user-avatar_root_isBig__RozUb"" style=""--id-avatar-size: 96px;"" data-testid=""user-avatar"">
                                          
                                           <img data-testid=""avatar"" aria-hidden=""true"" class=""avatar_root__qDicj user-avatar_avatar__jSrtG"" src=""https://avatars.mds.yandex.net/get-yapic/0/0-0/islands-200"" alt=""Аватар пользователя"" style=""background-color: var(--id-color-default-bg-base);""/>
-                                     </div>
-                                 </div>
+                                </div>
+                            </div>
                                  
                                  <span class=""Text_root__J8eOj profile-card_title__zZCrX"" style=""font: var(--id-typography-heading-l); font-weight: 500;"" data-testid=""profile-card-menu-trigger"" data-color=""primary"">
                                      {System.Web.HttpUtility.HtmlEncode(user.Login)}
@@ -3986,8 +4242,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                          {(string.IsNullOrEmpty(user.PhoneNumber) && string.IsNullOrEmpty(user.Email) ? $@"<li class=""Text_root__J8eOj bulleted-list-item_root__1Y90C"" data-color=""secondary""><bdi>Контактные данные не указаны</bdi></li>" : "")}
                                      </ul>
                                  </span>
-                             </div>
-                         </div>
+                                    </div>
+                            </div>
                      </section>
 
                      
@@ -4012,10 +4268,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                  {(webAuthnCredentials.Count > 0 ? $@"
                                      <div style='padding: 0; margin-top: -8px;'> 
                                          {string.Join("", webAuthnCredentials.Select(RenderWebAuthnKeyItem))}
-                                     </div>
+                </div>
                                      " : "")}
-                               </div>
-                         </div>
+                        </div>
+                        </div>
                      </section>
 
                    
@@ -4031,9 +4287,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                                   $@"<span class=""Text_root__J8eOj"" data-variant=""text-s"" data-color=""secondary"">{string.Join(", ", roles.Select(r => System.Web.HttpUtility.HtmlEncode(r.Name)))}</span>"
                                                   : $@"<span class=""Text_root__J8eOj"" data-variant=""text-s"" data-color=""secondary"">Роли не назначены</span>"
                                               )}
-                                          </div>
-                                      </div>
-                                  </div>
+                                        </div>
+                                    </div>
+                            </div>
                                    <hr style='border: none; height: 1px; background-color: var(--id-color-line-normal); margin: 0;'/>
                                    <div class=""UnstyledListItem_root__xsw4w variant-default_root__vj_1h"" style=""padding: 12px 0;"">
                                       <div class=""UnstyledListItem_inner__Td3gb"">
@@ -4044,14 +4300,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                                       {string.Join("", permissions.Select(permission => $@"
                                                           <span class=""unstyled-badge_root__1gOSr size-m_root__FIFoL variant-default_root__nV3qv"" style='font-weight: 400;'>{System.Web.HttpUtility.HtmlEncode(permission.Name)}</span>
                                                       "))}
-                                                  </div>" :
+                        </div>" :
                                                   @"<span class=""Text_root__J8eOj"" data-variant=""text-s"" data-color=""secondary"">Специальные права отсутствуют</span>"
-                                              )}
-                                          </div>
-                                      </div>
-                                  </div>
-                             </div>
-                         </div>
+                    )}
+                    </div>
+                </div>
+            </div>
+                </div>
+                        </div>
                      </section>
 
                      
@@ -4061,13 +4317,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                  <div class=""Heading_root__P0ine Heading_variant_section__p8T1h""><h2 class=""Text_root__J8eOj"" data-variant=""heading-m"">Администрирование</h2></div>
                                  <div class=""List_root__yESwN list-style-plain_root__EX_j_"" style=""display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px;"">
                                  
-                                      <a href=""/api/auth/register"" class=""UnstyledListItem_root__xsw4w"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
+                                      <a href=""/api/auth/register"" class=""UnstyledListItem_root__xsw4w"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; color: inherit; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
                                            <div style=""width: 48px; height: 48px; background: var(--id-color-accent-subtle); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;"">
                                                <svg width=""24"" height=""24"" fill=""var(--id-color-accent)"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
                                                    <path d=""M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM6 8a6 6 0 1 1 12 0A6 6 0 0 1 6 8zm2 10a3 3 0 0 0-3 3 1 1 0 1 1-2 0 5 5 0 0 1 5-5h8a5 5 0 0 1 5 5 1 1 0 1 1-2 0 3 3 0 0 0-3-3H8z""></path>
                                                    <path d=""M17 8a1 1 0 0 1 1-1h2a1 1 0 1 1 0 2h-2a1 1 0 0 1-1-1zm1-5a1 1 0 1 0 0 2h2a1 1 0 1 0 0-2h-2z""></path>
                                                </svg>
-                                           </div>
+                        </div>
                                            <span class=""Text_root__J8eOj"" data-variant=""text-m"" style=""font-weight: 500; color: var(--id-color-text-primary);"">Зарегистрировать пользователя</span>
                                            <span class=""Text_root__J8eOj"" data-variant=""text-s"" style=""color: var(--id-color-text-secondary); margin-top: 4px;"">Создание новых учетных записей</span>
                                        </a>
@@ -4077,22 +4333,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                                <svg width=""24"" height=""24"" fill=""var(--id-color-accent)"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
                                                    <path d=""M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272-.19.057-.392.057-.582 0-2.865-.872-5.224-2.568-6.846-5.271-1.608-2.68-2.45-6.273-2.45-10.88a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0zM12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-4 2a4 4 0 1 1 8 0 4 4 0 0 1-8 0z""></path>
                                                </svg>
-                                           </div>
+                        </div>
                                            <span class=""Text_root__J8eOj"" data-variant=""text-m"" style=""font-weight: 500; color: var(--id-color-text-primary);"">Управление OIDC клиентами</span>
                                            <span class=""Text_root__J8eOj"" data-variant=""text-s"" style=""color: var(--id-color-text-secondary); margin-top: 4px;"">Настройка OAuth клиентов</span>
                                        </a>
-                                 </div>
-                             </div>
+                        </div>
+                    </div>
                          </section>
                       " : "")}
 
                      
                      <div class=""text-center"" style=""margin-top: 32px;"">
                          <a href=""/api/auth/logout"" class=""Button_root__rneDS variant-default_root__xWqkR size-l_root__PsIsm"" style=""min-width: 160px;"">Выйти</a>
-                     </div>
-
+            </div>
+            
                  </main>
-             </div>
+            </div>
          ", "");
         }
 
@@ -4287,7 +4543,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         localStorage.removeItem('auth_token');
                         sessionStorage.removeItem('auth_token');
                     </script>
-                "), "text/html");
+                ",""), "text/html");
             }
             
             return Ok(new ApiResponse<object>
@@ -4420,18 +4676,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             {(clients.Any() ?
                 $@"<div class=""card"">
-                    <table style=""width: 100%; border-collapse: collapse;"">
-                        <thead>
-                            <tr style=""border-bottom: 1px solid var(--border-color);"">
+                        <table style=""width: 100%; border-collapse: collapse;"">
+                            <thead>
+                                <tr style=""border-bottom: 1px solid var(--border-color);"">
                                 <th style=""text-align: left; padding: 1rem;"">Client ID</th>
                                 <th style=""text-align: left; padding: 1rem;"">Display Name</th>
                                 <th style=""padding: 1rem;"">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {string.Join("", clients.Select(client => $@"
-                            <tr style=""border-bottom: 1px solid var(--border-color);"">
-                                <td style=""padding: 1rem;"">{client.ClientId}</td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {string.Join("", clients.Select(client => $@"
+                                <tr style=""border-bottom: 1px solid var(--border-color);"">
+                                    <td style=""padding: 1rem;"">{client.ClientId}</td>
                                 <td style=""padding: 1rem;"">{client.DisplayName ?? client.ClientId}</td>
                                 <td style=""padding: 1rem; text-align: center;"">
                                     <div class=""flex gap-2 justify-center"">
@@ -4441,14 +4697,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                             <button type=""submit"" class=""btn-secondary"" style=""width: auto; padding: 0.25rem 0.5rem; font-size: 0.875rem; background-color: rgba(239, 68, 68, 0.1); color: var(--error-color);"">Delete</button>
                                         </form>
                                     </div>
-                                </td>
+                                    </td>
                             </tr>"))}
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
                 </div>" :
                 @"<div class=""info-box"">
                     <p>No OAuth clients have been registered yet. <a href=""/api/auth/connect/clients/new"" class=""link"">Create your first client</a>.</p>
-                </div>")}
+            </div>")}
             
             <div class=""mt-4 text-center"">
                 <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
@@ -5007,157 +5263,154 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                        .ToArray();
         }
 
-        private string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false) => string.Format(BaseHtmlTemplate, 
-            "Register New User - BRU AVTOPARK", // {0} - title
+                private string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false) => string.Format(BaseHtmlTemplate,
+            "Регистрация - BRU AVTOPARK", // {0} - title
             $@"
-            <div class=""card"">
-                <div class=""card-header"">
-                    <h1>Register New User</h1>
-                </div>
-                <div class=""card-body"">
-                    {(error != null ? $"<div class='error-message'>{error}</div>" : "")}
-                    {(message != null ? $"<div class='success-message'>{message}</div>" : "")}
+            <div class=""login-container fade-in"" style=""max-width: 1200px; margin: 0 auto; padding: 20px;""> 
+                <div class=""auth-card"" style=""width: 100%; max-width: none;""> 
+                    <div class=""card-body"">
+                        <div class=""yandex-id-header"" style=""margin-bottom: 20px;""> 
+                            <div style=""display: flex; align-items: center;"">
+                                <div style=""width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;""></div>
+                                <span style=""color: white; font-weight: 500; font-size: 1.5rem;"">BRU ID</span>
+                            </div>
+                        </div>
 
-                    <div class=""alert alert-info"">
-                        <strong>Note:</strong> Only administrators can register new users. You must be logged in with admin privileges.
-                    </div>
+                        <h2 style=""text-align: center; margin-bottom: 1.5rem; color: white;"">Создание аккаунта</h2>
 
-                    <div id=""register-status"" class=""card"">
-                        <div class=""card-header"">Registration Status</div>
-                        <div class=""card-body""></div>
-                    </div>
-                    <div id=""admin-check-status"" style=""display: {(isAdmin ? "block" : "none")}"" class=""card mt-3"">
-                        <div class=""card-header"">Admin Check Status</div>
-                        <div class=""card-body"">
-                            <div class=""alert alert-success"">
-                                <strong>You are logged in as an administrator.</strong>
+                        {(!string.IsNullOrEmpty(error) ? $@"<div class='error-message' style='background-color: rgba(239, 68, 68, 0.15); color: var(--error-color);'>{System.Web.HttpUtility.HtmlEncode(error)}</div>" : "")}
+                        {(!string.IsNullOrEmpty(message) ? $@"<div class='success-message' style='background-color: rgba(16, 185, 129, 0.15); color: var(--success-color);'>{System.Web.HttpUtility.HtmlEncode(message)}</div>" : "")}
+
+                        <div style=""display: flex; flex-direction: row; gap: 20px; flex-wrap: wrap;"">
+                            <div style=""flex: 1; min-width: 300px;"">
+                                <div class=""info-box"" style=""background-color: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;"">
+                                    <strong>Примечание:</strong> Только администраторы могут регистрировать новых пользователей. Требуется вход с правами администратора.
+                                </div>
+
+                                <div id=""admin-check-status"" style=""display: {(isAdmin ? "block" : "none")}; background-color: rgba(16, 185, 129, 0.15); color: var(--success-color); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;"">
+                                    <strong>Вы вошли как администратор.</strong>
+                                </div>
+                                <div id=""admin-check-pending"" style=""display: {(isAdmin ? "none" : (adminCheckAttempt.HasValue ? "block" : "none"))}; background-color: rgba(245, 158, 11, 0.15); color: var(--warning-color); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;"">
+                                     <strong>Проверка прав администратора... (Попытка {adminCheckAttempt ?? 0}/3)</strong>
+                                     <p style='margin-top: 8px; color: var(--warning-color);'>Если проверка не удалась, <a href='/api/auth/login?returnUrl=/api/auth/register' class='link' style='color: #76a6f5;'>войдите снова</a>.</p>
+                                </div>
+                                <div id=""register-status"" class=""my-4""></div> 
+                            </div>
+
+                            <div style=""flex: 2; min-width: 300px;"">
+                                <form id=""registerForm"" style=""display: {(isAdmin ? "block" : "none")};"">
+                                    <div style=""display: flex; flex-wrap: wrap; gap: 15px;"">
+                                        <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
+                                            <label for=""username"">Придумайте логин</label>
+                                            <input type=""text"" id=""username"" name=""username"" required>
+                                        </div>
+
+                                        <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
+                                            <label for=""password"">Создайте пароль</label>
+                                            <input type=""password"" id=""password"" name=""password"" required>
+                                        </div>
+                                    </div>
+
+                                    <div style=""display: flex; flex-wrap: wrap; gap: 15px;"">
+                                        <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
+                                            <label for=""email"">Email (необязательно)</label>
+                                            <input type=""email"" id=""email"" name=""email"" placeholder=""example@example.com"">
+                                        </div>
+
+                                        <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
+                                            <label for=""phoneNumber"">Номер телефона (необязательно)</label>
+                                            <input type=""tel"" id=""phoneNumber"" name=""phoneNumber"" placeholder=""+375 XX XXX-XX-XX"">
+                                        </div>
+                                    </div>
+
+                                    <div class=""form-group"">
+                                        <label for=""role"">Роль</label>
+                                        <select id=""role"" name=""role"" required style=""background-color: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 0.75rem;"">
+                                            <option value=""0"" style=""color: black; background-color: white;"">Пользователь</option>
+                                            <option value=""1"" style=""color: black; background-color: white;"">Администратор</option>
+                                            <option value=""2"" style=""color: black; background-color: white;"">Менеджер</option>
+                                            <option value=""3"" style=""color: black; background-color: white;"">Водитель</option>
+                                            <option value=""4"" style=""color: black; background-color: white;"">Кондуктор</option>
+                                            <option value=""5"" style=""color: black; background-color: white;"">Диспетчер</option>
+                                        </select>
+                                    </div>
+                                    <div class=""text-center"">
+                                        <button type=""submit"" class=""btn"" style=""width: auto; min-width: 200px; margin: 0 auto;"">Зарегистрировать</button>
+                                    </div>
+                                    <div class=""text-center"" style=""margin-top: 1.5rem;"">
+                                        <a href=""/api/auth/profile"" class=""link"" style=""color: #76a6f5;"">Назад в профиль</a>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
-                    <div id=""admin-check-pending"" style=""display: {(isAdmin ? "none" : (adminCheckAttempt.HasValue ? "block" : "none"))}"" class=""card mt-3"">
-                        <div class=""card-header"">Admin Check Pending</div>
-                        <div class=""card-body"">
-                            <div class=""alert alert-warning"">
-                                <strong>Admin check pending... (Attempt {adminCheckAttempt ?? 0}/3)</strong>
-                                <p>If you're repeatedly redirected to the login page despite being an administrator, try these steps:</p>
-                                <ol>
-                                    <li>Ensure you're logged in with an administrator account</li>
-                                    <li>Clear your browser cache and cookies</li>
-                                    <li>Try using the API directly with Swagger UI</li>
-                                </ol>
-                                <a href=""/api/auth/login"" class=""btn btn-primary"">Go to Login</a>
-                            </div>
-                        </div>
-                    </div>
-                    <form id=""registerForm"">
-                        <div class=""form-group"">
-                            <label for=""username"">Username</label>
-                            <input type=""text"" id=""username"" name=""username"" class=""form-control"" required>
-                        </div>
-
-                        <div class=""form-group"">
-                            <label for=""password"">Password</label>
-                            <input type=""password"" id=""password"" name=""password"" class=""form-control"" required>
-                        </div>
-
-                        <div class=""form-group"">
-                            <label for=""email"">Email (Optional)</label>
-                            <input type=""email"" id=""email"" name=""email"" class=""form-control"">
-                        </div>
-
-                        <div class=""form-group"">
-                            <label for=""phoneNumber"">Phone Number (Optional)</label>
-                            <input type=""tel"" id=""phoneNumber"" name=""phoneNumber"" class=""form-control"">
-                        </div>
-
-                        <div class=""form-group"">
-                            <label for=""role"">Role</label>
-                            <select id=""role"" name=""role"" class=""form-control"" required>
-                                <option value=""0"">User</option>
-                                <option value=""1"">Administrator</option>
-                                <option value=""2"">Manager</option>
-                                <option value=""3"">Driver</option>
-                                <option value=""4"">Conductor</option>
-                                <option value=""5"">Dispatcher</option>
-                            </select>
-                        </div>
-
-                        <div class=""form-actions"">
-                            <button type=""submit"" class=""btn btn-primary"">Register User</button>
-                            <a href=""/api/auth/profile"" class=""btn btn-secondary"">Back to Profile</a>
-                        </div>
-                    </form>
                 </div>
             </div>
 
+           
             <script>
-                document.getElementById('registerForm').addEventListener('submit', async (e) => {{
-                    e.preventDefault();
-                    
-                    const statusElement = document.getElementById('register-status').querySelector('.card-body');
-                    statusElement.innerHTML = '<div class=""loading-indicator"">Registering user...</div>';
-                    
-                    const formData = {{
-                        username: document.getElementById('username').value,
-                        password: document.getElementById('password').value,
-                        email: document.getElementById('email').value || null,
-                        phoneNumber: document.getElementById('phoneNumber').value || null,
-                        role: parseInt(document.getElementById('role').value)
-                    }};
+                 // Admin check logic (runs immediately)
+                 const isAdmin = {isAdmin.ToString().ToLowerInvariant()};
+                 if (isAdmin) {{
+                     document.getElementById('registerForm').style.display = 'block';
+                 }} else {{
+                      const attempt = {adminCheckAttempt ?? 0};
+                      if (attempt > 0 && attempt < 3) {{
+                         // Keep the pending message visible
+                     }} else if (attempt >= 3 && !isAdmin) {{
+                          // Optionally redirect or show a final error if max attempts reached
+                         document.getElementById('admin-check-pending').innerHTML = `<div class='error-message' style='background-color: rgba(239, 68, 68, 0.15); color: var(--error-color);'>Недостаточно прав для регистрации. Пожалуйста, войдите как администратор. <a href='/api/auth/login?returnUrl=/api/auth/register' class='link' style='color: #76a6f5;'>Войти</a></div>`;
+                     }} else if (!isAdmin && !attempt) {{
+                         // First load, no admin rights, hide form (already done via style)
+                         // Admin check pending message is shown by default if attempts start
+                     }}
+                 }}
 
-                    try {{
-                        const token = localStorage.getItem('auth_token');
-                        if (!token) {{
-                            window.location.href = '/api/auth/login?error=' + encodeURIComponent('Please log in as administrator');
-                            return;
-                        }}
+                 // Form submission logic
+                 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {{ // Add null check for safety
+                     e.preventDefault();
+                     const statusElement = document.getElementById('register-status');
+                     statusElement.innerHTML = '<div class=""text-center"" style=""color: var(--text-muted);""><div class=""loader""></div><p style=""color: inherit; margin-top: 8px;"">Регистрация...</p></div>'; // Use text-muted for loading text
 
-                        const response = await fetch('/api/auth/register', {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + token
-                            }},
-                            body: JSON.stringify(formData)
-                        }});
+                     const formData = {{
+                         username: document.getElementById('username').value,
+                         password: document.getElementById('password').value,
+                         email: document.getElementById('email').value || null,
+                         phoneNumber: document.getElementById('phoneNumber').value || null,
+                         role: parseInt(document.getElementById('role').value)
+                     }};
 
-                        let result;
-                        try {{
-                            result = await response.json();
-                        }} catch (error) {{
-                            // If response is not valid JSON, create a fallback result
-                            result = {{
-                                success: false,
-                                message: 'Invalid response from server'
-                            }};
-                        }}
-                        
-                        if (response.ok) {{
-                            statusElement.innerHTML = '<div class=""alert alert-success"">User registered successfully!</div>';
-                            document.getElementById('registerForm').reset();
-                        }} else {{
-                            const errorMsg = result.message || 'Registration failed';
-                            statusElement.innerHTML = '<div class=""alert alert-danger"">' + errorMsg + '</div>';
-                            
-                            if (response.status === 403 || response.status === 401) {{
-                                document.getElementById('admin-check-status').style.display = 'none';
-                                document.getElementById('admin-check-pending').style.display = 'block';
-                                
-                                // Attempt to refresh the token or redirect to login after 3 seconds
-                                setTimeout(() => {{
-                                    window.location.href = '/api/auth/login?error=' + encodeURIComponent('Please log in as administrator') + 
-                                                           '&returnUrl=' + encodeURIComponent('/api/auth/register');
-                                }}, 3000);
-                            }}
-                        }}
-                    }} catch (error) {{
-                        console.error('Registration error:', error);
-                        statusElement.innerHTML = '<div class=""alert alert-danger"">An error occurred during registration. Please try again.</div>';
-                    }}
-                }});
+                     try {{
+                         const token = localStorage.getItem('auth_token');
+                         if (!token) {{
+                             statusElement.innerHTML = '<div class=""error-message"" style=""background-color: rgba(239, 68, 68, 0.15); color: var(--error-color);"">Ошибка аутентификации администратора.</div>';
+                             setTimeout(() => {{ window.location.href = '/api/auth/login?returnUrl=/api/auth/register'; }}, 2000);
+                             return;
+                         }}
+
+                         const response = await fetch('/api/auth/register', {{
+                             method: 'POST',
+                             headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }},
+                             body: JSON.stringify(formData)
+                         }});
+
+                         const result = await response.json(); // Assume response is always JSON
+
+                         if (response.ok && result.success) {{
+                             statusElement.innerHTML = '<div class=""success-message"" style=""background-color: rgba(16, 185, 129, 0.15); color: var(--success-color);"">Пользователь ' + formData.username + ' успешно зарегистрирован!</div>';
+                             document.getElementById('registerForm').reset(); // Clear form on success
+                         }} else {{
+                             const errorMsg = result.message || 'Ошибка регистрации';
+                             statusElement.innerHTML = '<div class=""error-message"" style=""background-color: rgba(239, 68, 68, 0.15); color: var(--error-color);"">' + errorMsg + '</div>';
+                         }}
+                     }} catch (error) {{
+                         console.error('Registration error:', error);
+                         statusElement.innerHTML = '<div class=""error-message"" style=""background-color: rgba(239, 68, 68, 0.15); color: var(--error-color);"">Произошла ошибка при регистрации. Попробуйте снова.</div>';
+                     }}
+                 }});
             </script>
-        ",  // {1} - content
-            ""   // {2} - additional body classes
+            ",
+             "" // {2} - additional body classes for background image etc.
         );
 
         [HttpGet("register")]
@@ -5178,37 +5431,37 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             try
             {
-                // Check Authorization header first
-                if (Request.Headers.Authorization.Count > 0)
+            // Check Authorization header first
+            if (Request.Headers.Authorization.Count > 0)
+            {
+                var authHeader = Request.Headers.Authorization.ToString();
+                if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
-                    var authHeader = Request.Headers.Authorization.ToString();
-                    if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        token = authHeader.Substring("Bearer ".Length).Trim();
-                    }
+                    token = authHeader.Substring("Bearer ".Length).Trim();
                 }
+            }
 
-                // If no auth header, check query string
-                if (string.IsNullOrEmpty(token) && Request.Query.ContainsKey("token"))
-                {
-                    token = Request.Query["token"];
-                }
+            // If no auth header, check query string
+            if (string.IsNullOrEmpty(token) && Request.Query.ContainsKey("token"))
+            {
+                token = Request.Query["token"];
+            }
 
                 // If still no token, try to get it from localStorage
-                if (string.IsNullOrEmpty(token))
-                {
+            if (string.IsNullOrEmpty(token))
+            {
                     return Content(@"
-                        <script>
+                    <script>
                             const storedToken = localStorage.getItem('auth_token');
                             if (storedToken) {
-                                window.location.href = '/api/auth/register?token=' + encodeURIComponent(storedToken);
+                            window.location.href = '/api/auth/register?token=' + encodeURIComponent(storedToken);
                             } else {
                                 window.location.href = '/api/auth/login?error=' + encodeURIComponent('Please log in as administrator') + 
                                                      '&returnUrl=' + encodeURIComponent('/api/auth/register');
                             }
-                        </script>
-                    ", "text/html");
-                }
+                    </script>
+                ", "text/html");
+            }
 
                 // Validate token format
                 if (!token.Contains('.') || token.Count(c => c == '.') != 2)
@@ -5220,14 +5473,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 try
                 {
                     // Parse token and validate claims
-                    var handler = new JwtSecurityTokenHandler();
-                    var jwtToken = handler.ReadJwtToken(token);
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
 
                     // Check for admin role in multiple ways
-                    var primaryRoleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
+                var primaryRoleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
                     var roleClaims = jwtToken.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").ToList();
                     
-                    isAdmin = primaryRoleClaim?.Value == "1" || 
+                isAdmin = primaryRoleClaim?.Value == "1" || 
                              roleClaims.Any(c => c.Value == "1" || c.Value.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
 
                     // Log the claims for debugging
@@ -5235,14 +5488,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         primaryRoleClaim?.Value,
                         string.Join(", ", roleClaims.Select(c => c.Value)));
 
-                    if (!isAdmin)
-                    {
+                if (!isAdmin)
+                {
                         _logger.LogWarning("User attempted to access register page without admin privileges");
                         
-                        // If we haven't tried 3 times yet, increment attempt counter
-                        if (!attempt.HasValue || attempt.Value < 3)
-                        {
-                            int nextAttempt = (attempt ?? 0) + 1;
+                    // If we haven't tried 3 times yet, increment attempt counter
+                    if (!attempt.HasValue || attempt.Value < 3)
+                    {
+                        int nextAttempt = (attempt ?? 0) + 1;
                             return Content(RenderRegisterForm(
                                 "Administrator privileges required. Verifying permissions...", 
                                 null, 
@@ -5257,9 +5510,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     // If we get here, the user is an admin
                     _logger.LogInformation("Admin access verified for registration page");
                     return Content(RenderRegisterForm(error, message, null, true), "text/html");
-                }
-                catch (Exception ex)
-                {
+            }
+            catch (Exception ex)
+            {
                     _logger.LogError(ex, "Error parsing JWT token during admin check");
                     return Redirect("/api/auth/login?error=Invalid token. Please log in again.&returnUrl=/api/auth/register");
                 }
@@ -5270,6 +5523,225 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Redirect("/api/auth/login?error=Error validating admin access. Please try again.&returnUrl=/api/auth/register");
             }
         }
+
+        [HttpGet("claim-account")]
+        [AllowAnonymous]
+        public IActionResult ClaimAccountPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        {
+            if (IsBrowserRequest())
+            {
+                return Content(RenderClaimAccountForm(error, message), "text/html");
+            }
+            
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "This endpoint is meant to be accessed from a browser"
+            });
+        }
+        
+        [HttpPost("claim-account")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ClaimAccount([FromForm] ClaimAccountRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Account claim attempt for login: {Login}", request.Username);
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid request data",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+                    });
+                }
+
+                // Get SpacetimeDB connection
+                var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("SpacetimeDB connection not available");
+                    return StatusCode(503, new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Service temporarily unavailable. Please try again later."
+                    });
+                }
+
+                // Check if the user exists
+                var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == request.Username);
+                if (user == null)
+                {
+                    _logger.LogWarning("Account claim failed: User not found: {Username}", request.Username);
+                    if (IsBrowserRequest())
+                    {
+                        return Redirect($"/api/auth/claim-account?error={Uri.EscapeDataString("Account not found. Please check your username.")}");
+                    }
+                    
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Account not found. Please check your username."
+                    });
+                }
+
+                // Generate a new identity if needed
+                string? newIdentityString = null;
+                if (request.GenerateNewIdentity)
+                {
+                    newIdentityString = await GenerateIdentityAsync();
+                    _logger.LogInformation("Generated new identity for user claim: {Username}", request.Username);
+                }
+
+                // Call the ClaimUserAccount reducer
+                conn.Reducers.ClaimUserAccount(request.Username, request.Password, newIdentityString);
+                _logger.LogInformation("Account claim request processed for: {Username}", request.Username);
+
+                if (IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/login?message={Uri.EscapeDataString("Account claimed successfully. You can now log in.")}");
+                }
+                
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Account claimed successfully. You can now log in."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during account claim for user: {Username}", request.Username);
+                
+                if (IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/claim-account?error={Uri.EscapeDataString("Error claiming account: " + ex.Message)}");
+                }
+                
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Error claiming account: " + ex.Message
+                });
+            }
+        }
+        
+        private string RenderClaimAccountForm(string? error = null, string? message = null) => string.Format(BaseHtmlTemplate, "Claim Account - BRU AVTOPARK", $@"
+            <div class=""login-container fade-in"">
+                <div class=""auth-card"">
+                    <div class=""card-body"">
+                        <div class=""yandex-id-header"">
+                            <div style=""display: flex; align-items: center;"">
+                                <div style=""width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;""></div>
+                                <span style=""color: white; font-weight: 500; font-size: 1.5rem;"">BRU ID</span>
+                            </div>
+                        </div>
+                        
+                        <h2 style=""text-align: center; margin-bottom: 1.5rem; color: white;"">Claim Your Account</h2>
+            
+                        {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
+                        {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
+                        
+                        <div class=""info-box"" style=""margin-bottom: 1.5rem;"">
+                            <p>If you have an inactive account or guest account, you can claim it here by providing your username and password.</p>
+                        </div>
+                        
+                        <form method=""POST"" action=""/api/auth/claim-account"" id=""claimForm"">
+                            <div class=""form-group"">
+                                <label for=""username"">Username</label>
+                                <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"">
+                            </div>
+                            <div class=""form-group"">
+                                <label for=""password"">Password</label>
+                                <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
+                            </div>
+                            <div class=""form-group"" style=""display: flex; align-items: center; margin-bottom: 1rem;"">
+                                <input type=""checkbox"" id=""generateNewIdentity"" name=""generateNewIdentity"" style=""margin-right: 10px;"" checked>
+                                <label for=""generateNewIdentity"" style=""margin: 0;"">Generate new identity (recommended)</label>
+                            </div>
+                            <button type=""button"" onclick=""submitClaimForm()"" id=""claimButton"">Claim Account</button>
+                        </form>
+                        
+                        <div id=""statusDiv"" class=""mt-3""></div>
+                        
+                        <div class=""divider"">
+                            <span>or</span>
+                        </div>
+                        
+                        <div style=""text-align: center; margin-top: 1rem;"">
+                            <a href=""/api/auth/login"" class=""link"" style=""color: white;"">Back to Login</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class=""auth-footer"">
+                    <div style=""margin-top: 1rem; color: #555;"">
+                        BRU ID — ключ от всех сервисов
+                    </div>
+                </div>
+            </div>
+            <script>
+                function submitClaimForm() {{
+                    // Disable button to prevent multiple submissions
+                    document.getElementById('claimButton').disabled = true;
+                    document.getElementById('statusDiv').innerHTML = '<div class=""text-center""><div class=""loader""></div><p>Processing claim request...</p></div>';
+                    
+                    // Get form data
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    const generateNewIdentity = document.getElementById('generateNewIdentity').checked;
+                    
+                    // Submit form using fetch
+                    fetch('/api/auth/claim-account', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        }},
+                        body: `username=${{encodeURIComponent(username)}}&password=${{encodeURIComponent(password)}}&generateNewIdentity=${{generateNewIdentity}}`,
+                        credentials: 'same-origin'
+                    }})
+                    .then(response => {{
+                        if (response.redirected) {{
+                            // Follow redirect
+                            window.location.href = response.url;
+                            return;
+                        }}
+                        return response.json();
+                    }})
+                    .then(data => {{
+                        if (data && data.success) {{
+                            // Show success message
+                            document.getElementById('statusDiv').innerHTML = '<p class=""success-message"">Account claimed successfully! Redirecting to login page...</p>';
+                            
+                            // Redirect to login page
+                            setTimeout(() => {{
+                                window.location.href = '/api/auth/login?message=Account claimed successfully. You can now log in.';
+                            }}, 2000);
+                        }} else if (data) {{
+                            // Show error message
+                            document.getElementById('statusDiv').innerHTML = `<p class=""error-message"">${{data.message || 'Claim request failed'}}</p>`;
+                            document.getElementById('claimButton').disabled = false;
+                        }}
+                    }})
+                    .catch(error => {{
+                        console.error('Claim error:', error);
+                        document.getElementById('statusDiv').innerHTML = `<p class=""error-message"">Error: ${{error.message || 'Unknown error'}}</p>`;
+                        document.getElementById('claimButton').disabled = false;
+                    }});
+                    
+                    return false;
+                }}
+                
+                // Allow form submission with Enter key
+                document.getElementById('claimForm').addEventListener('keypress', function(event) {{
+                    if (event.key === 'Enter') {{
+                        event.preventDefault();
+                        submitClaimForm();
+                    }}
+                }});
+            </script>
+        ", "auth-page-body");
     }
 
     #region Request Models
@@ -5279,6 +5751,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public required string Username { get; set; }
         public required string Password { get; set; }
         public bool SkipTwoFactor { get; set; } = false;
+    }
+
+    public class ClaimAccountRequest
+    {
+        public required string Username { get; set; }
+        public required string Password { get; set; }
+        public bool GenerateNewIdentity { get; set; } = true;
     }
 
     public class RegisterRequest
@@ -5641,6 +6120,23 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public required string PostLogoutRedirectUris { get; set; }
         public required string AllowedScopes { get; set; }
         public bool RequireConsent { get; set; }
+    }
+
+    // Legacy login request model for Avalonia UI
+    public class LegacyLoginRequest
+    {
+        public string Login { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+    
+    // Legacy register request model for Avalonia UI
+    public class LegacyRegisterRequest
+    {
+        public string Login { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public int Role { get; set; } = 0;
+        public string? Email { get; set; }
+        public string? PhoneNumber { get; set; }
     }
 }
 

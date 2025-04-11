@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void RegisterUserHandler(ReducerEventContext ctx, string login, string password, string email, string phoneNumber, uint? roleId, string? roleName);
+        public delegate void RegisterUserHandler(ReducerEventContext ctx, string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, SpacetimeDB.Identity? actingUser, string? newUserIdentity);
         public event RegisterUserHandler? OnRegisterUser;
 
-        public void RegisterUser(string login, string password, string email, string phoneNumber, uint? roleId, string? roleName)
+        public void RegisterUser(string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, SpacetimeDB.Identity? actingUser, string? newUserIdentity)
         {
-            conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName), this.SetCallReducerFlags.RegisterUserFlags);
+            conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity), this.SetCallReducerFlags.RegisterUserFlags);
         }
 
         public bool InvokeRegisterUser(ReducerEventContext ctx, Reducer.RegisterUser args)
@@ -30,7 +30,9 @@ namespace SpacetimeDB.Types
                 args.Email,
                 args.PhoneNumber,
                 args.RoleId,
-                args.RoleName
+                args.RoleName,
+                args.ActingUser,
+                args.NewUserIdentity
             );
             return true;
         }
@@ -54,6 +56,10 @@ namespace SpacetimeDB.Types
             public uint? RoleId;
             [DataMember(Name = "roleName")]
             public string? RoleName;
+            [DataMember(Name = "actingUser")]
+            public SpacetimeDB.Identity? ActingUser;
+            [DataMember(Name = "newUserIdentity")]
+            public string? NewUserIdentity;
 
             public RegisterUser(
                 string Login,
@@ -61,7 +67,9 @@ namespace SpacetimeDB.Types
                 string Email,
                 string PhoneNumber,
                 uint? RoleId,
-                string? RoleName
+                string? RoleName,
+                SpacetimeDB.Identity? ActingUser,
+                string? NewUserIdentity
             )
             {
                 this.Login = Login;
@@ -70,6 +78,8 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = PhoneNumber;
                 this.RoleId = RoleId;
                 this.RoleName = RoleName;
+                this.ActingUser = ActingUser;
+                this.NewUserIdentity = NewUserIdentity;
             }
 
             public RegisterUser()

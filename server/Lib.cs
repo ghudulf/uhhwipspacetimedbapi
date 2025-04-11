@@ -891,8 +891,37 @@ public static partial class Module
         Log.Info($"New client connected with identity {ctx.Sender}");
     }
 
+    /// <summary>
+    /// Registers a new user in the system.
+    /// </summary>
+    /// <param name="ctx">The reducer context providing access to the database and sender identity.</param>
+    /// <param name="login">The username for the new user account. Must be unique.</param>
+    /// <param name="password">The password for the new user account. Will be hashed before storage.</param>
+    /// <param name="email">The email address for the new user. Used for communications and recovery.</param>
+    /// <param name="phoneNumber">The phone number for the new user. Used for communications and 2FA.</param>
+    /// <param name="roleId">Optional. The specific role ID to assign to the user. Takes precedence over roleName if both are provided.</param>
+    /// <param name="roleName">Optional. The name of the role to assign to the user. Used only if roleId is not provided.</param>
+    /// <param name="actingUser">Optional. The identity of the user performing this action. Used for permission checks.</param>
+    /// <param name="newUserIdentity">Optional. A pre-generated identity string from the /v1/identity endpoint. This is the hex-encoded string representation of the identity.
+    /// This allows creating users with specific identities rather than using the sender's identity.
+    /// Can be generated using:
+    /// POST /v1/identity HTTP endpoint which returns:
+    /// {
+    ///     "identity": string,//its a string of hex characters
+    ///     "token": string
+    /// }
+    /// The identity string can then be passed to this reducer to create a user with that identity.
+    /// </param>
+    /// <remarks>
+    /// Required Permissions: 
+    /// - None for self-registration
+    /// - "user:create" for creating other users
+    /// - "role:assign" for assigning roles other than the default "User" role
+    /// 
+    /// If no role is specified, the default "User" role will be assigned.
+    /// </remarks>
     [SpacetimeDB.Reducer]
-    public static void RegisterUser(ReducerContext ctx, string login, string password, string email, string phoneNumber, uint? roleId = null, string? roleName = null)
+    public static void RegisterUser(ReducerContext ctx, string login, string password, string email, string phoneNumber, uint? roleId = null, string? roleName = null, Identity? actingUser = null, string? newUserIdentity = null)
     {
         // Check if a user with the same login already exists
         if (ctx.Db.UserProfile.Iter().Any(u => u.Login == login))
@@ -907,10 +936,29 @@ public static partial class Module
         // Hash the password
         string hashedPassword = HashPassword(password);
 
+        // Determine which identity to use - either the provided newUserIdentity (converted to Identity type),
+        // or fall back to the sender's identity
+        Identity userIdentity = ctx.Sender;
+        if (!string.IsNullOrEmpty(newUserIdentity))
+        {
+            // Convert the string identity to the Identity type.
+            // The string should be in hex format, e.g., "0x123456789abcdef0"
+            try
+            {
+                userIdentity = Identity.FromHexString(newUserIdentity);
+                Log.Info($"Using provided identity: {userIdentity} for new user {login}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to parse provided identity: {ex.Message}");
+                throw new Exception("Invalid identity format provided. Identity should be in hex format, e.g., '0x123456789abcdef0'.");
+            }
+        }
+
         // Create the new user
         var user = new UserProfile
         {
-            UserId = ctx.Sender,
+            UserId = userIdentity, // Use either the provided identity or the sender's identity
             LegacyUserId = userId,
             Login = login,
             PasswordHash = hashedPassword,
@@ -923,6 +971,7 @@ public static partial class Module
             EmailConfirmed = true // email is optional so this is just gonna be defaulted to true
         };
         ctx.Db.UserProfile.Insert(user);
+        Log.Info($"User {login} registered successfully with Identity {user.UserId}");
         //NO FUCKING NEED TO CREATE USER SETTINGS - THATS A USER CAllABLE REDUCER THAT SPACETIMEDB WONT PERMIT CALLING FROM HERE IF YOU WANT TO DO IT - MAKE A SEPARATE METHOD
         Log.Info($"User {login} registered successfully");
 
@@ -935,7 +984,7 @@ public static partial class Module
                 throw new Exception($"Role with ID {roleId.Value} not found.");
             }
 
-            AssignRole(ctx, user.UserId, roleId.Value);
+            AssignRole(ctx, user.UserId, roleId.Value, actingUser);
             Log.Info($"Assigned role {roleId.Value} to user {login}");
         }
         // Assign role if specified by roleName
@@ -948,16 +997,16 @@ public static partial class Module
                 throw new Exception($"Role with name '{roleName}' not found.");
             }
 
-            AssignRole(ctx, user.UserId, role.RoleId);
+            AssignRole(ctx, user.UserId, role.RoleId, actingUser);
             Log.Info($"Assigned role '{roleName}' to user {login}");
         }
         else
         {
             // Assign default "User" role if no role specified
-        var userRole = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "User");
-        if (userRole != null)
-        {
-            AssignRole(ctx, user.UserId, userRole.RoleId);
+            var userRole = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "User");
+            if (userRole != null)
+            {
+                AssignRole(ctx, user.UserId, userRole.RoleId, actingUser);
                 Log.Info($"Assigned default 'User' role to user {login}");
             }
             else
@@ -966,6 +1015,8 @@ public static partial class Module
             }
         }
     }
+
+    
 
     [SpacetimeDB.Reducer]
     public static void AuthenticateUser(ReducerContext ctx, string login, string password)
@@ -1481,8 +1532,26 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void ClaimUserAccount(ReducerContext ctx, string login, string password)
+    public static void ClaimUserAccount(ReducerContext ctx, string login, string password, string? newUserIdentity = null)
     {
+        // Determine which identity to use - either the provided newUserIdentity (converted to Identity type),
+        // or fall back to the sender's identity
+        Identity userIdentity = ctx.Sender;
+        if (!string.IsNullOrEmpty(newUserIdentity))
+        {
+            // Convert the string identity to the Identity type.
+            // The string should be in hex format, e.g., "0x123456789abcdef0"
+            try
+            {
+                userIdentity = Identity.FromHexString(newUserIdentity);
+                Log.Info($"Using provided identity: {userIdentity} for new user {login}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to parse provided identity: {ex.Message}");
+                throw new Exception("Invalid identity format provided. Identity should be in hex format, e.g., '0x123456789abcdef0'.");
+            }
+        }
         // Find the user by login
         var user = ctx.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == login);
         if (user == null)
@@ -1498,14 +1567,14 @@ public static partial class Module
             return;
         }
         
-        if (user.IsActive && user.UserId != ctx.Sender)
+        if (user.IsActive && user.UserId != userIdentity)
         {
             Log.Error($"Account {login} is already claimed by another identity");
             return;
         }
         
         // Update the user with the caller's identity
-        user.UserId = ctx.Sender;
+        user.UserId = userIdentity;
         user.IsActive = true;
         user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ctx.Db.UserProfile.Login.Update(user);
@@ -1514,11 +1583,11 @@ public static partial class Module
         var userRoles = ctx.Db.UserRole.Iter().Where(ur => ur.UserId == user.UserId).ToList();
         foreach (var role in userRoles)
         {
-            role.UserId = ctx.Sender;
+            role.UserId = userIdentity;
             ctx.Db.UserRole.Id.Update(role);
         }
 
-        Log.Info($"User {login} successfully claimed by identity {ctx.Sender}");
+        Log.Info($"User {login} successfully claimed by identity {userIdentity}");
     }
 
     
@@ -1594,7 +1663,7 @@ public static partial class Module
                 if (existingUserRole == null)
                 {
                     // Assign the new role if not already assigned
-                    AssignRole(ctx, userId, roleEntity.RoleId);
+                    AssignRole(ctx, userId, roleEntity.RoleId, actingUser);
                 }
             }
         }

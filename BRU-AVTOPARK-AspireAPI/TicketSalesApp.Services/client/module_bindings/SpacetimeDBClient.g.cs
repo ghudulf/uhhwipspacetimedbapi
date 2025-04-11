@@ -40,8 +40,14 @@ namespace SpacetimeDB.Types
             AddTable(MagicLinkToken = new(conn));
             AddTable(Maintenance = new(conn));
             AddTable(MaintenanceIdCounter = new(conn));
+            AddTable(OidcAuthorizationIdCounter = new(conn));
+            AddTable(OidcScopeIdCounter = new(conn));
+            AddTable(OidcTokenIdCounter = new(conn));
             AddTable(OpenIdConnect = new(conn));
             AddTable(OpenIdConnectGrant = new(conn));
+            AddTable(OpenIddictSpacetimeAuthorization = new(conn));
+            AddTable(OpenIddictSpacetimeScope = new(conn));
+            AddTable(OpenIddictSpacetimeToken = new(conn));
             AddTable(Passenger = new(conn));
             AddTable(PassengerCount = new(conn));
             AddTable(PassengerIdCounter = new(conn));
@@ -496,6 +502,9 @@ namespace SpacetimeDB.Types
                 "CreateJob" => BSATNHelpers.Decode<Reducer.CreateJob>(encodedArgs),
                 "CreateMagicLinkToken" => BSATNHelpers.Decode<Reducer.CreateMagicLinkToken>(encodedArgs),
                 "CreateMaintenance" => BSATNHelpers.Decode<Reducer.CreateMaintenance>(encodedArgs),
+                "CreateOidcAuthorization" => BSATNHelpers.Decode<Reducer.CreateOidcAuthorization>(encodedArgs),
+                "CreateOidcScope" => BSATNHelpers.Decode<Reducer.CreateOidcScope>(encodedArgs),
+                "CreateOidcToken" => BSATNHelpers.Decode<Reducer.CreateOidcToken>(encodedArgs),
                 "CreateOpenIdGrant" => BSATNHelpers.Decode<Reducer.CreateOpenIdGrant>(encodedArgs),
                 "CreatePassenger" => BSATNHelpers.Decode<Reducer.CreatePassenger>(encodedArgs),
                 "CreateQRSession" => BSATNHelpers.Decode<Reducer.CreateQrSession>(encodedArgs),
@@ -517,6 +526,9 @@ namespace SpacetimeDB.Types
                 "DeleteEmployee" => BSATNHelpers.Decode<Reducer.DeleteEmployee>(encodedArgs),
                 "DeleteJob" => BSATNHelpers.Decode<Reducer.DeleteJob>(encodedArgs),
                 "DeleteMaintenance" => BSATNHelpers.Decode<Reducer.DeleteMaintenance>(encodedArgs),
+                "DeleteOidcAuthorization" => BSATNHelpers.Decode<Reducer.DeleteOidcAuthorization>(encodedArgs),
+                "DeleteOidcScope" => BSATNHelpers.Decode<Reducer.DeleteOidcScope>(encodedArgs),
+                "DeleteOidcToken" => BSATNHelpers.Decode<Reducer.DeleteOidcToken>(encodedArgs),
                 "DeletePassenger" => BSATNHelpers.Decode<Reducer.DeletePassenger>(encodedArgs),
                 "DeletePermission" => BSATNHelpers.Decode<Reducer.DeletePermission>(encodedArgs),
                 "DeleteQRSession" => BSATNHelpers.Decode<Reducer.DeleteQrSession>(encodedArgs),
@@ -537,6 +549,8 @@ namespace SpacetimeDB.Types
                 "GetBusMaintenanceHistory" => BSATNHelpers.Decode<Reducer.GetBusMaintenanceHistory>(encodedArgs),
                 "GrantPermissionToRole" => BSATNHelpers.Decode<Reducer.GrantPermissionToRole>(encodedArgs),
                 "LogAdminAction" => BSATNHelpers.Decode<Reducer.LogAdminAction>(encodedArgs),
+                "PruneOidcAuthorizations" => BSATNHelpers.Decode<Reducer.PruneOidcAuthorizations>(encodedArgs),
+                "PruneOidcTokens" => BSATNHelpers.Decode<Reducer.PruneOidcTokens>(encodedArgs),
                 "RegisterOpenIdClient" => BSATNHelpers.Decode<Reducer.RegisterOpenIdClient>(encodedArgs),
                 "RegisterUser" => BSATNHelpers.Decode<Reducer.RegisterUser>(encodedArgs),
                 "RegisterWebAuthnCredential" => BSATNHelpers.Decode<Reducer.RegisterWebAuthnCredential>(encodedArgs),
@@ -551,6 +565,9 @@ namespace SpacetimeDB.Types
                 "UpdateEmployee" => BSATNHelpers.Decode<Reducer.UpdateEmployee>(encodedArgs),
                 "UpdateJob" => BSATNHelpers.Decode<Reducer.UpdateJob>(encodedArgs),
                 "UpdateMaintenance" => BSATNHelpers.Decode<Reducer.UpdateMaintenance>(encodedArgs),
+                "UpdateOidcAuthorization" => BSATNHelpers.Decode<Reducer.UpdateOidcAuthorization>(encodedArgs),
+                "UpdateOidcScope" => BSATNHelpers.Decode<Reducer.UpdateOidcScope>(encodedArgs),
+                "UpdateOidcToken" => BSATNHelpers.Decode<Reducer.UpdateOidcToken>(encodedArgs),
                 "UpdateOpenIdClient" => BSATNHelpers.Decode<Reducer.UpdateOpenIdClient>(encodedArgs),
                 "UpdatePassenger" => BSATNHelpers.Decode<Reducer.UpdatePassenger>(encodedArgs),
                 "UpdatePermission" => BSATNHelpers.Decode<Reducer.UpdatePermission>(encodedArgs),
@@ -605,6 +622,9 @@ namespace SpacetimeDB.Types
                 Reducer.CreateJob args => Reducers.InvokeCreateJob(eventContext, args),
                 Reducer.CreateMagicLinkToken args => Reducers.InvokeCreateMagicLinkToken(eventContext, args),
                 Reducer.CreateMaintenance args => Reducers.InvokeCreateMaintenance(eventContext, args),
+                Reducer.CreateOidcAuthorization args => Reducers.InvokeCreateOidcAuthorization(eventContext, args),
+                Reducer.CreateOidcScope args => Reducers.InvokeCreateOidcScope(eventContext, args),
+                Reducer.CreateOidcToken args => Reducers.InvokeCreateOidcToken(eventContext, args),
                 Reducer.CreateOpenIdGrant args => Reducers.InvokeCreateOpenIdGrant(eventContext, args),
                 Reducer.CreatePassenger args => Reducers.InvokeCreatePassenger(eventContext, args),
                 Reducer.CreateQrSession args => Reducers.InvokeCreateQrSession(eventContext, args),
@@ -626,6 +646,9 @@ namespace SpacetimeDB.Types
                 Reducer.DeleteEmployee args => Reducers.InvokeDeleteEmployee(eventContext, args),
                 Reducer.DeleteJob args => Reducers.InvokeDeleteJob(eventContext, args),
                 Reducer.DeleteMaintenance args => Reducers.InvokeDeleteMaintenance(eventContext, args),
+                Reducer.DeleteOidcAuthorization args => Reducers.InvokeDeleteOidcAuthorization(eventContext, args),
+                Reducer.DeleteOidcScope args => Reducers.InvokeDeleteOidcScope(eventContext, args),
+                Reducer.DeleteOidcToken args => Reducers.InvokeDeleteOidcToken(eventContext, args),
                 Reducer.DeletePassenger args => Reducers.InvokeDeletePassenger(eventContext, args),
                 Reducer.DeletePermission args => Reducers.InvokeDeletePermission(eventContext, args),
                 Reducer.DeleteQrSession args => Reducers.InvokeDeleteQrSession(eventContext, args),
@@ -646,6 +669,8 @@ namespace SpacetimeDB.Types
                 Reducer.GetBusMaintenanceHistory args => Reducers.InvokeGetBusMaintenanceHistory(eventContext, args),
                 Reducer.GrantPermissionToRole args => Reducers.InvokeGrantPermissionToRole(eventContext, args),
                 Reducer.LogAdminAction args => Reducers.InvokeLogAdminAction(eventContext, args),
+                Reducer.PruneOidcAuthorizations args => Reducers.InvokePruneOidcAuthorizations(eventContext, args),
+                Reducer.PruneOidcTokens args => Reducers.InvokePruneOidcTokens(eventContext, args),
                 Reducer.RegisterOpenIdClient args => Reducers.InvokeRegisterOpenIdClient(eventContext, args),
                 Reducer.RegisterUser args => Reducers.InvokeRegisterUser(eventContext, args),
                 Reducer.RegisterWebAuthnCredential args => Reducers.InvokeRegisterWebAuthnCredential(eventContext, args),
@@ -660,6 +685,9 @@ namespace SpacetimeDB.Types
                 Reducer.UpdateEmployee args => Reducers.InvokeUpdateEmployee(eventContext, args),
                 Reducer.UpdateJob args => Reducers.InvokeUpdateJob(eventContext, args),
                 Reducer.UpdateMaintenance args => Reducers.InvokeUpdateMaintenance(eventContext, args),
+                Reducer.UpdateOidcAuthorization args => Reducers.InvokeUpdateOidcAuthorization(eventContext, args),
+                Reducer.UpdateOidcScope args => Reducers.InvokeUpdateOidcScope(eventContext, args),
+                Reducer.UpdateOidcToken args => Reducers.InvokeUpdateOidcToken(eventContext, args),
                 Reducer.UpdateOpenIdClient args => Reducers.InvokeUpdateOpenIdClient(eventContext, args),
                 Reducer.UpdatePassenger args => Reducers.InvokeUpdatePassenger(eventContext, args),
                 Reducer.UpdatePermission args => Reducers.InvokeUpdatePermission(eventContext, args),

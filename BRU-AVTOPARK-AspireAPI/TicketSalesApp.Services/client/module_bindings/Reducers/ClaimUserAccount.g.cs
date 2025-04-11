@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ClaimUserAccountHandler(ReducerEventContext ctx, string login, string password);
+        public delegate void ClaimUserAccountHandler(ReducerEventContext ctx, string login, string password, string? newUserIdentity);
         public event ClaimUserAccountHandler? OnClaimUserAccount;
 
-        public void ClaimUserAccount(string login, string password)
+        public void ClaimUserAccount(string login, string password, string? newUserIdentity)
         {
-            conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password), this.SetCallReducerFlags.ClaimUserAccountFlags);
+            conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password, newUserIdentity), this.SetCallReducerFlags.ClaimUserAccountFlags);
         }
 
         public bool InvokeClaimUserAccount(ReducerEventContext ctx, Reducer.ClaimUserAccount args)
@@ -26,7 +26,8 @@ namespace SpacetimeDB.Types
             OnClaimUserAccount(
                 ctx,
                 args.Login,
-                args.Password
+                args.Password,
+                args.NewUserIdentity
             );
             return true;
         }
@@ -42,14 +43,18 @@ namespace SpacetimeDB.Types
             public string Login;
             [DataMember(Name = "password")]
             public string Password;
+            [DataMember(Name = "newUserIdentity")]
+            public string? NewUserIdentity;
 
             public ClaimUserAccount(
                 string Login,
-                string Password
+                string Password,
+                string? NewUserIdentity
             )
             {
                 this.Login = Login;
                 this.Password = Password;
+                this.NewUserIdentity = NewUserIdentity;
             }
 
             public ClaimUserAccount()

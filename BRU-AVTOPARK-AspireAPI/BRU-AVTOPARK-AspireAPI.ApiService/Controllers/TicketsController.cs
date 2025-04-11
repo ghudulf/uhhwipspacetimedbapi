@@ -101,8 +101,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return BadRequest("Seat is already taken");
                 }
                 
-                // Get user login from JWT token
-                var userLogin = User.Identity?.Name;
+                // Get user login from JWT token claims
+                var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                if (string.IsNullOrEmpty(userLogin))
+                {
+                    // Try alternative claim types if the standard one isn't found
+                    userLogin = User.Claims.FirstOrDefault(c => c.Type == "login" || 
+                                                               c.Type == "preferred_username" || 
+                                                               c.Type == "sub")?.Value;
+                }
                 if (string.IsNullOrEmpty(userLogin))
                 {
                     _logger.LogWarning("User login not found in JWT token");

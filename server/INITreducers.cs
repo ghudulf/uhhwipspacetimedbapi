@@ -140,7 +140,7 @@ public static partial class Module
                 PhoneNumber = "+375333000000",
                 PasswordHash = HashPassword("admin"),
                 IsActive = true,
-                CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                CreatedAt = GetSafeUnixTimestamp(),
                 LastLoginAt = null,
                 LegacyGuid = Guid.NewGuid().ToString()
             };
@@ -164,8 +164,8 @@ public static partial class Module
                     IsSystem = true,
                     Priority = 100,
                     IsActive = true,
-                    CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-                    UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    CreatedAt = GetSafeUnixTimestamp(),
+                    UpdatedAt = GetSafeUnixTimestamp(),
                     CreatedBy = "System",
                     UpdatedBy = "System",
                     NormalizedName = "ADMINISTRATOR"
@@ -182,7 +182,7 @@ public static partial class Module
                     Id = userRoleId,
                     UserId = admin.UserId,
                     RoleId = adminRole.RoleId,
-                    AssignedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    AssignedAt = GetSafeUnixTimestamp(),
                     AssignedBy = "System"
                 };
                 ctx.Db.UserRole.Insert(userRole);
@@ -209,7 +209,7 @@ public static partial class Module
                 PhoneNumber = "+375333000001",
                 PasswordHash = HashPassword("gX9#mP2$kL5"),
                 IsActive = false, // Not active until claimed
-                CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                CreatedAt = GetSafeUnixTimestamp(),
                 LastLoginAt = null,
                 LegacyGuid = Guid.NewGuid().ToString()
             };
@@ -233,8 +233,8 @@ public static partial class Module
                     IsSystem = true,
                     Priority = 1,
                     IsActive = true,
-                    CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-                    UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    CreatedAt = GetSafeUnixTimestamp(),
+                    UpdatedAt = GetSafeUnixTimestamp(),
                     CreatedBy = "System",
                     UpdatedBy = "System",
                     NormalizedName = "USER"
@@ -251,7 +251,7 @@ public static partial class Module
                     Id = guestUserRoleId,
                     UserId = guest.UserId,
                     RoleId = userRoleObj.RoleId,
-                    AssignedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    AssignedAt = GetSafeUnixTimestamp(),
                     AssignedBy = "System"
                 };
                 ctx.Db.UserRole.Insert(guestUserRole);
@@ -295,6 +295,8 @@ public static partial class Module
             ("employees.create", "Create employees", "Employee Management"),
             ("employees.edit", "Edit employees", "Employee Management"),
             ("employees.delete", "Delete employees", "Employee Management"),
+            ("employees.view.self", "View own employee information", "Employee Management"),
+            ("employees.edit.self", "Edit own employee information", "Employee Management"),
             
             // Bus Management
             ("buses.view", "View buses", "Bus Management"),
@@ -389,7 +391,7 @@ public static partial class Module
                 Description = "Assign roles to users",
                 Category = "Role Management",
                 IsActive = true,
-                CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000
+                CreatedAt = GetSafeUnixTimestamp()
             };
             ctx.Db.Permission.Insert(assignRolesPermission);
             Log.Info("assign_roles permission created successfully");
@@ -418,7 +420,7 @@ public static partial class Module
                     Description = "Grant permissions to roles",
                     Category = "Permission Management",
                     IsActive = true,
-                    CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000
+                    CreatedAt = GetSafeUnixTimestamp()
                 };
                 ctx.Db.Permission.Insert(grantPermission);
                 Log.Info("grant_permissions permission created successfully");
@@ -440,7 +442,7 @@ public static partial class Module
                     Id = rolePermId,
                     RoleId = adminRole.RoleId,
                     PermissionId = grantPermission.PermissionId,
-                    GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    GrantedAt = GetSafeUnixTimestamp(),
                     GrantedBy = "System"
                 };
                 ctx.Db.RolePermission.Insert(rolePermission);
@@ -463,7 +465,7 @@ public static partial class Module
                     Id = rolePermId,
                     RoleId = adminRole.RoleId,
                     PermissionId = assignRolesPermission.PermissionId,
-                    GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                    GrantedAt = GetSafeUnixTimestamp(),
                     GrantedBy = "System"
                 };
                 ctx.Db.RolePermission.Insert(rolePermission);
@@ -488,12 +490,90 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = adminRole.RoleId,
                         PermissionId = permission.PermissionId,
-                        GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                        GrantedAt = GetSafeUnixTimestamp(),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
                     Log.Debug($"Assigned permission {permission.Name} to admin role");
                 }
+            }
+            
+            // Assign basic permissions to User role
+            var userRole = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "User");
+            if (userRole != null)
+            {
+                Log.Info("Assigning basic permissions to User role");
+                
+                // Define the permissions that regular users should have
+                var userPermissions = new[]
+                {
+                    "users.view",           // View users
+                    "roles.view",           // View roles
+                    "employees.view", // View employees
+                    "employees.view.self",  // View own employee information
+                    "employees.edit.self", // Edit own employee information
+                    "buses.view",           // View buses
+                    "routes.view",          // View routes
+                    "tickets.view",         // View tickets
+                    "tickets.buy",          // Buy tickets
+                    "tickets.reserve",      // Reserve tickets
+                    "maintenance.view",      // View maintenance records
+                    "reports.view",          // View reports
+                    // IF EMPLOYEE = SALES DEPARTMENT THEN HE'LL HAVE ACCESS TO VIEW AND CREATE AND EDIT SALES
+                    "sales.view",            // View sales 
+                    "sales.create",          // Create sales
+                    "sales.edit",            // Edit sales
+                    // ADD PERMISSIONS FOR GENERAL OIDC AND MAGIC LINK MANAGEMENT BECAUSE THAT WILL BE USED
+                    // FOR SALES DEPARTMENT TO LOGIN TO THE SYSTEM VIA OIDC AND MAGIC LINK
+                    "openid.connect.view",   // View OpenID Connect clients
+                    "openid.connect.create", // Create OpenID Connect clients
+                    "openid.connect.edit",   // Edit OpenID Connect clients
+                    "openid.connect.delete", // Delete OpenID Connect clients
+                    "openid.connect.grant",  // Grant OpenID Connect clients
+                    "openid.connect.revoke", // Revoke OpenID Connect clients
+                    "openid.connect.list",   // List OpenID Connect clients
+                    "openid.connect.refresh",// Refresh OpenID Connect clients
+                    "magiclink.view",        // View Magic Links
+                    "magiclink.create",      // Create Magic Links
+                    "magiclink.edit",        // Edit Magic Links
+                    "magiclink.delete",      // Delete Magic Links
+                    "magiclink.grant",       // Grant Magic Links
+                    "magiclink.revoke",      // Revoke Magic Links
+                    "magiclink.list",        // List Magic Links
+                    "magiclink.refresh",     // Refresh Magic Links
+                };
+                
+                foreach (var permName in userPermissions)
+                {
+                    var permission = ctx.Db.Permission.Iter().FirstOrDefault(p => p.Name == permName);
+                    if (permission != null)
+                    {
+                        if (!ctx.Db.RolePermission.Iter().Any(rp => rp.RoleId == userRole.RoleId && rp.PermissionId == permission.PermissionId))
+                        {
+                            uint rolePermId = GetNextId(ctx, "rolePermissionId");
+                            var rolePermission = new RolePermission
+                            {
+                                Id = rolePermId,
+                                RoleId = userRole.RoleId,
+                                PermissionId = permission.PermissionId,
+                                GrantedAt = GetSafeUnixTimestamp(),
+                                GrantedBy = "System"
+                            };
+                            ctx.Db.RolePermission.Insert(rolePermission);
+                            Log.Debug($"Assigned permission {permission.Name} to User role");
+                        }
+                    }
+                    else
+                    {
+                        Log.Warn($"Permission {permName} not found, skipping assignment to User role");
+                    }
+                }
+                
+                Log.Info("Basic permissions assigned to User role successfully");
+            }
+            else
+            {
+                Log.Warn("User role not found, skipping permission assignment");
             }
         }
         else
@@ -566,7 +646,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = adminRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                        GrantedAt = GetSafeUnixTimestamp(),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -599,7 +679,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = userRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                        GrantedAt = GetSafeUnixTimestamp(),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -632,7 +712,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = managerRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+                        GrantedAt = GetSafeUnixTimestamp(),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -866,13 +946,35 @@ public static partial class Module
             var jobId = jobs[jobIndex % jobs.Count].JobId;
 
             // Convert DateTime to Unix timestamp (milliseconds) safely
-            ulong employedSinceMs = (ulong)((DateTimeOffset)employedSince).ToUnixTimeMilliseconds();
-            ulong? dateOfBirthMs = dateOfBirth != null ? (ulong)((DateTimeOffset)dateOfBirth).ToUnixTimeMilliseconds() : null;
-            ulong? passportIssuedDateMs = passportIssuedDate != null ? (ulong)((DateTimeOffset)passportIssuedDate).ToUnixTimeMilliseconds() : null;
-            ulong? lastTrainingDateMs = lastTrainingDate != null ? (ulong)((DateTimeOffset)lastTrainingDate).ToUnixTimeMilliseconds() : null;
-            ulong? certificationExpiryMs = certificationExpiry != null ? (ulong)((DateTimeOffset)certificationExpiry).ToUnixTimeMilliseconds() : null;
-            ulong? medicalCertificateExpiryMs = medicalCertificateExpiry != null ? (ulong)((DateTimeOffset)medicalCertificateExpiry).ToUnixTimeMilliseconds() : null;
-            ulong? driverLicenseExpiryMs = driverLicenseExpiry != null ? (ulong)((DateTimeOffset)driverLicenseExpiry).ToUnixTimeMilliseconds() : null;
+            // First get clean DateTime objects
+            DateTime employedSinceClean = employedSince;
+            DateTime? dateOfBirthClean = dateOfBirth;
+            DateTime? passportIssuedDateClean = passportIssuedDate;
+            DateTime? lastTrainingDateClean = lastTrainingDate;
+            DateTime? certificationExpiryClean = certificationExpiry;
+            DateTime? medicalCertificateExpiryClean = medicalCertificateExpiry;
+            DateTime? driverLicenseExpiryClean = driverLicenseExpiry;
+
+            // Get the local timezone
+            TimeZoneInfo localZone = TimeZoneInfo.Local;
+
+            // Convert to DateTimeOffset with proper timezone
+            DateTimeOffset employedSinceOffset = new DateTimeOffset(employedSinceClean, localZone.GetUtcOffset(employedSinceClean));
+            DateTimeOffset? dateOfBirthOffset = dateOfBirthClean.HasValue ? new DateTimeOffset(dateOfBirthClean.Value, localZone.GetUtcOffset(dateOfBirthClean.Value)) : null;
+            DateTimeOffset? passportIssuedDateOffset = passportIssuedDateClean.HasValue ? new DateTimeOffset(passportIssuedDateClean.Value, localZone.GetUtcOffset(passportIssuedDateClean.Value)) : null;
+            DateTimeOffset? lastTrainingDateOffset = lastTrainingDateClean.HasValue ? new DateTimeOffset(lastTrainingDateClean.Value, localZone.GetUtcOffset(lastTrainingDateClean.Value)) : null;
+            DateTimeOffset? certificationExpiryOffset = certificationExpiryClean.HasValue ? new DateTimeOffset(certificationExpiryClean.Value, localZone.GetUtcOffset(certificationExpiryClean.Value)) : null;
+            DateTimeOffset? medicalCertificateExpiryOffset = medicalCertificateExpiryClean.HasValue ? new DateTimeOffset(medicalCertificateExpiryClean.Value, localZone.GetUtcOffset(medicalCertificateExpiryClean.Value)) : null;
+            DateTimeOffset? driverLicenseExpiryOffset = driverLicenseExpiryClean.HasValue ? new DateTimeOffset(driverLicenseExpiryClean.Value, localZone.GetUtcOffset(driverLicenseExpiryClean.Value)) : null;
+
+            // Convert to Unix timestamps
+            ulong employedSinceMs = (ulong)employedSinceOffset.ToUnixTimeMilliseconds();
+            ulong? dateOfBirthMs = dateOfBirthOffset?.ToUnixTimeMilliseconds() != null ? (ulong)dateOfBirthOffset.Value.ToUnixTimeMilliseconds() : null;
+            ulong? passportIssuedDateMs = passportIssuedDateOffset?.ToUnixTimeMilliseconds() != null ? (ulong)passportIssuedDateOffset.Value.ToUnixTimeMilliseconds() : null;
+            ulong? lastTrainingDateMs = lastTrainingDateOffset?.ToUnixTimeMilliseconds() != null ? (ulong)lastTrainingDateOffset.Value.ToUnixTimeMilliseconds() : null;
+            ulong? certificationExpiryMs = certificationExpiryOffset?.ToUnixTimeMilliseconds() != null ? (ulong)certificationExpiryOffset.Value.ToUnixTimeMilliseconds() : null;
+            ulong? medicalCertificateExpiryMs = medicalCertificateExpiryOffset?.ToUnixTimeMilliseconds() != null ? (ulong)medicalCertificateExpiryOffset.Value.ToUnixTimeMilliseconds() : null;
+            ulong? driverLicenseExpiryMs = driverLicenseExpiryOffset?.ToUnixTimeMilliseconds() != null ? (ulong)driverLicenseExpiryOffset.Value.ToUnixTimeMilliseconds() : null;
 
             var employee = new Employee
             {
@@ -2147,8 +2249,13 @@ public static partial class Module
 
         var engineers = new[] { "Сидоров А.М.", "Соловьев А.И." };
 
-        // Current timestamp in milliseconds
-        ulong now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        DateTime cleanDateTime = new DateTime(2025, 4, 3);
+        // Get the local timezone
+        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        Log.Debug($"Local timezone: {localZone.DisplayName}");
+        // Convert to DateTimeOffset with proper timezone
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
+        ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
 
         for (int i = 0; i < buses.Count; i++)
         {
@@ -2157,8 +2264,19 @@ public static partial class Module
 
             // Random dates within the last 2 months
             var daysAgo = (i * 5) % 60;
-            ulong lastServiceDate = now - (ulong)(daysAgo * 24 * 60 * 60 * 1000);
-            ulong nextServiceDate = now + (ulong)((90 - daysAgo) * 24 * 60 * 60 * 1000); // 3 months after last service
+            // Convert current timestamp to DateTimeOffset
+            DateTimeOffset currentDateOffset = DateTimeOffset.FromUnixTimeMilliseconds((long)now);
+            // Convert to clean DateTime for manipulation
+            DateTime currentDateTime = currentDateOffset.DateTime;
+            // Calculate dates using DateTime operations
+            DateTime lastServiceDateTime = currentDateTime.AddDays(-daysAgo);
+            DateTime nextServiceDateTime = currentDateTime.AddDays(90 - daysAgo);
+            // Convert back to DateTimeOffset with proper timezone
+            DateTimeOffset lastServiceDateOffset = new DateTimeOffset(lastServiceDateTime, localZone.GetUtcOffset(lastServiceDateTime));
+            DateTimeOffset nextServiceDateOffset = new DateTimeOffset(nextServiceDateTime, localZone.GetUtcOffset(nextServiceDateTime));
+            // Convert to Unix timestamps
+            ulong lastServiceDate = (ulong)lastServiceDateOffset.ToUnixTimeMilliseconds();
+            ulong nextServiceDate = (ulong)nextServiceDateOffset.ToUnixTimeMilliseconds();
 
             var maintenance = new Maintenance
             {
@@ -2202,8 +2320,13 @@ public static partial class Module
         var adminUser = ctx.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == "admin");
         var guestUser = ctx.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == "guest");
 
-        // Current timestamp in milliseconds
-        ulong now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        DateTime cleanDateTime = new DateTime(2025, 4, 3);
+        // Get the local timezone
+        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        Log.Debug($"Local timezone: {localZone.DisplayName}");
+        // Convert to DateTimeOffset with proper timezone
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
+        ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
 
         // Calculate time constants safely
         ulong hoursInMs = 60 * 60 * 1000UL;
@@ -2223,9 +2346,18 @@ public static partial class Module
                     uint saleId = GetNextId(ctx, "saleId");
                     var ticketIndex = (month * day + i) % tickets.Count;
 
-                    // Calculate sale date (X months and Y days ago)
-                    ulong saleDate = now - ((ulong)month * monthInMs + (ulong)day * daysInMs);
-
+                    // Calculate sale date based on months and days ago
+                    var daysAgo = month * 30 + day + (i % 5);
+                    // Convert current timestamp to DateTimeOffset
+                    DateTimeOffset currentDateOffset = DateTimeOffset.FromUnixTimeMilliseconds((long)now);
+                    // Convert to clean DateTime for manipulation
+                    DateTime currentDateTime = currentDateOffset.DateTime;
+                    // Calculate sale date using DateTime operations
+                    DateTime saleDateDateTime = currentDateTime.AddDays(-daysAgo);
+                    // Convert back to DateTimeOffset with proper timezone
+                    DateTimeOffset saleDateOffset = new DateTimeOffset(saleDateDateTime, localZone.GetUtcOffset(saleDateDateTime));
+                    // Convert to Unix timestamp
+                    ulong saleDate = (ulong)saleDateOffset.ToUnixTimeMilliseconds();
                     var sale = new Sale
                     {
                         SaleId = saleId,
@@ -2269,6 +2401,35 @@ public static partial class Module
         }
 
         Log.Info("Sales initialized successfully");
+    }
+
+    /// <summary>
+    /// Safely converts a DateTime to Unix timestamp in milliseconds, avoiding 1970 bugs.
+    /// </summary>
+    /// <param name="dateTime">The DateTime to convert (defaults to 2025-04-03 if not provided)</param>
+    /// <returns>Unix timestamp in milliseconds as ulong</returns>
+    public static ulong GetSafeUnixTimestamp(DateTime? dateTime = null)
+    {
+        Log.Debug("GetSafeUnixTimestamp: Starting conversion");
+        
+        // Use provided date or default to a safe future date
+        DateTime cleanDateTime = dateTime ?? new DateTime(2025, 4, 3);
+        Log.Debug($"GetSafeUnixTimestamp: Using clean DateTime: {cleanDateTime:yyyy-MM-dd HH:mm:ss}");
+        
+        // Get the local timezone
+        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        Log.Debug($"GetSafeUnixTimestamp: Local timezone: {localZone.DisplayName}");
+        
+        // Convert to DateTimeOffset with proper timezone
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
+        Log.Debug($"GetSafeUnixTimestamp: Converted to DateTimeOffset: {dateTimeOffset:yyyy-MM-dd HH:mm:ss zzz}");
+        
+        // Convert to Unix timestamp (milliseconds)
+        ulong unixTimestamp = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
+        Log.Debug($"GetSafeUnixTimestamp: Final Unix timestamp: {unixTimestamp}");
+        Log.Debug($"GetSafeUnixTimestamp: Verification - converting back: {DateTimeOffset.FromUnixTimeMilliseconds((long)unixTimestamp):yyyy-MM-dd HH:mm:ss zzz}");
+        
+        return unixTimestamp;
     }
 
 

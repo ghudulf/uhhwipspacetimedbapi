@@ -156,7 +156,9 @@ namespace TicketSalesApp.Services.Implementations
                         user.Email ?? string.Empty,
                         user.PhoneNumber ?? string.Empty,
                         null, // roleId
-                        null  // roleName
+                        null,  // roleName
+                        null,
+                        null
                     );
                     
                     // Find the newly created user

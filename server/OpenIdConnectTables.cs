@@ -1,4 +1,4 @@
- using System.Text;
+using System.Text;
 using SpacetimeDB;
 
 public static partial class Module
@@ -66,7 +66,77 @@ public static partial class Module
         public string? IpAddress;
     }
 
+    // ----- Authorization Store Tables -----
+    [SpacetimeDB.Table(Public = true)]
+    public partial class OpenIddictSpacetimeAuthorization
+    {
+        [PrimaryKey]
+        public uint Id;
 
+        
+        public string OpenIddictAuthorizationId; // OpenIddict's string ID
+
+        public string? ApplicationClientId; // Reference OpenIdConnect.ClientId
+        public ulong? CreationDate; // Unix ms
+        public string? Properties; // JSON map
+        public string? Scopes; // JSON array '["scope1", "scope2"]'
+        public string? Status;
+        public string? Subject; // User's SpacetimeDB Identity string
+        public string? Type; // authorization_code, refresh_token, device_code, user_code
+    }
+
+    [SpacetimeDB.Table]
+    public partial class OidcAuthorizationIdCounter { [PrimaryKey] public string Key = "oidcAuthId"; public uint NextId = 0; }
+
+    // ----- Token Store Tables -----
+    [SpacetimeDB.Table(Public = true)]
+    public partial class OpenIddictSpacetimeToken
+    {
+        [PrimaryKey]
+        public uint Id;
+
+       
+        public string OpenIddictTokenId; // OpenIddict's string ID
+
+        public uint? AuthorizationId; // Link to OpenIddictSpacetimeAuthorization.Id
+        public string? ApplicationClientId; // Link to OpenIdConnect.ClientId
+        public ulong? CreationDate; // Unix ms
+        public ulong? ExpirationDate; // Unix ms
+        public string? Payload; // JWT payload or reference token content
+        public string? Properties; // JSON map
+        public ulong? RedemptionDate; // Unix ms
+        public string? ReferenceId; // For reference tokens
+        public string? Status;
+        public string? Subject; // User's SpacetimeDB Identity string
+        public string? Type; // access_token, refresh_token, authorization_code, identity_token, user_code, device_code
+    }
+
+    [SpacetimeDB.Table]
+    public partial class OidcTokenIdCounter { [PrimaryKey] public string Key = "oidcTokenId"; public uint NextId = 0; }
+
+    // ----- Scope Store Tables -----
+    [SpacetimeDB.Table(Public = true)]
+    public partial class OpenIddictSpacetimeScope
+    {
+        [PrimaryKey]
+        public uint Id;
+
+       
+        public string OpenIddictScopeId; // OpenIddict's string ID
+
+        
+        public string Name; // e.g., "openid", "profile", "api"
+
+        public string? Description;
+        public string? Descriptions; // JSON map for localized
+        public string? DisplayName;
+        public string? DisplayNames; // JSON map for localized
+        public string? Properties; // JSON map
+        public string? Resources; // JSON array of associated resource identifiers
+    }
+
+    [SpacetimeDB.Table]
+    public partial class OidcScopeIdCounter { [PrimaryKey] public string Key = "oidcScopeId"; public uint NextId = 0; }
 
     [SpacetimeDB.Table(Public = true)]
     public partial class OpenIdConnect
@@ -514,12 +584,196 @@ public static partial class Module
         var twoFactorToken = ctx.Db.TwoFactorToken.Id.Find(id);
         if (twoFactorToken == null)
         {
-            throw new Exception("Two-factor token not found");  
+            throw new Exception("Two-factor token not found");
         }
         twoFactorToken.UserId = userId;
         twoFactorToken.Token = token;
         twoFactorToken.IsUsed = isUsed;
         twoFactorToken.ExpiresAt = expiresAt;
         ctx.Db.TwoFactorToken.Id.Update(twoFactorToken);
-    }       
+    }
+
+    // --- Authorization Reducers ---
+    [SpacetimeDB.Reducer]
+    public static void CreateOidcAuthorization(ReducerContext ctx, string oidcAuthId, string? appClientId, ulong? creationDate, string? propertiesJson, string? scopesJson, string? status, string? subject, string? type)
+    {
+        if (ctx.Db.OpenIddictSpacetimeAuthorization.Iter().Any(a => a.OpenIddictAuthorizationId == oidcAuthId)) {
+            Log.Error($"Reducer: OIDC Authorization with OIDC ID {oidcAuthId} already exists.");
+            return; // Or throw
+        }
+        uint internalId = GetNextId(ctx, "oidcAuthId");
+        var newAuth = new OpenIddictSpacetimeAuthorization {
+            Id = internalId, OpenIddictAuthorizationId = oidcAuthId, ApplicationClientId = appClientId,
+            CreationDate = creationDate, Properties = propertiesJson, Scopes = scopesJson,
+            Status = status, Subject = subject, Type = type
+        };
+        ctx.Db.OpenIddictSpacetimeAuthorization.Insert(newAuth);
+        Log.Info($"Reducer: Created OIDC Authorization {oidcAuthId} (Internal ID: {internalId})");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void DeleteOidcAuthorization(ReducerContext ctx, uint internalId)
+    {
+        var auth = ctx.Db.OpenIddictSpacetimeAuthorization.Id.Find(internalId);
+        if (auth != null) {
+             ctx.Db.OpenIddictSpacetimeAuthorization.Id.Delete(internalId);
+             Log.Info($"Reducer: Deleted OIDC Authorization internal ID {internalId} (OIDC ID: {auth.OpenIddictAuthorizationId})");
+             // Cascade delete associated tokens
+             var tokensToDelete = ctx.Db.OpenIddictSpacetimeToken.Iter().Where(t => t.AuthorizationId == internalId).ToList();
+             foreach(var token in tokensToDelete) {
+                  ctx.Db.OpenIddictSpacetimeToken.Id.Delete(token.Id);
+                  Log.Debug($"Reducer: Deleted associated token internal ID {token.Id}");
+             }
+        } else {
+             Log.Warn($"Reducer: Could not delete OIDC Authorization, internal ID {internalId} not found.");
+        }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UpdateOidcAuthorization(ReducerContext ctx, uint internalId, string? propertiesJson, string? scopesJson, string? status)
+    {
+        var auth = ctx.Db.OpenIddictSpacetimeAuthorization.Id.Find(internalId);
+         if (auth != null) {
+             if(propertiesJson != null) auth.Properties = propertiesJson;
+             if(scopesJson != null) auth.Scopes = scopesJson;
+             if(status != null) auth.Status = status;
+             ctx.Db.OpenIddictSpacetimeAuthorization.Id.Update(auth);
+             Log.Info($"Reducer: Updated OIDC Authorization internal ID {internalId}");
+         } else {
+              Log.Warn($"Reducer: Could not update OIDC Authorization, internal ID {internalId} not found.");
+         }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void PruneOidcAuthorizations(ReducerContext ctx, ulong thresholdDate)
+    {
+         Log.Info($"Reducer: Pruning OIDC authorizations created before {thresholdDate}");
+         // Find authorizations that are inactive/revoked and older than the threshold
+         var authorizationsToPrune = ctx.Db.OpenIddictSpacetimeAuthorization.Iter()
+             .Where(auth => (auth.Status == "inactive" || auth.Status == "revoked") &&
+                             auth.CreationDate.HasValue && auth.CreationDate < thresholdDate)
+             .ToList();
+
+         int count = 0;
+         foreach (var auth in authorizationsToPrune)
+         {
+              DeleteOidcAuthorization(ctx, auth.Id); // Reuse delete reducer for cascade
+              count++;
+         }
+         Log.Info($"Reducer: Pruned {count} OIDC authorizations.");
+    }
+
+    // --- Token Reducers ---
+    [SpacetimeDB.Reducer]
+    public static void CreateOidcToken(ReducerContext ctx, string oidcTokenId, uint? authInternalId, string? appClientId, ulong? creationDate, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? referenceId, string? status, string? subject, string? type)
+    {
+         if (ctx.Db.OpenIddictSpacetimeToken.Iter().Any(t => t.OpenIddictTokenId == oidcTokenId)) {
+            Log.Error($"Reducer: OIDC Token with OIDC ID {oidcTokenId} already exists.");
+            return; // Or throw
+        }
+        uint internalId = GetNextId(ctx, "oidcTokenId");
+        var newToken = new OpenIddictSpacetimeToken {
+            Id = internalId, OpenIddictTokenId = oidcTokenId, AuthorizationId = authInternalId, ApplicationClientId = appClientId,
+            CreationDate = creationDate, ExpirationDate = expirationDate, Payload = payload, Properties = propertiesJson,
+            RedemptionDate = redemptionDate, ReferenceId = referenceId, Status = status, Subject = subject, Type = type
+        };
+        ctx.Db.OpenIddictSpacetimeToken.Insert(newToken);
+        Log.Info($"Reducer: Created OIDC Token {oidcTokenId} (Internal ID: {internalId}, Type: {type})");
+    }
+
+     [SpacetimeDB.Reducer]
+    public static void DeleteOidcToken(ReducerContext ctx, uint internalId)
+    {
+        var token = ctx.Db.OpenIddictSpacetimeToken.Id.Find(internalId);
+        if (token != null) {
+            ctx.Db.OpenIddictSpacetimeToken.Id.Delete(internalId);
+            Log.Info($"Reducer: Deleted OIDC Token internal ID {internalId} (OIDC ID: {token.OpenIddictTokenId})");
+        } else {
+            Log.Warn($"Reducer: Could not delete OIDC Token, internal ID {internalId} not found.");
+        }
+    }
+
+     [SpacetimeDB.Reducer]
+     public static void UpdateOidcToken(ReducerContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status)
+     {
+          var token = ctx.Db.OpenIddictSpacetimeToken.Id.Find(internalId);
+          if (token != null) {
+               if(expirationDate.HasValue) token.ExpirationDate = expirationDate;
+               if(payload != null) token.Payload = payload;
+               if(propertiesJson != null) token.Properties = propertiesJson;
+               if(redemptionDate.HasValue) token.RedemptionDate = redemptionDate;
+               if(status != null) token.Status = status;
+               ctx.Db.OpenIddictSpacetimeToken.Id.Update(token);
+               Log.Info($"Reducer: Updated OIDC Token internal ID {internalId}");
+          } else {
+               Log.Warn($"Reducer: Could not update OIDC Token, internal ID {internalId} not found.");
+          }
+     }
+
+     [SpacetimeDB.Reducer]
+     public static void PruneOidcTokens(ReducerContext ctx, ulong thresholdDate)
+     {
+          Log.Info($"Reducer: Pruning OIDC tokens created before {thresholdDate}");
+           // Find tokens that are inactive/revoked/redeemed/expired and older than the threshold
+          var tokensToPrune = ctx.Db.OpenIddictSpacetimeToken.Iter()
+              .Where(token => (token.Status == "inactive" || token.Status == "revoked" || token.Status == "redeemed" || (token.ExpirationDate.HasValue && token.ExpirationDate < thresholdDate)) &&
+                              token.CreationDate.HasValue && token.CreationDate < thresholdDate)
+              .ToList();
+
+          int count = 0;
+          foreach (var token in tokensToPrune)
+          {
+               ctx.Db.OpenIddictSpacetimeToken.Id.Delete(token.Id);
+               count++;
+          }
+          Log.Info($"Reducer: Pruned {count} OIDC tokens.");
+     }
+
+
+    // --- Scope Reducers ---
+    [SpacetimeDB.Reducer]
+    public static void CreateOidcScope(ReducerContext ctx, string oidcScopeId, string name, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
+    {
+         if (ctx.Db.OpenIddictSpacetimeScope.Iter().Any(s => s.OpenIddictScopeId == oidcScopeId || s.Name == name)) {
+            Log.Error($"Reducer: OIDC Scope with OIDC ID {oidcScopeId} or Name {name} already exists.");
+            return; // Or throw
+        }
+        uint internalId = GetNextId(ctx, "oidcScopeId");
+        var newScope = new OpenIddictSpacetimeScope {
+            Id = internalId, OpenIddictScopeId = oidcScopeId, Name = name, Description = description, Descriptions = descriptionsJson,
+            DisplayName = displayName, DisplayNames = displayNamesJson, Properties = propertiesJson, Resources = resourcesJson
+        };
+        ctx.Db.OpenIddictSpacetimeScope.Insert(newScope);
+        Log.Info($"Reducer: Created OIDC Scope {name} (Internal ID: {internalId})");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void DeleteOidcScope(ReducerContext ctx, uint internalId)
+    {
+        var scope = ctx.Db.OpenIddictSpacetimeScope.Id.Find(internalId);
+        if (scope != null) {
+            ctx.Db.OpenIddictSpacetimeScope.Id.Delete(internalId);
+            Log.Info($"Reducer: Deleted OIDC Scope internal ID {internalId} (Name: {scope.Name})");
+        } else {
+            Log.Warn($"Reducer: Could not delete OIDC Scope, internal ID {internalId} not found.");
+        }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void UpdateOidcScope(ReducerContext ctx, uint internalId, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
+    {
+         var scope = ctx.Db.OpenIddictSpacetimeScope.Id.Find(internalId);
+         if (scope != null) {
+             if(description != null) scope.Description = description;
+             if(descriptionsJson != null) scope.Descriptions = descriptionsJson;
+             if(displayName != null) scope.DisplayName = displayName;
+             if(displayNamesJson != null) scope.DisplayNames = displayNamesJson;
+             if(propertiesJson != null) scope.Properties = propertiesJson;
+             if(resourcesJson != null) scope.Resources = resourcesJson;
+             ctx.Db.OpenIddictSpacetimeScope.Id.Update(scope);
+             Log.Info($"Reducer: Updated OIDC Scope internal ID {internalId}");
+         } else {
+             Log.Warn($"Reducer: Could not update OIDC Scope, internal ID {internalId} not found.");
+         }
+    }
 }

@@ -7,6 +7,7 @@ using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Linq;
+
 //WE HAVE CRYPTOGRAPHY ALREADY
 namespace TicketSalesApp.Services.Implementations
 {
@@ -17,7 +18,7 @@ namespace TicketSalesApp.Services.Implementations
         private readonly ILogger<AuthenticationService> _logger;
 
         public AuthenticationService(
-            ISpacetimeDBService spacetimeService, 
+            ISpacetimeDBService spacetimeService,
             IRoleService roleService,
             ILogger<AuthenticationService> logger)
         {
@@ -68,10 +69,10 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
-                    conn.Reducers.AuthenticateUser(login, password);
-                    
+                conn.Reducers.AuthenticateUser(login, password);
+
                 _logger.LogInformation("User {Login} authenticated successfully", login);
-                    return userProfile;
+                return userProfile;
             }
             catch (Exception ex)
             {
@@ -80,7 +81,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> RegisterAsync(string login, string password, int role, string? email = null, string? phoneNumber = null)
+        public async Task<bool> RegisterAsync(string login, string password, int role, string? email = null, string? phoneNumber = null, Identity? actingUser = null, string? newUserIdentity = null)
         {
             try
             {
@@ -93,7 +94,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 var conn = _spacetimeService.GetConnection();
-                
+
                 // Check if user already exists
                 var existingUser = conn.Db.UserProfile.Iter()
                     .FirstOrDefault(u => u.Login == login);
@@ -105,23 +106,27 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null);
-                
-                // Wait a moment for the reducer to complete and the subscription to update
-                await Task.Delay(100);
-                
-                // Get the newly created user
-                var newUser = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
-                
-                if (newUser == null)
+                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null, actingUser, newUserIdentity);
+
+                // Check repeatedly for a short time if the user was created
+                int attempts = 0;
+                const int maxAttempts = 10;
+                const int delayMs = 50;
+
+                while (attempts < maxAttempts)
                 {
-                    _logger.LogError("Registration failed: User was not created properly");
-                    return false;
+                    var newUser = conn.Db.UserProfile.Login.Find(login);
+                    if (newUser != null)
+                    {
+                        _logger.LogInformation("Successfully registered new user with login: {Login}", login);
+                        return true;
+                    }
+                    await Task.Delay(delayMs);
+                    attempts++;
                 }
-                
-                _logger.LogInformation("Successfully registered new user with login: {Login}", login);
-                return true;
+
+                _logger.LogError("Registration failed: User was not created within timeout period");
+                return false;
             }
             catch (Exception ex)
             {
@@ -143,7 +148,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 var conn = _spacetimeService.GetConnection();
-                
+
                 // Find user by login
                 var userProfile = conn.Db.UserProfile.Iter()
                     .FirstOrDefault(u => u.Login == login && u.IsActive);
@@ -167,25 +172,25 @@ namespace TicketSalesApp.Services.Implementations
                 throw;
             }
         }
-        
+
         public int GetUserRole(Identity userId)
         {
             try
             {
                 var conn = _spacetimeService.GetConnection();
-                
+
                 // Find user roles
                 var userRoles = conn.Db.UserRole.Iter()
                     .Where(ur => ur.UserId.Equals(userId))
                     .ToList();
-                
+
                 if (userRoles.Count == 0)
                     return 0; // Default role
-                
+
                 // Get the highest priority role
                 uint highestPriorityRoleId = userRoles.First().RoleId;
                 uint highestPriority = 0;
-                
+
                 foreach (var userRole in userRoles)
                 {
                     var role = conn.Db.Role.RoleId.Find(userRole.RoleId);
@@ -195,7 +200,7 @@ namespace TicketSalesApp.Services.Implementations
                         highestPriorityRoleId = role.RoleId;
                     }
                 }
-                
+
                 // Get the legacy role ID for compatibility
                 var highestRole = conn.Db.Role.RoleId.Find(highestPriorityRoleId);
                 return highestRole?.LegacyRoleId ?? 0;
@@ -583,20 +588,20 @@ namespace TicketSalesApp.Services.Implementations
             {
                 // Normalize the login for case-insensitive comparison
                 string normalizedLogin = login.ToUpperInvariant();
-                
+
                 // Get connection to SpacetimeDB
                 var conn = _spacetimeService.GetConnection();
-                
+
                 // Find the user by normalized login
                 var user = conn.Db.UserProfile.Iter()
                     .FirstOrDefault(u => u.Login == normalizedLogin);
-                
+
                 if (user == null)
                 {
                     _logger.LogWarning("User with login {Login} not found", login);
                     return null;
                 }
-                
+
                 _logger.LogDebug("Found user with login {Login}, returning Identity", login);
                 return user.UserId;
             }

@@ -362,7 +362,7 @@ public static partial class Module
         // Create a new user-role assignment
         var userRole = new UserRole
         {
-            Id = 0, // Auto-increment will assign this
+            Id = GetNextId(ctx, "userRoleId"), // Get next ID from counter
             UserId = userId,  // Set the user ID
             RoleId = roleId,  // Set the role ID
             AssignedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set assignment time

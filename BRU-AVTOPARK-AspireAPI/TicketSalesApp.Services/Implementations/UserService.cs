@@ -103,7 +103,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateUserAsync(uint userId, string? login, string? password, int? role, string? email, string? phoneNumber, bool? isActive)
+        public async Task<bool> UpdateUserAsync(uint userId, string? login, string? password, int? role, string? email, string? phoneNumber, bool? isActive, Identity? actingUser = null)
         {
             try
             {
@@ -132,7 +132,7 @@ namespace TicketSalesApp.Services.Implementations
                         phoneNumber,
                         email,
                         isActive,
-                        userProfile.UserId
+                        actingUser
                     );
                     
                     _logger.LogInformation("Successfully updated user with ID: {UserId}", userId);
@@ -151,7 +151,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteUserAsync(uint userId)
+        public async Task<bool> DeleteUserAsync(uint userId, Identity? actingUser = null)
         {
             try
             {
@@ -172,7 +172,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Call the DeleteUser reducer
                 try
                 {
-                    conn.Reducers.DeleteUser(userProfile.UserId,userProfile.UserId);
+                    conn.Reducers.DeleteUser(userProfile.UserId,actingUser);
                     
                     _logger.LogInformation("Successfully deleted user with ID: {UserId}", userId);
                     return true;
@@ -329,7 +329,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<UserProfile?> CreateUserAsync(string login, string password, int role, string? email = null, string? phoneNumber = null)
+        public async Task<UserProfile?> CreateUserAsync(string login, string password, int role, string? email = null, string? phoneNumber = null, Identity? actingUser = null)
         {
             try
             {
@@ -346,7 +346,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null);
+                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null, actingUser, null);
                 
                 // Wait a moment for the reducer to complete and the subscription to update
                 await Task.Delay(100);

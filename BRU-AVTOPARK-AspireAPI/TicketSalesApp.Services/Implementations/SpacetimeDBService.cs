@@ -265,7 +265,7 @@ namespace TicketSalesApp.Services.Implementations
                             roleName = args["roleName"].ToString();
 
                         _logger.LogInformation("Processing RegisterUser command for user: {Login}", login);
-                        reducers.RegisterUser(login, password, email, phoneNumber, roleId, roleName);
+                        reducers.RegisterUser(login, password, email, phoneNumber, roleId, roleName,null, null);
                         _logger.LogInformation("RegisterUser command completed for user: {Login}", login);
                     }
                     else
@@ -981,7 +981,7 @@ namespace TicketSalesApp.Services.Implementations
                         TryGetValue<string>(args, "password", out var claimPassword))
                     {
                         _logger.LogInformation("Processing ClaimUserAccount command for login: {Login}", claimLogin);
-                        reducers.ClaimUserAccount(claimLogin, claimPassword);
+                        reducers.ClaimUserAccount(claimLogin, claimPassword,null);
                     }
                     break;
 
