@@ -4193,7 +4193,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     </div>
                     </div>
                  <hr style='border: none; height: 1px; background-color: var(--id-color-line-normal); margin: 0;'/>";
-
              // Helper function to render WebAuthn Key List Item
             string RenderWebAuthnKeyItem(WebAuthnCredentialDto c) => $@"
                  <div class=""UnstyledListItem_root__xsw4w variant-default_root__vj_1h"" style=""padding: 12px 0;"">
@@ -6139,6 +6138,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public string? PhoneNumber { get; set; }
     }
 }
+
 
 
 

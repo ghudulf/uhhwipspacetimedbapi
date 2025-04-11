@@ -158,7 +158,9 @@ builder.Services.AddOpenIddict()
         // THEN MAKE AUTH CONTROLLER COMPLY WITH OPENIDDICT
         // ROYAL PAIN FROM THE DEPTH OF HELL
         options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
-        // authorization store done - 2 more to go - will be done later - no need to autocomplete those for now
+        options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
+        options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
+       
     })
     .AddServer(options =>
     {
