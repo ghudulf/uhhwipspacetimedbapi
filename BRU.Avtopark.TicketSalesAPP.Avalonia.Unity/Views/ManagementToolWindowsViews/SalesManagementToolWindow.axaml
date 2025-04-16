@@ -1,0 +1,146 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.SalesManagementToolWindow"
+             x:DataType="vm:SalesManagementViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top Bar -->
+        <Border Grid.Row="0" Background="#2D3436" Height="65">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0">
+                <StackPanel Grid.Column="0" 
+                          Orientation="Horizontal" 
+                          VerticalAlignment="Center"
+                          Spacing="15">
+                    <TextBlock Text="Период:" 
+                             Foreground="White" 
+                             VerticalAlignment="Center"
+                             FontSize="14"/>
+                    <DatePicker SelectedDate="{Binding StartDate}"
+                              Background="#34495e"
+                              Foreground="White"
+                              Width="150"/>
+                    <TextBlock Text="-" 
+                             Foreground="White" 
+                             VerticalAlignment="Center"
+                             FontSize="14"/>
+                    <DatePicker SelectedDate="{Binding EndDate}"
+                              Background="#34495e"
+                              Foreground="White"
+                              Width="150"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" 
+                         Text="{Binding TotalIncome, StringFormat={}Общая сумма: {0:C}}"
+                         Foreground="White"
+                         FontSize="18"
+                         FontWeight="Bold"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Center"/>
+
+                <Button Grid.Column="2"
+                        Command="{Binding AddCommand}"
+                        Content="НОВАЯ ПРОДАЖА"
+                        Background="#27ae60"
+                        Foreground="White"
+                        Padding="20,10"
+                        FontSize="14"
+                        FontWeight="Bold"/>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,300">
+            <!-- Sales DataGrid -->
+            <DataGrid Grid.Column="0"
+                     ItemsSource="{Binding Sales}"
+                     SelectedItem="{Binding SelectedSale}"
+                     IsReadOnly="True"
+                     AutoGenerateColumns="False"
+                    
+                     BorderThickness="0"
+                     Margin="10">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="№" 
+                                      Binding="{Binding SaleId}"
+                                      Width="60"/>
+                    <DataGridTextColumn Header="Дата"
+                                      Binding="{Binding SaleDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                      Width="150"/>
+                    <DataGridTextColumn Header="Маршрут"
+                                      Binding="{Binding Bilet.Marshut.StartPoint}"
+                                      Width="*"/>
+                    <DataGridTextColumn Header="Конечная точка"
+                                      Binding="{Binding Bilet.Marshut.EndPoint}"
+                                      Width="*"/>
+                    <DataGridTextColumn Header="Время"
+                                      Binding="{Binding Bilet.Marshut.TravelTime}"
+                                      Width="100"/>
+                    <DataGridTextColumn Header="Цена"
+                                      Binding="{Binding Bilet.TicketPrice, StringFormat={}{0:C}}"
+                                      Width="100"/>
+                    <DataGridTextColumn Header="Покупатель"
+                                      Binding="{Binding TicketSoldToUser}"
+                                      Width="150"/>
+                    <DataGridTextColumn Header="Телефон"
+                                      Binding="{Binding TicketSoldToUserPhone}"
+                                      Width="150"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Right Panel -->
+            <StackPanel Grid.Column="1" 
+                       Margin="0,10,10,10" 
+                       Spacing="10">
+                <Button Content="Печать чека"
+                        HorizontalAlignment="Stretch"
+                        Height="50"
+                        Background="#3498db"
+                        Foreground="White"
+                        FontSize="14"/>
+                
+                <Button Content="Возврат"
+                        HorizontalAlignment="Stretch"
+                        Height="50"
+                        Background="#e74c3c"
+                        Foreground="White"
+                        FontSize="14"
+                        Command="{Binding DeleteCommand}"
+                        IsEnabled="{Binding SelectedSale, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+                <TextBlock Text="{Binding ErrorMessage}"
+                          Foreground="#c0392b"
+                          TextWrapping="Wrap"
+                          IsVisible="{Binding HasError}"
+                          Margin="0,10"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" 
+                Background="#34495e" 
+                Height="30">
+            <TextBlock Text="Готово"
+                      Foreground="White"
+                      VerticalAlignment="Center"
+                      Margin="10,0"/>
+        </Border>
+    </Grid>
+
+    <UserControl.Styles>
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="DataGrid">
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#ecf0f1"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#ecf0f1"/>
+        </Style>
+        <Style Selector="DatePicker">
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

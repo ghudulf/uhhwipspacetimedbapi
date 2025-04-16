@@ -8,13 +8,14 @@ using System.Linq;
 using Serilog;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
-    public class JobsController : ControllerBase
+    [AllowAnonymous]
+    public class JobsController : BaseController
     {
         private readonly IEmployeeService _employeeService;
         private readonly ILogger<JobsController> _logger;
@@ -27,138 +28,255 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Job>>> GetJobs()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetJobs()
         {
-            Log.Information("Fetching all jobs with their employees");
-            var jobs = await _employeeService.GetAllJobsAsync();
-            Log.Debug("Retrieved {JobCount} jobs", jobs.Count);
-            return Ok(jobs);
+            _logger.LogInformation("REQUEST RECEIVED: GetJobs - Fetching all jobs");
+            
+            try
+            {
+                _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync");
+                var jobs = await _employeeService.GetAllJobsAsync();
+                
+                // Map to anonymous type
+                var result = jobs.Select(j => new {
+                    j.JobId,
+                    j.JobTitle,
+                    j.Internship
+                }).ToList();
+
+                _logger.LogInformation("DATABASE RESULT: Retrieved {JobCount} jobs", result.Count);
+                _logger.LogInformation("FULL JOBS DATA: {JobsData}", JsonSerializer.Serialize(result));
+                
+                foreach (var job in result)
+                {
+                    _logger.LogDebug("Job ID: {JobId}, Title: {JobTitle}, Internship: {Internship}", 
+                        job.JobId, job.JobTitle, job.Internship);
+                }
+                
+                _logger.LogInformation("RESPONSE SENT: Returning {JobCount} jobs to client", result.Count);
+                return Ok(result); // Return mapped result
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all jobs");
+                return StatusCode(500, "An error occurred while retrieving jobs");
+            }
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Job>> GetJob(uint id)
+        public async Task<ActionResult<dynamic>> GetJob(uint id)
         {
-            Log.Information("Fetching job with ID {JobId}", id);
-            var job = await _employeeService.GetJobByIdAsync(id);
-
-            if (job == null)
+            _logger.LogInformation("REQUEST RECEIVED: GetJob with ID {JobId}", id);
+            
+            try
             {
-                Log.Warning("Job with ID {JobId} not found", id);
-                return NotFound();
-            }
+                _logger.LogInformation("DATABASE OPERATION: GetJobByIdAsync for ID {JobId}", id);
+                var job = await _employeeService.GetJobByIdAsync(id);
 
-            Log.Debug("Successfully retrieved job with ID {JobId}", id);
-            return Ok(job);
+                if (job == null)
+                {
+                    _logger.LogWarning("DATABASE RESULT: Job with ID {JobId} not found", id);
+                    return NotFound();
+                }
+
+                // Map to anonymous type
+                var result = new {
+                    job.JobId,
+                    job.JobTitle,
+                    job.Internship
+                };
+
+                _logger.LogInformation("DATABASE RESULT: Successfully retrieved job with ID {JobId}", id);
+                _logger.LogInformation("FULL JOB DATA: {JobData}", JsonSerializer.Serialize(result));
+                _logger.LogInformation("RESPONSE SENT: Job details for ID {JobId}, Title: {JobTitle}, Internship: {Internship}", 
+                    result.JobId, result.JobTitle, result.Internship);
+                
+                return Ok(result); // Return mapped result
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving job with ID {JobId}", id);
+                return StatusCode(500, $"An error occurred while retrieving job with ID {id}");
+            }
         }
 
         [HttpPost]
         public async Task<ActionResult<Job>> CreateJob([FromBody] CreateJobModel model)
         {
-            if (!IsAdmin())
+            _logger.LogInformation("REQUEST RECEIVED: CreateJob with data: {JobData}", JsonSerializer.Serialize(model));
+            
+            try
             {
-                Log.Warning("Unauthorized attempt to create job by non-admin user");
-                return Forbid();
+                if (!IsAdmin())
+                {
+                    _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to create job by non-admin user");
+                    return Forbid();
+                }
+
+                _logger.LogInformation("DATABASE OPERATION: CreateJobAsync with title {JobTitle}, internship {JobInternship}", 
+                    model.JobTitle, model.JobInternship);
+
+                var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
+                if (!success)
+                {
+                    _logger.LogWarning("DATABASE RESULT: Failed to create job with title {JobTitle}", model.JobTitle);
+                    return BadRequest("Failed to create job");
+                }
+
+                // Get the newly created job
+                _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync to retrieve newly created job");
+                var jobs = await _employeeService.GetAllJobsAsync();
+                _logger.LogInformation("DATABASE RESULT: Retrieved {JobCount} jobs after creation", jobs.Count);
+                _logger.LogInformation("FULL JOBS DATA AFTER CREATION: {JobsData}", JsonSerializer.Serialize(jobs));
+                
+                var job = jobs.LastOrDefault();
+
+                if (job == null)
+                {
+                    _logger.LogError("DATABASE RESULT: Job was created but could not be retrieved");
+                    return StatusCode(500, "Job was created but could not be retrieved");
+                }
+
+                _logger.LogInformation("RESPONSE SENT: Successfully created job with ID {JobId}, Title: {JobTitle}, Internship: {Internship}", 
+                    job.JobId, job.JobTitle, job.Internship);
+                return CreatedAtAction(nameof(GetJob), new { id = job.JobId }, job);
             }
-
-            Log.Information("Creating new job with title {JobTitle}", model.JobTitle);
-
-            var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
-            if (!success)
+            catch (Exception ex)
             {
-                Log.Warning("Failed to create job");
-                return BadRequest("Failed to create job");
+                _logger.LogError(ex, "Error creating job with title {JobTitle}", model.JobTitle);
+                return StatusCode(500, "An error occurred while creating the job");
             }
-
-            // Get the newly created job
-            var jobs = await _employeeService.GetAllJobsAsync();
-            var job = jobs.LastOrDefault();
-
-            if (job == null)
-            {
-                Log.Error("Job was created but could not be retrieved");
-                return StatusCode(500, "Job was created but could not be retrieved");
-            }
-
-            Log.Information("Successfully created job with ID {JobId}", job.JobId);
-            return CreatedAtAction(nameof(GetJob), new { id = job.JobId }, job);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJob(uint id, [FromBody] UpdateJobModel model)
         {
-            if (!IsAdmin())
+            _logger.LogInformation("REQUEST RECEIVED: UpdateJob for ID {JobId} with data: {JobData}", 
+                id, JsonSerializer.Serialize(model));
+            
+            try
             {
-                Log.Warning("Unauthorized attempt to update job by non-admin user");
-                return Forbid();
+                if (!IsAdmin())
+                {
+                    _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to update job {JobId} by non-admin user", id);
+                    return Forbid();
+                }
+
+                _logger.LogInformation("DATABASE OPERATION: UpdateJobAsync for ID {JobId}, Title: {JobTitle}, Internship: {JobInternship}", 
+                    id, model.JobTitle, model.JobInternship);
+
+                var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
+                if (!success)
+                {
+                    _logger.LogWarning("DATABASE RESULT: Job with ID {JobId} not found for update", id);
+                    return NotFound();
+                }
+
+                // Get the updated job for logging
+                var updatedJob = await _employeeService.GetJobByIdAsync(id);
+                _logger.LogInformation("UPDATED JOB DATA: {JobData}", JsonSerializer.Serialize(updatedJob));
+                
+                _logger.LogInformation("RESPONSE SENT: Successfully updated job with ID {JobId}", id);
+                return NoContent();
             }
-
-            Log.Information("Updating job with ID {JobId}", id);
-
-            var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
-            if (!success)
+            catch (Exception ex)
             {
-                Log.Warning("Job with ID {JobId} not found for update", id);
-                return NotFound();
+                _logger.LogError(ex, "Error updating job with ID {JobId}", id);
+                return StatusCode(500, $"An error occurred while updating job with ID {id}");
             }
-
-            Log.Information("Successfully updated job with ID {JobId}", id);
-            return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteJob(uint id)
         {
-            if (!IsAdmin())
+            _logger.LogInformation("REQUEST RECEIVED: DeleteJob with ID {JobId}", id);
+            
+            try
             {
-                Log.Warning("Unauthorized attempt to delete job by non-admin user");
-                return Forbid();
+                if (!IsAdmin())
+                {
+                    _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to delete job {JobId} by non-admin user", id);
+                    return Forbid();
+                }
+
+                // Get the job before deletion for logging
+                var jobToDelete = await _employeeService.GetJobByIdAsync(id);
+                _logger.LogInformation("JOB TO DELETE: {JobData}", JsonSerializer.Serialize(jobToDelete));
+                
+                _logger.LogInformation("DATABASE OPERATION: DeleteJobAsync for ID {JobId}", id);
+                var success = await _employeeService.DeleteJobAsync(id);
+                if (!success)
+                {
+                    _logger.LogWarning("DATABASE RESULT: Job with ID {JobId} not found for deletion", id);
+                    return NotFound();
+                }
+
+                _logger.LogInformation("RESPONSE SENT: Successfully deleted job with ID {JobId}", id);
+                return NoContent();
             }
-
-            Log.Information("Deleting job with ID {JobId}", id);
-
-            var success = await _employeeService.DeleteJobAsync(id);
-            if (!success)
+            catch (Exception ex)
             {
-                Log.Warning("Job with ID {JobId} not found for deletion", id);
-                return NotFound();
+                _logger.LogError(ex, "Error deleting job with ID {JobId}", id);
+                return StatusCode(500, $"An error occurred while deleting job with ID {id}");
             }
-
-            Log.Information("Successfully deleted job with ID {JobId}", id);
-            return NoContent();
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Job>>> SearchJobs(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchJobs(
             [FromQuery] string? jobTitle = null,
             [FromQuery] string? internship = null)
         {
-            Log.Information("Searching jobs with title: {JobTitle}, internship: {Internship}", 
+            _logger.LogInformation("REQUEST RECEIVED: SearchJobs with parameters - Title: {JobTitle}, Internship: {Internship}", 
                 jobTitle ?? "any", internship ?? "any");
+            
+            try
+            {
+                _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync for search");
+                var jobs = await _employeeService.GetAllJobsAsync();
+                _logger.LogInformation("DATABASE RESULT: Retrieved {JobCount} total jobs before filtering", jobs.Count);
+                _logger.LogInformation("FULL JOBS DATA BEFORE FILTERING: {JobsData}", JsonSerializer.Serialize(jobs));
 
-            var jobs = await _employeeService.GetAllJobsAsync();
+                if (!string.IsNullOrEmpty(jobTitle))
+                {
+                    _logger.LogInformation("FILTERING: Applying job title filter '{JobTitle}'", jobTitle);
+                    jobs = jobs.Where(j => j.JobTitle.Contains(jobTitle, StringComparison.OrdinalIgnoreCase)).ToList();
+                    _logger.LogInformation("FILTERING RESULT: {JobCount} jobs after title filter", jobs.Count);
+                }
 
-            if (!string.IsNullOrEmpty(jobTitle))
-                jobs = jobs.Where(j => j.JobTitle.Contains(jobTitle, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!string.IsNullOrEmpty(internship))
+                {
+                    _logger.LogInformation("FILTERING: Applying internship filter '{Internship}'", internship);
+                    jobs = jobs.Where(j => j.Internship.Contains(internship, StringComparison.OrdinalIgnoreCase)).ToList();
+                    _logger.LogInformation("FILTERING RESULT: {JobCount} jobs after internship filter", jobs.Count);
+                }
 
-            if (!string.IsNullOrEmpty(internship))
-                jobs = jobs.Where(j => j.Internship.Contains(internship, StringComparison.OrdinalIgnoreCase)).ToList();
+                // Map to anonymous type
+                var result = jobs.Select(j => new {
+                    j.JobId,
+                    j.JobTitle,
+                    j.Internship
+                }).ToList();
 
-            Log.Debug("Found {JobCount} jobs matching search criteria", jobs.Count);
-            return Ok(jobs);
+                _logger.LogInformation("SEARCH RESULTS: Found {JobCount} jobs matching search criteria", result.Count);
+                _logger.LogInformation("FULL SEARCH RESULTS DATA: {JobsData}", JsonSerializer.Serialize(result));
+                
+                foreach (var job in result)
+                {
+                    _logger.LogDebug("Search Result - Job ID: {JobId}, Title: {JobTitle}, Internship: {Internship}", 
+                        job.JobId, job.JobTitle, job.Internship);
+                }
+                
+                _logger.LogInformation("RESPONSE SENT: Returning {JobCount} jobs matching search criteria to client", result.Count);
+                return Ok(result); // Return mapped result
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching jobs with title: {JobTitle}, internship: {Internship}", 
+                    jobTitle ?? "any", internship ?? "any");
+                return StatusCode(500, "An error occurred while searching jobs");
+            }
         }
     }
 

@@ -40,9 +40,40 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving schedule by ID: {ScheduleId}", scheduleId);
+                _logger.LogDebug("Starting full data retrieval for schedule lookup");
+                
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.RouteSchedule.Iter()
-                    .FirstOrDefault(s => s.ScheduleId == scheduleId);
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                _logger.LogDebug("Retrieved {Count} total schedules from database", allSchedules.Count);
+                
+                RouteSchedule? matchingSchedule = null;
+                
+                _logger.LogDebug("Beginning manual iteration through schedules to find ID: {ScheduleId}", scheduleId);
+                foreach (var schedule in allSchedules)
+                {
+                    _logger.LogTrace("Checking schedule ID: {CurrentId} against target: {TargetId}", 
+                        schedule.ScheduleId, scheduleId);
+                    
+                    if (schedule.ScheduleId == scheduleId)
+                    {
+                        _logger.LogDebug("Found matching schedule with ID: {ScheduleId}", scheduleId);
+                        matchingSchedule = schedule;
+                        break;
+                    }
+                }
+                
+                if (matchingSchedule == null)
+                {
+                    _logger.LogWarning("No schedule found with ID: {ScheduleId}", scheduleId);
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully retrieved schedule with ID: {ScheduleId}, DepartureTime: {DepartureTime}", 
+                        matchingSchedule.ScheduleId, matchingSchedule.DepartureTime);
+                }
+                
+                return matchingSchedule;
             }
             catch (Exception ex)
             {
@@ -56,11 +87,43 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving schedules for route: {RouteId}", routeId);
+                _logger.LogDebug("Starting full data retrieval for route schedule lookup");
+                
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.RouteSchedule.Iter()
-                    .Where(s => s.RouteId == routeId)
-                    .OrderBy(s => s.DepartureTime)
-                    .ToList();
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                _logger.LogDebug("Retrieved {Count} total schedules from database", allSchedules.Count);
+                
+                List<RouteSchedule> matchingSchedules = new List<RouteSchedule>();
+                
+                _logger.LogDebug("Beginning manual iteration through schedules to find RouteId: {RouteId}", routeId);
+                foreach (var schedule in allSchedules)
+                {
+                    _logger.LogTrace("Checking schedule RouteId: {CurrentRouteId} against target: {TargetRouteId}", 
+                        schedule.RouteId, routeId);
+                    
+                    if (schedule.RouteId == routeId)
+                    {
+                        _logger.LogDebug("Found matching schedule with ID: {ScheduleId} for RouteId: {RouteId}", 
+                            schedule.ScheduleId, routeId);
+                        matchingSchedules.Add(schedule);
+                    }
+                }
+                
+                _logger.LogInformation("Found {Count} schedules for RouteId: {RouteId}", matchingSchedules.Count, routeId);
+                
+                // Sort the matching schedules by departure time
+                matchingSchedules.Sort((a, b) => a.DepartureTime.CompareTo(b.DepartureTime));
+                
+                _logger.LogDebug("Sorted {Count} schedules by departure time", matchingSchedules.Count);
+                
+                foreach (var schedule in matchingSchedules)
+                {
+                    _logger.LogTrace("Sorted schedule - ID: {ScheduleId}, RouteId: {RouteId}, DepartureTime: {DepartureTime}", 
+                        schedule.ScheduleId, schedule.RouteId, schedule.DepartureTime);
+                }
+                
+                return matchingSchedules;
             }
             catch (Exception ex)
             {
@@ -97,8 +160,18 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Creating schedule for route: {RouteId}", routeId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var route = connection.Db.Route.Iter()
-                    .FirstOrDefault(r => r.RouteId == routeId);
+                var allRoutes = connection.Db.Route.Iter().ToList();
+                
+                Route? route = null;
+                foreach (var r in allRoutes)
+                {
+                    if (r.RouteId == routeId)
+                    {
+                        route = r;
+                        break;
+                    }
+                }
+                
                 if (route == null)
                 {
                     _logger.LogWarning("Route not found: {RouteId}", routeId);
@@ -162,8 +235,18 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Updating schedule: {ScheduleId}", scheduleId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var schedule = connection.Db.RouteSchedule.Iter()
-                    .FirstOrDefault(s => s.ScheduleId == scheduleId);
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                RouteSchedule? schedule = null;
+                foreach (var s in allSchedules)
+                {
+                    if (s.ScheduleId == scheduleId)
+                    {
+                        schedule = s;
+                        break;
+                    }
+                }
+                
                 if (schedule == null)
                 {
                     _logger.LogWarning("Schedule not found: {ScheduleId}", scheduleId);
@@ -172,8 +255,18 @@ namespace TicketSalesApp.Services.Implementations
 
                 if (routeId.HasValue)
                 {
-                    var route = connection.Db.Route.Iter()
-                        .FirstOrDefault(r => r.RouteId == routeId);
+                    var allRoutes = connection.Db.Route.Iter().ToList();
+                    
+                    Route? route = null;
+                    foreach (var r in allRoutes)
+                    {
+                        if (r.RouteId == routeId)
+                        {
+                            route = r;
+                            break;
+                        }
+                    }
+                    
                     if (route == null)
                     {
                         _logger.LogWarning("Route not found: {RouteId}", routeId);
@@ -218,8 +311,18 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Deleting schedule: {ScheduleId}", scheduleId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var schedule = connection.Db.RouteSchedule.Iter()
-                    .FirstOrDefault(s => s.ScheduleId == scheduleId);
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                RouteSchedule? schedule = null;
+                foreach (var s in allSchedules)
+                {
+                    if (s.ScheduleId == scheduleId)
+                    {
+                        schedule = s;
+                        break;
+                    }
+                }
+                
                 if (schedule == null)
                 {
                     _logger.LogWarning("Schedule not found: {ScheduleId}", scheduleId);
@@ -227,10 +330,19 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Check if schedule has tickets
-                var tickets = connection.Db.Ticket.Iter()
-                    .Where(t => t.RouteId == schedule.RouteId)
-                    .ToList();
-                if (tickets.Any())
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                
+                bool hasTickets = false;
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.RouteId == schedule.RouteId)
+                    {
+                        hasTickets = true;
+                        break;
+                    }
+                }
+                
+                if (hasTickets)
                 {
                     _logger.LogWarning("Cannot delete schedule {ScheduleId} as it has tickets", scheduleId);
                     return false;
@@ -256,12 +368,25 @@ namespace TicketSalesApp.Services.Implementations
                 var connection = _spacetimeDBService.GetConnection();
 
                 var dayOfWeek = DateTimeOffset.FromUnixTimeSeconds((long)date).DayOfWeek.ToString();
-                return connection.Db.RouteSchedule.Iter()
-                    .Where(s => s.DaysOfWeek.Contains(dayOfWeek) &&
-                               s.DepartureTime >= date &&
-                               s.DepartureTime < date + 86400000) // 24 hours in milliseconds
-                    .OrderBy(s => s.DepartureTime)
-                    .ToList();
+                
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                List<RouteSchedule> matchingSchedules = new List<RouteSchedule>();
+                
+                foreach (var schedule in allSchedules)
+                {
+                    if (schedule.DaysOfWeek.Contains(dayOfWeek) &&
+                        schedule.DepartureTime >= date &&
+                        schedule.DepartureTime < date + 86400000) // 24 hours in milliseconds
+                    {
+                        matchingSchedules.Add(schedule);
+                    }
+                }
+                
+                // Sort by departure time
+                matchingSchedules.Sort((a, b) => a.DepartureTime.CompareTo(b.DepartureTime));
+                
+                return matchingSchedules;
             }
             catch (Exception ex)
             {
@@ -279,10 +404,23 @@ namespace TicketSalesApp.Services.Implementations
                     DateTimeOffset.FromUnixTimeSeconds((long)endDate).ToString());
 
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.RouteSchedule.Iter()
-                    .Where(s => s.DepartureTime >= startDate && s.DepartureTime <= endDate)
-                    .OrderBy(s => s.DepartureTime)
-                    .ToList();
+                
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                
+                List<RouteSchedule> matchingSchedules = new List<RouteSchedule>();
+                
+                foreach (var schedule in allSchedules)
+                {
+                    if (schedule.DepartureTime >= startDate && schedule.DepartureTime <= endDate)
+                    {
+                        matchingSchedules.Add(schedule);
+                    }
+                }
+                
+                // Sort by departure time
+                matchingSchedules.Sort((a, b) => a.DepartureTime.CompareTo(b.DepartureTime));
+                
+                return matchingSchedules;
             }
             catch (Exception ex)
             {

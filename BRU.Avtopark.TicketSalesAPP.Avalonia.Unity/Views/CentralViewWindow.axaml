@@ -1,0 +1,697 @@
+<Window x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.CentralViewWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:icons="using:Material.Icons.Avalonia"
+        mc:Ignorable="d"
+		xmlns:dock="using:ReDocking"
+		xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+
+        d:DesignWidth="850" d:DesignHeight="620"
+        x:DataType="viewModels:CentralViewWindowViewModel"
+        Title="БРУ Автопарк - Система Управления"
+        WindowStartupLocation="CenterScreen"
+        CanResize="True" MinWidth="750" MinHeight="550"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="36"
+        Background="{DynamicResource SystemBackground}">
+<Window.Resources>
+        <!-- Custom Resources for Light and Dark Themes (Classic Lean) from MainWindow.axaml -->
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Light Mode Resources -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemBackgroundColor">#C0C0C0</Color> <!-- Classic Gray -->
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#000080</Color> <!-- Classic Windows Blue -->
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                    <Color x:Key="TitleBarButtonHoverBackgroundColor">#D4D0C8</Color> <!-- Match button hover -->
+                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
+                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#A0A0A0</Color> <!-- Match button press -->
+                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
+                    
+                    <Color x:Key="MainContentBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
+                    <Color x:Key="ContentAreaBorderColor">#808080</Color> <!-- Darker Gray -->
+                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
+                    <Color x:Key="ContentAreaInnerHighlightColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
+                    
+                    <!-- Utility Button Specific Colors -->
+                    <Color x:Key="UtilityButtonTextColor">#000000</Color>
+                    <Color x:Key="UtilityButtonIconColor">#000080</Color> 
+                    <Color x:Key="UtilityButtonHoverBackgroundColor">#000080</Color> <!-- Blue highlight -->
+                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
+                    <Color x:Key="UtilityButtonHoverTextColor">#FFFFFF</Color>
+                    <Color x:Key="UtilityButtonHoverIconColor">#FFFFFF</Color>
+                    
+                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
+                    <Color x:Key="CommandButtonOuterBorderColor">#FFFFFF</Color>
+                    <Color x:Key="CommandButtonInnerBorderColor">#808080</Color>
+                    <Color x:Key="CommandButtonBackgroundColor">#C0C0C0</Color>
+                    <Color x:Key="CommandButtonTextColor">#000000</Color>
+                    <Color x:Key="CommandButtonHoverBackgroundColor">#D4D0C8</Color>
+                    <Color x:Key="CommandButtonPressedBackgroundColor">#A0A0A0</Color>
+                    <Color x:Key="CommandButtonPressedOuterBorderColor">#808080</Color>
+                    <Color x:Key="CommandButtonPressedInnerBorderColor">#FFFFFF</Color>
+                    
+                    <Color x:Key="BottomBarBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
+                    
+                    <Color x:Key="HeaderTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
+                    <Color x:Key="SubHeaderTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
+                    
+                    <Color x:Key="StatusBarBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
+                    <Color x:Key="StatusBarBorderColor">#808080</Color>
+                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
+                    <Color x:Key="StatusBarInnerHighlightColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
+                    <Color x:Key="StatusBarTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
+
+                    <!-- Divider Brush for Fluent/Modern Layouts -->
+                    <SolidColorBrush x:Key="TicketSalesApp.UI.Administration.AvaloniaDividerBrush" Color="#E6E6E6"/>
+
+                    <!-- Add Flyout colors -->
+                    <Color x:Key="FlyoutBackgroundColor">#F0F0F0</Color> 
+                    <SolidColorBrush x:Key="FlyoutBackground" Color="{DynamicResource FlyoutBackgroundColor}"/>
+                    <Color x:Key="FlyoutTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="FlyoutText" Color="{DynamicResource FlyoutTextColor}"/>
+                    <Color x:Key="FlyoutButtonHoverBackgroundColor">#000080</Color>
+                    <SolidColorBrush x:Key="FlyoutButtonHoverBackground" Color="{DynamicResource FlyoutButtonHoverBackgroundColor}"/>
+                    <Color x:Key="FlyoutButtonHoverTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="FlyoutButtonHoverText" Color="{DynamicResource FlyoutButtonHoverTextColor}"/>
+                    <Color x:Key="FlyoutSeparatorColor">#808080</Color>
+                    <SolidColorBrush x:Key="FlyoutSeparator" Color="{DynamicResource FlyoutSeparatorColor}"/>
+                </ResourceDictionary>
+                
+                <!-- Dark Mode Resources (Adapted for Classic Feel) -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="SystemBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                     <Color x:Key="TitleBarButtonHoverBackgroundColor">#3C3C3C</Color> <!-- Match button hover -->
+                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
+                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#1E1E1E</Color> <!-- Match button press -->
+                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
+                    
+                    <Color x:Key="MainContentBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
+                    <Color x:Key="ContentAreaBorderColor">#505050</Color>
+                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
+                     <Color x:Key="ContentAreaInnerHighlightColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
+
+                    <!-- Utility Button Specific Colors -->
+                    <Color x:Key="UtilityButtonTextColor">#E0E0E0</Color>
+                    <Color x:Key="UtilityButtonIconColor">#8CB1DE</Color> 
+                    <Color x:Key="UtilityButtonHoverBackgroundColor">#8CB1DE</Color> <!-- Blue highlight -->
+                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
+                    <Color x:Key="UtilityButtonHoverTextColor">#1A1A1A</Color>
+                    <Color x:Key="UtilityButtonHoverIconColor">#1A1A1A</Color>
+                    
+                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
+                    <Color x:Key="CommandButtonOuterBorderColor">#505050</Color>
+                    <Color x:Key="CommandButtonInnerBorderColor">#1A1A1A</Color>
+                    <Color x:Key="CommandButtonBackgroundColor">#2E2E2E</Color>
+                    <Color x:Key="CommandButtonTextColor">#E0E0E0</Color>
+                    <Color x:Key="CommandButtonHoverBackgroundColor">#3C3C3C</Color>
+                    <Color x:Key="CommandButtonPressedBackgroundColor">#1E1E1E</Color>
+                    <Color x:Key="CommandButtonPressedOuterBorderColor">#1A1A1A</Color>
+                    <Color x:Key="CommandButtonPressedInnerBorderColor">#505050</Color>
+                    
+                    <Color x:Key="BottomBarBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
+                    
+                    <Color x:Key="HeaderTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
+                    <Color x:Key="SubHeaderTextColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
+                    
+                    <Color x:Key="StatusBarBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
+                    <Color x:Key="StatusBarBorderColor">#505050</Color>
+                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
+                    <Color x:Key="StatusBarInnerHighlightColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
+                    <Color x:Key="StatusBarTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
+
+                    <!-- Divider Brush for Fluent/Modern Layouts -->
+                    <SolidColorBrush x:Key="TicketSalesApp.UI.Administration.AvaloniaDividerBrush" Color="#4D4D4D"/>
+
+                    <!-- Add Flyout colors -->
+                    <Color x:Key="FlyoutBackgroundColor">#3A3A3A</Color> 
+                    <SolidColorBrush x:Key="FlyoutBackground" Color="{DynamicResource FlyoutBackgroundColor}"/>
+                    <Color x:Key="FlyoutTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="FlyoutText" Color="{DynamicResource FlyoutTextColor}"/>
+                    <Color x:Key="FlyoutButtonHoverBackgroundColor">#8CB1DE</Color>
+                    <SolidColorBrush x:Key="FlyoutButtonHoverBackground" Color="{DynamicResource FlyoutButtonHoverBackgroundColor}"/>
+                    <Color x:Key="FlyoutButtonHoverTextColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="FlyoutButtonHoverText" Color="{DynamicResource FlyoutButtonHoverTextColor}"/>
+                    <Color x:Key="FlyoutSeparatorColor">#505050</Color>
+                    <SolidColorBrush x:Key="FlyoutSeparator" Color="{DynamicResource FlyoutSeparatorColor}"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Existing Docking Templates -->
+            <DataTemplate x:Key="LeftSideBarButtonDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
+                <dock:SideBarButton DisplayMode="{Binding DisplayMode.Value}"
+                                    IsChecked="{Binding IsSelected.Value}"
+                                    ToolTip.Placement="Right"
+                                    ToolTip.ShowDelay="200"
+                                    ToolTip.Tip="{Binding Name.Value}"
+                                    ToolTip.VerticalOffset="0">
+                    <!-- Use Fluent UI Icon or Material Icon depending on view model -->
+                    <icons:MaterialIcon Kind="{Binding Icon.Value}" Width="16" Height="16" /> 
+                </dock:SideBarButton>
+            </DataTemplate>
+            <DataTemplate x:Key="RightSideBarButtonDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
+                <dock:SideBarButton DisplayMode="{Binding DisplayMode.Value}"
+                                    IsChecked="{Binding IsSelected.Value}"
+                                    ToolTip.Placement="Left"
+                                    ToolTip.ShowDelay="200"
+                                    ToolTip.Tip="{Binding Name.Value}"
+                                    ToolTip.VerticalOffset="0">
+                   <icons:MaterialIcon Kind="{Binding Icon.Value}" Width="16" Height="16" />
+                </dock:SideBarButton>
+            </DataTemplate>
+            <DataTemplate x:Key="ToolContentDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
+                <ContentControl Content="{Binding Content.Value}" />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.Styles>
+        <!-- Styles from MainWindow.axaml -->
+        <!-- Utility Buttons (SmartStart Icon + Text Style) -->
+		<Style Selector="Button.UtilityButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="10, 5"/> <!-- Spacing around buttons -->
+            <Setter Property="Width" Value="120"/> <!-- Fixed width for alignment -->
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" 
+                            Padding="{TemplateBinding Padding}">
+						<ContentPresenter Name="PART_ContentPresenter"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+        
+        <Style Selector="Button.UtilityButton:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.UtilityButton:pointerover icons|MaterialIcon">
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
+		</Style>
+        <Style Selector="Button.UtilityButton:pointerover TextBlock">
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverTextColor}"/>
+		</Style>
+        
+		<Style Selector="Button.UtilityButton StackPanel">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Spacing" Value="5"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+		</Style>
+        
+		<Style Selector="Button.UtilityButton icons|MaterialIcon">
+			<Setter Property="Width" Value="32"/>
+			<Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,0,5"/> <!-- Space between icon and text -->
+            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonIconColor}"/>
+		</Style>
+        
+        <Style Selector="Button.UtilityButton TextBlock.ButtonTitle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+			<Setter Property="TextWrapping" Value="Wrap"/>
+			<Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonTextColor}"/>
+            <Setter Property="MaxWidth" Value="110"/> <!-- Prevent text from becoming too wide -->
+        </Style>
+        
+        <!-- Remove subtitle style as it's not in the SmartStart button look -->
+        <Style Selector="Button.UtilityButton TextBlock.ButtonSubtitle">
+            <Setter Property="IsVisible" Value="False"/> 
+		</Style>
+
+        <!-- Command Buttons (Classic Bevel Style - Unchanged) -->
+        <Style Selector="Button.CommandButton">
+            <Setter Property="MinWidth" Value="75"/>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="6,0"/>
+			<Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{DynamicResource CommandButtonBackgroundColor}"/>
+            <Setter Property="Foreground" Value="{DynamicResource CommandButtonTextColor}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0.05"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="Template">
+                 <ControlTemplate>
+                    <Border Name="PART_OuterBorder"
+                            BorderBrush="{DynamicResource CommandButtonOuterBorderColor}"
+                            BorderThickness="1">
+                        <Border Name="PART_InnerBorder"
+                                BorderBrush="{DynamicResource CommandButtonInnerBorderColor}"
+                                BorderThickness="1"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                             ContentTemplate="{TemplateBinding ContentTemplate}"
+                                             Content="{TemplateBinding Content}"
+                                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.CommandButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource CommandButtonHoverBackgroundColor}"/>
+        </Style>
+        <Style Selector="Button.CommandButton:pressed">
+             <Setter Property="Padding" Value="9,1,7,-1"/> <!-- Simulate press -->
+        </Style>
+        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_OuterBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedOuterBorderColor}"/>
+		</Style>
+        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_InnerBorder">
+             <Setter Property="Background" Value="{DynamicResource CommandButtonPressedBackgroundColor}"/>
+             <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedInnerBorderColor}"/>
+		</Style>
+        
+        <!-- Title Bar Control Buttons (Classic Windows Style - Adjusted Hitbox) -->
+        <Style Selector="Button.TitleBarButton">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="25" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{DynamicResource SystemBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/> <!-- Use theme text color -->
+            <Setter Property="BorderThickness" Value="1"/>
+             <Setter Property="Template">
+                 <ControlTemplate>
+                    <Border Name="PART_OuterBorder"
+                            BorderBrush="{DynamicResource CommandButtonOuterBorderColor}" 
+                            BorderThickness="1">
+                        <Border Name="PART_InnerBorder"
+                                BorderBrush="{DynamicResource CommandButtonInnerBorderColor}"
+                                BorderThickness="1"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                             ContentTemplate="{TemplateBinding ContentTemplate}"
+                                             Content="{TemplateBinding Content}"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center"/>
+                        </Border>
+                    </Border>
+                </ControlTemplate>
+			</Setter>
+		</Style>
+
+        <Style Selector="Button.TitleBarButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.TitleBarButton:pressed">
+             <Setter Property="Padding" Value="1,1,1,1"/> <!-- Simulate press - adjust as needed -->
+        </Style>
+        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_OuterBorder">
+             <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedOuterBorderColor}"/>
+		</Style>
+        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource TitleBarButtonPressedBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedInnerBorderColor}"/>
+		</Style>
+        
+        <Style Selector="Button.TitleBarButton Path">
+             <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+             <Setter Property="StrokeThickness" Value="1"/>
+             <Setter Property="VerticalAlignment" Value="Center"/>
+             <Setter Property="HorizontalAlignment" Value="Center"/>
+		</Style>
+
+        <!-- End of Styles from MainWindow.axaml -->
+
+        <!-- Styles for CentralViewWindow elements -->
+        <Style Selector="ui|TabView">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource MainContentBackground}"/>
+        </Style>
+
+        <!-- Style for Hamburger Menu Button -->
+        <Style Selector="Button#HamburgerButton">
+           
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Button#HamburgerButton icons|MaterialIcon">
+            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/>
+        </Style>
+        <Style Selector="Button#HamburgerButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
+        </Style>
+
+        <!-- Style for Flyout Menu -->
+        <Style Selector="FlyoutPresenter">
+            <Setter Property="Background" Value="{DynamicResource FlyoutBackground}"/>
+            <Setter Property="Padding" Value="8"/>
+        </Style>
+        <Style Selector="Button.MenuButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource FlyoutText}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.MenuButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource FlyoutButtonHoverBackground}"/>
+        </Style>
+        
+        <Style Selector="FlyoutPresenter Separator">
+            <Setter Property="Background" Value="{DynamicResource FlyoutSeparator}"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Height" Value="1"/>
+        </Style>
+
+        <!-- Style for Quick Action Icon Buttons in Title Bar -->
+        <Style Selector="Button.IconButton">
+           
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Button.IconButton icons|MaterialIcon">
+            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/>
+             <Setter Property="Width" Value="16"/>
+			<Setter Property="Height" Value="16"/>
+        </Style>
+        <Style Selector="Button.IconButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
+        </Style>
+
+        <!-- Specific Styles for Window Control Buttons (Minimize, Maximize, Close) -->
+        <Style Selector="Button#MinimizeButton, Button#MaximizeButton, Button#CloseButton">
+          
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="25"/> <!-- Adjusted Height -->
+        </Style>
+        <Style Selector="Button#MinimizeButton Path, Button#MaximizeButton Path, Button#CloseButton Path">
+             <Setter Property="Stroke" Value="{DynamicResource TitleBarText}"/>
+        </Style>
+		<Style Selector="Button#MinimizeButton:pointerover /template/ Border#PART_InnerBorder, Button#MaximizeButton:pointerover /template/ Border#PART_InnerBorder, Button#CloseButton:pointerover /template/ Border#PART_InnerBorder">
+			<Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
+		</Style>
+        <Style Selector="Button#CloseButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="#E81123"/> <!-- Red background on hover for close -->
+        </Style>
+        <Style Selector="Button#CloseButton:pointerover Path">
+            <Setter Property="Stroke" Value="#FFFFFF"/> <!-- White icon on hover for close -->
+        </Style>
+        <Style Selector="Button#CloseButton:pressed /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="#F1707A"/> <!-- Slightly lighter red on press -->
+        </Style>
+
+        <!-- Docking Sidebar Styles -->
+        <Style Selector="dock|SideBar">
+             <Setter Property="Background" Value="{DynamicResource SystemBackground}"/>
+             <Setter Property="BorderBrush" Value="{DynamicResource ContentAreaBorderColor}"/>
+        </Style>
+         <Style Selector="dock|SideBarButton">
+             <Setter Property="Width" Value="40"/>
+             <Setter Property="Height" Value="40"/>
+             <Setter Property="Padding" Value="5"/>
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonIconColor}"/>
+             <Setter Property="Background" Value="Transparent"/>
+             <Setter Property="BorderThickness" Value="0"/>
+         </Style>
+        <Style Selector="dock|SideBarButton:checked">
+            <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
+        </Style>
+        <Style Selector="dock|SideBarButton:pointerover">
+             <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
+        </Style>
+    </Window.Styles>
+    <Grid RowDefinitions="Auto,*"> <!-- Simplified Row Definitions -->
+		<!-- Custom Title Bar -->
+		<Grid Name="TitleBar" Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35">
+			<Grid ColumnDefinitions="Auto,*,Auto" Name="TitleBarDragArea">
+				<!-- Left Section: Hamburger Menu & Quick Actions -->
+				<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="4,0,0,0" VerticalAlignment="Center">
+					<!-- Hamburger Menu -->
+					<Button Name="HamburgerButton"> <!-- Apply style implicitly -->
+						<icons:MaterialIcon Kind="Menu" Width="16" Height="16"/>
+						<Button.Flyout>
+							<Flyout Placement="BottomEdgeAlignedLeft" ShowMode="TransientWithDismissOnPointerMoveAway">
+								<StackPanel Width="200" Spacing="0"> <!-- Reduced spacing -->
+									<!-- Main Actions -->
+									<Button Classes="MenuButton" Name="NewProjectButton">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<icons:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+											<TextBlock Text="Новый проект"/>
+										</StackPanel>
+									</Button>
+									<Button Classes="MenuButton" Name="OpenProjectButton">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<icons:MaterialIcon Kind="FolderOpen" Width="16" Height="16"/>
+											<TextBlock Text="Открыть проект"/>
+										</StackPanel>
+									</Button>
+									<Separator/>
+									<!-- Settings & Help -->
+									<Button Classes="MenuButton" Name="SettingsButton">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<icons:MaterialIcon Kind="Cog" Width="16" Height="16"/>
+											<TextBlock Text="Настройки"/>
+										</StackPanel>
+									</Button>
+									<Button Classes="MenuButton" Name="HelpButton">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<icons:MaterialIcon Kind="Help" Width="16" Height="16"/>
+											<TextBlock Text="Справка"/>
+										</StackPanel>
+									</Button>
+									<Button Classes="MenuButton" Name="AboutButton">
+										<StackPanel Orientation="Horizontal" Spacing="8">
+											<icons:MaterialIcon Kind="Information" Width="16" Height="16"/>
+											<TextBlock Text="О программе"/>
+										</StackPanel>
+									</Button>
+								</StackPanel>
+							</Flyout>
+						</Button.Flyout>
+					</Button>
+
+					<!-- Quick Action Buttons -->
+					<Button Classes="IconButton" Name="QuickNewButton">
+						<icons:MaterialIcon Kind="Plus" />
+						<ToolTip.Tip>Новый проект</ToolTip.Tip>
+					</Button>
+					<Button Classes="IconButton" Name="QuickSearchButton">
+						<icons:MaterialIcon Kind="Search" />
+						<ToolTip.Tip>Поиск</ToolTip.Tip>
+					</Button>
+				</StackPanel>
+
+				<!-- Center: Title -->
+				<TextBlock Grid.Column="1" Text="БРУ Автопарк - Система Управления"
+						   Foreground="{DynamicResource TitleBarText}" 
+                           FontWeight="Normal" 
+                           FontSize="11"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+				<!-- Right: Window Control Buttons -->
+				<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,2,2" Spacing="2">
+					<Button Name="MinimizeButton">
+						<ToolTip.Tip>Свернуть</ToolTip.Tip>
+                        <!-- Minimize icon (Underscore) -->
+                        <Path Data="M0 5 H6" Width="6" Height="6" VerticalAlignment="Bottom" Margin="0,0,0,1"/> 
+					</Button>
+					<Button Name="MaximizeButton">
+						<ToolTip.Tip>Развернуть</ToolTip.Tip>
+                         <!-- Maximize/Restore icon -->
+                        <Path Name="MaximizeIcon" Data="M0 0 H7 V7 H0 Z M0 1 H7 M1 0 V7" Width="7" Height="7"/>
+					</Button>
+					<Button Name="CloseButton">
+						<ToolTip.Tip>Закрыть</ToolTip.Tip>
+                         <!-- Close icon (X) -->
+                         <Path Data="M1 1 L6 6 M1 6 L6 1" Width="7" Height="7" StrokeThickness="1"/>
+					</Button>
+				</StackPanel>
+			</Grid>
+		</Grid>
+        <Border Grid.Row="1" Background="{DynamicResource TicketSalesApp.UI.Administration.AvaloniaDividerBrush}" />
+		
+		
+		<dock:ReDockHost Grid.Row="1" 
+                         Background="{DynamicResource SystemBackground}" 
+                         ButtonDisplayModeChanged="OnSideBarButtonDisplayModeChanged"
+                         ButtonFlyoutRequested="OnButtonFlyoutRequested"
+                         ButtonMove="OnSideBarButtonDrop"
+                         IsFloatingEnabled="True">
+            <dock:ReDockHost.DockAreas>
+                <dock:DockArea LocalizedName="Left"
+                               Location="LeftUpperBottom"
+                               SideBar="LeftSideBar"
+                               Target="TopContent"
+                               View="LeftTopBottomArea" />
+                <dock:DockArea LocalizedName="Left Bottom"
+                               Location="LeftLowerTop"
+                               SideBar="LeftSideBar"
+                               Target="BottomContent"
+                               View="LeftTopBottomArea" />
+
+                <dock:DockArea LocalizedName="Right"
+                               Location="RightUpperBottom"
+                               SideBar="RightSideBar"
+                               Target="TopContent"
+                               View="RightTopBottomArea" />
+
+                <dock:DockArea LocalizedName="Right Bottom"
+                               Location="RightLowerTop"
+                               SideBar="RightSideBar"
+                               Target="BottomContent"
+                               View="RightTopBottomArea" />
+
+                <dock:DockArea LocalizedName="TopLeft"
+                               Location="LeftUpperTop"
+                               SideBar="LeftSideBar"
+                               Target="LeftContent"
+                               View="TopLeftRightArea" />
+                <dock:DockArea LocalizedName="TopRight"
+                               Location="RightUpperTop"
+                               SideBar="RightSideBar"
+                               Target="RightContent"
+                               View="TopLeftRightArea" />
+                <dock:DockArea LocalizedName="BottomLeft"
+                               Location="LeftLowerBottom"
+                               SideBar="LeftSideBar"
+                               Target="LeftContent"
+                               View="BottomLeftRightArea" />
+                <dock:DockArea LocalizedName="BottomRight"
+                               Location="RightLowerBottom"
+                               SideBar="RightSideBar"
+                               Target="RightContent"
+                               View="BottomLeftRightArea" />
+            </dock:ReDockHost.DockAreas>
+            <Grid ColumnDefinitions="40,*,40">
+                <dock:SideBar Name="LeftSideBar"
+                              BorderThickness="0,0,1,0"
+                              ItemTemplate="{StaticResource LeftSideBarButtonDataTemplate}"
+                              Location="Left"
+                              LowerBottomToolsSource="{Binding LeftLowerBottomTools}"
+                              LowerTopToolsSource="{Binding LeftLowerTopTools}"
+                              UpperBottomToolsSource="{Binding LeftUpperBottomTools}"
+                              UpperTopToolsSource="{Binding LeftUpperTopTools}" />
+
+                <dock:ReDock Name="LeftRightArea" Grid.Column="1">
+                    <dock:ReDock.LeftContent>
+                        <dock:VerticallySplittedView Name="LeftTopBottomArea"
+                                                     BottomContent="{Binding SelectedLeftLowerTopTool.Value}"
+                                                     BottomContentTemplate="{StaticResource ToolContentDataTemplate}"
+                                                     TopContent="{Binding SelectedLeftUpperBottomTool.Value}"
+                                                     TopContentTemplate="{StaticResource ToolContentDataTemplate}" />
+                    </dock:ReDock.LeftContent>
+                    <dock:ReDock.RightContent>
+                        <dock:VerticallySplittedView Name="RightTopBottomArea"
+                                                     BottomContent="{Binding SelectedRightLowerTopTool.Value}"
+                                                     BottomContentTemplate="{StaticResource ToolContentDataTemplate}"
+                                                     TopContent="{Binding SelectedRightUpperBottomTool.Value}"
+                                                     TopContentTemplate="{StaticResource ToolContentDataTemplate}" />
+                    </dock:ReDock.RightContent>
+                    <dock:VerticallySplittedView>
+                        <dock:VerticallySplittedView.TopContent>
+                            <dock:ReDock Name="TopLeftRightArea"
+                                         LeftContent="{Binding SelectedLeftUpperTopTool.Value}"
+                                         RightContent="{Binding SelectedRightUpperTopTool.Value}">
+                                <dock:ReDock.LeftContentTemplate>
+                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
+                                        <ContentControl Content="{Binding Content.Value}" />
+                                    </DataTemplate>
+                                </dock:ReDock.LeftContentTemplate>
+                                <dock:ReDock.RightContentTemplate>
+                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
+                                        <ContentControl Content="{Binding Content.Value}" />
+                                    </DataTemplate>
+                                </dock:ReDock.RightContentTemplate>
+                                <!-- Main Tab View -->
+                                <ui:TabView Name="MainTabView">
+                                    <ui:TabViewItem Header="Добро пожаловать">
+                                        <Border Background="{DynamicResource MainContentBackground}"> <!-- Ensure content area matches -->
+                                        <TextBlock Text="Нажмите на одну из боковых панелей чтобы начать работу"
+                                                       Foreground="{DynamicResource HeaderText}" 
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                        </Border>
+                                    </ui:TabViewItem>
+                                </ui:TabView>
+                            </dock:ReDock>
+                        </dock:VerticallySplittedView.TopContent>
+                        <dock:VerticallySplittedView.BottomContent>
+                             <!-- Add Border around Bottom Area for visual separation if needed -->
+                            <Border BorderBrush="{DynamicResource ContentAreaBorder}" BorderThickness="0,1,0,0">
+                            <dock:HorizontallySplittedView Name="BottomLeftRightArea"
+                                                           LeftContent="{Binding SelectedLeftLowerBottomTool.Value}"
+                                                           RightContent="{Binding SelectedRightLowerBottomTool.Value}">
+                                <dock:HorizontallySplittedView.LeftContentTemplate>
+                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
+                                        <ContentControl Content="{Binding Content.Value}" />
+                                    </DataTemplate>
+                                </dock:HorizontallySplittedView.LeftContentTemplate>
+                                <dock:HorizontallySplittedView.RightContentTemplate>
+                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
+                                        <ContentControl Content="{Binding Content.Value}" />
+                                    </DataTemplate>
+                                </dock:HorizontallySplittedView.RightContentTemplate>
+                            </dock:HorizontallySplittedView>
+                            </Border>
+                        </dock:VerticallySplittedView.BottomContent>
+                    </dock:VerticallySplittedView>
+                </dock:ReDock>
+                <dock:SideBar Name="RightSideBar"
+                              Grid.Column="2"
+                              BorderThickness="1,0,0,0"
+                              ItemTemplate="{StaticResource RightSideBarButtonDataTemplate}"
+                              Location="Right"
+                              LowerBottomToolsSource="{Binding RightLowerBottomTools}"
+                              LowerTopToolsSource="{Binding RightLowerTopTools}"
+                              UpperBottomToolsSource="{Binding RightUpperBottomTools}"
+                              UpperTopToolsSource="{Binding RightUpperTopTools}" />
+            </Grid>
+        </dock:ReDockHost>
+    </Grid>
+</Window>

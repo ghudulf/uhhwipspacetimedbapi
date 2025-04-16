@@ -1,12 +1,12 @@
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.deps.json
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.runtimeconfig.json
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.csproj.AssemblyReference.cache
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.GeneratedMSBuildEditorConfig.editorconfig
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.AssemblyInfoInputs.cache
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.AssemblyInfo.cs
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.csproj.CoreCompileInputs.cache
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.deps.json
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.runtimeconfig.json
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.dll
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\bin\Debug\net9.0\TicketSalesApp.Services.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.dll
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\refint\TicketSalesApp.Services.dll
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\obj\Debug\net9.0\TicketSalesApp.Services.pdb

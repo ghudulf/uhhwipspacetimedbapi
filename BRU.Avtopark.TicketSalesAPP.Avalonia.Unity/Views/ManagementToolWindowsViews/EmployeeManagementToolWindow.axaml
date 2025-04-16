@@ -1,0 +1,87 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.EmployeeManagementToolWindow"
+             x:DataType="vm:EmployeeManagementViewModel">
+
+    <Design.DataContext>
+        <vm:EmployeeManagementViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*" Margin="20">
+        
+            <StackPanel Spacing="20">
+                <!-- Title and Header -->
+                <Grid ColumnDefinitions="*,Auto" MinHeight="20">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Управление сотрудниками" />
+                        <TextBlock Text="Управление персоналом и их должностями" Foreground="{DynamicResource SecondaryColor}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Controls -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                    <TextBox Grid.Column="0" 
+                             Text="{Binding SearchText}"
+                             Watermark="Поиск по фамилии, имени, отчеству или должности..."
+                             Margin="0,0,10,0"/>
+                    <Button Grid.Column="1" 
+                            Command="{Binding AddCommand}"
+                            Content="Добавить сотрудника"
+                            IsEnabled="{Binding !IsBusy}"/>
+                </Grid>
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" 
+                       Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       IsVisible="{Binding HasError}"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding EditCommand}"
+                    Content="Редактировать"
+                    IsEnabled="{Binding SelectedEmployee, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Margin="0,0,10,0"/>
+            <Button Grid.Column="2" 
+                    Command="{Binding DeleteCommand}"
+                    Content="Удалить"
+                    IsEnabled="{Binding SelectedEmployee, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+            </StackPanel>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Employees}"
+                  SelectedItem="{Binding SelectedEmployee}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="1"
+                  BorderBrush="Gray"
+                  Margin="0,0,0,10">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" 
+                                    Binding="{Binding EmpId}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Фамилия" 
+                                    Binding="{Binding Surname}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Имя" 
+                                    Binding="{Binding Name}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Отчество" 
+                                    Binding="{Binding Patronym}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Дата приема" 
+                                    Binding="{Binding EmployedSince, StringFormat={}{0:dd.MM.yyyy}}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Должность" 
+                                    Binding="{Binding Job.JobTitle}"
+                                    Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        
+    </Grid>
+</UserControl>

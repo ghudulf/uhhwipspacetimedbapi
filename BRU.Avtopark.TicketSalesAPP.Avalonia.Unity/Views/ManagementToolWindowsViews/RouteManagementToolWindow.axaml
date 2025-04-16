@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.RouteManagementToolWindow"
+             x:DataType="vm:RouteManagementViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <TextBox Grid.Column="0" 
+                     Text="{Binding SearchText}"
+                     Watermark="Поиск по начальной точке, конечной точке, модели автобуса или водителю..."
+                     Margin="0,0,10,0"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding AddCommand}"
+                    Content="Добавить маршрут"
+                    IsEnabled="{Binding !IsBusy}"/>
+        </Grid>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Routes}"
+                  SelectedItem="{Binding SelectedRoute}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="1"
+                  BorderBrush="Gray"
+                  Margin="0,0,0,10">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" 
+                                  Binding="{Binding RouteId}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Номер" 
+                                  Binding="{Binding RouteNumber}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Начальная точка" 
+                                  Binding="{Binding StartPoint}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Конечная точка" 
+                                  Binding="{Binding EndPoint}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Время в пути" 
+                                  Binding="{Binding TravelTime}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Автобус" 
+                                  Binding="{Binding BusModel}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Водитель" 
+                                  Binding="{Binding DriverName}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Билеты" 
+                                  Binding="{Binding TicketCount}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Остановки" 
+                                  Binding="{Binding Route.StopCount}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Длина (км)" 
+                                  Binding="{Binding Route.RouteLength, StringFormat={}{0:N1}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Тип" 
+                                  Binding="{Binding Route.RouteType}"
+                                  Width="Auto"/>
+                <DataGridCheckBoxColumn Header="Активен" 
+                                  Binding="{Binding Route.IsActive}"
+                                  Width="Auto"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" 
+                       Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       IsVisible="{Binding HasError}"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding EditCommand}"
+                    Content="Редактировать"
+                    IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Margin="0,0,10,0"/>
+            <Button Grid.Column="2" 
+                    Command="{Binding DeleteCommand}"
+                    Content="Удалить"
+                    IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

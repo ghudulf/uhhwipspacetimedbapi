@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             x:DataType="vm:MaintenanceManagementViewModel"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.MaintenanceManagementToolWindow">
+
+	<Design.DataContext>
+		<vm:MaintenanceManagementViewModel/>
+	</Design.DataContext>
+	
+	<Grid RowDefinitions="Auto,*,Auto" Margin="10">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <TextBox Grid.Column="0" 
+                     Text="{Binding SearchText}"
+                     Watermark="Поиск по инженеру, проблемам, состоянию или модели автобуса..."
+                     Margin="0,0,10,0"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding AddCommand}"
+                    Content="Добавить запись"
+                    IsEnabled="{Binding !IsBusy}"/>
+        </Grid>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding MaintenanceRecords}"
+                  SelectedItem="{Binding SelectedRecord}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="1"
+                  BorderBrush="Gray"
+                  Margin="0,0,0,10">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" 
+                                  Binding="{Binding MaintenanceId}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Автобус" 
+                                  Binding="{Binding Avtobus.Model}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Дата обслуживания" 
+                                  Binding="{Binding LastServiceDate, StringFormat={}{0:dd.MM.yyyy}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Следующее обслуживание" 
+                                  Binding="{Binding NextServiceDate, StringFormat={}{0:dd.MM.yyyy}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Инженер" 
+                                  Binding="{Binding ServiceEngineer}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Найденные проблемы" 
+                                  Binding="{Binding FoundIssues}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Состояние" 
+                                  Binding="{Binding Roadworthiness}"
+                                  Width="Auto"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" 
+                       Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       IsVisible="{Binding HasError}"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding EditCommand}"
+                    Content="Редактировать"
+                    IsEnabled="{Binding SelectedRecord, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Margin="0,0,10,0"/>
+            <Button Grid.Column="2" 
+                    Command="{Binding DeleteCommand}"
+                    Content="Удалить"
+                    IsEnabled="{Binding SelectedRecord, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

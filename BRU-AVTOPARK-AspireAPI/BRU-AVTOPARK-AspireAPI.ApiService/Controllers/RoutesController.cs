@@ -9,47 +9,61 @@ using Serilog;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 using Route = SpacetimeDB.Types.Route;
+using Log = Serilog.Log;
+using SpacetimeDB;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
-    public class RoutesController : ControllerBase
+    [AllowAnonymous] // Allow all authenticated users to read
+    public class RoutesController : BaseController
     {
         private readonly IRouteService _routeService;
         private readonly ILogger<RoutesController> _logger;
+        private readonly ISpacetimeDBService _spacetimeService;
 
-        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger)
+        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService)
         {
             _routeService = routeService ?? throw new ArgumentNullException(nameof(routeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
+      
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Route>>> GetRoutes()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRoutes()
         {
             Log.Information("Fetching all routes with their related data");
             var routes = await _routeService.GetAllRoutesAsync();
-            Log.Debug("Retrieved {RouteCount} routes", routes.Count);
-            return Ok(routes);
+            var conn = _spacetimeService.GetConnection();
+
+            // Map to anonymous type including Bus and Driver
+            var result = routes.Select(r => {
+                var bus = conn.Db.Bus.BusId.Find(r.BusId);
+                var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                return new {
+                    r.RouteId,
+                    r.StartPoint,
+                    r.EndPoint,
+                    r.DriverId,
+                    Driver = driver != null ? new { driver.EmployeeId, driver.Name, driver.Surname } : null,
+                    r.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    r.TravelTime,
+                    r.IsActive
+                };
+            }).ToList();
+
+            Log.Debug("Retrieved {RouteCount} routes", result.Count);
+            _logger.LogInformation("FULL ROUTES DATA: {RoutesData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Route>> GetRoute(uint id)
+        public async Task<ActionResult<dynamic>> GetRoute(uint id)
         {
             Log.Information("Fetching route with ID {RouteId}", id);
             var route = await _routeService.GetRouteByIdAsync(id);
@@ -60,8 +74,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return NotFound();
             }
 
+            var conn = _spacetimeService.GetConnection();
+            var bus = conn.Db.Bus.BusId.Find(route.BusId);
+            var driver = conn.Db.Employee.EmployeeId.Find(route.DriverId);
+
+            // Map to anonymous type including Bus and Driver
+            var result = new {
+                route.RouteId,
+                route.StartPoint,
+                route.EndPoint,
+                route.DriverId,
+                Driver = driver != null ? new { driver.EmployeeId, driver.Name, driver.Surname } : null,
+                route.BusId,
+                Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                route.TravelTime,
+                route.IsActive
+            };
+
             Log.Debug("Successfully retrieved route with ID {RouteId}", id);
-            return Ok(route);
+            _logger.LogInformation("FULL ROUTE DATA: {RouteData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpPost]
@@ -157,7 +189,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Route>>> SearchRoutes(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchRoutes(
             [FromQuery] string? startPoint = null,
             [FromQuery] string? endPoint = null,
             [FromQuery] string? busModel = null,
@@ -167,16 +199,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 startPoint ?? "any", endPoint ?? "any", busModel ?? "any", driverName ?? "any");
 
             var routes = await _routeService.GetAllRoutesAsync();
+            var conn = _spacetimeService.GetConnection();
+            var query = routes.AsEnumerable();
 
             // Apply filters
             if (!string.IsNullOrEmpty(startPoint))
-                routes = routes.Where(r => r.StartPoint.Contains(startPoint, StringComparison.OrdinalIgnoreCase)).ToList();
+                query = query.Where(r => r.StartPoint.Contains(startPoint, StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(endPoint))
-                routes = routes.Where(r => r.EndPoint.Contains(endPoint, StringComparison.OrdinalIgnoreCase)).ToList();
+                query = query.Where(r => r.EndPoint.Contains(endPoint, StringComparison.OrdinalIgnoreCase));
 
-            Log.Debug("Found {RouteCount} routes matching search criteria", routes.Count);
-            return Ok(routes);
+            // Filter by bus model
+            if (!string.IsNullOrEmpty(busModel))
+            {
+                query = query.Where(r => {
+                    var bus = conn.Db.Bus.BusId.Find(r.BusId);
+                    return bus != null && bus.Model.Contains(busModel, StringComparison.OrdinalIgnoreCase);
+                });
+            }
+
+            // Filter by driver name
+            if (!string.IsNullOrEmpty(driverName))
+            {
+                query = query.Where(r => {
+                    var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                    return driver != null && 
+                           (driver.Name.Contains(driverName, StringComparison.OrdinalIgnoreCase) || 
+                            driver.Surname.Contains(driverName, StringComparison.OrdinalIgnoreCase));
+                });
+            }
+
+            // Map to anonymous type including Bus and Driver
+            var result = query.Select(r => {
+                var bus = conn.Db.Bus.BusId.Find(r.BusId);
+                var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                return new {
+                    r.RouteId,
+                    r.StartPoint,
+                    r.EndPoint,
+                    r.DriverId,
+                    Driver = driver != null ? new { driver.EmployeeId, driver.Name, driver.Surname } : null,
+                    r.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    r.TravelTime,
+                    r.IsActive
+                };
+            }).ToList();
+
+            Log.Debug("Found {RouteCount} routes matching search criteria", result.Count);
+            _logger.LogInformation("FULL SEARCH RESULTS DATA: {RoutesData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
     }
 

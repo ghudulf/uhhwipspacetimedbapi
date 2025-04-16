@@ -1,0 +1,100 @@
+2025-04-14 22:00:12.633 +03:00 [INF] Starting application...
+2025-04-14 22:00:37.934 +03:00 [WRN] StepToContentConverter: Couldn't find AuthWindow
+2025-04-14 22:00:37.962 +03:00 [WRN] StepToContentConverter: Couldn't find AuthWindow
+2025-04-14 22:01:00.583 +03:00 [INF] Login cancelled by user.
+2025-04-14 22:01:00.587 +03:00 [INF] Login cancelled by user.
+2025-04-14 22:01:00.602 +03:00 [INF] Authentication failed or cancelled. Shutting down...
+2025-04-14 22:06:24.911 +03:00 [INF] Starting application...
+2025-04-14 22:11:17.032 +03:00 [INF] Starting application...
+2025-04-14 22:11:39.948 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:11:39.989 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:11:40.063 +03:00 [INF] Login step content created successfully
+2025-04-14 22:11:40.090 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:11:40.117 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-14 22:11:40.143 +03:00 [INF] Login step content created successfully
+2025-04-14 22:11:40.285 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-14 22:11:40.297 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-14 22:11:40.318 +03:00 [INF] Login step content created successfully
+2025-04-14 22:11:40.328 +03:00 [INF] Step content update completed for step 1
+2025-04-14 22:11:40.333 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-14 22:13:50.890 +03:00 [INF] Starting application...
+2025-04-14 22:14:00.873 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:14:00.908 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:14:00.992 +03:00 [INF] Login step content created successfully
+2025-04-14 22:14:01.022 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:14:01.051 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-14 22:14:01.080 +03:00 [INF] Login step content created successfully
+2025-04-14 22:14:01.232 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-14 22:14:01.243 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-14 22:14:01.266 +03:00 [INF] Login step content created successfully
+2025-04-14 22:14:01.275 +03:00 [INF] Step content update completed for step 1
+2025-04-14 22:14:01.280 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-14 22:22:29.411 +03:00 [INF] Starting application...
+2025-04-14 22:23:02.779 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:23:02.814 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:23:02.890 +03:00 [INF] Login step content created successfully
+2025-04-14 22:23:02.916 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:23:02.934 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-14 22:23:02.962 +03:00 [INF] Login step content created successfully
+2025-04-14 22:23:03.106 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-14 22:23:03.116 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-14 22:23:03.138 +03:00 [INF] Login step content created successfully
+2025-04-14 22:23:03.147 +03:00 [INF] Step content update completed for step 1
+2025-04-14 22:23:03.152 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-14 22:31:54.324 +03:00 [INF] Starting application...
+2025-04-14 22:32:13.006 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:32:13.043 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:32:13.127 +03:00 [INF] Login step content created successfully
+2025-04-14 22:32:13.154 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:34:26.560 +03:00 [INF] Starting application...
+2025-04-14 22:34:40.078 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:34:40.117 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:34:40.202 +03:00 [INF] Login step content created successfully
+2025-04-14 22:34:40.231 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:40:59.027 +03:00 [INF] Starting application...
+2025-04-14 22:41:10.827 +03:00 [INF] AuthWindow constructor started
+2025-04-14 22:41:10.864 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-14 22:41:10.954 +03:00 [INF] Login step content created successfully
+2025-04-14 22:41:10.981 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-14 22:41:11.001 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-14 22:41:11.032 +03:00 [INF] Login step content created successfully
+2025-04-14 22:41:11.172 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-14 22:41:11.181 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-14 22:41:11.202 +03:00 [INF] Login step content created successfully
+2025-04-14 22:41:11.220 +03:00 [INF] Step content update completed for step 1
+2025-04-14 22:41:11.224 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-14 22:41:22.409 +03:00 [INF] LOGIN REQUEST DETAILS: Username: admin, Password: [REDACTED], SkipTwoFactor: false
+2025-04-14 22:41:24.701 +03:00 [ERR] Error parsing error response. Status: "NotFound", Raw content: 
+System.Text.Json.JsonException: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. Path: $ | LineNumber: 0 | BytePositionInLine: 0.
+ ---> System.Text.Json.JsonReaderException: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. LineNumber: 0 | BytePositionInLine: 0.
+   at System.Text.Json.ThrowHelper.ThrowJsonReaderException(Utf8JsonReader& json, ExceptionResource resource, Byte nextByte, ReadOnlySpan`1 bytes)
+   at System.Text.Json.Utf8JsonReader.Read()
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+   --- End of inner exception stack trace ---
+   at System.Text.Json.ThrowHelper.ReThrowWithPath(ReadStack& state, JsonReaderException ex)
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.Deserialize(Utf8JsonReader& reader, ReadStack& state)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 utf8Json, JsonTypeInfo`1 jsonTypeInfo, Nullable`1 actualByteCount)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 json, JsonTypeInfo`1 jsonTypeInfo)
+   at System.Text.Json.JsonSerializer.Deserialize[TValue](String json, JsonSerializerOptions options)
+   at BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.AuthViewModel.TriggerLoginAndAdvanceAsync() in G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\ViewModels\AuthViewModel.cs:line 425
+2025-04-14 22:41:55.850 +03:00 [INF] LOGIN REQUEST DETAILS: Username: admin, Password: [REDACTED], SkipTwoFactor: false
+2025-04-14 22:41:55.904 +03:00 [ERR] Error parsing error response. Status: "NotFound", Raw content: 
+System.Text.Json.JsonException: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. Path: $ | LineNumber: 0 | BytePositionInLine: 0.
+ ---> System.Text.Json.JsonReaderException: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. LineNumber: 0 | BytePositionInLine: 0.
+   at System.Text.Json.ThrowHelper.ThrowJsonReaderException(Utf8JsonReader& json, ExceptionResource resource, Byte nextByte, ReadOnlySpan`1 bytes)
+   at System.Text.Json.Utf8JsonReader.Read()
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+   --- End of inner exception stack trace ---
+   at System.Text.Json.ThrowHelper.ReThrowWithPath(ReadStack& state, JsonReaderException ex)
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, T& value, JsonSerializerOptions options, ReadStack& state)
+   at System.Text.Json.Serialization.Metadata.JsonTypeInfo`1.Deserialize(Utf8JsonReader& reader, ReadStack& state)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 utf8Json, JsonTypeInfo`1 jsonTypeInfo, Nullable`1 actualByteCount)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 json, JsonTypeInfo`1 jsonTypeInfo)
+   at System.Text.Json.JsonSerializer.Deserialize[TValue](String json, JsonSerializerOptions options)
+   at BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.AuthViewModel.TriggerLoginAndAdvanceAsync() in G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\ViewModels\AuthViewModel.cs:line 425
+2025-04-14 22:43:06.893 +03:00 [INF] Close button clicked
+2025-04-14 22:43:06.896 +03:00 [INF] Login cancelled by user.
+2025-04-14 22:43:06.897 +03:00 [INF] LoginCompleted event received in AuthWindow. Success: false
+2025-04-14 22:43:06.914 +03:00 [INF] Authentication failed or cancelled. Shutting down...
+2025-04-14 22:43:06.941 +03:00 [INF] Window closed after login completion

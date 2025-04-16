@@ -5316,3 +5316,16 @@ System.ArgumentException: An item with the same key has already been added. Key:
 2025-04-11 15:15:53.105 +03:00 [INF] Attempting to connect to SpacetimeDB
 2025-04-11 15:15:53.107 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
 2025-04-11 15:15:53.120 +03:00 [INF] Database connection built successfully
+2025-04-11 22:53:12.407 +03:00 [INF] SpacetimeDBService initialized
+2025-04-11 22:53:12.488 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-11 22:53:12.686 +03:00 [INF] Database connection built successfully
+2025-04-11 22:53:12.943 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-11 22:53:13.608 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-11 22:53:13.877 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-11 22:53:13.906 +03:00 [INF] Now listening on: http://0.0.0.0:49649
+2025-04-11 22:53:13.910 +03:00 [INF] Now listening on: https://0.0.0.0:49648
+2025-04-11 22:53:14.061 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-11 22:53:14.097 +03:00 [INF] Hosting environment: Development
+2025-04-11 22:53:14.102 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-11 22:53:18.453 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-11 22:53:47.339 +03:00 [INF] SpacetimeDB subscription applied successfully

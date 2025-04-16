@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.BusManagementToolWindow"
+             x:DataType="vm:BusManagementViewModel">
+
+    <Grid RowDefinitions="Auto,*" Margin="20">
+        
+            <StackPanel Spacing="10">
+                <!-- Title and Header -->
+                <Grid ColumnDefinitions="*,Auto" MinHeight="20">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Управление автобусами" />
+                        <TextBlock Text="Управление парком автобусов и их маршрутами" Foreground="{DynamicResource SecondaryColor}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Controls -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                    <TextBox Grid.Column="0" 
+                             Text="{Binding SearchText}"
+                             Watermark="Поиск по модели автобуса..."
+                             Margin="0,0,10,0"/>
+                    <Button Grid.Column="1" 
+                            Command="{Binding AddCommand}"
+                            Content="Добавить автобус"
+                            IsEnabled="{Binding !IsBusy}"/>
+                 </Grid>
+				<Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
+					<TextBlock Grid.Column="0"
+							   Text="{Binding ErrorMessage}"
+							   Foreground="Red"
+							   IsVisible="{Binding HasError}"
+							   VerticalAlignment="Center"/>
+					<Button Grid.Column="1"
+							Command="{Binding EditCommand}"
+							Content="Редактировать"
+							IsEnabled="{Binding SelectedBus, Converter={x:Static ObjectConverters.IsNotNull}}"
+							Margin="0,0,10,0"/>
+					<Button Grid.Column="2"
+							Command="{Binding DeleteCommand}"
+							Content="Удалить"
+							IsEnabled="{Binding SelectedBus, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+				</Grid>
+            </StackPanel>
+
+
+		
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Buses}"
+                  SelectedItem="{Binding SelectedBus}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="1"
+                  BorderBrush="Gray"
+                  Margin="0,0,0,15">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" 
+                                    Binding="{Binding BusId}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Модель" 
+                                    Binding="{Binding Model}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Рег. номер" 
+                                    Binding="{Binding RegistrationNumber}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Тип" 
+                                    Binding="{Binding Bus.BusType}"
+                                    Width="Auto"/>
+                 <DataGridTextColumn Header="Год" 
+                                    Binding="{Binding Bus.Year}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Вместимость" 
+                                    Binding="{Binding Bus.Capacity}"
+                                    Width="Auto"/>
+                 <DataGridCheckBoxColumn Header="Активен" 
+                                    Binding="{Binding IsActive}"
+                                    Width="Auto"/>
+                 <DataGridTextColumn Header="Маршруты" 
+                                    Binding="{Binding RouteCount}"
+                                    Width="Auto"/>
+                <DataGridTextColumn Header="Обслуживания" 
+                                    Binding="{Binding MaintenanceCount}"
+                                    Width="Auto"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        
+    </Grid>
+</UserControl>

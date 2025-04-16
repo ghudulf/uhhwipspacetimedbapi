@@ -8,13 +8,14 @@ using System.Linq;
 using Serilog;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
-    public class RouteSchedulesController : ControllerBase
+    [AllowAnonymous] // Allow all authenticated users to read
+    public class RouteSchedulesController : BaseController
     {
         private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
@@ -27,28 +28,39 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
+       
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RouteSchedule>>> GetRouteSchedules()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules()
         {
             try
             {
                 _logger.LogInformation("Fetching all route schedules");
                 var schedules = await _routeScheduleService.GetAllSchedulesAsync();
-                _logger.LogDebug("Retrieved {Count} schedules", schedules.Count);
-                return Ok(schedules);
+                
+                // Map to anonymous type
+                var result = schedules.Select(s => new {
+                    s.ScheduleId,
+                    s.RouteId,
+                    s.StartPoint,
+                    s.EndPoint,
+                    s.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    s.Price,
+                    s.AvailableSeats,
+                    s.DaysOfWeek,
+                    s.BusTypes,
+                    s.StopDurationMinutes,
+                    s.IsRecurring,
+                    s.EstimatedStopTimes,
+                    s.StopDistances,
+                    s.Notes
+                }).ToList();
+
+                _logger.LogDebug("Retrieved {Count} schedules", result.Count);
+                _logger.LogInformation("FULL SCHEDULE DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -58,7 +70,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<RouteSchedule>> GetRouteSchedule(uint id)
+        public async Task<ActionResult<dynamic>> GetRouteSchedule(uint id)
         {
             try
             {
@@ -71,7 +83,29 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                return Ok(schedule);
+                // Map to anonymous type
+                var result = new {
+                    schedule.ScheduleId,
+                    schedule.RouteId,
+                    schedule.StartPoint,
+                    schedule.EndPoint,
+                    schedule.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                    schedule.Price,
+                    schedule.AvailableSeats,
+                    schedule.DaysOfWeek,
+                    schedule.BusTypes,
+                    schedule.StopDurationMinutes,
+                    schedule.IsRecurring,
+                    schedule.EstimatedStopTimes,
+                    schedule.StopDistances,
+                    schedule.Notes
+                };
+
+                _logger.LogInformation("Successfully retrieved schedule {ScheduleId}", id);
+                _logger.LogInformation("FULL SCHEDULE DATA: {ScheduleData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -81,7 +115,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<RouteSchedule>>> SearchRouteSchedules(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchRouteSchedules(
             [FromQuery] uint? routeId = null,
             [FromQuery] DateTime? date = null,
             [FromQuery] string? dayOfWeek = null,
@@ -93,22 +127,50 @@ namespace TicketSalesApp.AdminServer.Controllers
                     routeId, date, dayOfWeek, isActive);
 
                 var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                var query = schedules.AsEnumerable(); // Start query on IEnumerable
 
                 if (routeId.HasValue)
-                    schedules = schedules.Where(s => s.RouteId == routeId.Value).ToList();
+                    query = query.Where(s => s.RouteId == routeId.Value);
 
                 if (date.HasValue)
                 {
-                    var timestamp = (ulong)new DateTimeOffset(date.Value).ToUnixTimeMilliseconds();
-                    schedules = schedules.Where(s => s.DepartureTime >= timestamp && 
-                                                   s.DepartureTime < timestamp + 86400000).ToList(); // 24 hours in milliseconds
+                    // Convert the target date to start and end timestamps for the entire day (UTC)
+                    var startOfDay = new DateTimeOffset(date.Value.Date).ToUnixTimeMilliseconds();
+                    var endOfDay = startOfDay + 86400000; // Add 24 hours in milliseconds
+                    _logger.LogDebug("Filtering by date: Start={StartTimestamp}, End={EndTimestamp}", startOfDay, endOfDay);
+                    query = query.Where(s => s.DepartureTime >= (ulong)startOfDay && s.DepartureTime < (ulong)endOfDay);
                 }
 
                 if (!string.IsNullOrEmpty(dayOfWeek))
-                    schedules = schedules.Where(s => s.DaysOfWeek.Contains(dayOfWeek)).ToList();
+                    query = query.Where(s => s.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase)); // Use StringComparer
+                
+                // isActive filter needs to be added if RouteSchedule entity has an IsActive property
+                // if (isActive.HasValue)
+                //     query = query.Where(s => s.IsActive == isActive.Value);
 
-                _logger.LogDebug("Found {Count} matching schedules", schedules.Count);
-                return Ok(schedules);
+                // Map to anonymous type after filtering
+                var result = query.Select(s => new {
+                    s.ScheduleId,
+                    s.RouteId,
+                    s.StartPoint,
+                    s.EndPoint,
+                    s.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    s.Price,
+                    s.AvailableSeats,
+                    s.DaysOfWeek,
+                    s.BusTypes,
+                    s.StopDurationMinutes,
+                    s.IsRecurring,
+                    s.EstimatedStopTimes,
+                    s.StopDistances,
+                    s.Notes
+                }).ToList();
+
+                _logger.LogDebug("Found {Count} matching schedules", result.Count);
+                _logger.LogInformation("FULL SEARCH RESULTS DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {

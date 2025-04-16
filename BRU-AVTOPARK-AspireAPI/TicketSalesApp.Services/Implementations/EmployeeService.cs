@@ -57,9 +57,25 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving employees by job ID: {JobId}", jobId);
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Employee.Iter()
-                    .Where(e => e.JobId == jobId)
-                    .ToList();
+                
+                // Add detailed logging before ToList()
+                var filteredEmployees = connection.Db.Employee.Iter()
+                    .Where(e => e.JobId == jobId);
+                
+                _logger.LogDebug("Employees matching JobId {JobId} before ToList():", jobId);
+                foreach (var emp in filteredEmployees) // Iterate before ToList to log IDs
+                {
+                    _logger.LogDebug("- EmployeeId: {EmployeeId}, Name: {Surname}, JobId: {JobId}", emp.EmployeeId, emp.Surname, emp.JobId);
+                    if (emp.EmployeeId == 0)
+                    {
+                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId} before ToList()!", jobId);
+                    }
+                }
+                
+                var resultList = filteredEmployees.ToList();
+                _logger.LogDebug("Final list count for JobId {JobId}: {Count}", jobId, resultList.Count);
+                
+                return resultList;
             }
             catch (Exception ex)
             {

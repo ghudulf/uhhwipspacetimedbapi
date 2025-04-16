@@ -9,12 +9,13 @@ using Microsoft.Extensions.Logging;
 using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
 using SpacetimeDB.Types;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
+    [AllowAnonymous]
     public class BusesController : BaseController
     {
         private readonly IBusService _busService;
@@ -32,8 +33,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Bus>>> GetBuses()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetBuses()
         {
+            _logger.LogInformation("REQUEST RECEIVED: GetBuses");
+            
             try
             {
                 if (!IsAdmin() && !HasPermission("buses.view"))
@@ -42,10 +45,31 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Forbid();
                 }
 
-                _logger.LogInformation("Fetching all buses");
+                _logger.LogInformation("DATABASE OPERATION: GetAllBuses");
                 var buses = await _busService.GetAllBusesAsync();
-                _logger.LogDebug("Retrieved {BusCount} buses", buses.Count());
-                return Ok(buses);
+                
+                _logger.LogInformation("DATABASE RESULT: GetAllBuses - Retrieved {BusCount} buses", buses.Count());
+                
+                // Map to anonymous type
+                var result = buses.Select(b => new {
+                    b.BusId,
+                    b.Model,
+                    b.RegistrationNumber,
+                    b.Capacity,
+                
+                    b.IsActive
+                }).ToList();
+
+                _logger.LogInformation("FULL BUS DATA: {BusData}", JsonSerializer.Serialize(result));
+                
+                foreach (var bus in result)
+                {
+                    _logger.LogDebug("Bus ID: {BusId}, Model: {Model}", 
+                        bus.BusId, bus.Model);
+                }
+                
+                _logger.LogInformation("RESPONSE SENT: Returning {BusCount} buses to client", result.Count());
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {
@@ -55,8 +79,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Bus>> GetBus(uint id)
+        public async Task<ActionResult<dynamic>> GetBus(uint id)
         {
+            _logger.LogInformation("REQUEST RECEIVED: GetBus with ID {BusId}", id);
+            
             try
             {
                 if (!IsAdmin() && !HasPermission("buses.view"))
@@ -65,16 +91,31 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Forbid();
                 }
 
-                _logger.LogInformation("Fetching bus with ID {BusId}", id);
+                _logger.LogInformation("DATABASE OPERATION: Fetching bus with ID {BusId}", id);
                 var bus = await _busService.GetBusByIdAsync(id);
+                
                 if (bus == null)
                 {
-                    _logger.LogWarning("Bus with ID {BusId} not found", id);
+                    _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found", id);
                     return NotFound();
                 }
 
-                _logger.LogDebug("Successfully retrieved bus with ID {BusId}", id);
-                return Ok(bus);
+                // Map to anonymous type
+                var result = new {
+                    bus.BusId,
+                    bus.Model,
+                    bus.RegistrationNumber,
+                    bus.Capacity,
+                 
+                    bus.IsActive
+                };
+
+                _logger.LogInformation("DATABASE RESULT: Successfully retrieved bus with ID {BusId}", id);
+                _logger.LogInformation("FULL BUS DATA: {BusData}", JsonSerializer.Serialize(result));
+                _logger.LogInformation("RESPONSE SENT: Bus details for ID {BusId}, Model: {Model}", 
+                    result.BusId, result.Model);
+                
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {
@@ -84,8 +125,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Bus>> CreateBus([FromBody] CreateBusModel model)
+        public async Task<ActionResult<dynamic>> CreateBus([FromBody] CreateBusModel model)
         {
+            _logger.LogInformation("REQUEST RECEIVED: CreateBus with data: {RequestData}", JsonSerializer.Serialize(model));
+            
             if (!IsAdmin() && !HasPermission("buses.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create bus");
@@ -94,14 +137,17 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                _logger.LogInformation("Creating new bus with model {Model}", model.Model);
+                _logger.LogInformation("DATABASE OPERATION: Creating new bus with model {Model}", model.Model);
                 
                 var bus = await _busService.CreateBusAsync(model.Model);
                 if (bus == null)
                 {
-                    _logger.LogWarning("Failed to create bus");
+                    _logger.LogWarning("DATABASE RESULT: Failed to create bus with model {Model}", model.Model);
                     return StatusCode(500, "Failed to create bus");
                 }
+
+                _logger.LogInformation("DATABASE RESULT: Successfully created bus with ID {BusId}", bus.BusId);
+                _logger.LogInformation("FULL BUS DATA CREATED: {BusData}", JsonSerializer.Serialize(bus));
 
                 // Get the current user ID from token
                 var userId = GetUserId();
@@ -118,8 +164,17 @@ namespace TicketSalesApp.AdminServer.Controllers
                     $"Created bus with model {model.Model}, ID: {bus.BusId}"
                 );
 
-                _logger.LogInformation("Successfully created bus with ID {BusId}", bus.BusId);
-                return CreatedAtAction(nameof(GetBus), new { id = bus.BusId }, bus);
+                _logger.LogInformation("RESPONSE SENT: Created bus with ID {BusId}, Model: {Model}", 
+                    bus.BusId, bus.Model);
+                
+                // Return the created bus as JSON with 201 status
+                return StatusCode(201, new {
+                    bus.BusId,
+                    bus.Model,
+                    bus.RegistrationNumber,
+                    bus.Capacity,
+                    bus.IsActive
+                });
             }
             catch (Exception ex)
             {
@@ -131,6 +186,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBus(uint id, [FromBody] UpdateBusModel model)
         {
+            _logger.LogInformation("REQUEST RECEIVED: UpdateBus ID {BusId} with data: {RequestData}", 
+                id, JsonSerializer.Serialize(model));
+            
             if (!IsAdmin() && !HasPermission("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update bus");
@@ -139,14 +197,17 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                _logger.LogInformation("Updating bus with ID {BusId}", id);
+                _logger.LogInformation("DATABASE OPERATION: Updating bus with ID {BusId}, New Model: {Model}", 
+                    id, model.Model ?? "unchanged");
                 
                 var success = await _busService.UpdateBusAsync(id, model.Model);
                 if (!success)
                 {
-                    _logger.LogWarning("Bus with ID {BusId} not found for update", id);
+                    _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for update", id);
                     return NotFound();
                 }
+
+                _logger.LogInformation("DATABASE RESULT: Successfully updated bus with ID {BusId}", id);
 
                 // Get the current user ID from token
                 var userId = GetUserId();
@@ -163,7 +224,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     $"Updated bus with ID {id}, Model: {model.Model ?? "unchanged"}"
                 );
 
-                _logger.LogInformation("Successfully updated bus with ID {BusId}", id);
+                _logger.LogInformation("RESPONSE SENT: Updated bus with ID {BusId}", id);
                 return NoContent();
             }
             catch (Exception ex)
@@ -176,6 +237,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBus(uint id)
         {
+            _logger.LogInformation("REQUEST RECEIVED: DeleteBus ID {BusId}", id);
+            
             if (!IsAdmin() && !HasPermission("buses.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete bus");
@@ -184,14 +247,23 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                _logger.LogInformation("Deleting bus with ID {BusId}", id);
+                _logger.LogInformation("DATABASE OPERATION: Deleting bus with ID {BusId}", id);
+                
+                // Get bus data before deletion for logging
+                var busBeforeDeletion = await _busService.GetBusByIdAsync(id);
+                if (busBeforeDeletion != null)
+                {
+                    _logger.LogInformation("BUS TO BE DELETED: {BusData}", JsonSerializer.Serialize(busBeforeDeletion));
+                }
                 
                 var success = await _busService.DeleteBusAsync(id);
                 if (!success)
                 {
-                    _logger.LogWarning("Bus with ID {BusId} not found for deletion", id);
+                    _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for deletion", id);
                     return NotFound();
                 }
+
+                _logger.LogInformation("DATABASE RESULT: Successfully deleted bus with ID {BusId}", id);
 
                 // Get the current user ID from token
                 var userId = GetUserId();
@@ -208,7 +280,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     $"Deleted bus with ID {id}"
                 );
 
-                _logger.LogInformation("Successfully deleted bus with ID {BusId}", id);
+                _logger.LogInformation("RESPONSE SENT: Deleted bus with ID {BusId}", id);
                 return NoContent();
             }
             catch (Exception ex)
@@ -219,10 +291,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Bus>>> SearchBuses(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchBuses(
             [FromQuery] string? model = null,
             [FromQuery] string? serviceStatus = null)
         {
+            _logger.LogInformation("REQUEST RECEIVED: SearchBuses with parameters - Model: {Model}, ServiceStatus: {Status}", 
+                model ?? "any", serviceStatus ?? "any");
+            
             try
             {
                 if (!IsAdmin() && !HasPermission("buses.view"))
@@ -231,13 +306,32 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Forbid();
                 }
 
-                _logger.LogInformation("Searching buses with model: {Model}, service status: {ServiceStatus}", 
+                _logger.LogInformation("DATABASE OPERATION: Searching buses with model: {Model}, service status: {ServiceStatus}", 
                     model ?? "any", serviceStatus ?? "any");
                 
-                var results = await _busService.SearchBusesAsync(model, serviceStatus);
+                var buses = await _busService.SearchBusesAsync(model, serviceStatus);
                 
-                _logger.LogDebug("Found {ResultCount} buses matching search criteria", results.Count());
-                return Ok(results);
+                // Map to anonymous type
+                var result = buses.Select(b => new {
+                    b.BusId,
+                    b.Model,
+                    b.RegistrationNumber,
+                    b.Capacity,
+             
+                    b.IsActive
+                }).ToList();
+
+                _logger.LogInformation("DATABASE RESULT: Found {ResultCount} buses matching search criteria", result.Count());
+                _logger.LogInformation("FULL SEARCH RESULTS: {BusData}", JsonSerializer.Serialize(result));
+                
+                foreach (var bus in result)
+                {
+                    _logger.LogDebug("Search Result - Bus ID: {BusId}, Model: {Model}", 
+                        bus.BusId, bus.Model);
+                }
+                
+                _logger.LogInformation("RESPONSE SENT: Returning {ResultCount} buses matching search criteria", result.Count());
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {
@@ -249,6 +343,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost("{id}/activate")]
         public async Task<IActionResult> ActivateBus(uint id)
         {
+            _logger.LogInformation("REQUEST RECEIVED: ActivateBus ID {BusId}", id);
+            
             if (!IsAdmin() && !HasPermission("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to activate bus");
@@ -257,14 +353,30 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                _logger.LogInformation("Activating bus with ID {BusId}", id);
+                _logger.LogInformation("DATABASE OPERATION: Activating bus with ID {BusId}", id);
+                
+                // Get bus data before activation for logging
+                var busBeforeActivation = await _busService.GetBusByIdAsync(id);
+                if (busBeforeActivation != null)
+                {
+                    _logger.LogInformation("BUS BEFORE ACTIVATION: {BusData}", JsonSerializer.Serialize(busBeforeActivation));
+                }
                 
                 var success = await _busService.ActivateBusAsync(id);
                 if (!success)
                 {
-                    _logger.LogWarning("Bus with ID {BusId} not found for activation", id);
+                    _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for activation", id);
                     return NotFound();
                 }
+
+                // Get bus data after activation for logging
+                var busAfterActivation = await _busService.GetBusByIdAsync(id);
+                if (busAfterActivation != null)
+                {
+                    _logger.LogInformation("BUS AFTER ACTIVATION: {BusData}", JsonSerializer.Serialize(busAfterActivation));
+                }
+
+                _logger.LogInformation("DATABASE RESULT: Successfully activated bus with ID {BusId}", id);
 
                 // Get the current user ID from token
                 var userId = GetUserId();
@@ -281,7 +393,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     $"Activated bus with ID {id}"
                 );
 
-                _logger.LogInformation("Successfully activated bus with ID {BusId}", id);
+                _logger.LogInformation("RESPONSE SENT: Activated bus with ID {BusId}", id);
                 return NoContent();
             }
             catch (Exception ex)
@@ -294,6 +406,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost("{id}/deactivate")]
         public async Task<IActionResult> DeactivateBus(uint id)
         {
+            _logger.LogInformation("REQUEST RECEIVED: DeactivateBus ID {BusId}", id);
+            
             if (!IsAdmin() && !HasPermission("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to deactivate bus");
@@ -302,14 +416,30 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                _logger.LogInformation("Deactivating bus with ID {BusId}", id);
+                _logger.LogInformation("DATABASE OPERATION: Deactivating bus with ID {BusId}", id);
+                
+                // Get bus data before deactivation for logging
+                var busBeforeDeactivation = await _busService.GetBusByIdAsync(id);
+                if (busBeforeDeactivation != null)
+                {
+                    _logger.LogInformation("BUS BEFORE DEACTIVATION: {BusData}", JsonSerializer.Serialize(busBeforeDeactivation));
+                }
                 
                 var success = await _busService.DeactivateBusAsync(id);
                 if (!success)
                 {
-                    _logger.LogWarning("Bus with ID {BusId} not found for deactivation", id);
+                    _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for deactivation", id);
                     return NotFound();
                 }
+
+                // Get bus data after deactivation for logging
+                var busAfterDeactivation = await _busService.GetBusByIdAsync(id);
+                if (busAfterDeactivation != null)
+                {
+                    _logger.LogInformation("BUS AFTER DEACTIVATION: {BusData}", JsonSerializer.Serialize(busAfterDeactivation));
+                }
+
+                _logger.LogInformation("DATABASE RESULT: Successfully deactivated bus with ID {BusId}", id);
 
                 // Get the current user ID from token
                 var userId = GetUserId();
@@ -326,7 +456,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     $"Deactivated bus with ID {id}"
                 );
 
-                _logger.LogInformation("Successfully deactivated bus with ID {BusId}", id);
+                _logger.LogInformation("RESPONSE SENT: Deactivated bus with ID {BusId}", id);
                 return NoContent();
             }
             catch (Exception ex)

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "dgSpecHash": "5lBiqA3KMj4=",
+  "success": true,
+  "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\Web.BRU.TicketSalesApp\\Web.BRU.TicketSalesApp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor\\24.2.5\\devexpress.blazor.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor.resources\\24.2.5\\devexpress.blazor.resources.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor.themes\\24.2.5\\devexpress.blazor.themes.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.data\\24.2.5\\devexpress.data.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.drawing\\24.2.5\\devexpress.drawing.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.pdf.core\\24.2.5\\devexpress.pdf.core.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.pdf.drawing\\24.2.5\\devexpress.pdf.drawing.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.printing.core\\24.2.5\\devexpress.printing.core.24.2.5.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\devextreme.aspnet.data\\4.0.0\\devextreme.aspnet.data.4.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.reactive\\5.0.0\\system.reactive.5.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.servicemodel.http\\6.2.0\\system.servicemodel.http.6.2.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.servicemodel.primitives\\6.2.0\\system.servicemodel.primitives.6.2.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.1\\microsoft.windowsdesktop.app.ref.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.1\\microsoft.aspnetcore.app.ref.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.1\\microsoft.netcore.app.host.win-x64.9.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

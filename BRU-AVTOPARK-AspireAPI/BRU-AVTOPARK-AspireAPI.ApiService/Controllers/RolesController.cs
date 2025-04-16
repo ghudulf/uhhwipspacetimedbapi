@@ -10,43 +10,35 @@ using Serilog;
 using Microsoft.Extensions.Logging;
 using SpacetimeDB;
 using SpacetimeDB.Types;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [AllowAnonymous]
     public class RolesController : BaseController
     {
         private readonly IRoleService _roleService;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<RolesController> _logger;
+        private readonly ISpacetimeDBService _spacetimeService;
 
         public RolesController(
             IRoleService roleService,
             IAdminActionLogger adminLogger,
-            ILogger<RolesController> logger)
+            ILogger<RolesController> logger,
+            ISpacetimeDBService spacetimeService)
         {
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
-
+       
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRoles()
         {
             try
             {
@@ -58,8 +50,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("Fetching all roles");
                 var roles = await _roleService.GetAllRolesAsync();
-                _logger.LogInformation("Retrieved {Count} roles", roles.Count());
-                return Ok(roles);
+                
+                var result = roles.Select(r => new {
+                    r.RoleId,
+                    r.LegacyRoleId,
+                    r.Name,
+                    r.Description,
+                    r.IsActive,
+                    r.Priority,
+                    r.IsSystem
+                }).ToList();
+
+                _logger.LogInformation("Retrieved {Count} roles", result.Count());
+                _logger.LogInformation("FULL ROLES DATA: {RolesData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -69,7 +73,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Role>> GetRole(uint id)
+        public async Task<ActionResult<dynamic>> GetRole(uint id)
         {
             try
             {
@@ -88,7 +92,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                return Ok(role);
+                var result = new {
+                    role.RoleId,
+                    role.LegacyRoleId,
+                    role.Name,
+                    role.Description,
+                    role.IsActive,
+                    role.Priority,
+                    role.IsSystem
+                };
+
+                _logger.LogInformation("Successfully retrieved role {RoleId}", id);
+                _logger.LogInformation("FULL ROLE DATA: {RoleData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -98,7 +114,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}/permissions")]
-        public async Task<ActionResult<IEnumerable<Permission>>> GetRolePermissions(uint id)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRolePermissions(uint id)
         {
             try
             {
@@ -110,7 +126,18 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("Fetching permissions for role {RoleId}", id);
                 var permissions = await _roleService.GetRolePermissionsAsync(id);
-                return Ok(permissions);
+                
+                var result = permissions.Select(p => new {
+                    p.PermissionId,
+                    p.Name,
+                    p.Description,
+                    p.Category,
+                    p.IsActive
+                }).ToList();
+
+                _logger.LogInformation("Successfully retrieved {Count} permissions for role {RoleId}", result.Count(), id);
+                _logger.LogInformation("FULL ROLE PERMISSIONS DATA: {PermissionsData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {

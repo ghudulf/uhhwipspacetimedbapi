@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using OpenIddict.Validation.AspNetCore;
+
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.ServerIntegration;
@@ -171,6 +172,8 @@ builder.Services.AddOpenIddict()
         options.AllowAuthorizationCodeFlow()
             .AllowRefreshTokenFlow();
 
+       //options.DisableTransportSecurityRequirement(); this wont work for some fucking reason with openiddict 4.1.0
+
         // Add symmetric signing key for access tokens, authorization codes, and refresh tokens
         options.AddSigningKey(new SymmetricSecurityKey(key));
 
@@ -190,7 +193,8 @@ builder.Services.AddOpenIddict()
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
             .EnableAuthorizationEndpointPassthrough()
-            .EnableUserinfoEndpointPassthrough();
+            .EnableUserinfoEndpointPassthrough()
+            .DisableTransportSecurityRequirement();
     })
     .AddValidation(options =>
     {
@@ -279,10 +283,12 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers(options =>
             {
                 options.RespectBrowserAcceptHeader = true;
+                options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
             })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
             });
 
 

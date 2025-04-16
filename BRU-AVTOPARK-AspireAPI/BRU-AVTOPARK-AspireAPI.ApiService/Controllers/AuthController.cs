@@ -22,6 +22,11 @@ using Fido2NetLib.Objects;
 using System.Text.Json;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using OpenIddict.Abstractions;
+using Microsoft.AspNetCore.Authentication;
+using OpenIddict.Server.AspNetCore;
+using OpenIddict.Validation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -29,7 +34,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthenticationService _authService;
+        private readonly TicketSalesApp.Services.Interfaces.IAuthenticationService _authService;
         private readonly IQRAuthenticationService _qrAuthService;
         private readonly IUserService _userService;
         private readonly ITotpService _totpService;
@@ -42,7 +47,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly ISpacetimeDBService _spacetimeService;
 
         public AuthController(
-            IAuthenticationService authService, 
+            TicketSalesApp.Services.Interfaces.IAuthenticationService authService, 
             IQRAuthenticationService qrAuthService,
             IUserService userService,
             ITotpService totpService,
@@ -1020,11 +1025,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             <form method=""POST"" action=""/api/auth/login"" id=""loginForm"">
                 <div class=""form-group"">
                     <label for=""username"">Username</label>
-                                <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"">
+                                <input type=""text"" id=""username"" name=""username""  placeholder=""Enter your username"">
                 </div>
                 <div class=""form-group"">
                     <label for=""password"">Password</label>
-                                <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
+                                <input type=""password"" id=""password"" name=""password""  placeholder=""Enter your password"">
                 </div>
                             <button type=""button"" onclick=""submitLoginForm()"" id=""loginButton"">Log in</button>
                             
@@ -1170,7 +1175,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             <form method=""POST"" action=""/api/auth/totp/verify"">
                 <div class=""form-group"">
                     <label for=""code"">Enter the 6-digit code from your app</label>
-                    <input type=""text"" id=""code"" name=""code"" required pattern=""[0-9]{{6}}"" placeholder=""Enter 6-digit code"" autocomplete=""one-time-code"">
+                    <input type=""text"" id=""code"" name=""code""  pattern=""[0-9]{{6}}"" placeholder=""Enter 6-digit code"" autocomplete=""one-time-code"">
                 </div>
                 <input type=""hidden"" name=""secretKey"" value=""{secretKey}"">
                 <button type=""submit"" class=""btn btn-block"">Verify and Enable</button>
@@ -1289,13 +1294,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {(message != null ? $@"<div class=""success-message"">{message}</div>" : "")}
                         
                         <div class=""info-box"" style=""background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;"">
-                            <p>Enter your email address to receive a secure login link. No password required!</p>
+                            <p>Enter your email address to receive a secure login link. No password !</p>
                         </div>
                         
             <form method=""POST"" action=""/api/auth/magic-link/send"">
                 <div class=""form-group"">
                     <label for=""email"">Email Address</label>
-                                <input type=""email"" id=""email"" name=""email"" required placeholder=""Enter your email address"">
+                                <input type=""email"" id=""email"" name=""email""  placeholder=""Enter your email address"">
                 </div>
                 <button type=""submit"">Send Magic Link</button>
             </form>
@@ -1415,11 +1420,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 
                 <div class=""form-group"">
                     <label for=""username"">Username</label>
-                    <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"">
+                    <input type=""text"" id=""username"" name=""username""  placeholder=""Enter your username"">
                 </div>
                 <div class=""form-group"">
                     <label for=""password"">Password</label>
-                    <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
+                    <input type=""password"" id=""password"" name=""password""  placeholder=""Enter your password"">
                 </div>
                 <button type=""submit"" class=""btn btn-block"">Login & Authorize</button>
             </form>
@@ -1466,33 +1471,134 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             return Ok(new { message = "Use POST method to login" });
         }
 
-         [HttpPost("login")]
+        [Route("login")]
+        [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromForm] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest jsonRequest, [FromForm] LoginRequest? formRequest = null)
         {
-            var result = await ProcessLoginRequest(request);
+            _logger.LogInformation("=== LOGIN ATTEMPT STARTED ===");
+            _logger.LogDebug("Request received: JSON payload present: {HasJson}, Form payload present: {HasForm}", 
+                jsonRequest != null, formRequest != null);
             
-            if (IsBrowserRequest())
+            try
             {
-                if (result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
+                LoginRequest? finalRequest = null;
+
+                // Try to get request from either JSON body or form data
+                if (jsonRequest != null)
                 {
-                    // If it's a successful login from a browser, redirect to success page with token
-                    return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response.Data!.Token)}");
+                    finalRequest = jsonRequest;
+                    _logger.LogInformation("Processing JSON login request for user: {Username}", jsonRequest.Username);
+                    _logger.LogDebug("JSON login details - Username length: {UsernameLength}, Password provided: {PasswordProvided}, SkipTwoFactor: {SkipTwoFactor}", 
+                        jsonRequest.Username?.Length ?? 0, !string.IsNullOrEmpty(jsonRequest.Password), jsonRequest.SkipTwoFactor);
+                }
+                else if (formRequest != null)
+                {
+                    finalRequest = formRequest;
+                    _logger.LogInformation("Processing form login request for user: {Username}", formRequest.Username);
+                    _logger.LogDebug("Form login details - Username length: {UsernameLength}, Password provided: {PasswordProvided}, SkipTwoFactor: {SkipTwoFactor}", 
+                        formRequest.Username?.Length ?? 0, !string.IsNullOrEmpty(formRequest.Password), formRequest.SkipTwoFactor);
+                }
+
+                if (finalRequest == null)
+                {
+                    _logger.LogWarning("LOGIN FAILED: Request received with no valid data");
+                    _logger.LogDebug("Request headers: {@Headers}", Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString()));
+                    _logger.LogDebug("Request content type: {ContentType}", Request.ContentType);
+                    
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid request format. Please provide login credentials."
+                    });
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("LOGIN FAILED: Invalid model state");
+                    _logger.LogDebug("Model state errors: {@Errors}", ModelState.Values
+                        .SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                        .ToList());
+                    
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid request data",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+                    });
+                }
+
+                _logger.LogInformation("Proceeding to process login request for user: {Username}", finalRequest.Username);
+                
+                // Process the login request
+                _logger.LogDebug("Calling ProcessLoginRequest method");
+                var result = await ProcessLoginRequest(finalRequest);
+                _logger.LogDebug("ProcessLoginRequest returned result type: {ResultType}", result.GetType().Name);
+
+                // If the request is JSON, always return JSON response even from browser
+                if (jsonRequest != null)
+                {
+                    _logger.LogInformation("JSON request detected, returning JSON response");
+                    return result;
                 }
                 
-                // For failures, redirect back to login page with error
-                string errorMessage = "Invalid credentials";
-                if (result is UnauthorizedObjectResult unauthorizedResult && 
-                    unauthorizedResult.Value is ApiResponse<object> errorResponse)
+                if (IsBrowserRequest())
                 {
-                    errorMessage = errorResponse.Message ?? errorMessage;
+                    _logger.LogInformation("Processing as browser request");
+                    
+                    if (result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
+                    {
+                        _logger.LogInformation("LOGIN SUCCESSFUL: Browser login successful for user: {Username}", finalRequest.Username);
+                        _logger.LogDebug("Token generated with length: {TokenLength}", response.Data?.Token?.Length ?? 0);
+                        _logger.LogDebug("Redirecting to success page with token");
+                        
+                        // If it's a successful login from a browser, redirect to success page with token
+                        return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response.Data!.Token)}");
+                    }
+                    
+                    // For failures, redirect back to login page with error
+                    string errorMessage = "Invalid credentials";
+                    if (result is UnauthorizedObjectResult unauthorizedResult && 
+                        unauthorizedResult.Value is ApiResponse<object> errorResponse)
+                    {
+                        errorMessage = errorResponse.Message ?? errorMessage;
+                        _logger.LogWarning("LOGIN FAILED: Browser login failed with message: {ErrorMessage}", errorMessage);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("LOGIN FAILED: Browser login failed with default error message");
+                    }
+                    
+                    _logger.LogDebug("Redirecting back to login page with error: {ErrorMessage}", errorMessage);
+                    return Redirect($"/api/auth/login?error={Uri.EscapeDataString(errorMessage)}");
                 }
                 
-                return Redirect($"/api/auth/login?error={Uri.EscapeDataString(errorMessage)}");
+                // For API requests, return the original result
+                _logger.LogInformation("LOGIN REQUEST COMPLETED: Returning API result of type {ResultType}", result.GetType().Name);
+                return result;
             }
-            
-            // For API requests, return the original result
-            return result;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CRITICAL ERROR DURING LOGIN: Error processing login request");
+                _logger.LogDebug("Exception details: Type: {ExceptionType}, Message: {ExceptionMessage}, StackTrace: {StackTrace}", 
+                    ex.GetType().Name, ex.Message, ex.StackTrace);
+                
+                if (ex.InnerException != null)
+                {
+                    _logger.LogDebug("Inner exception: Type: {ExceptionType}, Message: {ExceptionMessage}", 
+                        ex.InnerException.GetType().Name, ex.InnerException.Message);
+                }
+                
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred during login: {ex.Message}"
+                });
+            }
+            finally
+            {
+                _logger.LogInformation("=== LOGIN ATTEMPT COMPLETED ===");
+            }
         }
 
         protected bool IsAdmin()
@@ -1646,7 +1752,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Ok(new ApiResponse<TwoFactorResponse>
                     {
                         Success = true,
-                        Message = "Two-factor authentication required",
+                        Message = "Two-factor authentication ",
                         Data = new TwoFactorResponse
                         {
                             RequiresTwoFactor = true,
@@ -1702,7 +1808,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Ok(new ApiResponse<WebAuthnTwoFactorResponse>
                     {
                         Success = true,
-                        Message = "WebAuthn authentication required",
+                        Message = "WebAuthn authentication ",
                         Data = new WebAuthnTwoFactorResponse
                         {
                             RequiresTwoFactor = true,
@@ -1802,7 +1908,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return StatusCode(403, new ApiResponse<object>
                     {
                         Success = false,
-                        Message = "Administrator privileges required for user registration"
+                        Message = "Administrator privileges  for user registration"
                     });
                 }
 
@@ -1872,9 +1978,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             {
                                 userIdentity = userProfile.UserId;
                                 _logger.LogInformation("Successfully retrieved identity for logged-in user: {Login}", loggedInUserLogin);
-                            }
-                            else
-                            {
+                    }
+                    else
+                    {
                                 _logger.LogWarning("Could not find user profile for logged-in user: {Login}", loggedInUserLogin);
                             }
                         }
@@ -1990,7 +2096,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 _logger.LogInformation("User {Username} registered successfully", request.Username);
 
-                return Ok(new ApiResponse<RegisterResponse>
+                // Always return JSON response regardless of request type
+                var response = new ApiResponse<RegisterResponse>
                 {
                     Success = true,
                     Message = "User registered successfully",
@@ -2005,7 +2112,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             Role = _authService.GetUserRole(newlyCreatedUser.UserId)
                         }
                     }
-                });
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -3260,43 +3369,177 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         #region OpenID Connect
 
-        [HttpGet("connect/authorize")]
+        [HttpGet("~/connect/authorize")]
+        [HttpPost("~/connect/authorize")]
         [AllowAnonymous]
-        public async Task<IActionResult> Authorize([FromQuery] string client_id, [FromQuery] string redirect_uri, [FromQuery] string response_type, [FromQuery] string scope, [FromQuery] string state, [FromQuery] string? nonce = null)
+        public async Task<IActionResult> Authorize()
         {
             try
             {
+                var oidcRequest = HttpContext.GetOpenIddictServerRequest() ??
+                    throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+
+                _logger.LogInformation("OIDC Authorize: Processing request for ClientId: {ClientId}, ResponseType: {ResponseType}, Scopes: {Scopes}",
+                    oidcRequest.ClientId, oidcRequest.ResponseType, oidcRequest.Scope);
+
                 // Validate client
-                var (clientSuccess, application, clientError) = await _openIdConnectService.GetApplicationByClientIdAsync(client_id);
-                if (!clientSuccess || application == null)
+                var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(oidcRequest.ClientId);
+                if (!clientResult.success || clientResult.application == null)
                 {
-                    return BadRequest($"Invalid client: {clientError}");
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = clientResult.errorMessage ?? "Invalid client application."
+                        }));
                 }
 
-                // Get client display name
-                var clientName = await GetDisplayNameAsync(application) ?? client_id;
-
-                // Store the request in cache for later retrieval
-                var requestId = Guid.NewGuid().ToString();
-                _cache.Set($"oidc_request_{requestId}", new OpenIdConnectRequest
+                // Check if user is already authenticated
+                var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                if (!authenticateResult.Succeeded)
                 {
-                    ClientId = client_id,
-                    RedirectUri = redirect_uri,
-                    ResponseType = response_type,
-                    Scope = scope,
-                    State = state,
-                    Nonce = nonce
-                }, TimeSpan.FromMinutes(10));
+                    // Store request for later
+                    var requestId = Guid.NewGuid().ToString();
+                    _cache.Set($"oidc_request_{requestId}", new OpenIdConnectRequest
+                    {
+                        ClientId = oidcRequest.ClientId,
+                        RedirectUri = oidcRequest.RedirectUri,
+                        ResponseType = oidcRequest.ResponseType,
+                        Scope = oidcRequest.Scope,
+                        State = oidcRequest.State,
+                        Nonce = oidcRequest.Nonce
+                    }, TimeSpan.FromMinutes(10));
 
-                if (IsBrowserRequest())
-                {
-                    // Render the login page with OpenID Connect details
-                    var scopes = scope.Split(' ');
-                    return Content(RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
+                    if (IsBrowserRequest())
+                    {
+                        var clientName = await GetDisplayNameAsync(clientResult.application) ?? oidcRequest.ClientId;
+                        var scopes = oidcRequest.Scope?.Split(' ') ?? Array.Empty<string>();
+                        return Content(RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
+                    }
+
+                    return Ok(new { login_url = $"/api/auth/oauth/login?request_id={requestId}" });
                 }
 
-                // For API clients, redirect to the login page with the request ID
-                return Ok(new { login_url = $"/api/auth/oauth/login?request_id={requestId}" });
+                // User is authenticated, get their profile
+                var usernameClaim = authenticateResult.Principal.FindFirstValue(ClaimTypes.Name);
+                if (string.IsNullOrEmpty(usernameClaim))
+                {
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Invalid user credentials."
+                        }));
+                }
+
+                // Look up user in SpacetimeDB by username
+                var conn = _spacetimeService.GetConnection();
+                var user = conn.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Login == usernameClaim && u.IsActive);
+
+                if (user == null)
+                {
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The user no longer exists."
+                        }));
+                }
+
+                // Create claims identity for the tokens
+                var identity = new ClaimsIdentity(
+                    authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                    nameType: Claims.Name,
+                    roleType: Claims.Role);
+
+                // Add standard claims
+                identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString()));
+                identity.AddClaim(new Claim(Claims.Name, user.Login));
+                if (!string.IsNullOrEmpty(user.Email))
+                {
+                    identity.AddClaim(new Claim(Claims.Email, user.Email));
+                    identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailConfirmed?.ToString() ?? "false"));
+                }
+                if (!string.IsNullOrEmpty(user.PhoneNumber))
+                {
+                    identity.AddClaim(new Claim(Claims.PhoneNumber, user.PhoneNumber));
+                }
+
+                // Add roles
+                var roles = conn.Db.UserRole.Iter()
+                    .Where(ur => ur.UserId.Equals(user.UserId))
+                    .Join(conn.Db.Role.Iter(), 
+                          ur => ur.RoleId, 
+                          r => r.RoleId, 
+                          (ur, r) => r.Name)
+                    .ToList();
+                foreach (var role in roles)
+                {
+                    identity.AddClaim(new Claim(Claims.Role, role));
+                }
+
+                // Set requested scopes and create authorization if needed
+                var requestedScopes = oidcRequest.GetScopes();
+                identity.SetScopes(requestedScopes);
+
+                // Check if we need to create/update authorization
+                var authorizationsResult = await _openIdConnectService.GetAuthorizationsAsync(
+                    user.UserId.ToString(),
+                    clientResult.application,
+                    Statuses.Valid,
+                    AuthorizationTypes.Permanent,
+                    requestedScopes.ToArray());
+
+                if (authorizationsResult.success && authorizationsResult.authorizations != null)
+                {
+                    var authorization = authorizationsResult.authorizations.LastOrDefault();
+                    if (authorization == null)
+                    {
+                        // Create new authorization
+                        var createAuthResult = await _openIdConnectService.CreateAuthorizationAsync(
+                            identity,
+                            user.UserId.ToString(),
+                            clientResult.application,
+                            AuthorizationTypes.Permanent,
+                            requestedScopes.ToArray());
+
+                        if (createAuthResult.success && createAuthResult.authorization != null)
+                        {
+                            var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(createAuthResult.authorization);
+                            if (authIdResult.success && authIdResult.id != null)
+                            {
+                                identity.SetAuthorizationId(authIdResult.id);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
+                        if (authIdResult.success && authIdResult.id != null)
+                        {
+                            identity.SetAuthorizationId(authIdResult.id);
+                        }
+                    }
+                }
+
+                // Get resources for scopes
+                var resourcesResult = await _openIdConnectService.GetResourcesAsync(requestedScopes.ToArray());
+                if (resourcesResult.success && resourcesResult.resources != null)
+                {
+                    identity.SetResources(resourcesResult.resources);
+                }
+
+                // Set claim destinations
+                foreach (var claim in identity.Claims)
+                {
+                    claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
+                }
+
+                return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }
             catch (Exception ex)
             {
@@ -3305,225 +3548,196 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
         }
 
-        [HttpPost("connect/token")]
+        [HttpPost("~/connect/token")]
+        [Produces("application/json")]
         [AllowAnonymous]
-        public async Task<ActionResult<TokenResponse>> Token([FromForm] TokenRequest request)
+        public async Task<IActionResult> Exchange()
         {
             try
             {
-                if (request.GrantType == "authorization_code")
+                var oidcRequest = HttpContext.GetOpenIddictServerRequest() ??
+                    throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+
+                _logger.LogInformation("OIDC Token: Processing request for GrantType: {GrantType}, ClientId: {ClientId}",
+                    oidcRequest.GrantType, oidcRequest.ClientId);
+
+                if (oidcRequest.IsAuthorizationCodeGrantType())
                 {
                     // Validate authorization code
-                    var codeData = _cache.Get<AuthorizationCodeData>($"auth_code_{request.Code}");
+                    var codeData = _cache.Get<AuthorizationCodeData>($"auth_code_{oidcRequest.Code}");
                     if (codeData == null)
                     {
-                        return BadRequest(new
-                        {
-                            error = "invalid_grant",
-                            error_description = "The authorization code is invalid or has expired."
-                        });
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The authorization code is invalid or has expired."
+                            }));
                     }
 
-                    // Get the user's SpacetimeDB Identity from legacy ID
+                    // Get the user from SpacetimeDB using LegacyUserId
                     var conn = _spacetimeService.GetConnection();
-                    var userProfile = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.LegacyUserId == codeData.UserId);
-                    
-                    if (userProfile == null) {
-                        return BadRequest(new {
-                            error = "invalid_grant",
-                            error_description = "User not found."
-                        });
-                    }
+                    var user = conn.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.LegacyUserId == codeData.UserId && u.IsActive);
 
-                    var user = await GetUserByIdentityAsync(userProfile.UserId);
                     if (user == null)
                     {
-                        return BadRequest(new
-                        {
-                            error = "invalid_grant",
-                            error_description = "The user associated with the authorization code no longer exists."
-                        });
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The user associated with the authorization code no longer exists."
+                            }));
                     }
 
-                    // Get the application
-                    var (appSuccess, application, appError) = await _openIdConnectService.GetApplicationByClientIdAsync(request.ClientId);
-                    if (!appSuccess || application == null)
+                    // Create claims identity
+                    var identity = new ClaimsIdentity(
+                        authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                        nameType: Claims.Name,
+                        roleType: Claims.Role);
+
+                    // Add claims
+                    identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString()));
+                    identity.AddClaim(new Claim(Claims.Name, user.Login));
+                    if (!string.IsNullOrEmpty(user.Email))
                     {
-                        return BadRequest(new
-                        {
-                            error = "invalid_client",
-                            error_description = appError ?? "The client application is invalid."
-                        });
+                        identity.AddClaim(new Claim(Claims.Email, user.Email));
+                        identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailConfirmed?.ToString() ?? "false"));
                     }
-
-                    // Validate client secret if provided
-                    if (!string.IsNullOrEmpty(request.ClientSecret))
+                    if (!string.IsNullOrEmpty(user.PhoneNumber))
                     {
-                        // Implement client secret validation here
+                        identity.AddClaim(new Claim(Claims.PhoneNumber, user.PhoneNumber));
                     }
 
-                    // Create identity
-                    var (identitySuccess, identity, identityError) = await _openIdConnectService.CreateIdentityFromUserAsync(user, codeData.Scopes);
-                    if (!identitySuccess || identity == null)
+                    // Add roles
+                    var roles = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .Join(conn.Db.Role.Iter(), 
+                              ur => ur.RoleId, 
+                              r => r.RoleId, 
+                              (ur, r) => r.Name)
+                        .ToList();
+                    foreach (var role in roles)
                     {
-                        return BadRequest(new
-                        {
-                            error = "server_error",
-                            error_description = identityError ?? "Failed to create identity."
-                        });
+                        identity.AddClaim(new Claim(Claims.Role, role));
                     }
 
-                    // Generate JWT token
-                    var token = GenerateJwtToken(user);
+                    // Set scopes and resources
+                    identity.SetScopes(codeData.Scopes);
+                    var resourcesResult = await _openIdConnectService.GetResourcesAsync(codeData.Scopes);
+                    if (resourcesResult.success && resourcesResult.resources != null)
+                    {
+                        identity.SetResources(resourcesResult.resources);
+                    }
+
+                    // Set claim destinations
+                    foreach (var claim in identity.Claims)
+                    {
+                        claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
+                    }
 
                     // Remove the authorization code
-                    _cache.Remove($"auth_code_{request.Code}");
+                    _cache.Remove($"auth_code_{oidcRequest.Code}");
 
-                    return Ok(new TokenResponse
-                    {
-                        AccessToken = token,
-                        TokenType = "Bearer",
-                        ExpiresIn = int.Parse(_configuration["JwtSettings:ExpirationInMinutes"] ?? "120") * 60,
-                        Scope = string.Join(" ", codeData.Scopes)
-                    });
+                    return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
                 }
-                else if (request.GrantType == "refresh_token")
-                {
-                    // Implement refresh token flow
-                    return BadRequest(new
+
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
                     {
-                        error = "unsupported_grant_type",
-                        error_description = "Refresh token flow is not implemented yet."
-                        
-                    });
-                }
-                else
-                {
-                    return BadRequest(new
-                    {
-                        error = "unsupported_grant_type",
-                        error_description = "The specified grant type is not supported."
-                    });
-                }
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnsupportedGrantType,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                            "The specified grant type is not supported."
+                    }));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing token request");
-                return StatusCode(500, new
-                {
-                    error = "server_error",
-                    error_description = "An error occurred while processing the token request."
-                });
+                return StatusCode(500, "An error occurred while processing the token request");
             }
         }
 
-        [HttpPost("connect/authorize/callback")]
-        [AllowAnonymous]
-        public async Task<IActionResult> AuthorizeCallback([FromForm] AuthorizeCallbackRequest request)
+        [HttpGet("~/connect/userinfo")]
+        [Produces("application/json")]
+        [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> Userinfo()
         {
             try
             {
-                // Get the original request from cache
-                var originalRequest = _cache.Get<OpenIdConnectRequest>($"oidc_request_{request.RequestId}");
-                if (originalRequest == null)
+                // Get username from the validated token
+                var usernameClaim = User.FindFirstValue(Claims.Name);
+                if (string.IsNullOrEmpty(usernameClaim))
                 {
-                    return BadRequest("Invalid or expired request ID");
+                    return Challenge(
+                        authenticationSchemes: OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictValidationAspNetCoreConstants.Properties.Error] = Errors.InvalidToken,
+                            [OpenIddictValidationAspNetCoreConstants.Properties.ErrorDescription] = 
+                                "The access token is invalid or expired."
+                        }));
                 }
 
-                // Authenticate user
-                var user = await _authService.AuthenticateAsync(request.Username, request.Password);
-                if (user == null)
-                {
-                    return Redirect($"/oauth/login?request_id={request.RequestId}&error=invalid_credentials");
-                }
-
-                // Get the application
-                var (appSuccess, application, appError) = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
-                if (!appSuccess || application == null)
-                {
-                    return BadRequest($"Invalid client: {appError}");
-                }
-
-                // Parse scopes
-                var scopes = originalRequest.Scope.Split(' ');
-
-                // Create authorization code
-                var code = GenerateRandomToken();
-                
-                // Store the code data
-                _cache.Set($"auth_code_{code}", new AuthorizationCodeData
-                {
-                    UserId = user.LegacyUserId,
-                    Scopes = scopes,
-                    RedirectUri = originalRequest.RedirectUri
-                }, TimeSpan.FromMinutes(5));
-
-                // Build the redirect URL
-                var redirectUrl = $"{originalRequest.RedirectUri}?code={code}&state={originalRequest.State}";
-                
-                return Redirect(redirectUrl);
-                }
-                catch (Exception ex)
-                {
-                _logger.LogError(ex, "Error processing authorization callback");
-                return StatusCode(500, "An error occurred while processing the authorization callback");
-            }
-        }
-
-        [HttpGet("connect/userinfo")]
-        [Authorize]
-        public async Task<ActionResult<UserInfoResponse>> UserInfo()
-        {
-            try
-            {
-                var userId = GetUserIdentity();
-                if (userId == null)
-                {
-                    return Unauthorized(new
-                    {
-                        error = "invalid_token",
-                        error_description = "The access token is invalid or expired."
-                    });
-                }
-
-                var user = await GetUserByIdentityAsync(userId);
-                if (user == null)
-                {
-                    return NotFound(new
-                    {
-                        error = "invalid_token",
-                        error_description = "The user associated with the access token no longer exists."
-                    });
-                }
-
-                // Get user roles
+                // Look up user in SpacetimeDB
                 var conn = _spacetimeService.GetConnection();
-                var userRoles = conn.Db.UserRole.Iter()
-                    .Where(ur => ur.UserId.Equals(userId))
-                    .Join(conn.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r.Name)
-                    .ToList();
+                var user = conn.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Login == usernameClaim && u.IsActive);
 
-                return Ok(new UserInfoResponse
+                if (user == null)
                 {
-                    Sub = user.LegacyUserId.ToString(),
-                    Name = user.Login,
-                    PreferredUsername = user.Login,
-                    Email = user.Email,
-                    EmailVerified = (bool)user.EmailConfirmed,
-                    PhoneNumber = user.PhoneNumber,
-                    
-                    Roles = userRoles
-                });
+                    return Challenge(
+                        authenticationSchemes: OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictValidationAspNetCoreConstants.Properties.Error] = Errors.InvalidToken,
+                            [OpenIddictValidationAspNetCoreConstants.Properties.ErrorDescription] = 
+                                "The user associated with the access token no longer exists."
+                        }));
+                }
+
+                var claims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    [Claims.Subject] = user.UserId.ToString(),
+                    [Claims.Name] = user.Login,
+                    [Claims.PreferredUsername] = user.Login
+                };
+
+                if (!string.IsNullOrEmpty(user.Email))
+                {
+                    claims[Claims.Email] = user.Email;
+                    claims[Claims.EmailVerified] = user.EmailConfirmed ?? false;
+                }
+
+                if (!string.IsNullOrEmpty(user.PhoneNumber))
+                {
+                    claims[Claims.PhoneNumber] = user.PhoneNumber;
+                    claims[Claims.PhoneNumberVerified] = false; // Add phone verification if implemented
+                }
+
+                // Add roles if scope includes 'roles'
+                if (User.HasScope("roles"))
+                {
+                    var roles = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .Join(conn.Db.Role.Iter(), 
+                              ur => ur.RoleId, 
+                              r => r.RoleId, 
+                              (ur, r) => r.Name)
+                        .ToList();
+                    claims[Claims.Role] = roles;
+                }
+
+                return Ok(claims);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting user info");
-                return StatusCode(500, new
-                {
-                    error = "server_error",
-                    error_description = "An error occurred while getting user info."
-                });
+                _logger.LogError(ex, "Error processing userinfo request");
+                return StatusCode(500, "An error occurred while processing the userinfo request");
             }
         }
 
@@ -3983,10 +4197,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             var keyBytes = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? "DefaultSecureKeyForTemporaryRegistrationToken");
             var key = new SymmetricSecurityKey(keyBytes);
             
-            // Create minimal claims required for identity generation
+            // Create minimal claims  for identity generation
             var claims = new List<Claim>
             {
-                // Required claims for SpacetimeDB identity generation
+                //  claims for SpacetimeDB identity generation
                 new Claim(JwtRegisteredClaimNames.Iss, "temporary-registration-issuer"),
                 new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
                 
@@ -4765,24 +4979,24 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             <form method=""POST"" action=""{(clientId == null ? "/api/auth/connect/register-client" : $"/api/auth/connect/update-client/{clientId}")}"">
                 <div class=""form-group"">
                     <label for=""clientId"">Client ID</label>
-                    <input type=""text"" id=""clientId"" name=""clientId"" value=""{(client?.ClientId ?? "")}"" {(clientId == null ? "required" : "readonly")}>
+                    <input type=""text"" id=""clientId"" name=""clientId"" value=""{(client?.ClientId ?? "")}"" {(clientId == null ? "" : "readonly")}>
                     {(clientId != null ? @"<input type=""hidden"" name=""clientId"" value=""" + clientId + @""">" : "")}
                 </div>
                 
                 <div class=""form-group"">
                     <label for=""displayName"">Display Name</label>
-                    <input type=""text"" id=""displayName"" name=""displayName"" value=""{(client?.DisplayName ?? "")}"" required>
+                    <input type=""text"" id=""displayName"" name=""displayName"" value=""{(client?.DisplayName ?? "")}"" >
                 </div>
                 
                 <div class=""form-group"">
                     <label for=""clientSecret"">Client Secret</label>
-                    <input type=""text"" id=""clientSecret"" name=""clientSecret"" {(clientId == null ? "required" : "placeholder=\"Leave blank to keep current secret\"")}>
+                    <input type=""text"" id=""clientSecret"" name=""clientSecret"" {(clientId == null ? "" : "placeholder=\"Leave blank to keep current secret\"")}>
                     {(clientId != null ? @"<p class=""text-muted"">Leave blank to keep current secret</p>" : "")}
                 </div>
                 
                 <div class=""form-group"">
                     <label for=""redirectUris"">Redirect URIs (one per line)</label>
-                    <textarea id=""redirectUris"" name=""redirectUris"" rows=""3"" required>{(client?.RedirectUris != null ? string.Join("\n", client.RedirectUris) : "")}</textarea>
+                    <textarea id=""redirectUris"" name=""redirectUris"" rows=""3"" >{(client?.RedirectUris != null ? string.Join("\n", client.RedirectUris) : "")}</textarea>
                 </div>
                 
                 <div class=""form-group"">
@@ -4792,7 +5006,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 
                 <div class=""form-group"">
                     <label for=""allowedScopes"">Allowed Scopes (one per line)</label>
-                    <textarea id=""allowedScopes"" name=""allowedScopes"" rows=""3"" required>{(client?.AllowedScopes != null ? string.Join("\n", client.AllowedScopes) : "openid\nprofile\nemail")}</textarea>
+                    <textarea id=""allowedScopes"" name=""allowedScopes"" rows=""3"" >{(client?.AllowedScopes != null ? string.Join("\n", client.AllowedScopes) : "openid\nprofile\nemail")}</textarea>
                 </div>
                 
                 <div class=""form-group"">
@@ -5301,12 +5515,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                     <div style=""display: flex; flex-wrap: wrap; gap: 15px;"">
                                         <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
                                             <label for=""username"">Придумайте логин</label>
-                                            <input type=""text"" id=""username"" name=""username"" required>
+                                            <input type=""text"" id=""username"" name=""username"" >
                                         </div>
 
                                         <div class=""form-group"" style=""flex: 1; min-width: 250px;"">
                                             <label for=""password"">Создайте пароль</label>
-                                            <input type=""password"" id=""password"" name=""password"" required>
+                                            <input type=""password"" id=""password"" name=""password"" >
                                         </div>
                                     </div>
 
@@ -5324,7 +5538,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                                     <div class=""form-group"">
                                         <label for=""role"">Роль</label>
-                                        <select id=""role"" name=""role"" required style=""background-color: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 0.75rem;"">
+                                        <select id=""role"" name=""role""  style=""background-color: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 0.75rem;"">
                                             <option value=""0"" style=""color: black; background-color: white;"">Пользователь</option>
                                             <option value=""1"" style=""color: black; background-color: white;"">Администратор</option>
                                             <option value=""2"" style=""color: black; background-color: white;"">Менеджер</option>
@@ -5496,14 +5710,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     {
                         int nextAttempt = (attempt ?? 0) + 1;
                             return Content(RenderRegisterForm(
-                                "Administrator privileges required. Verifying permissions...", 
+                                "Administrator privileges . Verifying permissions...", 
                                 null, 
                                 nextAttempt, 
                                 false
                             ), "text/html");
                         }
                         
-                        return Redirect("/api/auth/login?error=Administrator privileges required&returnUrl=/api/auth/register");
+                        return Redirect("/api/auth/login?error=Administrator privileges &returnUrl=/api/auth/register");
                     }
 
                     // If we get here, the user is an admin
@@ -5649,11 +5863,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         <form method=""POST"" action=""/api/auth/claim-account"" id=""claimForm"">
                             <div class=""form-group"">
                                 <label for=""username"">Username</label>
-                                <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"">
+                                <input type=""text"" id=""username"" name=""username""  placeholder=""Enter your username"">
                             </div>
                             <div class=""form-group"">
                                 <label for=""password"">Password</label>
-                                <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
+                                <input type=""password"" id=""password"" name=""password""  placeholder=""Enter your password"">
                             </div>
                             <div class=""form-group"" style=""display: flex; align-items: center; margin-bottom: 1rem;"">
                                 <input type=""checkbox"" id=""generateNewIdentity"" name=""generateNewIdentity"" style=""margin-right: 10px;"" checked>
@@ -5747,22 +5961,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
     public class LoginRequest
     {
-        public required string Username { get; set; }
-        public required string Password { get; set; }
+        public  string Username { get; set; }
+        public  string Password { get; set; }
         public bool SkipTwoFactor { get; set; } = false;
     }
 
     public class ClaimAccountRequest
     {
-        public required string Username { get; set; }
-        public required string Password { get; set; }
+        public  string Username { get; set; }
+        public  string Password { get; set; }
         public bool GenerateNewIdentity { get; set; } = true;
     }
 
     public class RegisterRequest
     {
-        public required string Username { get; set; }
-        public required string Password { get; set; }
+        public  string Username { get; set; }
+        public  string Password { get; set; }
         public int Role { get; set; } = 0;
         public string? Email { get; set; }
         public string? PhoneNumber { get; set; }
@@ -5770,86 +5984,86 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
     public class VerifyTotpRequest
     {
-        public required string Code { get; set; }
-        public required string SecretKey { get; set; }
+        public  string Code { get; set; }
+        public  string SecretKey { get; set; }
     }
 
     public class ValidateTotpRequest
     {
-        public required string TempToken { get; set; }
-        public required string Code { get; set; }
+        public  string TempToken { get; set; }
+        public  string Code { get; set; }
     }
 
     public class WebAuthnRegisterCompleteRequest
     {
-        public required AuthenticatorAttestationRawResponse AttestationResponse { get; set; }
+        public  AuthenticatorAttestationRawResponse AttestationResponse { get; set; }
     }
 
     public class WebAuthnLoginOptionsRequest
     {
-        public required string Username { get; set; }
+        public  string Username { get; set; }
     }
 
     public class WebAuthnLoginCompleteRequest
     {
-        public required string Username { get; set; }
-        public required AuthenticatorAssertionRawResponse AssertionResponse { get; set; }
+        public  string Username { get; set; }
+        public  AuthenticatorAssertionRawResponse AssertionResponse { get; set; }
     }
 
     public class WebAuthnValidateRequest
     {
-        public required string TempToken { get; set; }
-        public required AuthenticatorAssertionRawResponse AssertionResponse { get; set; }
+        public  string TempToken { get; set; }
+        public  AuthenticatorAssertionRawResponse AssertionResponse { get; set; }
     }
 
     public class MagicLinkRequest
     {
-        public required string Email { get; set; }
+        public  string Email { get; set; }
     }
 
     public class ValidateMagicLinkRequest
     {
-        public required string Token { get; set; }
+        public  string Token { get; set; }
     }
 
     public class QrLoginRequest
     {
-        public required string Username { get; set; }
-        public required string Token { get; set; }
+        public  string Username { get; set; }
+        public  string Token { get; set; }
     }
 
     public class DirectQrLoginRequest
     {
-        public required string Token { get; set; }
-        public required string DeviceType { get; set; }
+        public  string Token { get; set; }
+        public  string DeviceType { get; set; }
         public bool IsDesktopLogin { get; set; }
     }
 
     public class TokenRequest
     {
-        public required string GrantType { get; set; }
+        public  string GrantType { get; set; }
         public string? Code { get; set; }
         public string? RefreshToken { get; set; }
-        public required string ClientId { get; set; }
+        public  string ClientId { get; set; }
         public string? ClientSecret { get; set; }
         public string? RedirectUri { get; set; }
     }
 
     public class AuthorizeCallbackRequest
     {
-        public required string RequestId { get; set; }
-        public required string Username { get; set; }
-        public required string Password { get; set; }
+        public  string RequestId { get; set; }
+        public  string Username { get; set; }
+        public  string Password { get; set; }
     }
 
     public class RegisterClientRequest
     {
-        public required string ClientId { get; set; }
-        public required string ClientSecret { get; set; }
-        public required string DisplayName { get; set; }
-        public required string[] RedirectUris { get; set; }
-        public required string[] PostLogoutRedirectUris { get; set; }
-        public required string[] AllowedScopes { get; set; }
+        public  string ClientId { get; set; }
+        public  string ClientSecret { get; set; }
+        public  string DisplayName { get; set; }
+        public  string[] RedirectUris { get; set; }
+        public  string[] PostLogoutRedirectUris { get; set; }
+        public  string[] AllowedScopes { get; set; }
         public bool RequireConsent { get; set; } = false;
     }
 
@@ -6102,22 +6316,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     // Add these form request models at the end of the file
     public class RegisterClientFormRequest
     {
-        public required string ClientId { get; set; }
-        public required string ClientSecret { get; set; }
-        public required string DisplayName { get; set; }
-        public required string RedirectUris { get; set; }
-        public required string PostLogoutRedirectUris { get; set; }
-        public required string AllowedScopes { get; set; }
+        public  string ClientId { get; set; }
+        public  string ClientSecret { get; set; }
+        public  string DisplayName { get; set; }
+        public  string RedirectUris { get; set; }
+        public  string PostLogoutRedirectUris { get; set; }
+        public  string AllowedScopes { get; set; }
         public bool RequireConsent { get; set; }
     }
 
     public class UpdateClientFormRequest
     {
-        public required string DisplayName { get; set; }
+        public  string DisplayName { get; set; }
         public string? ClientSecret { get; set; }
-        public required string RedirectUris { get; set; }
-        public required string PostLogoutRedirectUris { get; set; }
-        public required string AllowedScopes { get; set; }
+        public  string RedirectUris { get; set; }
+        public  string PostLogoutRedirectUris { get; set; }
+        public  string AllowedScopes { get; set; }
         public bool RequireConsent { get; set; }
     }
 

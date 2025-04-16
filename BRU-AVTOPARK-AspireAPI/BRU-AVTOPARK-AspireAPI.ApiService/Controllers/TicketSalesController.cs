@@ -13,6 +13,7 @@
     using Microsoft.Extensions.Configuration;
     using SpacetimeDB;
     using Log = Serilog.Log;
+    using System.Text.Json;
 
     namespace TicketSalesApp.AdminServer.Controllers
     {
@@ -26,8 +27,8 @@
 
         [ApiController]
         [Route("api/[controller]")]
-        [Authorize] // Allow all authenticated users to read
-        public class TicketSalesController : ControllerBase
+        [AllowAnonymous] // Allow all authenticated users to read
+        public class TicketSalesController : BaseController
         {
             private readonly ISpacetimeDBService _spacetimeService;
             private readonly ITicketSalesService _ticketSalesService;
@@ -40,35 +41,29 @@
                 _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             }
 
-            private bool IsAdmin()
-            {
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                    return false;
-
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
-                var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-                return roleClaim?.Value == "1";
-            }
+            
 
             [HttpGet]
             public ActionResult<IEnumerable<dynamic>> GetTicketSales()
             {
                 try
                 {
-                    Serilog.Log.Information("Fetching all ticket sales");
+                    Log.Information("Fetching all ticket sales");
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully");
                     
                     // Get all sales from SpacetimeDB
                     var sales = conn.Db.Sale.Iter().ToList();
+                    Log.Information("Raw sales data retrieved from database: {@Sales}", sales);
                     
                     // Convert to a list of dynamic objects with necessary properties
                     var result = sales.Select(s => {
                         var ticket = conn.Db.Ticket.TicketId.Find(s.TicketId);
+                        Log.Debug("Found ticket for sale {SaleId}: {@Ticket}", s.SaleId, ticket);
+                        
                         var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
+                        Log.Debug("Found route for ticket {TicketId}: {@Route}", ticket?.TicketId, route);
                         
                         return new {
                             SaleId = s.SaleId,
@@ -90,12 +85,13 @@
                         };
                     }).ToList();
                     
-                    Log.Debug("Retrieved {SalesCount} ticket sales", result.Count);
+                    Log.Information("Processed ticket sales data: {@Result}", result);
+                    Log.Debug("Retrieved {SalesCount} ticket sales with full details", result.Count);
                     return Ok(result);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error retrieving ticket sales");
+                    Log.Error(ex, "Error retrieving ticket sales: {ErrorMessage}", ex.Message);
                     return StatusCode(500, new { message = "An error occurred while retrieving ticket sales" });
                 }
             }
@@ -108,9 +104,11 @@
                     Log.Information("Fetching ticket sale with ID {SaleId}", id);
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully for fetching sale {SaleId}", id);
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
+                    Log.Information("Retrieved sale data for ID {SaleId}: {@Sale}", id, sale);
                     
                     if (sale == null)
                     {
@@ -120,7 +118,10 @@
                     
                     // Get related ticket and route
                     var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
+                    Log.Information("Retrieved ticket data for sale {SaleId}: {@Ticket}", id, ticket);
+                    
                     var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
+                    Log.Information("Retrieved route data for ticket {TicketId}: {@Route}", ticket?.TicketId, route);
                     
                     // Create response object
                     var result = new {
@@ -142,12 +143,13 @@
                         } : null
                     };
                     
+                    Log.Information("Returning ticket sale response for ID {SaleId}: {@Result}", id, result);
                     Log.Debug("Successfully retrieved ticket sale with ID {SaleId}", id);
                     return Ok(result);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error retrieving ticket sale with ID {SaleId}", id);
+                    Log.Error(ex, "Error retrieving ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
                     return StatusCode(500, new { message = $"An error occurred while retrieving ticket sale with ID {id}" });
                 }
             }
@@ -155,6 +157,8 @@
             [HttpPost]
             public ActionResult<dynamic> CreateTicketSale([FromBody] CreateTicketSaleModel model)
             {
+                Log.Information("Create ticket sale request received with data: {@Model}", model);
+                
                 if (!IsAdmin())
                 {
                     Log.Warning("Unauthorized attempt to create ticket sale by non-admin user");
@@ -166,9 +170,12 @@
                     Log.Information("Creating new ticket sale for ticket ID {TicketId}", model.TicketId);
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully for creating sale");
                     
                     // Check if ticket exists
                     var ticket = conn.Db.Ticket.TicketId.Find((uint)model.TicketId);
+                    Log.Information("Ticket lookup result for ID {TicketId}: {@Ticket}", model.TicketId, ticket);
+                    
                     if (ticket == null)
                     {
                         Log.Warning("Invalid ticket ID {TicketId} provided for sale creation", model.TicketId);
@@ -177,17 +184,21 @@
                     
                     // Check if ticket is already sold
                     var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
+                    Log.Information("Existing sales for ticket {TicketId}: {@ExistingSales}", model.TicketId, existingSales);
+                    
                     if (existingSales.Any())
                     {
-                        Log.Warning("Ticket with ID {TicketId} is already sold", model.TicketId);
+                        Log.Warning("Ticket with ID {TicketId} is already sold. Existing sales: {@ExistingSales}", model.TicketId, existingSales);
                         return BadRequest("Ticket is already sold");
                     }
                     
                     // Get seller identity from token
                     var authHeader = Request.Headers["Authorization"].ToString();
+                    Log.Debug("Authorization header: {AuthHeader}", authHeader);
+                    
                     if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                     {
-                        Log.Warning("Missing or invalid Authorization header");
+                        Log.Warning("Missing or invalid Authorization header: {AuthHeader}", authHeader);
                         return Unauthorized(new { message = "Missing or invalid Authorization header" });
                     }
                     
@@ -196,21 +207,26 @@
                     
                     if (!tokenHandler.CanReadToken(token))
                     {
-                        Log.Warning("Invalid JWT token format");
+                        Log.Warning("Invalid JWT token format: {Token}", token);
                         return Unauthorized(new { message = "Invalid token format" });
                     }
                     
                     var jwtToken = tokenHandler.ReadJwtToken(token);
+                    Log.Debug("JWT token claims: {@Claims}", jwtToken.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
+                    
                     var usernameClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name" || c.Type == "name");
                     
                     if (usernameClaim == null)
                     {
-                        Log.Warning("No username claim found in validated token");
+                        Log.Warning("No username claim found in validated token. All claims: {@Claims}", 
+                            jwtToken.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
                         return Unauthorized(new { message = "Invalid token: no username claim found" });
                     }
                     
                     // Find user by login
                     var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == usernameClaim.Value);
+                    Log.Information("Seller lookup result for username {Username}: {@Seller}", usernameClaim.Value, seller);
+                    
                     if (seller == null)
                     {
                         Log.Warning("User from token not found in database: {Username}", usernameClaim.Value);
@@ -220,6 +236,9 @@
                     // Create sale using reducer
                     var buyerName = model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА";
                     var buyerPhone = model.TicketSoldToUserPhone ?? "";
+                    
+                    Log.Information("Calling CreateSale reducer with parameters: TicketId={TicketId}, BuyerName={BuyerName}, BuyerPhone={BuyerPhone}, Location=POS", 
+                        model.TicketId, buyerName, buyerPhone);
                     
                     // Call the CreateSale reducer
                     conn.Reducers.CreateSale(
@@ -236,9 +255,11 @@
                         .OrderByDescending(s => s.SaleId)
                         .FirstOrDefault();
                     
+                    Log.Information("Newly created sale: {@NewSale}", newSale);
+                    
                     if (newSale == null)
                     {
-                        Log.Warning("Sale was not created properly");
+                        Log.Warning("Sale was not created properly. No sale found for ticket {TicketId}", model.TicketId);
                         return StatusCode(500, new { message = "Failed to create sale" });
                     }
                     
@@ -252,14 +273,14 @@
                         SellerId = newSale.SellerId?.ToString()
                     };
                     
-                    Log.Information("Successfully created ticket sale with ID {SaleId} for user {User} with phone {Phone}", 
-                        newSale.SaleId, newSale.TicketSoldToUser, newSale.TicketSoldToUserPhone);
+                    Log.Information("Successfully created ticket sale with ID {SaleId} for user {User} with phone {Phone}. Full result: {@Result}", 
+                        newSale.SaleId, newSale.TicketSoldToUser, newSale.TicketSoldToUserPhone, result);
                     
                     return CreatedAtAction(nameof(GetTicketSale), new { id = newSale.SaleId }, result);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error creating ticket sale");
+                    Log.Error(ex, "Error creating ticket sale: {ErrorMessage}", ex.Message);
                     return StatusCode(500, new { message = "An error occurred while creating the ticket sale" });
                 }
             }
@@ -267,6 +288,8 @@
             [HttpPut("{id}")]
             public IActionResult UpdateTicketSale(long id, [FromBody] UpdateTicketSaleModel model)
             {
+                Log.Information("Update ticket sale request received for ID {SaleId} with data: {@Model}", id, model);
+                
                 if (!IsAdmin())
                 {
                     Log.Warning("Unauthorized attempt to update ticket sale by non-admin user");
@@ -278,9 +301,12 @@
                     Log.Information("Updating ticket sale with ID {SaleId}", id);
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully for updating sale {SaleId}", id);
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
+                    Log.Information("Existing sale data for ID {SaleId}: {@Sale}", id, sale);
+                    
                     if (sale == null)
                     {
                         Log.Warning("Ticket sale with ID {SaleId} not found for update", id);
@@ -290,12 +316,12 @@
                     // Note: SpacetimeDB doesn't have an UpdateSale reducer yet
                     // This would need to be implemented in the SpacetimeDB module
                     
-                    Log.Warning("UpdateTicketSale is not implemented in the SpacetimeDB module");
+                    Log.Warning("UpdateTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}, Requested changes: {@Model}", id, model);
                     return StatusCode(501, new { message = "Update operation is not implemented" });
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error updating ticket sale with ID {SaleId}", id);
+                    Log.Error(ex, "Error updating ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
                     return StatusCode(500, new { message = $"An error occurred while updating ticket sale with ID {id}" });
                 }
             }
@@ -303,6 +329,8 @@
             [HttpDelete("{id}")]
             public IActionResult DeleteTicketSale(long id)
             {
+                Log.Information("Delete ticket sale request received for ID {SaleId}", id);
+                
                 if (!IsAdmin())
                 {
                     Log.Warning("Unauthorized attempt to delete ticket sale by non-admin user");
@@ -314,9 +342,12 @@
                     Log.Information("Deleting ticket sale with ID {SaleId}", id);
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully for deleting sale {SaleId}", id);
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
+                    Log.Information("Sale to be deleted with ID {SaleId}: {@Sale}", id, sale);
+                    
                     if (sale == null)
                     {
                         Log.Warning("Ticket sale with ID {SaleId} not found for deletion", id);
@@ -326,12 +357,12 @@
                     // Note: SpacetimeDB doesn't have a DeleteSale reducer yet
                     // This would need to be implemented in the SpacetimeDB module
                     
-                    Log.Warning("DeleteTicketSale is not implemented in the SpacetimeDB module");
+                    Log.Warning("DeleteTicketSale is not implemented in the SpacetimeDB module. Attempted to delete sale: {@Sale}", sale);
                     return StatusCode(501, new { message = "Delete operation is not implemented" });
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error deleting ticket sale with ID {SaleId}", id);
+                    Log.Error(ex, "Error deleting ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
                     return StatusCode(500, new { message = $"An error occurred while deleting ticket sale with ID {id}" });
                 }
             }
@@ -339,17 +370,17 @@
             [HttpGet("statistics/income")]
             public async Task<ActionResult<decimal>> GetTotalIncome(int year, int month)
             {
+                Log.Information("Fetching total income for {Year}-{Month}", year, month);
+                
                 try
                 {
-                    Log.Information("Fetching total income for {Year}-{Month}", year, month);
-                    
                     var income = await _ticketSalesService.GetTotalIncomeAsync(year, month);
-                    Log.Debug("Total income for {Year}-{Month}: {Income}", year, month, income);
+                    Log.Information("Total income for {Year}-{Month}: {Income}", year, month, income);
                     return income;
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error retrieving total income for {Year}-{Month}", year, month);
+                    Log.Error(ex, "Error retrieving total income for {Year}-{Month}: {ErrorMessage}", year, month, ex.Message);
                     return StatusCode(500, new { message = $"An error occurred while retrieving total income for {year}-{month}" });
                 }
             }
@@ -357,17 +388,17 @@
             [HttpGet("statistics/top-transports")]
             public async Task<ActionResult<List<TransportStatistic>>> GetTopTransports(int year, int month)
             {
+                Log.Information("Fetching top transports for {Year}-{Month}", year, month);
+                
                 try
                 {
-                    Log.Information("Fetching top transports for {Year}-{Month}", year, month);
-                    
                     var transports = await _ticketSalesService.GetTopTransportsAsync(year, month);
-                    Log.Debug("Found {TransportCount} top transports for {Year}-{Month}", transports.Count, year, month);
+                    Log.Information("Top transports for {Year}-{Month}: {@Transports}", year, month, transports);
                     return transports;
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error retrieving top transports for {Year}-{Month}", year, month);
+                    Log.Error(ex, "Error retrieving top transports for {Year}-{Month}: {ErrorMessage}", year, month, ex.Message);
                     return StatusCode(500, new { message = $"An error occurred while retrieving top transports for {year}-{month}" });
                 }
             }
@@ -382,46 +413,69 @@
             {
                 try
                 {
-                    Log.Information("Searching sales with start date: {StartDate}, end date: {EndDate}, min price: {MinPrice}, max price: {MaxPrice}, user: {User}",
-                        startDate?.ToString() ?? "any", endDate?.ToString() ?? "any", minPrice?.ToString() ?? "any", maxPrice?.ToString() ?? "any", soldToUser ?? "any");
+                    Log.Information("Searching sales with parameters: StartDate={StartDate}, EndDate={EndDate}, MinPrice={MinPrice}, MaxPrice={MaxPrice}, SoldToUser={SoldToUser}",
+                        startDate, endDate, minPrice, maxPrice, soldToUser);
                     
                     var conn = _spacetimeService.GetConnection();
+                    Log.Debug("Database connection established successfully for searching sales");
                     
                     // Get all sales
-                    var query = conn.Db.Sale.Iter().AsEnumerable();
+                    var allSales = conn.Db.Sale.Iter().ToList();
+                    Log.Debug("All sales retrieved from database: {@AllSales}", allSales);
+                    
+                    var query = allSales.AsEnumerable();
                     
                     // Apply filters
                     if (startDate.HasValue)
                     {
                         var startTimestamp = startDate.Value.ToUnixTimeMilliseconds();
+                        Log.Debug("Filtering sales by start date: {StartDate} (timestamp: {StartTimestamp})", startDate, startTimestamp);
                         query = query.Where(s => s.SaleDate >= startTimestamp);
                     }
                     
                     if (endDate.HasValue)
                     {
                         var endTimestamp = endDate.Value.ToUnixTimeMilliseconds();
+                        Log.Debug("Filtering sales by end date: {EndDate} (timestamp: {EndTimestamp})", endDate, endTimestamp);
                         query = query.Where(s => s.SaleDate <= endTimestamp);
                     }
                     
                     if (!string.IsNullOrEmpty(soldToUser))
                     {
+                        Log.Debug("Filtering sales by sold to user: {SoldToUser}", soldToUser);
                         query = query.Where(s => s.TicketSoldToUser.Contains(soldToUser, StringComparison.OrdinalIgnoreCase));
                     }
                     
                     // Apply price filters (need to join with tickets)
                     var filteredSales = query.ToList();
+                    Log.Information("Sales after date and user filtering: {@FilteredSales}", filteredSales);
+                    
                     var result = new List<dynamic>();
                     
                     foreach (var sale in filteredSales)
                     {
                         var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
+                        Log.Debug("Ticket for sale {SaleId}: {@Ticket}", sale.SaleId, ticket);
+                        
                         if (ticket == null) continue;
                         
                         // Apply price filters
-                        if (minPrice.HasValue && ticket.TicketPrice < (double)minPrice.Value) continue;
-                        if (maxPrice.HasValue && ticket.TicketPrice > (double)maxPrice.Value) continue;
+                        if (minPrice.HasValue && ticket.TicketPrice < (double)minPrice.Value)
+                        {
+                            Log.Debug("Sale {SaleId} filtered out due to ticket price {TicketPrice} being less than minimum price {MinPrice}", 
+                                sale.SaleId, ticket.TicketPrice, minPrice.Value);
+                            continue;
+                        }
+                        
+                        if (maxPrice.HasValue && ticket.TicketPrice > (double)maxPrice.Value)
+                        {
+                            Log.Debug("Sale {SaleId} filtered out due to ticket price {TicketPrice} being greater than maximum price {MaxPrice}", 
+                                sale.SaleId, ticket.TicketPrice, maxPrice.Value);
+                            continue;
+                        }
                         
                         var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+                        Log.Debug("Route for ticket {TicketId}: {@Route}", ticket.TicketId, route);
                         
                         result.Add(new {
                             SaleId = sale.SaleId,
@@ -446,12 +500,13 @@
                     // Order by sale date descending
                     result = result.OrderByDescending(s => ((DateTime)s.SaleDate)).ToList();
                     
+                    Log.Information("Search results: {@SearchResults}", result);
                     Log.Debug("Found {SalesCount} sales matching search criteria", result.Count);
                     return Ok(result);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error searching sales");
+                    Log.Error(ex, "Error searching sales: {ErrorMessage}", ex.Message);
                     return StatusCode(500, new { message = "An error occurred while searching sales" });
                 }
             }
@@ -459,7 +514,9 @@
             private bool TicketSaleExists(long id)
             {
                 var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.SaleId.Find((uint)id) != null;
+                var exists = conn.Db.Sale.SaleId.Find((uint)id) != null;
+                Log.Debug("Checking if ticket sale {SaleId} exists: {Exists}", id, exists);
+                return exists;
             }
         }
 

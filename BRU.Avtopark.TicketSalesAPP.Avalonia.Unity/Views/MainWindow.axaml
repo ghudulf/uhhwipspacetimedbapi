@@ -1,0 +1,501 @@
+<Window x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:icons="using:Material.Icons.Avalonia"
+        mc:Ignorable="d"
+        d:DesignWidth="850" d:DesignHeight="620"
+        x:DataType="vm:MainWindowViewModel"
+        Title="БРУ Автопарк - Система Управления"
+        WindowStartupLocation="CenterScreen"
+        CanResize="True" MinWidth="750" MinHeight="550"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="36"
+        Background="{DynamicResource SystemBackground}">
+
+    <Window.Resources>
+        <!-- Custom Resources for Light and Dark Themes (Classic Lean) -->
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Light Mode Resources -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemBackgroundColor">#C0C0C0</Color> <!-- Classic Gray -->
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#000080</Color> <!-- Classic Windows Blue -->
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                    <Color x:Key="TitleBarButtonHoverBackgroundColor">#D4D0C8</Color> <!-- Match button hover -->
+                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
+                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#A0A0A0</Color> <!-- Match button press -->
+                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
+                    
+                    <Color x:Key="MainContentBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
+                    <Color x:Key="ContentAreaBorderColor">#808080</Color> <!-- Darker Gray -->
+                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
+                    <Color x:Key="ContentAreaInnerHighlightColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
+                    
+                    <!-- Utility Button Specific Colors -->
+                    <Color x:Key="UtilityButtonTextColor">#000000</Color>
+                    <Color x:Key="UtilityButtonIconColor">#000080</Color> 
+                    <Color x:Key="UtilityButtonHoverBackgroundColor">#000080</Color> <!-- Blue highlight -->
+                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
+                    <Color x:Key="UtilityButtonHoverTextColor">#FFFFFF</Color>
+                    <Color x:Key="UtilityButtonHoverIconColor">#FFFFFF</Color>
+                    
+                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
+                    <Color x:Key="CommandButtonOuterBorderColor">#FFFFFF</Color>
+                    <Color x:Key="CommandButtonInnerBorderColor">#808080</Color>
+                    <Color x:Key="CommandButtonBackgroundColor">#C0C0C0</Color>
+                    <Color x:Key="CommandButtonTextColor">#000000</Color>
+                    <Color x:Key="CommandButtonHoverBackgroundColor">#D4D0C8</Color>
+                    <Color x:Key="CommandButtonPressedBackgroundColor">#A0A0A0</Color>
+                    <Color x:Key="CommandButtonPressedOuterBorderColor">#808080</Color>
+                    <Color x:Key="CommandButtonPressedInnerBorderColor">#FFFFFF</Color>
+                    
+                    <Color x:Key="BottomBarBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
+                    
+                    <Color x:Key="HeaderTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
+                    <Color x:Key="SubHeaderTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
+                    
+                    <Color x:Key="StatusBarBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
+                    <Color x:Key="StatusBarBorderColor">#808080</Color>
+                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
+                    <Color x:Key="StatusBarInnerHighlightColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
+                    <Color x:Key="StatusBarTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
+                </ResourceDictionary>
+                
+                <!-- Dark Mode Resources (Adapted for Classic Feel) -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="SystemBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                     <Color x:Key="TitleBarButtonHoverBackgroundColor">#3C3C3C</Color> <!-- Match button hover -->
+                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
+                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#1E1E1E</Color> <!-- Match button press -->
+                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
+                    
+                    <Color x:Key="MainContentBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
+                    <Color x:Key="ContentAreaBorderColor">#505050</Color>
+                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
+                     <Color x:Key="ContentAreaInnerHighlightColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
+
+                    <!-- Utility Button Specific Colors -->
+                    <Color x:Key="UtilityButtonTextColor">#E0E0E0</Color>
+                    <Color x:Key="UtilityButtonIconColor">#8CB1DE</Color> 
+                    <Color x:Key="UtilityButtonHoverBackgroundColor">#8CB1DE</Color> <!-- Blue highlight -->
+                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
+                    <Color x:Key="UtilityButtonHoverTextColor">#1A1A1A</Color>
+                    <Color x:Key="UtilityButtonHoverIconColor">#1A1A1A</Color>
+                    
+                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
+                    <Color x:Key="CommandButtonOuterBorderColor">#505050</Color>
+                    <Color x:Key="CommandButtonInnerBorderColor">#1A1A1A</Color>
+                    <Color x:Key="CommandButtonBackgroundColor">#2E2E2E</Color>
+                    <Color x:Key="CommandButtonTextColor">#E0E0E0</Color>
+                    <Color x:Key="CommandButtonHoverBackgroundColor">#3C3C3C</Color>
+                    <Color x:Key="CommandButtonPressedBackgroundColor">#1E1E1E</Color>
+                    <Color x:Key="CommandButtonPressedOuterBorderColor">#1A1A1A</Color>
+                    <Color x:Key="CommandButtonPressedInnerBorderColor">#505050</Color>
+                    
+                    <Color x:Key="BottomBarBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
+                    
+                    <Color x:Key="HeaderTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
+                    <Color x:Key="SubHeaderTextColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
+                    
+                    <Color x:Key="StatusBarBackgroundColor">#2E2E2E</Color>
+                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
+                    <Color x:Key="StatusBarBorderColor">#505050</Color>
+                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
+                    <Color x:Key="StatusBarInnerHighlightColor">#1A1A1A</Color>
+                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
+                    <Color x:Key="StatusBarTextColor">#E0E0E0</Color>
+                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+	<Window.Styles>
+        <!-- Utility Buttons (SmartStart Icon + Text Style) -->
+		<Style Selector="Button.UtilityButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="10, 5"/> <!-- Spacing around buttons -->
+            <Setter Property="Width" Value="120"/> <!-- Fixed width for alignment -->
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" 
+                            Padding="{TemplateBinding Padding}">
+						<ContentPresenter Name="PART_ContentPresenter"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+        
+        <Style Selector="Button.UtilityButton:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.UtilityButton:pointerover icons|MaterialIcon">
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
+		</Style>
+        <Style Selector="Button.UtilityButton:pointerover TextBlock">
+             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverTextColor}"/>
+		</Style>
+        
+        <!-- No specific :pressed style needed unless more visual feedback is desired -->
+        <!-- Could add a slight translate or opacity change if needed -->
+
+		<Style Selector="Button.UtilityButton StackPanel">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="Spacing" Value="5"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+		</Style>
+        
+		<Style Selector="Button.UtilityButton icons|MaterialIcon">
+			<Setter Property="Width" Value="32"/>
+			<Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,0,5"/> <!-- Space between icon and text -->
+            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonIconColor}"/>
+		</Style>
+        
+        <Style Selector="Button.UtilityButton TextBlock.ButtonTitle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+			<Setter Property="TextWrapping" Value="Wrap"/>
+			<Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonTextColor}"/>
+            <Setter Property="MaxWidth" Value="110"/> <!-- Prevent text from becoming too wide -->
+        </Style>
+        
+        <!-- Remove subtitle style as it's not in the SmartStart button look -->
+        <Style Selector="Button.UtilityButton TextBlock.ButtonSubtitle">
+            <Setter Property="IsVisible" Value="False"/> 
+		</Style>
+
+        <!-- Command Buttons (Classic Bevel Style - Unchanged) -->
+        <Style Selector="Button.CommandButton">
+            <Setter Property="MinWidth" Value="75"/>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="6,0"/>
+			<Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{DynamicResource CommandButtonBackgroundColor}"/>
+            <Setter Property="Foreground" Value="{DynamicResource CommandButtonTextColor}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0.05"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="Template">
+                 <ControlTemplate>
+                    <Border Name="PART_OuterBorder"
+                            BorderBrush="{DynamicResource CommandButtonOuterBorderColor}"
+                            BorderThickness="1">
+                        <Border Name="PART_InnerBorder"
+                                BorderBrush="{DynamicResource CommandButtonInnerBorderColor}"
+                                BorderThickness="1"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                             ContentTemplate="{TemplateBinding ContentTemplate}"
+                                             Content="{TemplateBinding Content}"
+                                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.CommandButton:pointerover /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource CommandButtonHoverBackgroundColor}"/>
+        </Style>
+        <Style Selector="Button.CommandButton:pressed">
+             <Setter Property="Padding" Value="9,1,7,-1"/> <!-- Simulate press -->
+        </Style>
+        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_OuterBorder">
+            <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedOuterBorderColor}"/>
+		</Style>
+        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_InnerBorder">
+             <Setter Property="Background" Value="{DynamicResource CommandButtonPressedBackgroundColor}"/>
+             <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedInnerBorderColor}"/>
+		</Style>
+        
+        <!-- Title Bar Control Buttons (Classic Windows Style - Adjusted Hitbox) -->
+        <Style Selector="Button.TitleBarButton">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="25" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{DynamicResource SystemBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource HeaderText}"/> <!-- Use black/white based on theme -->
+            <Setter Property="BorderThickness" Value="1"/>
+             <Setter Property="Template">
+                 <ControlTemplate>
+                    <Border Name="PART_OuterBorder"
+                            BorderBrush="{DynamicResource UtilityButtonOuterBorderColor}" 
+                            BorderThickness="1">
+                        <Border Name="PART_InnerBorder"
+                                BorderBrush="{DynamicResource UtilityButtonInnerBorderColor}"
+                                BorderThickness="1"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                             ContentTemplate="{TemplateBinding ContentTemplate}"
+                                             Content="{TemplateBinding Content}"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center"/>
+                        </Border>
+                    </Border>
+                </ControlTemplate>
+			</Setter>
+		</Style>
+
+        <Style Selector="Button.TitleBarButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+		</Style>
+        <Style Selector="Button.TitleBarButton:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+		</Style>
+        <Style Selector="Button.TitleBarButton[IsEnabled=false] /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+		</Style>
+        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_OuterBorder">
+             <Setter Property="BorderBrush" Value="{DynamicResource UtilityButtonPressedOuterBorderColor}"/>
+		</Style>
+        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_InnerBorder">
+            <Setter Property="Background" Value="{DynamicResource TitleBarButtonPressedBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource UtilityButtonPressedInnerBorderColor}"/>
+		</Style>
+        
+        <Style Selector="Button.TitleBarButton Path">
+             <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+             <Setter Property="StrokeThickness" Value="1"/>
+             <Setter Property="VerticalAlignment" Value="Center"/>
+             <Setter Property="HorizontalAlignment" Value="Center"/>
+		</Style>
+
+	</Window.Styles>
+
+    <!-- Main Layout Grid -->
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+		<!-- Custom Title Bar -->
+        <Grid Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35"> <!-- Adjusted Height -->
+            <Grid x:Name="TitleBarDragArea" ColumnDefinitions="*,Auto">
+                <!-- Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="БРУ Автопарк - Система Управления"
+                               Foreground="{DynamicResource TitleBarText}"
+                               FontWeight="Normal" 
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+				</StackPanel>
+
+					<!-- Window Control Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,2,2" Spacing="2"> <!-- Adjusted Spacing/Margin -->
+                    <Button x:Name="MinimizeButton" Classes="TitleBarButton">
+						<ToolTip.Tip>Свернуть</ToolTip.Tip>
+                        <!-- Minimize icon (Underscore) -->
+                        <Path Data="M0 5 H6" Width="6" Height="6" VerticalAlignment="Bottom" Margin="0,0,0,1"/> 
+					</Button>
+                    <Button x:Name="MaximizeButton" Classes="TitleBarButton">
+						<ToolTip.Tip>Развернуть</ToolTip.Tip>
+                         <!-- Maximize/Restore icon -->
+                        <Path x:Name="MaximizeIcon" Data="M0 0 H7 V7 H0 Z M0 1 H7 M1 0 V7" Width="7" Height="7"/>
+					</Button>
+                    <Button x:Name="CloseButton" Classes="TitleBarButton">
+						<ToolTip.Tip>Закрыть</ToolTip.Tip>
+                         <!-- Close icon (X) -->
+                         <Path Data="M1 1 L6 6 M1 6 L6 1" Width="7" Height="7" StrokeThickness="1"/>
+					</Button>
+				</StackPanel>
+			</Grid>
+		</Grid>
+
+        <!-- Header Area -->
+         <StackPanel Grid.Row="1" Margin="15,10,15,5">
+				<TextBlock Text="Системные Утилиты"
+                       FontSize="14" 
+                       FontWeight="Normal"
+                       Foreground="{DynamicResource HeaderText}"/>
+        </StackPanel>
+        
+        <!-- Main Content Area (SmartStart Layout) -->
+        <Border Grid.Row="2" 
+                Background="{DynamicResource MainContentBackground}"
+                BorderBrush="{DynamicResource ContentAreaBorder}"
+                BorderThickness="1,1,1,1" 
+                Margin="15,0,15,0">
+             <!-- Inner Bevel Border -->
+            <Border BorderBrush="{DynamicResource ContentAreaInnerHighlight}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,*" Margin="10"> 
+                    <!-- SmartStart Info Panel -->
+                    <Border Grid.Row="0" 
+                            BorderBrush="{DynamicResource ContentAreaBorder}" 
+                            BorderThickness="0,0,0,1" 
+                            Padding="5,5,5,8"
+                            Margin="0,0,0,10">
+                        <TextBlock Text="SmartStart обнаружил, что эта система или некоторые ее компоненты были ранее сконфигурированы. У вас есть следующие опции:"
+                                    TextWrapping="Wrap"
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{DynamicResource SubHeaderText}"/>
+                    </Border>
+                    
+                    <!-- Utility Buttons Panel -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <!-- Use WrapPanel for left alignment -->
+                        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <!-- Employee Management -->
+                            <Button Classes="UtilityButton" x:Name="RunEmployeeManagementButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="AccountGroup"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Управление Персоналом"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Водители, кондукторы"/> <!-- Still hidden -->
+						</StackPanel>
+					</Button>
+
+                            <!-- Bus Management -->
+                            <Button Classes="UtilityButton" x:Name="RunBusManagementButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="Bus"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Управление Автобусами"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Транспортные средства"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Route Management -->
+                            <Button Classes="UtilityButton" x:Name="RunRouteManagementButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="MapMarkerPath"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Управление Маршрутами"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Маршруты и остановки"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Ticket Sales (POS) -->
+                            <Button Classes="UtilityButton" x:Name="RunTicketSalesButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="TicketPercent"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Продажа Билетов"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Кассовый терминал"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Maintenance -->
+                            <Button Classes="UtilityButton" x:Name="RunMaintenanceButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="Wrench"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Тех. Обслуживание"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Ремонт и ТО"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Reports and Statistics -->
+                            <Button Classes="UtilityButton" x:Name="RunReportsButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="ChartBar"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Отчеты и Статистика"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Анализ данных"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Central View (ReDocking) -->
+                            <Button Classes="UtilityButton" x:Name="OpenCentralViewButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="ViewDashboard"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Центральный Монитор"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Обзор состояния"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- System Settings -->
+                            <Button Classes="UtilityButton" x:Name="SystemSettingsButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="Cog"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Настройки Системы"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Конфигурация"/>
+						</StackPanel>
+					</Button>
+
+                            <!-- Backup -->
+                            <Button Classes="UtilityButton" x:Name="CreateBackupButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="DatabaseArrowDown"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Резервное Копирование"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Сохранение данных"/>
+						</StackPanel>
+					</Button>
+                        </WrapPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Command Button Bar (SmartStart Style) -->
+        <Border Grid.Row="3" 
+                Padding="15,8">
+             <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="Продолжение позволит вам запустить утилиту конфигурации системы. Нажмите &#39;OK&#39; для выполнения этого действия."
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource SubHeaderText}"
+                           FontSize="11"
+                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="OKButton" Classes="CommandButton" Content="OK"/>
+                    <Button x:Name="ExitButton" Classes="CommandButton" Content="Выход"/>
+                    <Button x:Name="HelpButton" Classes="CommandButton" Content="Помощь"/>
+			</StackPanel>
+            </Grid>
+		</Border>
+
+        <!-- Status Bar (Classic Style) -->
+        <Border Grid.Row="4" 
+                BorderBrush="{DynamicResource StatusBarBorder}"
+                BorderThickness="0,1,0,0" 
+                Background="{DynamicResource StatusBarBackground}"
+                Height="20">
+            <Border BorderBrush="{DynamicResource StatusBarInnerHighlight}" BorderThickness="0,1,0,0">
+                 <StackPanel Orientation="Horizontal" Margin="4,0">
+                    <TextBlock Text="Готов" 
+                               Foreground="{DynamicResource StatusBarText}"
+                               VerticalAlignment="Center"
+                               FontSize="11"/>
+			</StackPanel>
+            </Border>
+		</Border>
+	</Grid>
+</Window>

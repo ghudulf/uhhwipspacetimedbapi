@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ModalDialog"
+        x:DataType="vm:ModalDialogViewModel"
+        Title="Modal Dialog"
+        Width="650"
+        Height="350"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+    <Window.Resources>
+        <converters:DialogTypeToIconConverter x:Key="DialogTypeToIconConverter"/>
+
+	</Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button.action">
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="8,0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{DynamicResource SystemErrorColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <Border Background="{DynamicResource SystemChromeMediumColor}"
+                BorderBrush="{DynamicResource SystemChromeMediumLowColor}"
+                BorderThickness="1"
+                CornerRadius="8"
+                
+                Margin="0,5,35,0">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24">
+                <!-- Icon and Title -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,16">
+                    <PathIcon Data="{Binding DialogType, Converter={StaticResource DialogTypeToIconConverter}}"
+                             Width="32"
+                             Height="32"
+                             Margin="0,0,16,0"
+                             Foreground="{DynamicResource SystemAccentColor}"/>
+                    <TextBlock Grid.Column="1"
+                             x:Name="TitleText"
+                             Text="{Binding Title}"
+                             FontSize="20"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Message -->
+                <TextBlock Grid.Row="1"
+                         Text="{Binding Message}"
+                         TextWrapping="Wrap"
+                         Margin="0,0,0,16"
+                         FontSize="14"/>
+
+                <!-- Content -->
+                <ContentControl Grid.Row="2"
+                              x:Name="ContentArea"
+                              Content="{Binding Content}"
+                              Margin="0,0,0,24"/>
+
+                <!-- Buttons -->
+                <StackPanel Grid.Row="3"
+                          Orientation="Horizontal"
+                          HorizontalAlignment="Right"
+                          Spacing="8">
+                    <Button x:Name="PrimaryButton"
+                            Classes="action primary"
+                            Content="{Binding PrimaryButtonText}"
+                            Command="{Binding PrimaryButtonCommand}"
+                            IsVisible="{Binding ShowPrimaryButton}"/>
+                    <Button x:Name="SecondaryButton"
+                            Classes="action"
+                            Content="{Binding SecondaryButtonText}"
+                            Command="{Binding SecondaryButtonCommand}"
+                            IsVisible="{Binding ShowSecondaryButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Close Button (Outside Border) -->
+        <Button Classes="close"
+                Click="OnCloseButtonClick"
+                Width="32"
+                Height="32"
+                CornerRadius="16"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="{DynamicResource SystemChromeMediumColor}"
+                BorderBrush="{DynamicResource SystemChromeMediumLowColor}"
+                BorderThickness="1"
+                >
+            <PathIcon Data="M 0,0 L 10,10 M 0,10 L 10,0"
+                     Width="10"
+                     Height="10"
+                     Foreground="{DynamicResource SystemBaseHighColor}"/>
+        </Button>
+    </Grid>
+</Window>

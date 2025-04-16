@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.TicketManagementToolWindow"
+             x:DataType="vm:TicketManagementViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <TextBox Grid.Column="0"
+                     Text="{Binding SearchText}"
+                     Watermark="Поиск билетов..."
+                     Margin="0,0,10,0"/>
+            <Button Grid.Column="1"
+                    Command="{Binding AddCommand}"
+                    Content="Добавить билет"/>
+        </Grid>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Tickets}"
+                  SelectedItem="{Binding SelectedTicket}"
+                  IsReadOnly="True"
+                  AutoGenerateColumns="False"
+                  Margin="0,0,0,10">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID"
+                                  Binding="{Binding TicketId}"/>
+                <DataGridTextColumn Header="Начальная точка"
+                                  Binding="{Binding Marshut.StartPoint}"/>
+                <DataGridTextColumn Header="Конечная точка"
+                                  Binding="{Binding Marshut.EndPoint}"/>
+                <DataGridTextColumn Header="Время в пути"
+                                  Binding="{Binding Marshut.TravelTime}"/>
+                <DataGridTextColumn Header="Цена билета"
+                                  Binding="{Binding TicketPrice}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       IsVisible="{Binding HasError}"/>
+            <Button Grid.Column="1"
+                    Command="{Binding EditCommand}"
+                    Content="Редактировать"
+                    IsEnabled="{Binding SelectedTicket, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Margin="0,0,10,0"/>
+            <Button Grid.Column="2"
+                    Command="{Binding DeleteCommand}"
+                    Content="Удалить"
+                    IsEnabled="{Binding SelectedTicket, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

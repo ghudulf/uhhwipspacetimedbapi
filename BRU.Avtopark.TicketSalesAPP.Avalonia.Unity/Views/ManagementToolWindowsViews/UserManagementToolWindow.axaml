@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
+             mc:Ignorable="d" d:DesignWidth="1350" d:DesignHeight="850"
+             x:DataType="vm:UserManagementViewModel"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.UserManagementToolWindow">
+
+	<UserControl.Resources>
+        <converters:RoleConverter x:Key="RoleConverter"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,*" Margin="10">
+        <!-- Search and Add Button -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+            <TextBox Grid.Column="0" 
+                     Text="{Binding SearchText}"
+                     Watermark="Search users..."
+                     Margin="0,0,10,0"/>
+            <Button Grid.Column="1" 
+                    Command="{Binding AddCommand}"
+                    Content="Add User"
+                    Margin="0,0,10,0"/>
+            <Button Grid.Column="2"
+                    Command="{Binding EditCommand}"
+                    Content="Edit User"
+                    IsEnabled="{Binding SelectedUser, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </Grid>
+
+        <!-- Error Message -->
+        <TextBlock Grid.Row="1" 
+                   Text="{Binding ErrorMessage}"
+                   IsVisible="{Binding HasError}"
+                   Foreground="Red"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,10"/>
+
+        <!-- Users and Roles Section -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="0,0,0,10">
+            <!-- Left Panel: Users -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,5,0">
+                <TextBlock Grid.Row="0" 
+                          Text="Users"
+                          FontWeight="Bold"
+                          Margin="0,0,0,5"/>
+                <DataGrid Grid.Row="1"
+                         ItemsSource="{Binding Users}"
+                         SelectedItem="{Binding SelectedUser}"
+                         AutoGenerateColumns="False"
+                         IsReadOnly="True"
+                         GridLinesVisibility="All"
+                         BorderThickness="1" 
+                         BorderBrush="Gray">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" 
+                                          Binding="{Binding UserId}"
+                                          Width="Auto"/>
+                        <DataGridTextColumn Header="Login" 
+                                          Binding="{Binding Login}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Legacy Role" 
+                                          Binding="{Binding Role, Converter={StaticResource RoleConverter}}"
+                                          Width="Auto"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- Right Panel: Available Roles -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="5,0,0,0">
+                <!-- Header with Delete button -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                    <TextBlock Grid.Column="0"
+                             Text="Available Roles"
+                             FontWeight="Bold"/>
+                    <Button Grid.Column="1"
+                            Command="{Binding DeleteCommand}"
+                            Content="Delete User"
+                            IsEnabled="{Binding SelectedUser, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Classes="danger"/>
+                </Grid>
+
+                <!-- Roles Grid -->
+                <DataGrid Grid.Row="1"
+                         ItemsSource="{Binding Roles}"
+                         SelectedItem="{Binding SelectedRole}"
+                         AutoGenerateColumns="False"
+                         IsReadOnly="True"
+                         GridLinesVisibility="All"
+                         BorderThickness="1" 
+                         BorderBrush="Gray">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" 
+                                          Binding="{Binding Name}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Description" 
+                                          Binding="{Binding Description}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Legacy ID" 
+                                          Binding="{Binding LegacyRoleId}"
+                                          Width="Auto"/>
+                        <DataGridTextColumn Header="Status" 
+                                          Binding="{Binding IsActive}"
+                                          Width="Auto"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Role Action Buttons -->
+                <StackPanel Grid.Row="2" 
+                          Orientation="Horizontal" 
+                          HorizontalAlignment="Right"
+                          Spacing="10"
+                          Margin="0,10,0,0">
+                    <Button Content="Assign Role"
+                            Command="{Binding AssignRoleCommand}"
+                            CommandParameter="{Binding SelectedRole}"
+                            IsEnabled="{Binding SelectedRole, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Content="Remove Role"
+                            Command="{Binding RemoveRoleCommand}"
+                            CommandParameter="{Binding SelectedRole}"
+                            IsEnabled="{Binding SelectedRole, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- Separator -->
+        <Separator Grid.Row="3" Margin="0,5"/>
+
+        <!-- Permissions Section -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,*" Margin="0,10,0,0">
+            <!-- User Permissions -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,5,0">
+                <TextBlock Grid.Row="0" 
+                          Text="User Permissions"
+                          FontWeight="Bold"
+                          Margin="0,0,0,5"/>
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding SelectedUserPermissions}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          GridLinesVisibility="All"
+                          BorderThickness="1" 
+                          BorderBrush="Gray">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" 
+                                          Binding="{Binding Name}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Description" 
+                                          Binding="{Binding Description}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Category" 
+                                          Binding="{Binding Category}"
+                                          Width="Auto"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- Role Permissions -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="5,0,0,0">
+                <TextBlock Grid.Row="0" 
+                          Text="Role Permissions"
+                          FontWeight="Bold"
+                          Margin="0,0,0,5"/>
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding SelectedRolePermissions}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          GridLinesVisibility="All"
+                          BorderThickness="1" 
+                          BorderBrush="Gray">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" 
+                                          Binding="{Binding Name}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Description" 
+                                          Binding="{Binding Description}"
+                                          Width="*"/>
+                        <DataGridTextColumn Header="Category" 
+                                          Binding="{Binding Category}"
+                                          Width="Auto"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Grid>
+
+        <!-- Busy Indicator -->
+        <Grid Grid.Row="0" Grid.RowSpan="5" 
+              Background="#80000000"
+              IsVisible="{Binding IsBusy}">
+            <ProgressBar IsIndeterminate="True"
+                        Width="100" Height="100"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"/>
+        </Grid>
+    </Grid>
+
+    <UserControl.Styles>
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#dc3545"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#c82333"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl> 

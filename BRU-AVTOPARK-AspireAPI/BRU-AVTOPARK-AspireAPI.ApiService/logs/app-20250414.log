@@ -1,0 +1,816 @@
+2025-04-14 14:17:12.636 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:17:12.653 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:17:12.695 +03:00 [INF] Database connection built successfully
+2025-04-14 14:17:12.733 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:17:12.956 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:17:13.104 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:17:13.122 +03:00 [INF] Now listening on: http://0.0.0.0:51917
+2025-04-14 14:17:13.124 +03:00 [INF] Now listening on: https://0.0.0.0:51915
+2025-04-14 14:17:13.182 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:17:13.183 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:17:13.184 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:19:44.941 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:19:44.960 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:19:45.018 +03:00 [INF] Database connection built successfully
+2025-04-14 14:19:45.097 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:19:45.329 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:19:45.466 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:19:45.484 +03:00 [INF] Now listening on: http://0.0.0.0:52018
+2025-04-14 14:19:45.485 +03:00 [INF] Now listening on: https://0.0.0.0:52017
+2025-04-14 14:19:45.541 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:19:45.543 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:19:45.569 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:19:50.136 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:20:26.959 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:20:26.976 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:20:27.013 +03:00 [INF] Database connection built successfully
+2025-04-14 14:20:27.040 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:20:27.211 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:20:27.340 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:20:27.361 +03:00 [INF] Now listening on: http://0.0.0.0:52079
+2025-04-14 14:20:27.363 +03:00 [INF] Now listening on: https://0.0.0.0:52080
+2025-04-14 14:20:27.418 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:20:27.420 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:20:27.421 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:20:29.336 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:20:49.756 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:20:54.925 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:20:55.080 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 162.1347ms
+2025-04-14 14:20:55.092 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:20:55.272 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 180.1082ms
+2025-04-14 14:22:09.169 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:22:09.185 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:22:09.227 +03:00 [INF] Database connection built successfully
+2025-04-14 14:22:09.259 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:22:09.423 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:22:09.575 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:22:09.592 +03:00 [INF] Now listening on: http://0.0.0.0:52153
+2025-04-14 14:22:09.594 +03:00 [INF] Now listening on: https://0.0.0.0:52152
+2025-04-14 14:22:09.646 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:22:09.648 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:22:09.649 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:22:11.613 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:22:29.848 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:24:00.611 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:24:00.771 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 166.087ms
+2025-04-14 14:24:00.785 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:24:00.912 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 126.259ms
+2025-04-14 14:24:14.596 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 61
+2025-04-14 14:24:14.672 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:24:14.692 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 14:24:14.776 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 14:24:14.830 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 119.5233ms
+2025-04-14 14:24:14.832 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:24:14.835 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 239.8254ms
+2025-04-14 14:27:36.924 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:27:36.941 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:27:36.980 +03:00 [INF] Database connection built successfully
+2025-04-14 14:27:37.012 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:27:37.187 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:27:37.320 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:27:37.337 +03:00 [INF] Now listening on: http://0.0.0.0:52339
+2025-04-14 14:27:37.338 +03:00 [INF] Now listening on: https://0.0.0.0:52340
+2025-04-14 14:27:37.390 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:27:37.392 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:27:37.393 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:27:39.311 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:27:57.653 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:28:37.781 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:28:37.995 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 220.4333ms
+2025-04-14 14:28:38.005 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:28:38.162 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 156.7047ms
+2025-04-14 14:28:51.041 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 14:28:51.081 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:28:51.099 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 14:28:51.167 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 14:28:51.181 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 68.8991ms
+2025-04-14 14:28:51.182 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:28:51.186 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 145.7574ms
+2025-04-14 14:34:11.901 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:34:11.921 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:34:11.964 +03:00 [INF] Database connection built successfully
+2025-04-14 14:34:12.028 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:34:12.207 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:34:12.363 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:34:12.381 +03:00 [INF] Now listening on: http://0.0.0.0:52586
+2025-04-14 14:34:12.382 +03:00 [INF] Now listening on: https://0.0.0.0:52587
+2025-04-14 14:34:12.439 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:34:12.441 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:34:12.442 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:34:14.342 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:34:33.039 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:35:19.651 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:35:19.904 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 259.0187ms
+2025-04-14 14:35:19.915 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:35:20.037 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 121.6899ms
+2025-04-14 14:35:35.587 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 14:35:35.626 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:35:35.643 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 14:35:35.734 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 14:35:35.747 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 92.6806ms
+2025-04-14 14:35:35.749 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:35:35.752 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 164.9136ms
+2025-04-14 14:38:24.298 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:38:24.341 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:38:24.417 +03:00 [INF] Database connection built successfully
+2025-04-14 14:38:24.454 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:38:24.617 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:38:24.745 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:38:24.762 +03:00 [INF] Now listening on: http://0.0.0.0:52862
+2025-04-14 14:38:24.764 +03:00 [INF] Now listening on: https://0.0.0.0:52861
+2025-04-14 14:38:24.817 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:38:24.818 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:38:24.819 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:38:26.729 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:38:44.452 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:39:34.132 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:39:34.255 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 128.4352ms
+2025-04-14 14:39:34.265 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:39:34.431 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 165.8595ms
+2025-04-14 14:39:52.081 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 14:39:52.116 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:39:52.132 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 14:39:52.221 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 14:39:52.233 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 85.1351ms
+2025-04-14 14:39:52.234 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:39:52.237 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 156.2078ms
+2025-04-14 14:46:19.349 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:46:19.369 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:46:19.409 +03:00 [INF] Database connection built successfully
+2025-04-14 14:46:19.444 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:46:19.626 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:46:19.752 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:46:19.770 +03:00 [INF] Now listening on: http://0.0.0.0:53186
+2025-04-14 14:46:19.771 +03:00 [INF] Now listening on: https://0.0.0.0:53187
+2025-04-14 14:46:19.827 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:46:19.863 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:46:19.864 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:46:21.817 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:46:40.212 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 14:47:45.866 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:47:45.999 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 139.0733ms
+2025-04-14 14:47:46.010 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:47:46.145 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 135.8071ms
+2025-04-14 14:47:58.836 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 14:47:58.874 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:47:58.892 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 14:47:58.987 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 14:47:59.002 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 99.2105ms
+2025-04-14 14:47:59.004 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 14:47:59.006 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 170.5601ms
+2025-04-14 14:59:41.958 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 14:59:41.977 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 14:59:42.019 +03:00 [INF] Database connection built successfully
+2025-04-14 14:59:42.058 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 14:59:42.217 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 14:59:42.407 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 14:59:42.425 +03:00 [INF] Now listening on: http://0.0.0.0:54095
+2025-04-14 14:59:42.426 +03:00 [INF] Now listening on: https://0.0.0.0:54094
+2025-04-14 14:59:42.482 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 14:59:42.484 +03:00 [INF] Hosting environment: Development
+2025-04-14 14:59:42.485 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 14:59:44.290 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 14:59:55.480 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 14:59:55.715 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 243.7907ms
+2025-04-14 14:59:55.727 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 14:59:55.870 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 142.5948ms
+2025-04-14 14:59:55.971 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui.css - null null
+2025-04-14 14:59:55.971 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui-bundle.js - null null
+2025-04-14 14:59:56.303 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-14 14:59:56.329 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui-standalone-preset.js - null null
+2025-04-14 14:59:56.455 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 121.3744ms
+2025-04-14 14:59:56.550 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_vs/browserLink - null null
+2025-04-14 14:59:56.618 +03:00 [INF] Sending file. Request path: '/swagger-ui.css'. Physical path: 'N/A'
+2025-04-14 14:59:56.622 +03:00 [INF] Sending file. Request path: '/swagger-ui-standalone-preset.js'. Physical path: 'N/A'
+2025-04-14 14:59:56.663 +03:00 [INF] Sending file. Request path: '/swagger-ui-bundle.js'. Physical path: 'N/A'
+2025-04-14 14:59:56.720 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui-bundle.js - 200 1061536 text/javascript 717.9509ms
+2025-04-14 14:59:56.720 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui.css - 200 144929 text/css 694.9537ms
+2025-04-14 14:59:56.720 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/swagger-ui-standalone-preset.js - 200 312163 text/javascript 391.089ms
+2025-04-14 14:59:56.782 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_vs/browserLink - 200 null text/javascript; charset=UTF-8 265.1474ms
+2025-04-14 14:59:56.829 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - null null
+2025-04-14 14:59:56.862 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/favicon-32x32.png - null null
+2025-04-14 14:59:57.214 +03:00 [INF] Sending file. Request path: '/favicon-32x32.png'. Physical path: 'N/A'
+2025-04-14 14:59:57.217 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/favicon-32x32.png - 200 628 image/png 356.5031ms
+2025-04-14 14:59:57.388 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 559.1243ms
+2025-04-14 15:00:06.167 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:00:32.123 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:00:32.168 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:00:32.173 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:00:32.193 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:00:32.308 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 15:00:32.324 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 117.1472ms
+2025-04-14 15:00:32.326 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:00:32.329 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 206.3063ms
+2025-04-14 15:02:21.974 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:02:21.992 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:02:22.046 +03:00 [INF] Database connection built successfully
+2025-04-14 15:02:22.091 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:02:22.247 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:02:22.388 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:02:22.407 +03:00 [INF] Now listening on: http://0.0.0.0:54273
+2025-04-14 15:02:22.408 +03:00 [INF] Now listening on: https://0.0.0.0:54274
+2025-04-14 15:02:22.465 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:02:22.466 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:02:22.488 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:02:24.418 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:02:45.111 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:03:00.609 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:03:00.628 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:03:00.670 +03:00 [INF] Database connection built successfully
+2025-04-14 15:03:00.761 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:03:00.952 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:03:01.131 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:03:01.152 +03:00 [INF] Now listening on: http://0.0.0.0:54335
+2025-04-14 15:03:01.153 +03:00 [INF] Now listening on: https://0.0.0.0:54336
+2025-04-14 15:03:01.212 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:03:01.234 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:03:01.236 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:03:03.094 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:03:05.034 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:03:05.232 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 204.321ms
+2025-04-14 15:03:05.254 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-14 15:03:05.260 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 5.9428ms
+2025-04-14 15:03:05.323 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_vs/browserLink - null null
+2025-04-14 15:03:05.343 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_vs/browserLink - 200 null text/javascript; charset=UTF-8 20.5265ms
+2025-04-14 15:03:05.433 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - null null
+2025-04-14 15:03:05.689 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 256.6193ms
+2025-04-14 15:03:19.710 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:03:19.753 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:03:19.758 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:03:19.779 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:03:19.874 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 15:03:19.889 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 98.1242ms
+2025-04-14 15:03:19.891 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:03:19.893 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 183.3975ms
+2025-04-14 15:03:23.610 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:04:10.515 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:04:10.532 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:04:10.572 +03:00 [INF] Database connection built successfully
+2025-04-14 15:04:10.606 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:04:10.801 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:04:10.953 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:04:10.969 +03:00 [INF] Now listening on: http://0.0.0.0:54442
+2025-04-14 15:04:10.971 +03:00 [INF] Now listening on: https://0.0.0.0:54441
+2025-04-14 15:04:11.026 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:04:11.027 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:04:11.028 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:04:12.832 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:04:32.774 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:04:43.374 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:04:43.551 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 181.8593ms
+2025-04-14 15:04:43.568 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-14 15:04:43.576 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 7.4268ms
+2025-04-14 15:04:43.637 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_vs/browserLink - null null
+2025-04-14 15:04:43.661 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_vs/browserLink - 200 null text/javascript; charset=UTF-8 23.64ms
+2025-04-14 15:04:43.732 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - null null
+2025-04-14 15:04:43.945 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 212.5776ms
+2025-04-14 15:04:56.992 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:04:57.030 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:04:57.034 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:04:57.052 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:04:57.140 +03:00 [INF] Executing BadRequestObjectResult, writing value of type 'Microsoft.AspNetCore.Mvc.ValidationProblemDetails'.
+2025-04-14 15:04:57.153 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 90.2046ms
+2025-04-14 15:04:57.155 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:04:57.157 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 400 null application/problem+json; charset=utf-8 165.0684ms
+2025-04-14 15:06:39.927 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:06:39.943 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:06:39.983 +03:00 [INF] Database connection built successfully
+2025-04-14 15:06:40.015 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:06:40.215 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:06:40.351 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:06:40.369 +03:00 [INF] Now listening on: http://0.0.0.0:54584
+2025-04-14 15:06:40.372 +03:00 [INF] Now listening on: https://0.0.0.0:54583
+2025-04-14 15:06:40.430 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:06:40.431 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:06:40.433 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:06:42.279 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:07:02.778 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:07:35.358 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:07:35.583 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 239.2787ms
+2025-04-14 15:07:35.596 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - null null
+2025-04-14 15:07:35.624 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_framework/aspnetcore-browser-refresh.js - 200 16551 application/javascript; charset=utf-8 28.0355ms
+2025-04-14 15:07:35.661 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/_vs/browserLink - null null
+2025-04-14 15:07:35.691 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/_vs/browserLink - 200 null text/javascript; charset=UTF-8 30.2303ms
+2025-04-14 15:07:35.761 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - null null
+2025-04-14 15:07:35.979 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 217.8273ms
+2025-04-14 15:07:47.412 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:07:47.451 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:07:47.456 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:07:47.474 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:07:47.556 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:07:47.560 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:07:47.563 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:07:47.566 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:07:47.572 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:07:47.574 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:07:47.590 +03:00 [INF] User admin authenticated successfully
+2025-04-14 15:07:47.593 +03:00 [WRN] User settings not found for user: admin, creating default settings
+2025-04-14 15:07:47.696 +03:00 [WRN] Failed to create user settings, proceeding without 2FA
+2025-04-14 15:07:47.768 +03:00 [INF] Processing as browser request
+2025-04-14 15:07:47.769 +03:00 [INF] LOGIN SUCCESSFUL: Browser login successful for user: admin
+2025-04-14 15:07:47.777 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:07:47.781 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.RedirectResult in 221.924ms.
+2025-04-14 15:07:47.787 +03:00 [INF] Executing RedirectResult, redirecting to /api/auth/success?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6WyJhZG1pbiIsImFkbWluIl0sInN1YiI6IjEiLCJpZGVudGl0eSI6IkMyMDBBNjEyQzUyRDY5ODdCMTBERUM3MDkxRkQ0MDM0REMxNzA3NkMyOENEOUE3MkU3OEUxMEVGNTJEQUQxNjciLCJ4dWlkIjoiIiwicm9sZSI6WyJBZG1pbmlzdHJhdG9yIiwiMSJdLCJwZXJtaXNzaW9uIjpbInVzZXJzLnZpZXciLCJ1c2Vycy5jcmVhdGUiLCJ1c2Vycy5lZGl0IiwidXNlcnMuZGVsZXRlIiwicm9sZXMudmlldyIsInJvbGVzLmNyZWF0ZSIsInJvbGVzLmVkaXQiLCJyb2xlcy5kZWxldGUiLCJhc3NpZ25fcm9sZXMiLCJncmFudF9wZXJtaXNzaW9ucyIsImVtcGxveWVlcy52aWV3IiwiZW1wbG95ZWVzLmNyZWF0ZSIsImVtcGxveWVlcy5lZGl0IiwiZW1wbG95ZWVzLmRlbGV0ZSIsImVtcGxveWVlcy52aWV3LnNlbGYiLCJlbXBsb3llZXMuZWRpdC5zZWxmIiwiYnVzZXMudmlldyIsImJ1c2VzLmNyZWF0ZSIsImJ1c2VzLmVkaXQiLCJidXNlcy5kZWxldGUiLCJyb3V0ZXMudmlldyIsInJvdXRlcy5jcmVhdGUiLCJyb3V0ZXMuZWRpdCIsInJvdXRlcy5kZWxldGUiLCJ0aWNrZXRzLnZpZXciLCJ0aWNrZXRzLmNyZWF0ZSIsInRpY2tldHMuZWRpdCIsInRpY2tldHMuZGVsZXRlIiwic2FsZXMudmlldyIsInNhbGVzLmNyZWF0ZSIsInNhbGVzLmVkaXQiLCJzYWxlcy5kZWxldGUiLCJ0aWNrZXRzLmJ1eSIsInRpY2tldHMucmVzZXJ2ZSIsIm1haW50ZW5hbmNlLnZpZXciLCJtYWludGVuYW5jZS5jcmVhdGUiLCJtYWludGVuYW5jZS5lZGl0IiwibWFpbnRlbmFuY2UuZGVsZXRlIiwicmVwb3J0cy52aWV3IiwicmVwb3J0cy5jcmVhdGUiLCJyZXBvcnRzLmV4cG9ydCIsIm9wZW5pZC5jb25uZWN0LnZpZXciLCJvcGVuaWQuY29ubmVjdC5jcmVhdGUiLCJvcGVuaWQuY29ubmVjdC5lZGl0Iiwib3BlbmlkLmNvbm5lY3QuZGVsZXRlIiwib3BlbmlkLmNvbm5lY3QuZ3JhbnQiLCJvcGVuaWQuY29ubmVjdC5yZXZva2UiLCJvcGVuaWQuY29ubmVjdC5saXN0Iiwib3BlbmlkLmNvbm5lY3QucmVmcmVzaCIsIm1hZ2ljbGluay52aWV3IiwibWFnaWNsaW5rLmNyZWF0ZSIsIm1hZ2ljbGluay5lZGl0IiwibWFnaWNsaW5rLmRlbGV0ZSIsIm1hZ2ljbGluay5ncmFudCIsIm1hZ2ljbGluay5yZXZva2UiLCJtYWdpY2xpbmsubGlzdCIsIm1hZ2ljbGluay5yZWZyZXNoIl0sInByaW1hcnlfcm9sZSI6IjEiLCJuYmYiOjE3NDQ2MzI0NjcsImV4cCI6MTc0NDYzOTY2NywiaWF0IjoxNzQ0NjMyNDY3fQ.WligTQGjf9NZk_Ic1HQxAnTLpzb-95f2TKy6_LcSSWc.
+2025-04-14 15:07:47.792 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 305.7541ms
+2025-04-14 15:07:47.794 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:07:47.799 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 302 0 null 387.584ms
+2025-04-14 15:07:47.802 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/api/auth/success?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6WyJhZG1pbiIsImFkbWluIl0sInN1YiI6IjEiLCJpZGVudGl0eSI6IkMyMDBBNjEyQzUyRDY5ODdCMTBERUM3MDkxRkQ0MDM0REMxNzA3NkMyOENEOUE3MkU3OEUxMEVGNTJEQUQxNjciLCJ4dWlkIjoiIiwicm9sZSI6WyJBZG1pbmlzdHJhdG9yIiwiMSJdLCJwZXJtaXNzaW9uIjpbInVzZXJzLnZpZXciLCJ1c2Vycy5jcmVhdGUiLCJ1c2Vycy5lZGl0IiwidXNlcnMuZGVsZXRlIiwicm9sZXMudmlldyIsInJvbGVzLmNyZWF0ZSIsInJvbGVzLmVkaXQiLCJyb2xlcy5kZWxldGUiLCJhc3NpZ25fcm9sZXMiLCJncmFudF9wZXJtaXNzaW9ucyIsImVtcGxveWVlcy52aWV3IiwiZW1wbG95ZWVzLmNyZWF0ZSIsImVtcGxveWVlcy5lZGl0IiwiZW1wbG95ZWVzLmRlbGV0ZSIsImVtcGxveWVlcy52aWV3LnNlbGYiLCJlbXBsb3llZXMuZWRpdC5zZWxmIiwiYnVzZXMudmlldyIsImJ1c2VzLmNyZWF0ZSIsImJ1c2VzLmVkaXQiLCJidXNlcy5kZWxldGUiLCJyb3V0ZXMudmlldyIsInJvdXRlcy5jcmVhdGUiLCJyb3V0ZXMuZWRpdCIsInJvdXRlcy5kZWxldGUiLCJ0aWNrZXRzLnZpZXciLCJ0aWNrZXRzLmNyZWF0ZSIsInRpY2tldHMuZWRpdCIsInRpY2tldHMuZGVsZXRlIiwic2FsZXMudmlldyIsInNhbGVzLmNyZWF0ZSIsInNhbGVzLmVkaXQiLCJzYWxlcy5kZWxldGUiLCJ0aWNrZXRzLmJ1eSIsInRpY2tldHMucmVzZXJ2ZSIsIm1haW50ZW5hbmNlLnZpZXciLCJtYWludGVuYW5jZS5jcmVhdGUiLCJtYWludGVuYW5jZS5lZGl0IiwibWFpbnRlbmFuY2UuZGVsZXRlIiwicmVwb3J0cy52aWV3IiwicmVwb3J0cy5jcmVhdGUiLCJyZXBvcnRzLmV4cG9ydCIsIm9wZW5pZC5jb25uZWN0LnZpZXciLCJvcGVuaWQuY29ubmVjdC5jcmVhdGUiLCJvcGVuaWQuY29ubmVjdC5lZGl0Iiwib3BlbmlkLmNvbm5lY3QuZGVsZXRlIiwib3BlbmlkLmNvbm5lY3QuZ3JhbnQiLCJvcGVuaWQuY29ubmVjdC5yZXZva2UiLCJvcGVuaWQuY29ubmVjdC5saXN0Iiwib3BlbmlkLmNvbm5lY3QucmVmcmVzaCIsIm1hZ2ljbGluay52aWV3IiwibWFnaWNsaW5rLmNyZWF0ZSIsIm1hZ2ljbGluay5lZGl0IiwibWFnaWNsaW5rLmRlbGV0ZSIsIm1hZ2ljbGluay5ncmFudCIsIm1hZ2ljbGluay5yZXZva2UiLCJtYWdpY2xpbmsubGlzdCIsIm1hZ2ljbGluay5yZWZyZXNoIl0sInByaW1hcnlfcm9sZSI6IjEiLCJuYmYiOjE3NDQ2MzI0NjcsImV4cCI6MTc0NDYzOTY2NywiaWF0IjoxNzQ0NjMyNDY3fQ.WligTQGjf9NZk_Ic1HQxAnTLpzb-95f2TKy6_LcSSWc - null null
+2025-04-14 15:07:47.865 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.SuccessPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:07:47.868 +03:00 [INF] Route matched with {action = "SuccessPage", controller = "Auth"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult SuccessPage(System.String) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:07:47.887 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.SuccessPage (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:07:47.889 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.SuccessPage (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.ContentResult in 0.9461ms.
+2025-04-14 15:07:47.892 +03:00 [INF] Executing ContentResult with HTTP Response ContentType of text/html
+2025-04-14 15:07:47.895 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.SuccessPage (BRU-AVTOPARK-AspireAPI.ApiService) in 19.2689ms
+2025-04-14 15:07:47.897 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.SuccessPage (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:07:47.900 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/api/auth/success?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6WyJhZG1pbiIsImFkbWluIl0sInN1YiI6IjEiLCJpZGVudGl0eSI6IkMyMDBBNjEyQzUyRDY5ODdCMTBERUM3MDkxRkQ0MDM0REMxNzA3NkMyOENEOUE3MkU3OEUxMEVGNTJEQUQxNjciLCJ4dWlkIjoiIiwicm9sZSI6WyJBZG1pbmlzdHJhdG9yIiwiMSJdLCJwZXJtaXNzaW9uIjpbInVzZXJzLnZpZXciLCJ1c2Vycy5jcmVhdGUiLCJ1c2Vycy5lZGl0IiwidXNlcnMuZGVsZXRlIiwicm9sZXMudmlldyIsInJvbGVzLmNyZWF0ZSIsInJvbGVzLmVkaXQiLCJyb2xlcy5kZWxldGUiLCJhc3NpZ25fcm9sZXMiLCJncmFudF9wZXJtaXNzaW9ucyIsImVtcGxveWVlcy52aWV3IiwiZW1wbG95ZWVzLmNyZWF0ZSIsImVtcGxveWVlcy5lZGl0IiwiZW1wbG95ZWVzLmRlbGV0ZSIsImVtcGxveWVlcy52aWV3LnNlbGYiLCJlbXBsb3llZXMuZWRpdC5zZWxmIiwiYnVzZXMudmlldyIsImJ1c2VzLmNyZWF0ZSIsImJ1c2VzLmVkaXQiLCJidXNlcy5kZWxldGUiLCJyb3V0ZXMudmlldyIsInJvdXRlcy5jcmVhdGUiLCJyb3V0ZXMuZWRpdCIsInJvdXRlcy5kZWxldGUiLCJ0aWNrZXRzLnZpZXciLCJ0aWNrZXRzLmNyZWF0ZSIsInRpY2tldHMuZWRpdCIsInRpY2tldHMuZGVsZXRlIiwic2FsZXMudmlldyIsInNhbGVzLmNyZWF0ZSIsInNhbGVzLmVkaXQiLCJzYWxlcy5kZWxldGUiLCJ0aWNrZXRzLmJ1eSIsInRpY2tldHMucmVzZXJ2ZSIsIm1haW50ZW5hbmNlLnZpZXciLCJtYWludGVuYW5jZS5jcmVhdGUiLCJtYWludGVuYW5jZS5lZGl0IiwibWFpbnRlbmFuY2UuZGVsZXRlIiwicmVwb3J0cy52aWV3IiwicmVwb3J0cy5jcmVhdGUiLCJyZXBvcnRzLmV4cG9ydCIsIm9wZW5pZC5jb25uZWN0LnZpZXciLCJvcGVuaWQuY29ubmVjdC5jcmVhdGUiLCJvcGVuaWQuY29ubmVjdC5lZGl0Iiwib3BlbmlkLmNvbm5lY3QuZGVsZXRlIiwib3BlbmlkLmNvbm5lY3QuZ3JhbnQiLCJvcGVuaWQuY29ubmVjdC5yZXZva2UiLCJvcGVuaWQuY29ubmVjdC5saXN0Iiwib3BlbmlkLmNvbm5lY3QucmVmcmVzaCIsIm1hZ2ljbGluay52aWV3IiwibWFnaWNsaW5rLmNyZWF0ZSIsIm1hZ2ljbGluay5lZGl0IiwibWFnaWNsaW5rLmRlbGV0ZSIsIm1hZ2ljbGluay5ncmFudCIsIm1hZ2ljbGluay5yZXZva2UiLCJtYWdpY2xpbmsubGlzdCIsIm1hZ2ljbGluay5yZWZyZXNoIl0sInByaW1hcnlfcm9sZSI6IjEiLCJuYmYiOjE3NDQ2MzI0NjcsImV4cCI6MTc0NDYzOTY2NywiaWF0IjoxNzQ0NjMyNDY3fQ.WligTQGjf9NZk_Ic1HQxAnTLpzb-95f2TKy6_LcSSWc - 200 28758 text/html 97.9932ms
+2025-04-14 15:09:20.026 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:09:20.049 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:09:20.095 +03:00 [INF] Database connection built successfully
+2025-04-14 15:09:20.130 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:09:20.285 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:09:20.423 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:09:20.440 +03:00 [INF] Now listening on: http://0.0.0.0:54712
+2025-04-14 15:09:20.441 +03:00 [INF] Now listening on: https://0.0.0.0:54711
+2025-04-14 15:09:20.495 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:09:20.496 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:09:20.497 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:09:22.345 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:09:43.644 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:10:05.346 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:10:05.501 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:10:05.515 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:10:05.543 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:10:05.626 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:10:05.630 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:10:05.633 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:10:05.635 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:10:05.641 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:10:05.643 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:10:05.662 +03:00 [INF] User admin authenticated successfully
+2025-04-14 15:10:05.721 +03:00 [INF] JSON request detected, returning JSON response
+2025-04-14 15:10:05.723 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:10:05.726 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.OkObjectResult in 96.0828ms.
+2025-04-14 15:10:05.743 +03:00 [INF] Executing OkObjectResult, writing value of type 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ApiResponse`1[[BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse, BRU-AVTOPARK-AspireAPI.ApiService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2025-04-14 15:10:05.760 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 204.4508ms
+2025-04-14 15:10:05.761 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:10:05.765 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 200 null application/json; charset=utf-8 430.9502ms
+2025-04-14 15:10:27.639 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 15:10:27.673 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 34.2008ms
+2025-04-14 15:10:27.676 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:10:27.726 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 49.4049ms
+2025-04-14 15:10:39.472 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 15:10:39.516 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:10:39.521 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:10:39.597 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:10:39.598 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:10:39.601 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:10:39.603 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:10:39.606 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:10:39.607 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:10:39.621 +03:00 [INF] User admin authenticated successfully
+2025-04-14 15:10:39.628 +03:00 [INF] JSON request detected, returning JSON response
+2025-04-14 15:10:39.629 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:10:39.633 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.OkObjectResult in 34.7595ms.
+2025-04-14 15:10:39.657 +03:00 [INF] Executing OkObjectResult, writing value of type 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ApiResponse`1[[BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse, BRU-AVTOPARK-AspireAPI.ApiService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2025-04-14 15:10:39.658 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 121.7544ms
+2025-04-14 15:10:39.659 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:10:39.673 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 200 null application/json; charset=utf-8 201.0809ms
+2025-04-14 15:13:11.731 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:13:11.750 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:13:11.792 +03:00 [INF] Database connection built successfully
+2025-04-14 15:13:11.828 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:13:12.014 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:13:12.151 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:13:12.168 +03:00 [INF] Now listening on: http://0.0.0.0:54915
+2025-04-14 15:13:12.171 +03:00 [INF] Now listening on: https://0.0.0.0:54916
+2025-04-14 15:13:12.234 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:13:12.235 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:13:12.237 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:13:14.104 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:13:27.399 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json 73
+2025-04-14 15:13:27.617 +03:00 [INF] CORS policy execution successful.
+2025-04-14 15:13:27.630 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:13:27.650 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:13:27.762 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:13:27.766 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:13:27.769 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:13:27.771 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:13:27.778 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:13:27.781 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:13:27.793 +03:00 [WRN] Authentication failed: User not found or inactive for login: admin
+2025-04-14 15:13:27.794 +03:00 [WRN] Authentication failed for user: admin
+2025-04-14 15:13:27.797 +03:00 [INF] JSON request detected, returning JSON response
+2025-04-14 15:13:27.798 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:13:27.802 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.UnauthorizedObjectResult in 36.2247ms.
+2025-04-14 15:13:27.819 +03:00 [INF] Executing UnauthorizedObjectResult, writing value of type 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ApiResponse`1[[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2025-04-14 15:13:27.830 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 167.3666ms
+2025-04-14 15:13:27.832 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:13:27.836 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 401 null application/json; charset=utf-8 443.4068ms
+2025-04-14 15:13:35.432 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:13:42.833 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 15:13:42.866 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 32.4783ms
+2025-04-14 15:13:42.869 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:13:42.926 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 57.5157ms
+2025-04-14 15:13:58.587 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 15:13:58.622 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:13:58.623 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:13:58.675 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:13:58.677 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:13:58.679 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:13:58.681 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:13:58.684 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:13:58.685 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:13:58.696 +03:00 [INF] User admin authenticated successfully
+2025-04-14 15:13:58.750 +03:00 [INF] JSON request detected, returning JSON response
+2025-04-14 15:13:58.751 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:13:58.753 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.OkObjectResult in 76.1415ms.
+2025-04-14 15:13:58.760 +03:00 [INF] Executing OkObjectResult, writing value of type 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ApiResponse`1[[BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse, BRU-AVTOPARK-AspireAPI.ApiService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2025-04-14 15:13:58.767 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 131.6535ms
+2025-04-14 15:13:58.769 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:13:58.802 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 200 null application/json; charset=utf-8 215.2711ms
+2025-04-14 15:16:04.018 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 15:16:04.035 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 15:16:04.079 +03:00 [INF] Database connection built successfully
+2025-04-14 15:16:04.137 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 15:16:04.300 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 15:16:04.464 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 15:16:04.483 +03:00 [INF] Now listening on: http://0.0.0.0:55072
+2025-04-14 15:16:04.484 +03:00 [INF] Now listening on: https://0.0.0.0:55071
+2025-04-14 15:16:04.541 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 15:16:04.542 +03:00 [INF] Hosting environment: Development
+2025-04-14 15:16:04.543 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 15:16:06.367 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 15:16:28.260 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 15:17:03.343 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 15:17:03.522 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 186.9606ms
+2025-04-14 15:17:03.533 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 15:17:03.706 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 172.8971ms
+2025-04-14 15:17:17.755 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/api/Auth/login - application/json; charset=utf-8 null
+2025-04-14 15:17:17.799 +03:00 [INF] Executing endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:17:17.820 +03:00 [INF] Route matched with {action = "Login", controller = "Auth"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest, BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginRequest) on controller BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController (BRU-AVTOPARK-AspireAPI.ApiService).
+2025-04-14 15:17:17.896 +03:00 [INF] Executing action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) - Validation state: "Valid"
+2025-04-14 15:17:17.900 +03:00 [INF] === LOGIN ATTEMPT STARTED ===
+2025-04-14 15:17:17.903 +03:00 [INF] Processing JSON login request for user: admin
+2025-04-14 15:17:17.906 +03:00 [INF] Proceeding to process login request for user: admin
+2025-04-14 15:17:17.911 +03:00 [INF] Login attempt for user: admin
+2025-04-14 15:17:17.914 +03:00 [INF] Attempting to authenticate user: admin
+2025-04-14 15:17:17.929 +03:00 [INF] User admin authenticated successfully
+2025-04-14 15:17:17.984 +03:00 [INF] JSON request detected, returning JSON response
+2025-04-14 15:17:17.986 +03:00 [INF] === LOGIN ATTEMPT COMPLETED ===
+2025-04-14 15:17:17.989 +03:00 [INF] Executed action method BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService), returned result Microsoft.AspNetCore.Mvc.OkObjectResult in 88.9919ms.
+2025-04-14 15:17:18.005 +03:00 [INF] Executing OkObjectResult, writing value of type 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.ApiResponse`1[[BRU_AVTOPARK_AspireAPI.ApiService.Controllers.LoginResponse, BRU-AVTOPARK-AspireAPI.ApiService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+2025-04-14 15:17:18.018 +03:00 [INF] Executed action BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService) in 187.4661ms
+2025-04-14 15:17:18.020 +03:00 [INF] Executed endpoint 'BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController.Login (BRU-AVTOPARK-AspireAPI.ApiService)'
+2025-04-14 15:17:18.022 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/api/Auth/login - 200 null application/json; charset=utf-8 267.7913ms
+2025-04-14 16:55:31.850 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 16:55:31.867 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 16:55:31.913 +03:00 [INF] Database connection built successfully
+2025-04-14 16:55:31.953 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 16:55:32.216 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 16:55:32.420 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 16:55:32.439 +03:00 [INF] Now listening on: http://0.0.0.0:58257
+2025-04-14 16:55:32.441 +03:00 [INF] Now listening on: https://0.0.0.0:58258
+2025-04-14 16:55:32.507 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 16:55:32.509 +03:00 [INF] Hosting environment: Development
+2025-04-14 16:55:32.530 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 16:55:33.332 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 16:55:33.476 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 165.0516ms
+2025-04-14 16:55:33.486 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 16:55:33.598 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 112.2585ms
+2025-04-14 16:55:34.339 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 16:56:00.599 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 16:58:33.775 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 16:58:33.792 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 16:58:33.836 +03:00 [INF] Database connection built successfully
+2025-04-14 16:58:33.905 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 16:58:34.101 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 16:58:34.236 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 16:58:34.252 +03:00 [INF] Now listening on: http://0.0.0.0:58465
+2025-04-14 16:58:34.254 +03:00 [INF] Now listening on: https://0.0.0.0:58464
+2025-04-14 16:58:34.311 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 16:58:34.312 +03:00 [INF] Hosting environment: Development
+2025-04-14 16:58:34.349 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 16:58:36.221 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 16:59:01.017 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 16:59:09.531 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 16:59:09.722 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 198.3192ms
+2025-04-14 16:59:09.737 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 16:59:09.934 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 197.0876ms
+2025-04-14 17:36:33.815 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 17:36:33.834 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 17:36:33.876 +03:00 [INF] Database connection built successfully
+2025-04-14 17:36:33.916 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 17:36:34.213 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 17:36:34.369 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 17:36:34.388 +03:00 [INF] Now listening on: http://0.0.0.0:60651
+2025-04-14 17:36:34.390 +03:00 [INF] Now listening on: https://0.0.0.0:60652
+2025-04-14 17:36:34.460 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 17:36:34.484 +03:00 [INF] Hosting environment: Development
+2025-04-14 17:36:34.486 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 17:36:36.252 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 17:36:39.548 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 17:36:39.727 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 185.2532ms
+2025-04-14 17:36:39.741 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 17:36:40.013 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 272.3791ms
+2025-04-14 17:36:57.404 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 17:40:45.885 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 17:40:45.904 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 17:40:45.950 +03:00 [INF] Database connection built successfully
+2025-04-14 17:40:45.995 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 17:40:46.179 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 17:40:46.324 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 17:40:46.341 +03:00 [INF] Now listening on: http://0.0.0.0:61000
+2025-04-14 17:40:46.343 +03:00 [INF] Now listening on: https://0.0.0.0:61001
+2025-04-14 17:40:46.405 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 17:40:46.406 +03:00 [INF] Hosting environment: Development
+2025-04-14 17:40:46.407 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 17:40:47.895 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 17:40:48.016 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 126.6437ms
+2025-04-14 17:40:48.026 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 17:40:48.116 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 90.3991ms
+2025-04-14 17:40:48.336 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 17:41:09.233 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 17:41:24.402 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 17:41:24.420 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 17:41:24.462 +03:00 [INF] Database connection built successfully
+2025-04-14 17:41:24.503 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 17:41:24.711 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 17:41:24.847 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 17:41:24.867 +03:00 [INF] Now listening on: http://0.0.0.0:61060
+2025-04-14 17:41:24.868 +03:00 [INF] Now listening on: https://0.0.0.0:61059
+2025-04-14 17:41:24.927 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 17:41:24.929 +03:00 [INF] Hosting environment: Development
+2025-04-14 17:41:24.931 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 17:41:26.826 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 17:41:31.009 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 17:41:31.191 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 190.2588ms
+2025-04-14 17:41:31.206 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 17:41:31.362 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 156.2151ms
+2025-04-14 17:41:47.271 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 18:26:55.032 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 18:26:55.054 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 18:26:55.103 +03:00 [INF] Database connection built successfully
+2025-04-14 18:26:55.140 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 18:26:55.409 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 18:26:55.539 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 18:26:55.578 +03:00 [INF] Now listening on: http://0.0.0.0:62037
+2025-04-14 18:26:55.582 +03:00 [INF] Now listening on: https://0.0.0.0:62038
+2025-04-14 18:26:55.697 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 18:26:55.699 +03:00 [INF] Hosting environment: Development
+2025-04-14 18:26:55.700 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 18:26:57.540 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 18:39:04.888 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 18:39:04.905 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 18:39:04.946 +03:00 [INF] Database connection built successfully
+2025-04-14 18:39:05.037 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 18:39:05.381 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 18:39:05.540 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 18:39:05.567 +03:00 [INF] Now listening on: http://0.0.0.0:62398
+2025-04-14 18:39:05.568 +03:00 [INF] Now listening on: https://0.0.0.0:62399
+2025-04-14 18:39:05.634 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 18:39:05.636 +03:00 [INF] Hosting environment: Development
+2025-04-14 18:39:05.638 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 18:39:07.623 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 18:39:25.942 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 18:58:51.819 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 18:58:51.835 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 18:58:51.876 +03:00 [INF] Database connection built successfully
+2025-04-14 18:58:51.974 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 18:58:52.129 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 18:58:52.263 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 18:58:52.289 +03:00 [INF] Now listening on: http://0.0.0.0:62922
+2025-04-14 18:58:52.290 +03:00 [INF] Now listening on: https://0.0.0.0:62921
+2025-04-14 18:58:52.348 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 18:58:52.350 +03:00 [INF] Hosting environment: Development
+2025-04-14 18:58:52.351 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 18:58:54.242 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 18:59:01.057 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 18:59:01.319 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 272.411ms
+2025-04-14 18:59:01.334 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 18:59:01.494 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 159.2837ms
+2025-04-14 18:59:16.565 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 20:39:54.621 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 20:39:54.637 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 20:39:54.678 +03:00 [INF] Database connection built successfully
+2025-04-14 20:39:54.715 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 20:39:54.878 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 20:39:55.007 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 20:39:55.031 +03:00 [INF] Now listening on: http://0.0.0.0:64499
+2025-04-14 20:39:55.032 +03:00 [INF] Now listening on: https://0.0.0.0:64498
+2025-04-14 20:39:55.092 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 20:39:55.093 +03:00 [INF] Hosting environment: Development
+2025-04-14 20:39:55.095 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 20:39:56.991 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 20:40:02.407 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 20:40:02.594 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 196.2358ms
+2025-04-14 20:40:02.608 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 20:40:02.727 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 118.8834ms
+2025-04-14 20:40:19.740 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 20:41:09.002 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 20:41:09.016 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 20:41:09.056 +03:00 [INF] Database connection built successfully
+2025-04-14 20:41:09.092 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 20:41:09.270 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 20:41:09.398 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 20:41:09.415 +03:00 [INF] Now listening on: http://0.0.0.0:64624
+2025-04-14 20:41:09.416 +03:00 [INF] Now listening on: https://0.0.0.0:64625
+2025-04-14 20:41:09.473 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 20:41:09.474 +03:00 [INF] Hosting environment: Development
+2025-04-14 20:41:09.475 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 20:41:11.479 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 20:41:30.767 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 20:41:31.209 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 450.1402ms
+2025-04-14 20:41:31.282 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 20:41:31.801 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 519.1886ms
+2025-04-14 20:41:33.059 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 21:45:18.042 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 21:45:18.060 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 21:45:18.102 +03:00 [INF] Database connection built successfully
+2025-04-14 21:45:18.147 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 21:45:18.391 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 21:45:18.538 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 21:45:18.565 +03:00 [INF] Now listening on: http://0.0.0.0:51234
+2025-04-14 21:45:18.567 +03:00 [INF] Now listening on: https://0.0.0.0:51235
+2025-04-14 21:45:18.631 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 21:45:18.634 +03:00 [INF] Hosting environment: Development
+2025-04-14 21:45:18.635 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 21:45:20.490 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 21:45:26.302 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 21:45:26.619 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 324.5354ms
+2025-04-14 21:45:26.631 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 21:45:26.692 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 60.7264ms
+2025-04-14 21:45:41.892 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 21:49:25.697 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 21:49:25.735 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 21:49:25.829 +03:00 [INF] Database connection built successfully
+2025-04-14 21:49:25.891 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 21:49:26.094 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 21:49:26.246 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 21:49:26.265 +03:00 [INF] Now listening on: http://0.0.0.0:51452
+2025-04-14 21:49:26.266 +03:00 [INF] Now listening on: https://0.0.0.0:51453
+2025-04-14 21:49:26.327 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 21:49:26.350 +03:00 [INF] Hosting environment: Development
+2025-04-14 21:49:26.351 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 21:49:28.239 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 21:49:39.155 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 21:49:39.289 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 140.0538ms
+2025-04-14 21:49:39.324 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 21:49:39.427 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 103.5126ms
+2025-04-14 21:49:49.491 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 21:58:45.393 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 21:58:45.415 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 21:58:45.462 +03:00 [INF] Database connection built successfully
+2025-04-14 21:58:45.576 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 21:58:45.736 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 21:58:45.871 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 21:58:45.898 +03:00 [INF] Now listening on: http://0.0.0.0:51989
+2025-04-14 21:58:45.899 +03:00 [INF] Now listening on: https://0.0.0.0:51988
+2025-04-14 21:58:45.956 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 21:58:45.958 +03:00 [INF] Hosting environment: Development
+2025-04-14 21:58:45.959 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 21:58:47.817 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 21:59:08.087 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 21:59:25.377 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 21:59:25.509 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 138.5876ms
+2025-04-14 21:59:25.519 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 21:59:25.696 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 176.4431ms
+2025-04-14 22:00:16.278 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:00:16.296 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:00:16.337 +03:00 [INF] Database connection built successfully
+2025-04-14 22:00:16.377 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:00:16.556 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:00:16.687 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:00:16.710 +03:00 [INF] Now listening on: http://0.0.0.0:52051
+2025-04-14 22:00:16.711 +03:00 [INF] Now listening on: https://0.0.0.0:52050
+2025-04-14 22:00:16.768 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:00:16.799 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:00:16.800 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:00:18.634 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:00:33.862 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:00:34.043 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 187.0176ms
+2025-04-14 22:00:34.056 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:00:34.274 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 218.4953ms
+2025-04-14 22:00:39.767 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:06:28.722 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:06:28.738 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:06:28.778 +03:00 [INF] Database connection built successfully
+2025-04-14 22:06:28.842 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:06:29.002 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:06:29.137 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:06:29.154 +03:00 [INF] Now listening on: http://0.0.0.0:52323
+2025-04-14 22:06:29.156 +03:00 [INF] Now listening on: https://0.0.0.0:52322
+2025-04-14 22:06:29.213 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:06:29.214 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:06:29.215 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:06:31.108 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:06:53.165 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:07:13.597 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:07:13.763 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 172.0448ms
+2025-04-14 22:07:13.784 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:07:13.898 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 113.9416ms
+2025-04-14 22:11:20.728 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:11:20.749 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:11:20.806 +03:00 [INF] Database connection built successfully
+2025-04-14 22:11:20.876 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:11:21.064 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:11:21.197 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:11:21.221 +03:00 [INF] Now listening on: http://0.0.0.0:52741
+2025-04-14 22:11:21.223 +03:00 [INF] Now listening on: https://0.0.0.0:52742
+2025-04-14 22:11:21.277 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:11:21.279 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:11:21.280 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:11:23.251 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:11:36.118 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:11:36.261 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 149.83ms
+2025-04-14 22:11:36.272 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:11:36.367 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 94.6836ms
+2025-04-14 22:11:44.467 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:13:54.710 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:13:54.731 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:13:54.786 +03:00 [INF] Database connection built successfully
+2025-04-14 22:13:54.867 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:13:55.115 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:13:55.289 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:13:55.310 +03:00 [INF] Now listening on: http://0.0.0.0:52983
+2025-04-14 22:13:55.312 +03:00 [INF] Now listening on: https://0.0.0.0:52982
+2025-04-14 22:13:55.373 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:13:55.374 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:13:55.375 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:13:57.036 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:13:57.190 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 171.3488ms
+2025-04-14 22:13:57.202 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:13:57.269 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:13:57.295 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 92.8895ms
+2025-04-14 22:14:19.251 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:22:33.326 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:22:33.343 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:22:33.382 +03:00 [INF] Database connection built successfully
+2025-04-14 22:22:33.420 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:22:33.617 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:22:33.765 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:22:33.790 +03:00 [INF] Now listening on: http://0.0.0.0:53423
+2025-04-14 22:22:33.791 +03:00 [INF] Now listening on: https://0.0.0.0:53424
+2025-04-14 22:22:33.851 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:22:33.852 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:22:33.889 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:22:35.709 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:22:57.474 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:22:58.767 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:22:58.922 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 162.4676ms
+2025-04-14 22:22:58.936 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:22:59.148 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 212.0911ms
+2025-04-14 22:31:58.283 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:31:58.301 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:31:58.362 +03:00 [INF] Database connection built successfully
+2025-04-14 22:31:58.412 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:31:58.581 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:31:58.725 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:31:58.752 +03:00 [INF] Now listening on: http://0.0.0.0:53881
+2025-04-14 22:31:58.753 +03:00 [INF] Now listening on: https://0.0.0.0:53880
+2025-04-14 22:31:58.814 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:31:58.815 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:31:58.816 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:32:00.655 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:32:08.974 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:32:09.239 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 271.9185ms
+2025-04-14 22:32:09.251 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:32:09.402 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 151.1456ms
+2025-04-14 22:34:31.151 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:34:31.172 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:34:31.219 +03:00 [INF] Database connection built successfully
+2025-04-14 22:34:31.297 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:34:31.512 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:34:31.672 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:34:31.692 +03:00 [INF] Now listening on: http://0.0.0.0:54019
+2025-04-14 22:34:31.693 +03:00 [INF] Now listening on: https://0.0.0.0:54020
+2025-04-14 22:34:31.756 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:34:31.778 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:34:31.781 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:34:33.682 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:34:36.189 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:34:36.350 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 167.7247ms
+2025-04-14 22:34:36.362 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:34:36.484 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 121.4862ms
+2025-04-14 22:41:03.085 +03:00 [INF] SpacetimeDBService initialized
+2025-04-14 22:41:03.104 +03:00 [INF] Connecting to SpacetimeDB at http://localhost:3000 module avtopark
+2025-04-14 22:41:03.148 +03:00 [INF] Database connection built successfully
+2025-04-14 22:41:03.209 +03:00 [INF] User profile is available. Using 'C:\Users\andrej\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2025-04-14 22:41:03.493 +03:00 [INF] Attempting to connect to SpacetimeDB
+2025-04-14 22:41:03.669 +03:00 [WRN] Overriding address(es) 'https://localhost:7515, http://localhost:5501'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2025-04-14 22:41:03.691 +03:00 [INF] Now listening on: http://0.0.0.0:54428
+2025-04-14 22:41:03.692 +03:00 [INF] Now listening on: https://0.0.0.0:54427
+2025-04-14 22:41:03.759 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-04-14 22:41:03.760 +03:00 [INF] Hosting environment: Development
+2025-04-14 22:41:03.762 +03:00 [INF] Content root path: G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService
+2025-04-14 22:41:05.576 +03:00 [INF] Connected to SpacetimeDB with identity: C2003371E1B4C7D157455A6AE03EDF534164A9F8BF0F790A518067F927318332
+2025-04-14 22:41:06.972 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger - null null
+2025-04-14 22:41:07.125 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger - 301 0 null 159.0709ms
+2025-04-14 22:41:07.137 +03:00 [INF] Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - null null
+2025-04-14 22:41:07.236 +03:00 [INF] Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 null text/html;charset=utf-8 99.4657ms
+2025-04-14 22:41:24.496 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/Auth/login - application/json; charset=utf-8 null
+2025-04-14 22:41:24.634 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/Auth/login - 404 0 null 137.6716ms
+2025-04-14 22:41:24.641 +03:00 [INF] Request reached the end of the middleware pipeline without being handled by application code. Request path: POST http://localhost:5000/Auth/login, Response status code: 404
+2025-04-14 22:41:27.288 +03:00 [INF] SpacetimeDB subscription applied successfully
+2025-04-14 22:41:55.852 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5000/Auth/login - application/json; charset=utf-8 null
+2025-04-14 22:41:55.882 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5000/Auth/login - 404 0 null 30.147ms
+2025-04-14 22:41:55.884 +03:00 [INF] Request reached the end of the middleware pipeline without being handled by application code. Request path: POST http://localhost:5000/Auth/login, Response status code: 404

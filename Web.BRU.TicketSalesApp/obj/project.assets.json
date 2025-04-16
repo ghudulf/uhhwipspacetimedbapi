@@ -1,0 +1,1270 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "DevExpress.Blazor/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Blazor.Resources": "[24.2.5]",
+          "DevExpress.Blazor.Themes": "[24.2.5]",
+          "DevExpress.Data": "[24.2.5]",
+          "DevExpress.Printing.Core": "[24.2.5]",
+          "DevExtreme.AspNet.Data": "4.0.0",
+          "System.Reactive": "5.0.0"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Blazor.v24.2.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Blazor.v24.2.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net5.0/DevExpress.Blazor.props": {},
+          "buildTransitive/net5.0/DevExpress.Blazor.targets": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/DevExpress.Blazor.props": {}
+        }
+      },
+      "DevExpress.Blazor.Resources/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Data": "[24.2.5]"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Blazor.Resources.v24.2.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Blazor.Resources.v24.2.dll": {}
+        },
+        "build": {
+          "buildTransitive/DevExpress.Blazor.Resources.props": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/DevExpress.Blazor.Resources.props": {}
+        }
+      },
+      "DevExpress.Blazor.Themes/24.2.5": {
+        "type": "package",
+        "build": {
+          "buildTransitive/DevExpress.Blazor.Themes.props": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/DevExpress.Blazor.Themes.props": {}
+        }
+      },
+      "DevExpress.Data/24.2.5": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/DevExpress.Data.v24.2.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Data.v24.2.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "DevExpress.Drawing/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Data": "[24.2.5]"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Drawing.v24.2.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Drawing.v24.2.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "DevExpress.Pdf.Core/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Data": "[24.2.5]",
+          "DevExpress.Drawing": "[24.2.5]"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Pdf.v24.2.Core.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Pdf.v24.2.Core.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "DevExpress.Pdf.Drawing/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Data": "[24.2.5]",
+          "DevExpress.Drawing": "[24.2.5]",
+          "DevExpress.Pdf.Core": "[24.2.5]"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Pdf.v24.2.Drawing.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Pdf.v24.2.Drawing.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "DevExpress.Printing.Core/24.2.5": {
+        "type": "package",
+        "dependencies": {
+          "DevExpress.Data": "[24.2.5]",
+          "DevExpress.Drawing": "[24.2.5]",
+          "DevExpress.Pdf.Core": "[24.2.5]",
+          "DevExpress.Pdf.Drawing": "[24.2.5]",
+          "System.ServiceModel.Http": "6.2.0"
+        },
+        "compile": {
+          "lib/net8.0/DevExpress.Printing.v24.2.Core.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/DevExpress.Printing.v24.2.Core.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "DevExtreme.AspNet.Data/4.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/DevExtreme.AspNet.Data.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/DevExtreme.AspNet.Data.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "System.Reactive/5.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net5.0/System.Reactive.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net5.0/System.Reactive.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net5.0/_._": {}
+        }
+      },
+      "System.ServiceModel.Http/6.2.0": {
+        "type": "package",
+        "dependencies": {
+          "System.ServiceModel.Primitives": "6.2.0"
+        },
+        "compile": {
+          "lib/net6.0/System.ServiceModel.Http.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/System.ServiceModel.Http.dll": {
+            "related": ".pdb"
+          }
+        },
+        "resource": {
+          "lib/net6.0/cs/System.ServiceModel.Http.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net6.0/de/System.ServiceModel.Http.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net6.0/es/System.ServiceModel.Http.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net6.0/fr/System.ServiceModel.Http.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net6.0/it/System.ServiceModel.Http.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net6.0/ja/System.ServiceModel.Http.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net6.0/ko/System.ServiceModel.Http.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net6.0/pl/System.ServiceModel.Http.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net6.0/pt-BR/System.ServiceModel.Http.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net6.0/ru/System.ServiceModel.Http.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net6.0/tr/System.ServiceModel.Http.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net6.0/zh-Hans/System.ServiceModel.Http.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net6.0/zh-Hant/System.ServiceModel.Http.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.ServiceModel.Primitives/6.2.0": {
+        "type": "package",
+        "compile": {
+          "ref/net6.0/System.ServiceModel.Primitives.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/System.ServiceModel.Primitives.dll": {
+            "related": ".pdb"
+          }
+        },
+        "resource": {
+          "lib/net6.0/cs/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net6.0/de/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net6.0/es/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net6.0/fr/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net6.0/it/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net6.0/ja/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net6.0/ko/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net6.0/pl/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net6.0/pt-BR/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net6.0/ru/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net6.0/tr/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net6.0/zh-Hans/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net6.0/zh-Hant/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DevExpress.Blazor/24.2.5": {
+      "sha512": "OOOENMj5ox2124UkfA5uK2yToVD7T3dBrXHRHXtPSgFKMVBPDo7tUXSi/vFAcCe1eiOE0Q5xfh8kX/Xu6w6ptQ==",
+      "type": "package",
+      "path": "devexpress.blazor/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/DevExpress.Blazor.props",
+        "build/Microsoft.AspNetCore.StaticWebAssets.props",
+        "buildMultiTargeting/DevExpress.Blazor.props",
+        "buildTransitive/DevExpress.Blazor.props",
+        "buildTransitive/net5.0/DevExpress.Blazor.props",
+        "buildTransitive/net5.0/DevExpress.Blazor.targets",
+        "devexpress.blazor.24.2.5.nupkg.sha512",
+        "devexpress.blazor.nuspec",
+        "lib/net8.0/DevExpress.Blazor.v24.2.dll",
+        "lib/net8.0/DevExpress.Blazor.v24.2.xml",
+        "staticwebassets/dx-blazor.svg",
+        "staticwebassets/modules/_commonjsHelpers-41cdd1e7.js",
+        "staticwebassets/modules/adaptivedropdowncomponents-7cb91d74.js",
+        "staticwebassets/modules/after-render-utils.js",
+        "staticwebassets/modules/baseChart-9211a850.js",
+        "staticwebassets/modules/branch-aebd078a.js",
+        "staticwebassets/modules/browser-3fc721b7.js",
+        "staticwebassets/modules/capture-manager-2454adc2.js",
+        "staticwebassets/modules/chart-072aeaa9.js",
+        "staticwebassets/modules/client-component-style-helper-195fa7c3.js",
+        "staticwebassets/modules/column-resize-7a55fd84.js",
+        "staticwebassets/modules/columnchooser-de0542af.js",
+        "staticwebassets/modules/common-48ec40e2.js",
+        "staticwebassets/modules/const-90026e45.js",
+        "staticwebassets/modules/constants-3209ffde.js",
+        "staticwebassets/modules/constants-7c047c0d.js",
+        "staticwebassets/modules/constants-a4904a3f.js",
+        "staticwebassets/modules/constants-da6cacac.js",
+        "staticwebassets/modules/constants-ed56e953.js",
+        "staticwebassets/modules/constants-ed9663d1.js",
+        "staticwebassets/modules/create-after-timeout-fn-executor-38b3d79d.js",
+        "staticwebassets/modules/css-classes-c63af734.js",
+        "staticwebassets/modules/custom-color-area-100d17b7.js",
+        "staticwebassets/modules/custom-element-267f9a21.js",
+        "staticwebassets/modules/custom-events-helper-e7f279d3.js",
+        "staticwebassets/modules/data-qa-utils-8be7c726.js",
+        "staticwebassets/modules/define-custom-element-7c2e65e2.js",
+        "staticwebassets/modules/devextreme-widget-wrapper-33881f73.js",
+        "staticwebassets/modules/devices-17b9ba08.js",
+        "staticwebassets/modules/disposable-d2c2d283.js",
+        "staticwebassets/modules/dom-554d0cc7.js",
+        "staticwebassets/modules/dom-utils-d057dcaa.js",
+        "staticwebassets/modules/dragAndDropUnit-a8432e5f.js",
+        "staticwebassets/modules/draggable-0c5d4ff1.js",
+        "staticwebassets/modules/dragging-helper-863a69d5.js",
+        "staticwebassets/modules/dropdown-f5b2318c.js",
+        "staticwebassets/modules/dropdown-menu-keyboard-strategy-60d36909.js",
+        "staticwebassets/modules/dropdowncomponents-3d8f06da.js",
+        "staticwebassets/modules/dropdowns-63f1434e.js",
+        "staticwebassets/modules/dx-accordion-b000d8bf.js",
+        "staticwebassets/modules/dx-adaptive-container-92815f61.js",
+        "staticwebassets/modules/dx-bar-gauge-da563340.js",
+        "staticwebassets/modules/dx-blazor-all.js",
+        "staticwebassets/modules/dx-blazor-quill.js",
+        "staticwebassets/modules/dx-button-9d1a9f04.js",
+        "staticwebassets/modules/dx-calendar-1293eea4.js",
+        "staticwebassets/modules/dx-carousel-ac79e9ee.js",
+        "staticwebassets/modules/dx-check-internal-a6f9ec37.js",
+        "staticwebassets/modules/dx-color-palette-a90e9402.js",
+        "staticwebassets/modules/dx-combo-box-51cbb701.js",
+        "staticwebassets/modules/dx-combobox-5b8c7dc7.js",
+        "staticwebassets/modules/dx-context-menu-8ee9f551.js",
+        "staticwebassets/modules/dx-css-runtime-b3e20aad.js",
+        "staticwebassets/modules/dx-date-edit-0d8ef0d7.js",
+        "staticwebassets/modules/dx-date-edit-base-3861bf7c.js",
+        "staticwebassets/modules/dx-date-range-picker-65d1882e.js",
+        "staticwebassets/modules/dx-date-time-edit-2a3f5354.js",
+        "staticwebassets/modules/dx-drawer-e8714a47.js",
+        "staticwebassets/modules/dx-dropdown-base3-726be7be.js",
+        "staticwebassets/modules/dx-dropdown-box-4205d2fa.js",
+        "staticwebassets/modules/dx-dropdown-list-box-3ed16714.js",
+        "staticwebassets/modules/dx-dropdown-owner-8d389864.js",
+        "staticwebassets/modules/dx-form-layout-2fff6968.js",
+        "staticwebassets/modules/dx-grid-444da71f.js",
+        "staticwebassets/modules/dx-grid-layout-bc194128.js",
+        "staticwebassets/modules/dx-grid-layout-element-base-9d87dc71.js",
+        "staticwebassets/modules/dx-html-editor-2c188713.js",
+        "staticwebassets/modules/dx-html-element-base-3262304e.js",
+        "staticwebassets/modules/dx-html-element-pointer-events-helper-c1007ce3.js",
+        "staticwebassets/modules/dx-license-30fd02d1.js",
+        "staticwebassets/modules/dx-list-box-4a9879cc.js",
+        "staticwebassets/modules/dx-list-box-events-6c145567.js",
+        "staticwebassets/modules/dx-listbox-9345a0b2.js",
+        "staticwebassets/modules/dx-loading-panel-130808b7.js",
+        "staticwebassets/modules/dx-map-03e4a730.js",
+        "staticwebassets/modules/dx-memo-dc5bd05d.js",
+        "staticwebassets/modules/dx-menu-48481ff0.js",
+        "staticwebassets/modules/dx-menu-item-4f0de325.js",
+        "staticwebassets/modules/dx-menu-preloader-c40bcae2.js",
+        "staticwebassets/modules/dx-pivot-table-007c8d18.js",
+        "staticwebassets/modules/dx-progress-bar-fc2a6b94.js",
+        "staticwebassets/modules/dx-range-selector-ee5ba2fb.js",
+        "staticwebassets/modules/dx-ribbon-d4d7213b.js",
+        "staticwebassets/modules/dx-sankey-b6251c4f.js",
+        "staticwebassets/modules/dx-scroll-viewer-da0fb41c.js",
+        "staticwebassets/modules/dx-sparkline-b9aca8ed.js",
+        "staticwebassets/modules/dx-splitter-bb096bb4.js",
+        "staticwebassets/modules/dx-splitter-separator-a3fe93bf.js",
+        "staticwebassets/modules/dx-stack-layout-4a3ce892.js",
+        "staticwebassets/modules/dx-style-helper-d10228f6.js",
+        "staticwebassets/modules/dx-tab-item-7f316c41.js",
+        "staticwebassets/modules/dx-tab-list-702d1e0b.js",
+        "staticwebassets/modules/dx-tag-box-60efde02.js",
+        "staticwebassets/modules/dx-tagbox-ea5a2465.js",
+        "staticwebassets/modules/dx-toast-9c01ccf3.js",
+        "staticwebassets/modules/dx-toast-portal-f0e45140.js",
+        "staticwebassets/modules/dx-tree-list-ba2309b4.js",
+        "staticwebassets/modules/dx-tree-view-1fb293a4.js",
+        "staticwebassets/modules/dx-ui-element-0c1e122f.js",
+        "staticwebassets/modules/dx-ui-handlers-bridge-c2148178.js",
+        "staticwebassets/modules/dx-virtual-scroll-viewer-f4a3bc9e.js",
+        "staticwebassets/modules/dxbl-itemlistdropdown-75b612ca.js",
+        "staticwebassets/modules/dxbl-window-89004b38.js",
+        "staticwebassets/modules/dynamic-stylesheet-component-0ddead18.js",
+        "staticwebassets/modules/enumConverter-6047c3ff.js",
+        "staticwebassets/modules/eventRegister-fb9b0e47.js",
+        "staticwebassets/modules/eventhelper-8bcec49f.js",
+        "staticwebassets/modules/events-5ceb0642.js",
+        "staticwebassets/modules/events-70d90aad.js",
+        "staticwebassets/modules/events-a8fe5872.js",
+        "staticwebassets/modules/events-f873e646.js",
+        "staticwebassets/modules/events-interseptor-a522582a.js",
+        "staticwebassets/modules/evt-ef2dea65.js",
+        "staticwebassets/modules/expandable-container-f4a1ccde.js",
+        "staticwebassets/modules/file-input-01f4e96d.js",
+        "staticwebassets/modules/flyout-6f5849c7.js",
+        "staticwebassets/modules/flyoutcomponents-879758ab.js",
+        "staticwebassets/modules/focus-utils-ae044224.js",
+        "staticwebassets/modules/focushelper-2eea96ca.js",
+        "staticwebassets/modules/focustrap-d11cfef9.js",
+        "staticwebassets/modules/grid-985dd353.js",
+        "staticwebassets/modules/grid-scroll-utils-a8c65cf1.js",
+        "staticwebassets/modules/group-control-b78a6b47.js",
+        "staticwebassets/modules/index-2fbd27c3.js",
+        "staticwebassets/modules/input-66769c52.js",
+        "staticwebassets/modules/key-ffa272aa.js",
+        "staticwebassets/modules/keyboard-navigation-strategy-ea41c807.js",
+        "staticwebassets/modules/layouthelper-67dd777a.js",
+        "staticwebassets/modules/lit-element-462e7ad3.js",
+        "staticwebassets/modules/lit-element-base-9288748e.js",
+        "staticwebassets/modules/logicaltreehelper-67db40f1.js",
+        "staticwebassets/modules/masked-input-0c0a9541.js",
+        "staticwebassets/modules/menu-keyboard-strategy-7c257fd3.js",
+        "staticwebassets/modules/modal-keyboard-strategy-05da34d9.js",
+        "staticwebassets/modules/modalcomponents-951e20e2.js",
+        "staticwebassets/modules/nameof-factory-64d95f5b.js",
+        "staticwebassets/modules/observables-589a5615.js",
+        "staticwebassets/modules/pager-64a19cb6.js",
+        "staticwebassets/modules/pie-chart-7fd0edce.js",
+        "staticwebassets/modules/point-e4ec110e.js",
+        "staticwebassets/modules/polar-chart-2e7c3a92.js",
+        "staticwebassets/modules/popup-355ecaa4.js",
+        "staticwebassets/modules/popupportal-bbd2fea0.js",
+        "staticwebassets/modules/portal-b3727c25.js",
+        "staticwebassets/modules/positionlistener-bcff17ed.js",
+        "staticwebassets/modules/positiontracker-754c1e75.js",
+        "staticwebassets/modules/property-4ec0b52d.js",
+        "staticwebassets/modules/query-44b9267f.js",
+        "staticwebassets/modules/rafaction-bba7928b.js",
+        "staticwebassets/modules/ribbon-ac381a65.js",
+        "staticwebassets/modules/ribbon-item-fb1bb1fe.js",
+        "staticwebassets/modules/ribbon-tabs-1043ab2f.js",
+        "staticwebassets/modules/ribbon-utils-2b6a64cb.js",
+        "staticwebassets/modules/roller-e212033a.js",
+        "staticwebassets/modules/root-keyboard-strategy-d1e519a3.js",
+        "staticwebassets/modules/scheduler-8335afbb.js",
+        "staticwebassets/modules/screenhelper-e9ec6e3e.js",
+        "staticwebassets/modules/scroll-viewer-css-classes-e724f203.js",
+        "staticwebassets/modules/settings-c0192d16.js",
+        "staticwebassets/modules/single-slot-element-base-01d93921.js",
+        "staticwebassets/modules/spinedit-a2f64d23.js",
+        "staticwebassets/modules/state-c294470d.js",
+        "staticwebassets/modules/svg-utils-3c1b4ead.js",
+        "staticwebassets/modules/tabbable-a2ae89a6.js",
+        "staticwebassets/modules/text-editor-733d5e56.js",
+        "staticwebassets/modules/thumb-31d768d7.js",
+        "staticwebassets/modules/toolbar-83f5a0c7.js",
+        "staticwebassets/modules/toolbar-css-classes-d303c118.js",
+        "staticwebassets/modules/touch-6a322081.js",
+        "staticwebassets/modules/transformhelper-ebad0156.js",
+        "staticwebassets/modules/tslib.es6-d65164b3.js",
+        "staticwebassets/modules/upload-840161c0.js",
+        "staticwebassets/modules/upload-base-993a2317.js",
+        "staticwebassets/modules/utils-b5b2c8a9.js",
+        "staticwebassets/modules/webview-svg-loader-7cd1bef2.js",
+        "staticwebassets/modules/window-resize-helper-8b32f302.js"
+      ]
+    },
+    "DevExpress.Blazor.Resources/24.2.5": {
+      "sha512": "GPHr/6J8zsKY+z1FlxCIIApRviuE6zd7EN9UXRbqYCtQ4oCFXiE7QPID8F/tyyO/TZGI0YswWG+olRfsuEWtyQ==",
+      "type": "package",
+      "path": "devexpress.blazor.resources/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/DevExpress.Blazor.Resources.props",
+        "build/Microsoft.AspNetCore.StaticWebAssets.props",
+        "buildMultiTargeting/DevExpress.Blazor.Resources.props",
+        "buildTransitive/DevExpress.Blazor.Resources.props",
+        "devexpress.blazor.resources.24.2.5.nupkg.sha512",
+        "devexpress.blazor.resources.nuspec",
+        "lib/net8.0/DevExpress.Blazor.Resources.v24.2.dll",
+        "staticwebassets/js/analytics-core/ace.js",
+        "staticwebassets/js/analytics-core/dx-analytics-core.min.js",
+        "staticwebassets/js/analytics-core/dx-querybuilder.min.js",
+        "staticwebassets/js/analytics-core/ext-language_tools.js",
+        "staticwebassets/js/analytics-core/jquery.min.js",
+        "staticwebassets/js/analytics-core/knockout-latest.js",
+        "staticwebassets/js/devextreme/dx.all.js",
+        "staticwebassets/js/import-scripts.js"
+      ]
+    },
+    "DevExpress.Blazor.Themes/24.2.5": {
+      "sha512": "dxltrZPbjPq3Na/3eGCmdmx+4mRLlUsv2HvkXP5Kpmi/GlHSDpnW3vHoSpQWMGsdfYn7tZ4WtYJYbXf4t0+jLQ==",
+      "type": "package",
+      "path": "devexpress.blazor.themes/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/DevExpress.Blazor.Themes.props",
+        "build/Microsoft.AspNetCore.StaticWebAssets.props",
+        "buildMultiTargeting/DevExpress.Blazor.Themes.props",
+        "buildTransitive/DevExpress.Blazor.Themes.props",
+        "devexpress.blazor.themes.24.2.5.nupkg.sha512",
+        "devexpress.blazor.themes.nuspec",
+        "staticwebassets/blazing-berry.bs4.css",
+        "staticwebassets/blazing-berry.bs4.min.css",
+        "staticwebassets/blazing-berry.bs5.css",
+        "staticwebassets/blazing-berry.bs5.min.css",
+        "staticwebassets/blazing-dark.bs4.css",
+        "staticwebassets/blazing-dark.bs4.min.css",
+        "staticwebassets/blazing-dark.bs5.css",
+        "staticwebassets/blazing-dark.bs5.min.css",
+        "staticwebassets/bootstrap-external.bs4.css",
+        "staticwebassets/bootstrap-external.bs4.min.css",
+        "staticwebassets/bootstrap-external.bs5.css",
+        "staticwebassets/bootstrap-external.bs5.min.css",
+        "staticwebassets/fluent-dark.bs4.css",
+        "staticwebassets/fluent-dark.bs4.min.css",
+        "staticwebassets/fluent-dark.bs5.css",
+        "staticwebassets/fluent-dark.bs5.min.css",
+        "staticwebassets/fluent-dark.css",
+        "staticwebassets/fluent-dark.min.css",
+        "staticwebassets/fluent-light.bs4.css",
+        "staticwebassets/fluent-light.bs4.min.css",
+        "staticwebassets/fluent-light.bs5.css",
+        "staticwebassets/fluent-light.bs5.min.css",
+        "staticwebassets/fluent-light.css",
+        "staticwebassets/fluent-light.min.css",
+        "staticwebassets/office-white.bs4.css",
+        "staticwebassets/office-white.bs4.min.css",
+        "staticwebassets/office-white.bs5.css",
+        "staticwebassets/office-white.bs5.min.css",
+        "staticwebassets/purple.bs4.css",
+        "staticwebassets/purple.bs4.min.css",
+        "staticwebassets/purple.bs5.css",
+        "staticwebassets/purple.bs5.min.css"
+      ]
+    },
+    "DevExpress.Data/24.2.5": {
+      "sha512": "mKauW5UinrmToJk9IL+O9B8SkkOmfhnDFCVjKjfSVF23c6xJlRa7zhBpff7+Asa5SMer5VbKKPUXK1PO+VJbrQ==",
+      "type": "package",
+      "path": "devexpress.data/24.2.5",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "analyzers/dotnet/cs/DevExpress.Generator.dll",
+        "devexpress.data.24.2.5.nupkg.sha512",
+        "devexpress.data.nuspec",
+        "lib/net462/DevExpress.Data.v24.2.dll",
+        "lib/net462/DevExpress.Data.v24.2.xml",
+        "lib/net8.0/DevExpress.Data.v24.2.dll",
+        "lib/net8.0/DevExpress.Data.v24.2.xml",
+        "tools/VisualStudioToolsManifest.xml"
+      ]
+    },
+    "DevExpress.Drawing/24.2.5": {
+      "sha512": "bnPMSkPpgQqLkN9Gqzepmm7k4ta8o3jMW/vUn6yM+/muSrjwxkaEC2rG8M2Ad8qep+ldLgZQOBNTlRcbaufu2Q==",
+      "type": "package",
+      "path": "devexpress.drawing/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "devexpress.drawing.24.2.5.nupkg.sha512",
+        "devexpress.drawing.nuspec",
+        "lib/net462/DevExpress.Drawing.v24.2.dll",
+        "lib/net462/DevExpress.Drawing.v24.2.xml",
+        "lib/net8.0/DevExpress.Drawing.v24.2.dll",
+        "lib/net8.0/DevExpress.Drawing.v24.2.xml"
+      ]
+    },
+    "DevExpress.Pdf.Core/24.2.5": {
+      "sha512": "h4IFBjhcDx9QpqVags3ImyUiqPOOa96h+Rd6jhhkepDsBS+pPIXOHg7hxyYTXZNOmOSMkhZGPUI51fdTSJnhrw==",
+      "type": "package",
+      "path": "devexpress.pdf.core/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "devexpress.pdf.core.24.2.5.nupkg.sha512",
+        "devexpress.pdf.core.nuspec",
+        "lib/net462/DevExpress.Pdf.v24.2.Core.dll",
+        "lib/net462/DevExpress.Pdf.v24.2.Core.xml",
+        "lib/net8.0/DevExpress.Pdf.v24.2.Core.dll",
+        "lib/net8.0/DevExpress.Pdf.v24.2.Core.xml"
+      ]
+    },
+    "DevExpress.Pdf.Drawing/24.2.5": {
+      "sha512": "YMYHyMVvdyaV+GsOgZxaoQHbD8XLrVN1cz3ZmJHPhQLSmzMp9RoiwxHAKNs2CzNiE7221Wza3BM6uhSf+FBubw==",
+      "type": "package",
+      "path": "devexpress.pdf.drawing/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "devexpress.pdf.drawing.24.2.5.nupkg.sha512",
+        "devexpress.pdf.drawing.nuspec",
+        "lib/net462/DevExpress.Pdf.v24.2.Drawing.dll",
+        "lib/net462/DevExpress.Pdf.v24.2.Drawing.xml",
+        "lib/net8.0/DevExpress.Pdf.v24.2.Drawing.dll",
+        "lib/net8.0/DevExpress.Pdf.v24.2.Drawing.xml"
+      ]
+    },
+    "DevExpress.Printing.Core/24.2.5": {
+      "sha512": "KwU/yoHxo7UaRUWbwgpse5/JQumHMDeqF7j8Y/HALsr+eujupVds1MC5aVePg8/DUQDXLlmYmGeZebzAAYQL1Q==",
+      "type": "package",
+      "path": "devexpress.printing.core/24.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "devexpress.printing.core.24.2.5.nupkg.sha512",
+        "devexpress.printing.core.nuspec",
+        "lib/net462/DevExpress.Printing.v24.2.Core.dll",
+        "lib/net462/DevExpress.Printing.v24.2.Core.xml",
+        "lib/net8.0/DevExpress.Printing.v24.2.Core.dll",
+        "lib/net8.0/DevExpress.Printing.v24.2.Core.xml"
+      ]
+    },
+    "DevExtreme.AspNet.Data/4.0.0": {
+      "sha512": "BfADnQ9HD3L1/du53CrDbqfb+3zTBc+yGYG1sblYKL33cf2BEjljUEAopI6K4i35fcR4pI6dUbsQL4qOMrRqZg==",
+      "type": "package",
+      "path": "devextreme.aspnet.data/4.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "devextreme.aspnet.data.4.0.0.nupkg.sha512",
+        "devextreme.aspnet.data.nuspec",
+        "lib/net461/DevExtreme.AspNet.Data.dll",
+        "lib/net461/DevExtreme.AspNet.Data.xml",
+        "lib/net6.0/DevExtreme.AspNet.Data.dll",
+        "lib/net6.0/DevExtreme.AspNet.Data.xml"
+      ]
+    },
+    "System.Reactive/5.0.0": {
+      "sha512": "erBZjkQHWL9jpasCE/0qKAryzVBJFxGHVBAvgRN1bzM0q2s1S4oYREEEL0Vb+1kA/6BKb5FjUZMp5VXmy+gzkQ==",
+      "type": "package",
+      "path": "system.reactive/5.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/net5.0/_._",
+        "build/netcoreapp3.1/System.Reactive.dll",
+        "build/netcoreapp3.1/System.Reactive.targets",
+        "build/netcoreapp3.1/System.Reactive.xml",
+        "buildTransitive/net5.0/_._",
+        "buildTransitive/netcoreapp3.1/System.Reactive.targets",
+        "lib/net472/System.Reactive.dll",
+        "lib/net472/System.Reactive.xml",
+        "lib/net5.0-windows10.0.19041/System.Reactive.dll",
+        "lib/net5.0-windows10.0.19041/System.Reactive.xml",
+        "lib/net5.0/System.Reactive.dll",
+        "lib/net5.0/System.Reactive.xml",
+        "lib/netcoreapp3.1/_._",
+        "lib/netstandard2.0/System.Reactive.dll",
+        "lib/netstandard2.0/System.Reactive.xml",
+        "lib/uap10.0.16299/System.Reactive.dll",
+        "lib/uap10.0.16299/System.Reactive.pri",
+        "lib/uap10.0.16299/System.Reactive.xml",
+        "system.reactive.5.0.0.nupkg.sha512",
+        "system.reactive.nuspec"
+      ]
+    },
+    "System.ServiceModel.Http/6.2.0": {
+      "sha512": "lMk8MEw1OCvyyKY4HMg4ro1eYtWY7azIoDc2FBEGP8uOTJouWn3DemOQvM/GUpgrFbkpjuHPbEG5hgUbNtpiYA==",
+      "type": "package",
+      "path": "system.servicemodel.http/6.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net6.0/System.ServiceModel.Http.dll",
+        "lib/net6.0/System.ServiceModel.Http.pdb",
+        "lib/net6.0/cs/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/de/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/es/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/fr/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/it/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/ja/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/ko/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/pl/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/pt-BR/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/ru/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/tr/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/zh-Hans/System.ServiceModel.Http.resources.dll",
+        "lib/net6.0/zh-Hant/System.ServiceModel.Http.resources.dll",
+        "system.servicemodel.http.6.2.0.nupkg.sha512",
+        "system.servicemodel.http.nuspec"
+      ]
+    },
+    "System.ServiceModel.Primitives/6.2.0": {
+      "sha512": "ro+c4JKNuX6dDpTWh9ZICYr4pIe7uJToauPPgZt2qqFPjVB78ZDUz3rPCZX89dA+IoRZ+9T1ngLBKsgkTmx7UA==",
+      "type": "package",
+      "path": "system.servicemodel.primitives/6.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net6.0/System.ServiceModel.Primitives.dll",
+        "lib/net6.0/System.ServiceModel.Primitives.pdb",
+        "lib/net6.0/cs/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/de/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/es/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/fr/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/it/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/ja/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/ko/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/pl/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/pt-BR/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/ru/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/tr/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/zh-Hans/System.ServiceModel.Primitives.resources.dll",
+        "lib/net6.0/zh-Hant/System.ServiceModel.Primitives.resources.dll",
+        "ref/net6.0/System.ServiceModel.Primitives.dll",
+        "system.servicemodel.primitives.6.2.0.nupkg.sha512",
+        "system.servicemodel.primitives.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "DevExpress.Blazor >= 24.2.*"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\andrej\\.nuget\\packages\\": {},
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages": {},
+    "D:\\sdk\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\Web.BRU.TicketSalesApp\\Web.BRU.TicketSalesApp.csproj",
+      "projectName": "Web.BRU.TicketSalesApp",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\Web.BRU.TicketSalesApp\\Web.BRU.TicketSalesApp.csproj",
+      "packagesPath": "C:\\Users\\andrej\\.nuget\\packages\\",
+      "outputPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\Web.BRU.TicketSalesApp\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",
+        "D:\\sdk\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\andrej\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\DevExpress 24.2.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\DevExpress 24.2\\Components\\System\\Components\\Packages": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.100"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "dependencies": {
+          "DevExpress.Blazor": {
+            "target": "Package",
+            "version": "[24.2.*, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.1, 9.0.1]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[9.0.1, 9.0.1]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.1, 9.0.1]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.1, 9.0.1]"
+          }
+        ],
+        "frameworkReferences": {
+          "Microsoft.AspNetCore.App": {
+            "privateAssets": "none"
+          },
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100-preview.1.25120.13/PortableRuntimeIdentifierGraph.json",
+        "packagesToPrune": {
+          "Microsoft.AspNetCore": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Antiforgery": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication.BearerToken": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication.Cookies": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication.Core": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authentication.OAuth": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authorization": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Authorization.Policy": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components.Authorization": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components.Endpoints": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components.Forms": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components.Server": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Components.Web": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Connections.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.CookiePolicy": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Cors": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Cryptography.Internal": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Cryptography.KeyDerivation": "(, 9.0.0]",
+          "Microsoft.AspNetCore.DataProtection": "(, 9.0.0]",
+          "Microsoft.AspNetCore.DataProtection.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.DataProtection.Extensions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Diagnostics": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Diagnostics.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Diagnostics.HealthChecks": "(, 9.0.0]",
+          "Microsoft.AspNetCore.HostFiltering": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Hosting": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Hosting.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Hosting.Server.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Html.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Connections": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Connections.Common": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Extensions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Features": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Http.Results": "(, 9.0.0]",
+          "Microsoft.AspNetCore.HttpLogging": "(, 9.0.0]",
+          "Microsoft.AspNetCore.HttpOverrides": "(, 9.0.0]",
+          "Microsoft.AspNetCore.HttpsPolicy": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Identity": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Localization": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Localization.Routing": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Metadata": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.ApiExplorer": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Core": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Cors": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.DataAnnotations": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Formatters.Json": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Formatters.Xml": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Localization": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.Razor": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.RazorPages": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.TagHelpers": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Mvc.ViewFeatures": "(, 9.0.0]",
+          "Microsoft.AspNetCore.OutputCaching": "(, 9.0.0]",
+          "Microsoft.AspNetCore.RateLimiting": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Razor": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Razor.Runtime": "(, 9.0.0]",
+          "Microsoft.AspNetCore.RequestDecompression": "(, 9.0.0]",
+          "Microsoft.AspNetCore.ResponseCaching": "(, 9.0.0]",
+          "Microsoft.AspNetCore.ResponseCaching.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.ResponseCompression": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Rewrite": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Routing": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Routing.Abstractions": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.HttpSys": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.IIS": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.IISIntegration": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.Kestrel": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.Kestrel.Core": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.Kestrel.Transport.Quic": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets": "(, 9.0.0]",
+          "Microsoft.AspNetCore.Session": "(, 9.0.0]",
+          "Microsoft.AspNetCore.SignalR": "(, 9.0.0]",
+          "Microsoft.AspNetCore.SignalR.Common": "(, 9.0.0]",
+          "Microsoft.AspNetCore.SignalR.Core": "(, 9.0.0]",
+          "Microsoft.AspNetCore.SignalR.Protocols.Json": "(, 9.0.0]",
+          "Microsoft.AspNetCore.StaticAssets": "(, 9.0.0]",
+          "Microsoft.AspNetCore.StaticFiles": "(, 9.0.0]",
+          "Microsoft.AspNetCore.WebSockets": "(, 9.0.0]",
+          "Microsoft.AspNetCore.WebUtilities": "(, 9.0.0]",
+          "Microsoft.CSharp": "(, 4.7.0]",
+          "Microsoft.Extensions.Caching.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Caching.Memory": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.Binder": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.CommandLine": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.FileExtensions": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.Ini": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.Json": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.KeyPerFile": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.UserSecrets": "(, 9.0.0]",
+          "Microsoft.Extensions.Configuration.Xml": "(, 9.0.0]",
+          "Microsoft.Extensions.DependencyInjection": "(, 9.0.0]",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Diagnostics": "(, 9.0.0]",
+          "Microsoft.Extensions.Diagnostics.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "(, 9.0.0]",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Features": "(, 9.0.0]",
+          "Microsoft.Extensions.FileProviders.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.FileProviders.Composite": "(, 9.0.0]",
+          "Microsoft.Extensions.FileProviders.Embedded": "(, 9.0.0]",
+          "Microsoft.Extensions.FileProviders.Physical": "(, 9.0.0]",
+          "Microsoft.Extensions.FileSystemGlobbing": "(, 9.0.0]",
+          "Microsoft.Extensions.Hosting": "(, 9.0.0]",
+          "Microsoft.Extensions.Hosting.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Http": "(, 9.0.0]",
+          "Microsoft.Extensions.Identity.Core": "(, 9.0.0]",
+          "Microsoft.Extensions.Identity.Stores": "(, 9.0.0]",
+          "Microsoft.Extensions.Localization": "(, 9.0.0]",
+          "Microsoft.Extensions.Localization.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.Abstractions": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.Configuration": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.Console": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.Debug": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.EventLog": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.EventSource": "(, 9.0.0]",
+          "Microsoft.Extensions.Logging.TraceSource": "(, 9.0.0]",
+          "Microsoft.Extensions.ObjectPool": "(, 9.0.0]",
+          "Microsoft.Extensions.Options": "(, 9.0.0]",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "(, 9.0.0]",
+          "Microsoft.Extensions.Options.DataAnnotations": "(, 9.0.0]",
+          "Microsoft.Extensions.Primitives": "(, 9.0.0]",
+          "Microsoft.Extensions.WebEncoders": "(, 9.0.0]",
+          "Microsoft.JSInterop": "(, 9.0.0]",
+          "Microsoft.Net.Http.Headers": "(, 9.0.0]",
+          "Microsoft.NETCore.App": "(, 2.1.0]",
+          "Microsoft.VisualBasic": "(, 10.4.0]",
+          "Microsoft.Win32.Primitives": "(, 4.3.0]",
+          "Microsoft.Win32.Registry": "(, 5.0.0]",
+          "Microsoft.Win32.SystemEvents": "(, 5.0.0]",
+          "runtime.any.System.Collections": "(, 4.3.0]",
+          "runtime.any.System.Diagnostics.Tools": "(, 4.3.0]",
+          "runtime.any.System.Diagnostics.Tracing": "(, 4.3.0]",
+          "runtime.any.System.Globalization": "(, 4.3.0]",
+          "runtime.any.System.Globalization.Calendars": "(, 4.3.0]",
+          "runtime.any.System.IO": "(, 4.3.0]",
+          "runtime.any.System.Reflection": "(, 4.3.0]",
+          "runtime.any.System.Reflection.Extensions": "(, 4.3.0]",
+          "runtime.any.System.Reflection.Primitives": "(, 4.3.0]",
+          "runtime.any.System.Resources.ResourceManager": "(, 4.3.0]",
+          "runtime.any.System.Runtime": "(, 4.3.1]",
+          "runtime.any.System.Runtime.Handles": "(, 4.3.0]",
+          "runtime.any.System.Runtime.InteropServices": "(, 4.3.0]",
+          "runtime.any.System.Text.Encoding": "(, 4.3.0]",
+          "runtime.any.System.Text.Encoding.Extensions": "(, 4.3.0]",
+          "runtime.any.System.Threading.Tasks": "(, 4.3.0]",
+          "runtime.any.System.Threading.Timer": "(, 4.3.0]",
+          "runtime.aot.System.Collections": "(, 4.3.0]",
+          "runtime.aot.System.Diagnostics.Tools": "(, 4.3.0]",
+          "runtime.aot.System.Diagnostics.Tracing": "(, 4.3.0]",
+          "runtime.aot.System.Globalization": "(, 4.3.0]",
+          "runtime.aot.System.Globalization.Calendars": "(, 4.3.0]",
+          "runtime.aot.System.IO": "(, 4.3.0]",
+          "runtime.aot.System.Reflection": "(, 4.3.0]",
+          "runtime.aot.System.Reflection.Extensions": "(, 4.3.0]",
+          "runtime.aot.System.Reflection.Primitives": "(, 4.3.0]",
+          "runtime.aot.System.Resources.ResourceManager": "(, 4.3.0]",
+          "runtime.aot.System.Runtime": "(, 4.3.1]",
+          "runtime.aot.System.Runtime.Handles": "(, 4.3.0]",
+          "runtime.aot.System.Runtime.InteropServices": "(, 4.3.0]",
+          "runtime.aot.System.Text.Encoding": "(, 4.3.0]",
+          "runtime.aot.System.Text.Encoding.Extensions": "(, 4.3.0]",
+          "runtime.aot.System.Threading.Tasks": "(, 4.3.0]",
+          "runtime.aot.System.Threading.Timer": "(, 4.3.0]",
+          "runtime.debian.8-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.debian.8-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.debian.8-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.debian.8-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.debian.8-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.debian.9-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.debian.9-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.debian.9-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.debian.9-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.debian.9-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.debian.9-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.fedora.23-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.fedora.23-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.fedora.23-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.fedora.23-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.fedora.23-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.fedora.24-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.fedora.24-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.fedora.24-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.fedora.24-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.fedora.24-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.fedora.27-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.fedora.27-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.fedora.27-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.fedora.27-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.fedora.27-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.fedora.27-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.fedora.28-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.fedora.28-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.fedora.28-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.fedora.28-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.fedora.28-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.fedora.28-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.native.System.Security.Cryptography.Apple": "(, 4.3.1]",
+          "runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.opensuse.13.2-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.opensuse.13.2-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.opensuse.13.2-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.opensuse.13.2-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.opensuse.42.1-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.opensuse.42.1-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.opensuse.42.1-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.opensuse.42.1-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.opensuse.42.3-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.opensuse.42.3-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.opensuse.42.3-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.opensuse.42.3-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.opensuse.42.3-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.opensuse.42.3-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.osx.10.10-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.osx.10.10-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.osx.10.10-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.osx.10.10-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple": "(, 4.3.1]",
+          "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.rhel.7-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.rhel.7-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.rhel.7-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.rhel.7-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System": "(, 4.3.1]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System.Net.Http": "(, 4.3.1]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System.Net.Security": "(, 4.3.1]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System.Security.Cryptography": "(, 4.3.4]",
+          "runtime.ubuntu.18.04-x64.runtime.native.System.Security.Cryptography.OpenSsl": "(, 4.3.3]",
+          "runtime.unix.Microsoft.Win32.Primitives": "(, 4.3.0]",
+          "runtime.unix.System.Console": "(, 4.3.1]",
+          "runtime.unix.System.Diagnostics.Debug": "(, 4.3.0]",
+          "runtime.unix.System.IO.FileSystem": "(, 4.3.0]",
+          "runtime.unix.System.Net.Primitives": "(, 4.3.0]",
+          "runtime.unix.System.Net.Sockets": "(, 4.3.0]",
+          "runtime.unix.System.Private.Uri": "(, 4.3.1]",
+          "runtime.unix.System.Runtime.Extensions": "(, 4.3.1]",
+          "runtime.win.Microsoft.Win32.Primitives": "(, 4.3.0]",
+          "runtime.win.System.Console": "(, 4.3.1]",
+          "runtime.win.System.Diagnostics.Debug": "(, 4.3.0]",
+          "runtime.win.System.IO.FileSystem": "(, 4.3.0]",
+          "runtime.win.System.Net.Primitives": "(, 4.3.0]",
+          "runtime.win.System.Net.Sockets": "(, 4.3.0]",
+          "runtime.win.System.Runtime.Extensions": "(, 4.3.1]",
+          "runtime.win10-arm-aot.runtime.native.System.IO.Compression": "(, 4.0.1]",
+          "runtime.win10-arm64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.win10-x64-aot.runtime.native.System.IO.Compression": "(, 4.0.1]",
+          "runtime.win10-x86-aot.runtime.native.System.IO.Compression": "(, 4.0.1]",
+          "runtime.win7-x64.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.win7-x86.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "runtime.win7.System.Private.Uri": "(, 4.3.1]",
+          "runtime.win8-arm.runtime.native.System.IO.Compression": "(, 4.3.2]",
+          "System.AppContext": "(, 4.3.0]",
+          "System.Buffers": "(, 5.0.0]",
+          "System.Collections": "(, 4.3.0]",
+          "System.Collections.Concurrent": "(, 4.3.0]",
+          "System.Collections.Immutable": "(, 9.0.0]",
+          "System.Collections.NonGeneric": "(, 4.3.0]",
+          "System.Collections.Specialized": "(, 4.3.0]",
+          "System.ComponentModel": "(, 4.3.0]",
+          "System.ComponentModel.Annotations": "(, 5.0.0]",
+          "System.ComponentModel.EventBasedAsync": "(, 4.3.0]",
+          "System.ComponentModel.Primitives": "(, 4.3.0]",
+          "System.ComponentModel.TypeConverter": "(, 4.3.0]",
+          "System.Console": "(, 4.3.1]",
+          "System.Data.Common": "(, 4.3.0]",
+          "System.Data.DataSetExtensions": "(, 4.5.0]",
+          "System.Diagnostics.Contracts": "(, 4.3.0]",
+          "System.Diagnostics.Debug": "(, 4.3.0]",
+          "System.Diagnostics.DiagnosticSource": "(, 9.0.0]",
+          "System.Diagnostics.EventLog": "(, 9.0.0]",
+          "System.Diagnostics.FileVersionInfo": "(, 4.3.0]",
+          "System.Diagnostics.Process": "(, 4.3.0]",
+          "System.Diagnostics.StackTrace": "(, 4.3.0]",
+          "System.Diagnostics.TextWriterTraceListener": "(, 4.3.0]",
+          "System.Diagnostics.Tools": "(, 4.3.0]",
+          "System.Diagnostics.TraceSource": "(, 4.3.0]",
+          "System.Diagnostics.Tracing": "(, 4.3.0]",
+          "System.Drawing.Common": "(, 5.0.0]",
+          "System.Drawing.Primitives": "(, 4.3.0]",
+          "System.Dynamic.Runtime": "(, 4.3.0]",
+          "System.Formats.Asn1": "(, 9.0.0]",
+          "System.Formats.Tar": "(, 9.0.0]",
+          "System.Globalization": "(, 4.3.0]",
+          "System.Globalization.Calendars": "(, 4.3.0]",
+          "System.Globalization.Extensions": "(, 4.3.0]",
+          "System.IO": "(, 4.3.0]",
+          "System.IO.Compression": "(, 4.3.0]",
+          "System.IO.Compression.ZipFile": "(, 4.3.0]",
+          "System.IO.FileSystem": "(, 4.3.0]",
+          "System.IO.FileSystem.AccessControl": "(, 5.0.0]",
+          "System.IO.FileSystem.DriveInfo": "(, 4.3.1]",
+          "System.IO.FileSystem.Primitives": "(, 4.3.0]",
+          "System.IO.FileSystem.Watcher": "(, 4.3.0]",
+          "System.IO.IsolatedStorage": "(, 4.3.0]",
+          "System.IO.MemoryMappedFiles": "(, 4.3.0]",
+          "System.IO.Pipelines": "(, 9.0.0]",
+          "System.IO.Pipes": "(, 4.3.0]",
+          "System.IO.Pipes.AccessControl": "(, 4.6.0]",
+          "System.IO.UnmanagedMemoryStream": "(, 4.3.0]",
+          "System.Linq": "(, 4.3.0]",
+          "System.Linq.Expressions": "(, 4.3.0]",
+          "System.Linq.Parallel": "(, 4.3.0]",
+          "System.Linq.Queryable": "(, 4.3.0]",
+          "System.Memory": "(, 5.0.0]",
+          "System.Net.Http": "(, 4.3.4]",
+          "System.Net.Http.Json": "(, 9.0.0]",
+          "System.Net.NameResolution": "(, 4.3.0]",
+          "System.Net.NetworkInformation": "(, 4.3.0]",
+          "System.Net.Ping": "(, 4.3.0]",
+          "System.Net.Primitives": "(, 4.3.1]",
+          "System.Net.Requests": "(, 4.3.0]",
+          "System.Net.Security": "(, 4.3.2]",
+          "System.Net.Sockets": "(, 4.3.0]",
+          "System.Net.WebHeaderCollection": "(, 4.3.0]",
+          "System.Net.WebSockets": "(, 4.3.0]",
+          "System.Net.WebSockets.Client": "(, 4.3.2]",
+          "System.Numerics.Vectors": "(, 5.0.0]",
+          "System.ObjectModel": "(, 4.3.0]",
+          "System.Private.DataContractSerialization": "(, 4.3.0]",
+          "System.Private.Uri": "(, 4.3.2]",
+          "System.Reflection": "(, 4.3.0]",
+          "System.Reflection.DispatchProxy": "(, 6.0.0]",
+          "System.Reflection.Emit": "(, 4.7.0]",
+          "System.Reflection.Emit.ILGeneration": "(, 4.7.0]",
+          "System.Reflection.Emit.Lightweight": "(, 4.7.0]",
+          "System.Reflection.Extensions": "(, 4.3.0]",
+          "System.Reflection.Metadata": "(, 9.0.0]",
+          "System.Reflection.Primitives": "(, 4.3.0]",
+          "System.Reflection.TypeExtensions": "(, 4.7.0]",
+          "System.Resources.Reader": "(, 4.3.0]",
+          "System.Resources.ResourceManager": "(, 4.3.0]",
+          "System.Resources.Writer": "(, 4.3.0]",
+          "System.Runtime": "(, 4.3.1]",
+          "System.Runtime.CompilerServices.Unsafe": "(, 7.0.0]",
+          "System.Runtime.CompilerServices.VisualC": "(, 4.3.0]",
+          "System.Runtime.Extensions": "(, 4.3.1]",
+          "System.Runtime.Handles": "(, 4.3.0]",
+          "System.Runtime.InteropServices": "(, 4.3.0]",
+          "System.Runtime.InteropServices.RuntimeInformation": "(, 4.3.0]",
+          "System.Runtime.InteropServices.WindowsRuntime": "(, 4.3.0]",
+          "System.Runtime.Loader": "(, 4.3.0]",
+          "System.Runtime.Numerics": "(, 4.3.0]",
+          "System.Runtime.Serialization.Formatters": "(, 4.3.0]",
+          "System.Runtime.Serialization.Json": "(, 4.3.0]",
+          "System.Runtime.Serialization.Primitives": "(, 4.3.0]",
+          "System.Runtime.Serialization.Xml": "(, 4.3.0]",
+          "System.Runtime.WindowsRuntime": "(, 4.7.0]",
+          "System.Runtime.WindowsRuntime.UI.Xaml": "(, 4.7.0]",
+          "System.Security.AccessControl": "(, 6.0.1]",
+          "System.Security.Claims": "(, 4.3.0]",
+          "System.Security.Cryptography.Algorithms": "(, 4.3.1]",
+          "System.Security.Cryptography.Cng": "(, 5.0.0]",
+          "System.Security.Cryptography.Csp": "(, 4.3.0]",
+          "System.Security.Cryptography.Encoding": "(, 4.3.0]",
+          "System.Security.Cryptography.OpenSsl": "(, 5.0.0]",
+          "System.Security.Cryptography.Pkcs": "(, 8.0.1]",
+          "System.Security.Cryptography.Primitives": "(, 4.3.0]",
+          "System.Security.Cryptography.X509Certificates": "(, 4.3.2]",
+          "System.Security.Cryptography.Xml": "(, 9.0.0]",
+          "System.Security.Permissions": "(, 5.0.0]",
+          "System.Security.Principal": "(, 4.3.0]",
+          "System.Security.Principal.Windows": "(, 5.0.0]",
+          "System.Security.SecureString": "(, 4.3.0]",
+          "System.Text.Encoding": "(, 4.3.0]",
+          "System.Text.Encoding.CodePages": "(, 9.0.0]",
+          "System.Text.Encoding.Extensions": "(, 4.3.0]",
+          "System.Text.Encodings.Web": "(, 9.0.0]",
+          "System.Text.Json": "(, 9.0.0]",
+          "System.Text.RegularExpressions": "(, 4.3.1]",
+          "System.Threading": "(, 4.3.0]",
+          "System.Threading.Channels": "(, 9.0.0]",
+          "System.Threading.Overlapped": "(, 4.3.0]",
+          "System.Threading.RateLimiting": "(, 9.0.0]",
+          "System.Threading.Tasks": "(, 4.3.0]",
+          "System.Threading.Tasks.Dataflow": "(, 9.0.0]",
+          "System.Threading.Tasks.Extensions": "(, 5.0.0]",
+          "System.Threading.Tasks.Parallel": "(, 4.3.0]",
+          "System.Threading.Thread": "(, 4.3.0]",
+          "System.Threading.ThreadPool": "(, 4.3.0]",
+          "System.Threading.Timer": "(, 4.3.0]",
+          "System.ValueTuple": "(, 4.5.0]",
+          "System.Windows.Extensions": "(, 5.0.0]",
+          "System.Xml.ReaderWriter": "(, 4.3.1]",
+          "System.Xml.XDocument": "(, 4.3.0]",
+          "System.Xml.XmlDocument": "(, 4.3.0]",
+          "System.Xml.XmlSerializer": "(, 4.3.0]",
+          "System.Xml.XPath": "(, 4.3.0]",
+          "System.Xml.XPath.XDocument": "(, 5.0.0]"
+        }
+      }
+    }
+  }
+}

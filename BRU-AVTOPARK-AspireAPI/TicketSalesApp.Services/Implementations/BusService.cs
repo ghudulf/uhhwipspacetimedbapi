@@ -32,6 +32,14 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 _logger.LogDebug("Retrieved {BusCount} buses", buses.Count);
+                
+                // Log detailed information about each bus
+                foreach (var bus in buses)
+                {
+                    _logger.LogDebug("Bus details - ID: {BusId}, Model: {Model}, Registration: {Registration}",
+                        bus.BusId, bus.Model, bus.RegistrationNumber);
+                }
+                
                 return buses;
             }
             catch (Exception ex)

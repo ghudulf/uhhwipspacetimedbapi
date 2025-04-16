@@ -1,0 +1,14 @@
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\bin\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.deps.json
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\bin\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\bin\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.pdb
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj.AssemblyReference.cache
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\Avalonia\Resources.Inputs.cache
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\Avalonia\resources
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.GeneratedMSBuildEditorConfig.editorconfig
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.AssemblyInfoInputs.cache
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.AssemblyInfo.cs
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj.CoreCompileInputs.cache
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\Avalonia\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\Avalonia\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.pdb
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\refint\Avalonia\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net8.0\ref\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll

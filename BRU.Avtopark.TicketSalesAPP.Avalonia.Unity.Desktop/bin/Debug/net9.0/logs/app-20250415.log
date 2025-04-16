@@ -1,0 +1,95 @@
+2025-04-15 22:26:15.224 +03:00 [INF] Starting application...
+2025-04-15 22:26:51.192 +03:00 [INF] AuthWindow constructor started
+2025-04-15 22:26:51.227 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-15 22:26:51.307 +03:00 [INF] Login step content created successfully
+2025-04-15 22:26:51.334 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-15 22:26:51.354 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-15 22:26:51.390 +03:00 [INF] Login step content created successfully
+2025-04-15 22:26:51.522 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-15 22:26:51.536 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-15 22:26:51.562 +03:00 [INF] Login step content created successfully
+2025-04-15 22:26:51.573 +03:00 [INF] Step content update completed for step 1
+2025-04-15 22:26:51.579 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-15 22:26:56.399 +03:00 [INF] LOGIN REQUEST DETAILS: Username: admin, Password: [REDACTED], SkipTwoFactor: false
+2025-04-15 22:26:58.709 +03:00 [INF] API login successful, transitioning to validation step (Step 2) for user admin
+2025-04-15 22:26:58.825 +03:00 [INF] Authorization step content created successfully
+2025-04-15 22:27:08.899 +03:00 [INF] User role determined: 1 (Admin: true)
+2025-04-15 22:27:08.903 +03:00 [INF] User successfully authenticated: admin (Role: 1)
+2025-04-15 22:27:08.987 +03:00 [INF] CreateSuccessStepContent method called
+2025-04-15 22:27:09.017 +03:00 [INF] Success step content created successfully
+2025-04-15 22:27:17.666 +03:00 [INF] Login process completed by user action.
+2025-04-15 22:27:17.671 +03:00 [INF] Auth window found via DataContext, closing: AuthWindow
+2025-04-15 22:27:18.966 +03:00 [INF] Starting LoadData for BusManagementViewModel
+2025-04-15 22:27:19.006 +03:00 [INF] Starting LoadData for RouteManagementViewModel
+2025-04-15 22:27:31.538 +03:00 [INF] Processing Buses response. Status: "OK"
+2025-04-15 22:27:31.543 +03:00 [ERR] Buses JSON root was not an array: JsonObject
+2025-04-15 22:27:31.544 +03:00 [INF] Processing Routes response (for counts). Status: "OK"
+2025-04-15 22:27:31.552 +03:00 [ERR] Routes JSON root was not an array: JsonObject
+2025-04-15 22:27:31.553 +03:00 [INF] Processing Maintenance response (for counts). Status: "OK"
+2025-04-15 22:27:31.557 +03:00 [ERR] Maintenance JSON root was not an array: JsonObject
+2025-04-15 22:27:31.559 +03:00 [INF] Finished processing data. Displaying 0 buses.
+2025-04-15 22:27:31.561 +03:00 [INF] LoadData finished for BusManagementViewModel.
+2025-04-15 22:27:32.591 +03:00 [INF] Processing Routes response. Status: "OK"
+2025-04-15 22:27:32.608 +03:00 [ERR] Routes JSON root was not an array: JsonObject
+2025-04-15 22:27:32.609 +03:00 [INF] Processing Buses response. Status: "OK"
+2025-04-15 22:27:32.612 +03:00 [ERR] Buses JSON root was not an array: JsonObject
+2025-04-15 22:27:32.614 +03:00 [INF] Processing Drivers/Employees response. Status: "OK"
+2025-04-15 22:27:32.617 +03:00 [INF] Parsing 0 driver objects from JSON array (for ComboBox).
+2025-04-15 22:27:32.618 +03:00 [INF] Successfully parsed and filtered 0 valid drivers (for ComboBox).
+2025-04-15 22:27:32.620 +03:00 [INF] Processing Tickets response. Status: "OK"
+2025-04-15 22:27:32.627 +03:00 [ERR] Tickets JSON root was not an array: JsonObject
+2025-04-15 22:27:32.630 +03:00 [INF] Finished processing all data. Displaying 0 routes.
+2025-04-15 22:27:32.631 +03:00 [INF] Available Buses for ComboBox: 0
+2025-04-15 22:27:32.632 +03:00 [INF] Available Drivers for ComboBox: 0
+2025-04-15 22:27:32.633 +03:00 [INF] LoadData finished for RouteManagementViewModel.
+2025-04-15 22:27:45.822 +03:00 [INF] Loaded 18 sales with total income 0
+2025-04-15 22:27:48.167 +03:00 [INF] Loaded 37 available tickets across 66 routes
+2025-04-15 22:31:42.551 +03:00 [INF] Starting application...
+2025-04-15 22:35:04.985 +03:00 [INF] AuthWindow constructor started
+2025-04-15 22:35:05.017 +03:00 [INF] Window registered with StepToContentConverter
+2025-04-15 22:35:05.087 +03:00 [INF] Login step content created successfully
+2025-04-15 22:35:05.111 +03:00 [INF] AuthViewModel created and set as DataContext
+2025-04-15 22:35:05.128 +03:00 [INF] AuthWindow constructor completed successfully
+2025-04-15 22:35:05.154 +03:00 [INF] Login step content created successfully
+2025-04-15 22:35:05.290 +03:00 [INF] AuthWindow.OnOpened called
+2025-04-15 22:35:05.299 +03:00 [INF] UpdateStepContent called for step 1
+2025-04-15 22:35:05.318 +03:00 [INF] Login step content created successfully
+2025-04-15 22:35:05.326 +03:00 [INF] Step content update completed for step 1
+2025-04-15 22:35:05.330 +03:00 [INF] AuthWindow opened and positioned successfully
+2025-04-15 22:35:11.490 +03:00 [INF] LOGIN REQUEST DETAILS: Username: admin, Password: [REDACTED], SkipTwoFactor: false
+2025-04-15 22:35:13.809 +03:00 [INF] API login successful, transitioning to validation step (Step 2) for user admin
+2025-04-15 22:35:13.887 +03:00 [INF] Authorization step content created successfully
+2025-04-15 22:35:23.928 +03:00 [INF] User role determined: 1 (Admin: true)
+2025-04-15 22:35:23.929 +03:00 [INF] User successfully authenticated: admin (Role: 1)
+2025-04-15 22:35:23.940 +03:00 [INF] CreateSuccessStepContent method called
+2025-04-15 22:35:23.955 +03:00 [INF] Success step content created successfully
+2025-04-15 22:35:25.148 +03:00 [INF] Login process completed by user action.
+2025-04-15 22:35:25.153 +03:00 [INF] Auth window found via DataContext, closing: AuthWindow
+2025-04-15 22:35:26.537 +03:00 [INF] Starting LoadData for BusManagementViewModel
+2025-04-15 22:35:26.595 +03:00 [INF] Starting LoadData for RouteManagementViewModel
+2025-04-15 22:35:37.777 +03:00 [INF] Processing Buses response. Status: "OK"
+2025-04-15 22:35:37.785 +03:00 [INF] Parsing 14 bus objects from JSON array.
+2025-04-15 22:35:37.789 +03:00 [INF] Successfully parsed and filtered 14 valid buses.
+2025-04-15 22:35:37.790 +03:00 [INF] Processing Routes response (for counts). Status: "OK"
+2025-04-15 22:35:37.798 +03:00 [INF] Parsing 66 route objects from JSON array (for counts).
+2025-04-15 22:35:37.801 +03:00 [INF] Successfully calculated route counts for 14 buses.
+2025-04-15 22:35:37.802 +03:00 [INF] Processing Maintenance response (for counts). Status: "OK"
+2025-04-15 22:35:37.808 +03:00 [INF] Parsing 14 maintenance objects from JSON array (for counts).
+2025-04-15 22:35:37.809 +03:00 [INF] Successfully calculated maintenance counts for 14 buses.
+2025-04-15 22:35:37.813 +03:00 [INF] Finished processing data. Displaying 14 buses.
+2025-04-15 22:35:37.814 +03:00 [INF] LoadData finished for BusManagementViewModel.
+2025-04-15 22:35:38.571 +03:00 [INF] Processing Routes response. Status: "OK"
+2025-04-15 22:35:38.582 +03:00 [ERR] Routes JSON root was not an array: JsonObject
+2025-04-15 22:35:38.583 +03:00 [INF] Processing Buses response. Status: "OK"
+2025-04-15 22:35:38.586 +03:00 [ERR] Buses JSON root was not an array: JsonObject
+2025-04-15 22:35:38.587 +03:00 [INF] Processing Drivers/Employees response. Status: "OK"
+2025-04-15 22:35:38.590 +03:00 [INF] Parsing 0 driver objects from JSON array (for ComboBox).
+2025-04-15 22:35:38.591 +03:00 [INF] Successfully parsed and filtered 0 valid drivers (for ComboBox).
+2025-04-15 22:35:38.592 +03:00 [INF] Processing Tickets response. Status: "OK"
+2025-04-15 22:35:38.600 +03:00 [ERR] Tickets JSON root was not an array: JsonObject
+2025-04-15 22:35:38.603 +03:00 [INF] Finished processing all data. Displaying 0 routes.
+2025-04-15 22:35:38.604 +03:00 [INF] Available Buses for ComboBox: 0
+2025-04-15 22:35:38.605 +03:00 [INF] Available Drivers for ComboBox: 0
+2025-04-15 22:35:38.607 +03:00 [INF] LoadData finished for RouteManagementViewModel.
+2025-04-15 22:35:56.231 +03:00 [INF] Loaded 18 sales with total income 0
+2025-04-15 22:35:58.116 +03:00 [INF] Loaded 37 available tickets across 66 routes

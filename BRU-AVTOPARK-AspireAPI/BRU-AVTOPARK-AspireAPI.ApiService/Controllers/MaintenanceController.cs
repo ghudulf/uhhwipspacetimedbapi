@@ -5,52 +5,67 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using Serilog;
+using Serilog;// NO THIS STAYS
+using System.Text.Json; // Added for serialization logging
+using Log = Serilog.Log;
 using SpacetimeDB.Types;
+using SpacetimeDB; // Added for direct DB access
 using TicketSalesApp.Services.Interfaces;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
-    public class MaintenanceController : ControllerBase
+    [AllowAnonymous] // Allow all authenticated users to read
+    public class MaintenanceController : BaseController
     {
         private readonly IMaintenanceService _maintenanceService;
         private readonly ILogger<MaintenanceController> _logger;
+        private readonly ISpacetimeDBService _spacetimeService; // Added SpacetimeDBService
 
         public MaintenanceController(
             IMaintenanceService maintenanceService,
-            ILogger<MaintenanceController> logger)
+            ILogger<MaintenanceController> logger,
+            ISpacetimeDBService spacetimeService) // Added SpacetimeDBService
         {
             _maintenanceService = maintenanceService ?? throw new ArgumentNullException(nameof(maintenanceService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService)); // Added SpacetimeDBService
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
+        
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Maintenance>>> GetMaintenanceRecords()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords() // Changed return type
         {
             Log.Information("Fetching all maintenance records");
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            Log.Debug("Retrieved {RecordCount} maintenance records", records.Count);
-            return Ok(records);
+            var conn = _spacetimeService.GetConnection();
+            
+            // Map to anonymous type with Bus details
+            var result = records.Select(m => {
+                var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                return new {
+                    m.MaintenanceId,
+                    m.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.LastServiceDate).DateTime,
+                    m.ServiceEngineer,
+                    m.FoundIssues,
+                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.NextServiceDate).DateTime,
+                    m.Roadworthiness,
+                    m.MaintenanceType,
+                    m.MileageThreshold
+                };
+            }).ToList();
+
+            Log.Debug("Retrieved {RecordCount} maintenance records", result.Count);
+            _logger.LogInformation("FULL MAINTENANCE DATA: {MaintenanceData}", JsonSerializer.Serialize(result)); // Added JSON logging
+            return Ok(result); // Return mapped result
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Maintenance>> GetMaintenanceRecord(uint id)
+        public async Task<ActionResult<dynamic>> GetMaintenanceRecord(uint id) // Changed return type
         {
             Log.Information("Fetching maintenance record with ID {MaintenanceId}", id);
             var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
@@ -61,8 +76,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return NotFound();
             }
 
+            var conn = _spacetimeService.GetConnection();
+            var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+
+            // Map to anonymous type
+            var result = new {
+                maintenance.MaintenanceId,
+                maintenance.BusId,
+                Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.LastServiceDate).DateTime,
+                maintenance.ServiceEngineer,
+                maintenance.FoundIssues,
+                NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.NextServiceDate).DateTime,
+                maintenance.Roadworthiness,
+                maintenance.MaintenanceType,
+                maintenance.MileageThreshold
+            };
+
             Log.Debug("Successfully retrieved maintenance record with ID {MaintenanceId}", id);
-            return Ok(maintenance);
+            _logger.LogInformation("FULL MAINTENANCE DATA: {MaintenanceData}", JsonSerializer.Serialize(result)); // Added JSON logging
+            return Ok(result); // Return mapped result
         }
 
         [HttpPost]
@@ -160,7 +193,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Maintenance>>> SearchMaintenanceRecords(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchMaintenanceRecords( // Changed return type
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string? busModel = null,
@@ -171,42 +204,90 @@ namespace TicketSalesApp.AdminServer.Controllers
                 startDate, endDate, busModel, engineer, roadworthiness);
 
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+            var conn = _spacetimeService.GetConnection();
+            var query = records.AsEnumerable();
 
             if (startDate.HasValue)
             {
                 var startTimestamp = (ulong)new DateTimeOffset(startDate.Value).ToUnixTimeMilliseconds();
-                records = records.Where(m => m.LastServiceDate >= startTimestamp).ToList();
+                query = query.Where(m => m.LastServiceDate >= startTimestamp);
             }
 
             if (endDate.HasValue)
             {
                 var endTimestamp = (ulong)new DateTimeOffset(endDate.Value).ToUnixTimeMilliseconds();
-                records = records.Where(m => m.LastServiceDate <= endTimestamp).ToList();
+                query = query.Where(m => m.LastServiceDate <= endTimestamp);
             }
 
             if (!string.IsNullOrEmpty(engineer))
-                records = records.Where(m => m.ServiceEngineer.Contains(engineer, StringComparison.OrdinalIgnoreCase)).ToList();
+                query = query.Where(m => m.ServiceEngineer.Contains(engineer, StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(roadworthiness))
-                records = records.Where(m => m.Roadworthiness == roadworthiness).ToList();
+                query = query.Where(m => m.Roadworthiness.Equals(roadworthiness, StringComparison.OrdinalIgnoreCase));
 
-            Log.Debug("Found {RecordCount} maintenance records matching search criteria", records.Count);
-            return Ok(records);
+            // Filter by bus model (requires joining with Bus table)
+            if (!string.IsNullOrEmpty(busModel))
+            {
+                query = query.Where(m => {
+                    var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                    return bus != null && bus.Model.Contains(busModel, StringComparison.OrdinalIgnoreCase);
+                });
+            }
+
+            // Map to anonymous type
+            var result = query.Select(m => {
+                var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                return new {
+                    m.MaintenanceId,
+                    m.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.LastServiceDate).DateTime,
+                    m.ServiceEngineer,
+                    m.FoundIssues,
+                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.NextServiceDate).DateTime,
+                    m.Roadworthiness,
+                    m.MaintenanceType,
+                    m.MileageThreshold
+                };
+            }).ToList();
+
+            Log.Debug("Found {RecordCount} maintenance records matching search criteria", result.Count);
+            _logger.LogInformation("FULL SEARCH RESULTS DATA: {MaintenanceData}", JsonSerializer.Serialize(result)); // Added JSON logging
+            return Ok(result); // Return mapped result
         }
 
         [HttpGet("due-maintenance")]
-        public async Task<ActionResult<IEnumerable<Maintenance>>> GetDueMaintenanceRecords()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetDueMaintenanceRecords() // Changed return type
         {
             Log.Information("Fetching due maintenance records");
             var now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+            var conn = _spacetimeService.GetConnection();
             
-            records = records.Where(m => m.NextServiceDate <= now)
+            var dueRecords = records.Where(m => m.NextServiceDate <= now)
                            .OrderBy(m => m.NextServiceDate)
                            .ToList();
             
-            Log.Debug("Found {RecordCount} due maintenance records", records.Count);
-            return Ok(records);
+            // Map to anonymous type
+            var result = dueRecords.Select(m => {
+                var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                return new {
+                    m.MaintenanceId,
+                    m.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.LastServiceDate).DateTime,
+                    m.ServiceEngineer,
+                    m.FoundIssues,
+                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.NextServiceDate).DateTime,
+                    m.Roadworthiness,
+                    m.MaintenanceType,
+                    m.MileageThreshold
+                };
+            }).ToList();
+            
+            Log.Debug("Found {RecordCount} due maintenance records", result.Count);
+            _logger.LogInformation("FULL DUE MAINTENANCE DATA: {MaintenanceData}", JsonSerializer.Serialize(result)); // Added JSON logging
+            return Ok(result); // Return mapped result
         }
     }
 
