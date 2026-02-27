@@ -908,9 +908,12 @@ _ = Task.Run(async () =>
             {
                 logger.LogInformation("Registering default desktop client: {ClientId}", desktopClientId);
                 
+                // CRITICAL: Desktop/mobile apps are PUBLIC clients and should NOT have a client secret
+                // Public clients use PKCE (code_challenge/code_verifier) for security instead
+                // Setting an empty secret tells OpenIddict this is a public client
                 var (success, errorMessage) = await openIdConnectService.RegisterClientApplicationAsync(
                     clientId: desktopClientId,
-                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    clientSecret: "",  // EMPTY for public clients - they use PKCE instead
                     displayName: "BRU Avtopark Desktop Application",
                     redirectUris: new[] {
                         "http://localhost:5000/callback",
@@ -998,9 +1001,12 @@ _ = Task.Run(async () =>
             {
                 logger.LogInformation("Default desktop client already exists - updating to ensure correct configuration");
                 
+                // CRITICAL: Desktop/mobile apps are PUBLIC clients and should NOT have a client secret
+                // Public clients use PKCE (code_challenge/code_verifier) for security instead
+                // Setting an empty secret tells OpenIddict this is a public client
                 var (success, errorMessage) = await openIdConnectService.UpdateClientApplicationAsync(
                     clientId: desktopClientId,
-                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    clientSecret: "",  // EMPTY for public clients - they use PKCE instead
                     displayName: "BRU Avtopark Desktop Application",
                     redirectUris: new[] {
                         "http://localhost:5000/callback",

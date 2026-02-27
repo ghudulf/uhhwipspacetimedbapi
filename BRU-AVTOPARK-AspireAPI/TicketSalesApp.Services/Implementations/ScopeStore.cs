@@ -23,7 +23,19 @@ namespace TicketSalesApp.Services.Implementations
     {
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<ScopeStore> _logger;
+        
+        // CRITICAL: Client-side caching for scopes as failsafe
+        // Maps OpenIddict scope ID (string) to internal SpacetimeDB ID (uint)
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, uint> _scopeIdCache = new();
+        
+        // Maps scope name to OpenIddict scope ID for quick lookup
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _scopeNameToIdCache = new();
+        
+        // Pending scopes that are being created (not yet synced to database)
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _pendingScopeIds = new();
+        
+        // Full scope descriptor cache for fast retrieval
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, OpenIddictScopeDescriptor> _scopeDescriptorCache = new();
 
         public ScopeStore(ISpacetimeDBService spacetimeService, ILogger<ScopeStore> logger)
         {
@@ -53,11 +65,24 @@ namespace TicketSalesApp.Services.Implementations
                 throw new ArgumentException("Scope name cannot be null or empty.", nameof(descriptor));
             }
 
-            // Check if scope with the same name already exists
+            // Check if scope with the same name already exists in cache first
+            if (_scopeNameToIdCache.TryGetValue(descriptor.Name, out var cachedId))
+            {
+                _logger.LogInformation("Scope '{ScopeName}' already exists in cache with ID {OidcScopeId}, skipping creation", descriptor.Name, cachedId);
+                return default;
+            }
+
+            // Check if scope with the same name already exists in database
             var existingScope = conn.Db.OpenIddictSpacetimeScope.Iter().FirstOrDefault(s => s.Name == descriptor.Name);
             if (existingScope != null)
             {
-                _logger.LogInformation("Scope '{ScopeName}' already exists with ID {OidcScopeId}, skipping creation", descriptor.Name, existingScope.OpenIddictScopeId);
+                _logger.LogInformation("Scope '{ScopeName}' already exists with ID {OidcScopeId}, adding to cache", descriptor.Name, existingScope.OpenIddictScopeId);
+                
+                // Add to cache
+                _scopeIdCache.TryAdd(existingScope.OpenIddictScopeId, existingScope.Id);
+                _scopeNameToIdCache.TryAdd(descriptor.Name, existingScope.OpenIddictScopeId);
+                _scopeDescriptorCache.TryAdd(existingScope.OpenIddictScopeId, MapToDescriptor(existingScope)!);
+                
                 // Store in pending dictionary so GetIdAsync can retrieve it immediately
                 _pendingScopeIds[descriptor.Name] = existingScope.OpenIddictScopeId;
                 return default;
@@ -65,8 +90,10 @@ namespace TicketSalesApp.Services.Implementations
 
             var oidcScopeId = Guid.NewGuid().ToString(); // Generate unique ID for OpenIddict
 
-            // Store in pending dictionary so GetIdAsync can retrieve it immediately
+            // Store in pending dictionary and cache so GetIdAsync can retrieve it immediately
             _pendingScopeIds[descriptor.Name] = oidcScopeId;
+            _scopeNameToIdCache.TryAdd(descriptor.Name, oidcScopeId);
+            _scopeDescriptorCache.TryAdd(oidcScopeId, descriptor);
 
             // Serialize complex properties
             string? descriptionsJson = SerializeJson(descriptor.Descriptions);
@@ -93,8 +120,10 @@ namespace TicketSalesApp.Services.Implementations
             }
             catch (Exception ex)
             {
-                // Remove from pending on error
+                // Remove from pending and cache on error
                 _pendingScopeIds.TryRemove(descriptor.Name, out _);
+                _scopeNameToIdCache.TryRemove(descriptor.Name, out _);
+                _scopeDescriptorCache.TryRemove(oidcScopeId, out _);
                 _logger.LogError(ex, "Error creating scope {ScopeName} via reducer.", descriptor.Name);
                 throw;
             }
@@ -138,12 +167,37 @@ namespace TicketSalesApp.Services.Implementations
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogDebug("Finding scope by OpenIddict ID: {OidcScopeId}", identifier);
 
+            // CRITICAL: Check cache first for fast retrieval
+            if (_scopeDescriptorCache.TryGetValue(identifier, out var cachedDescriptor))
+            {
+                _logger.LogDebug("Scope found in cache: {OidcScopeId}", identifier);
+                return cachedDescriptor;
+            }
+
             await Task.Yield(); // Simulate async if needed
             var conn = GetConnection();
+            
             // Find using the OpenIddict string ID
             var entity = conn.Db.OpenIddictSpacetimeScope.Iter()
-                            .FirstOrDefault(scope => scope.OpenIddictScopeId == identifier);
-            return MapToDescriptor(entity);
+                            .FirstOrDefault(scope => scope != null && scope.OpenIddictScopeId == identifier);
+            
+            if (entity != null)
+            {
+                // Add to cache for future lookups
+                var descriptor = MapToDescriptor(entity);
+                if (descriptor != null)
+                {
+                    _scopeIdCache.TryAdd(entity.OpenIddictScopeId, entity.Id);
+                    if (!string.IsNullOrEmpty(entity.Name))
+                    {
+                        _scopeNameToIdCache.TryAdd(entity.Name, entity.OpenIddictScopeId);
+                    }
+                    _scopeDescriptorCache.TryAdd(entity.OpenIddictScopeId, descriptor);
+                }
+                return descriptor;
+            }
+            
+            return null;
         }
 
         public virtual async ValueTask<OpenIddictScopeDescriptor?> FindByNameAsync(string name, CancellationToken cancellationToken)
@@ -151,6 +205,16 @@ namespace TicketSalesApp.Services.Implementations
             if (string.IsNullOrEmpty(name)) throw new ArgumentException("Name cannot be null or empty.", nameof(name));
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("=== [ScopeStore.FindByNameAsync] Searching for scope: {ScopeName} ===", name);
+
+            // CRITICAL: Check cache first for fast retrieval
+            if (_scopeNameToIdCache.TryGetValue(name, out var cachedOidcId))
+            {
+                if (_scopeDescriptorCache.TryGetValue(cachedOidcId, out var cachedDescriptor))
+                {
+                    _logger.LogInformation("[ScopeStore] ✓ FOUND scope in cache: {ScopeName}", name);
+                    return cachedDescriptor;
+                }
+            }
 
             await Task.Yield();
             var conn = GetConnection();
@@ -167,18 +231,32 @@ namespace TicketSalesApp.Services.Implementations
             
             // Now search for the specific scope
             var entity = conn.Db.OpenIddictSpacetimeScope.Iter()
-                            .FirstOrDefault(scope => scope.Name == name);
+                            .FirstOrDefault(scope => scope != null && scope.Name == name);
             
             if (entity != null)
             {
-                _logger.LogInformation("[ScopeStore] ✓ FOUND scope: {ScopeName}", name);
+                _logger.LogInformation("[ScopeStore] ✓ FOUND scope in database: {ScopeName}", name);
+                
+                // Add to cache for future lookups
+                var descriptor = MapToDescriptor(entity);
+                if (descriptor != null)
+                {
+                    _scopeIdCache.TryAdd(entity.OpenIddictScopeId, entity.Id);
+                    _scopeNameToIdCache.TryAdd(name, entity.OpenIddictScopeId);
+                    _scopeDescriptorCache.TryAdd(entity.OpenIddictScopeId, descriptor);
+                    
+                    // Remove from pending since it's now in the database
+                    _pendingScopeIds.TryRemove(name, out _);
+                }
+                
+                return descriptor;
             }
             else
             {
-                _logger.LogWarning("[ScopeStore] ✗ NOT FOUND: Scope {ScopeName} not in database", name);
+                _logger.LogWarning("[ScopeStore] ✗ NOT FOUND: Scope {ScopeName} not in database or cache", name);
             }
             
-            return MapToDescriptor(entity);
+            return null;
         }
 
         public virtual IAsyncEnumerable<OpenIddictScopeDescriptor> FindByNamesAsync(ImmutableArray<string> names, CancellationToken cancellationToken)
@@ -189,9 +267,9 @@ namespace TicketSalesApp.Services.Implementations
 
             var conn = GetConnection();
             
-            // Get scopes from database
+            // CRITICAL: Add null safety - filter out null scopes before accessing properties
             var dbScopes = conn.Db.OpenIddictSpacetimeScope.Iter()
-                            .Where(scope => names.Contains(scope.Name))
+                            .Where(scope => scope != null && !string.IsNullOrEmpty(scope.Name) && names.Contains(scope.Name))
                             .Select(MapToDescriptor)
                             .Where(d => d != null)
                             .ToList();
@@ -199,11 +277,15 @@ namespace TicketSalesApp.Services.Implementations
             _logger.LogInformation("[ScopeStore] Found {Count} scopes in database out of {Requested} requested", dbScopes.Count, names.Length);
             
             // Check for pending scopes (just created, not yet synced)
-            var foundNames = dbScopes.Select(s => s!.Name).ToHashSet();
+            var foundNames = dbScopes.Where(s => s != null && !string.IsNullOrEmpty(s.Name))
+                                     .Select(s => s!.Name!)
+                                     .ToHashSet();
             var pendingScopes = new List<OpenIddictScopeDescriptor>();
             
             foreach (var name in names)
             {
+                if (string.IsNullOrEmpty(name)) continue; // Skip null/empty names
+                
                 if (!foundNames.Contains(name) && _pendingScopeIds.TryGetValue(name, out var pendingId))
                 {
                     _logger.LogInformation("[ScopeStore] Found pending scope: {ScopeName} (not yet synced to database)", name);
@@ -213,7 +295,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
             }
             
-            var allScopes = dbScopes.Concat(pendingScopes).Where(s => s != null)!;
+            var allScopes = dbScopes.Concat(pendingScopes).Where(s => s != null);
             
             _logger.LogInformation("[ScopeStore] Returning {Total} scopes total ({DbCount} from DB + {PendingCount} pending)", 
                 allScopes.Count(), dbScopes.Count, pendingScopes.Count);
@@ -595,6 +677,46 @@ namespace TicketSalesApp.Services.Implementations
                 await Task.Yield(); // Be a good async citizen
                 yield return item;
             }
+        }
+
+        // --- Cache Management Methods ---
+        
+        /// <summary>
+        /// Clears all cached scope data. Useful for testing or when database is reset.
+        /// </summary>
+        public static void ClearCache()
+        {
+            _scopeIdCache.Clear();
+            _scopeNameToIdCache.Clear();
+            _pendingScopeIds.Clear();
+            _scopeDescriptorCache.Clear();
+        }
+
+        /// <summary>
+        /// Gets the current size of the scope cache.
+        /// </summary>
+        public static int GetCacheSize()
+        {
+            return _scopeDescriptorCache.Count;
+        }
+
+        /// <summary>
+        /// Removes a specific scope from the cache by OpenIddict ID.
+        /// </summary>
+        public static bool RemoveFromCache(string oidcScopeId)
+        {
+            if (string.IsNullOrEmpty(oidcScopeId)) return false;
+            
+            _scopeIdCache.TryRemove(oidcScopeId, out _);
+            _scopeDescriptorCache.TryRemove(oidcScopeId, out var descriptor);
+            
+            if (descriptor != null && !string.IsNullOrEmpty(descriptor.Name))
+            {
+                _scopeNameToIdCache.TryRemove(descriptor.Name, out _);
+                _pendingScopeIds.TryRemove(descriptor.Name, out _);
+            }
+            
+            return descriptor != null;
         }
     }
 }

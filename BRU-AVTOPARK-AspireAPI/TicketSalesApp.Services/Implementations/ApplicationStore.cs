@@ -37,6 +37,13 @@ namespace TicketSalesApp.Services.Implementations
     {
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<ApplicationStore> _logger;
+        
+        // CRITICAL: Client-side caching for applications as failsafe
+        // Maps ClientId to OpenIddictApplication for fast retrieval
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, OpenIddictApplication> _applicationCache = new();
+        
+        // Pending applications that are being created (not yet synced to database)
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, OpenIddictApplication> _pendingApplications = new();
 
         public ApplicationStore(ISpacetimeDBService spacetimeService, ILogger<ApplicationStore> logger)
         {
@@ -92,6 +99,14 @@ namespace TicketSalesApp.Services.Implementations
                     throw new ArgumentException("Client ID cannot be null or empty.", nameof(application));
                 }
 
+                // CRITICAL: Check cache first to avoid duplicate creation
+                if (_applicationCache.TryGetValue(application.ClientId, out var cachedApp))
+                {
+                    _logger.LogInformation("[ApplicationStore.CreateAsync] Client {ClientId} already exists in cache, skipping creation", application.ClientId);
+                    application.Id = cachedApp.Id;
+                    return default;
+                }
+
                 var conn = _spacetimeService.GetConnection();
                 if (conn == null)
                 {
@@ -140,6 +155,12 @@ namespace TicketSalesApp.Services.Implementations
                     _logger.LogError("[ApplicationStore.CreateAsync] Checking for scope prefixes: scp: or oc_scp:");
                 }
                 
+                // Set the ID to the ClientId so OpenIddict can cache it
+                application.Id = application.ClientId;
+                
+                // CRITICAL: Add to pending cache immediately so FindByClientIdAsync can retrieve it
+                _pendingApplications.TryAdd(application.ClientId, application);
+                
                 _logger.LogInformation("[ApplicationStore.CreateAsync] Calling SpacetimeDB reducer RegisterOpenIdClient...");
                 _logger.LogInformation("[ApplicationStore.CreateAsync] Reducer parameters:");
                 _logger.LogInformation("  - clientId: {ClientId}", application.ClientId);
@@ -161,9 +182,6 @@ namespace TicketSalesApp.Services.Implementations
                     application.Type
                 );
 
-                // Set the ID to the ClientId so OpenIddict can cache it
-                application.Id = application.ClientId;
-
                 _logger.LogInformation("[ApplicationStore.CreateAsync] ✓ Reducer call completed for client {ClientId}", application.ClientId);
                 _logger.LogInformation("[ApplicationStore.CreateAsync] Note: Data may not be in local cache until FrameTick processes the response");
                 
@@ -171,6 +189,9 @@ namespace TicketSalesApp.Services.Implementations
             }
             catch (Exception ex)
             {
+                // Remove from pending cache on error
+                _pendingApplications.TryRemove(application.ClientId, out _);
+                
                 _logger.LogError(ex, "[ApplicationStore.CreateAsync] ✗ Error creating client {ClientId}: {Message}", 
                     application.ClientId, ex.Message);
                 throw;
@@ -224,6 +245,20 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("=== [ApplicationStore.FindByClientIdAsync] Searching for client: {ClientId} ===", identifier);
+                
+                // CRITICAL: Check cache first for fast retrieval
+                if (_applicationCache.TryGetValue(identifier, out var cachedApp))
+                {
+                    _logger.LogInformation("[ApplicationStore] ✓ FOUND client in cache: {ClientId}", identifier);
+                    return new ValueTask<OpenIddictApplication?>(cachedApp);
+                }
+                
+                // Check pending applications (just created, not yet synced)
+                if (_pendingApplications.TryGetValue(identifier, out var pendingApp))
+                {
+                    _logger.LogInformation("[ApplicationStore] ✓ FOUND client in pending cache: {ClientId}", identifier);
+                    return new ValueTask<OpenIddictApplication?>(pendingApp);
+                }
                 
                 var conn = _spacetimeService.GetConnection();
                 if (conn == null)
@@ -289,6 +324,12 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     _logger.LogInformation("[ApplicationStore] ✓ FOUND client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} scopes", 
                         identifier, client.RedirectUris.Length, client.Permissions.Length);
+                    
+                    // CRITICAL: Add to cache for future lookups
+                    _applicationCache.TryAdd(identifier, client);
+                    
+                    // Remove from pending since it's now in the database
+                    _pendingApplications.TryRemove(identifier, out _);
                 }
                 else
                 {
@@ -456,10 +497,10 @@ namespace TicketSalesApp.Services.Implementations
             if (application.Type == OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Public)
             {
                 _logger.LogDebug("Client {ClientId} is public - returning null secret (PKCE will be used)", application.ClientId);
-                return new ValueTask<string?>((string?)null);
+                return ValueTask.FromResult<string?>(null);
             }
             
-            return new ValueTask<string?>(application.ClientSecret);
+            return ValueTask.FromResult<string?>(application.ClientSecret);
         }
 
         public ValueTask<string?> GetClientTypeAsync(OpenIddictApplication application, CancellationToken cancellationToken)
@@ -891,6 +932,9 @@ namespace TicketSalesApp.Services.Implementations
                     application.ConsentType
                 );
 
+                // CRITICAL: Invalidate cache entry so it gets refreshed on next lookup
+                _applicationCache.TryRemove(application.ClientId, out _);
+
                 _logger.LogInformation("Successfully updated OpenID Connect client {ClientId}", application.ClientId);
                 return default;
             }
@@ -899,6 +943,38 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogError(ex, "Error updating OpenID Connect client {ClientId}", application.ClientId);
                 throw;
             }
+        }
+
+        // --- Cache Management Methods ---
+        
+        /// <summary>
+        /// Clears all cached application data. Useful for testing or when database is reset.
+        /// </summary>
+        public static void ClearCache()
+        {
+            _applicationCache.Clear();
+            _pendingApplications.Clear();
+        }
+
+        /// <summary>
+        /// Gets the current size of the application cache.
+        /// </summary>
+        public static int GetCacheSize()
+        {
+            return _applicationCache.Count;
+        }
+
+        /// <summary>
+        /// Removes a specific application from the cache by ClientId.
+        /// </summary>
+        public static bool RemoveFromCache(string clientId)
+        {
+            if (string.IsNullOrEmpty(clientId)) return false;
+            
+            var removed = _applicationCache.TryRemove(clientId, out _);
+            _pendingApplications.TryRemove(clientId, out _);
+            
+            return removed;
         }
     }
 }

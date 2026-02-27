@@ -70,18 +70,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             Log.Debug("Token endpoint: {Endpoint}", _tokenEndpoint);
             Log.Debug("Code length: {Length}, CodeVerifier length: {VerifierLength}", code.Length, codeVerifier.Length);
             
+            // CRITICAL: For public clients (desktop/mobile apps), DO NOT send client_secret
+            // Public clients use PKCE (code_verifier) for security instead of client secrets
+            // Sending a client_secret makes OpenIddict treat this as a confidential client
             var requestData = new Dictionary<string, string>
             {
                 ["grant_type"] = "authorization_code",
                 ["code"] = code,
                 ["redirect_uri"] = _redirectUri,
                 ["client_id"] = _clientId,
-                ["client_secret"] = _clientSecret,
-                ["code_verifier"] = codeVerifier
+                // ["client_secret"] = _clientSecret,  // REMOVED: Public clients don't send secrets
+                ["code_verifier"] = codeVerifier  // PKCE provides security for public clients
             };
 
             Log.Debug("Token request data: grant_type={GrantType}, redirect_uri={RedirectUri}, client_id={ClientId}", 
                 requestData["grant_type"], requestData["redirect_uri"], requestData["client_id"]);
+            Log.Debug("Using PKCE code_verifier for public client authentication");
 
             var content = new FormUrlEncodedContent(requestData);
             
@@ -157,12 +161,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             Log.Information("Attempting to refresh access token");
             
+            // CRITICAL: For public clients, DO NOT send client_secret
+            // Public clients are authenticated by the refresh token itself
             var requestData = new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
                 ["refresh_token"] = refreshToken,
-                ["client_id"] = _clientId,
-                ["client_secret"] = _clientSecret
+                ["client_id"] = _clientId
+                // ["client_secret"] = _clientSecret  // REMOVED: Public clients don't send secrets
             };
 
             var content = new FormUrlEncodedContent(requestData);
