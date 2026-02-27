@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "u9YJTTbhvBw=",
+  "dgSpecHash": "PkAN703T+x4=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
   "expectedPackageFiles": [
@@ -173,5 +173,30 @@
     "C:\\Users\\andrej\\.nuget\\packages\\webview.avalonia.maccatalyst\\11.0.0.1\\webview.avalonia.maccatalyst.11.0.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\webview.avalonia.windows\\11.0.0.1\\webview.avalonia.windows.11.0.0.1.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
+      "libraryId": "Avalonia.Labs.Controls",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    },
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

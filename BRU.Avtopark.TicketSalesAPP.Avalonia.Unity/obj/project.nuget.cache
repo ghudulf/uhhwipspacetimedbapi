@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "53/hxzMJFnk=",
+  "dgSpecHash": "dUbwWeJpylA=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
   "expectedPackageFiles": [
@@ -155,5 +155,30 @@
     "C:\\Users\\andrej\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\webview.avalonia\\11.0.0.1\\webview.avalonia.11.0.0.1.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
+      "libraryId": "Avalonia.Labs.Controls",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    },
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

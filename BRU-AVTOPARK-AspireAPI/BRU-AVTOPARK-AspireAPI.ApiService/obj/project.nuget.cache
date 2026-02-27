@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "q3wLBvxVmtw=",
+  "dgSpecHash": "RQTOv1Zkztc=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
   "expectedPackageFiles": [
@@ -138,5 +138,18 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.threading.ratelimiting\\8.0.0\\system.threading.ratelimiting.8.0.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "BRU-AVTOPARK-AspireAPI.ApiService зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

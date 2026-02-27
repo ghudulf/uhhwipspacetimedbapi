@@ -3116,7 +3116,7 @@
           "Avalonia.Desktop": "11.2.3",
           "Avalonia.Diagnostics": "11.2.3",
           "Avalonia.Fonts.Inter": "11.2.3",
-          "Avalonia.Labs.Controls": "11.0.10",
+          "Avalonia.Labs.Controls": "11.0.5",
           "Avalonia.ReactiveUI": "11.2.3",
           "Avalonia.Themes.Fluent": "11.2.3",
           "Classic.Avalonia.Theme": "11.2.0.7",
@@ -3141,7 +3141,7 @@
           "Serilog.Sinks.Console": "6.0.0",
           "Serilog.Sinks.Debug": "3.0.0",
           "Serilog.Sinks.File": "6.0.0",
-          "SpacetimeDB.ClientSDK": "2.0.1",
+          "SpacetimeDB.ClientSDK": "2.0.0",
           "SukiUI": "6.0.0",
           "System.IdentityModel.Tokens.Jwt": "7.4.0",
           "System.Text.Json": "9.0.1",
@@ -3168,7 +3168,7 @@
           "OpenIddict.Server.AspNetCore": "4.1.0",
           "OpenIddict.Validation.AspNetCore": "4.1.0",
           "QRCoder": "1.6.0",
-          "SpacetimeDB.ClientSDK": "2.0.1"
+          "SpacetimeDB.ClientSDK": "2.0.0"
         },
         "compile": {
           "bin/placeholder/TicketSalesApp.Services.dll": {}
@@ -8162,7 +8162,7 @@
       "Avalonia.Desktop >= 11.2.3",
       "Avalonia.Diagnostics >= 11.2.3",
       "Avalonia.Fonts.Inter >= 11.2.3",
-      "Avalonia.Labs.Controls >= 11.0.10",
+      "Avalonia.Labs.Controls >= 11.0.5",
       "Avalonia.ReactiveUI >= 11.2.3",
       "Avalonia.Themes.Fluent >= 11.2.3",
       "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity >= 1.0.0",
@@ -8189,7 +8189,7 @@
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.Debug >= 3.0.0",
       "Serilog.Sinks.File >= 6.0.0",
-      "SpacetimeDB.ClientSDK >= 2.0.1",
+      "SpacetimeDB.ClientSDK >= 2.0.0",
       "SukiUI >= 6.0.0",
       "System.IdentityModel.Tokens.Jwt >= 7.4.0",
       "System.Text.Json >= 9.0.1",
@@ -8273,7 +8273,7 @@
           },
           "Avalonia.Labs.Controls": {
             "target": "Package",
-            "version": "[11.0.10, )"
+            "version": "[11.0.5, )"
           },
           "Avalonia.ReactiveUI": {
             "target": "Package",
@@ -8379,7 +8379,7 @@
           },
           "SpacetimeDB.ClientSDK": {
             "target": "Package",
-            "version": "[2.0.1, )"
+            "version": "[2.0.0, )"
           },
           "SukiUI": {
             "target": "Package",
@@ -8417,5 +8417,27 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
+      "libraryId": "Avalonia.Labs.Controls",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    },
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }
