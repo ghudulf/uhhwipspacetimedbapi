@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void CreateOidcToken(string oidcTokenId, uint? authInternalId, string? appClientId, ulong? creationDate, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? referenceId, string? status, string? subject, string? type)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.CreateOidcToken(oidcTokenId, authInternalId, appClientId, creationDate, expirationDate, payload, propertiesJson, redemptionDate, referenceId, status, subject, type), this.SetCallReducerFlags.CreateOidcTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.CreateOidcToken(oidcTokenId, authInternalId, appClientId, creationDate, expirationDate, payload, propertiesJson, redemptionDate, referenceId, status, subject, type));
+>>>>>>> maintofix
         }
 
         public bool InvokeCreateOidcToken(ReducerEventContext ctx, Reducer.CreateOidcToken args)
         {
+<<<<<<< HEAD
             if (OnCreateOidcToken == null) return false;
+=======
+            if (OnCreateOidcToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnCreateOidcToken(
                 ctx,
                 args.OidcTokenId,
@@ -48,6 +67,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateOidcToken : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "oidcTokenId")]
             public string OidcTokenId;
             [DataMember(Name = "authInternalId")]
@@ -65,6 +85,25 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "redemptionDate")]
             public ulong? RedemptionDate;
             [DataMember(Name = "referenceId")]
+=======
+            [DataMember(Name = "oidc_token_id")]
+            public string OidcTokenId;
+            [DataMember(Name = "auth_internal_id")]
+            public uint? AuthInternalId;
+            [DataMember(Name = "app_client_id")]
+            public string? AppClientId;
+            [DataMember(Name = "creation_date")]
+            public ulong? CreationDate;
+            [DataMember(Name = "expiration_date")]
+            public ulong? ExpirationDate;
+            [DataMember(Name = "payload")]
+            public string? Payload;
+            [DataMember(Name = "properties_json")]
+            public string? PropertiesJson;
+            [DataMember(Name = "redemption_date")]
+            public ulong? RedemptionDate;
+            [DataMember(Name = "reference_id")]
+>>>>>>> maintofix
             public string? ReferenceId;
             [DataMember(Name = "status")]
             public string? Status;
@@ -107,6 +146,7 @@ namespace SpacetimeDB.Types
                 this.OidcTokenId = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "CreateOidcToken";
         }
     }
@@ -116,4 +156,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags CreateOidcTokenFlags;
         public void CreateOidcToken(CallReducerFlags flags) => CreateOidcTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "create_oidc_token";
+        }
+    }
+>>>>>>> maintofix
 }

@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void RevokeOpenIdGrant(string grantId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.RevokeOpenIdGrant(grantId), this.SetCallReducerFlags.RevokeOpenIdGrantFlags);
+=======
+            conn.InternalCallReducer(new Reducer.RevokeOpenIdGrant(grantId));
+>>>>>>> maintofix
         }
 
         public bool InvokeRevokeOpenIdGrant(ReducerEventContext ctx, Reducer.RevokeOpenIdGrant args)
         {
+<<<<<<< HEAD
             if (OnRevokeOpenIdGrant == null) return false;
+=======
+            if (OnRevokeOpenIdGrant == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnRevokeOpenIdGrant(
                 ctx,
                 args.GrantId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokeOpenIdGrant : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "grantId")]
+=======
+            [DataMember(Name = "grant_id")]
+>>>>>>> maintofix
             public string GrantId;
 
             public RevokeOpenIdGrant(string GrantId)
@@ -50,6 +73,7 @@ namespace SpacetimeDB.Types
                 this.GrantId = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "RevokeOpenIdGrant";
         }
     }
@@ -59,4 +83,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags RevokeOpenIdGrantFlags;
         public void RevokeOpenIdGrant(CallReducerFlags flags) => RevokeOpenIdGrantFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "revoke_open_id_grant";
+        }
+    }
+>>>>>>> maintofix
 }

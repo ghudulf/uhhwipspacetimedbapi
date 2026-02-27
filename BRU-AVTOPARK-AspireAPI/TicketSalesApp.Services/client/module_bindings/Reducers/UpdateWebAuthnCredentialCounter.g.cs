@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateWebAuthnCredentialCounter(uint id, uint counter)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateWebAuthnCredentialCounter(id, counter), this.SetCallReducerFlags.UpdateWebAuthnCredentialCounterFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateWebAuthnCredentialCounter(id, counter));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateWebAuthnCredentialCounter(ReducerEventContext ctx, Reducer.UpdateWebAuthnCredentialCounter args)
         {
+<<<<<<< HEAD
             if (OnUpdateWebAuthnCredentialCounter == null) return false;
+=======
+            if (OnUpdateWebAuthnCredentialCounter == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateWebAuthnCredentialCounter(
                 ctx,
                 args.Id,
@@ -56,6 +75,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateWebAuthnCredentialCounter";
         }
     }
@@ -65,4 +85,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateWebAuthnCredentialCounterFlags;
         public void UpdateWebAuthnCredentialCounter(CallReducerFlags flags) => UpdateWebAuthnCredentialCounterFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_web_authn_credential_counter";
+        }
+    }
+>>>>>>> maintofix
 }

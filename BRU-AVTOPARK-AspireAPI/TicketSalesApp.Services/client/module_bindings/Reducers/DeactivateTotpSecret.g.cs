@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeactivateTotpSecret(SpacetimeDB.Identity userId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeactivateTotpSecret(userId), this.SetCallReducerFlags.DeactivateTotpSecretFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeactivateTotpSecret(userId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeactivateTotpSecret(ReducerEventContext ctx, Reducer.DeactivateTotpSecret args)
         {
+<<<<<<< HEAD
             if (OnDeactivateTotpSecret == null) return false;
+=======
+            if (OnDeactivateTotpSecret == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeactivateTotpSecret(
                 ctx,
                 args.UserId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateTotpSecret : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
+=======
+            [DataMember(Name = "user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public DeactivateTotpSecret(SpacetimeDB.Identity UserId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeactivateTotpSecret";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeactivateTotpSecretFlags;
         public void DeactivateTotpSecret(CallReducerFlags flags) => DeactivateTotpSecretFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "deactivate_totp_secret";
+        }
+    }
+>>>>>>> maintofix
 }

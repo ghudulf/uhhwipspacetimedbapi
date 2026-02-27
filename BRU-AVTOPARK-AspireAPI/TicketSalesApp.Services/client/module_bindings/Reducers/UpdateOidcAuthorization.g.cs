@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateOidcAuthorization(uint internalId, string? propertiesJson, string? scopesJson, string? status)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateOidcAuthorization(internalId, propertiesJson, scopesJson, status), this.SetCallReducerFlags.UpdateOidcAuthorizationFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateOidcAuthorization(internalId, propertiesJson, scopesJson, status));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateOidcAuthorization(ReducerEventContext ctx, Reducer.UpdateOidcAuthorization args)
         {
+<<<<<<< HEAD
             if (OnUpdateOidcAuthorization == null) return false;
+=======
+            if (OnUpdateOidcAuthorization == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateOidcAuthorization(
                 ctx,
                 args.InternalId,
@@ -40,11 +59,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateOidcAuthorization : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "internalId")]
             public uint InternalId;
             [DataMember(Name = "propertiesJson")]
             public string? PropertiesJson;
             [DataMember(Name = "scopesJson")]
+=======
+            [DataMember(Name = "internal_id")]
+            public uint InternalId;
+            [DataMember(Name = "properties_json")]
+            public string? PropertiesJson;
+            [DataMember(Name = "scopes_json")]
+>>>>>>> maintofix
             public string? ScopesJson;
             [DataMember(Name = "status")]
             public string? Status;
@@ -66,6 +93,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateOidcAuthorization";
         }
     }
@@ -75,4 +103,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateOidcAuthorizationFlags;
         public void UpdateOidcAuthorization(CallReducerFlags flags) => UpdateOidcAuthorizationFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_oidc_authorization";
+        }
+    }
+>>>>>>> maintofix
 }

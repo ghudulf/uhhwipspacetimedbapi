@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Maintenance
     {
+<<<<<<< HEAD
         [DataMember(Name = "MaintenanceId")]
         public uint MaintenanceId;
         [DataMember(Name = "BusId")]
@@ -54,6 +55,49 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "LaborCost")]
         public double? LaborCost;
         [DataMember(Name = "PartsCost")]
+=======
+        [DataMember(Name = "maintenance_id")]
+        public uint MaintenanceId;
+        [DataMember(Name = "bus_id")]
+        public uint BusId;
+        [DataMember(Name = "last_service_date")]
+        public ulong LastServiceDate;
+        [DataMember(Name = "mileage_threshold")]
+        public string? MileageThreshold;
+        [DataMember(Name = "maintenance_type")]
+        public string? MaintenanceType;
+        [DataMember(Name = "service_engineer")]
+        public string? ServiceEngineer;
+        [DataMember(Name = "found_issues")]
+        public string? FoundIssues;
+        [DataMember(Name = "next_service_date")]
+        public ulong NextServiceDate;
+        [DataMember(Name = "roadworthiness")]
+        public string? Roadworthiness;
+        [DataMember(Name = "maintenance_cost")]
+        public double MaintenanceCost;
+        [DataMember(Name = "parts_replaced")]
+        public string? PartsReplaced;
+        [DataMember(Name = "maintenance_duration")]
+        public ulong MaintenanceDuration;
+        [DataMember(Name = "is_scheduled")]
+        public bool IsScheduled;
+        [DataMember(Name = "maintenance_location")]
+        public string? MaintenanceLocation;
+        [DataMember(Name = "scheduled_by_employee_id")]
+        public uint? ScheduledByEmployeeId;
+        [DataMember(Name = "completed_by_employee_id")]
+        public uint? CompletedByEmployeeId;
+        [DataMember(Name = "maintenance_notes")]
+        public string? MaintenanceNotes;
+        [DataMember(Name = "maintenance_status")]
+        public string? MaintenanceStatus;
+        [DataMember(Name = "diagnostic_codes")]
+        public System.Collections.Generic.List<string>? DiagnosticCodes;
+        [DataMember(Name = "labor_cost")]
+        public double? LaborCost;
+        [DataMember(Name = "parts_cost")]
+>>>>>>> maintofix
         public double? PartsCost;
 
         public Maintenance(

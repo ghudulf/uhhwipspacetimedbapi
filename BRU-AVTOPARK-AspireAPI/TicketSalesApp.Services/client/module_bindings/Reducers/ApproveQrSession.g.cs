@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void ApproveQrSession(string sessionId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.ApproveQrSession(sessionId), this.SetCallReducerFlags.ApproveQrSessionFlags);
+=======
+            conn.InternalCallReducer(new Reducer.ApproveQrSession(sessionId));
+>>>>>>> maintofix
         }
 
         public bool InvokeApproveQrSession(ReducerEventContext ctx, Reducer.ApproveQrSession args)
         {
+<<<<<<< HEAD
             if (OnApproveQrSession == null) return false;
+=======
+            if (OnApproveQrSession == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnApproveQrSession(
                 ctx,
                 args.SessionId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ApproveQrSession : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "sessionId")]
+=======
+            [DataMember(Name = "session_id")]
+>>>>>>> maintofix
             public string SessionId;
 
             public ApproveQrSession(string SessionId)
@@ -50,6 +73,7 @@ namespace SpacetimeDB.Types
                 this.SessionId = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "ApproveQrSession";
         }
     }
@@ -59,4 +83,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags ApproveQrSessionFlags;
         public void ApproveQrSession(CallReducerFlags flags) => ApproveQrSessionFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "approve_qr_session";
+        }
+    }
+>>>>>>> maintofix
 }

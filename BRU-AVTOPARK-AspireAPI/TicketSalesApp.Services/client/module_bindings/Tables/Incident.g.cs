@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class IncidentHandle : RemoteTableHandle<EventContext, Incident>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "Incident";
+=======
+            protected override string RemoteTableName => "incident";
+>>>>>>> maintofix
 
             public sealed class IncidentIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,61 @@ namespace SpacetimeDB.Types
 
         public readonly IncidentHandle Incident;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class IncidentCols
+    {
+        public global::SpacetimeDB.Col<Incident, uint> IncidentId { get; }
+        public global::SpacetimeDB.Col<Incident, ulong> IncidentTime { get; }
+        public global::SpacetimeDB.NullableCol<Incident, uint> BusId { get; }
+        public global::SpacetimeDB.NullableCol<Incident, uint> RouteId { get; }
+        public global::SpacetimeDB.NullableCol<Incident, uint> EmployeeId { get; }
+        public global::SpacetimeDB.Col<Incident, string> IncidentType { get; }
+        public global::SpacetimeDB.Col<Incident, string> Description { get; }
+        public global::SpacetimeDB.NullableCol<Incident, string> Severity { get; }
+        public global::SpacetimeDB.NullableCol<Incident, string> Status { get; }
+        public global::SpacetimeDB.NullableCol<Incident, string> Resolution { get; }
+        public global::SpacetimeDB.NullableCol<Incident, ulong> ResolutionTime { get; }
+        public global::SpacetimeDB.NullableCol<Incident, string> Location { get; }
+        public global::SpacetimeDB.NullableCol<Incident, SpacetimeDB.Identity> ReportedBy { get; }
+        public global::SpacetimeDB.NullableCol<Incident, System.Collections.Generic.List<string>> Witnesses { get; }
+        public global::SpacetimeDB.NullableCol<Incident, System.Collections.Generic.List<string>> Attachments { get; }
+        public global::SpacetimeDB.NullableCol<Incident, bool> RequiresFollowUp { get; }
+        public global::SpacetimeDB.NullableCol<Incident, string> FollowUpNotes { get; }
+        public global::SpacetimeDB.NullableCol<Incident, ulong> FollowUpDate { get; }
+
+        public IncidentCols(string tableName)
+        {
+            IncidentId = new global::SpacetimeDB.Col<Incident, uint>(tableName, "incident_id");
+            IncidentTime = new global::SpacetimeDB.Col<Incident, ulong>(tableName, "incident_time");
+            BusId = new global::SpacetimeDB.NullableCol<Incident, uint>(tableName, "bus_id");
+            RouteId = new global::SpacetimeDB.NullableCol<Incident, uint>(tableName, "route_id");
+            EmployeeId = new global::SpacetimeDB.NullableCol<Incident, uint>(tableName, "employee_id");
+            IncidentType = new global::SpacetimeDB.Col<Incident, string>(tableName, "incident_type");
+            Description = new global::SpacetimeDB.Col<Incident, string>(tableName, "description");
+            Severity = new global::SpacetimeDB.NullableCol<Incident, string>(tableName, "severity");
+            Status = new global::SpacetimeDB.NullableCol<Incident, string>(tableName, "status");
+            Resolution = new global::SpacetimeDB.NullableCol<Incident, string>(tableName, "resolution");
+            ResolutionTime = new global::SpacetimeDB.NullableCol<Incident, ulong>(tableName, "resolution_time");
+            Location = new global::SpacetimeDB.NullableCol<Incident, string>(tableName, "location");
+            ReportedBy = new global::SpacetimeDB.NullableCol<Incident, SpacetimeDB.Identity>(tableName, "reported_by");
+            Witnesses = new global::SpacetimeDB.NullableCol<Incident, System.Collections.Generic.List<string>>(tableName, "witnesses");
+            Attachments = new global::SpacetimeDB.NullableCol<Incident, System.Collections.Generic.List<string>>(tableName, "attachments");
+            RequiresFollowUp = new global::SpacetimeDB.NullableCol<Incident, bool>(tableName, "requires_follow_up");
+            FollowUpNotes = new global::SpacetimeDB.NullableCol<Incident, string>(tableName, "follow_up_notes");
+            FollowUpDate = new global::SpacetimeDB.NullableCol<Incident, ulong>(tableName, "follow_up_date");
+        }
+    }
+
+    public sealed class IncidentIxCols
+    {
+        public global::SpacetimeDB.IxCol<Incident, uint> IncidentId { get; }
+
+        public IncidentIxCols(string tableName)
+        {
+            IncidentId = new global::SpacetimeDB.IxCol<Incident, uint>(tableName, "incident_id");
+        }
+    }
+>>>>>>> maintofix
 }

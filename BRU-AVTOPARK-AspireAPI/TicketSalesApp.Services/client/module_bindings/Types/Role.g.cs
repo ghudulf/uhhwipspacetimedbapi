@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Role
     {
+<<<<<<< HEAD
         [DataMember(Name = "RoleId")]
         public uint RoleId;
         [DataMember(Name = "LegacyRoleId")]
@@ -36,6 +37,31 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "UpdatedBy")]
         public string? UpdatedBy;
         [DataMember(Name = "NormalizedName")]
+=======
+        [DataMember(Name = "role_id")]
+        public uint RoleId;
+        [DataMember(Name = "legacy_role_id")]
+        public int LegacyRoleId;
+        [DataMember(Name = "name")]
+        public string Name;
+        [DataMember(Name = "description")]
+        public string Description;
+        [DataMember(Name = "is_system")]
+        public bool IsSystem;
+        [DataMember(Name = "priority")]
+        public uint Priority;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong UpdatedAt;
+        [DataMember(Name = "created_by")]
+        public string? CreatedBy;
+        [DataMember(Name = "updated_by")]
+        public string? UpdatedBy;
+        [DataMember(Name = "normalized_name")]
+>>>>>>> maintofix
         public string? NormalizedName;
 
         public Role(

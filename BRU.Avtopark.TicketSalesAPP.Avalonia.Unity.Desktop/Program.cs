@@ -1,8 +1,15 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.ReactiveUI;
+<<<<<<< HEAD
 using Serilog;
 using Serilog.Events;
+=======
+using Avalonia.WebView.Desktop;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.File;
+>>>>>>> maintofix
 using System;
 using System.Linq;
 using System.Threading;
@@ -26,6 +33,13 @@ class Program
                 .WriteTo.File("logs/app-.log",
                     rollingInterval: RollingInterval.Day,
                     restrictedToMinimumLevel: LogEventLevel.Information)
+<<<<<<< HEAD
+=======
+                .WriteTo.File("logs/debug-.log",
+                    rollingInterval: RollingInterval.Day,
+                    restrictedToMinimumLevel: LogEventLevel.Verbose)
+               
+>>>>>>> maintofix
                 .CreateLogger();
 
             Log.Information("Starting application...");
@@ -52,7 +66,12 @@ class Program
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
+<<<<<<< HEAD
             .UseReactiveUI();
+=======
+            .UseReactiveUI()
+            .UseDesktopWebView();
+>>>>>>> maintofix
 
     private static void SilenceConsole()
     {

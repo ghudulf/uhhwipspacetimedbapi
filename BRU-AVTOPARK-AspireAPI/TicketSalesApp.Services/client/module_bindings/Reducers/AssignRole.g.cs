@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void AssignRole(SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId, actingUserId), this.SetCallReducerFlags.AssignRoleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId, actingUserId));
+>>>>>>> maintofix
         }
 
         public bool InvokeAssignRole(ReducerEventContext ctx, Reducer.AssignRole args)
         {
+<<<<<<< HEAD
             if (OnAssignRole == null) return false;
+=======
+            if (OnAssignRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnAssignRole(
                 ctx,
                 args.UserId,
@@ -39,11 +58,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class AssignRole : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "roleId")]
             public uint RoleId;
             [DataMember(Name = "actingUserId")]
+=======
+            [DataMember(Name = "user_id")]
+            public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "role_id")]
+            public uint RoleId;
+            [DataMember(Name = "acting_user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public AssignRole(
@@ -61,6 +88,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "AssignRole";
         }
     }
@@ -70,4 +98,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags AssignRoleFlags;
         public void AssignRole(CallReducerFlags flags) => AssignRoleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "assign_role";
+        }
+    }
+>>>>>>> maintofix
 }

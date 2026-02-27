@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void CreateOidcScope(string oidcScopeId, string name, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.CreateOidcScope(oidcScopeId, name, description, descriptionsJson, displayName, displayNamesJson, propertiesJson, resourcesJson), this.SetCallReducerFlags.CreateOidcScopeFlags);
+=======
+            conn.InternalCallReducer(new Reducer.CreateOidcScope(oidcScopeId, name, description, descriptionsJson, displayName, displayNamesJson, propertiesJson, resourcesJson));
+>>>>>>> maintofix
         }
 
         public bool InvokeCreateOidcScope(ReducerEventContext ctx, Reducer.CreateOidcScope args)
         {
+<<<<<<< HEAD
             if (OnCreateOidcScope == null) return false;
+=======
+            if (OnCreateOidcScope == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnCreateOidcScope(
                 ctx,
                 args.OidcScopeId,
@@ -44,12 +63,17 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateOidcScope : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "oidcScopeId")]
+=======
+            [DataMember(Name = "oidc_scope_id")]
+>>>>>>> maintofix
             public string OidcScopeId;
             [DataMember(Name = "name")]
             public string Name;
             [DataMember(Name = "description")]
             public string? Description;
+<<<<<<< HEAD
             [DataMember(Name = "descriptionsJson")]
             public string? DescriptionsJson;
             [DataMember(Name = "displayName")]
@@ -59,6 +83,17 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "propertiesJson")]
             public string? PropertiesJson;
             [DataMember(Name = "resourcesJson")]
+=======
+            [DataMember(Name = "descriptions_json")]
+            public string? DescriptionsJson;
+            [DataMember(Name = "display_name")]
+            public string? DisplayName;
+            [DataMember(Name = "display_names_json")]
+            public string? DisplayNamesJson;
+            [DataMember(Name = "properties_json")]
+            public string? PropertiesJson;
+            [DataMember(Name = "resources_json")]
+>>>>>>> maintofix
             public string? ResourcesJson;
 
             public CreateOidcScope(
@@ -88,6 +123,7 @@ namespace SpacetimeDB.Types
                 this.Name = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "CreateOidcScope";
         }
     }
@@ -97,4 +133,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags CreateOidcScopeFlags;
         public void CreateOidcScope(CallReducerFlags flags) => CreateOidcScopeFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "create_oidc_scope";
+        }
+    }
+>>>>>>> maintofix
 }

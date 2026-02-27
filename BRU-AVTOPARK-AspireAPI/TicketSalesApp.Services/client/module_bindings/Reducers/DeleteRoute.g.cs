@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteRoute(routeId, actingUser), this.SetCallReducerFlags.DeleteRouteFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteRoute(routeId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteRoute(ReducerEventContext ctx, Reducer.DeleteRoute args)
         {
+<<<<<<< HEAD
             if (OnDeleteRoute == null) return false;
+=======
+            if (OnDeleteRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteRoute(
                 ctx,
                 args.RouteId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRoute : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "routeId")]
             public uint RouteId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "route_id")]
+            public uint RouteId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeleteRoute(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteRoute";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteRouteFlags;
         public void DeleteRoute(CallReducerFlags flags) => DeleteRouteFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_route";
+        }
+    }
+>>>>>>> maintofix
 }

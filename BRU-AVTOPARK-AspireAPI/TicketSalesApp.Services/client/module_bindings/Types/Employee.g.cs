@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Employee
     {
+<<<<<<< HEAD
         [DataMember(Name = "EmployeeId")]
         public uint EmployeeId;
         [DataMember(Name = "Surname")]
@@ -78,6 +79,73 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "VacationDaysRemaining")]
         public uint? VacationDaysRemaining;
         [DataMember(Name = "SickDaysUsed")]
+=======
+        [DataMember(Name = "employee_id")]
+        public uint EmployeeId;
+        [DataMember(Name = "surname")]
+        public string Surname;
+        [DataMember(Name = "name")]
+        public string Name;
+        [DataMember(Name = "patronym")]
+        public string? Patronym;
+        [DataMember(Name = "employed_since")]
+        public ulong EmployedSince;
+        [DataMember(Name = "job_id")]
+        public uint JobId;
+        [DataMember(Name = "badge_number")]
+        public string? BadgeNumber;
+        [DataMember(Name = "contact_phone")]
+        public string? ContactPhone;
+        [DataMember(Name = "contact_email")]
+        public string? ContactEmail;
+        [DataMember(Name = "date_of_birth")]
+        public ulong? DateOfBirth;
+        [DataMember(Name = "passport_number")]
+        public string? PassportNumber;
+        [DataMember(Name = "passport_issued_by")]
+        public string? PassportIssuedBy;
+        [DataMember(Name = "passport_issued_date")]
+        public ulong? PassportIssuedDate;
+        [DataMember(Name = "photo_url")]
+        public string? PhotoUrl;
+        [DataMember(Name = "address")]
+        public string? Address;
+        [DataMember(Name = "emergency_contact")]
+        public string? EmergencyContact;
+        [DataMember(Name = "last_training_date")]
+        public ulong? LastTrainingDate;
+        [DataMember(Name = "training_status")]
+        public string? TrainingStatus;
+        [DataMember(Name = "current_status")]
+        public string? CurrentStatus;
+        [DataMember(Name = "certifications")]
+        public System.Collections.Generic.List<string>? Certifications;
+        [DataMember(Name = "certification_expiry")]
+        public ulong? CertificationExpiry;
+        [DataMember(Name = "medical_certificate")]
+        public string? MedicalCertificate;
+        [DataMember(Name = "medical_certificate_expiry")]
+        public ulong? MedicalCertificateExpiry;
+        [DataMember(Name = "driver_license_number")]
+        public string? DriverLicenseNumber;
+        [DataMember(Name = "driver_license_category")]
+        public string? DriverLicenseCategory;
+        [DataMember(Name = "driver_license_expiry")]
+        public ulong? DriverLicenseExpiry;
+        [DataMember(Name = "years_of_experience")]
+        public uint? YearsOfExperience;
+        [DataMember(Name = "languages_spoken")]
+        public System.Collections.Generic.List<string>? LanguagesSpoken;
+        [DataMember(Name = "preferred_shift_type")]
+        public string? PreferredShiftType;
+        [DataMember(Name = "skills_and_qualifications")]
+        public System.Collections.Generic.List<string>? SkillsAndQualifications;
+        [DataMember(Name = "performance_rating")]
+        public string? PerformanceRating;
+        [DataMember(Name = "vacation_days_remaining")]
+        public uint? VacationDaysRemaining;
+        [DataMember(Name = "sick_days_used")]
+>>>>>>> maintofix
         public uint? SickDaysUsed;
 
         public Employee(

@@ -4,6 +4,10 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System.Text.Json;
+<<<<<<< HEAD
+=======
+using System.Text.Json.Nodes;
+>>>>>>> maintofix
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,22 +22,69 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
+<<<<<<< HEAD
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
+=======
+using System.Globalization;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
+
+namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
+{
+    // Wrapper class to hold Ticket and associated/looked-up data
+    public partial class TicketDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private Ticket _ticket; // The original Ticket object
+
+        [ObservableProperty]
+        private Route? _route; // Looked up from Routes
+
+        public TicketDisplayModel(Ticket ticket, Route? route)
+        {
+            _ticket = ticket;
+            _route = route;
+        }
+
+        // Expose properties for easier binding
+        public uint TicketId => Ticket.TicketId;
+        public double TicketPrice => Ticket.TicketPrice;
+        public uint SeatNumber => Ticket.SeatNumber;
+        public bool IsActive => Ticket.IsActive;
+        public ulong PurchaseTime => Ticket.PurchaseTime;
+        public ulong CreatedAt => Ticket.CreatedAt;
+        public string RouteDisplay => Route != null ? $"{Route.RouteNumber} ({Route.StartPoint} - {Route.EndPoint})" : "Маршрут не найден";
+        public string? StartPoint => Route?.StartPoint;
+        public string? EndPoint => Route?.EndPoint;
+        public string? TravelTime => Route?.TravelTime;
+    }
+
+>>>>>>> maintofix
     public partial class TicketManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
+<<<<<<< HEAD
         private ObservableCollection<Ticket> _tickets = new();
         public ObservableCollection<Ticket> Tickets
+=======
+        // Change to use the display model
+        private List<TicketDisplayModel> _allTickets = new();
+        private ObservableCollection<TicketDisplayModel> _tickets = new();
+        public ObservableCollection<TicketDisplayModel> Tickets
+>>>>>>> maintofix
         {
             get => _tickets;
             set => this.RaiseAndSetIfChanged(ref _tickets, value);
         }
 
+<<<<<<< HEAD
+=======
+        private List<Route> _allRoutes = new();
+>>>>>>> maintofix
         private ObservableCollection<Route> _routes = new();
         public ObservableCollection<Route> Routes
         {
@@ -41,8 +92,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _routes, value);
         }
 
+<<<<<<< HEAD
         private Ticket? _selectedTicket;
         public Ticket? SelectedTicket
+=======
+        // Change selected item type
+        private TicketDisplayModel? _selectedTicket;
+        public TicketDisplayModel? SelectedTicket
+>>>>>>> maintofix
         {
             get => _selectedTicket;
             set => this.RaiseAndSetIfChanged(ref _selectedTicket, value);
@@ -87,11 +144,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
+<<<<<<< HEAD
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
             };
 
             ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
             {
+=======
+            };
+
+            ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
+            {
+                Log.Information("Auth token changed in TicketManagementViewModel. Recreating HttpClient and reloading data.");
+                _httpClient.Dispose();
+>>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -99,15 +165,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             LoadData().ConfigureAwait(false);
         }
 
+<<<<<<< HEAD
         [RelayCommand]
         private async Task LoadData()
         {
+=======
+        private async Task LoadData()
+        {
+            Log.Information("Starting LoadData for TicketManagementViewModel");
+>>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
+<<<<<<< HEAD
                 var ticketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets");
                 var routesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
 
@@ -128,16 +201,161 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     if (routes != null)
                         Routes = new ObservableCollection<Route>(routes);
                 }
+=======
+                Log.Debug("Initiating API calls for Tickets and Routes");
+                Task<HttpResponseMessage> ticketsTask = _httpClient.GetAsync($"{_baseUrl}/Tickets");
+                Task<HttpResponseMessage> routesTask = _httpClient.GetAsync($"{_baseUrl}/Routes");
+
+                await Task.WhenAll(ticketsTask, routesTask);
+                Log.Debug("All API calls completed for TicketManagementViewModel.");
+
+                // --- Process Routes first to build lookup ---
+                var routesResponse = await routesTask;
+                Log.Information("Processing Routes response. Status: {StatusCode}", routesResponse.StatusCode);
+                List<Route> loadedRoutes = new();
+                Dictionary<uint, Route> routeLookup = new Dictionary<uint, Route>(); // For linking tickets
+
+                if (routesResponse.IsSuccessStatusCode)
+                {
+                    var routeJsonString = await routesResponse.Content.ReadAsStringAsync();
+                    Log.Verbose("Raw Routes JSON received: {RawJson}", routeJsonString);
+                    try
+                    {
+                        var routesArray = JsonReferenceHelper.ParseArrayWithReferences(routeJsonString, "Route");
+                        Log.Information("Parsing {Count} route objects from JSON array.", routesArray.Count);
+                        
+                        foreach (var routeNode in routesArray)
+                        {
+                            if (routeNode is JsonObject routeObj)
+                            {
+                                var route = routeObj.ParseRoute();
+                                if (route == null) continue;
+                                
+                                loadedRoutes.Add(route);
+                                if (!routeLookup.ContainsKey(route.RouteId))
+                                {
+                                    routeLookup.Add(route.RouteId, route);
+                                }
+                                Log.Verbose("Parsed Route: Id={RouteId}, Num='{RouteNum}', Start='{StartPoint}', End='{EndPoint}', Active={IsActive}", 
+                                    route.RouteId, route.RouteNumber, route.StartPoint, route.EndPoint, route.IsActive);
+                            }
+                        }
+                        Log.Information("Successfully parsed {Count} valid routes.", loadedRoutes.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to parse Routes JSON: {RawJson}", routeJsonString);
+                        HasError = true;
+                        ErrorMessage = "Ошибка загрузки списка маршрутов.";
+                    }
+                }
+                else
+                {
+                    var error = await routesResponse.Content.ReadAsStringAsync();
+                    Log.Warning("Failed to load routes. Status: {StatusCode}, Error: {Error}. Routes data may be incomplete.", routesResponse.StatusCode, error);
+                    HasError = true;
+                    ErrorMessage = $"Ошибка загрузки маршрутов: {routesResponse.StatusCode}";
+                }
+                 // Update Routes collection (used by ComboBoxes)
+                 _allRoutes = loadedRoutes;
+                 Routes = new ObservableCollection<Route>(_allRoutes);
+
+                // --- Process Tickets Response ---
+                var ticketsResponse = await ticketsTask;
+                Log.Information("Processing Tickets response. Status: {StatusCode}", ticketsResponse.StatusCode);
+                List<Ticket> loadedTickets = new(); // Store raw Ticket objects
+                var ticketsJsonString = await ticketsResponse.Content.ReadAsStringAsync();
+                Log.Verbose("Raw Tickets response received: {RawResponse}", ticketsJsonString);
+
+                if (ticketsResponse.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var ticketsArray = JsonReferenceHelper.ParseArrayWithReferences(ticketsJsonString, "Ticket");
+                        Log.Information("Parsing {Count} ticket objects from JSON array.", ticketsArray.Count);
+                        
+                        foreach (var ticketNode in ticketsArray)
+                        {
+                            if (ticketNode is JsonObject ticketObj)
+                            {
+                                var ticket = ticketObj.ParseTicket();
+                                if (ticket == null) continue;
+                                
+                                // Check if route is embedded in the ticket JSON
+                                if (ticketObj.TryGetPropertyValue("route", out var routeNode2) && routeNode2 is JsonObject embeddedRouteObj)
+                                {
+                                    var embeddedRoute = embeddedRouteObj.ParseRoute();
+                                    if (embeddedRoute != null && !routeLookup.ContainsKey(embeddedRoute.RouteId))
+                                    {
+                                        routeLookup.Add(embeddedRoute.RouteId, embeddedRoute);
+                                        Log.Information("Added embedded route from ticket: Id={RouteId}, Start='{StartPoint}', End='{EndPoint}'", 
+                                            embeddedRoute.RouteId, embeddedRoute.StartPoint, embeddedRoute.EndPoint);
+                                    }
+                                }
+                                
+                                loadedTickets.Add(ticket);
+                                Log.Verbose("Parsed Ticket: Id={TicketId}, RouteId={RouteId}, Price={Price}, Seat={Seat}, Active={IsActive}",
+                                    ticket.TicketId, ticket.RouteId, ticket.TicketPrice, ticket.SeatNumber, ticket.IsActive);
+                            }
+                        }
+                        Log.Information("Successfully parsed {Count} valid tickets.", loadedTickets.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to parse Tickets JSON: {RawJson}", ticketsJsonString);
+                        throw new Exception("Failed to parse ticket data.", ex);
+                    }
+                }
+                else
+                {
+                    var error = await ticketsResponse.Content.ReadAsStringAsync();
+                    Log.Error("Failed to load tickets. Status: {StatusCode}, Error: {Error}", ticketsResponse.StatusCode, error);
+                    throw new Exception($"Failed to load primary ticket data. Status: {ticketsResponse.StatusCode}");
+                }
+
+                // --- Create TicketDisplayModels by combining Tickets and Routes ---
+                List<TicketDisplayModel> displayTickets = new List<TicketDisplayModel>();
+                Log.Information("Creating TicketDisplayModels. Parsed Tickets: {TicketCount}, Parsed Routes: {RouteCount}", loadedTickets.Count, routeLookup.Count);
+                foreach (var ticket in loadedTickets)
+                {
+                    routeLookup.TryGetValue(ticket.RouteId, out var route);
+                    if (route == null)
+                    {
+                        Log.Warning("Route lookup failed for TicketId {TicketId} with RouteId {RouteId}", ticket.TicketId, ticket.RouteId);
+                    }
+                    displayTickets.Add(new TicketDisplayModel(ticket, route));
+                    Log.Verbose("Created display model for TicketId {TicketId} with Route: {RouteInfo}", ticket.TicketId, route?.RouteNumber ?? "null");
+                }
+
+                // Update the main collections
+                _allTickets = displayTickets; // Store the full list
+                Tickets = new ObservableCollection<TicketDisplayModel>(_allTickets); // Update the displayed collection
+
+                Log.Information("Finished processing data. Displaying {TicketCount} tickets and {RouteCount} routes.", Tickets.Count, Routes.Count);
+>>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
+<<<<<<< HEAD
                 ErrorMessage = $"Error loading data: {ex.Message}";
                 Log.Error(ex, "Error loading ticket data");
+=======
+                ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
+                Log.Fatal(ex, "Fatal error loading data in TicketManagementViewModel");
+                _allTickets = new List<TicketDisplayModel>();
+                Tickets = new ObservableCollection<TicketDisplayModel>();
+                _allRoutes = new List<Route>();
+                Routes = new ObservableCollection<Route>();
+>>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
+<<<<<<< HEAD
+=======
+                Log.Information("LoadData finished for TicketManagementViewModel.");
+>>>>>>> maintofix
             }
         }
 
@@ -156,7 +374,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var grid = new Grid
                 {
+<<<<<<< HEAD
                     RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
+=======
+                    RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto"),
+>>>>>>> maintofix
                     Margin = new Thickness(10)
                 };
 
@@ -164,10 +386,34 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     PlaceholderText = "Выберите маршрут",
                     ItemsSource = Routes,
+<<<<<<< HEAD
                     DisplayMemberBinding = new global::Avalonia.Data.Binding("StartPoint")
                 };
 
                 var priceBox = new TextBox { Watermark = "Цена билета" };
+=======
+                    DisplayMemberBinding = new global::Avalonia.Data.Binding(".") { Converter = RouteDisplayConverter.Instance },
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+
+                var priceBox = new NumericUpDown
+                {
+                    Watermark = "Цена билета (BYN)",
+                    FormatString = "C2",
+                    Increment = 0.5M,
+                    Minimum = 0,
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+
+                var seatBox = new NumericUpDown
+                {
+                    Watermark = "Номер места",
+                    Increment = 1,
+                    Minimum = 1,
+                    Maximum = 100,
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+>>>>>>> maintofix
 
                 var addButton = new Button
                 {
@@ -180,8 +426,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Grid.SetRow(routeComboBox, 0);
                 grid.Children.Add(priceBox);
                 Grid.SetRow(priceBox, 1);
+<<<<<<< HEAD
                 grid.Children.Add(addButton);
                 Grid.SetRow(addButton, 2);
+=======
+                grid.Children.Add(seatBox);
+                Grid.SetRow(seatBox, 2);
+                grid.Children.Add(addButton);
+                Grid.SetRow(addButton, 3);
+>>>>>>> maintofix
 
                 dialog.Content = grid;
 
@@ -193,22 +446,49 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
+<<<<<<< HEAD
                     if (!double.TryParse(priceBox.Text, out double price))
                     {
                         ErrorMessage = "Пожалуйста, введите корректную цену";
                         return;
                     }
+=======
+                    if (!priceBox.Value.HasValue || priceBox.Value.Value < 0)
+                    {
+                        ErrorMessage = "Пожалуйста, введите корректную цену (>= 0)";
+                        HasError = true;
+                        return;
+                    }
+                    decimal price = priceBox.Value.Value;
+
+                    if (!seatBox.Value.HasValue || seatBox.Value.Value < 1)
+                    {
+                        ErrorMessage = "Пожалуйста, введите корректный номер места (>= 1)";
+                        HasError = true;
+                        return;
+                    }
+                    uint seat = (uint)seatBox.Value.Value;
+>>>>>>> maintofix
 
                     var newTicket = new
                     {
                         RouteId = selectedRoute.RouteId,
+<<<<<<< HEAD
                         TicketPrice = price,
                         SeatNumber = (uint)1,
+=======
+                        TicketPrice = (double)price,
+                        SeatNumber = seat,
+>>>>>>> maintofix
                         PaymentMethod = "Cash"
                     };
 
                     var content = new StringContent(
+<<<<<<< HEAD
                         JsonSerializer.Serialize(newTicket),
+=======
+                        JsonSerializer.Serialize(newTicket, _jsonOptions),
+>>>>>>> maintofix
                         Encoding.UTF8,
                         "application/json");
 
@@ -221,7 +501,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
+<<<<<<< HEAD
                         ErrorMessage = $"Failed to add ticket: {error}";
+=======
+                        ErrorMessage = $"Ошибка добавления билета: {response.StatusCode} - {error}";
+                        HasError = true;
+>>>>>>> maintofix
                     }
                 };
 
@@ -249,7 +534,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Edit()
         {
+<<<<<<< HEAD
             if (SelectedTicket == null) return;
+=======
+            if (SelectedTicket?.Ticket == null) return; // Check nested Ticket
+            var ticketToEdit = SelectedTicket.Ticket; // Get the original Ticket object
+            var routeToEdit = SelectedTicket.Route; // Get the associated Route object
+>>>>>>> maintofix
 
             try
             {
@@ -263,7 +554,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var grid = new Grid
                 {
+<<<<<<< HEAD
                     RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
+=======
+                    RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto"),
+>>>>>>> maintofix
                     Margin = new Thickness(10)
                 };
 
@@ -271,6 +566,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     PlaceholderText = "Выберите маршрут",
                     ItemsSource = Routes,
+<<<<<<< HEAD
                     DisplayMemberBinding = new global::Avalonia.Data.Binding("StartPoint"),
                     SelectedItem = Routes.FirstOrDefault(r => r.RouteId == SelectedTicket.RouteId)
                 };
@@ -279,6 +575,31 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     Text = SelectedTicket.TicketPrice.ToString(),
                     Watermark = "Цена билета"
+=======
+                    DisplayMemberBinding = new global::Avalonia.Data.Binding(".") { Converter = RouteDisplayConverter.Instance },
+                    SelectedItem = Routes.FirstOrDefault(r => r.RouteId == ticketToEdit.RouteId),
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+
+                var priceBox = new NumericUpDown
+                {
+                    Value = (decimal)ticketToEdit.TicketPrice,
+                    Watermark = "Цена билета (BYN)",
+                    FormatString = "C2",
+                    Increment = 0.5M,
+                    Minimum = 0,
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+
+                var seatBox = new NumericUpDown
+                {
+                    Value = ticketToEdit.SeatNumber,
+                    Watermark = "Номер места",
+                    Increment = 1,
+                    Minimum = 1,
+                    Maximum = 100,
+                    Margin = new Thickness(0, 0, 0, 5)
+>>>>>>> maintofix
                 };
 
                 var updateButton = new Button
@@ -292,8 +613,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Grid.SetRow(routeComboBox, 0);
                 grid.Children.Add(priceBox);
                 Grid.SetRow(priceBox, 1);
+<<<<<<< HEAD
                 grid.Children.Add(updateButton);
                 Grid.SetRow(updateButton, 2);
+=======
+                grid.Children.Add(seatBox);
+                Grid.SetRow(seatBox, 2);
+                grid.Children.Add(updateButton);
+                Grid.SetRow(updateButton, 3);
+>>>>>>> maintofix
 
                 dialog.Content = grid;
 
@@ -305,15 +633,34 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
+<<<<<<< HEAD
                     if (!double.TryParse(priceBox.Text, out double price))
                     {
                         ErrorMessage = "Пожалуйста, введите корректную цену";
                         return;
                     }
+=======
+                    if (!priceBox.Value.HasValue || priceBox.Value.Value < 0)
+                    {
+                        ErrorMessage = "Пожалуйста, введите корректную цену (>= 0)";
+                        HasError = true;
+                        return;
+                    }
+                    decimal price = priceBox.Value.Value;
+
+                    if (!seatBox.Value.HasValue || seatBox.Value.Value < 1)
+                    {
+                        ErrorMessage = "Пожалуйста, введите корректный номер места (>= 1)";
+                        HasError = true;
+                        return;
+                    }
+                    uint seat = (uint)seatBox.Value.Value;
+>>>>>>> maintofix
 
                     var updatedTicket = new
                     {
                         RouteId = selectedRoute.RouteId,
+<<<<<<< HEAD
                         TicketPrice = price,
                         SeatNumber = SelectedTicket.SeatNumber,
                         PaymentMethod = SelectedTicket.PaymentMethod,
@@ -322,11 +669,25 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                     var content = new StringContent(
                         JsonSerializer.Serialize(updatedTicket),
+=======
+                        TicketPrice = (double)price,
+                        SeatNumber = seat,
+                        PaymentMethod = ticketToEdit.PaymentMethod,
+                        IsActive = ticketToEdit.IsActive
+                    };
+
+                    var content = new StringContent(
+                        JsonSerializer.Serialize(updatedTicket, _jsonOptions),
+>>>>>>> maintofix
                         Encoding.UTF8,
                         "application/json");
 
                     var response = await _httpClient.PutAsync(
+<<<<<<< HEAD
                         $"{_baseUrl}/Tickets/{SelectedTicket.TicketId}",
+=======
+                        $"{_baseUrl}/Tickets/{ticketToEdit.TicketId}",
+>>>>>>> maintofix
                         content);
 
                     if (response.IsSuccessStatusCode)
@@ -337,7 +698,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
+<<<<<<< HEAD
                         ErrorMessage = $"Failed to update ticket: {error}";
+=======
+                        ErrorMessage = $"Ошибка обновления билета: {response.StatusCode} - {error}";
+                        HasError = true;
+>>>>>>> maintofix
                     }
                 };
 
@@ -365,13 +731,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Delete()
         {
+<<<<<<< HEAD
             if (SelectedTicket == null) return;
+=======
+            if (SelectedTicket?.Ticket == null) return;
+            var ticketToDelete = SelectedTicket.Ticket; // Get original ticket
+>>>>>>> maintofix
 
             try
             {
                 var dialog = new Window
                 {
+<<<<<<< HEAD
                     Title = "Подтверждение удаления",
+=======
+                    Title = $"Подтверждение удаления билета ID {ticketToDelete.TicketId}",
+>>>>>>> maintofix
                     Width = 300,
                     Height = 150,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -412,20 +787,41 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 yesButton.Click += async (s, e) =>
                 {
+<<<<<<< HEAD
                     var response = await _httpClient.DeleteAsync($"{_baseUrl}/Tickets/{SelectedTicket.TicketId}");
                     if (response.IsSuccessStatusCode)
                     {
+=======
+                    Log.Information("User confirmed deletion for TicketId: {TicketId}", ticketToDelete.TicketId);
+                    var response = await _httpClient.DeleteAsync($"{_baseUrl}/Tickets/{ticketToDelete.TicketId}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Log.Information("Successfully deleted TicketId: {TicketId}", ticketToDelete.TicketId);
+>>>>>>> maintofix
                         await LoadData();
                         dialog.Close();
                     }
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
+<<<<<<< HEAD
                         ErrorMessage = $"Failed to delete ticket: {error}";
                     }
                 };
 
                 noButton.Click += (s, e) => dialog.Close();
+=======
+                        Log.Error("Failed to delete ticket {TicketId}. Status: {StatusCode}, Error: {Error}", ticketToDelete.TicketId, response.StatusCode, error);
+                        ErrorMessage = $"Ошибка удаления билета: {response.StatusCode} - {error}";
+                        HasError = true;
+                    }
+                };
+
+                noButton.Click += (s, e) => {
+                    Log.Information("User cancelled deletion for TicketId: {TicketId}", ticketToDelete.TicketId);
+                    dialog.Close();
+                };
+>>>>>>> maintofix
 
                 var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
                     ? desktop.MainWindow
@@ -450,6 +846,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
+<<<<<<< HEAD
             if (string.IsNullOrWhiteSpace(value))
             {
                 LoadData().ConfigureAwait(false);
@@ -469,6 +866,49 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
 
             Tickets = new ObservableCollection<Ticket>(filteredTickets);
+=======
+            Log.Debug("Search text changed: '{SearchText}'", value);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Log.Debug("Search text is empty, resetting filter.");
+                Tickets = new ObservableCollection<TicketDisplayModel>(_allTickets);
+                return;
+            }
+
+            var lowerCaseValue = value.ToLowerInvariant();
+            var filteredTickets = _allTickets.Where(tdm =>
+                (tdm.TicketId.ToString().Contains(lowerCaseValue)) ||
+                (tdm.SeatNumber.ToString().Contains(lowerCaseValue)) ||
+                (tdm.TicketPrice.ToString("F2").Contains(lowerCaseValue)) ||
+                (tdm.Ticket.PaymentMethod?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) || // Access nested Ticket
+                (tdm.Ticket.TicketStatus?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) || // Access nested Ticket
+                (tdm.Route?.StartPoint?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) || // Access nested Route
+                (tdm.Route?.EndPoint?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) || // Access nested Route
+                (tdm.Route?.RouteNumber?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) // Access nested Route
+            ).ToList();
+
+            Log.Information("Filtering complete. Found {Count} tickets matching '{SearchText}'", filteredTickets.Count, value);
+            Tickets = new ObservableCollection<TicketDisplayModel>(filteredTickets);
+        }
+
+        public class RouteDisplayConverter : global::Avalonia.Data.Converters.IValueConverter
+        {
+            public static readonly RouteDisplayConverter Instance = new();
+
+            public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+            {
+                if (value is Route route)
+                {
+                    return $"{route.RouteNumber} ({route.StartPoint} - {route.EndPoint})";
+                }
+                return value;
+            }
+
+            public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+            {
+                throw new NotSupportedException();
+            }
+>>>>>>> maintofix
         }
     }
 } 

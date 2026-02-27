@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteTwoFactorToken(uint id)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteTwoFactorToken(id), this.SetCallReducerFlags.DeleteTwoFactorTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteTwoFactorToken(id));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteTwoFactorToken(ReducerEventContext ctx, Reducer.DeleteTwoFactorToken args)
         {
+<<<<<<< HEAD
             if (OnDeleteTwoFactorToken == null) return false;
+=======
+            if (OnDeleteTwoFactorToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteTwoFactorToken(
                 ctx,
                 args.Id
@@ -49,6 +68,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteTwoFactorToken";
         }
     }
@@ -58,4 +78,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteTwoFactorTokenFlags;
         public void DeleteTwoFactorToken(CallReducerFlags flags) => DeleteTwoFactorTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_two_factor_token";
+        }
+    }
+>>>>>>> maintofix
 }

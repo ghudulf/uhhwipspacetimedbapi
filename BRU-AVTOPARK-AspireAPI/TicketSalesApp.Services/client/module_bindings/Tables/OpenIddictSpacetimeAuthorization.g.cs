@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class OpenIddictSpacetimeAuthorizationHandle : RemoteTableHandle<EventContext, OpenIddictSpacetimeAuthorization>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "OpenIddictSpacetimeAuthorization";
+=======
+            protected override string RemoteTableName => "open_iddict_spacetime_authorization";
+>>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,43 @@ namespace SpacetimeDB.Types
 
         public readonly OpenIddictSpacetimeAuthorizationHandle OpenIddictSpacetimeAuthorization;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class OpenIddictSpacetimeAuthorizationCols
+    {
+        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint> Id { get; }
+        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> OpenIddictAuthorizationId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> ApplicationClientId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, ulong> CreationDate { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Properties { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Scopes { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Status { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Subject { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Type { get; }
+
+        public OpenIddictSpacetimeAuthorizationCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint>(tableName, "id");
+            OpenIddictAuthorizationId = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "open_iddict_authorization_id");
+            ApplicationClientId = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "application_client_id");
+            CreationDate = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, ulong>(tableName, "creation_date");
+            Properties = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "properties");
+            Scopes = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "scopes");
+            Status = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "status");
+            Subject = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "subject");
+            Type = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "type");
+        }
+    }
+
+    public sealed class OpenIddictSpacetimeAuthorizationIxCols
+    {
+        public global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint> Id { get; }
+
+        public OpenIddictSpacetimeAuthorizationIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint>(tableName, "id");
+        }
+    }
+>>>>>>> maintofix
 }

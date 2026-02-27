@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Route
     {
+<<<<<<< HEAD
         [DataMember(Name = "RouteId")]
         public uint RouteId;
         [DataMember(Name = "RouteNumber")]
@@ -56,6 +57,51 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "UpdatedAt")]
         public ulong? UpdatedAt;
         [DataMember(Name = "UpdatedBy")]
+=======
+        [DataMember(Name = "route_id")]
+        public uint RouteId;
+        [DataMember(Name = "route_number")]
+        public string RouteNumber;
+        [DataMember(Name = "start_point")]
+        public string StartPoint;
+        [DataMember(Name = "end_point")]
+        public string EndPoint;
+        [DataMember(Name = "driver_id")]
+        public uint DriverId;
+        [DataMember(Name = "bus_id")]
+        public uint BusId;
+        [DataMember(Name = "travel_time")]
+        public string? TravelTime;
+        [DataMember(Name = "stop_count")]
+        public uint StopCount;
+        [DataMember(Name = "route_description")]
+        public string? RouteDescription;
+        [DataMember(Name = "route_length")]
+        public double RouteLength;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "route_type")]
+        public string? RouteType;
+        [DataMember(Name = "alternative_routes")]
+        public System.Collections.Generic.List<string>? AlternativeRoutes;
+        [DataMember(Name = "peak_hours")]
+        public System.Collections.Generic.List<string>? PeakHours;
+        [DataMember(Name = "frequency_peak")]
+        public uint? FrequencyPeak;
+        [DataMember(Name = "frequency_off_peak")]
+        public uint? FrequencyOffPeak;
+        [DataMember(Name = "special_instructions")]
+        public System.Collections.Generic.List<string>? SpecialInstructions;
+        [DataMember(Name = "is_accessible")]
+        public bool? IsAccessible;
+        [DataMember(Name = "route_features")]
+        public System.Collections.Generic.List<string>? RouteFeatures;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+>>>>>>> maintofix
         public string? UpdatedBy;
 
         public Route(

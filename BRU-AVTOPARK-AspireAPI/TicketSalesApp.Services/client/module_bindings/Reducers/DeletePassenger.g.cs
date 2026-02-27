@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeletePassenger(uint passengerId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeletePassenger(passengerId), this.SetCallReducerFlags.DeletePassengerFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeletePassenger(passengerId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeletePassenger(ReducerEventContext ctx, Reducer.DeletePassenger args)
         {
+<<<<<<< HEAD
             if (OnDeletePassenger == null) return false;
+=======
+            if (OnDeletePassenger == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeletePassenger(
                 ctx,
                 args.PassengerId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeletePassenger : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "passengerId")]
+=======
+            [DataMember(Name = "passenger_id")]
+>>>>>>> maintofix
             public uint PassengerId;
 
             public DeletePassenger(uint PassengerId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeletePassenger";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeletePassengerFlags;
         public void DeletePassenger(CallReducerFlags flags) => DeletePassengerFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_passenger";
+        }
+    }
+>>>>>>> maintofix
 }

@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class UserRole
     {
+<<<<<<< HEAD
         [DataMember(Name = "Id")]
         public uint Id;
         [DataMember(Name = "UserId")]
@@ -22,6 +23,17 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "AssignedAt")]
         public ulong AssignedAt;
         [DataMember(Name = "AssignedBy")]
+=======
+        [DataMember(Name = "id")]
+        public uint Id;
+        [DataMember(Name = "user_id")]
+        public SpacetimeDB.Identity UserId;
+        [DataMember(Name = "role_id")]
+        public uint RoleId;
+        [DataMember(Name = "assigned_at")]
+        public ulong AssignedAt;
+        [DataMember(Name = "assigned_by")]
+>>>>>>> maintofix
         public string? AssignedBy;
 
         public UserRole(

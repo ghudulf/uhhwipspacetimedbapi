@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RolePermission
     {
+<<<<<<< HEAD
         [DataMember(Name = "Id")]
         public uint Id;
         [DataMember(Name = "RoleId")]
@@ -22,6 +23,17 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "GrantedAt")]
         public ulong GrantedAt;
         [DataMember(Name = "GrantedBy")]
+=======
+        [DataMember(Name = "id")]
+        public uint Id;
+        [DataMember(Name = "role_id")]
+        public uint RoleId;
+        [DataMember(Name = "permission_id")]
+        public uint PermissionId;
+        [DataMember(Name = "granted_at")]
+        public ulong GrantedAt;
+        [DataMember(Name = "granted_by")]
+>>>>>>> maintofix
         public string? GrantedBy;
 
         public RolePermission(

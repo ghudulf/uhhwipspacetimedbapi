@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class UserSettingsHandle : RemoteTableHandle<EventContext, UserSettings>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "UserSettings";
+=======
+            protected override string RemoteTableName => "user_settings";
+>>>>>>> maintofix
 
             public sealed class UserSettingIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,45 @@ namespace SpacetimeDB.Types
 
         public readonly UserSettingsHandle UserSettings;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class UserSettingsCols
+    {
+        public global::SpacetimeDB.Col<UserSettings, uint> UserSettingId { get; }
+        public global::SpacetimeDB.Col<UserSettings, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> TotpEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> WebAuthnEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsEmailNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsSmsNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsPushNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsWhatsAppNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsTelegramNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, bool> IsDiscordNotificationsEnabled { get; }
+
+        public UserSettingsCols(string tableName)
+        {
+            UserSettingId = new global::SpacetimeDB.Col<UserSettings, uint>(tableName, "user_setting_id");
+            UserId = new global::SpacetimeDB.Col<UserSettings, SpacetimeDB.Identity>(tableName, "user_id");
+            TotpEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "totp_enabled");
+            WebAuthnEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "web_authn_enabled");
+            IsEmailNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_email_notifications_enabled");
+            IsSmsNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_sms_notifications_enabled");
+            IsPushNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_push_notifications_enabled");
+            IsWhatsAppNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_whats_app_notifications_enabled");
+            IsTelegramNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_telegram_notifications_enabled");
+            IsDiscordNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_discord_notifications_enabled");
+        }
+    }
+
+    public sealed class UserSettingsIxCols
+    {
+        public global::SpacetimeDB.IxCol<UserSettings, uint> UserSettingId { get; }
+
+        public UserSettingsIxCols(string tableName)
+        {
+            UserSettingId = new global::SpacetimeDB.IxCol<UserSettings, uint>(tableName, "user_setting_id");
+        }
+    }
+>>>>>>> maintofix
 }

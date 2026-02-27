@@ -84,7 +84,11 @@ namespace TicketSalesApp.Services.Implementations
 
             try
             {
+<<<<<<< HEAD
                 _logger.LogInformation("Creating OpenID Connect client with ID {ClientId}", application.ClientId);
+=======
+                _logger.LogInformation("=== [ApplicationStore.CreateAsync] Creating client: {ClientId} ===", application.ClientId);
+>>>>>>> maintofix
                 
                 if (string.IsNullOrEmpty(application.ClientId))
                 {
@@ -99,10 +103,40 @@ namespace TicketSalesApp.Services.Implementations
                     throw new InvalidOperationException("SpacetimeDB connection is null");
                 }
                 
+<<<<<<< HEAD
                 _logger.LogDebug("Registering client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} scopes", 
                     application.ClientId, 
                     application.RedirectUris.Length, 
                     application.Permissions.Length);
+=======
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Client details:");
+                _logger.LogInformation("  - ClientId: {ClientId}", application.ClientId);
+                _logger.LogInformation("  - DisplayName: {DisplayName}", application.DisplayName);
+                _logger.LogInformation("  - Type: {Type}", application.Type);
+                _logger.LogInformation("  - ConsentType: {ConsentType}", application.ConsentType);
+                _logger.LogInformation("  - RedirectUris: {Count} URIs", application.RedirectUris.Length);
+                foreach (var uri in application.RedirectUris)
+                {
+                    _logger.LogInformation("    * {Uri}", uri);
+                }
+                _logger.LogInformation("  - Permissions/Scopes: {Count} permissions", application.Permissions.Length);
+                foreach (var perm in application.Permissions)
+                {
+                    _logger.LogInformation("    * {Permission}", perm);
+                }
+                
+                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                var scopeNames = application.Permissions
+                    .Where(p => p.StartsWith("oc_scp:"))
+                    .Select(p => p.Substring("oc_scp:".Length))
+                    .ToList();
+                
+                _logger.LogInformation("  - Extracted {ScopeCount} scope names: {Scopes}", 
+                    scopeNames.Count, 
+                    string.Join(", ", scopeNames));
+                
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Calling SpacetimeDB reducer RegisterOpenIdClient...");
+>>>>>>> maintofix
                 
                 conn.Reducers.RegisterOpenIdClient(
                     application.ClientId,
@@ -110,17 +144,35 @@ namespace TicketSalesApp.Services.Implementations
                     application.DisplayName,
                     application.RedirectUris.ToList(),
                     application.PostLogoutRedirectUris.ToList(),
+<<<<<<< HEAD
                     application.Permissions.ToList(),
+=======
+                    scopeNames,
+>>>>>>> maintofix
                     application.ConsentType,
                     application.Type
                 );
 
+<<<<<<< HEAD
                 _logger.LogInformation("Successfully created OpenID Connect client {ClientId}", application.ClientId);
+=======
+                // Set the ID to the ClientId so OpenIddict can cache it
+                application.Id = application.ClientId;
+
+                _logger.LogInformation("[ApplicationStore.CreateAsync] ✓ Reducer call completed for client {ClientId}", application.ClientId);
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Note: Data may not be in local cache until FrameTick processes the response");
+                
+>>>>>>> maintofix
                 return default;
             }
             catch (Exception ex)
             {
+<<<<<<< HEAD
                 _logger.LogError(ex, "Error creating OpenID Connect client {ClientId}", application.ClientId);
+=======
+                _logger.LogError(ex, "[ApplicationStore.CreateAsync] ✗ Error creating client {ClientId}: {Message}", 
+                    application.ClientId, ex.Message);
+>>>>>>> maintofix
                 throw;
             }
         }
@@ -171,7 +223,11 @@ namespace TicketSalesApp.Services.Implementations
 
             try
             {
+<<<<<<< HEAD
                 _logger.LogDebug("Finding OpenID Connect client by ID {ClientId}", identifier);
+=======
+                _logger.LogInformation("=== [ApplicationStore.FindByClientIdAsync] Searching for client: {ClientId} ===", identifier);
+>>>>>>> maintofix
                 
                 var conn = _spacetimeService.GetConnection();
                 if (conn == null)
@@ -180,6 +236,7 @@ namespace TicketSalesApp.Services.Implementations
                     throw new InvalidOperationException("SpacetimeDB connection is null");
                 }
                 
+<<<<<<< HEAD
                 var client = conn.Db.OpenIdConnect.Iter()
                     .Where(c => c.ClientId == identifier && c.IsActive)
                     .Select(c => new OpenIddictApplication
@@ -193,16 +250,87 @@ namespace TicketSalesApp.Services.Implementations
                         Type = c.ClientType,
                         DisplayName = c.DisplayName,
                         Permissions = ImmutableArray.Create(c.AllowedScopes.ToArray()),
+=======
+                // Log ALL clients in the database for debugging
+                var allClients = conn.Db.OpenIdConnect.Iter().ToList();
+                _logger.LogInformation("[ApplicationStore] Total clients in OpenIdConnect table: {Count}", allClients.Count);
+                
+                foreach (var c in allClients)
+                {
+                    _logger.LogInformation("[ApplicationStore] - Client: {ClientId}, IsActive: {IsActive}, DisplayName: {DisplayName}", 
+                        c.ClientId, c.IsActive, c.DisplayName);
+                }
+                
+                // Now search for the specific client
+                var client = conn.Db.OpenIdConnect.Iter()
+                    .Where(c => c.ClientId == identifier && c.IsActive)
+                    .Select(c =>
+                    {
+                        // Convert scope names to OpenIddict permission format and add endpoint/grant permissions
+                        var permissions = new List<string>();
+                        
+                        // Add endpoint permissions
+                        permissions.Add("oc_ept:authorization");  // Permissions.Endpoints.Authorization
+                        permissions.Add("oc_ept:token");          // Permissions.Endpoints.Token
+                        permissions.Add("oc_ept:logout");         // Permissions.Endpoints.Logout
+                        permissions.Add("oc_ept:revocation");     // Permissions.Endpoints.Revocation
+                        
+                        // Add grant type permissions
+                        permissions.Add("oc_gt:authorization_code");  // Permissions.GrantTypes.AuthorizationCode
+                        permissions.Add("oc_gt:refresh_token");       // Permissions.GrantTypes.RefreshToken
+                        permissions.Add("oc_gt:client_credentials");  // Permissions.GrantTypes.ClientCredentials
+                        
+                        // Add response type permissions
+                        permissions.Add("oc_rst:code");  // Permissions.ResponseTypes.Code
+                        
+                        // Add scope permissions (e.g., "oc_scp:profile", "oc_scp:email", "oc_scp:api")
+                        foreach (var scope in c.AllowedScopes)
+                        {
+                            permissions.Add($"oc_scp:{scope}");
+                        }
+                        
+                        return new OpenIddictApplication
+                        {
+                            Id = c.ClientId,
+                            ClientId = c.ClientId,
+                            ClientSecret = c.ClientSecret,
+                            PostLogoutRedirectUris = ImmutableArray.Create(c.PostLogoutRedirectUris.ToArray()),
+                            RedirectUris = ImmutableArray.Create(c.RedirectUris.ToArray()),
+                            ConsentType = c.ConsentType,
+                            Type = c.ClientType,
+                            DisplayName = c.DisplayName,
+                            Permissions = ImmutableArray.Create(permissions.ToArray()),
+                        };
+>>>>>>> maintofix
                     })
                     .FirstOrDefault();
 
                 if (client != null)
                 {
+<<<<<<< HEAD
                     _logger.LogDebug("Found OpenID Connect client {ClientId}", identifier);
                 }
                 else
                 {
                     _logger.LogWarning("OpenID Connect client {ClientId} not found", identifier);
+=======
+                    _logger.LogInformation("[ApplicationStore] ✓ FOUND client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} scopes", 
+                        identifier, client.RedirectUris.Length, client.Permissions.Length);
+                }
+                else
+                {
+                    _logger.LogWarning("[ApplicationStore] ✗ NOT FOUND: Client {ClientId} not in database or not active", identifier);
+                    
+                    // Check if it exists but is inactive
+                    var inactiveClient = conn.Db.OpenIdConnect.Iter()
+                        .FirstOrDefault(c => c.ClientId == identifier);
+                    
+                    if (inactiveClient != null)
+                    {
+                        _logger.LogWarning("[ApplicationStore] Client {ClientId} exists but IsActive={IsActive}", 
+                            identifier, inactiveClient.IsActive);
+                    }
+>>>>>>> maintofix
                 }
 
                 return new ValueTask<OpenIddictApplication?>(client);
@@ -731,18 +859,39 @@ namespace TicketSalesApp.Services.Implementations
                     throw new InvalidOperationException("SpacetimeDB connection is null");
                 }
                 
+<<<<<<< HEAD
                 _logger.LogDebug("Updating client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} scopes", 
+=======
+                _logger.LogDebug("Updating client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} permissions", 
+>>>>>>> maintofix
                     application.ClientId, 
                     application.RedirectUris.Length, 
                     application.Permissions.Length);
                 
+<<<<<<< HEAD
+=======
+                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                var scopeNames = application.Permissions
+                    .Where(p => p.StartsWith("oc_scp:"))
+                    .Select(p => p.Substring("oc_scp:".Length))
+                    .ToList();
+                
+                _logger.LogDebug("Extracted {ScopeCount} scope names from permissions: {Scopes}", 
+                    scopeNames.Count, 
+                    string.Join(", ", scopeNames));
+                
+>>>>>>> maintofix
                 conn.Reducers.UpdateOpenIdClient(
                     application.ClientId,
                     application.ClientSecret,
                     application.DisplayName,
                     application.RedirectUris.ToList(),
                     application.PostLogoutRedirectUris.ToList(),
+<<<<<<< HEAD
                     application.Permissions.ToList(),
+=======
+                    scopeNames,
+>>>>>>> maintofix
                     application.ConsentType
                 );
 

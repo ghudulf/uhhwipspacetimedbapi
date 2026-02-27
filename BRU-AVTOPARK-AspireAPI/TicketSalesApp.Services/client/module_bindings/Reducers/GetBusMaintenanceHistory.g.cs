@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void GetBusMaintenanceHistory(uint busId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId, actingUser), this.SetCallReducerFlags.GetBusMaintenanceHistoryFlags);
+=======
+            conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeGetBusMaintenanceHistory(ReducerEventContext ctx, Reducer.GetBusMaintenanceHistory args)
         {
+<<<<<<< HEAD
             if (OnGetBusMaintenanceHistory == null) return false;
+=======
+            if (OnGetBusMaintenanceHistory == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnGetBusMaintenanceHistory(
                 ctx,
                 args.BusId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GetBusMaintenanceHistory : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "busId")]
             public uint BusId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "bus_id")]
+            public uint BusId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public GetBusMaintenanceHistory(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "GetBusMaintenanceHistory";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags GetBusMaintenanceHistoryFlags;
         public void GetBusMaintenanceHistory(CallReducerFlags flags) => GetBusMaintenanceHistoryFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "get_bus_maintenance_history";
+        }
+    }
+>>>>>>> maintofix
 }

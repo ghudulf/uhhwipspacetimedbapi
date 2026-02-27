@@ -13,9 +13,15 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class TicketIdCounter
     {
+<<<<<<< HEAD
         [DataMember(Name = "Key")]
         public string Key;
         [DataMember(Name = "NextId")]
+=======
+        [DataMember(Name = "key")]
+        public string Key;
+        [DataMember(Name = "next_id")]
+>>>>>>> maintofix
         public uint NextId;
 
         public TicketIdCounter(

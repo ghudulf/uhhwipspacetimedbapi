@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void EnableTotp(SpacetimeDB.Identity userId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.EnableTotp(userId), this.SetCallReducerFlags.EnableTotpFlags);
+=======
+            conn.InternalCallReducer(new Reducer.EnableTotp(userId));
+>>>>>>> maintofix
         }
 
         public bool InvokeEnableTotp(ReducerEventContext ctx, Reducer.EnableTotp args)
         {
+<<<<<<< HEAD
             if (OnEnableTotp == null) return false;
+=======
+            if (OnEnableTotp == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnEnableTotp(
                 ctx,
                 args.UserId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class EnableTotp : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
+=======
+            [DataMember(Name = "user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public EnableTotp(SpacetimeDB.Identity UserId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "EnableTotp";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags EnableTotpFlags;
         public void EnableTotp(CallReducerFlags flags) => EnableTotpFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "enable_totp";
+        }
+    }
+>>>>>>> maintofix
 }

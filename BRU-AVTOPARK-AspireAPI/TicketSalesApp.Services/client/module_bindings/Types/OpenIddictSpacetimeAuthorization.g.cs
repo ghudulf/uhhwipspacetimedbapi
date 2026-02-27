@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class OpenIddictSpacetimeAuthorization
     {
+<<<<<<< HEAD
         [DataMember(Name = "Id")]
         public uint Id;
         [DataMember(Name = "OpenIddictAuthorizationId")]
@@ -30,6 +31,25 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "Subject")]
         public string? Subject;
         [DataMember(Name = "Type")]
+=======
+        [DataMember(Name = "id")]
+        public uint Id;
+        [DataMember(Name = "open_iddict_authorization_id")]
+        public string OpenIddictAuthorizationId;
+        [DataMember(Name = "application_client_id")]
+        public string? ApplicationClientId;
+        [DataMember(Name = "creation_date")]
+        public ulong? CreationDate;
+        [DataMember(Name = "properties")]
+        public string? Properties;
+        [DataMember(Name = "scopes")]
+        public string? Scopes;
+        [DataMember(Name = "status")]
+        public string? Status;
+        [DataMember(Name = "subject")]
+        public string? Subject;
+        [DataMember(Name = "type")]
+>>>>>>> maintofix
         public string? Type;
 
         public OpenIddictSpacetimeAuthorization(

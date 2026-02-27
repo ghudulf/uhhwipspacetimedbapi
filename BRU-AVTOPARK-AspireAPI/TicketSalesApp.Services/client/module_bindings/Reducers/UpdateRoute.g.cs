@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateRoute(uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive, actingUser), this.SetCallReducerFlags.UpdateRouteFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateRoute(ReducerEventContext ctx, Reducer.UpdateRoute args)
         {
+<<<<<<< HEAD
             if (OnUpdateRoute == null) return false;
+=======
+            if (OnUpdateRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateRoute(
                 ctx,
                 args.RouteId,
@@ -44,6 +63,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRoute : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "routeId")]
             public uint RouteId;
             [DataMember(Name = "startPoint")]
@@ -59,6 +79,23 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "isActive")]
             public bool? IsActive;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "route_id")]
+            public uint RouteId;
+            [DataMember(Name = "start_point")]
+            public string? StartPoint;
+            [DataMember(Name = "end_point")]
+            public string? EndPoint;
+            [DataMember(Name = "driver_id")]
+            public uint? DriverId;
+            [DataMember(Name = "bus_id")]
+            public uint? BusId;
+            [DataMember(Name = "travel_time")]
+            public string? TravelTime;
+            [DataMember(Name = "is_active")]
+            public bool? IsActive;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateRoute(
@@ -86,6 +123,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateRoute";
         }
     }
@@ -95,4 +133,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateRouteFlags;
         public void UpdateRoute(CallReducerFlags flags) => UpdateRouteFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_route";
+        }
+    }
+>>>>>>> maintofix
 }

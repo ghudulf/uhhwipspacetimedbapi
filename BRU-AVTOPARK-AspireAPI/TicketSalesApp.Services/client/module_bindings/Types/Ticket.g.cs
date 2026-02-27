@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Ticket
     {
+<<<<<<< HEAD
         [DataMember(Name = "TicketId")]
         public uint TicketId;
         [DataMember(Name = "RouteId")]
@@ -72,6 +73,67 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "ReservationStatus")]
         public string? ReservationStatus;
         [DataMember(Name = "ReservationExpiry")]
+=======
+        [DataMember(Name = "ticket_id")]
+        public uint TicketId;
+        [DataMember(Name = "route_id")]
+        public uint RouteId;
+        [DataMember(Name = "ticket_price")]
+        public double TicketPrice;
+        [DataMember(Name = "seat_number")]
+        public uint SeatNumber;
+        [DataMember(Name = "payment_method")]
+        public string PaymentMethod;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+        public string? UpdatedBy;
+        [DataMember(Name = "purchase_time")]
+        public ulong PurchaseTime;
+        [DataMember(Name = "ticket_type")]
+        public string? TicketType;
+        [DataMember(Name = "ticket_status")]
+        public string? TicketStatus;
+        [DataMember(Name = "validation_method")]
+        public string? ValidationMethod;
+        [DataMember(Name = "validation_time")]
+        public ulong? ValidationTime;
+        [DataMember(Name = "validation_location")]
+        public string? ValidationLocation;
+        [DataMember(Name = "validated_by_employee_id")]
+        public uint? ValidatedByEmployeeId;
+        [DataMember(Name = "is_return")]
+        public bool? IsReturn;
+        [DataMember(Name = "return_ticket_id")]
+        public uint? ReturnTicketId;
+        [DataMember(Name = "discount_type")]
+        public string? DiscountType;
+        [DataMember(Name = "discount_amount")]
+        public double? DiscountAmount;
+        [DataMember(Name = "discount_reason")]
+        public string? DiscountReason;
+        [DataMember(Name = "refund_status")]
+        public string? RefundStatus;
+        [DataMember(Name = "refund_amount")]
+        public double? RefundAmount;
+        [DataMember(Name = "refund_time")]
+        public ulong? RefundTime;
+        [DataMember(Name = "refund_reason")]
+        public string? RefundReason;
+        [DataMember(Name = "discount_id")]
+        public uint? DiscountId;
+        [DataMember(Name = "seat_type")]
+        public string? SeatType;
+        [DataMember(Name = "is_reserved")]
+        public bool IsReserved;
+        [DataMember(Name = "reservation_status")]
+        public string? ReservationStatus;
+        [DataMember(Name = "reservation_expiry")]
+>>>>>>> maintofix
         public ulong? ReservationExpiry;
 
         public Ticket(

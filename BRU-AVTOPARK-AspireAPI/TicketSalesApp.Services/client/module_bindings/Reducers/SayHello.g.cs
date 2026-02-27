@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void SayHello()
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.SayHello(), this.SetCallReducerFlags.SayHelloFlags);
+=======
+            conn.InternalCallReducer(new Reducer.SayHello());
+>>>>>>> maintofix
         }
 
         public bool InvokeSayHello(ReducerEventContext ctx, Reducer.SayHello args)
         {
+<<<<<<< HEAD
             if (OnSayHello == null) return false;
+=======
+            if (OnSayHello == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnSayHello(
                 ctx
             );
@@ -36,6 +55,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class SayHello : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "SayHello";
         }
     }
@@ -45,4 +65,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags SayHelloFlags;
         public void SayHello(CallReducerFlags flags) => SayHelloFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "say_hello";
+        }
+    }
+>>>>>>> maintofix
 }

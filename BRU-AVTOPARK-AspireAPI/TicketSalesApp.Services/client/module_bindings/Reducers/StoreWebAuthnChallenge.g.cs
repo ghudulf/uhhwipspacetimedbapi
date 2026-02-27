@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void StoreWebAuthnChallenge(SpacetimeDB.Identity userId, string challenge, ulong expiresAt)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.StoreWebAuthnChallenge(userId, challenge, expiresAt), this.SetCallReducerFlags.StoreWebAuthnChallengeFlags);
+=======
+            conn.InternalCallReducer(new Reducer.StoreWebAuthnChallenge(userId, challenge, expiresAt));
+>>>>>>> maintofix
         }
 
         public bool InvokeStoreWebAuthnChallenge(ReducerEventContext ctx, Reducer.StoreWebAuthnChallenge args)
         {
+<<<<<<< HEAD
             if (OnStoreWebAuthnChallenge == null) return false;
+=======
+            if (OnStoreWebAuthnChallenge == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnStoreWebAuthnChallenge(
                 ctx,
                 args.UserId,
@@ -39,11 +58,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class StoreWebAuthnChallenge : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "challenge")]
             public string Challenge;
             [DataMember(Name = "expiresAt")]
+=======
+            [DataMember(Name = "user_id")]
+            public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "challenge")]
+            public string Challenge;
+            [DataMember(Name = "expires_at")]
+>>>>>>> maintofix
             public ulong ExpiresAt;
 
             public StoreWebAuthnChallenge(
@@ -62,6 +89,7 @@ namespace SpacetimeDB.Types
                 this.Challenge = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "StoreWebAuthnChallenge";
         }
     }
@@ -71,4 +99,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags StoreWebAuthnChallengeFlags;
         public void StoreWebAuthnChallenge(CallReducerFlags flags) => StoreWebAuthnChallengeFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "store_web_authn_challenge";
+        }
+    }
+>>>>>>> maintofix
 }

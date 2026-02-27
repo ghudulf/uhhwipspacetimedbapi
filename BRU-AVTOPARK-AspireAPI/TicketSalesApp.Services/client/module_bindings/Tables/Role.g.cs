@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class RoleHandle : RemoteTableHandle<EventContext, Role>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "Role";
+=======
+            protected override string RemoteTableName => "role";
+>>>>>>> maintofix
 
             public sealed class RoleIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,49 @@ namespace SpacetimeDB.Types
 
         public readonly RoleHandle Role;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class RoleCols
+    {
+        public global::SpacetimeDB.Col<Role, uint> RoleId { get; }
+        public global::SpacetimeDB.Col<Role, int> LegacyRoleId { get; }
+        public global::SpacetimeDB.Col<Role, string> Name { get; }
+        public global::SpacetimeDB.Col<Role, string> Description { get; }
+        public global::SpacetimeDB.Col<Role, bool> IsSystem { get; }
+        public global::SpacetimeDB.Col<Role, uint> Priority { get; }
+        public global::SpacetimeDB.Col<Role, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<Role, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.Col<Role, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.NullableCol<Role, string> CreatedBy { get; }
+        public global::SpacetimeDB.NullableCol<Role, string> UpdatedBy { get; }
+        public global::SpacetimeDB.NullableCol<Role, string> NormalizedName { get; }
+
+        public RoleCols(string tableName)
+        {
+            RoleId = new global::SpacetimeDB.Col<Role, uint>(tableName, "role_id");
+            LegacyRoleId = new global::SpacetimeDB.Col<Role, int>(tableName, "legacy_role_id");
+            Name = new global::SpacetimeDB.Col<Role, string>(tableName, "name");
+            Description = new global::SpacetimeDB.Col<Role, string>(tableName, "description");
+            IsSystem = new global::SpacetimeDB.Col<Role, bool>(tableName, "is_system");
+            Priority = new global::SpacetimeDB.Col<Role, uint>(tableName, "priority");
+            IsActive = new global::SpacetimeDB.Col<Role, bool>(tableName, "is_active");
+            CreatedAt = new global::SpacetimeDB.Col<Role, ulong>(tableName, "created_at");
+            UpdatedAt = new global::SpacetimeDB.Col<Role, ulong>(tableName, "updated_at");
+            CreatedBy = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "created_by");
+            UpdatedBy = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "updated_by");
+            NormalizedName = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "normalized_name");
+        }
+    }
+
+    public sealed class RoleIxCols
+    {
+        public global::SpacetimeDB.IxCol<Role, uint> RoleId { get; }
+
+        public RoleIxCols(string tableName)
+        {
+            RoleId = new global::SpacetimeDB.IxCol<Role, uint>(tableName, "role_id");
+        }
+    }
+>>>>>>> maintofix
 }

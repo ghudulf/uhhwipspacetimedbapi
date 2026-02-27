@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class ConductorStatistics
     {
+<<<<<<< HEAD
         [DataMember(Name = "StatId")]
         public uint StatId;
         [DataMember(Name = "EmployeeId")]
@@ -56,6 +57,51 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "TotalFirstAidProvided")]
         public long TotalFirstAidProvided;
         [DataMember(Name = "TotalEmergencyResponses")]
+=======
+        [DataMember(Name = "stat_id")]
+        public uint StatId;
+        [DataMember(Name = "employee_id")]
+        public uint EmployeeId;
+        [DataMember(Name = "period_start")]
+        public ulong PeriodStart;
+        [DataMember(Name = "period_end")]
+        public ulong PeriodEnd;
+        [DataMember(Name = "total_passengers_served")]
+        public long TotalPassengersServed;
+        [DataMember(Name = "average_fare_evasion_rate")]
+        public double AverageFareEvasionRate;
+        [DataMember(Name = "total_revenue_collected")]
+        public double TotalRevenueCollected;
+        [DataMember(Name = "total_fines_collected")]
+        public double TotalFinesCollected;
+        [DataMember(Name = "total_complaints_received")]
+        public long TotalComplaintsReceived;
+        [DataMember(Name = "average_rating")]
+        public double AverageRating;
+        [DataMember(Name = "total_shifts_worked")]
+        public long TotalShiftsWorked;
+        [DataMember(Name = "average_passengers_per_shift")]
+        public double AveragePassengersPerShift;
+        [DataMember(Name = "efficiency_score")]
+        public double EfficiencyScore;
+        [DataMember(Name = "total_tickets_sold")]
+        public long TotalTicketsSold;
+        [DataMember(Name = "average_tickets_per_hour")]
+        public double AverageTicketsPerHour;
+        [DataMember(Name = "average_revenue_per_shift")]
+        public double AverageRevenuePerShift;
+        [DataMember(Name = "total_incidents_reported")]
+        public long TotalIncidentsReported;
+        [DataMember(Name = "total_safety_violations_reported")]
+        public long TotalSafetyViolationsReported;
+        [DataMember(Name = "total_passenger_assistance")]
+        public long TotalPassengerAssistance;
+        [DataMember(Name = "average_performance_rating")]
+        public double AveragePerformanceRating;
+        [DataMember(Name = "total_first_aid_provided")]
+        public long TotalFirstAidProvided;
+        [DataMember(Name = "total_emergency_responses")]
+>>>>>>> maintofix
         public long TotalEmergencyResponses;
 
         public ConductorStatistics(

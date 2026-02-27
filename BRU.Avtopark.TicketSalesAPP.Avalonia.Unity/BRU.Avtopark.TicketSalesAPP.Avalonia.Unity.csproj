@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+=======
+<Project Sdk="Microsoft.NET.Sdk">
+>>>>>>> maintofix
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -40,6 +44,10 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+<<<<<<< HEAD
+=======
+    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.0.0" />
+>>>>>>> maintofix
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.4.0" />
     <PackageReference Include="R3" Version="1.2.9" />
     <PackageReference Include="System.Text.Json" Version="9.0.1" />
@@ -50,6 +58,11 @@
     <PackageReference Include="Classic.CommonControls.Avalonia" Version="11.2.0.7" />
 	<PackageReference Include="SukiUI" Version="6.0.0" />
     <PackageReference Include="FluentAvalonia.ProgressRing" Version="1.69.2" />
+<<<<<<< HEAD
+=======
+ 
+    <PackageReference Include="WebView.Avalonia" Version="11.0.0.1" />
+>>>>>>> maintofix
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="4n4YBNw.png" />

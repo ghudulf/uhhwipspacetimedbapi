@@ -26,6 +26,10 @@ using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+<<<<<<< HEAD
+=======
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+>>>>>>> maintofix
 using Microsoft.AspNetCore;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
@@ -45,6 +49,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IMemoryCache _cache;
         private readonly ISpacetimeDBService _spacetimeService;
+<<<<<<< HEAD
+=======
+        private readonly SymmetricSecurityKey _signingKey;
+>>>>>>> maintofix
 
         public AuthController(
             TicketSalesApp.Services.Interfaces.IAuthenticationService authService, 
@@ -57,7 +65,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             IConfiguration configuration,
             ILogger<AuthController> logger,
             IMemoryCache cache,
+<<<<<<< HEAD
             ISpacetimeDBService spacetimeService)
+=======
+            ISpacetimeDBService spacetimeService,
+            SymmetricSecurityKey signingKey)
+>>>>>>> maintofix
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _qrAuthService = qrAuthService ?? throw new ArgumentNullException(nameof(qrAuthService));
@@ -70,6 +83,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+<<<<<<< HEAD
+=======
+            _signingKey = signingKey ?? throw new ArgumentNullException(nameof(signingKey));
+>>>>>>> maintofix
         }
 
         #region HTML Templates
@@ -1089,7 +1106,65 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     </div>
                 </div>
             </div>
+<<<<<<< HEAD
             <script>
+=======
+            
+            <!-- Auto-login overlay -->
+            <div id=""autoLoginOverlay"" style=""display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;"">
+                <div style=""text-align: center;"">
+                    <div class=""loader"" style=""margin: 0 auto 1rem;""></div>
+                    <h3 style=""color: white; margin-bottom: 0.5rem;"">Welcome back!</h3>
+                    <p style=""color: #b3b3b3;"">Redirecting to your profile...</p>
+                </div>
+            </div>
+            
+            <script>
+                // Check if user is already logged in with a valid token
+                (function checkExistingAuth() {{
+                    const token = localStorage.getItem('auth_token');
+                    if (token && token !== 'null' && token !== '') {{
+                        // Show loading overlay with fade-in animation
+                        const overlay = document.getElementById('autoLoginOverlay');
+                        overlay.style.display = 'flex';
+                        overlay.style.opacity = '0';
+                        
+                        // Fade in the overlay
+                        setTimeout(() => {{
+                            overlay.style.transition = 'opacity 0.3s ease-in-out';
+                            overlay.style.opacity = '1';
+                        }}, 10);
+                        
+                        // Try to validate the token by accessing profile
+                        fetch('/api/auth/profile?token=' + encodeURIComponent(token))
+                            .then(response => {{
+                                if (response.ok) {{
+                                    // Token is valid, wait a bit for smooth transition then redirect
+                                    setTimeout(() => {{
+                                        window.location.href = '/api/auth/profile?token=' + encodeURIComponent(token);
+                                    }}, 800);
+                                }} else {{
+                                    // Token is invalid, remove it and hide overlay
+                                    localStorage.removeItem('auth_token');
+                                    overlay.style.opacity = '0';
+                                    setTimeout(() => {{
+                                        overlay.style.display = 'none';
+                                    }}, 300);
+                                }}
+                            }})
+                            .catch(error => {{
+                                console.error('Error validating token:', error);
+                                // On error, remove the token and hide overlay
+                                localStorage.removeItem('auth_token');
+                                overlay.style.opacity = '0';
+                                setTimeout(() => {{
+                                    overlay.style.display = 'none';
+                                }}, 300);
+                            }});
+                    }}
+                }})();
+                
+>>>>>>> maintofix
                 function submitLoginForm() {{
                     // Disable button to prevent multiple submissions
                     document.getElementById('loginButton').disabled = true;
@@ -1099,6 +1174,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
                     
+<<<<<<< HEAD
                     // Submit form using fetch instead of form submission to avoid WebSocket issues
                     fetch('/api/auth/login', {{
                         method: 'POST',
@@ -1117,6 +1193,47 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         return response.json();
                     }})
                     .then(data => {{
+=======
+                    // Submit form using fetch with JSON
+                    fetch('/api/auth/login', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            username: username,
+                            password: password
+                        }}),
+                        credentials: 'same-origin',
+                        redirect: 'manual'
+                    }})
+                    .then(response => {{
+                        // Check if it's a redirect (status 301, 302, 303, 307, 308)
+                        if (response.type === 'opaqueredirect' || response.status === 0 || (response.status >= 300 && response.status < 400)) {{
+                            // For redirects, just follow the redirect manually
+                            const location = response.headers.get('Location') || '/api/auth/success';
+                            window.location.href = location;
+                            return null;
+                        }}
+                        
+                        // Check if response is HTML (redirect page)
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('text/html')) {{
+                            // It's an HTML redirect, follow it
+                            window.location.href = response.url || '/api/auth/success';
+                            return null;
+                        }}
+                        
+                        // Otherwise parse as JSON
+                        return response.json();
+                    }})
+                    .then(data => {{
+                        if (!data) {{
+                            // Redirect is being handled, do nothing
+                            return;
+                        }}
+                        
+>>>>>>> maintofix
                         if (data && data.success) {{
                             // Store token if present
                             if (data.data && data.data.token) {{
@@ -1397,6 +1514,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         // Add this before the end of the HTML Templates region
 
+<<<<<<< HEAD
         private string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => string.Format(BaseHtmlTemplate, "Login to " + clientName, $@"
             <div class=""info-box"">
                 <p>The application <strong>{clientName}</strong> is requesting access to your account.</p>
@@ -1434,6 +1552,182 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             </div>
         ");
 
+=======
+        private string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => string.Format(BaseHtmlTemplate, "Authorize " + clientName, $@"
+            <style>
+                .oauth-container {{
+                    max-width: 500px;
+                    margin: 2rem auto;
+                }}
+                .oauth-header {{
+                    text-align: center;
+                    margin-bottom: 2rem;
+                }}
+                .oauth-app-icon {{
+                    width: 80px;
+                    height: 80px;
+                    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                    border-radius: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 2.5rem;
+                    font-weight: bold;
+                    color: white;
+                    margin: 0 auto 1rem;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                }}
+                .oauth-title {{
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: var(--text-color);
+                    margin: 0 0 0.5rem 0;
+                }}
+                .oauth-subtitle {{
+                    font-size: 0.875rem;
+                    color: var(--text-muted);
+                    margin: 0;
+                }}
+                .permissions-card {{
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    margin-bottom: 1.5rem;
+                }}
+                .permissions-title {{
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: var(--text-color);
+                    margin: 0 0 1rem 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }}
+                .permissions-list {{
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                }}
+                .permission-item {{
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 0.75rem;
+                    padding: 0.75rem;
+                    margin-bottom: 0.5rem;
+                    background: var(--input-bg);
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color);
+                }}
+                .permission-icon {{
+                    font-size: 1.25rem;
+                    flex-shrink: 0;
+                    margin-top: 0.125rem;
+                }}
+                .permission-text {{
+                    flex: 1;
+                    font-size: 0.875rem;
+                    color: var(--text-color);
+                    line-height: 1.5;
+                }}
+                .login-card {{
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    margin-bottom: 1.5rem;
+                }}
+                .security-notice {{
+                    background: rgba(59, 130, 246, 0.1);
+                    border: 1px solid rgba(59, 130, 246, 0.3);
+                    border-radius: 8px;
+                    padding: 1rem;
+                    margin-top: 1.5rem;
+                    text-align: center;
+                }}
+                .security-notice-text {{
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                    margin: 0;
+                    line-height: 1.5;
+                }}
+                .security-icon {{
+                    font-size: 1.5rem;
+                    margin-bottom: 0.5rem;
+                }}
+            </style>
+            
+            <div class=""oauth-container fade-in"">
+                <div class=""oauth-header"">
+                    <div class=""oauth-app-icon"">{clientName.Substring(0, 1).ToUpper()}</div>
+                    <h1 class=""oauth-title"">Authorize {System.Web.HttpUtility.HtmlEncode(clientName)}</h1>
+                    <p class=""oauth-subtitle"">This application is requesting access to your BRU AVTOPARK account</p>
+                </div>
+
+                {(error != null ? $@"<div class=""error-message"" style=""margin-bottom: 1.5rem;"">{System.Web.HttpUtility.HtmlEncode(error)}</div>" : "")}
+
+                <div class=""permissions-card"">
+                    <h2 class=""permissions-title"">
+                        <span>🔐</span>
+                        <span>Requested Permissions</span>
+                    </h2>
+                    <ul class=""permissions-list"">
+                        {string.Join("", scopes.Select(scope => $@"
+                            <li class=""permission-item"">
+                                <span class=""permission-icon"">{GetScopeIcon(scope)}</span>
+                                <span class=""permission-text"">{System.Web.HttpUtility.HtmlEncode(FormatScope(scope))}</span>
+                            </li>
+                        "))}
+                    </ul>
+                </div>
+
+                <div class=""login-card"">
+                    <form method=""POST"" action=""/api/auth/connect/authorize/callback"">
+                        <input type=""hidden"" name=""requestId"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(requestId)}"">
+                        
+                        <div class=""form-group"">
+                            <label for=""username"">Username</label>
+                            <input type=""text"" id=""username"" name=""username"" required placeholder=""Enter your username"" autofocus>
+                        </div>
+                        
+                        <div class=""form-group"">
+                            <label for=""password"">Password</label>
+                            <input type=""password"" id=""password"" name=""password"" required placeholder=""Enter your password"">
+                        </div>
+                        
+                        <button type=""submit"" class=""btn btn-block"" style=""margin-top: 1.5rem;"">
+                            🔓 Login & Authorize
+                        </button>
+                    </form>
+                </div>
+
+                <div class=""security-notice"">
+                    <div class=""security-icon"">🛡️</div>
+                    <p class=""security-notice-text"">
+                        By continuing, you authorize <strong>{System.Web.HttpUtility.HtmlEncode(clientName)}</strong> to access the requested information from your account. 
+                        You can revoke this access at any time from your account settings.
+                    </p>
+                </div>
+            </div>
+        ");
+
+        // Add helper method to get icons for different scopes
+        private string GetScopeIcon(string scope)
+        {
+            return scope.ToLower() switch
+            {
+                "openid" => "👤",
+                "profile" => "📋",
+                "email" => "📧",
+                "phone" => "📱",
+                "roles" => "🎭",
+                "offline_access" => "🔄",
+                "api" => "🔌",
+                _ => "✓"
+            };
+        }
+
+>>>>>>> maintofix
         // Add this helper method to format OAuth scopes for display
         private string FormatScope(string scope)
         {
@@ -1450,9 +1744,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 case "roles":
                     return "Your role information and permissions";
                 case "offline_access":
+<<<<<<< HEAD
                     return "Access to your account even when you're not logged in";
                 default:
                     return scope;
+=======
+                    return "Access to your account even when you're not logged in (refresh tokens)";
+                case "api":
+                    return "Access to the BRU AVTOPARK API on your behalf";
+                default:
+                    return $"Access to {scope}";
+>>>>>>> maintofix
             }
         }
 
@@ -1535,7 +1837,45 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var result = await ProcessLoginRequest(finalRequest);
                 _logger.LogDebug("ProcessLoginRequest returned result type: {ResultType}", result.GetType().Name);
 
+<<<<<<< HEAD
                 // If the request is JSON, always return JSON response even from browser
+=======
+                // For browser requests, set cookie even if JSON was sent
+                if (IsBrowserRequest() && result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
+                {
+                    _logger.LogInformation("LOGIN SUCCESSFUL: Browser login successful for user: {Username}", finalRequest.Username);
+                    _logger.LogDebug("Token generated with length: {TokenLength}", response.Data?.Token?.Length ?? 0);
+                    
+                    // Sign in the user with a cookie for browser requests
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    var jwtToken = tokenHandler.ReadJwtToken(response.Data!.Token);
+                    
+                    // Create claims identity from JWT token
+                    var claims = jwtToken.Claims.ToList();
+                    _logger.LogInformation("Setting cookie with {ClaimCount} claims", claims.Count);
+                    foreach (var claim in claims)
+                    {
+                        _logger.LogDebug("Claim: {Type} = {Value}", claim.Type, claim.Value);
+                    }
+                    
+                    var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                    var principal = new ClaimsPrincipal(identity);
+                    
+                    // Sign in with cookie
+                    await HttpContext.SignInAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme,
+                        principal,
+                        new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                        });
+                    
+                    _logger.LogInformation("Cookie authentication set successfully");
+                }
+                
+                // If the request is JSON, return JSON response
+>>>>>>> maintofix
                 if (jsonRequest != null)
                 {
                     _logger.LogInformation("JSON request detected, returning JSON response");
@@ -1546,6 +1886,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     _logger.LogInformation("Processing as browser request");
                     
+<<<<<<< HEAD
                     if (result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
                     {
                         _logger.LogInformation("LOGIN SUCCESSFUL: Browser login successful for user: {Username}", finalRequest.Username);
@@ -1554,6 +1895,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         
                         // If it's a successful login from a browser, redirect to success page with token
                         return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response.Data!.Token)}");
+=======
+                    if (result is OkObjectResult okResult2 && okResult2.Value is ApiResponse<LoginResponse> response2)
+                    {
+                        // If it's a successful login from a browser, redirect to success page with token
+                        return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response2.Data!.Token)}");
+>>>>>>> maintofix
                     }
                     
                     // For failures, redirect back to login page with error
@@ -1605,10 +1952,34 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             try
             {
+<<<<<<< HEAD
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
                     Log.Warning("Missing or invalid Authorization header");
+=======
+                // First check if user is authenticated via ASP.NET Core Identity (cookie-based)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    // Check if user has Administrator role claim
+                    if (User.IsInRole("Administrator"))
+                    {
+                        return true;
+                    }
+                    
+                    // Check for role claims with value "1" (legacy admin role ID)
+                    var userRoleClaims = User.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role");
+                    if (userRoleClaims.Any(c => c.Value == "Administrator" || c.Value == "1"))
+                    {
+                        return true;
+                    }
+                }
+
+                // Fallback to JWT token validation for API requests
+                var authHeader = Request.Headers["Authorization"].ToString();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                {
+>>>>>>> maintofix
                     return false;
                 }
 
@@ -1624,8 +1995,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Fallback to checking all role claims
+<<<<<<< HEAD
                 var roleClaims = jwtToken.Claims.Where(c => c.Type == "role");
                 return roleClaims.Any(c => c.Value == "1");
+=======
+                var jwtRoleClaims = jwtToken.Claims.Where(c => c.Type == "role");
+                return jwtRoleClaims.Any(c => c.Value == "1");
+>>>>>>> maintofix
             }
             catch (Exception ex)
             {
@@ -2300,6 +2676,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         // Add success page renderer
+<<<<<<< HEAD
         private string RenderSuccessPage(string token) => string.Format(BaseHtmlTemplate, "Login Successful - BRU AVTOPARK", $@"
             <div class=""success-message"" style=""display: flex; align-items: center; justify-content: center; gap: 10px;"">
                 <svg width=""24"" height=""24"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"">
@@ -2345,6 +2722,52 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }}
             </script>
         ", "");
+=======
+        private string RenderSuccessPage(string token)
+        {
+            var safeToken = token.Replace("'", "\\'");
+            var bodyContent = $@"
+            <div class=""container"">
+                <div class=""card fade-in"">
+                    <div class=""card-body text-center"">
+                        <div style=""margin-bottom: 1.5rem; animation: scaleIn 0.5s ease-out;"">
+                            <svg width=""64"" height=""64"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"" style=""margin: 0 auto;"">
+                                <circle cx=""12"" cy=""12"" r=""10"" stroke=""var(--success-color)"" stroke-width=""2"" fill=""rgba(16, 185, 129, 0.1)""/>
+                                <path d=""M8 12L11 15L16 9"" stroke=""var(--success-color)"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round""/>
+                            </svg>
+                        </div>
+                        <h2 style=""color: var(--success-color); margin-bottom: 1rem;"">Login Successful!</h2>
+                        <p style=""color: var(--text-muted); margin-bottom: 2rem;"">You have been successfully authenticated. Redirecting to your profile...</p>
+                        <div class=""loader""></div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes scaleIn {{
+                    from {{ transform: scale(0); opacity: 0; }}
+                    to {{ transform: scale(1); opacity: 1; }}
+                }}
+            </style>
+            <script>
+                // Store the token securely
+                const token = '{safeToken}';
+                if (token && token !== 'null') {{
+                    localStorage.setItem('auth_token', token);
+                    
+                    // Automatically redirect to profile page after a short delay
+                    setTimeout(() => {{
+                        window.location.href = `/api/auth/profile?token=${{encodeURIComponent(token)}}`;
+                    }}, 1500);
+                }} else {{
+                    setTimeout(() => {{
+                        window.location.href = '/api/auth/login?error=No authentication token provided';
+                    }}, 2000);
+                }}
+            </script>";
+            
+            return string.Format(BaseHtmlTemplate, "Login Successful - BRU AVTOPARK", bodyContent, "");
+        }
+>>>>>>> maintofix
 
         [HttpGet("success")]
         [AllowAnonymous]
@@ -2382,6 +2805,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         // Add error page renderer
+<<<<<<< HEAD
         private string RenderErrorPage(string error) => string.Format(BaseHtmlTemplate, "Error - BRU AVTOPARK", $@"
             <div class=""error-message"" style=""display: flex; align-items: center; justify-content: center; gap: 10px;"">
                 <svg width=""24"" height=""24"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"">
@@ -2394,6 +2818,38 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             <div class=""text-center mt-4"">
                 <a href=""/api/auth/login"" class=""btn"">Back to Login</a>
             </div>");
+=======
+        private string RenderErrorPage(string error)
+        {
+            var encodedError = System.Web.HttpUtility.HtmlEncode(error);
+            var bodyContent = $@"
+            <div class=""container"">
+                <div class=""card fade-in"">
+                    <div class=""card-body text-center"">
+                        <div style=""margin-bottom: 1.5rem; animation: shake 0.5s ease-out;"">
+                            <svg width=""64"" height=""64"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"" style=""margin: 0 auto;"">
+                                <circle cx=""12"" cy=""12"" r=""10"" stroke=""var(--error-color)"" stroke-width=""2"" fill=""rgba(239, 68, 68, 0.1)""/>
+                                <path d=""M12 8V12"" stroke=""var(--error-color)"" stroke-width=""2"" stroke-linecap=""round""/>
+                                <circle cx=""12"" cy=""16"" r=""1"" fill=""var(--error-color)""/>
+                            </svg>
+                        </div>
+                        <h2 style=""color: var(--error-color); margin-bottom: 1rem;"">An Error Occurred</h2>
+                        <p style=""color: var(--text-muted); margin-bottom: 2rem;"">{encodedError}</p>
+                        <a href=""/api/auth/login"" class=""btn"">Back to Login</a>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes shake {{
+                    0%, 100% {{ transform: translateX(0); }}
+                    10%, 30%, 50%, 70%, 90% {{ transform: translateX(-5px); }}
+                    20%, 40%, 60%, 80% {{ transform: translateX(5px); }}
+                }}
+            </style>";
+            
+            return string.Format(BaseHtmlTemplate, "Error - BRU AVTOPARK", bodyContent, "");
+        }
+>>>>>>> maintofix
 
         [HttpGet("error")]
         [AllowAnonymous]
@@ -3742,7 +4198,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/registerclient")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
+=======
+        [Authorize(Policy = "RequireAdministrator")]
+>>>>>>> maintofix
         public async Task<ActionResult<RegisterClientResponse>> RegisterClient([FromBody] RegisterClientRequest request)
         {
             try// NO NEED FOR TRANSACTION GARBO
@@ -3877,6 +4337,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
         }
 
+<<<<<<< HEAD
         [HttpGet("connect/clients")]
         [Authorize(Roles = "Administrator")]
         public async Task<ActionResult<GetClientsResponse>> GetClients()
@@ -3930,6 +4391,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
         }
 
+=======
+>>>>>>> maintofix
         [HttpGet("connect/client/{clientId}")]
         [Authorize(Roles = "Administrator")]
         public async Task<ActionResult<GetClientResponse>> GetClient(string clientId)
@@ -4103,6 +4566,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private string GenerateJwtToken(UserProfile userProfile)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
+<<<<<<< HEAD
             var keyString = _configuration["JwtSettings:Secret"] ?? 
                 throw new InvalidOperationException("JWT secret is not configured");
 
@@ -4118,6 +4582,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             var key = new SymmetricSecurityKey(keyBytes);
+=======
+>>>>>>> maintofix
             var expirationMinutes = double.Parse(_configuration["JwtSettings:ExpirationInMinutes"] ?? "120");
             
             var conn = _spacetimeService.GetConnection();
@@ -4152,7 +4618,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 new Claim(ClaimTypes.Name, userProfile.Login), // Keep for backward compatibility
                 new Claim("sub", userProfile.LegacyUserId.ToString()),
                 new Claim("identity", userProfile.UserId.ToString()),
+<<<<<<< HEAD
                 new Claim("xuid", userProfile.Xuid?.ToString() ?? "")
+=======
+                new Claim("xuid", userProfile.Xuid?.ToString() ?? ""),
+                new Claim("token_usage", "access_token"), // OpenIddict expects this
+                new Claim("oi_tkn_id", Guid.NewGuid().ToString()) // OpenIddict token ID
+>>>>>>> maintofix
             };
             
             // Add role claims
@@ -4179,7 +4651,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+<<<<<<< HEAD
                 SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
+=======
+                Issuer = "https://localhost:5001",
+                Audience = "https://localhost:5001",
+                SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256Signature)
+>>>>>>> maintofix
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -4541,7 +5019,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                            <span class=""Text_root__J8eOj"" data-variant=""text-s"" style=""color: var(--id-color-text-secondary); margin-top: 4px;"">Создание новых учетных записей</span>
                                        </a>
                                      
+<<<<<<< HEAD
                                       <a href=""/api/auth/connect/clients"" class=""UnstyledListItem_root__xsw4w"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; color: inherit; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
+=======
+                                      <a href=""/api/auth/connect/clients"" class=""UnstyledListItem_root__xsw4w oidc-clients-link"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; color: inherit; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
+>>>>>>> maintofix
                                            <div style=""width: 48px; height: 48px; background: var(--id-color-accent-subtle); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;"">
                                                <svg width=""24"" height=""24"" fill=""var(--id-color-accent)"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
                                                    <path d=""M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272-.19.057-.392.057-.582 0-2.865-.872-5.224-2.568-6.846-5.271-1.608-2.68-2.45-6.273-2.45-10.88a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0zM12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-4 2a4 4 0 1 1 8 0 4 4 0 0 1-8 0z""></path>
@@ -4562,6 +5044,21 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
                  </main>
             </div>
+<<<<<<< HEAD
+=======
+            <script>
+                // Add token to OIDC clients link
+                document.addEventListener('DOMContentLoaded', function() {{
+                    const token = localStorage.getItem('auth_token') || new URLSearchParams(window.location.search).get('token');
+                    if (token) {{
+                        const oidcLink = document.querySelector('.oidc-clients-link');
+                        if (oidcLink) {{
+                            oidcLink.href = '/api/auth/connect/clients?token=' + encodeURIComponent(token);
+                        }}
+                    }}
+                }});
+            </script>
+>>>>>>> maintofix
          ", "");
         }
 
@@ -4592,7 +5089,28 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/api/auth/profile"" aria-current=""page"" class=""base-item_root__Z_6ST navigation-item-link_root_isActive__QZ9Ea""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M11.333 1.59c-.494.137-.94.494-1.832 1.207l-6 4.8c-.551.441-.827.662-1.025.936a2.5 2.5 0 0 0-.386.803C2 9.662 2 10.015 2 10.721v8.08c0 1.12 0 1.68.218 2.107a2 2 0 0 0 .874.874C3.52 22 4.08 22 5.2 22h13.6c1.12 0 1.68 0 2.108-.218a2 2 0 0 0 .874-.874C22 20.48 22 19.92 22 18.8v-8.08c0-.705 0-1.058-.09-1.384-.08-.289-.21-.56-.386-.803-.198-.274-.474-.495-1.025-.936l-6-4.8c-.892-.713-1.338-1.07-1.832-1.207a2.5 2.5 0 0 0-1.334 0m-7.15 8.172c.075-.108.181-.197.393-.373l6.4-5.333c.364-.304.546-.456.75-.514a1 1 0 0 1 .548 0c.204.058.386.21.75.514l6.4 5.333c.212.176.318.265.394.373q.101.144.148.315c.034.128.034.266.034.541V19.2c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.219C19.62 20 19.48 20 19.2 20H16v-4.6c0-.84 0-1.26-.164-1.58a1.5 1.5 0 0 0-.655-.656C14.861 13 14.441 13 13.6 13h-3.2c-.84 0-1.26 0-1.581.164a1.5 1.5 0 0 0-.656.655C8 14.14 8 14.56 8 15.4V20H4.8c-.28 0-.42 0-.527-.054a.5.5 0 0 1-.218-.219C4 19.62 4 19.48 4 19.2v-8.582c0-.275 0-.413.034-.54a1 1 0 0 1 .148-.316M10 20h4v-4.2c0-.28 0-.42-.055-.527a.5.5 0 0 0-.218-.218C13.62 15 13.48 15 13.2 15h-2.4c-.28 0-.42 0-.527.055a.5.5 0 0 0-.218.218C10 15.38 10 15.52 10 15.8z"" clip-rule=""evenodd""></path></svg>Главная</a></li>
                     
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/security"" class=""base-item_root__Z_6ST""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272-.19.057-.392.057-.582 0-2.865-.872-5.224-2.568-6.846-5.271-1.608-2.68-2.45-6.273-2.45-10.88a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0M12 3.73c.491.222 1.373.613 2.46 1.054 1.465.595 3.329 1.292 5.118 1.79-.089 3.993-.876 6.95-2.156 9.082C16.13 17.81 14.296 19.19 12 19.951c-2.296-.762-4.13-2.142-5.422-4.295-1.28-2.132-2.067-5.089-2.156-9.082 1.789-.498 3.653-1.195 5.118-1.79A69 69 0 0 0 12 3.73"" clip-rule=""evenodd""></path></svg>Безопасность</a></li>
+<<<<<<< HEAD
                      
+=======
+                    
+                    <li class=""sidebar-navigation_item__GvUUF"">
+                        <a href=""/api/auth/connect/clients"" class=""base-item_root__Z_6ST"" onclick=""event.preventDefault(); const token = localStorage.getItem('auth_token'); if(token) window.location.href='/api/auth/connect/clients?token=' + encodeURIComponent(token); else window.location.href='/api/auth/login';"">
+                            <svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
+                                <path fill-rule=""evenodd"" d=""M7 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H7zm0 2h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 3a1 1 0 0 0 0 2h6a1 1 0 1 0 0-2H9zm0 4a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H9zm0 4a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2H9z"" clip-rule=""evenodd""></path>
+                            </svg>
+                            OAuth Clients
+                        </a>
+                    </li>
+                    
+                    <li class=""sidebar-navigation_item__GvUUF"">
+                        <a href=""/api/auth/connect/scopes"" class=""base-item_root__Z_6ST"" onclick=""event.preventDefault(); const token = localStorage.getItem('auth_token'); if(token) window.location.href='/api/auth/connect/scopes?token=' + encodeURIComponent(token); else window.location.href='/api/auth/login';"">
+                            <svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
+                                <path fill-rule=""evenodd"" d=""M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0zm8-5a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0V8a1 1 0 0 1 1-1zm0 8a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H12z"" clip-rule=""evenodd""></path>
+                            </svg>
+                            OAuth Scopes
+                        </a>
+                    </li>
+>>>>>>> maintofix
                    
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/api/auth/logout"" class=""base-item_root__Z_6ST""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M14 4.001a1 1 0 0 1 1-1h3a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-3a1 1 0 1 1 0-2h3a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3a1 1 0 0 1-1-1M9.707 3.294a1 1 0 0 1 0 1.414L6.414 8H14a1 1 0 1 1 0 2H6.414l3.293 3.293a1 1 0 0 1-1.414 1.414l-5-5a1 1 0 0 1 0-1.414l5-5a1 1 0 0 1 1.414 0"" clip-rule=""evenodd""></path></svg>Выйти</a></li>
                 </ul>
@@ -4654,11 +5172,55 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Redirect("/api/auth/login?error=Invalid token format");
                 }
 
+<<<<<<< HEAD
                 // Parse token without validation to get the user ID
                 var handler = new JwtSecurityTokenHandler();
                 var jwtToken = handler.ReadJwtToken(token);
                 
                 var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "identity");
+=======
+                // Validate the token
+                var handler = new JwtSecurityTokenHandler();
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = _signingKey,
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                ClaimsPrincipal? principal = null;
+                try
+                {
+                    principal = handler.ValidateToken(token, validationParameters, out _);
+                }
+                catch (SecurityTokenExpiredException)
+                {
+                    _logger.LogWarning("Expired token provided to ProfilePage");
+                    // Clear localStorage and redirect to login
+                    return Content(@"
+                        <script>
+                            localStorage.removeItem('auth_token');
+                            window.location.href = '/api/auth/login?error=' + encodeURIComponent('Your session has expired. Please log in again.');
+                        </script>
+                    ", "text/html");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invalid token provided to ProfilePage");
+                    // Clear localStorage and redirect to login
+                    return Content(@"
+                        <script>
+                            localStorage.removeItem('auth_token');
+                            window.location.href = '/api/auth/login?error=' + encodeURIComponent('Invalid token. Please log in again.');
+                        </script>
+                    ", "text/html");
+                }
+
+                var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "identity");
+>>>>>>> maintofix
                 if (userIdClaim == null)
                 {
                     return Redirect("/api/auth/login?error=Invalid token claims");
@@ -4879,6 +5441,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             });
         }
 
+<<<<<<< HEAD
         // Add these new methods to render the OIDC admin pages
 
         private string RenderOidcClientsList(List<ClientDto> clients) => string.Format(BaseHtmlTemplate, "OIDC Clients - BRU AVTOPARK", $@"
@@ -5030,11 +5593,804 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> ClientsListPage()
         {
+=======
+        [HttpGet("connect/scopes")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ScopesListPage([FromQuery] string? token = null)
+        {
+            // Validate JWT token from query parameter
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to ScopesListPage");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to ScopesListPage");
+                    return Content(@"
+                        <script>
+                            localStorage.removeItem('auth_token');
+                            window.location.href = '/api/auth/login?error=' + encodeURIComponent('Your session has expired. Please log in again.');
+                        </script>
+                    ", "text/html");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("ScopesListPage accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to ScopesListPage");
+                return Content(@"
+                    <script>
+                        localStorage.removeItem('auth_token');
+                        window.location.href = '/api/auth/login?error=' + encodeURIComponent('Invalid token. Please log in again.');
+                    </script>
+                ", "text/html");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+            try
+            {
+                // Get all scopes from the database
+                var conn = _spacetimeService.GetConnection();
+                var scopes = conn.Db.OpenIddictSpacetimeScope.Iter()
+                    .Select(s => new ScopeDto
+                    {
+                        Name = s.Name,
+                        DisplayName = s.DisplayName,
+                        Description = s.Description,
+                        OidcId = s.OpenIddictScopeId
+                    })
+                    .ToList();
+
+                _logger.LogInformation("Found {Count} scopes in database", scopes.Count);
+
+                if (IsBrowserRequest())
+                {
+                    return Content(RenderOidcScopesList(scopes, token), "text/html");
+                }
+
+                return Ok(new ApiResponse<GetScopesResponse>
+                {
+                    Success = true,
+                    Message = "Scopes retrieved successfully",
+                    Data = new GetScopesResponse
+                    {
+                        Scopes = scopes
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting scopes");
+                if (IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/error?message={Uri.EscapeDataString("An error occurred while getting scopes")}");
+                }
+
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while getting scopes"
+                });
+            }
+        }
+
+        // Add these new methods to render the OIDC admin pages
+
+        private string RenderOidcClientsList(List<ClientDto> clients, string? token = null) 
+        {
+            var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
+            return string.Format(BaseHtmlTemplate, "OIDC Clients - BRU AVTOPARK", $@"
+            <style>
+                .clients-grid {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                    gap: 1.5rem;
+                    margin-top: 1.5rem;
+                }}
+                .client-card {{
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 1.5rem;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }}
+                .client-card:hover {{
+                    transform: translateY(-4px);
+                    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+                    border-color: var(--primary-color);
+                }}
+                .client-card-header {{
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-bottom: 1rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid var(--border-color);
+                }}
+                .client-icon {{
+                    width: 48px;
+                    height: 48px;
+                    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: white;
+                    flex-shrink: 0;
+                }}
+                .client-info {{
+                    flex: 1;
+                    margin-left: 1rem;
+                    min-width: 0;
+                }}
+                .client-name {{
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: var(--text-color);
+                    margin: 0 0 0.25rem 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }}
+                .client-id {{
+                    font-size: 0.875rem;
+                    color: var(--text-muted);
+                    font-family: 'Courier New', monospace;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }}
+                .client-actions {{
+                    display: flex;
+                    gap: 0.5rem;
+                    margin-top: 1rem;
+                }}
+                .client-action-btn {{
+                    flex: 1;
+                    padding: 0.625rem 1rem;
+                    font-size: 0.875rem;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    transition: all 0.2s ease;
+                    font-weight: 500;
+                }}
+                .client-action-view {{
+                    background: var(--primary-color);
+                    color: white;
+                }}
+                .client-action-view:hover {{
+                    background: var(--primary-hover);
+                    transform: translateY(-1px);
+                }}
+                .client-action-edit {{
+                    background: transparent;
+                    color: var(--primary-color);
+                    border: 1px solid var(--primary-color);
+                }}
+                .client-action-edit:hover {{
+                    background: var(--primary-color);
+                    color: white;
+                    transform: translateY(-1px);
+                }}
+                .empty-state {{
+                    text-align: center;
+                    padding: 4rem 2rem;
+                }}
+                .empty-state-icon {{
+                    font-size: 4rem;
+                    margin-bottom: 1rem;
+                    opacity: 0.3;
+                }}
+                .page-header {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                    flex-wrap: wrap;
+                    gap: 1rem;
+                }}
+                .page-title {{
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    color: var(--text-color);
+                    margin: 0;
+                }}
+                .page-subtitle {{
+                    font-size: 0.875rem;
+                    color: var(--text-muted);
+                    margin: 0.5rem 0 0 0;
+                }}
+            </style>
+            <div class=""container"">
+                <div class=""page-header"">
+                    <div>
+                        <h1 class=""page-title"">OAuth 2.0 / OpenID Connect Clients</h1>
+                        <p class=""page-subtitle"">Manage your OAuth 2.0 and OpenID Connect client applications</p>
+                    </div>
+                    <a href=""/api/auth/connect/clients/new{tokenParam}"" class=""btn"" style=""width: auto;"">
+                        <span style=""font-size: 1.25rem; margin-right: 0.5rem;"">+</span> New Client
+                    </a>
+                </div>
+
+                {(clients.Any() ?
+                    $@"<div class=""clients-grid"">
+                        {string.Join("", clients.Select(client => $@"
+                            <div class=""client-card fade-in"">
+                                <div class=""client-card-header"">
+                                    <div class=""client-icon"">{(client.DisplayName ?? client.ClientId).Substring(0, 1).ToUpper()}</div>
+                                    <div class=""client-info"">
+                                        <h3 class=""client-name"" title=""{System.Web.HttpUtility.HtmlAttributeEncode(client.DisplayName ?? client.ClientId)}"">{System.Web.HttpUtility.HtmlEncode(client.DisplayName ?? client.ClientId)}</h3>
+                                        <div class=""client-id"" title=""{System.Web.HttpUtility.HtmlAttributeEncode(client.ClientId)}"">{System.Web.HttpUtility.HtmlEncode(client.ClientId)}</div>
+                                    </div>
+                                </div>
+                                <div class=""client-actions"">
+                                    <a href=""/api/auth/connect/clients/{Uri.EscapeDataString(client.ClientId)}{tokenParam}"" class=""client-action-btn client-action-view"">View Details</a>
+                                    <a href=""/api/auth/connect/clients/{Uri.EscapeDataString(client.ClientId)}/edit{tokenParam}"" class=""client-action-btn client-action-edit"">Edit</a>
+                                </div>
+                            </div>
+                        "))}
+                    </div>" :
+                    $@"<div class=""card fade-in"">
+                        <div class=""card-body empty-state"">
+                            <div class=""empty-state-icon"">🔐</div>
+                            <h3 style=""margin-bottom: 1rem; color: var(--text-color);"">No OAuth Clients Yet</h3>
+                            <p style=""color: var(--text-muted); margin-bottom: 1.5rem;"">Get started by creating your first OAuth 2.0 / OpenID Connect client application.</p>
+                            <a href=""/api/auth/connect/clients/new{tokenParam}"" class=""btn"" style=""width: auto;"">Create Your First Client</a>
+                        </div>
+                    </div>")}
+                
+                <div class=""mt-4 text-center"">
+                    <a href=""/api/auth/profile{tokenParam}"" class=""link"">← Back to Profile</a>
+                </div>
+            </div>
+        ", "");
+        }
+
+        private string RenderOidcScopesList(List<ScopeDto> scopes, string? token = null)
+        {
+            var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
+            var scopesHtml = new StringBuilder();
+            
+            foreach (var scope in scopes)
+            {
+                scopesHtml.Append($@"
+                    <div class=""client-card"">
+                        <div class=""client-card-header"">
+                            <div class=""client-icon"">{scope.Name.Substring(0, Math.Min(2, scope.Name.Length)).ToUpper()}</div>
+                            <div class=""client-info"" style=""flex: 1; margin-left: 1rem;"">
+                                <h3 style=""margin: 0 0 0.5rem 0; color: var(--text-color);"">{scope.Name}</h3>
+                                <p style=""margin: 0; color: var(--text-secondary); font-size: 0.9rem;"">{scope.DisplayName ?? "No display name"}</p>
+                            </div>
+                        </div>
+                        <div class=""client-details"">
+                            <div class=""detail-row"">
+                                <span class=""detail-label"">Description:</span>
+                                <span class=""detail-value"">{scope.Description ?? "No description"}</span>
+                            </div>
+                            <div class=""detail-row"">
+                                <span class=""detail-label"">OIDC ID:</span>
+                                <span class=""detail-value"" style=""font-family: monospace; font-size: 0.85rem;"">{scope.OidcId}</span>
+                            </div>
+                        </div>
+                    </div>
+                ");
+            }
+
+            return string.Format(BaseHtmlTemplate, "OAuth Scopes - BRU AVTOPARK", $@"
+            <style>
+                .clients-grid {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                    gap: 1.5rem;
+                    margin-top: 1.5rem;
+                }}
+                .client-card {{
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 1.5rem;
+                    transition: all 0.3s ease;
+                }}
+                .client-card:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+                    border-color: var(--primary-color);
+                }}
+                .client-card-header {{
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-bottom: 1rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid var(--border-color);
+                }}
+                .client-icon {{
+                    width: 48px;
+                    height: 48px;
+                    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: white;
+                    flex-shrink: 0;
+                }}
+                .client-info {{
+                    flex: 1;
+                }}
+                .client-details {{
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }}
+                .detail-row {{
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                }}
+                .detail-label {{
+                    font-size: 0.85rem;
+                    color: var(--text-secondary);
+                    font-weight: 500;
+                }}
+                .detail-value {{
+                    color: var(--text-color);
+                    word-break: break-all;
+                }}
+                .empty-state {{
+                    text-align: center;
+                    padding: 3rem;
+                    color: var(--text-secondary);
+                }}
+            </style>
+            <div class=""page-header"">
+                <h1>OAuth Scopes</h1>
+                <p style=""color: var(--text-secondary); margin-top: 0.5rem;"">Manage OAuth 2.0 scopes for your applications</p>
+            </div>
+            
+            {(scopes.Count > 0 ? $@"
+                <div class=""clients-grid"">
+                    {scopesHtml}
+                </div>
+            " : @"
+                <div class=""empty-state"">
+                    <h3>No scopes found</h3>
+                    <p>There are no OAuth scopes registered in the system.</p>
+                </div>
+            ")}
+            ", "");
+        }
+
+        private string RenderOidcClientDetails(GetClientResponse client, string? token = null) 
+        {
+            var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
+            
+            return string.Format(BaseHtmlTemplate, client.ClientId + " - BRU AVTOPARK", $@"
+            <style>
+                .detail-page-header {{
+                    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                    color: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    margin-bottom: 2rem;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                }}
+                .detail-header-content {{
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 1rem;
+                }}
+                .detail-header-left {{
+                    display: flex;
+                    align-items: center;
+                    gap: 1.5rem;
+                }}
+                .detail-icon {{
+                    width: 64px;
+                    height: 64px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 2rem;
+                    font-weight: bold;
+                    backdrop-filter: blur(10px);
+                }}
+                .detail-title {{
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    margin: 0 0 0.5rem 0;
+                }}
+                .detail-subtitle {{
+                    font-size: 0.875rem;
+                    opacity: 0.9;
+                    font-family: 'Courier New', monospace;
+                    margin: 0;
+                }}
+                .detail-actions {{
+                    display: flex;
+                    gap: 0.75rem;
+                }}
+                .action-btn {{
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }}
+                .action-btn-primary {{
+                    background: white;
+                    color: var(--primary-color);
+                }}
+                .action-btn-primary:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+                }}
+                .action-btn-danger {{
+                    background: rgba(220, 38, 38, 0.9);
+                    color: white;
+                }}
+                .action-btn-danger:hover {{
+                    background: rgba(220, 38, 38, 1);
+                    transform: translateY(-2px);
+                }}
+                .details-grid {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                    margin-bottom: 2rem;
+                }}
+                .detail-card {{
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    transition: all 0.3s ease;
+                }}
+                .detail-card:hover {{
+                    border-color: var(--primary-color);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }}
+                .detail-card-title {{
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    color: var(--text-muted);
+                    margin: 0 0 1rem 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }}
+                .detail-card-icon {{
+                    font-size: 1.25rem;
+                }}
+                .detail-value {{
+                    font-size: 1rem;
+                    color: var(--text-color);
+                    word-break: break-all;
+                }}
+                .detail-value-code {{
+                    background: var(--input-bg);
+                    padding: 0.75rem;
+                    border-radius: 6px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 0.875rem;
+                    border: 1px solid var(--border-color);
+                    margin-top: 0.5rem;
+                }}
+                .uri-list {{
+                    list-style: none;
+                    padding: 0;
+                    margin: 0.5rem 0 0 0;
+                }}
+                .uri-item {{
+                    background: var(--input-bg);
+                    padding: 0.625rem 0.875rem;
+                    border-radius: 6px;
+                    margin-bottom: 0.5rem;
+                    font-family: 'Courier New', monospace;
+                    font-size: 0.875rem;
+                    border: 1px solid var(--border-color);
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }}
+                .uri-item:before {{
+                    content: '🔗';
+                    font-size: 1rem;
+                }}
+                .scope-list {{
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                    margin-top: 0.5rem;
+                }}
+                .scope-badge {{
+                    background: var(--primary-color);
+                    color: white;
+                    padding: 0.375rem 0.75rem;
+                    border-radius: 20px;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                }}
+                .status-badge {{
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem 1rem;
+                    border-radius: 20px;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    margin-top: 0.5rem;
+                }}
+                .status-badge-success {{
+                    background: rgba(34, 197, 94, 0.1);
+                    color: rgb(34, 197, 94);
+                }}
+                .status-badge-warning {{
+                    background: rgba(251, 191, 36, 0.1);
+                    color: rgb(251, 191, 36);
+                }}
+                .empty-value {{
+                    color: var(--text-muted);
+                    font-style: italic;
+                }}
+            </style>
+            
+            <div class=""container"">
+                <div class=""detail-page-header fade-in"">
+                    <div class=""detail-header-content"">
+                        <div class=""detail-header-left"">
+                            <div class=""detail-icon"">{client.DisplayName.Substring(0, 1).ToUpper()}</div>
+                            <div>
+                                <h1 class=""detail-title"">{System.Web.HttpUtility.HtmlEncode(client.DisplayName)}</h1>
+                                <p class=""detail-subtitle"">{System.Web.HttpUtility.HtmlEncode(client.ClientId)}</p>
+                            </div>
+                        </div>
+                        <div class=""detail-actions"">
+                            <a href=""/api/auth/connect/clients/{Uri.EscapeDataString(client.ClientId)}/edit{tokenParam}"" class=""action-btn action-btn-primary"">
+                                ✏️ Edit Client
+                            </a>
+                            <button onclick=""if(confirm('Are you sure you want to delete this client?')) {{ document.getElementById('deleteForm').submit(); }}"" class=""action-btn action-btn-danger"">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class=""details-grid"">
+                    <div class=""detail-card fade-in"" style=""animation-delay: 0.1s;"">
+                        <h3 class=""detail-card-title"">
+                            <span class=""detail-card-icon"">🔑</span>
+                            Client Identifier
+                        </h3>
+                        <div class=""detail-value-code"">{System.Web.HttpUtility.HtmlEncode(client.ClientId)}</div>
+                    </div>
+
+                    <div class=""detail-card fade-in"" style=""animation-delay: 0.15s;"">
+                        <h3 class=""detail-card-title"">
+                            <span class=""detail-card-icon"">✅</span>
+                            Consent Type
+                        </h3>
+                        <div class=""status-badge {(client.RequireConsent ? "status-badge-warning" : "status-badge-success")}"">
+                            {(client.RequireConsent ? "⚠️ Explicit Consent Required" : "✓ Implicit Consent")}
+                        </div>
+                    </div>
+                </div>
+
+                <div class=""detail-card fade-in"" style=""animation-delay: 0.2s; margin-bottom: 1.5rem;"">
+                    <h3 class=""detail-card-title"">
+                        <span class=""detail-card-icon"">🔄</span>
+                        Redirect URIs
+                    </h3>
+                    {(client.RedirectUris.Length > 0 ? 
+                        $@"<ul class=""uri-list"">
+                            {string.Join("", client.RedirectUris.Select(uri => $@"<li class=""uri-item"">{System.Web.HttpUtility.HtmlEncode(uri)}</li>"))}
+                        </ul>" : 
+                        @"<p class=""empty-value"">No redirect URIs configured</p>")}
+                </div>
+
+                <div class=""detail-card fade-in"" style=""animation-delay: 0.25s; margin-bottom: 1.5rem;"">
+                    <h3 class=""detail-card-title"">
+                        <span class=""detail-card-icon"">🚪</span>
+                        Post-Logout Redirect URIs
+                    </h3>
+                    {(client.PostLogoutRedirectUris.Length > 0 ? 
+                        $@"<ul class=""uri-list"">
+                            {string.Join("", client.PostLogoutRedirectUris.Select(uri => $@"<li class=""uri-item"">{System.Web.HttpUtility.HtmlEncode(uri)}</li>"))}
+                        </ul>" : 
+                        @"<p class=""empty-value"">No post-logout redirect URIs configured</p>")}
+                </div>
+
+                <div class=""detail-card fade-in"" style=""animation-delay: 0.3s; margin-bottom: 1.5rem;"">
+                    <h3 class=""detail-card-title"">
+                        <span class=""detail-card-icon"">🎯</span>
+                        Allowed Scopes
+                    </h3>
+                    {(client.AllowedScopes.Length > 0 ? 
+                        $@"<div class=""scope-list"">
+                            {string.Join("", client.AllowedScopes.Select(scope => $@"<span class=""scope-badge"">{System.Web.HttpUtility.HtmlEncode(scope)}</span>"))}
+                        </div>" : 
+                        @"<p class=""empty-value"">No scopes configured</p>")}
+                </div>
+
+                <form id=""deleteForm"" method=""POST"" action=""/api/auth/connect/clients/{Uri.EscapeDataString(client.ClientId)}/delete"" style=""display: none;"">
+                    <input type=""hidden"" name=""token"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(token ?? "")}"">
+                </form>
+
+                <div class=""text-center mt-4"">
+                    <a href=""/api/auth/connect/clients{tokenParam}"" class=""link"">← Back to All Clients</a>
+                </div>
+            </div>
+        ", "");
+        }
+
+        private string RenderOidcClientForm(string? clientId = null, GetClientResponse? client = null, string? token = null) 
+        {
+            var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
+            var tokenField = !string.IsNullOrEmpty(token) ? $@"<input type=""hidden"" name=""token"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(token)}"">" : "";
+            
+            return string.Format(BaseHtmlTemplate, (clientId == null ? "New Client" : "Edit Client") + " - BRU AVTOPARK", $@"
+            <div class=""container"">
+                <div class=""card fade-in"">
+                    <div class=""card-header"">
+                        <h2>{(clientId == null ? "Create New Client" : "Edit Client")}</h2>
+                    </div>
+                    <div class=""card-body"">
+                        <div class=""info-box"">
+                            <p>{(clientId == null ? "Register a new OpenID Connect client application. The client ID and secret will be used by your application to authenticate with the authorization server." : "Edit OpenID Connect client application settings. Be careful when modifying redirect URIs and permissions.")}</p>
+                        </div>
+                        
+                        <form method=""POST"" action=""{(clientId == null ? "/api/auth/connect/register-client" : $"/api/auth/connect/update-client/{Uri.EscapeDataString(clientId)}")}"" id=""clientForm"">
+                            {tokenField}
+                            
+                            <div class=""form-group"">
+                                <label for=""clientId"">Client ID *</label>
+                                <input type=""text"" id=""clientId"" name=""clientId"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(client?.ClientId ?? "")}"" {(clientId == null ? "required" : "readonly")} placeholder=""e.g., my-app"">
+                                {(clientId != null ? $@"<input type=""hidden"" name=""clientId"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(clientId)}"">" : "")}
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label for=""displayName"">Display Name *</label>
+                                <input type=""text"" id=""displayName"" name=""displayName"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(client?.DisplayName ?? "")}"" required placeholder=""e.g., My Application"">
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label for=""clientSecret"">Client Secret {(clientId == null ? "*" : "(optional)")}</label>
+                                <input type=""text"" id=""clientSecret"" name=""clientSecret"" {(clientId == null ? "required" : "")} placeholder=""{(clientId == null ? "Enter a secure secret" : "Leave blank to keep current secret")}"">
+                                {(clientId != null ? @"<p class=""text-muted"" style=""font-size: 0.875rem; margin-top: 0.25rem;"">Leave blank to keep the current secret</p>" : "")}
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label for=""redirectUris"">Redirect URIs * (one per line)</label>
+                                <textarea id=""redirectUris"" name=""redirectUris"" rows=""3"" required placeholder=""https://myapp.com/callback&#10;https://localhost:5000/callback"">{System.Web.HttpUtility.HtmlEncode(client?.RedirectUris != null ? string.Join("\n", client.RedirectUris) : "")}</textarea>
+                                <p class=""text-muted"" style=""font-size: 0.875rem; margin-top: 0.25rem;"">URIs where users will be redirected after authentication</p>
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label for=""postLogoutRedirectUris"">Post-Logout Redirect URIs (one per line)</label>
+                                <textarea id=""postLogoutRedirectUris"" name=""postLogoutRedirectUris"" rows=""3"" placeholder=""https://myapp.com&#10;https://localhost:5000"">{System.Web.HttpUtility.HtmlEncode(client?.PostLogoutRedirectUris != null ? string.Join("\n", client.PostLogoutRedirectUris) : "")}</textarea>
+                                <p class=""text-muted"" style=""font-size: 0.875rem; margin-top: 0.25rem;"">URIs where users will be redirected after logout</p>
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label for=""allowedScopes"">Allowed Scopes * (one per line)</label>
+                                <textarea id=""allowedScopes"" name=""allowedScopes"" rows=""3"" required placeholder=""openid&#10;profile&#10;email"">{System.Web.HttpUtility.HtmlEncode(client?.AllowedScopes != null ? string.Join("\n", client.AllowedScopes) : "openid\nprofile\nemail")}</textarea>
+                                <p class=""text-muted"" style=""font-size: 0.875rem; margin-top: 0.25rem;"">Scopes that this client is allowed to request</p>
+                            </div>
+                            
+                            <div class=""form-group"">
+                                <label style=""display: flex; align-items: center; cursor: pointer;"">
+                                    <input type=""checkbox"" id=""requireConsent"" name=""requireConsent"" {(client?.RequireConsent == true ? "checked" : "")} style=""width: auto; margin-right: 0.5rem;"">
+                                    <span>Require User Consent</span>
+                                </label>
+                                <p class=""text-muted"" style=""font-size: 0.875rem; margin-top: 0.25rem;"">If checked, users will be prompted to approve the requested scopes</p>
+                            </div>
+                            
+                            <div style=""display: flex; gap: 1rem; margin-top: 2rem;"">
+                                <button type=""submit"" class=""btn"" style=""flex: 1;"">{(clientId == null ? "Create Client" : "Update Client")}</button>
+                                <a href=""/api/auth/connect/clients{tokenParam}"" class=""btn btn-secondary"" style=""flex: 1; text-align: center; line-height: 2.5;"">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        ", "");
+        }
+
+        // Add these endpoint handlers for the OIDC admin pages
+        [HttpGet("connect/clients")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ClientsListPage([FromQuery] string? token = null)
+        {
+            // Validate JWT token from query parameter
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to ClientsListPage");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to ClientsListPage");
+                    return Redirect("/api/auth/login");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("ClientsListPage accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to ClientsListPage");
+                return Redirect("/api/auth/login");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+>>>>>>> maintofix
             try
             {
                 // Get all client applications
                 var (success, applications, errorMessage) = await _openIdConnectService.GetAllClientApplicationsAsync();
 
+<<<<<<< HEAD
                 if (!success || applications == null)
                 {
                     if (IsBrowserRequest())
@@ -5047,6 +6403,34 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Success = false,
                         Message = errorMessage ?? "Failed to get client applications"
                     });
+=======
+                if (!success)
+                {
+                    // If the error is just that there are no clients, treat it as an empty list
+                    if (errorMessage?.Contains("No applications found") == true || errorMessage?.Contains("not found") == true)
+                    {
+                        applications = new List<object>();
+                    }
+                    else
+                    {
+                        if (IsBrowserRequest())
+                        {
+                            return Redirect($"/api/auth/error?message={Uri.EscapeDataString(errorMessage ?? "Failed to get client applications")}");
+                        }
+
+                        return BadRequest(new ApiResponse<object>
+                        {
+                            Success = false,
+                            Message = errorMessage ?? "Failed to get client applications"
+                        });
+                    }
+                }
+
+                // Handle null applications as empty list
+                if (applications == null)
+                {
+                    applications = new List<object>();
+>>>>>>> maintofix
                 }
 
                 // Convert to DTO
@@ -5065,7 +6449,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
+<<<<<<< HEAD
                     return Content(RenderOidcClientsList(clientDtos), "text/html");
+=======
+                    return Content(RenderOidcClientsList(clientDtos, token), "text/html");
+>>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<GetClientsResponse>
@@ -5095,9 +6483,58 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpGet("connect/clients/{clientId}")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> ClientDetailsPage(string clientId)
         {
+=======
+        [AllowAnonymous]
+        public async Task<IActionResult> ClientDetailsPage(string clientId, [FromQuery] string? token = null)
+        {
+            // Validate JWT token from query parameter
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to ClientDetailsPage");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to ClientDetailsPage");
+                    return Redirect("/api/auth/login");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("ClientDetailsPage accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to ClientDetailsPage");
+                return Redirect("/api/auth/login");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+>>>>>>> maintofix
             try
             {
                 // Get client application
@@ -5136,7 +6573,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
+<<<<<<< HEAD
                     return Content(RenderOidcClientDetails(clientResponse), "text/html");
+=======
+                    return Content(RenderOidcClientDetails(clientResponse, token), "text/html");
+>>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<GetClientResponse>
@@ -5163,21 +6604,114 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpGet("connect/clients/new")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public IActionResult NewClientPage()
         {
             if (IsBrowserRequest())
             {
                 return Content(RenderOidcClientForm(), "text/html");
+=======
+        [AllowAnonymous]
+        public IActionResult NewClientPage([FromQuery] string? token = null)
+        {
+            // Validate JWT token from query parameter
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to NewClientPage");
+                return Redirect("/api/auth/login");
+            }
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to NewClientPage");
+                    return Redirect("/api/auth/login");
+                }
+
+                // Check if user is an administrator
+                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+                bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+                
+                if (!isAdmin)
+                {
+                    _logger.LogWarning("User is not an administrator");
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to NewClientPage");
+                return Redirect("/api/auth/login");
+            }
+            
+            if (IsBrowserRequest())
+            {
+                return Content(RenderOidcClientForm(token: token), "text/html");
+>>>>>>> maintofix
             }
 
             return BadRequest("This endpoint is only available via browser");
         }
 
         [HttpGet("connect/clients/{clientId}/edit")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> EditClientPage(string clientId)
         {
+=======
+        [AllowAnonymous]
+        public async Task<IActionResult> EditClientPage(string clientId, [FromQuery] string? token = null)
+        {
+            // Validate JWT token from query parameter
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to EditClientPage");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to EditClientPage");
+                    return Redirect("/api/auth/login");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("EditClientPage accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to EditClientPage");
+                return Redirect("/api/auth/login");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+>>>>>>> maintofix
             try
             {
                 // Get client application
@@ -5216,7 +6750,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
+<<<<<<< HEAD
                     return Content(RenderOidcClientForm(clientId, clientResponse), "text/html");
+=======
+                    return Content(RenderOidcClientForm(clientId, clientResponse, token), "text/html");
+>>>>>>> maintofix
                 }
 
                 return BadRequest("This endpoint is only available via browser");
@@ -5238,9 +6776,50 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/register-client")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
         {
+=======
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(request.Token))
+            {
+                _logger.LogWarning("No token provided to RegisterClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(request.Token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to RegisterClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                // Check if user is an administrator
+                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+                bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+                
+                if (!isAdmin)
+                {
+                    _logger.LogWarning("User is not an administrator");
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to RegisterClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+>>>>>>> maintofix
             try
             {
                 if (!ModelState.IsValid)
@@ -5293,7 +6872,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
+<<<<<<< HEAD
                     return Redirect("/api/auth/connect/clients");
+=======
+                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
+                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+>>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<RegisterClientResponse>
@@ -5324,9 +6908,58 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/update-client/{clientId}")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
         {
+=======
+        [AllowAnonymous]
+        public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(request.Token))
+            {
+                _logger.LogWarning("No token provided to UpdateClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(request.Token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to UpdateClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("UpdateClientSubmit accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to UpdateClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+>>>>>>> maintofix
             try
             {
                 if (!ModelState.IsValid)
@@ -5410,9 +7043,58 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/clients/{clientId}/delete")]
+<<<<<<< HEAD
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> DeleteClientSubmit(string clientId)
         {
+=======
+        [AllowAnonymous]
+        public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token = null)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to DeleteClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            JwtSecurityToken jwtToken;
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to DeleteClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                var username = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value;
+                _logger.LogInformation("DeleteClientSubmit accessed by user: {Username}", username ?? "unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to DeleteClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+            // Check if user is an administrator by examining JWT token claims
+            var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+            bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User is not an administrator");
+                if (IsBrowserRequest())
+                {
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+                return Forbid();
+            }
+
+>>>>>>> maintofix
             try
             {
                 // Delete client application
@@ -6290,6 +7972,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public bool RequireConsent { get; set; }
     }
 
+<<<<<<< HEAD
+=======
+    public class ScopeDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Description { get; set; }
+        public string OidcId { get; set; } = string.Empty;
+    }
+
+    public class GetScopesResponse
+    {
+        public List<ScopeDto> Scopes { get; set; } = new List<ScopeDto>();
+    }
+
+>>>>>>> maintofix
     #endregion
 
     #region Helper Classes
@@ -6323,10 +8021,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public  string PostLogoutRedirectUris { get; set; }
         public  string AllowedScopes { get; set; }
         public bool RequireConsent { get; set; }
+<<<<<<< HEAD
+=======
+        public string? Token { get; set; }
+>>>>>>> maintofix
     }
 
     public class UpdateClientFormRequest
     {
+<<<<<<< HEAD
+=======
+        public string? Token { get; set; }
+>>>>>>> maintofix
         public  string DisplayName { get; set; }
         public string? ClientSecret { get; set; }
         public  string RedirectUris { get; set; }

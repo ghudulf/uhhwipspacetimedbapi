@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateWebAuthnCounter(System.Collections.Generic.List<byte> credentialId, uint counter)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateWebAuthnCounter(credentialId, counter), this.SetCallReducerFlags.UpdateWebAuthnCounterFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateWebAuthnCounter(credentialId, counter));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateWebAuthnCounter(ReducerEventContext ctx, Reducer.UpdateWebAuthnCounter args)
         {
+<<<<<<< HEAD
             if (OnUpdateWebAuthnCounter == null) return false;
+=======
+            if (OnUpdateWebAuthnCounter == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateWebAuthnCounter(
                 ctx,
                 args.CredentialId,
@@ -38,7 +57,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateWebAuthnCounter : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "credentialId")]
+=======
+            [DataMember(Name = "credential_id")]
+>>>>>>> maintofix
             public System.Collections.Generic.List<byte> CredentialId;
             [DataMember(Name = "counter")]
             public uint Counter;
@@ -57,6 +80,7 @@ namespace SpacetimeDB.Types
                 this.CredentialId = new();
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateWebAuthnCounter";
         }
     }
@@ -66,4 +90,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateWebAuthnCounterFlags;
         public void UpdateWebAuthnCounter(CallReducerFlags flags) => UpdateWebAuthnCounterFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_web_authn_counter";
+        }
+    }
+>>>>>>> maintofix
 }

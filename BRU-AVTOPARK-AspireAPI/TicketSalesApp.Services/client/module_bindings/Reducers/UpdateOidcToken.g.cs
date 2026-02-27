@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateOidcToken(uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateOidcToken(internalId, expirationDate, payload, propertiesJson, redemptionDate, status), this.SetCallReducerFlags.UpdateOidcTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateOidcToken(internalId, expirationDate, payload, propertiesJson, redemptionDate, status));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateOidcToken(ReducerEventContext ctx, Reducer.UpdateOidcToken args)
         {
+<<<<<<< HEAD
             if (OnUpdateOidcToken == null) return false;
+=======
+            if (OnUpdateOidcToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateOidcToken(
                 ctx,
                 args.InternalId,
@@ -42,6 +61,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateOidcToken : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "internalId")]
             public uint InternalId;
             [DataMember(Name = "expirationDate")]
@@ -51,6 +71,17 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "propertiesJson")]
             public string? PropertiesJson;
             [DataMember(Name = "redemptionDate")]
+=======
+            [DataMember(Name = "internal_id")]
+            public uint InternalId;
+            [DataMember(Name = "expiration_date")]
+            public ulong? ExpirationDate;
+            [DataMember(Name = "payload")]
+            public string? Payload;
+            [DataMember(Name = "properties_json")]
+            public string? PropertiesJson;
+            [DataMember(Name = "redemption_date")]
+>>>>>>> maintofix
             public ulong? RedemptionDate;
             [DataMember(Name = "status")]
             public string? Status;
@@ -76,6 +107,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateOidcToken";
         }
     }
@@ -85,4 +117,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateOidcTokenFlags;
         public void UpdateOidcToken(CallReducerFlags flags) => UpdateOidcTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_oidc_token";
+        }
+    }
+>>>>>>> maintofix
 }

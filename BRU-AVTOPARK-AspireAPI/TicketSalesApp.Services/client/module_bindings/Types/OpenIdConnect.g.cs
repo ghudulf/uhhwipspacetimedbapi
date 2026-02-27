@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class OpenIdConnect
     {
+<<<<<<< HEAD
         [DataMember(Name = "ClientId")]
         public string ClientId;
         [DataMember(Name = "ClientSecret")]
@@ -36,6 +37,31 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "CreatedBy")]
         public string? CreatedBy;
         [DataMember(Name = "RequireConsent")]
+=======
+        [DataMember(Name = "client_id")]
+        public string ClientId;
+        [DataMember(Name = "client_secret")]
+        public string ClientSecret;
+        [DataMember(Name = "display_name")]
+        public string DisplayName;
+        [DataMember(Name = "redirect_uris")]
+        public System.Collections.Generic.List<string> RedirectUris;
+        [DataMember(Name = "post_logout_redirect_uris")]
+        public System.Collections.Generic.List<string> PostLogoutRedirectUris;
+        [DataMember(Name = "allowed_scopes")]
+        public System.Collections.Generic.List<string> AllowedScopes;
+        [DataMember(Name = "consent_type")]
+        public string ConsentType;
+        [DataMember(Name = "client_type")]
+        public string ClientType;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "created_by")]
+        public string? CreatedBy;
+        [DataMember(Name = "require_consent")]
+>>>>>>> maintofix
         public bool RequireConsent;
 
         public OpenIdConnect(

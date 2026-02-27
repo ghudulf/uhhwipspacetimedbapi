@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteOidcToken(uint internalId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteOidcToken(internalId), this.SetCallReducerFlags.DeleteOidcTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteOidcToken(internalId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteOidcToken(ReducerEventContext ctx, Reducer.DeleteOidcToken args)
         {
+<<<<<<< HEAD
             if (OnDeleteOidcToken == null) return false;
+=======
+            if (OnDeleteOidcToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteOidcToken(
                 ctx,
                 args.InternalId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteOidcToken : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "internalId")]
+=======
+            [DataMember(Name = "internal_id")]
+>>>>>>> maintofix
             public uint InternalId;
 
             public DeleteOidcToken(uint InternalId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteOidcToken";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteOidcTokenFlags;
         public void DeleteOidcToken(CallReducerFlags flags) => DeleteOidcTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_oidc_token";
+        }
+    }
+>>>>>>> maintofix
 }

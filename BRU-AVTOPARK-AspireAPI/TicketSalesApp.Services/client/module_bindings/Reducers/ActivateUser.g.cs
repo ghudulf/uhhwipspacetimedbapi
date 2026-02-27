@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void ActivateUser(SpacetimeDB.Identity userId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.ActivateUser(userId, actingUser), this.SetCallReducerFlags.ActivateUserFlags);
+=======
+            conn.InternalCallReducer(new Reducer.ActivateUser(userId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeActivateUser(ReducerEventContext ctx, Reducer.ActivateUser args)
         {
+<<<<<<< HEAD
             if (OnActivateUser == null) return false;
+=======
+            if (OnActivateUser == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnActivateUser(
                 ctx,
                 args.UserId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ActivateUser : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "user_id")]
+            public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ActivateUser(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "ActivateUser";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags ActivateUserFlags;
         public void ActivateUser(CallReducerFlags flags) => ActivateUserFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "activate_user";
+        }
+    }
+>>>>>>> maintofix
 }

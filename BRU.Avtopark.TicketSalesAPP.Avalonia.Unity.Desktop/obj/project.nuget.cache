@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "KNF7HPgXW/g=",
+  "dgSpecHash": "eJioG1Hcu/E=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
   "expectedPackageFiles": [
@@ -132,6 +132,8 @@
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.10\\sqlitepclraw.provider.e_sqlite3.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sukiui\\6.0.0\\sukiui.6.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.codedom\\6.0.0\\system.codedom.6.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.collections.immutable\\7.0.0\\system.collections.immutable.7.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.componentmodel.annotations\\5.0.0\\system.componentmodel.annotations.5.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.composition\\7.0.0\\system.composition.7.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.composition.attributedmodel\\7.0.0\\system.composition.attributedmodel.7.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.composition.convention\\7.0.0\\system.composition.convention.7.0.0.nupkg.sha512",
@@ -140,20 +142,24 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.composition.typedparts\\7.0.0\\system.composition.typedparts.7.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.formats.cbor\\6.0.0\\system.formats.cbor.6.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.identitymodel.tokens.jwt\\7.4.0\\system.identitymodel.tokens.jwt.7.4.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.io.pipelines\\8.0.0\\system.io.pipelines.8.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.reactive\\6.0.1\\system.reactive.6.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.reflection.metadata\\7.0.0\\system.reflection.metadata.7.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.text.encodings.web\\4.5.0\\system.text.encodings.web.4.5.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.1\\microsoft.windowsdesktop.app.ref.9.0.1.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.1\\microsoft.netcore.app.ref.9.0.1.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.1\\microsoft.aspnetcore.app.ref.9.0.1.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.1\\microsoft.netcore.app.host.win-x64.9.0.1.nupkg.sha512"
+    "C:\\Users\\andrej\\.nuget\\packages\\system.threading.channels\\7.0.0\\system.threading.channels.7.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512"
   ],
   "logs": [
     {
       "code": "NU1603",
       "level": "Warning",
+      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
       "warningLevel": 1,
-      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop depends on Avalonia.Labs.Controls (>= 11.0.5) but Avalonia.Labs.Controls 11.0.5 was not found. Avalonia.Labs.Controls 11.0.10 was resolved instead.",
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj",
       "libraryId": "Avalonia.Labs.Controls",
       "targetGraphs": [
         "net9.0"

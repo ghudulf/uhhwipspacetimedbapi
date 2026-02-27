@@ -1,9 +1,17 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+<<<<<<< HEAD
+=======
+using Microsoft.AspNetCore.Authentication.Cookies;
+>>>>>>> maintofix
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using OpenIddict.Validation.AspNetCore;
+<<<<<<< HEAD
 
+=======
+using System.Security.Claims;
+>>>>>>> maintofix
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.ServerIntegration;
@@ -150,10 +158,23 @@ if (key.Length != 32)
     key = newKey;
 }
 
+<<<<<<< HEAD
+=======
+// Create symmetric security key with KeyId for OpenIddict compatibility
+var symmetricKey = new SymmetricSecurityKey(key)
+{
+    KeyId = "default-signing-key"
+};
+
+// Register the symmetric key as a singleton so it can be injected into controllers
+builder.Services.AddSingleton(symmetricKey);
+
+>>>>>>> maintofix
 // Configure OpenIddict
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
+<<<<<<< HEAD
         options.AddApplicationStore<TicketSalesApp.Services.Implementations.ApplicationStore>();
         // ON TODO LIST AUTH STORE, TOKEN STORE, SCOPE STORE - WE'LL NEED ALL THAT SHIT FOR OPENIDDICT TO BE HAPPY
         // THEN MAKE AUTH CONTROLLER COMPLY WITH OPENIDDICT
@@ -162,6 +183,19 @@ builder.Services.AddOpenIddict()
         options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
         options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
        
+=======
+        // Set default entity types - these must match what the stores use
+        options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
+        options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
+        options.SetDefaultTokenEntity<OpenIddict.Abstractions.OpenIddictTokenDescriptor>();
+        options.SetDefaultScopeEntity<OpenIddict.Abstractions.OpenIddictScopeDescriptor>();
+        
+        // Register stores
+        options.AddApplicationStore<TicketSalesApp.Services.Implementations.ApplicationStore>();
+        options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
+        options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
+        options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
+>>>>>>> maintofix
     })
     .AddServer(options =>
     {
@@ -175,7 +209,11 @@ builder.Services.AddOpenIddict()
        //options.DisableTransportSecurityRequirement(); this wont work for some fucking reason with openiddict 4.1.0
 
         // Add symmetric signing key for access tokens, authorization codes, and refresh tokens
+<<<<<<< HEAD
         options.AddSigningKey(new SymmetricSecurityKey(key));
+=======
+        options.AddSigningKey(symmetricKey);
+>>>>>>> maintofix
 
         // Add asymmetric signing key for identity tokens (required)
         if (builder.Environment.IsDevelopment())
@@ -188,7 +226,11 @@ builder.Services.AddOpenIddict()
         }
 
         // Add encryption key
+<<<<<<< HEAD
         options.AddEncryptionKey(new SymmetricSecurityKey(key));
+=======
+        options.AddEncryptionKey(symmetricKey);
+>>>>>>> maintofix
 
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
@@ -204,8 +246,24 @@ builder.Services.AddOpenIddict()
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
 
+<<<<<<< HEAD
         // Configure the token validation parameters
         options.Configure(options => options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(key));
+=======
+        // Configure the token validation parameters to accept our custom JWT tokens
+        options.Configure(validationOptions =>
+        {
+            validationOptions.TokenValidationParameters.IssuerSigningKey = symmetricKey;
+            validationOptions.TokenValidationParameters.ValidIssuer = "https://localhost:5001";
+            validationOptions.TokenValidationParameters.ValidAudience = "https://localhost:5001";
+            validationOptions.TokenValidationParameters.ValidateIssuer = true;
+            validationOptions.TokenValidationParameters.ValidateAudience = true;
+            validationOptions.TokenValidationParameters.ValidateLifetime = true;
+            validationOptions.TokenValidationParameters.ClockSkew = TimeSpan.Zero;
+            validationOptions.TokenValidationParameters.RoleClaimType = "role";
+            validationOptions.TokenValidationParameters.NameClaimType = "name";
+        });
+>>>>>>> maintofix
     });
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -222,16 +280,40 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthentication(options =>
 {
+<<<<<<< HEAD
     options.DefaultAuthenticateScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
     options.DefaultScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
+=======
+    // Don't set a default scheme - let each endpoint specify what it needs
+    options.DefaultAuthenticateScheme = null;
+    options.DefaultChallengeScheme = null;
+    options.DefaultScheme = null;
+})
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.LoginPath = "/api/auth/login";
+    options.LogoutPath = "/api/auth/logout";
+    options.AccessDeniedPath = "/api/auth/error";
+    options.ExpireTimeSpan = TimeSpan.FromHours(24);
+    options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+>>>>>>> maintofix
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
+<<<<<<< HEAD
         IssuerSigningKey = new SymmetricSecurityKey(key),
+=======
+        IssuerSigningKey = symmetricKey,
+>>>>>>> maintofix
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
@@ -266,17 +348,52 @@ builder.Services.AddAuthentication(options =>
 // Configure authorization
 builder.Services.AddAuthorization(options =>
 {
+<<<<<<< HEAD
     options.AddPolicy("RequireAuthenticatedUser", policy =>
         policy.RequireAuthenticatedUser());
+=======
+    // Policy for cookie-authenticated web pages
+    options.AddPolicy("RequireAuthenticatedUser", policy =>
+        policy.AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser());
+>>>>>>> maintofix
 
     options.AddPolicy("PublicEndpoints", policy =>
         policy.RequireAssertion(_ => true));
 
+<<<<<<< HEAD
     // Default policy for controllers
     options.DefaultPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .RequireClaim("scope", "api")
         .Build();
+=======
+    // API-specific policy that requires scope claim for API access via JWT
+    options.AddPolicy("ApiAccess", policy =>
+        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .RequireClaim("scope", "api"));
+    
+    // Flexible API policy that accepts EITHER JWT Bearer OR OpenIddict tokens
+    // This allows endpoints to work with both custom JWT and OpenIddict-issued tokens
+    options.AddPolicy("FlexibleApiAccess", policy =>
+        policy.AddAuthenticationSchemes(
+            JwtBearerDefaults.AuthenticationScheme,
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser());
+    
+    // Administrator policy that accepts both authentication schemes
+    // OpenIddict validation is now configured to accept our custom JWT tokens
+    options.AddPolicy("RequireAdministrator", policy =>
+        policy.AddAuthenticationSchemes(
+            JwtBearerDefaults.AuthenticationScheme,
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .RequireRole("Administrator"));
+    
+    // No default policy - let each endpoint specify its own requirements
+    options.FallbackPolicy = null;
+>>>>>>> maintofix
 });
 
 // Add controllers
@@ -774,6 +891,7 @@ app.MapGet("/health", () =>
         ", "text/html");
 }).AllowAnonymous();
 
+<<<<<<< HEAD
 // Map controllers with authorization
 app.MapControllers().RequireAuthorization(policy =>
 {
@@ -782,12 +900,284 @@ app.MapControllers().RequireAuthorization(policy =>
     policy.AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
     policy.RequireClaim("scope", "api");
 })
+=======
+// Map controllers - let each endpoint specify its own authorization policy
+app.MapControllers()
+>>>>>>> maintofix
 .WithOpenApi();
 
 // Initialize SpacetimeDB connection
 var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
 spacetimeService.Connect();
 
+<<<<<<< HEAD
+=======
+// Start background task to register OAuth clients once subscription is ready
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("Starting background task for OAuth client registration...");
+
+_ = Task.Run(async () =>
+{
+    try
+    {
+        // Wait for connection (max 30 seconds)
+        var maxWaitTime = TimeSpan.FromSeconds(30);
+        var startTime = DateTime.UtcNow;
+        while (!spacetimeService.IsConnected() && (DateTime.UtcNow - startTime) < maxWaitTime)
+        {
+            await Task.Delay(500);
+        }
+
+        if (!spacetimeService.IsConnected())
+        {
+            logger.LogError("SpacetimeDB connection not ready after {Seconds} seconds, cannot register OAuth clients", maxWaitTime.TotalSeconds);
+            return;
+        }
+
+        logger.LogInformation("SpacetimeDB connection ready, waiting for subscription to be applied...");
+
+        // Wait for subscription with extended timeout (2 minutes)
+        // Subscription can take 30+ seconds to apply based on logs
+        var maxSubscriptionWaitTime = TimeSpan.FromMinutes(2);
+        startTime = DateTime.UtcNow;
+        var lastLogTime = DateTime.UtcNow;
+        
+        while (!spacetimeService.IsSubscriptionReady() && (DateTime.UtcNow - startTime) < maxSubscriptionWaitTime)
+        {
+            await Task.Delay(500);
+            
+            // Log progress every 10 seconds
+            if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 10)
+            {
+                logger.LogInformation("Still waiting for SpacetimeDB subscription... ({Elapsed:F1}s elapsed)", 
+                    (DateTime.UtcNow - startTime).TotalSeconds);
+                lastLogTime = DateTime.UtcNow;
+            }
+        }
+
+        if (!spacetimeService.IsSubscriptionReady())
+        {
+            logger.LogError("SpacetimeDB subscription not applied after {Seconds} seconds, cannot register OAuth clients", 
+                maxSubscriptionWaitTime.TotalSeconds);
+            return;
+        }
+
+        logger.LogInformation("SpacetimeDB subscription applied successfully after {Elapsed:F1}s, proceeding with client registration", 
+            (DateTime.UtcNow - startTime).TotalSeconds);
+
+        // Auto-register default OAuth clients
+        using (var scope = app.Services.CreateScope())
+        {
+            var openIdConnectService = scope.ServiceProvider.GetRequiredService<TicketSalesApp.Services.Interfaces.IOpenIdConnectService>();
+            
+            logger.LogInformation("Checking for default OAuth clients...");
+            
+            // Register desktop client if it doesn't exist
+            var desktopClientId = "bru-avtopark-desktop-client";
+            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+            
+            if (!clientExists)
+            {
+                logger.LogInformation("Registering default desktop client: {ClientId}", desktopClientId);
+                
+                var (success, errorMessage) = await openIdConnectService.RegisterClientApplicationAsync(
+                    clientId: desktopClientId,
+                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    displayName: "BRU Avtopark Desktop Application",
+                    redirectUris: new[] {
+                        "http://localhost:5000/callback",
+                        "http://localhost:5555/callback",
+                        "https://localhost:7515/callback",
+                        "https://localhost:7515/signin-oidc",
+                        "http://localhost:5501/signin-oidc"
+                    },
+                    postLogoutRedirectUris: new[] {
+                        "http://localhost:5000/",
+                        "http://localhost:5555/",
+                        "https://localhost:7515/",
+                        "http://localhost:5501/"
+                    },
+                    allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
+                    requireConsent: false
+                );
+                
+                if (success)
+                {
+                    logger.LogInformation("Successfully registered default desktop client");
+                    
+                    // CRITICAL: Process frame ticks to ensure SpacetimeDB cache is updated
+                    // The reducer writes to the database, but the local cache needs frame ticks to sync
+                    logger.LogInformation("[FrameTick] Processing frame ticks to sync SpacetimeDB cache...");
+                    for (int i = 0; i < 10; i++)
+                    {
+                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
+                        spacetimeService.ProcessFrameTick();
+                        await Task.Delay(100); // Small delay between ticks
+                    }
+                    logger.LogInformation("[FrameTick] Completed 10 frame ticks");
+                    
+                    // Verify the client is retrievable from cache
+                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+                    if (verifyExists)
+                    {
+                        logger.LogInformation("Verified default desktop client is retrievable from database");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Default desktop client was registered but cannot be retrieved from cache yet - processing more frame ticks");
+                        
+                        // Try more aggressive syncing
+                        logger.LogInformation("[FrameTick] Processing additional 20 frame ticks...");
+                        for (int i = 0; i < 20; i++)
+                        {
+                            if (i % 5 == 0)
+                            {
+                                logger.LogDebug("[FrameTick] Processing tick {TickNumber}/20", i + 1);
+                            }
+                            spacetimeService.ProcessFrameTick();
+                            await Task.Delay(50);
+                        }
+                        logger.LogInformation("[FrameTick] Completed additional 20 frame ticks");
+                        
+                        // Final verification
+                        var (finalCheck, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+                        if (finalCheck)
+                        {
+                            logger.LogInformation("Client now retrievable after additional frame ticks");
+                        }
+                        else
+                        {
+                            logger.LogError("Client still not retrievable after 30 frame ticks - SpacetimeDB cache sync issue");
+                        }
+                    }
+                }
+                else
+                {
+                    logger.LogError("Failed to register default desktop client: {Error}", errorMessage);
+                }
+            }
+            else
+            {
+                logger.LogInformation("Default desktop client already exists - updating to ensure correct configuration");
+                
+                var (success, errorMessage) = await openIdConnectService.UpdateClientApplicationAsync(
+                    clientId: desktopClientId,
+                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    displayName: "BRU Avtopark Desktop Application",
+                    redirectUris: new[] {
+                        "http://localhost:5000/callback",
+                        "http://localhost:5555/callback",
+                        "https://localhost:7515/callback",
+                        "https://localhost:7515/signin-oidc",
+                        "http://localhost:5501/signin-oidc"
+                    },
+                    postLogoutRedirectUris: new[] {
+                        "http://localhost:5000/",
+                        "http://localhost:5555/",
+                        "https://localhost:7515/",
+                        "http://localhost:5501/"
+                    },
+                    allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
+                    requireConsent: false
+                );
+                
+                if (success)
+                {
+                    logger.LogInformation("Successfully updated default desktop client with correct scope permissions");
+                    
+                    // Process frame ticks to sync the update
+                    logger.LogInformation("[FrameTick] Processing frame ticks to sync client update...");
+                    for (int i = 0; i < 10; i++)
+                    {
+                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
+                        spacetimeService.ProcessFrameTick();
+                        await Task.Delay(100);
+                    }
+                    logger.LogInformation("[FrameTick] Completed frame ticks for client update");
+                }
+                else
+                {
+                    logger.LogError("Failed to update default desktop client: {Error}", errorMessage);
+                }
+            }
+
+            // Register required OAuth scopes
+            logger.LogInformation("Registering required OAuth scopes...");
+            var scopeManager = openIdConnectService.GetScopeManager();
+            
+            var requiredScopes = new[]
+            {
+                new { Name = "openid", DisplayName = "OpenID", Description = "OpenID Connect scope" },
+                new { Name = "profile", DisplayName = "User Profile", Description = "Access to user profile information" },
+                new { Name = "email", DisplayName = "Email Address", Description = "Access to user email address" },
+                new { Name = "roles", DisplayName = "User Roles", Description = "Access to user roles" },
+                new { Name = "api", DisplayName = "API Access", Description = "Access to the API" },
+                new { Name = "offline_access", DisplayName = "Offline Access", Description = "Access to refresh tokens" }
+            };
+
+            foreach (var scopeInfo in requiredScopes)
+            {
+                try
+                {
+                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                    if (existingScope == null)
+                    {
+                        logger.LogInformation("Creating scope: {ScopeName}", scopeInfo.Name);
+                        
+                        var scopeDescriptor = new OpenIddictScopeDescriptor
+                        {
+                            Name = scopeInfo.Name,
+                            DisplayName = scopeInfo.DisplayName,
+                            Description = scopeInfo.Description
+                        };
+
+                        await scopeManager.CreateAsync(scopeDescriptor);
+                        logger.LogInformation("Successfully created scope: {ScopeName}", scopeInfo.Name);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Scope already exists: {ScopeName}", scopeInfo.Name);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error creating scope {ScopeName}: {Message}", scopeInfo.Name, ex.Message);
+                }
+            }
+
+            // Process frame ticks to sync scope data
+            logger.LogInformation("[FrameTick] Processing frame ticks to sync scope data...");
+            for (int i = 0; i < 10; i++)
+            {
+                logger.LogDebug("[FrameTick] Processing scope sync tick {TickNumber}/10", i + 1);
+                spacetimeService.ProcessFrameTick();
+                await Task.Delay(100);
+            }
+            logger.LogInformation("[FrameTick] Completed scope sync frame ticks");
+
+            // Verify scopes are retrievable
+            logger.LogInformation("Verifying registered scopes...");
+            foreach (var scopeInfo in requiredScopes)
+            {
+                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                if (registeredScope != null)
+                {
+                    logger.LogInformation("✓ Scope verified: {ScopeName}", scopeInfo.Name);
+                }
+                else
+                {
+                    logger.LogWarning("✗ Scope not found: {ScopeName}", scopeInfo.Name);
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error during OAuth client registration: {Message}", ex.Message);
+    }
+});
+
+>>>>>>> maintofix
 app.Run();
 
 public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

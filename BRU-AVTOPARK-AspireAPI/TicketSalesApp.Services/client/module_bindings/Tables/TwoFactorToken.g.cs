@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class TwoFactorTokenHandle : RemoteTableHandle<EventContext, TwoFactorToken>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "TwoFactorToken";
+=======
+            protected override string RemoteTableName => "two_factor_token";
+>>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,39 @@ namespace SpacetimeDB.Types
 
         public readonly TwoFactorTokenHandle TwoFactorToken;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class TwoFactorTokenCols
+    {
+        public global::SpacetimeDB.Col<TwoFactorToken, uint> Id { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, string> Token { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, ulong> ExpiresAt { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, bool> IsUsed { get; }
+        public global::SpacetimeDB.NullableCol<TwoFactorToken, string> DeviceInfo { get; }
+        public global::SpacetimeDB.NullableCol<TwoFactorToken, string> IpAddress { get; }
+
+        public TwoFactorTokenCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<TwoFactorToken, uint>(tableName, "id");
+            UserId = new global::SpacetimeDB.Col<TwoFactorToken, SpacetimeDB.Identity>(tableName, "user_id");
+            Token = new global::SpacetimeDB.Col<TwoFactorToken, string>(tableName, "token");
+            ExpiresAt = new global::SpacetimeDB.Col<TwoFactorToken, ulong>(tableName, "expires_at");
+            IsUsed = new global::SpacetimeDB.Col<TwoFactorToken, bool>(tableName, "is_used");
+            DeviceInfo = new global::SpacetimeDB.NullableCol<TwoFactorToken, string>(tableName, "device_info");
+            IpAddress = new global::SpacetimeDB.NullableCol<TwoFactorToken, string>(tableName, "ip_address");
+        }
+    }
+
+    public sealed class TwoFactorTokenIxCols
+    {
+        public global::SpacetimeDB.IxCol<TwoFactorToken, uint> Id { get; }
+
+        public TwoFactorTokenIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<TwoFactorToken, uint>(tableName, "id");
+        }
+    }
+>>>>>>> maintofix
 }

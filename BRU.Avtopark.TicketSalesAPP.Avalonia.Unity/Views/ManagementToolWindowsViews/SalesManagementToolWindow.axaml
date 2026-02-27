@@ -68,6 +68,7 @@
                                       Binding="{Binding SaleId}"
                                       Width="60"/>
                     <DataGridTextColumn Header="Дата"
+<<<<<<< HEAD
                                       Binding="{Binding SaleDate, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
                                       Width="150"/>
                     <DataGridTextColumn Header="Маршрут"
@@ -82,12 +83,25 @@
                     <DataGridTextColumn Header="Цена"
                                       Binding="{Binding Bilet.TicketPrice, StringFormat={}{0:C}}"
                                       Width="100"/>
+=======
+                                      Binding="{Binding SaleDate, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                      Width="150"/>
+                    <DataGridTextColumn Header="ID Билета" 
+                                      Binding="{Binding TicketId}"
+                                      Width="80"/>
+>>>>>>> maintofix
                     <DataGridTextColumn Header="Покупатель"
                                       Binding="{Binding TicketSoldToUser}"
                                       Width="150"/>
                     <DataGridTextColumn Header="Телефон"
                                       Binding="{Binding TicketSoldToUserPhone}"
                                       Width="150"/>
+<<<<<<< HEAD
+=======
+                    <DataGridTextColumn Header="ID Продавца" 
+                                      Binding="{Binding SellerId}"
+                                      Width="*"/>
+>>>>>>> maintofix
                 </DataGrid.Columns>
             </DataGrid>
 

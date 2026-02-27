@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser), this.SetCallReducerFlags.ChangePasswordFlags);
+=======
+            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeChangePassword(ReducerEventContext ctx, Reducer.ChangePassword args)
         {
+<<<<<<< HEAD
             if (OnChangePassword == null) return false;
+=======
+            if (OnChangePassword == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnChangePassword(
                 ctx,
                 args.UserId,
@@ -40,6 +59,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ChangePassword : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "currentPassword")]
@@ -47,6 +67,15 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "newPassword")]
             public string NewPassword;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "user_id")]
+            public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "current_password")]
+            public string CurrentPassword;
+            [DataMember(Name = "new_password")]
+            public string NewPassword;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ChangePassword(
@@ -68,6 +97,7 @@ namespace SpacetimeDB.Types
                 this.NewPassword = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "ChangePassword";
         }
     }
@@ -77,4 +107,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags ChangePasswordFlags;
         public void ChangePassword(CallReducerFlags flags) => ChangePasswordFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "change_password";
+        }
+    }
+>>>>>>> maintofix
 }

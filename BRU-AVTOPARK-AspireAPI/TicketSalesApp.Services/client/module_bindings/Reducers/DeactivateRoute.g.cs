@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeactivateRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId, actingUser), this.SetCallReducerFlags.DeactivateRouteFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeactivateRoute(ReducerEventContext ctx, Reducer.DeactivateRoute args)
         {
+<<<<<<< HEAD
             if (OnDeactivateRoute == null) return false;
+=======
+            if (OnDeactivateRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeactivateRoute(
                 ctx,
                 args.RouteId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateRoute : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "routeId")]
             public uint RouteId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "route_id")]
+            public uint RouteId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeactivateRoute(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeactivateRoute";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeactivateRouteFlags;
         public void DeactivateRoute(CallReducerFlags flags) => DeactivateRouteFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "deactivate_route";
+        }
+    }
+>>>>>>> maintofix
 }

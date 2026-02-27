@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void RegisterOpenIdClient(string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType, string clientType)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.RegisterOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType), this.SetCallReducerFlags.RegisterOpenIdClientFlags);
+=======
+            conn.InternalCallReducer(new Reducer.RegisterOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType));
+>>>>>>> maintofix
         }
 
         public bool InvokeRegisterOpenIdClient(ReducerEventContext ctx, Reducer.RegisterOpenIdClient args)
         {
+<<<<<<< HEAD
             if (OnRegisterOpenIdClient == null) return false;
+=======
+            if (OnRegisterOpenIdClient == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnRegisterOpenIdClient(
                 ctx,
                 args.ClientId,
@@ -44,6 +63,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RegisterOpenIdClient : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "clientId")]
             public string ClientId;
             [DataMember(Name = "clientSecret")]
@@ -59,6 +79,23 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "consentType")]
             public string ConsentType;
             [DataMember(Name = "clientType")]
+=======
+            [DataMember(Name = "client_id")]
+            public string ClientId;
+            [DataMember(Name = "client_secret")]
+            public string ClientSecret;
+            [DataMember(Name = "display_name")]
+            public string DisplayName;
+            [DataMember(Name = "redirect_uris")]
+            public System.Collections.Generic.List<string> RedirectUris;
+            [DataMember(Name = "post_logout_redirect_uris")]
+            public System.Collections.Generic.List<string> PostLogoutRedirectUris;
+            [DataMember(Name = "allowed_scopes")]
+            public System.Collections.Generic.List<string> AllowedScopes;
+            [DataMember(Name = "consent_type")]
+            public string ConsentType;
+            [DataMember(Name = "client_type")]
+>>>>>>> maintofix
             public string ClientType;
 
             public RegisterOpenIdClient(
@@ -94,6 +131,7 @@ namespace SpacetimeDB.Types
                 this.ClientType = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "RegisterOpenIdClient";
         }
     }
@@ -103,4 +141,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags RegisterOpenIdClientFlags;
         public void RegisterOpenIdClient(CallReducerFlags flags) => RegisterOpenIdClientFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "register_open_id_client";
+        }
+    }
+>>>>>>> maintofix
 }

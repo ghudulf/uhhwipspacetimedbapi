@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteOidcScope(uint internalId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteOidcScope(internalId), this.SetCallReducerFlags.DeleteOidcScopeFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteOidcScope(internalId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteOidcScope(ReducerEventContext ctx, Reducer.DeleteOidcScope args)
         {
+<<<<<<< HEAD
             if (OnDeleteOidcScope == null) return false;
+=======
+            if (OnDeleteOidcScope == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteOidcScope(
                 ctx,
                 args.InternalId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteOidcScope : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "internalId")]
+=======
+            [DataMember(Name = "internal_id")]
+>>>>>>> maintofix
             public uint InternalId;
 
             public DeleteOidcScope(uint InternalId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteOidcScope";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteOidcScopeFlags;
         public void DeleteOidcScope(CallReducerFlags flags) => DeleteOidcScopeFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_oidc_scope";
+        }
+    }
+>>>>>>> maintofix
 }

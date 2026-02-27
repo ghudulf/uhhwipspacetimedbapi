@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class PermissionHandle : RemoteTableHandle<EventContext, Permission>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "Permission";
+=======
+            protected override string RemoteTableName => "permission";
+>>>>>>> maintofix
 
             public sealed class PermissionIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,37 @@ namespace SpacetimeDB.Types
 
         public readonly PermissionHandle Permission;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class PermissionCols
+    {
+        public global::SpacetimeDB.Col<Permission, uint> PermissionId { get; }
+        public global::SpacetimeDB.Col<Permission, string> Name { get; }
+        public global::SpacetimeDB.Col<Permission, string> Description { get; }
+        public global::SpacetimeDB.Col<Permission, string> Category { get; }
+        public global::SpacetimeDB.Col<Permission, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<Permission, ulong> CreatedAt { get; }
+
+        public PermissionCols(string tableName)
+        {
+            PermissionId = new global::SpacetimeDB.Col<Permission, uint>(tableName, "permission_id");
+            Name = new global::SpacetimeDB.Col<Permission, string>(tableName, "name");
+            Description = new global::SpacetimeDB.Col<Permission, string>(tableName, "description");
+            Category = new global::SpacetimeDB.Col<Permission, string>(tableName, "category");
+            IsActive = new global::SpacetimeDB.Col<Permission, bool>(tableName, "is_active");
+            CreatedAt = new global::SpacetimeDB.Col<Permission, ulong>(tableName, "created_at");
+        }
+    }
+
+    public sealed class PermissionIxCols
+    {
+        public global::SpacetimeDB.IxCol<Permission, uint> PermissionId { get; }
+
+        public PermissionIxCols(string tableName)
+        {
+            PermissionId = new global::SpacetimeDB.IxCol<Permission, uint>(tableName, "permission_id");
+        }
+    }
+>>>>>>> maintofix
 }

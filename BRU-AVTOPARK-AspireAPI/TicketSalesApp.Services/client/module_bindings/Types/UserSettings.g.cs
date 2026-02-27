@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class UserSettings
     {
+<<<<<<< HEAD
         [DataMember(Name = "UserSettingId")]
         public uint UserSettingId;
         [DataMember(Name = "UserId")]
@@ -32,6 +33,27 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "IsTelegramNotificationsEnabled")]
         public bool IsTelegramNotificationsEnabled;
         [DataMember(Name = "IsDiscordNotificationsEnabled")]
+=======
+        [DataMember(Name = "user_setting_id")]
+        public uint UserSettingId;
+        [DataMember(Name = "user_id")]
+        public SpacetimeDB.Identity UserId;
+        [DataMember(Name = "totp_enabled")]
+        public bool TotpEnabled;
+        [DataMember(Name = "web_authn_enabled")]
+        public bool WebAuthnEnabled;
+        [DataMember(Name = "is_email_notifications_enabled")]
+        public bool IsEmailNotificationsEnabled;
+        [DataMember(Name = "is_sms_notifications_enabled")]
+        public bool IsSmsNotificationsEnabled;
+        [DataMember(Name = "is_push_notifications_enabled")]
+        public bool IsPushNotificationsEnabled;
+        [DataMember(Name = "is_whats_app_notifications_enabled")]
+        public bool IsWhatsAppNotificationsEnabled;
+        [DataMember(Name = "is_telegram_notifications_enabled")]
+        public bool IsTelegramNotificationsEnabled;
+        [DataMember(Name = "is_discord_notifications_enabled")]
+>>>>>>> maintofix
         public bool IsDiscordNotificationsEnabled;
 
         public UserSettings(

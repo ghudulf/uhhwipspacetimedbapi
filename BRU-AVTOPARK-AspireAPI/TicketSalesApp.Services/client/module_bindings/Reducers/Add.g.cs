@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void Add(string name, int age)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.Add(name, age), this.SetCallReducerFlags.AddFlags);
+=======
+            conn.InternalCallReducer(new Reducer.Add(name, age));
+>>>>>>> maintofix
         }
 
         public bool InvokeAdd(ReducerEventContext ctx, Reducer.Add args)
         {
+<<<<<<< HEAD
             if (OnAdd == null) return false;
+=======
+            if (OnAdd == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnAdd(
                 ctx,
                 args.Name,
@@ -57,6 +76,7 @@ namespace SpacetimeDB.Types
                 this.Name = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "Add";
         }
     }
@@ -66,4 +86,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags AddFlags;
         public void Add(CallReducerFlags flags) => AddFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "add";
+        }
+    }
+>>>>>>> maintofix
 }

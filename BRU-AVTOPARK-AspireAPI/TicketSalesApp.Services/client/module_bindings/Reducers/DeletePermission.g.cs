@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeletePermission(uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeletePermission(permissionId, actingUserId), this.SetCallReducerFlags.DeletePermissionFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeletePermission(permissionId, actingUserId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeletePermission(ReducerEventContext ctx, Reducer.DeletePermission args)
         {
+<<<<<<< HEAD
             if (OnDeletePermission == null) return false;
+=======
+            if (OnDeletePermission == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeletePermission(
                 ctx,
                 args.PermissionId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeletePermission : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "permissionId")]
             public uint PermissionId;
             [DataMember(Name = "actingUserId")]
+=======
+            [DataMember(Name = "permission_id")]
+            public uint PermissionId;
+            [DataMember(Name = "acting_user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public DeletePermission(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeletePermission";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeletePermissionFlags;
         public void DeletePermission(CallReducerFlags flags) => DeletePermissionFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_permission";
+        }
+    }
+>>>>>>> maintofix
 }

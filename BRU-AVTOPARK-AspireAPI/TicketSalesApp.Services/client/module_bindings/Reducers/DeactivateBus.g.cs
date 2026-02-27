@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeactivateBus(uint busId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeactivateBus(busId, actingUser), this.SetCallReducerFlags.DeactivateBusFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeactivateBus(busId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeactivateBus(ReducerEventContext ctx, Reducer.DeactivateBus args)
         {
+<<<<<<< HEAD
             if (OnDeactivateBus == null) return false;
+=======
+            if (OnDeactivateBus == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeactivateBus(
                 ctx,
                 args.BusId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateBus : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "busId")]
             public uint BusId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "bus_id")]
+            public uint BusId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeactivateBus(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeactivateBus";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeactivateBusFlags;
         public void DeactivateBus(CallReducerFlags flags) => DeactivateBusFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "deactivate_bus";
+        }
+    }
+>>>>>>> maintofix
 }

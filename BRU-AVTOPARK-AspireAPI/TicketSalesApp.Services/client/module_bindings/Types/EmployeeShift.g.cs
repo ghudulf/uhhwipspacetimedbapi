@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class EmployeeShift
     {
+<<<<<<< HEAD
         [DataMember(Name = "ShiftId")]
         public uint ShiftId;
         [DataMember(Name = "EmployeeId")]
@@ -62,6 +63,57 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "ShiftFeedback")]
         public string? ShiftFeedback;
         [DataMember(Name = "ComplianceWithRegulations")]
+=======
+        [DataMember(Name = "shift_id")]
+        public uint ShiftId;
+        [DataMember(Name = "employee_id")]
+        public uint EmployeeId;
+        [DataMember(Name = "shift_start_date")]
+        public ulong ShiftStartDate;
+        [DataMember(Name = "shift_end_date")]
+        public ulong ShiftEndDate;
+        [DataMember(Name = "shift_start_time")]
+        public ulong ShiftStartTime;
+        [DataMember(Name = "shift_end_time")]
+        public ulong ShiftEndTime;
+        [DataMember(Name = "shift_type")]
+        public string ShiftType;
+        [DataMember(Name = "shift_status")]
+        public string ShiftStatus;
+        [DataMember(Name = "route_id")]
+        public uint? RouteId;
+        [DataMember(Name = "notes")]
+        public string? Notes;
+        [DataMember(Name = "assigned_by")]
+        public SpacetimeDB.Identity? AssignedBy;
+        [DataMember(Name = "assigned_at")]
+        public ulong AssignedAt;
+        [DataMember(Name = "shift_form")]
+        public string? ShiftForm;
+        [DataMember(Name = "shift_duration")]
+        public double ShiftDuration;
+        [DataMember(Name = "break_start_time")]
+        public ulong? BreakStartTime;
+        [DataMember(Name = "break_end_time")]
+        public ulong? BreakEndTime;
+        [DataMember(Name = "break_duration")]
+        public double? BreakDuration;
+        [DataMember(Name = "is_overtime")]
+        public bool? IsOvertime;
+        [DataMember(Name = "overtime_hours")]
+        public double? OvertimeHours;
+        [DataMember(Name = "replacement_for")]
+        public string? ReplacementFor;
+        [DataMember(Name = "is_training")]
+        public bool? IsTraining;
+        [DataMember(Name = "trainer_name")]
+        public string? TrainerName;
+        [DataMember(Name = "shift_location")]
+        public string? ShiftLocation;
+        [DataMember(Name = "shift_feedback")]
+        public string? ShiftFeedback;
+        [DataMember(Name = "compliance_with_regulations")]
+>>>>>>> maintofix
         public bool? ComplianceWithRegulations;
 
         public EmployeeShift(

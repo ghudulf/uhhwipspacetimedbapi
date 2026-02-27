@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class BusStop
     {
+<<<<<<< HEAD
         [DataMember(Name = "StopId")]
         public uint StopId;
         [DataMember(Name = "StopName")]
@@ -46,6 +47,41 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "NearbyLandmarks")]
         public System.Collections.Generic.List<string>? NearbyLandmarks;
         [DataMember(Name = "LastUpdated")]
+=======
+        [DataMember(Name = "stop_id")]
+        public uint StopId;
+        [DataMember(Name = "stop_name")]
+        public string StopName;
+        [DataMember(Name = "latitude")]
+        public double Latitude;
+        [DataMember(Name = "longitude")]
+        public double Longitude;
+        [DataMember(Name = "stop_code")]
+        public string? StopCode;
+        [DataMember(Name = "stop_description")]
+        public string? StopDescription;
+        [DataMember(Name = "has_shelter")]
+        public bool? HasShelter;
+        [DataMember(Name = "has_bench")]
+        public bool? HasBench;
+        [DataMember(Name = "has_lighting")]
+        public bool? HasLighting;
+        [DataMember(Name = "is_accessible")]
+        public bool? IsAccessible;
+        [DataMember(Name = "routes")]
+        public System.Collections.Generic.List<string>? Routes;
+        [DataMember(Name = "stop_type")]
+        public string? StopType;
+        [DataMember(Name = "zone")]
+        public string? Zone;
+        [DataMember(Name = "address")]
+        public string? Address;
+        [DataMember(Name = "amenities")]
+        public System.Collections.Generic.List<string>? Amenities;
+        [DataMember(Name = "nearby_landmarks")]
+        public System.Collections.Generic.List<string>? NearbyLandmarks;
+        [DataMember(Name = "last_updated")]
+>>>>>>> maintofix
         public ulong? LastUpdated;
 
         public BusStop(

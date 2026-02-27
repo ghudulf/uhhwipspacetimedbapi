@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteRole(uint roleId, SpacetimeDB.Identity? actingUserId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteRole(roleId, actingUserId), this.SetCallReducerFlags.DeleteRoleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteRole(roleId, actingUserId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteRole(ReducerEventContext ctx, Reducer.DeleteRole args)
         {
+<<<<<<< HEAD
             if (OnDeleteRole == null) return false;
+=======
+            if (OnDeleteRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteRole(
                 ctx,
                 args.RoleId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRole : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "roleId")]
             public uint RoleId;
             [DataMember(Name = "actingUserId")]
+=======
+            [DataMember(Name = "role_id")]
+            public uint RoleId;
+            [DataMember(Name = "acting_user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public DeleteRole(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteRole";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteRoleFlags;
         public void DeleteRole(CallReducerFlags flags) => DeleteRoleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_role";
+        }
+    }
+>>>>>>> maintofix
 }

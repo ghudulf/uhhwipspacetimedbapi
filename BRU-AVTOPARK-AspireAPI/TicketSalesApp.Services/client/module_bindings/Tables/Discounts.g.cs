@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class DiscountsHandle : RemoteTableHandle<EventContext, Discounts>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "Discounts";
+=======
+            protected override string RemoteTableName => "discounts";
+>>>>>>> maintofix
 
             public sealed class DiscountIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,49 @@ namespace SpacetimeDB.Types
 
         public readonly DiscountsHandle Discounts;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class DiscountsCols
+    {
+        public global::SpacetimeDB.Col<Discounts, uint> DiscountId { get; }
+        public global::SpacetimeDB.Col<Discounts, string> DiscountType { get; }
+        public global::SpacetimeDB.Col<Discounts, double> DiscountPercentage { get; }
+        public global::SpacetimeDB.Col<Discounts, ulong> StartDate { get; }
+        public global::SpacetimeDB.Col<Discounts, ulong> EndDate { get; }
+        public global::SpacetimeDB.Col<Discounts, bool> IsActive { get; }
+        public global::SpacetimeDB.NullableCol<Discounts, string> Description { get; }
+        public global::SpacetimeDB.NullableCol<Discounts, string> RequiredDocuments { get; }
+        public global::SpacetimeDB.NullableCol<Discounts, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<Discounts, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.NullableCol<Discounts, string> UpdatedBy { get; }
+        public global::SpacetimeDB.NullableCol<Discounts, ulong> UpdatedAt { get; }
+
+        public DiscountsCols(string tableName)
+        {
+            DiscountId = new global::SpacetimeDB.Col<Discounts, uint>(tableName, "discount_id");
+            DiscountType = new global::SpacetimeDB.Col<Discounts, string>(tableName, "discount_type");
+            DiscountPercentage = new global::SpacetimeDB.Col<Discounts, double>(tableName, "discount_percentage");
+            StartDate = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "start_date");
+            EndDate = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "end_date");
+            IsActive = new global::SpacetimeDB.Col<Discounts, bool>(tableName, "is_active");
+            Description = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "description");
+            RequiredDocuments = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "required_documents");
+            CreatedBy = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "created_by");
+            CreatedAt = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "created_at");
+            UpdatedBy = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "updated_by");
+            UpdatedAt = new global::SpacetimeDB.NullableCol<Discounts, ulong>(tableName, "updated_at");
+        }
+    }
+
+    public sealed class DiscountsIxCols
+    {
+        public global::SpacetimeDB.IxCol<Discounts, uint> DiscountId { get; }
+
+        public DiscountsIxCols(string tableName)
+        {
+            DiscountId = new global::SpacetimeDB.IxCol<Discounts, uint>(tableName, "discount_id");
+        }
+    }
+>>>>>>> maintofix
 }

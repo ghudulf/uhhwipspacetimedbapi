@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class QrSessionHandle : RemoteTableHandle<EventContext, QrSession>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "QRSession";
+=======
+            protected override string RemoteTableName => "qr_session";
+>>>>>>> maintofix
 
             public sealed class SessionIdUniqueIndex : UniqueIndexBase<string>
             {
@@ -36,4 +40,37 @@ namespace SpacetimeDB.Types
 
         public readonly QrSessionHandle QrSession;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class QrSessionCols
+    {
+        public global::SpacetimeDB.Col<QrSession, string> SessionId { get; }
+        public global::SpacetimeDB.Col<QrSession, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<QrSession, string> ValidationCode { get; }
+        public global::SpacetimeDB.Col<QrSession, ulong> ExpiryTime { get; }
+        public global::SpacetimeDB.Col<QrSession, string> InitiatingDevice { get; }
+        public global::SpacetimeDB.Col<QrSession, bool> IsUsed { get; }
+
+        public QrSessionCols(string tableName)
+        {
+            SessionId = new global::SpacetimeDB.Col<QrSession, string>(tableName, "session_id");
+            UserId = new global::SpacetimeDB.Col<QrSession, SpacetimeDB.Identity>(tableName, "user_id");
+            ValidationCode = new global::SpacetimeDB.Col<QrSession, string>(tableName, "validation_code");
+            ExpiryTime = new global::SpacetimeDB.Col<QrSession, ulong>(tableName, "expiry_time");
+            InitiatingDevice = new global::SpacetimeDB.Col<QrSession, string>(tableName, "initiating_device");
+            IsUsed = new global::SpacetimeDB.Col<QrSession, bool>(tableName, "is_used");
+        }
+    }
+
+    public sealed class QrSessionIxCols
+    {
+        public global::SpacetimeDB.IxCol<QrSession, string> SessionId { get; }
+
+        public QrSessionIxCols(string tableName)
+        {
+            SessionId = new global::SpacetimeDB.IxCol<QrSession, string>(tableName, "session_id");
+        }
+    }
+>>>>>>> maintofix
 }

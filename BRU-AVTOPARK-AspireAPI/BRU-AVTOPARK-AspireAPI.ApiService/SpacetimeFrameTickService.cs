@@ -58,6 +58,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Services
                 else
                 {
                     _connectionInProgress = false;
+<<<<<<< HEAD
+=======
+                    _logger.LogTrace("[FrameTick] Processing frame tick");
+>>>>>>> maintofix
                     spacetimeService.ProcessFrameTick();
                 }
 

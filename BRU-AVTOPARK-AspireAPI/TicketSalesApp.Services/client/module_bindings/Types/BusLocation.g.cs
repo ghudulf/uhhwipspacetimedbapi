@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class BusLocation
     {
+<<<<<<< HEAD
         [DataMember(Name = "LocationId")]
         public uint LocationId;
         [DataMember(Name = "BusId")]
@@ -42,6 +43,37 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "DelayMinutes")]
         public uint? DelayMinutes;
         [DataMember(Name = "DelayReason")]
+=======
+        [DataMember(Name = "location_id")]
+        public uint LocationId;
+        [DataMember(Name = "bus_id")]
+        public uint BusId;
+        [DataMember(Name = "latitude")]
+        public double Latitude;
+        [DataMember(Name = "longitude")]
+        public double Longitude;
+        [DataMember(Name = "timestamp")]
+        public ulong Timestamp;
+        [DataMember(Name = "route_id")]
+        public uint? RouteId;
+        [DataMember(Name = "schedule_id")]
+        public uint? ScheduleId;
+        [DataMember(Name = "speed")]
+        public double? Speed;
+        [DataMember(Name = "heading")]
+        public double? Heading;
+        [DataMember(Name = "status")]
+        public string? Status;
+        [DataMember(Name = "next_stop_id")]
+        public uint? NextStopId;
+        [DataMember(Name = "estimated_arrival_time")]
+        public ulong? EstimatedArrivalTime;
+        [DataMember(Name = "is_delayed")]
+        public bool? IsDelayed;
+        [DataMember(Name = "delay_minutes")]
+        public uint? DelayMinutes;
+        [DataMember(Name = "delay_reason")]
+>>>>>>> maintofix
         public string? DelayReason;
 
         public BusLocation(

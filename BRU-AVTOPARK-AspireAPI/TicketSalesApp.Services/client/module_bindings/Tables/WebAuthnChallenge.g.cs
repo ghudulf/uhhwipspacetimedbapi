@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class WebAuthnChallengeHandle : RemoteTableHandle<EventContext, WebAuthnChallenge>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "WebAuthnChallenge";
+=======
+            protected override string RemoteTableName => "web_authn_challenge";
+>>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,35 @@ namespace SpacetimeDB.Types
 
         public readonly WebAuthnChallengeHandle WebAuthnChallenge;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class WebAuthnChallengeCols
+    {
+        public global::SpacetimeDB.Col<WebAuthnChallenge, uint> Id { get; }
+        public global::SpacetimeDB.Col<WebAuthnChallenge, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<WebAuthnChallenge, string> Challenge { get; }
+        public global::SpacetimeDB.Col<WebAuthnChallenge, ulong> ExpiresAt { get; }
+        public global::SpacetimeDB.Col<WebAuthnChallenge, ulong> CreatedAt { get; }
+
+        public WebAuthnChallengeCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<WebAuthnChallenge, uint>(tableName, "id");
+            UserId = new global::SpacetimeDB.Col<WebAuthnChallenge, SpacetimeDB.Identity>(tableName, "user_id");
+            Challenge = new global::SpacetimeDB.Col<WebAuthnChallenge, string>(tableName, "challenge");
+            ExpiresAt = new global::SpacetimeDB.Col<WebAuthnChallenge, ulong>(tableName, "expires_at");
+            CreatedAt = new global::SpacetimeDB.Col<WebAuthnChallenge, ulong>(tableName, "created_at");
+        }
+    }
+
+    public sealed class WebAuthnChallengeIxCols
+    {
+        public global::SpacetimeDB.IxCol<WebAuthnChallenge, uint> Id { get; }
+
+        public WebAuthnChallengeIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<WebAuthnChallenge, uint>(tableName, "id");
+        }
+    }
+>>>>>>> maintofix
 }

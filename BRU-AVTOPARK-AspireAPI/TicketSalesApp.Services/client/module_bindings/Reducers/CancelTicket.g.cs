@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void CancelTicket(uint ticketId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.CancelTicket(ticketId, actingUser), this.SetCallReducerFlags.CancelTicketFlags);
+=======
+            conn.InternalCallReducer(new Reducer.CancelTicket(ticketId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeCancelTicket(ReducerEventContext ctx, Reducer.CancelTicket args)
         {
+<<<<<<< HEAD
             if (OnCancelTicket == null) return false;
+=======
+            if (OnCancelTicket == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnCancelTicket(
                 ctx,
                 args.TicketId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CancelTicket : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "ticketId")]
             public uint TicketId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "ticket_id")]
+            public uint TicketId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public CancelTicket(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "CancelTicket";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags CancelTicketFlags;
         public void CancelTicket(CallReducerFlags flags) => CancelTicketFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "cancel_ticket";
+        }
+    }
+>>>>>>> maintofix
 }

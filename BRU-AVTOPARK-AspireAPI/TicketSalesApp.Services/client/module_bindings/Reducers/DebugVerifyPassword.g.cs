@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DebugVerifyPassword(string password, string storedHash)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DebugVerifyPassword(password, storedHash), this.SetCallReducerFlags.DebugVerifyPasswordFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DebugVerifyPassword(password, storedHash));
+>>>>>>> maintofix
         }
 
         public bool InvokeDebugVerifyPassword(ReducerEventContext ctx, Reducer.DebugVerifyPassword args)
         {
+<<<<<<< HEAD
             if (OnDebugVerifyPassword == null) return false;
+=======
+            if (OnDebugVerifyPassword == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDebugVerifyPassword(
                 ctx,
                 args.Password,
@@ -40,7 +59,11 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "password")]
             public string Password;
+<<<<<<< HEAD
             [DataMember(Name = "storedHash")]
+=======
+            [DataMember(Name = "stored_hash")]
+>>>>>>> maintofix
             public string StoredHash;
 
             public DebugVerifyPassword(
@@ -58,6 +81,7 @@ namespace SpacetimeDB.Types
                 this.StoredHash = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DebugVerifyPassword";
         }
     }
@@ -67,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DebugVerifyPasswordFlags;
         public void DebugVerifyPassword(CallReducerFlags flags) => DebugVerifyPasswordFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "debug_verify_password";
+        }
+    }
+>>>>>>> maintofix
 }

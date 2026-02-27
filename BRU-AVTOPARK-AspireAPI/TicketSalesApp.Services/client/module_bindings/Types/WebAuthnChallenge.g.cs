@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class WebAuthnChallenge
     {
+<<<<<<< HEAD
         [DataMember(Name = "Id")]
         public uint Id;
         [DataMember(Name = "UserId")]
@@ -22,6 +23,17 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "ExpiresAt")]
         public ulong ExpiresAt;
         [DataMember(Name = "CreatedAt")]
+=======
+        [DataMember(Name = "id")]
+        public uint Id;
+        [DataMember(Name = "user_id")]
+        public SpacetimeDB.Identity UserId;
+        [DataMember(Name = "challenge")]
+        public string Challenge;
+        [DataMember(Name = "expires_at")]
+        public ulong ExpiresAt;
+        [DataMember(Name = "created_at")]
+>>>>>>> maintofix
         public ulong CreatedAt;
 
         public WebAuthnChallenge(

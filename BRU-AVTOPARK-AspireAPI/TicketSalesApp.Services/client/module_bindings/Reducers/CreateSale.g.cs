@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void CreateSale(uint ticketId, string buyerName, string buyerPhone, string? saleLocation, string? saleNotes)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.CreateSale(ticketId, buyerName, buyerPhone, saleLocation, saleNotes), this.SetCallReducerFlags.CreateSaleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.CreateSale(ticketId, buyerName, buyerPhone, saleLocation, saleNotes));
+>>>>>>> maintofix
         }
 
         public bool InvokeCreateSale(ReducerEventContext ctx, Reducer.CreateSale args)
         {
+<<<<<<< HEAD
             if (OnCreateSale == null) return false;
+=======
+            if (OnCreateSale == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnCreateSale(
                 ctx,
                 args.TicketId,
@@ -41,6 +60,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateSale : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "ticketId")]
             public uint TicketId;
             [DataMember(Name = "buyerName")]
@@ -50,6 +70,17 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "saleLocation")]
             public string? SaleLocation;
             [DataMember(Name = "saleNotes")]
+=======
+            [DataMember(Name = "ticket_id")]
+            public uint TicketId;
+            [DataMember(Name = "buyer_name")]
+            public string BuyerName;
+            [DataMember(Name = "buyer_phone")]
+            public string BuyerPhone;
+            [DataMember(Name = "sale_location")]
+            public string? SaleLocation;
+            [DataMember(Name = "sale_notes")]
+>>>>>>> maintofix
             public string? SaleNotes;
 
             public CreateSale(
@@ -73,6 +104,7 @@ namespace SpacetimeDB.Types
                 this.BuyerPhone = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "CreateSale";
         }
     }
@@ -82,4 +114,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags CreateSaleFlags;
         public void CreateSale(CallReducerFlags flags) => CreateSaleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "create_sale";
+        }
+    }
+>>>>>>> maintofix
 }

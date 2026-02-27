@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void EnableWebAuthn(SpacetimeDB.Identity userId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.EnableWebAuthn(userId), this.SetCallReducerFlags.EnableWebAuthnFlags);
+=======
+            conn.InternalCallReducer(new Reducer.EnableWebAuthn(userId));
+>>>>>>> maintofix
         }
 
         public bool InvokeEnableWebAuthn(ReducerEventContext ctx, Reducer.EnableWebAuthn args)
         {
+<<<<<<< HEAD
             if (OnEnableWebAuthn == null) return false;
+=======
+            if (OnEnableWebAuthn == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnEnableWebAuthn(
                 ctx,
                 args.UserId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class EnableWebAuthn : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
+=======
+            [DataMember(Name = "user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public EnableWebAuthn(SpacetimeDB.Identity UserId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "EnableWebAuthn";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags EnableWebAuthnFlags;
         public void EnableWebAuthn(CallReducerFlags flags) => EnableWebAuthnFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "enable_web_authn";
+        }
+    }
+>>>>>>> maintofix
 }

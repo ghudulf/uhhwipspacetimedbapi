@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteOidcAuthorization(uint internalId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteOidcAuthorization(internalId), this.SetCallReducerFlags.DeleteOidcAuthorizationFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteOidcAuthorization(internalId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteOidcAuthorization(ReducerEventContext ctx, Reducer.DeleteOidcAuthorization args)
         {
+<<<<<<< HEAD
             if (OnDeleteOidcAuthorization == null) return false;
+=======
+            if (OnDeleteOidcAuthorization == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteOidcAuthorization(
                 ctx,
                 args.InternalId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteOidcAuthorization : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "internalId")]
+=======
+            [DataMember(Name = "internal_id")]
+>>>>>>> maintofix
             public uint InternalId;
 
             public DeleteOidcAuthorization(uint InternalId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteOidcAuthorization";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteOidcAuthorizationFlags;
         public void DeleteOidcAuthorization(CallReducerFlags flags) => DeleteOidcAuthorizationFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_oidc_authorization";
+        }
+    }
+>>>>>>> maintofix
 }

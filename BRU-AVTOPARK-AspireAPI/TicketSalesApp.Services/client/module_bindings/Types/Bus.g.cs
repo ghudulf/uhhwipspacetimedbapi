@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Bus
     {
+<<<<<<< HEAD
         [DataMember(Name = "BusId")]
         public uint BusId;
         [DataMember(Name = "Model")]
@@ -58,6 +59,53 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "HasWifi")]
         public bool? HasWifi;
         [DataMember(Name = "HasUSBCharging")]
+=======
+        [DataMember(Name = "bus_id")]
+        public uint BusId;
+        [DataMember(Name = "model")]
+        public string Model;
+        [DataMember(Name = "registration_number")]
+        public string? RegistrationNumber;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "bus_type")]
+        public string BusType;
+        [DataMember(Name = "capacity")]
+        public uint Capacity;
+        [DataMember(Name = "seated_capacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "standing_capacity")]
+        public uint? StandingCapacity;
+        [DataMember(Name = "year")]
+        public uint Year;
+        [DataMember(Name = "vin")]
+        public string? Vin;
+        [DataMember(Name = "license_plate")]
+        public string? LicensePlate;
+        [DataMember(Name = "current_status")]
+        public string? CurrentStatus;
+        [DataMember(Name = "current_location")]
+        public string? CurrentLocation;
+        [DataMember(Name = "last_location_update")]
+        public ulong? LastLocationUpdate;
+        [DataMember(Name = "fuel_consumption")]
+        public double? FuelConsumption;
+        [DataMember(Name = "current_fuel_level")]
+        public double? CurrentFuelLevel;
+        [DataMember(Name = "fuel_type")]
+        public string? FuelType;
+        [DataMember(Name = "mileage_total")]
+        public uint? MileageTotal;
+        [DataMember(Name = "mileage_since_service")]
+        public uint? MileageSinceService;
+        [DataMember(Name = "has_accessibility")]
+        public bool? HasAccessibility;
+        [DataMember(Name = "has_air_conditioning")]
+        public bool? HasAirConditioning;
+        [DataMember(Name = "has_wifi")]
+        public bool? HasWifi;
+        [DataMember(Name = "has_usb_charging")]
+>>>>>>> maintofix
         public bool? HasUsbCharging;
 
         public Bus(

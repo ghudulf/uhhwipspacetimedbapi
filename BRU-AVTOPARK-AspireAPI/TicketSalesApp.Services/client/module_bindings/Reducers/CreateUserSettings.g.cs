@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void CreateUserSettings(SpacetimeDB.Identity userId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.CreateUserSettings(userId), this.SetCallReducerFlags.CreateUserSettingsFlags);
+=======
+            conn.InternalCallReducer(new Reducer.CreateUserSettings(userId));
+>>>>>>> maintofix
         }
 
         public bool InvokeCreateUserSettings(ReducerEventContext ctx, Reducer.CreateUserSettings args)
         {
+<<<<<<< HEAD
             if (OnCreateUserSettings == null) return false;
+=======
+            if (OnCreateUserSettings == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnCreateUserSettings(
                 ctx,
                 args.UserId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateUserSettings : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
+=======
+            [DataMember(Name = "user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public CreateUserSettings(SpacetimeDB.Identity UserId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "CreateUserSettings";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags CreateUserSettingsFlags;
         public void CreateUserSettings(CallReducerFlags flags) => CreateUserSettingsFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "create_user_settings";
+        }
+    }
+>>>>>>> maintofix
 }

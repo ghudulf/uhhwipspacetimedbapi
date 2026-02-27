@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteSale(uint saleId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteSale(saleId, actingUser), this.SetCallReducerFlags.DeleteSaleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteSale(saleId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteSale(ReducerEventContext ctx, Reducer.DeleteSale args)
         {
+<<<<<<< HEAD
             if (OnDeleteSale == null) return false;
+=======
+            if (OnDeleteSale == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteSale(
                 ctx,
                 args.SaleId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteSale : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "saleId")]
             public uint SaleId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "sale_id")]
+            public uint SaleId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeleteSale(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteSale";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteSaleFlags;
         public void DeleteSale(CallReducerFlags flags) => DeleteSaleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_sale";
+        }
+    }
+>>>>>>> maintofix
 }

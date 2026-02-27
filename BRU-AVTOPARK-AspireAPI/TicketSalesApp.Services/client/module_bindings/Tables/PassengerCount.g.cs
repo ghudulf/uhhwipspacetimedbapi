@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class PassengerCountHandle : RemoteTableHandle<EventContext, PassengerCount>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "PassengerCount";
+=======
+            protected override string RemoteTableName => "passenger_count";
+>>>>>>> maintofix
 
             public sealed class PassengerCountIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,39 @@ namespace SpacetimeDB.Types
 
         public readonly PassengerCountHandle PassengerCount;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class PassengerCountCols
+    {
+        public global::SpacetimeDB.Col<PassengerCount, uint> PassengerCountId { get; }
+        public global::SpacetimeDB.Col<PassengerCount, ulong> Timestamp { get; }
+        public global::SpacetimeDB.Col<PassengerCount, uint> RouteId { get; }
+        public global::SpacetimeDB.Col<PassengerCount, uint> StopId { get; }
+        public global::SpacetimeDB.Col<PassengerCount, uint> PassengerCountNumber { get; }
+        public global::SpacetimeDB.NullableCol<PassengerCount, string> Notes { get; }
+        public global::SpacetimeDB.NullableCol<PassengerCount, uint> EmployeeId { get; }
+
+        public PassengerCountCols(string tableName)
+        {
+            PassengerCountId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "passenger_count_id");
+            Timestamp = new global::SpacetimeDB.Col<PassengerCount, ulong>(tableName, "timestamp");
+            RouteId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "route_id");
+            StopId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "stop_id");
+            PassengerCountNumber = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "passenger_count_number");
+            Notes = new global::SpacetimeDB.NullableCol<PassengerCount, string>(tableName, "notes");
+            EmployeeId = new global::SpacetimeDB.NullableCol<PassengerCount, uint>(tableName, "employee_id");
+        }
+    }
+
+    public sealed class PassengerCountIxCols
+    {
+        public global::SpacetimeDB.IxCol<PassengerCount, uint> PassengerCountId { get; }
+
+        public PassengerCountIxCols(string tableName)
+        {
+            PassengerCountId = new global::SpacetimeDB.IxCol<PassengerCount, uint>(tableName, "passenger_count_id");
+        }
+    }
+>>>>>>> maintofix
 }

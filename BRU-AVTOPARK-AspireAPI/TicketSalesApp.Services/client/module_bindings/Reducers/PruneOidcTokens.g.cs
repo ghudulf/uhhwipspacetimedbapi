@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void PruneOidcTokens(ulong thresholdDate)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.PruneOidcTokens(thresholdDate), this.SetCallReducerFlags.PruneOidcTokensFlags);
+=======
+            conn.InternalCallReducer(new Reducer.PruneOidcTokens(thresholdDate));
+>>>>>>> maintofix
         }
 
         public bool InvokePruneOidcTokens(ReducerEventContext ctx, Reducer.PruneOidcTokens args)
         {
+<<<<<<< HEAD
             if (OnPruneOidcTokens == null) return false;
+=======
+            if (OnPruneOidcTokens == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnPruneOidcTokens(
                 ctx,
                 args.ThresholdDate
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class PruneOidcTokens : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "thresholdDate")]
+=======
+            [DataMember(Name = "threshold_date")]
+>>>>>>> maintofix
             public ulong ThresholdDate;
 
             public PruneOidcTokens(ulong ThresholdDate)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "PruneOidcTokens";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags PruneOidcTokensFlags;
         public void PruneOidcTokens(CallReducerFlags flags) => PruneOidcTokensFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "prune_oidc_tokens";
+        }
+    }
+>>>>>>> maintofix
 }

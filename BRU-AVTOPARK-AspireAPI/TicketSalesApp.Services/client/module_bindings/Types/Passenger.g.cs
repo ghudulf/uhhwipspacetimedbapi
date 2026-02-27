@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Passenger
     {
+<<<<<<< HEAD
         [DataMember(Name = "PassengerId")]
         public uint PassengerId;
         [DataMember(Name = "Name")]
@@ -28,6 +29,23 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "UpdatedAt")]
         public ulong? UpdatedAt;
         [DataMember(Name = "UpdatedBy")]
+=======
+        [DataMember(Name = "passenger_id")]
+        public uint PassengerId;
+        [DataMember(Name = "name")]
+        public string Name;
+        [DataMember(Name = "email")]
+        public string Email;
+        [DataMember(Name = "phone_number")]
+        public string PhoneNumber;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+>>>>>>> maintofix
         public string? UpdatedBy;
 
         public Passenger(

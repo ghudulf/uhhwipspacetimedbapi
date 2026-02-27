@@ -44,7 +44,11 @@ namespace TicketSalesApp.Services.Implementations
             return _serviceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
         }
 
+<<<<<<< HEAD
         private IOpenIddictScopeManager GetScopeManager()
+=======
+        public IOpenIddictScopeManager GetScopeManager()
+>>>>>>> maintofix
         {
             return _serviceProvider.GetRequiredService<IOpenIddictScopeManager>();
         }
@@ -235,6 +239,27 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Registering client application: {ClientId}", clientId);
 
+<<<<<<< HEAD
+=======
+                // Validate input parameters
+                if (redirectUris == null || redirectUris.Length == 0)
+                {
+                    _logger.LogWarning("Redirect URIs cannot be null or empty");
+                    return (false, "Redirect URIs are required");
+                }
+
+                if (postLogoutRedirectUris == null)
+                {
+                    postLogoutRedirectUris = Array.Empty<string>();
+                }
+
+                if (allowedScopes == null || allowedScopes.Length == 0)
+                {
+                    _logger.LogWarning("Allowed scopes cannot be null or empty");
+                    return (false, "At least one scope is required");
+                }
+
+>>>>>>> maintofix
                 // Check if application with the same client ID already exists
                 var applicationManager = GetApplicationManager();
                 var existingApp = await applicationManager.FindByClientIdAsync(clientId);
@@ -244,6 +269,7 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "An application with this client ID already exists");
                 }
                 
+<<<<<<< HEAD
                 var conn = _spacetimeService.GetConnection();
                 
                 // Register the client in SpacetimeDB
@@ -260,10 +286,19 @@ namespace TicketSalesApp.Services.Implementations
                 
                 // Create a new OpenIddict application
                 var application = await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+=======
+                // Create a new OpenIddict application descriptor
+                // Note: ApplicationStore.CreateAsync will handle writing to SpacetimeDB via RegisterOpenIdClient reducer
+                var descriptor = new OpenIddictApplicationDescriptor
+>>>>>>> maintofix
                 {
                     ClientId = clientId,
                     ClientSecret = clientSecret,
                     DisplayName = displayName,
+<<<<<<< HEAD
+=======
+                    ConsentType = requireConsent ? ConsentTypes.Explicit : ConsentTypes.Implicit,
+>>>>>>> maintofix
                     Permissions =
                     {
                         Permissions.Endpoints.Authorization,
@@ -279,6 +314,7 @@ namespace TicketSalesApp.Services.Implementations
                         Permissions.Scopes.Profile,
                         Permissions.Scopes.Roles
                     }
+<<<<<<< HEAD
                 });
 
                 // Add redirect URIs
@@ -297,6 +333,35 @@ namespace TicketSalesApp.Services.Implementations
                 ((OpenIddictApplicationDescriptor)application).ConsentType = requireConsent ? 
                     ConsentTypes.Explicit : 
                     ConsentTypes.Implicit;
+=======
+                };
+
+                // Add custom scope permissions from allowedScopes parameter
+                foreach (var scope in allowedScopes)
+                {
+                    var scopePermission = $"{Permissions.Prefixes.Scope}{scope}";
+                    if (!descriptor.Permissions.Contains(scopePermission))
+                    {
+                        descriptor.Permissions.Add(scopePermission);
+                        _logger.LogDebug("Added scope permission: {Scope}", scopePermission);
+                    }
+                }
+
+                // Add redirect URIs to descriptor
+                foreach (var uri in redirectUris)
+                {
+                    descriptor.RedirectUris.Add(new Uri(uri));
+                }
+
+                // Add post-logout redirect URIs to descriptor
+                foreach (var uri in postLogoutRedirectUris)
+                {
+                    descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+                }
+
+                // Create the application with the complete descriptor
+                var application = await applicationManager.CreateAsync(descriptor);
+>>>>>>> maintofix
 
                 _logger.LogInformation("Client application registered successfully: {ClientId}", clientId);
                 return (true, null);
@@ -325,6 +390,7 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "Application not found");
                 }
                 
+<<<<<<< HEAD
                 var conn = _spacetimeService.GetConnection();
                 
                 // Get the current client from SpacetimeDB
@@ -349,13 +415,22 @@ namespace TicketSalesApp.Services.Implementations
                 );
                 
                 // Update the application in OpenIddict
+=======
+                // Get current values for optional parameters
+                // Note: ApplicationStore.UpdateAsync will handle writing to SpacetimeDB via UpdateOpenIdClient reducer
+>>>>>>> maintofix
                 var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
                     DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application),
                     ConsentType = requireConsent.HasValue ? 
                         (requireConsent.Value ? ConsentTypes.Explicit : ConsentTypes.Implicit) : 
+<<<<<<< HEAD
                         await applicationManager.GetConsentTypeAsync(application)
+=======
+                        await applicationManager.GetConsentTypeAsync(application),
+                    Type = await applicationManager.GetClientTypeAsync(application) ?? ClientTypes.Public
+>>>>>>> maintofix
                 };
                 
                 // Update client secret if provided
@@ -398,10 +473,46 @@ namespace TicketSalesApp.Services.Implementations
                     }
                 }
                 
+<<<<<<< HEAD
                 // Copy existing permissions
                 foreach (var permission in await applicationManager.GetPermissionsAsync(application))
                 {
                     descriptor.Permissions.Add(permission);
+=======
+                // Update permissions/scopes if provided
+                if (allowedScopes != null && allowedScopes.Length > 0)
+                {
+                    // Clear existing scope permissions and add new ones
+                    descriptor.Permissions.Clear();
+                    
+                    // Add endpoint permissions
+                    descriptor.Permissions.Add(Permissions.Endpoints.Authorization);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Token);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Logout);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Revocation);
+                    
+                    // Add grant type permissions
+                    descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode);
+                    descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken);
+                    descriptor.Permissions.Add(Permissions.GrantTypes.ClientCredentials);
+                    
+                    // Add response type permissions
+                    descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
+                    
+                    // Add scope permissions
+                    foreach (var scope in allowedScopes)
+                    {
+                        descriptor.Permissions.Add(Permissions.Prefixes.Scope + scope);
+                    }
+                }
+                else
+                {
+                    // Copy existing permissions if no new scopes provided
+                    foreach (var permission in await applicationManager.GetPermissionsAsync(application))
+                    {
+                        descriptor.Permissions.Add(permission);
+                    }
+>>>>>>> maintofix
                 }
                 
                 // Update the application
@@ -434,6 +545,7 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "Application not found");
                 }
                 
+<<<<<<< HEAD
                 var conn = _spacetimeService.GetConnection();
                 
                 // Revoke the client in SpacetimeDB
@@ -442,6 +554,10 @@ namespace TicketSalesApp.Services.Implementations
                  //stupid ai made all the calls awaited - you  cant await a reducer
                 
                 // Delete the application in OpenIddict
+=======
+                // Delete the application in OpenIddict
+                // Note: ApplicationStore.DeleteAsync will handle writing to SpacetimeDB via RevokeOpenIdClient reducer
+>>>>>>> maintofix
                 await applicationManager.DeleteAsync(application);
                 
                 _logger.LogInformation("Client application deleted successfully: {ClientId}", clientId);

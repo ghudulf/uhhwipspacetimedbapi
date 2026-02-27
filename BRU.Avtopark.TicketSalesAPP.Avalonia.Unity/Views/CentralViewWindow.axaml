@@ -15,6 +15,10 @@
         WindowStartupLocation="CenterScreen"
         CanResize="True" MinWidth="750" MinHeight="550"
         ExtendClientAreaToDecorationsHint="True"
+<<<<<<< HEAD
+=======
+        ExtendClientAreaChromeHints="NoChrome"
+>>>>>>> maintofix
         ExtendClientAreaTitleBarHeightHint="36"
         Background="{DynamicResource SystemBackground}">
 <Window.Resources>

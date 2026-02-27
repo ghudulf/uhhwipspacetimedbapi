@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class SeatConfiguration
     {
+<<<<<<< HEAD
         [DataMember(Name = "ConfigurationId")]
         public uint ConfigurationId;
         [DataMember(Name = "BusId")]
@@ -40,6 +41,35 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "UpdatedAt")]
         public ulong? UpdatedAt;
         [DataMember(Name = "UpdatedBy")]
+=======
+        [DataMember(Name = "configuration_id")]
+        public uint ConfigurationId;
+        [DataMember(Name = "bus_id")]
+        public uint BusId;
+        [DataMember(Name = "seat_number")]
+        public uint SeatNumber;
+        [DataMember(Name = "seat_type")]
+        public string SeatType;
+        [DataMember(Name = "seat_status")]
+        public string SeatStatus;
+        [DataMember(Name = "seat_row")]
+        public uint SeatRow;
+        [DataMember(Name = "seat_column")]
+        public uint SeatColumn;
+        [DataMember(Name = "is_accessible")]
+        public bool IsAccessible;
+        [DataMember(Name = "is_emergency_exit")]
+        public bool IsEmergencyExit;
+        [DataMember(Name = "notes")]
+        public string? Notes;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "created_by")]
+        public string? CreatedBy;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+>>>>>>> maintofix
         public string? UpdatedBy;
 
         public SeatConfiguration(

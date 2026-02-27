@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class MaintenanceHandle : RemoteTableHandle<EventContext, Maintenance>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "Maintenance";
+=======
+            protected override string RemoteTableName => "maintenance";
+>>>>>>> maintofix
 
             public sealed class MaintenanceIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,67 @@ namespace SpacetimeDB.Types
 
         public readonly MaintenanceHandle Maintenance;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class MaintenanceCols
+    {
+        public global::SpacetimeDB.Col<Maintenance, uint> MaintenanceId { get; }
+        public global::SpacetimeDB.Col<Maintenance, uint> BusId { get; }
+        public global::SpacetimeDB.Col<Maintenance, ulong> LastServiceDate { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> MileageThreshold { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> MaintenanceType { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> ServiceEngineer { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> FoundIssues { get; }
+        public global::SpacetimeDB.Col<Maintenance, ulong> NextServiceDate { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> Roadworthiness { get; }
+        public global::SpacetimeDB.Col<Maintenance, double> MaintenanceCost { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> PartsReplaced { get; }
+        public global::SpacetimeDB.Col<Maintenance, ulong> MaintenanceDuration { get; }
+        public global::SpacetimeDB.Col<Maintenance, bool> IsScheduled { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> MaintenanceLocation { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, uint> ScheduledByEmployeeId { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, uint> CompletedByEmployeeId { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> MaintenanceNotes { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, string> MaintenanceStatus { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, System.Collections.Generic.List<string>> DiagnosticCodes { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, double> LaborCost { get; }
+        public global::SpacetimeDB.NullableCol<Maintenance, double> PartsCost { get; }
+
+        public MaintenanceCols(string tableName)
+        {
+            MaintenanceId = new global::SpacetimeDB.Col<Maintenance, uint>(tableName, "maintenance_id");
+            BusId = new global::SpacetimeDB.Col<Maintenance, uint>(tableName, "bus_id");
+            LastServiceDate = new global::SpacetimeDB.Col<Maintenance, ulong>(tableName, "last_service_date");
+            MileageThreshold = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "mileage_threshold");
+            MaintenanceType = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "maintenance_type");
+            ServiceEngineer = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "service_engineer");
+            FoundIssues = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "found_issues");
+            NextServiceDate = new global::SpacetimeDB.Col<Maintenance, ulong>(tableName, "next_service_date");
+            Roadworthiness = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "roadworthiness");
+            MaintenanceCost = new global::SpacetimeDB.Col<Maintenance, double>(tableName, "maintenance_cost");
+            PartsReplaced = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "parts_replaced");
+            MaintenanceDuration = new global::SpacetimeDB.Col<Maintenance, ulong>(tableName, "maintenance_duration");
+            IsScheduled = new global::SpacetimeDB.Col<Maintenance, bool>(tableName, "is_scheduled");
+            MaintenanceLocation = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "maintenance_location");
+            ScheduledByEmployeeId = new global::SpacetimeDB.NullableCol<Maintenance, uint>(tableName, "scheduled_by_employee_id");
+            CompletedByEmployeeId = new global::SpacetimeDB.NullableCol<Maintenance, uint>(tableName, "completed_by_employee_id");
+            MaintenanceNotes = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "maintenance_notes");
+            MaintenanceStatus = new global::SpacetimeDB.NullableCol<Maintenance, string>(tableName, "maintenance_status");
+            DiagnosticCodes = new global::SpacetimeDB.NullableCol<Maintenance, System.Collections.Generic.List<string>>(tableName, "diagnostic_codes");
+            LaborCost = new global::SpacetimeDB.NullableCol<Maintenance, double>(tableName, "labor_cost");
+            PartsCost = new global::SpacetimeDB.NullableCol<Maintenance, double>(tableName, "parts_cost");
+        }
+    }
+
+    public sealed class MaintenanceIxCols
+    {
+        public global::SpacetimeDB.IxCol<Maintenance, uint> MaintenanceId { get; }
+
+        public MaintenanceIxCols(string tableName)
+        {
+            MaintenanceId = new global::SpacetimeDB.IxCol<Maintenance, uint>(tableName, "maintenance_id");
+        }
+    }
+>>>>>>> maintofix
 }

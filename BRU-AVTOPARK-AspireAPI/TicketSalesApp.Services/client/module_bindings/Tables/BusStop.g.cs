@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class BusStopHandle : RemoteTableHandle<EventContext, BusStop>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "BusStop";
+=======
+            protected override string RemoteTableName => "bus_stop";
+>>>>>>> maintofix
 
             public sealed class StopIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,59 @@ namespace SpacetimeDB.Types
 
         public readonly BusStopHandle BusStop;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class BusStopCols
+    {
+        public global::SpacetimeDB.Col<BusStop, uint> StopId { get; }
+        public global::SpacetimeDB.Col<BusStop, string> StopName { get; }
+        public global::SpacetimeDB.Col<BusStop, double> Latitude { get; }
+        public global::SpacetimeDB.Col<BusStop, double> Longitude { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, string> StopCode { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, string> StopDescription { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, bool> HasShelter { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, bool> HasBench { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, bool> HasLighting { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, bool> IsAccessible { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>> Routes { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, string> StopType { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, string> Zone { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, string> Address { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>> Amenities { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>> NearbyLandmarks { get; }
+        public global::SpacetimeDB.NullableCol<BusStop, ulong> LastUpdated { get; }
+
+        public BusStopCols(string tableName)
+        {
+            StopId = new global::SpacetimeDB.Col<BusStop, uint>(tableName, "stop_id");
+            StopName = new global::SpacetimeDB.Col<BusStop, string>(tableName, "stop_name");
+            Latitude = new global::SpacetimeDB.Col<BusStop, double>(tableName, "latitude");
+            Longitude = new global::SpacetimeDB.Col<BusStop, double>(tableName, "longitude");
+            StopCode = new global::SpacetimeDB.NullableCol<BusStop, string>(tableName, "stop_code");
+            StopDescription = new global::SpacetimeDB.NullableCol<BusStop, string>(tableName, "stop_description");
+            HasShelter = new global::SpacetimeDB.NullableCol<BusStop, bool>(tableName, "has_shelter");
+            HasBench = new global::SpacetimeDB.NullableCol<BusStop, bool>(tableName, "has_bench");
+            HasLighting = new global::SpacetimeDB.NullableCol<BusStop, bool>(tableName, "has_lighting");
+            IsAccessible = new global::SpacetimeDB.NullableCol<BusStop, bool>(tableName, "is_accessible");
+            Routes = new global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>>(tableName, "routes");
+            StopType = new global::SpacetimeDB.NullableCol<BusStop, string>(tableName, "stop_type");
+            Zone = new global::SpacetimeDB.NullableCol<BusStop, string>(tableName, "zone");
+            Address = new global::SpacetimeDB.NullableCol<BusStop, string>(tableName, "address");
+            Amenities = new global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>>(tableName, "amenities");
+            NearbyLandmarks = new global::SpacetimeDB.NullableCol<BusStop, System.Collections.Generic.List<string>>(tableName, "nearby_landmarks");
+            LastUpdated = new global::SpacetimeDB.NullableCol<BusStop, ulong>(tableName, "last_updated");
+        }
+    }
+
+    public sealed class BusStopIxCols
+    {
+        public global::SpacetimeDB.IxCol<BusStop, uint> StopId { get; }
+
+        public BusStopIxCols(string tableName)
+        {
+            StopId = new global::SpacetimeDB.IxCol<BusStop, uint>(tableName, "stop_id");
+        }
+    }
+>>>>>>> maintofix
 }

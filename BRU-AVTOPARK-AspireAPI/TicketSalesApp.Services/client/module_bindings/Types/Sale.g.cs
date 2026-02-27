@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Sale
     {
+<<<<<<< HEAD
         [DataMember(Name = "SaleId")]
         public uint SaleId;
         [DataMember(Name = "SaleDate")]
@@ -64,6 +65,59 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "PaymentProvider")]
         public string? PaymentProvider;
         [DataMember(Name = "PaymentReference")]
+=======
+        [DataMember(Name = "sale_id")]
+        public uint SaleId;
+        [DataMember(Name = "sale_date")]
+        public ulong SaleDate;
+        [DataMember(Name = "ticket_id")]
+        public uint TicketId;
+        [DataMember(Name = "ticket_sold_to_user")]
+        public string TicketSoldToUser;
+        [DataMember(Name = "ticket_sold_to_user_phone")]
+        public string TicketSoldToUserPhone;
+        [DataMember(Name = "seller_id")]
+        public SpacetimeDB.Identity? SellerId;
+        [DataMember(Name = "sale_location")]
+        public string? SaleLocation;
+        [DataMember(Name = "sale_notes")]
+        public string? SaleNotes;
+        [DataMember(Name = "payment_method")]
+        public string? PaymentMethod;
+        [DataMember(Name = "payment_status")]
+        public string? PaymentStatus;
+        [DataMember(Name = "transaction_id")]
+        public string? TransactionId;
+        [DataMember(Name = "tax_amount")]
+        public double? TaxAmount;
+        [DataMember(Name = "invoice_number")]
+        public string? InvoiceNumber;
+        [DataMember(Name = "is_subscription")]
+        public bool? IsSubscription;
+        [DataMember(Name = "subscription_type")]
+        public string? SubscriptionType;
+        [DataMember(Name = "subscription_start_date")]
+        public ulong? SubscriptionStartDate;
+        [DataMember(Name = "subscription_end_date")]
+        public ulong? SubscriptionEndDate;
+        [DataMember(Name = "is_gift")]
+        public bool? IsGift;
+        [DataMember(Name = "gift_recipient")]
+        public string? GiftRecipient;
+        [DataMember(Name = "promotion_code")]
+        public string? PromotionCode;
+        [DataMember(Name = "discount_amount")]
+        public double? DiscountAmount;
+        [DataMember(Name = "total_amount")]
+        public double TotalAmount;
+        [DataMember(Name = "payment_transaction_id")]
+        public string? PaymentTransactionId;
+        [DataMember(Name = "change_amount")]
+        public double? ChangeAmount;
+        [DataMember(Name = "payment_provider")]
+        public string? PaymentProvider;
+        [DataMember(Name = "payment_reference")]
+>>>>>>> maintofix
         public string? PaymentReference;
 
         public Sale(

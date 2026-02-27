@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DisableWebAuthn(SpacetimeDB.Identity userId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DisableWebAuthn(userId), this.SetCallReducerFlags.DisableWebAuthnFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DisableWebAuthn(userId));
+>>>>>>> maintofix
         }
 
         public bool InvokeDisableWebAuthn(ReducerEventContext ctx, Reducer.DisableWebAuthn args)
         {
+<<<<<<< HEAD
             if (OnDisableWebAuthn == null) return false;
+=======
+            if (OnDisableWebAuthn == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDisableWebAuthn(
                 ctx,
                 args.UserId
@@ -37,7 +56,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DisableWebAuthn : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
+=======
+            [DataMember(Name = "user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public DisableWebAuthn(SpacetimeDB.Identity UserId)
@@ -49,6 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DisableWebAuthn";
         }
     }
@@ -58,4 +82,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DisableWebAuthnFlags;
         public void DisableWebAuthn(CallReducerFlags flags) => DisableWebAuthnFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "disable_web_authn";
+        }
+    }
+>>>>>>> maintofix
 }

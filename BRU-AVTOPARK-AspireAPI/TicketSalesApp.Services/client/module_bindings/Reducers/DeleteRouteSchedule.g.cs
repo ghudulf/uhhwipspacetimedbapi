@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void DeleteRouteSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.DeleteRouteSchedule(scheduleId, actingUser), this.SetCallReducerFlags.DeleteRouteScheduleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.DeleteRouteSchedule(scheduleId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeDeleteRouteSchedule(ReducerEventContext ctx, Reducer.DeleteRouteSchedule args)
         {
+<<<<<<< HEAD
             if (OnDeleteRouteSchedule == null) return false;
+=======
+            if (OnDeleteRouteSchedule == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnDeleteRouteSchedule(
                 ctx,
                 args.ScheduleId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRouteSchedule : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "scheduleId")]
             public uint ScheduleId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "schedule_id")]
+            public uint ScheduleId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeleteRouteSchedule(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "DeleteRouteSchedule";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags DeleteRouteScheduleFlags;
         public void DeleteRouteSchedule(CallReducerFlags flags) => DeleteRouteScheduleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "delete_route_schedule";
+        }
+    }
+>>>>>>> maintofix
 }

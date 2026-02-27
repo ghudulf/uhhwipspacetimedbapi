@@ -7,11 +7,19 @@
              x:DataType="vm:MaintenanceManagementViewModel"
              x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.MaintenanceManagementToolWindow">
 
+<<<<<<< HEAD
 	<Design.DataContext>
 		<vm:MaintenanceManagementViewModel/>
 	</Design.DataContext>
 	
 	<Grid RowDefinitions="Auto,*,Auto" Margin="10">
+=======
+    <Design.DataContext>
+        <vm:MaintenanceManagementViewModel/>
+    </Design.DataContext>
+    
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+>>>>>>> maintofix
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0" 
                      Text="{Binding SearchText}"
@@ -37,6 +45,7 @@
                                   Binding="{Binding MaintenanceId}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Автобус" 
+<<<<<<< HEAD
                                   Binding="{Binding Avtobus.Model}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Дата обслуживания" 
@@ -44,6 +53,18 @@
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Следующее обслуживание" 
                                   Binding="{Binding NextServiceDate, StringFormat={}{0:dd.MM.yyyy}}"
+=======
+                                  Binding="{Binding BusModel}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Рег. номер" 
+                                  Binding="{Binding BusRegistrationNumber}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Дата обслуживания" 
+                                  Binding="{Binding LastServiceDateDisplay}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Следующее обслуживание" 
+                                  Binding="{Binding NextServiceDateDisplay}"
+>>>>>>> maintofix
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Инженер" 
                                   Binding="{Binding ServiceEngineer}"
@@ -54,6 +75,27 @@
                 <DataGridTextColumn Header="Состояние" 
                                   Binding="{Binding Roadworthiness}"
                                   Width="Auto"/>
+<<<<<<< HEAD
+=======
+                <DataGridTextColumn Header="Тип обслуживания" 
+                                  Binding="{Binding MaintenanceType}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Пробег" 
+                                  Binding="{Binding MileageThreshold}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Стоимость работ" 
+                                  Binding="{Binding MaintenanceCost, StringFormat={}{0:C}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Стоимость запчастей" 
+                                  Binding="{Binding PartsCost, StringFormat={}{0:C}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Общая стоимость" 
+                                  Binding="{Binding TotalMaintenanceCost, StringFormat={}{0:C}}"
+                                  Width="Auto"/>
+                <DataGridTextColumn Header="Статус" 
+                                  Binding="{Binding MaintenanceStatus}"
+                                  Width="Auto"/>
+>>>>>>> maintofix
             </DataGrid.Columns>
         </DataGrid>
 

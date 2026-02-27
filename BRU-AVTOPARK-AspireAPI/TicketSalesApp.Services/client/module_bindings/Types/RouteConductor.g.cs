@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RouteConductor
     {
+<<<<<<< HEAD
         [DataMember(Name = "RouteConductorId")]
         public uint RouteConductorId;
         [DataMember(Name = "RouteId")]
@@ -80,6 +81,75 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "CurrentLocation")]
         public string? CurrentLocation;
         [DataMember(Name = "EmployeeStatus")]
+=======
+        [DataMember(Name = "route_conductor_id")]
+        public uint RouteConductorId;
+        [DataMember(Name = "route_id")]
+        public uint RouteId;
+        [DataMember(Name = "employee_id")]
+        public uint EmployeeId;
+        [DataMember(Name = "shift_name")]
+        public string ShiftName;
+        [DataMember(Name = "shift_type")]
+        public string ShiftType;
+        [DataMember(Name = "shift_start")]
+        public ulong ShiftStart;
+        [DataMember(Name = "shift_end")]
+        public ulong ShiftEnd;
+        [DataMember(Name = "break_start")]
+        public ulong BreakStart;
+        [DataMember(Name = "break_end")]
+        public ulong BreakEnd;
+        [DataMember(Name = "shift_duration")]
+        public ulong ShiftDuration;
+        [DataMember(Name = "sale_count_number")]
+        public long SaleCountNumber;
+        [DataMember(Name = "total_sales_amount")]
+        public double TotalSalesAmount;
+        [DataMember(Name = "eviction_count")]
+        public long EvictionCount;
+        [DataMember(Name = "approximate_number_of_passengers")]
+        public long ApproximateNumberOfPassengers;
+        [DataMember(Name = "incidents")]
+        public long Incidents;
+        [DataMember(Name = "safety_violations_reported")]
+        public long SafetyViolationsReported;
+        [DataMember(Name = "passenger_assistance_count")]
+        public long PassengerAssistanceCount;
+        [DataMember(Name = "route_information_provided_count")]
+        public long RouteInformationProvidedCount;
+        [DataMember(Name = "performance_rating")]
+        public uint PerformanceRating;
+        [DataMember(Name = "first_aid_provided")]
+        public bool FirstAidProvided;
+        [DataMember(Name = "emergency_response_required")]
+        public bool EmergencyResponseRequired;
+        [DataMember(Name = "fare_evasion_percentage")]
+        public double FareEvasionPercentage;
+        [DataMember(Name = "total_fines_amount")]
+        public double TotalFinesAmount;
+        [DataMember(Name = "complaint_count")]
+        public long ComplaintCount;
+        [DataMember(Name = "electronic_validation_used")]
+        public bool ElectronicValidationUsed;
+        [DataMember(Name = "electronic_payments_count")]
+        public long ElectronicPaymentsCount;
+        [DataMember(Name = "cash_payments_count")]
+        public long CashPaymentsCount;
+        [DataMember(Name = "timestamp")]
+        public ulong Timestamp;
+        [DataMember(Name = "notes")]
+        public string? Notes;
+        [DataMember(Name = "shift_handover_completed")]
+        public bool ShiftHandoverCompleted;
+        [DataMember(Name = "cash_collected")]
+        public double CashCollected;
+        [DataMember(Name = "handover_notes")]
+        public string? HandoverNotes;
+        [DataMember(Name = "current_location")]
+        public string? CurrentLocation;
+        [DataMember(Name = "employee_status")]
+>>>>>>> maintofix
         public string? EmployeeStatus;
 
         public RouteConductor(

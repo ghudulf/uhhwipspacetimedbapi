@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void RevokePermissionFromRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId, actingUserId), this.SetCallReducerFlags.RevokePermissionFromRoleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId, actingUserId));
+>>>>>>> maintofix
         }
 
         public bool InvokeRevokePermissionFromRole(ReducerEventContext ctx, Reducer.RevokePermissionFromRole args)
         {
+<<<<<<< HEAD
             if (OnRevokePermissionFromRole == null) return false;
+=======
+            if (OnRevokePermissionFromRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnRevokePermissionFromRole(
                 ctx,
                 args.RoleId,
@@ -39,11 +58,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokePermissionFromRole : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "roleId")]
             public uint RoleId;
             [DataMember(Name = "permissionId")]
             public uint PermissionId;
             [DataMember(Name = "actingUserId")]
+=======
+            [DataMember(Name = "role_id")]
+            public uint RoleId;
+            [DataMember(Name = "permission_id")]
+            public uint PermissionId;
+            [DataMember(Name = "acting_user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public RevokePermissionFromRole(
@@ -61,6 +88,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "RevokePermissionFromRole";
         }
     }
@@ -70,4 +98,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags RevokePermissionFromRoleFlags;
         public void RevokePermissionFromRole(CallReducerFlags flags) => RevokePermissionFromRoleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "revoke_permission_from_role";
+        }
+    }
+>>>>>>> maintofix
 }

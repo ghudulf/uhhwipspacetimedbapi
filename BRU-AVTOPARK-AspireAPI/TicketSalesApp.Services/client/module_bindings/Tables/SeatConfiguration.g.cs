@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class SeatConfigurationHandle : RemoteTableHandle<EventContext, SeatConfiguration>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "SeatConfiguration";
+=======
+            protected override string RemoteTableName => "seat_configuration";
+>>>>>>> maintofix
 
             public sealed class ConfigurationIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,53 @@ namespace SpacetimeDB.Types
 
         public readonly SeatConfigurationHandle SeatConfiguration;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class SeatConfigurationCols
+    {
+        public global::SpacetimeDB.Col<SeatConfiguration, uint> ConfigurationId { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, uint> BusId { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, uint> SeatNumber { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, string> SeatType { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, string> SeatStatus { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, uint> SeatRow { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, uint> SeatColumn { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, bool> IsAccessible { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, bool> IsEmergencyExit { get; }
+        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> Notes { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> CreatedBy { get; }
+        public global::SpacetimeDB.NullableCol<SeatConfiguration, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> UpdatedBy { get; }
+
+        public SeatConfigurationCols(string tableName)
+        {
+            ConfigurationId = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "configuration_id");
+            BusId = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "bus_id");
+            SeatNumber = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "seat_number");
+            SeatType = new global::SpacetimeDB.Col<SeatConfiguration, string>(tableName, "seat_type");
+            SeatStatus = new global::SpacetimeDB.Col<SeatConfiguration, string>(tableName, "seat_status");
+            SeatRow = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "seat_row");
+            SeatColumn = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "seat_column");
+            IsAccessible = new global::SpacetimeDB.Col<SeatConfiguration, bool>(tableName, "is_accessible");
+            IsEmergencyExit = new global::SpacetimeDB.Col<SeatConfiguration, bool>(tableName, "is_emergency_exit");
+            Notes = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "notes");
+            CreatedAt = new global::SpacetimeDB.Col<SeatConfiguration, ulong>(tableName, "created_at");
+            CreatedBy = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "created_by");
+            UpdatedAt = new global::SpacetimeDB.NullableCol<SeatConfiguration, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "updated_by");
+        }
+    }
+
+    public sealed class SeatConfigurationIxCols
+    {
+        public global::SpacetimeDB.IxCol<SeatConfiguration, uint> ConfigurationId { get; }
+
+        public SeatConfigurationIxCols(string tableName)
+        {
+            ConfigurationId = new global::SpacetimeDB.IxCol<SeatConfiguration, uint>(tableName, "configuration_id");
+        }
+    }
+>>>>>>> maintofix
 }

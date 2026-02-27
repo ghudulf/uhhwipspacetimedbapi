@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class WebAuthnCredentialHandle : RemoteTableHandle<EventContext, WebAuthnCredential>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "WebAuthnCredential";
+=======
+            protected override string RemoteTableName => "web_authn_credential";
+>>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,41 @@ namespace SpacetimeDB.Types
 
         public readonly WebAuthnCredentialHandle WebAuthnCredential;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class WebAuthnCredentialCols
+    {
+        public global::SpacetimeDB.Col<WebAuthnCredential, uint> Id { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, System.Collections.Generic.List<byte>> CredentialId { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, string> PublicKey { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, uint> Counter { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, bool> IsActive { get; }
+        public global::SpacetimeDB.NullableCol<WebAuthnCredential, string> DeviceName { get; }
+
+        public WebAuthnCredentialCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<WebAuthnCredential, uint>(tableName, "id");
+            UserId = new global::SpacetimeDB.Col<WebAuthnCredential, SpacetimeDB.Identity>(tableName, "user_id");
+            CredentialId = new global::SpacetimeDB.Col<WebAuthnCredential, System.Collections.Generic.List<byte>>(tableName, "credential_id");
+            PublicKey = new global::SpacetimeDB.Col<WebAuthnCredential, string>(tableName, "public_key");
+            Counter = new global::SpacetimeDB.Col<WebAuthnCredential, uint>(tableName, "counter");
+            CreatedAt = new global::SpacetimeDB.Col<WebAuthnCredential, ulong>(tableName, "created_at");
+            IsActive = new global::SpacetimeDB.Col<WebAuthnCredential, bool>(tableName, "is_active");
+            DeviceName = new global::SpacetimeDB.NullableCol<WebAuthnCredential, string>(tableName, "device_name");
+        }
+    }
+
+    public sealed class WebAuthnCredentialIxCols
+    {
+        public global::SpacetimeDB.IxCol<WebAuthnCredential, uint> Id { get; }
+
+        public WebAuthnCredentialIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<WebAuthnCredential, uint>(tableName, "id");
+        }
+    }
+>>>>>>> maintofix
 }

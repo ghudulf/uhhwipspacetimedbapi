@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class RouteScheduleHandle : RemoteTableHandle<EventContext, RouteSchedule>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "RouteSchedule";
+=======
+            protected override string RemoteTableName => "route_schedule";
+>>>>>>> maintofix
 
             public sealed class ScheduleIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,93 @@ namespace SpacetimeDB.Types
 
         public readonly RouteScheduleHandle RouteSchedule;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class RouteScheduleCols
+    {
+        public global::SpacetimeDB.Col<RouteSchedule, uint> ScheduleId { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, uint> RouteId { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> StartPoint { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>> RouteStops { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> EndPoint { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, ulong> DepartureTime { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, ulong> ArrivalTime { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, double> Price { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, uint> AvailableSeats { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, uint> SeatedCapacity { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, uint> StandingCapacity { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>> DaysOfWeek { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>> BusTypes { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, ulong> ValidFrom { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, ulong> ValidUntil { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, uint> StopDurationMinutes { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, bool> IsRecurring { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>> EstimatedStopTimes { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<double>> StopDistances { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> Notes { get; }
+        public global::SpacetimeDB.Col<RouteSchedule, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> UpdatedBy { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, double> PeakHourLoad { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, double> OffPeakHourLoad { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, bool> IsSpecialEvent { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> SpecialEventName { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, bool> IsHoliday { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> HolidayName { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, bool> IsWeekend { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, uint> SeatConfigurationId { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, bool> RequiresSeatReservation { get; }
+        public global::SpacetimeDB.NullableCol<RouteSchedule, string> RouteType { get; }
+
+        public RouteScheduleCols(string tableName)
+        {
+            ScheduleId = new global::SpacetimeDB.Col<RouteSchedule, uint>(tableName, "schedule_id");
+            RouteId = new global::SpacetimeDB.Col<RouteSchedule, uint>(tableName, "route_id");
+            StartPoint = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "start_point");
+            RouteStops = new global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>>(tableName, "route_stops");
+            EndPoint = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "end_point");
+            DepartureTime = new global::SpacetimeDB.Col<RouteSchedule, ulong>(tableName, "departure_time");
+            ArrivalTime = new global::SpacetimeDB.Col<RouteSchedule, ulong>(tableName, "arrival_time");
+            Price = new global::SpacetimeDB.Col<RouteSchedule, double>(tableName, "price");
+            AvailableSeats = new global::SpacetimeDB.Col<RouteSchedule, uint>(tableName, "available_seats");
+            SeatedCapacity = new global::SpacetimeDB.NullableCol<RouteSchedule, uint>(tableName, "seated_capacity");
+            StandingCapacity = new global::SpacetimeDB.NullableCol<RouteSchedule, uint>(tableName, "standing_capacity");
+            DaysOfWeek = new global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>>(tableName, "days_of_week");
+            BusTypes = new global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>>(tableName, "bus_types");
+            IsActive = new global::SpacetimeDB.Col<RouteSchedule, bool>(tableName, "is_active");
+            ValidFrom = new global::SpacetimeDB.Col<RouteSchedule, ulong>(tableName, "valid_from");
+            ValidUntil = new global::SpacetimeDB.NullableCol<RouteSchedule, ulong>(tableName, "valid_until");
+            StopDurationMinutes = new global::SpacetimeDB.NullableCol<RouteSchedule, uint>(tableName, "stop_duration_minutes");
+            IsRecurring = new global::SpacetimeDB.Col<RouteSchedule, bool>(tableName, "is_recurring");
+            EstimatedStopTimes = new global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<string>>(tableName, "estimated_stop_times");
+            StopDistances = new global::SpacetimeDB.NullableCol<RouteSchedule, System.Collections.Generic.List<double>>(tableName, "stop_distances");
+            Notes = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "notes");
+            CreatedAt = new global::SpacetimeDB.Col<RouteSchedule, ulong>(tableName, "created_at");
+            UpdatedAt = new global::SpacetimeDB.NullableCol<RouteSchedule, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "updated_by");
+            PeakHourLoad = new global::SpacetimeDB.NullableCol<RouteSchedule, double>(tableName, "peak_hour_load");
+            OffPeakHourLoad = new global::SpacetimeDB.NullableCol<RouteSchedule, double>(tableName, "off_peak_hour_load");
+            IsSpecialEvent = new global::SpacetimeDB.NullableCol<RouteSchedule, bool>(tableName, "is_special_event");
+            SpecialEventName = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "special_event_name");
+            IsHoliday = new global::SpacetimeDB.NullableCol<RouteSchedule, bool>(tableName, "is_holiday");
+            HolidayName = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "holiday_name");
+            IsWeekend = new global::SpacetimeDB.NullableCol<RouteSchedule, bool>(tableName, "is_weekend");
+            SeatConfigurationId = new global::SpacetimeDB.NullableCol<RouteSchedule, uint>(tableName, "seat_configuration_id");
+            RequiresSeatReservation = new global::SpacetimeDB.NullableCol<RouteSchedule, bool>(tableName, "requires_seat_reservation");
+            RouteType = new global::SpacetimeDB.NullableCol<RouteSchedule, string>(tableName, "route_type");
+        }
+    }
+
+    public sealed class RouteScheduleIxCols
+    {
+        public global::SpacetimeDB.IxCol<RouteSchedule, uint> ScheduleId { get; }
+
+        public RouteScheduleIxCols(string tableName)
+        {
+            ScheduleId = new global::SpacetimeDB.IxCol<RouteSchedule, uint>(tableName, "schedule_id");
+        }
+    }
+>>>>>>> maintofix
 }

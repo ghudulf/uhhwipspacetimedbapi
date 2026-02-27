@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 {
   "sdk": {
     "version": "8.0.400",
     "rollForward": "latestMinor"
   }
 }
+=======
+{
+  "sdk": {
+    "version": "8.0.407"
+  }
+}
+>>>>>>> maintofix

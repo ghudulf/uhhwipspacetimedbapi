@@ -27,8 +27,6 @@ build_property._MvvmToolkitIsUsingWindowsRuntimePack = false
 build_property.CsWinRTComponent = 
 build_property.CsWinRTAotOptimizerEnabled = 
 build_property.CsWinRTAotWarningLevel = 
-build_property.TargetFrameworkIdentifier = .NETCoreApp
-build_property.TargetFrameworkVersion = v9.0
 build_property.RootNamespace = BRU.Avtopark.TicketSalesAPP.Avalonia.Unity
 build_property.ProjectDir = G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\
 build_property.EnableComHosting = 
@@ -61,6 +59,9 @@ build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/HelpWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
+[G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/LoginMethodSelectorWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/MainView.axaml]
@@ -106,6 +107,9 @@ build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/Notifications.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
+[G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/OAuthLoginWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Views/Problem.axaml]

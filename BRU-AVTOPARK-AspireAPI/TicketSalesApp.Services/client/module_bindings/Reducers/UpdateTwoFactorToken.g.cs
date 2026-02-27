@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateTwoFactorToken(uint id, SpacetimeDB.Identity userId, string token, bool isUsed, ulong expiresAt)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateTwoFactorToken(id, userId, token, isUsed, expiresAt), this.SetCallReducerFlags.UpdateTwoFactorTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateTwoFactorToken(id, userId, token, isUsed, expiresAt));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateTwoFactorToken(ReducerEventContext ctx, Reducer.UpdateTwoFactorToken args)
         {
+<<<<<<< HEAD
             if (OnUpdateTwoFactorToken == null) return false;
+=======
+            if (OnUpdateTwoFactorToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateTwoFactorToken(
                 ctx,
                 args.Id,
@@ -43,6 +62,7 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "id")]
             public uint Id;
+<<<<<<< HEAD
             [DataMember(Name = "userId")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "token")]
@@ -50,6 +70,15 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "isUsed")]
             public bool IsUsed;
             [DataMember(Name = "expiresAt")]
+=======
+            [DataMember(Name = "user_id")]
+            public SpacetimeDB.Identity UserId;
+            [DataMember(Name = "token")]
+            public string Token;
+            [DataMember(Name = "is_used")]
+            public bool IsUsed;
+            [DataMember(Name = "expires_at")]
+>>>>>>> maintofix
             public ulong ExpiresAt;
 
             public UpdateTwoFactorToken(
@@ -72,6 +101,7 @@ namespace SpacetimeDB.Types
                 this.Token = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateTwoFactorToken";
         }
     }
@@ -81,4 +111,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateTwoFactorTokenFlags;
         public void UpdateTwoFactorToken(CallReducerFlags flags) => UpdateTwoFactorTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_two_factor_token";
+        }
+    }
+>>>>>>> maintofix
 }

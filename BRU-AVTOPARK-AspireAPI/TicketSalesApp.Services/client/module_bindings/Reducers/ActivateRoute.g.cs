@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void ActivateRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.ActivateRoute(routeId, actingUser), this.SetCallReducerFlags.ActivateRouteFlags);
+=======
+            conn.InternalCallReducer(new Reducer.ActivateRoute(routeId, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeActivateRoute(ReducerEventContext ctx, Reducer.ActivateRoute args)
         {
+<<<<<<< HEAD
             if (OnActivateRoute == null) return false;
+=======
+            if (OnActivateRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnActivateRoute(
                 ctx,
                 args.RouteId,
@@ -38,9 +57,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ActivateRoute : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "routeId")]
             public uint RouteId;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "route_id")]
+            public uint RouteId;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ActivateRoute(
@@ -56,6 +81,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "ActivateRoute";
         }
     }
@@ -65,4 +91,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags ActivateRouteFlags;
         public void ActivateRoute(CallReducerFlags flags) => ActivateRouteFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "activate_route";
+        }
+    }
+>>>>>>> maintofix
 }

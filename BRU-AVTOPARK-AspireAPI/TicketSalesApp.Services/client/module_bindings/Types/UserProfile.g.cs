@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class UserProfile
     {
+<<<<<<< HEAD
         [DataMember(Name = "UserId")]
         public SpacetimeDB.Identity UserId;
         [DataMember(Name = "LegacyUserId")]
@@ -36,6 +37,31 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "LegacyGuid")]
         public string? LegacyGuid;
         [DataMember(Name = "EmailConfirmed")]
+=======
+        [DataMember(Name = "user_id")]
+        public SpacetimeDB.Identity UserId;
+        [DataMember(Name = "legacy_user_id")]
+        public uint LegacyUserId;
+        [DataMember(Name = "xuid")]
+        public double? Xuid;
+        [DataMember(Name = "login")]
+        public string Login;
+        [DataMember(Name = "password_hash")]
+        public string? PasswordHash;
+        [DataMember(Name = "email")]
+        public string? Email;
+        [DataMember(Name = "phone_number")]
+        public string? PhoneNumber;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "last_login_at")]
+        public ulong? LastLoginAt;
+        [DataMember(Name = "legacy_guid")]
+        public string? LegacyGuid;
+        [DataMember(Name = "email_confirmed")]
+>>>>>>> maintofix
         public bool? EmailConfirmed;
 
         public UserProfile(

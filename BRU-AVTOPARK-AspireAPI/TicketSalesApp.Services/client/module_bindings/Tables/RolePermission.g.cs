@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class RolePermissionHandle : RemoteTableHandle<EventContext, RolePermission>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "RolePermission";
+=======
+            protected override string RemoteTableName => "role_permission";
+>>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,35 @@ namespace SpacetimeDB.Types
 
         public readonly RolePermissionHandle RolePermission;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class RolePermissionCols
+    {
+        public global::SpacetimeDB.Col<RolePermission, uint> Id { get; }
+        public global::SpacetimeDB.Col<RolePermission, uint> RoleId { get; }
+        public global::SpacetimeDB.Col<RolePermission, uint> PermissionId { get; }
+        public global::SpacetimeDB.Col<RolePermission, ulong> GrantedAt { get; }
+        public global::SpacetimeDB.NullableCol<RolePermission, string> GrantedBy { get; }
+
+        public RolePermissionCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<RolePermission, uint>(tableName, "id");
+            RoleId = new global::SpacetimeDB.Col<RolePermission, uint>(tableName, "role_id");
+            PermissionId = new global::SpacetimeDB.Col<RolePermission, uint>(tableName, "permission_id");
+            GrantedAt = new global::SpacetimeDB.Col<RolePermission, ulong>(tableName, "granted_at");
+            GrantedBy = new global::SpacetimeDB.NullableCol<RolePermission, string>(tableName, "granted_by");
+        }
+    }
+
+    public sealed class RolePermissionIxCols
+    {
+        public global::SpacetimeDB.IxCol<RolePermission, uint> Id { get; }
+
+        public RolePermissionIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<RolePermission, uint>(tableName, "id");
+        }
+    }
+>>>>>>> maintofix
 }

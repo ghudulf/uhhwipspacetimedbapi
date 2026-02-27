@@ -13,6 +13,7 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RouteSchedule
     {
+<<<<<<< HEAD
         [DataMember(Name = "ScheduleId")]
         public uint ScheduleId;
         [DataMember(Name = "RouteId")]
@@ -80,6 +81,75 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "RequiresSeatReservation")]
         public bool? RequiresSeatReservation;
         [DataMember(Name = "RouteType")]
+=======
+        [DataMember(Name = "schedule_id")]
+        public uint ScheduleId;
+        [DataMember(Name = "route_id")]
+        public uint RouteId;
+        [DataMember(Name = "start_point")]
+        public string? StartPoint;
+        [DataMember(Name = "route_stops")]
+        public System.Collections.Generic.List<string>? RouteStops;
+        [DataMember(Name = "end_point")]
+        public string? EndPoint;
+        [DataMember(Name = "departure_time")]
+        public ulong DepartureTime;
+        [DataMember(Name = "arrival_time")]
+        public ulong ArrivalTime;
+        [DataMember(Name = "price")]
+        public double Price;
+        [DataMember(Name = "available_seats")]
+        public uint AvailableSeats;
+        [DataMember(Name = "seated_capacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "standing_capacity")]
+        public uint? StandingCapacity;
+        [DataMember(Name = "days_of_week")]
+        public System.Collections.Generic.List<string>? DaysOfWeek;
+        [DataMember(Name = "bus_types")]
+        public System.Collections.Generic.List<string>? BusTypes;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
+        [DataMember(Name = "valid_from")]
+        public ulong ValidFrom;
+        [DataMember(Name = "valid_until")]
+        public ulong? ValidUntil;
+        [DataMember(Name = "stop_duration_minutes")]
+        public uint? StopDurationMinutes;
+        [DataMember(Name = "is_recurring")]
+        public bool IsRecurring;
+        [DataMember(Name = "estimated_stop_times")]
+        public System.Collections.Generic.List<string>? EstimatedStopTimes;
+        [DataMember(Name = "stop_distances")]
+        public System.Collections.Generic.List<double>? StopDistances;
+        [DataMember(Name = "notes")]
+        public string? Notes;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+        public string? UpdatedBy;
+        [DataMember(Name = "peak_hour_load")]
+        public double? PeakHourLoad;
+        [DataMember(Name = "off_peak_hour_load")]
+        public double? OffPeakHourLoad;
+        [DataMember(Name = "is_special_event")]
+        public bool? IsSpecialEvent;
+        [DataMember(Name = "special_event_name")]
+        public string? SpecialEventName;
+        [DataMember(Name = "is_holiday")]
+        public bool? IsHoliday;
+        [DataMember(Name = "holiday_name")]
+        public string? HolidayName;
+        [DataMember(Name = "is_weekend")]
+        public bool? IsWeekend;
+        [DataMember(Name = "seat_configuration_id")]
+        public uint? SeatConfigurationId;
+        [DataMember(Name = "requires_seat_reservation")]
+        public bool? RequiresSeatReservation;
+        [DataMember(Name = "route_type")]
+>>>>>>> maintofix
         public string? RouteType;
 
         public RouteSchedule(

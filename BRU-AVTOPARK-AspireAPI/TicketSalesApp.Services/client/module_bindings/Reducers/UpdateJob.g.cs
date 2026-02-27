@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UpdateJob(uint jobId, string? jobTitle, string? internship, SpacetimeDB.Identity? actingUser)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship, actingUser), this.SetCallReducerFlags.UpdateJobFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship, actingUser));
+>>>>>>> maintofix
         }
 
         public bool InvokeUpdateJob(ReducerEventContext ctx, Reducer.UpdateJob args)
         {
+<<<<<<< HEAD
             if (OnUpdateJob == null) return false;
+=======
+            if (OnUpdateJob == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUpdateJob(
                 ctx,
                 args.JobId,
@@ -40,6 +59,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateJob : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "jobId")]
             public uint JobId;
             [DataMember(Name = "jobTitle")]
@@ -47,6 +67,15 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "internship")]
             public string? Internship;
             [DataMember(Name = "actingUser")]
+=======
+            [DataMember(Name = "job_id")]
+            public uint JobId;
+            [DataMember(Name = "job_title")]
+            public string? JobTitle;
+            [DataMember(Name = "internship")]
+            public string? Internship;
+            [DataMember(Name = "acting_user")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateJob(
@@ -66,6 +95,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UpdateJob";
         }
     }
@@ -75,4 +105,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UpdateJobFlags;
         public void UpdateJob(CallReducerFlags flags) => UpdateJobFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "update_job";
+        }
+    }
+>>>>>>> maintofix
 }

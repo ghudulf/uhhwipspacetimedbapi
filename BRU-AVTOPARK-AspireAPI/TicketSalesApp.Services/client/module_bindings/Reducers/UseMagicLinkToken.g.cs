@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void UseMagicLinkToken(string token)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.UseMagicLinkToken(token), this.SetCallReducerFlags.UseMagicLinkTokenFlags);
+=======
+            conn.InternalCallReducer(new Reducer.UseMagicLinkToken(token));
+>>>>>>> maintofix
         }
 
         public bool InvokeUseMagicLinkToken(ReducerEventContext ctx, Reducer.UseMagicLinkToken args)
         {
+<<<<<<< HEAD
             if (OnUseMagicLinkToken == null) return false;
+=======
+            if (OnUseMagicLinkToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnUseMagicLinkToken(
                 ctx,
                 args.Token
@@ -50,6 +69,7 @@ namespace SpacetimeDB.Types
                 this.Token = "";
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "UseMagicLinkToken";
         }
     }
@@ -59,4 +79,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags UseMagicLinkTokenFlags;
         public void UseMagicLinkToken(CallReducerFlags flags) => UseMagicLinkTokenFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "use_magic_link_token";
+        }
+    }
+>>>>>>> maintofix
 }

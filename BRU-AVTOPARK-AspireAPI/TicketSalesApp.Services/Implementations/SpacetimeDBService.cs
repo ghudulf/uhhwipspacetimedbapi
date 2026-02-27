@@ -22,6 +22,10 @@ namespace TicketSalesApp.Services.Implementations
         private Identity? _localIdentity; // Local identity for the connection
         private readonly ConcurrentQueue<(string Command, Dictionary<string, object> Args)> _inputQueue; // Thread-safe queue for commands
         private volatile bool _isConnecting = false; // Flag to track connection state
+<<<<<<< HEAD
+=======
+        private volatile bool _subscriptionApplied = false; // Flag to track if subscription has been applied
+>>>>>>> maintofix
 
         // Constructor to initialize configuration and logger
         public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger)
@@ -53,12 +57,21 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _isConnecting = true;
 
+<<<<<<< HEAD
                 // Retrieve host and module name from configuration
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
                 var moduleName = _configuration["SpacetimeDB:ModuleName"] ?? "avtopark"; // Default module name
 
                 // Log the connection attempt
                 _logger.LogInformation("Connecting to SpacetimeDB at {Host} module {Module}", host, moduleName);
+=======
+                // Retrieve host and database name from configuration
+                var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
+                var databaseName = _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark"; // Default database name
+
+                // Log the connection attempt
+                _logger.LogInformation("Connecting to SpacetimeDB at {Host} database {Database}", host, databaseName);
+>>>>>>> maintofix
 
                 // Initialize authentication token storage
                 AuthToken.Init(".spacetime_csharp_avtopark");
@@ -68,8 +81,14 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogDebug("Building database connection with callbacks");
                 _connection = DbConnection.Builder()
                         .WithUri(host) // Set the URI for the connection
+<<<<<<< HEAD
                         .WithModuleName(moduleName) // Set the module name
                         .WithToken(AuthToken.Token) // Set the authentication token
+=======
+                        .WithDatabaseName(databaseName) // Set the database name
+                        .WithToken(AuthToken.Token) // Set the authentication token
+                        .WithConfirmedReads(true) // Enable confirmed reads for durability (default: true). Set to false for low-latency scenarios where eventual consistency is acceptable.
+>>>>>>> maintofix
                         .OnConnect(OnConnected) // Set the on-connect callback
                         .OnConnectError(OnConnectError) // Set the on-connect-error callback
                         .OnDisconnect(OnDisconnected) // Set the on-disconnect callback
@@ -113,6 +132,15 @@ namespace TicketSalesApp.Services.Implementations
             return _connection != null && _connection.IsActive;
         }
 
+<<<<<<< HEAD
+=======
+        // Method to check if the subscription has been applied
+        public bool IsSubscriptionReady()
+        {
+            return _subscriptionApplied;
+        }
+
+>>>>>>> maintofix
         // Method to disconnect from the database
         public void Disconnect()
         {
@@ -162,7 +190,11 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+<<<<<<< HEAD
         // Method to subscribe to all tables
+=======
+        // Method to subscribe to all tables (excludes event tables in SpacetimeDB 2.0)
+>>>>>>> maintofix
         public void SubscribeToAllTables()
         {
             if (_connection == null)
@@ -171,13 +203,46 @@ namespace TicketSalesApp.Services.Implementations
                 throw new InvalidOperationException("SpacetimeDB connection not initialized or not yet established. Call Connect() first and wait for connection to complete.");
             }
 
+<<<<<<< HEAD
             _logger.LogInformation("Subscribing to all tables");
+=======
+            _logger.LogInformation("Subscribing to all regular tables (event tables excluded)");
+>>>>>>> maintofix
             _connection.SubscriptionBuilder()
                 .OnApplied(OnSubscriptionApplied)
                 .OnError(OnSubscriptionError)
                 .SubscribeToAllTables();
 
+<<<<<<< HEAD
             _logger.LogInformation("Subscribed to all tables successfully");
+=======
+            _logger.LogInformation("Subscribed to all regular tables successfully");
+        }
+
+        // Method to subscribe to event tables explicitly
+        public SubscriptionHandle SubscribeToEventTables()
+        {
+            if (_connection == null)
+            {
+                _logger.LogError("Attempted to subscribe to event tables without an active connection");
+                throw new InvalidOperationException("SpacetimeDB connection not initialized or not yet established. Call Connect() first and wait for connection to complete.");
+            }
+
+            _logger.LogInformation("Subscribing to event tables");
+            var subscriptionHandle = _connection.SubscriptionBuilder()
+                .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
+                .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                .Subscribe(new[] {
+                    "SELECT * FROM AuthenticationEvent",
+                    "SELECT * FROM TicketSaleEvent",
+                    "SELECT * FROM BusStatusEvent",
+                    "SELECT * FROM RouteScheduleEvent",
+                    "SELECT * FROM MaintenanceEvent"
+                });
+
+            _logger.LogInformation("Subscribed to event tables successfully");
+            return subscriptionHandle;
+>>>>>>> maintofix
         }
 
         // Method to subscribe to specific queries
@@ -1134,12 +1199,35 @@ namespace TicketSalesApp.Services.Implementations
                 _localIdentity = identity;
                 AuthToken.SaveToken(token);
 
+<<<<<<< HEAD
                 // Subscribe to all tables
+=======
+                // Subscribe to all regular tables (event tables are excluded)
+>>>>>>> maintofix
                 conn.SubscriptionBuilder()
                     .OnApplied(OnSubscriptionApplied)
                     .OnError(OnSubscriptionError)
                     .SubscribeToAllTables();
 
+<<<<<<< HEAD
+=======
+                // Subscribe to event tables explicitly (they are excluded from SubscribeToAllTables)
+                _logger.LogInformation("Subscribing to event tables");
+                conn.SubscriptionBuilder()
+                    .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
+                    .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                    .Subscribe(new[] {
+                        "SELECT * FROM AuthenticationEvent",
+                        "SELECT * FROM TicketSaleEvent",
+                        "SELECT * FROM BusStatusEvent",
+                        "SELECT * FROM RouteScheduleEvent",
+                        "SELECT * FROM MaintenanceEvent"
+                    });
+
+                // Register event table callbacks
+                RegisterEventTableCallbacks(conn);
+
+>>>>>>> maintofix
                 _isConnecting = false;
             }
             catch (Exception ex)
@@ -1186,6 +1274,10 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the successful subscription application
                 _logger.LogInformation("SpacetimeDB subscription applied successfully");
                 _logger.LogDebug("Database tables are now available in the client cache");
+<<<<<<< HEAD
+=======
+                _subscriptionApplied = true; // Set the flag to indicate subscription is ready
+>>>>>>> maintofix
             }
             catch (Exception ex)
             {
@@ -1200,5 +1292,240 @@ namespace TicketSalesApp.Services.Implementations
         {
             _logger.LogError(ex, "Error in subscription: {ErrorMessage}", ex.Message);
         }
+<<<<<<< HEAD
+=======
+
+        // ***** Event Table Callback Registration *****
+        // Register callbacks for all event tables to handle cross-client notifications
+
+        /// <summary>
+        /// Registers callbacks for all event tables
+        /// </summary>
+        private void RegisterEventTableCallbacks(DbConnection conn)
+        {
+            _logger.LogInformation("Registering event table callbacks");
+
+            // Register AuthenticationEvent callback
+            conn.Db.AuthenticationEvent.OnInsert += OnAuthenticationEvent;
+
+            // Register TicketSaleEvent callback
+            conn.Db.TicketSaleEvent.OnInsert += OnTicketSaleEvent;
+
+            // Register BusStatusEvent callback
+            conn.Db.BusStatusEvent.OnInsert += OnBusStatusEvent;
+
+            // Register RouteScheduleEvent callback
+            conn.Db.RouteScheduleEvent.OnInsert += OnRouteScheduleEvent;
+
+            // Register MaintenanceEvent callback
+            conn.Db.MaintenanceEvent.OnInsert += OnMaintenanceEvent;
+
+            _logger.LogInformation("Event table callbacks registered successfully");
+        }
+
+        // ***** Event Table Handlers *****
+
+        /// <summary>
+        /// Handles AuthenticationEvent notifications
+        /// Logs authentication events (Login, Logout, Failed)
+        /// </summary>
+        private void OnAuthenticationEvent(EventContext ctx, AuthenticationEvent evt)
+        {
+            try
+            {
+                // Check the event context to understand what caused this event
+                string eventSource = ctx.Event switch
+                {
+                    Event<Reducer>.Reducer => "OwnReducer",
+                    Event<Reducer>.SubscribeApplied => "SubscribeApplied",
+                    Event<Reducer>.UnsubscribeApplied => "UnsubscribeApplied",
+                    Event<Reducer>.SubscribeError => "SubscribeError",
+                    _ => "Unknown"
+                };
+
+                _logger.LogDebug("Authentication event from {EventSource}", eventSource);
+
+                _logger.LogInformation("Authentication event received: Type={EventType}, UserId={UserId}, Timestamp={Timestamp}, Source={EventSource}",
+                    evt.EventType, evt.UserId, evt.Timestamp, eventSource);
+
+                switch (evt.EventType)
+                {
+                    case "Login":
+                        _logger.LogInformation("User logged in: {UserId} from {IpAddress}",
+                            evt.UserId, evt.IpAddress ?? "Unknown");
+                        break;
+
+                    case "Logout":
+                        _logger.LogInformation("User logged out: {UserId}", evt.UserId);
+                        break;
+
+                    case "Failed":
+                        _logger.LogWarning("Authentication failed: {UserId}, Details: {Details}",
+                            evt.UserId, evt.Details ?? "No details");
+                        break;
+
+                    case "TokenRefresh":
+                        _logger.LogInformation("Token refreshed for user: {UserId}", evt.UserId);
+                        break;
+
+                    default:
+                        _logger.LogWarning("Unknown authentication event type: {EventType}", evt.EventType);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling AuthenticationEvent: {ErrorMessage}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Handles TicketSaleEvent notifications
+        /// Updates UI with ticket sale information
+        /// </summary>
+        private void OnTicketSaleEvent(EventContext ctx, TicketSaleEvent evt)
+        {
+            try
+            {
+                // Check the event context to understand what caused this event
+                string eventSource = ctx.Event switch
+                {
+                    Event<Reducer>.Reducer => "OwnReducer",
+                    Event<Reducer>.SubscribeApplied => "SubscribeApplied",
+                    Event<Reducer>.UnsubscribeApplied => "UnsubscribeApplied",
+                    Event<Reducer>.SubscribeError => "SubscribeError",
+                    _ => "Unknown"
+                };
+
+                _logger.LogDebug("Ticket sale event from {EventSource}", eventSource);
+
+                _logger.LogInformation("Ticket sale event received: SaleId={SaleId}, TicketId={TicketId}, RouteId={RouteId}, Amount={Amount}, PaymentMethod={PaymentMethod}, Source={EventSource}",
+                    evt.SaleId, evt.TicketId, evt.RouteId, evt.Amount, evt.PaymentMethod, eventSource);
+
+                // Log the sale details
+                _logger.LogInformation("Ticket sold: SaleId={SaleId}, Buyer={BuyerId}, Amount={Amount:C}, Payment={PaymentMethod}",
+                    evt.SaleId, evt.BuyerId, evt.Amount, evt.PaymentMethod);
+
+                // TODO: Update UI with sale information
+                // This could trigger a notification to the UI layer or update a local cache
+                // For now, we just log the event
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling TicketSaleEvent: {ErrorMessage}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Handles BusStatusEvent notifications
+        /// Updates UI with bus status changes
+        /// </summary>
+        private void OnBusStatusEvent(EventContext ctx, BusStatusEvent evt)
+        {
+            try
+            {
+                // Check the event context to understand what caused this event
+                string eventSource = ctx.Event switch
+                {
+                    Event<Reducer>.Reducer => "OwnReducer",
+                    Event<Reducer>.SubscribeApplied => "SubscribeApplied",
+                    Event<Reducer>.UnsubscribeApplied => "UnsubscribeApplied",
+                    Event<Reducer>.SubscribeError => "SubscribeError",
+                    _ => "Unknown"
+                };
+
+                _logger.LogDebug("Bus status event from {EventSource}", eventSource);
+
+                _logger.LogInformation("Bus status event received: BusId={BusId}, PreviousStatus={PreviousStatus}, NewStatus={NewStatus}, ChangedBy={ChangedBy}, Source={EventSource}",
+                    evt.BusId, evt.PreviousStatus, evt.NewStatus, evt.ChangedBy, eventSource);
+
+                // Log the status change
+                _logger.LogInformation("Bus {BusId} status changed from {PreviousStatus} to {NewStatus} by {ChangedBy}. Reason: {Reason}",
+                    evt.BusId, evt.PreviousStatus, evt.NewStatus, evt.ChangedBy, evt.Reason ?? "Not specified");
+
+                // TODO: Update UI with bus status
+                // This could trigger a notification to the UI layer or update a local cache
+                // For now, we just log the event
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling BusStatusEvent: {ErrorMessage}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Handles RouteScheduleEvent notifications
+        /// Updates UI with schedule change information
+        /// </summary>
+        private void OnRouteScheduleEvent(EventContext ctx, RouteScheduleEvent evt)
+        {
+            try
+            {
+                // Check the event context to understand what caused this event
+                string eventSource = ctx.Event switch
+                {
+                    Event<Reducer>.Reducer => "OwnReducer",
+                    Event<Reducer>.SubscribeApplied => "SubscribeApplied",
+                    Event<Reducer>.UnsubscribeApplied => "UnsubscribeApplied",
+                    Event<Reducer>.SubscribeError => "SubscribeError",
+                    _ => "Unknown"
+                };
+
+                _logger.LogDebug("Route schedule event from {EventSource}", eventSource);
+
+                _logger.LogInformation("Route schedule event received: ScheduleId={ScheduleId}, RouteId={RouteId}, EventType={EventType}, ChangedBy={ChangedBy}, Source={EventSource}",
+                    evt.ScheduleId, evt.RouteId, evt.EventType, evt.ChangedBy, eventSource);
+
+                // Log the schedule change
+                _logger.LogInformation("Route schedule {ScheduleId} for route {RouteId} was {EventType} by {ChangedBy}",
+                    evt.ScheduleId, evt.RouteId, evt.EventType, evt.ChangedBy);
+
+                // TODO: Update UI with schedule information
+                // This could trigger a notification to the UI layer or update a local cache
+                // For now, we just log the event
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling RouteScheduleEvent: {ErrorMessage}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Handles MaintenanceEvent notifications
+        /// Updates UI with maintenance status
+        /// </summary>
+        private void OnMaintenanceEvent(EventContext ctx, MaintenanceEvent evt)
+        {
+            try
+            {
+                // Check the event context to understand what caused this event
+                string eventSource = ctx.Event switch
+                {
+                    Event<Reducer>.Reducer => "OwnReducer",
+                    Event<Reducer>.SubscribeApplied => "SubscribeApplied",
+                    Event<Reducer>.UnsubscribeApplied => "UnsubscribeApplied",
+                    Event<Reducer>.SubscribeError => "SubscribeError",
+                    _ => "Unknown"
+                };
+
+                _logger.LogDebug("Maintenance event from {EventSource}", eventSource);
+
+                _logger.LogInformation("Maintenance event received: MaintenanceId={MaintenanceId}, BusId={BusId}, EventType={EventType}, ChangedBy={ChangedBy}, Source={EventSource}",
+                    evt.MaintenanceId, evt.BusId, evt.EventType, evt.ChangedBy, eventSource);
+
+                // Log the maintenance event
+                _logger.LogInformation("Maintenance {MaintenanceId} for bus {BusId} was {EventType} by {ChangedBy}",
+                    evt.MaintenanceId, evt.BusId, evt.EventType, evt.ChangedBy);
+
+                // TODO: Update UI with maintenance status
+                // This could trigger a notification to the UI layer or update a local cache
+                // For now, we just log the event
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling MaintenanceEvent: {ErrorMessage}", ex.Message);
+            }
+        }
+>>>>>>> maintofix
     }
 }

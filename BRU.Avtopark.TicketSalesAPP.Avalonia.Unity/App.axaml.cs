@@ -11,6 +11,10 @@ using Serilog;
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+<<<<<<< HEAD
+=======
+using AvaloniaWebView;
+>>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 
@@ -23,6 +27,18 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
+<<<<<<< HEAD
+=======
+    public override void RegisterServices()
+    {
+        base.RegisterServices();
+        
+        // Initialize WebView.Avalonia
+        AvaloniaWebViewBuilder.Initialize(default);
+        Log.Information("WebView.Avalonia initialized");
+    }
+
+>>>>>>> maintofix
 
     private async Task ShowSplashScreenAndInitialize(IClassicDesktopStyleApplicationLifetime desktop)
     {
@@ -59,6 +75,7 @@ public partial class App : Application
             // Short delay to ensure background window is displayed
             await Task.Delay(500);
 
+<<<<<<< HEAD
             // Create and show auth window
             var authWindow = new AuthWindow
             {
@@ -87,6 +104,87 @@ public partial class App : Application
 
             // Show auth window
             authWindow.Show();
+=======
+            // Show login method selector
+            var loginMethodSelector = new LoginMethodSelectorWindow();
+            var selectedMethod = await loginMethodSelector.ShowDialog<LoginMethod?>(backgroundWindow);
+
+            if (!selectedMethod.HasValue)
+            {
+                Log.Information("No login method selected. Shutting down...");
+                desktop.Shutdown();
+                return;
+            }
+
+            bool isAuthenticated = false;
+
+            if (selectedMethod.Value == LoginMethod.OAuth)
+            {
+                // OAuth login flow
+                Log.Information("User selected OAuth login");
+                try
+                {
+                    var authManager = Services.AuthenticationManager.Instance;
+                    isAuthenticated = await authManager.LoginAsync();
+                    
+                    if (isAuthenticated)
+                    {
+                        Log.Information("OAuth authentication successful");
+                    }
+                    else
+                    {
+                        Log.Warning("OAuth authentication failed");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error during OAuth authentication");
+                    isAuthenticated = false;
+                }
+            }
+            else
+            {
+                // Traditional login flow
+                Log.Information("User selected traditional login");
+                var authWindow = new AuthWindow
+                {
+                    DataContext = new AuthViewModel()
+                };
+
+                // Handle authentication result
+                var authCompleted = new TaskCompletionSource<bool>();
+                authWindow.Closed += (s, e) =>
+                {
+                    if (authWindow.DataContext is AuthViewModel vm && vm.IsAuthenticated)
+                    {
+                        authCompleted.TrySetResult(true);
+                    }
+                    else
+                    {
+                        authCompleted.TrySetResult(false);
+                    }
+                };
+
+                authWindow.Show();
+                isAuthenticated = await authCompleted.Task;
+            }
+
+            if (isAuthenticated)
+            {
+                // Create main window
+                _mainWindow = new MainWindow();
+                var mainViewModel = new MainWindowViewModel();
+                _mainWindow.DataContext = mainViewModel;
+
+                desktop.MainWindow = _mainWindow;
+                _mainWindow.Show();
+            }
+            else
+            {
+                Log.Information("Authentication failed or cancelled. Shutting down...");
+                desktop.Shutdown();
+            }
+>>>>>>> maintofix
         }
         catch (Exception ex)
         {

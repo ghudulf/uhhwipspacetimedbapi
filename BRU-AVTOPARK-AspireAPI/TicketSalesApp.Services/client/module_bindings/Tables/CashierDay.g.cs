@@ -15,7 +15,11 @@ namespace SpacetimeDB.Types
     {
         public sealed class CashierDayHandle : RemoteTableHandle<EventContext, CashierDay>
         {
+<<<<<<< HEAD
             protected override string RemoteTableName => "CashierDay";
+=======
+            protected override string RemoteTableName => "cashier_day";
+>>>>>>> maintofix
 
             public sealed class CashierDayIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -36,4 +40,69 @@ namespace SpacetimeDB.Types
 
         public readonly CashierDayHandle CashierDay;
     }
+<<<<<<< HEAD
+=======
+
+    public sealed class CashierDayCols
+    {
+        public global::SpacetimeDB.Col<CashierDay, uint> CashierDayId { get; }
+        public global::SpacetimeDB.Col<CashierDay, double> Revenue { get; }
+        public global::SpacetimeDB.Col<CashierDay, uint> TicketsSold { get; }
+        public global::SpacetimeDB.Col<CashierDay, uint> FinesCollected { get; }
+        public global::SpacetimeDB.Col<CashierDay, double> FinesAmount { get; }
+        public global::SpacetimeDB.Col<CashierDay, ulong> Date { get; }
+        public global::SpacetimeDB.Col<CashierDay, uint> EmployeeId { get; }
+        public global::SpacetimeDB.Col<CashierDay, uint> RouteId { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, string> Notes { get; }
+        public global::SpacetimeDB.Col<CashierDay, bool> Reconciled { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, SpacetimeDB.Identity> ReconciledBy { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, ulong> ReconciledAt { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, double> CashCollected { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, double> ElectronicPayments { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, uint> ElectronicTransactions { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, uint> CashTransactions { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, double> Discrepancy { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, string> DiscrepancyReason { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, bool> IsBalanced { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, string> ShiftType { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, uint> PassengerCount { get; }
+        public global::SpacetimeDB.NullableCol<CashierDay, double> AverageTicketPrice { get; }
+
+        public CashierDayCols(string tableName)
+        {
+            CashierDayId = new global::SpacetimeDB.Col<CashierDay, uint>(tableName, "cashier_day_id");
+            Revenue = new global::SpacetimeDB.Col<CashierDay, double>(tableName, "revenue");
+            TicketsSold = new global::SpacetimeDB.Col<CashierDay, uint>(tableName, "tickets_sold");
+            FinesCollected = new global::SpacetimeDB.Col<CashierDay, uint>(tableName, "fines_collected");
+            FinesAmount = new global::SpacetimeDB.Col<CashierDay, double>(tableName, "fines_amount");
+            Date = new global::SpacetimeDB.Col<CashierDay, ulong>(tableName, "date");
+            EmployeeId = new global::SpacetimeDB.Col<CashierDay, uint>(tableName, "employee_id");
+            RouteId = new global::SpacetimeDB.Col<CashierDay, uint>(tableName, "route_id");
+            Notes = new global::SpacetimeDB.NullableCol<CashierDay, string>(tableName, "notes");
+            Reconciled = new global::SpacetimeDB.Col<CashierDay, bool>(tableName, "reconciled");
+            ReconciledBy = new global::SpacetimeDB.NullableCol<CashierDay, SpacetimeDB.Identity>(tableName, "reconciled_by");
+            ReconciledAt = new global::SpacetimeDB.NullableCol<CashierDay, ulong>(tableName, "reconciled_at");
+            CashCollected = new global::SpacetimeDB.NullableCol<CashierDay, double>(tableName, "cash_collected");
+            ElectronicPayments = new global::SpacetimeDB.NullableCol<CashierDay, double>(tableName, "electronic_payments");
+            ElectronicTransactions = new global::SpacetimeDB.NullableCol<CashierDay, uint>(tableName, "electronic_transactions");
+            CashTransactions = new global::SpacetimeDB.NullableCol<CashierDay, uint>(tableName, "cash_transactions");
+            Discrepancy = new global::SpacetimeDB.NullableCol<CashierDay, double>(tableName, "discrepancy");
+            DiscrepancyReason = new global::SpacetimeDB.NullableCol<CashierDay, string>(tableName, "discrepancy_reason");
+            IsBalanced = new global::SpacetimeDB.NullableCol<CashierDay, bool>(tableName, "is_balanced");
+            ShiftType = new global::SpacetimeDB.NullableCol<CashierDay, string>(tableName, "shift_type");
+            PassengerCount = new global::SpacetimeDB.NullableCol<CashierDay, uint>(tableName, "passenger_count");
+            AverageTicketPrice = new global::SpacetimeDB.NullableCol<CashierDay, double>(tableName, "average_ticket_price");
+        }
+    }
+
+    public sealed class CashierDayIxCols
+    {
+        public global::SpacetimeDB.IxCol<CashierDay, uint> CashierDayId { get; }
+
+        public CashierDayIxCols(string tableName)
+        {
+            CashierDayId = new global::SpacetimeDB.IxCol<CashierDay, uint>(tableName, "cashier_day_id");
+        }
+    }
+>>>>>>> maintofix
 }

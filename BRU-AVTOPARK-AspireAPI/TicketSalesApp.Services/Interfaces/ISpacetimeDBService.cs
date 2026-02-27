@@ -45,11 +45,24 @@ namespace TicketSalesApp.Services.Interfaces
         void ProcessFrameTick();
         
         /// <summary>
+<<<<<<< HEAD
         /// Subscribes to all tables in the database
+=======
+        /// Subscribes to all tables in the database (excludes event tables in SpacetimeDB 2.0)
+>>>>>>> maintofix
         /// </summary>
         void SubscribeToAllTables();
         
         /// <summary>
+<<<<<<< HEAD
+=======
+        /// Subscribes to event tables explicitly (required in SpacetimeDB 2.0)
+        /// </summary>
+        /// <returns>The subscription handle</returns>
+        SubscriptionHandle SubscribeToEventTables();
+        
+        /// <summary>
+>>>>>>> maintofix
         /// Subscribes to specific queries
         /// </summary>
         /// <param name="queries">The SQL queries to subscribe to</param>
@@ -61,5 +74,14 @@ namespace TicketSalesApp.Services.Interfaces
         /// </summary>
         /// <returns>True if the connection is active, false otherwise</returns>
         bool IsConnected();
+<<<<<<< HEAD
+=======
+        
+        /// <summary>
+        /// Indicates whether the subscription has been applied and data is available
+        /// </summary>
+        /// <returns>True if the subscription is ready, false otherwise</returns>
+        bool IsSubscriptionReady();
+>>>>>>> maintofix
     }
 } 

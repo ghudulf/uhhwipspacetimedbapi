@@ -20,6 +20,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using SpacetimeDB.Types;
+<<<<<<< HEAD
+=======
+using System.Text.Json.Nodes;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
+>>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -29,6 +34,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
+<<<<<<< HEAD
+=======
+        private List<Job> _allJobs = new();
+>>>>>>> maintofix
         private ObservableCollection<Job> _jobs = new();
         public ObservableCollection<Job> Jobs
         {
@@ -82,12 +91,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
+<<<<<<< HEAD
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
+=======
+                // ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
+>>>>>>> maintofix
             };
 
             // Subscribe to auth token changes
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
+<<<<<<< HEAD
+=======
+                Log.Information("Auth token changed in JobManagementViewModel. Recreating HttpClient and reloading data.");
+>>>>>>> maintofix
                 // Create a new client with the updated token
                 _httpClient.Dispose();
                 _httpClient = ApiClientService.Instance.CreateClient();
@@ -101,12 +118,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task LoadData()
         {
+<<<<<<< HEAD
+=======
+            Log.Information("Starting LoadData for JobManagementViewModel");
+>>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
+<<<<<<< HEAD
                 var response = await _httpClient.GetAsync($"{_baseUrl}/Jobs");
                 if (response.IsSuccessStatusCode)
                 {
@@ -115,25 +137,87 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     if (loadedJobs != null)
                     {
                         Jobs = new ObservableCollection<Job>(loadedJobs);
+=======
+                // --- Fetch jobs data ---
+                Log.Debug("Initiating API call for Jobs");
+                var jobsResponse = await _httpClient.GetAsync($"{_baseUrl}/Jobs");
+                Log.Information("Processing Jobs response. Status: {StatusCode}", jobsResponse.StatusCode);
+
+                // Log the raw response content
+                var jobsJsonString = await jobsResponse.Content.ReadAsStringAsync();
+                Log.Verbose("Raw Jobs response received: {RawResponse}", jobsJsonString);
+
+                List<Job> loadedJobs = new();
+
+                if (jobsResponse.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var jobsArray = JsonReferenceHelper.ParseArrayWithReferences(jobsJsonString, "Job");
+                        Log.Information("Parsing {Count} job objects from JSON array.", jobsArray.Count);
+                        
+                        foreach (var jobNode in jobsArray)
+                        {
+                            if (jobNode is JsonObject jobObj)
+                            {
+                                var job = jobObj.ParseJob();
+                                if (job != null)
+                                {
+                                    loadedJobs.Add(job);
+                                }
+                            }
+                        }
+                        Log.Information("Successfully parsed {Count} valid jobs.", loadedJobs.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to parse Jobs JSON: {RawJson}", jobsJsonString);
+                        throw new Exception("Failed to parse job data.", ex);
+>>>>>>> maintofix
                     }
                 }
                 else
                 {
+<<<<<<< HEAD
                     var error = await response.Content.ReadAsStringAsync();
                     Log.Error("Failed to load jobs. Status: {StatusCode}, Error: {Error}", 
                         response.StatusCode, error);
                     throw new Exception($"Failed to load jobs. Status: {response.StatusCode}, Error: {error}");
                 }
+=======
+                    var error = await jobsResponse.Content.ReadAsStringAsync();
+                    Log.Error("Failed to load jobs. Status: {StatusCode}, Error: {Error}", jobsResponse.StatusCode, error);
+                    throw new Exception($"Failed to load jobs data. Status: {jobsResponse.StatusCode}");
+                }
+
+                // Update the collections
+                _allJobs = loadedJobs; // Update backing field
+                Jobs = new ObservableCollection<Job>(_allJobs); // Update displayed collection
+
+                Log.Information("Finished processing data. Displaying {JobCount} jobs.", Jobs.Count);
+>>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
+<<<<<<< HEAD
                 ErrorMessage = $"Error loading jobs: {ex.Message}";
                 Log.Error(ex, "Error loading jobs");
+=======
+                ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
+                Log.Fatal(ex, "Fatal error loading data in JobManagementViewModel");
+                // Clear collections on fatal error
+                _allJobs = new List<Job>();
+                Jobs = new ObservableCollection<Job>();
+>>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
+<<<<<<< HEAD
+=======
+                Log.Information("LoadData finished for JobManagementViewModel.");
+>>>>>>> maintofix
             }
         }
 
@@ -200,10 +284,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     var newJob = new Job
                     {
                         JobTitle = jobTitleBox.Text,
+<<<<<<< HEAD
                         Internship = internshipBox.Text ?? string.Empty
                     };
 
                     var json = JsonSerializer.Serialize(newJob);
+=======
+                        Internship = internshipBox.Text // API expects JobInternship
+                    };
+
+                    var json = JsonSerializer.Serialize(newJob, _jsonOptions); // Use options
+>>>>>>> maintofix
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.PostAsync($"{_baseUrl}/Jobs", content);
@@ -328,10 +419,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         JobId = SelectedJob.JobId,
                         JobTitle = jobTitleBox.Text,
+<<<<<<< HEAD
                         Internship = internshipBox.Text ?? string.Empty
                     };
 
                     var json = JsonSerializer.Serialize(updatedJob);
+=======
+                        Internship = internshipBox.Text // API expects JobInternship
+                    };
+
+                    var json = JsonSerializer.Serialize(updatedJob, _jsonOptions); // Use options
+>>>>>>> maintofix
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.PutAsync($"{_baseUrl}/Jobs/{SelectedJob.JobId}", content);
@@ -439,6 +537,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
+<<<<<<< HEAD
             if (string.IsNullOrWhiteSpace(value))
             {
                 LoadData().ConfigureAwait(false);
@@ -450,6 +549,25 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 j.Internship.Contains(value, StringComparison.OrdinalIgnoreCase)
             ).ToList();
 
+=======
+             Log.Debug("Search text changed: '{SearchText}'", value);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                 Log.Debug("Search text is empty, resetting filter.");
+                Jobs = new ObservableCollection<Job>(_allJobs);
+                return;
+            }
+
+             var lowerCaseValue = value.ToLowerInvariant();
+            var filteredJobs = _allJobs.Where(j =>
+                (j.JobId.ToString().Contains(lowerCaseValue)) ||
+                (j.JobTitle?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) ||
+                (j.Internship?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) ||
+                (j.Department?.ToLowerInvariant().Contains(lowerCaseValue) ?? false)
+            ).ToList();
+
+             Log.Information("Filtering complete. Found {Count} jobs matching '{SearchText}'", filteredJobs.Count, value);
+>>>>>>> maintofix
             Jobs = new ObservableCollection<Job>(filteredJobs);
         }
     }

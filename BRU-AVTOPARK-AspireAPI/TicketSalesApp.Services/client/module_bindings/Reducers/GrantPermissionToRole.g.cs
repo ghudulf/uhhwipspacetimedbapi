@@ -17,12 +17,31 @@ namespace SpacetimeDB.Types
 
         public void GrantPermissionToRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
+<<<<<<< HEAD
             conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId, actingUserId), this.SetCallReducerFlags.GrantPermissionToRoleFlags);
+=======
+            conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId, actingUserId));
+>>>>>>> maintofix
         }
 
         public bool InvokeGrantPermissionToRole(ReducerEventContext ctx, Reducer.GrantPermissionToRole args)
         {
+<<<<<<< HEAD
             if (OnGrantPermissionToRole == null) return false;
+=======
+            if (OnGrantPermissionToRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
+>>>>>>> maintofix
             OnGrantPermissionToRole(
                 ctx,
                 args.RoleId,
@@ -39,11 +58,19 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GrantPermissionToRole : Reducer, IReducerArgs
         {
+<<<<<<< HEAD
             [DataMember(Name = "roleId")]
             public uint RoleId;
             [DataMember(Name = "permissionId")]
             public uint PermissionId;
             [DataMember(Name = "actingUserId")]
+=======
+            [DataMember(Name = "role_id")]
+            public uint RoleId;
+            [DataMember(Name = "permission_id")]
+            public uint PermissionId;
+            [DataMember(Name = "acting_user_id")]
+>>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public GrantPermissionToRole(
@@ -61,6 +88,7 @@ namespace SpacetimeDB.Types
             {
             }
 
+<<<<<<< HEAD
             string IReducerArgs.ReducerName => "GrantPermissionToRole";
         }
     }
@@ -70,4 +98,9 @@ namespace SpacetimeDB.Types
         internal CallReducerFlags GrantPermissionToRoleFlags;
         public void GrantPermissionToRole(CallReducerFlags flags) => GrantPermissionToRoleFlags = flags;
     }
+=======
+            string IReducerArgs.ReducerName => "grant_permission_to_role";
+        }
+    }
+>>>>>>> maintofix
 }
