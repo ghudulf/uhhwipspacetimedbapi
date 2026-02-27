@@ -1092,7 +1092,7 @@ Features:
 
 ## 📄 License
 
-[Your License Here]
+Eclipse Public License - v 2.0
 
 ## 🙏 Acknowledgments
 
@@ -1101,13 +1101,4 @@ Features:
 - **.NET Team** - Runtime and SDK
 - **OpenIddict** - OAuth 2.0 framework inspiration
 
-## 📞 Support
-
-For issues and questions:
-- GitHub Issues: [Your Repo URL]
-- Email: [Your Email]
-- Documentation: [Your Docs URL]
-
----
-
-**Built with ❤️ for BRU AVTOPARK**
+ 

@@ -54,3 +54,4 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BR
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.AppHost.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.AppHost.genruntimeconfig.cache
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\obj\Debug\net9.0\ref\BRU-AVTOPARK-AspireAPI.AppHost.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.AppHost.sourcelink.json

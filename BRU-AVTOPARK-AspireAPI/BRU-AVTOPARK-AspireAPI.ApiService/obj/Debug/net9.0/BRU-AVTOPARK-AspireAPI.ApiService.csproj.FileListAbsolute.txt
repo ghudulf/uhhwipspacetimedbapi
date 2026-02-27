@@ -169,3 +169,4 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BR
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\rjimswa.dswa.cache.json
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
