@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteTicketHandler(ReducerEventContext ctx, uint ticketId);
+        public delegate void DeleteTicketHandler(ReducerEventContext ctx, uint ticketId, SpacetimeDB.Identity? actingUser);
         public event DeleteTicketHandler? OnDeleteTicket;
 
-        public void DeleteTicket(uint ticketId)
+        public void DeleteTicket(uint ticketId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteTicket(ticketId), this.SetCallReducerFlags.DeleteTicketFlags);
+            conn.InternalCallReducer(new Reducer.DeleteTicket(ticketId, actingUser));
         }
 
         public bool InvokeDeleteTicket(ReducerEventContext ctx, Reducer.DeleteTicket args)
         {
-            if (OnDeleteTicket == null) return false;
+            if (OnDeleteTicket == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteTicket(
                 ctx,
-                args.TicketId
+                args.TicketId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteTicket : Reducer, IReducerArgs
         {
-            [DataMember(Name = "ticketId")]
+            [DataMember(Name = "ticket_id")]
             public uint TicketId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteTicket(uint TicketId)
+            public DeleteTicket(
+                uint TicketId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.TicketId = TicketId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteTicket()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteTicket";
+            string IReducerArgs.ReducerName => "delete_ticket";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteTicketFlags;
-        public void DeleteTicket(CallReducerFlags flags) => DeleteTicketFlags = flags;
     }
 }

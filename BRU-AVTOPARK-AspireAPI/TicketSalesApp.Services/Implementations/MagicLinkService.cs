@@ -55,7 +55,7 @@ namespace TicketSalesApp.Services.Implementations
                     return (true, null);
                 }
 
-                if (!user.EmailConfirmed)
+                if (!user.EmailConfirmed.Value)
                 {
                     // Don't reveal that the email is not confirmed
                     _logger.LogWarning("Email not confirmed for magic link: {Email}", email);
@@ -67,7 +67,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 // Store the token in SpacetimeDB
                 var expiryTime = DateTime.UtcNow.AddMinutes(MAGIC_LINK_EXPIRY_MINUTES);
-                await conn.Reducers.CreateMagicLinkTokenAsync(
+                conn.Reducers.CreateMagicLinkToken(
                     user.UserId,
                     token,
                     (ulong)new DateTimeOffset(expiryTime).ToUnixTimeMilliseconds(),
@@ -160,7 +160,7 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Marking magic link token as used: {Token}", token);
 
                 var conn = _spacetimeService.GetConnection();
-                await conn.Reducers.UseMagicLinkTokenAsync(token);
+                conn.Reducers.UseMagicLinkToken(token);
                 
                 return true;
             }

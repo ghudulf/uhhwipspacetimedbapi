@@ -1,0 +1,84 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.App"
+             xmlns:local="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
+              xmlns:views="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views"
+			 xmlns:toolviews="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews"
+             xmlns:sty="using:FluentAvalonia.Styling"   
+			 xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
+			xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+             xmlns:materialIcons="using:Material.Icons.Avalonia"    
+             RequestedThemeVariant="Default">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    
+  
+    <Application.Styles>
+		<FluentTheme/>
+		
+		<StyleInclude Source="avares://Classic.CommonControls.Avalonia/Themes/Fluent.axaml" />
+		
+		<StyleInclude Source="avares://ReDocking/Styles.axaml" />
+        
+        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml"/>
+        <materialIcons:MaterialIconStyles />
+		<sty:FluentAvaloniaTheme />
+		 <StyleInclude Source="avares://FluentAvalonia.ProgressRing/Styling/Controls/ProgressRing.axaml" />
+    </Application.Styles>
+
+	<Application.DataTemplates>
+		<DataTemplate x:DataType="viewModels:ExplorerViewModel">
+			<views:Explorer />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:DebugViewModel">
+			<views:Debug />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:NotificationsViewModel">
+			<views:Notifications />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:ProblemViewModel">
+			<views:Problem />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:PropertiesViewModel">
+			<views:Properties />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:SearchViewModel">
+			<views:Search />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:BusManagementViewModel">
+			<views:BusManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:EmployeeManagementViewModel">
+			<toolviews:EmployeeManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:JobManagementViewModel">
+			<toolviews:JobManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:MaintenanceManagementViewModel">
+			<toolviews:MaintenanceManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:RouteManagementViewModel">
+			<views:RouteManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:SalesManagementViewModel">
+			<views:SalesManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:SalesStatisticsViewModel">
+			<toolviews:SalesStatisticsToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:TicketManagementViewModel">
+			<views:TicketManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:UserManagementViewModel">
+			<toolviews:UserManagementToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:IncomeReportViewModel">
+			<toolviews:IncomeReportToolWindow />
+		</DataTemplate>
+		<DataTemplate x:DataType="viewModels:RouteSchedulesManagementViewModel">
+			<toolviews:RouteSchedulesManagementToolWindow />
+		</DataTemplate>
+	</Application.DataTemplates>
+
+
+</Application>

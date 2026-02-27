@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void AssignRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId);
+        public delegate void AssignRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId);
         public event AssignRoleHandler? OnAssignRole;
 
-        public void AssignRole(SpacetimeDB.Identity userId, uint roleId)
+        public void AssignRole(SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId), this.SetCallReducerFlags.AssignRoleFlags);
+            conn.InternalCallReducer(new Reducer.AssignRole(userId, roleId, actingUserId));
         }
 
         public bool InvokeAssignRole(ReducerEventContext ctx, Reducer.AssignRole args)
         {
-            if (OnAssignRole == null) return false;
+            if (OnAssignRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnAssignRole(
                 ctx,
                 args.UserId,
-                args.RoleId
+                args.RoleId,
+                args.ActingUserId
             );
             return true;
         }
@@ -38,31 +50,29 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class AssignRole : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public AssignRole(
                 SpacetimeDB.Identity UserId,
-                uint RoleId
+                uint RoleId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.UserId = UserId;
                 this.RoleId = RoleId;
+                this.ActingUserId = ActingUserId;
             }
 
             public AssignRole()
             {
             }
 
-            string IReducerArgs.ReducerName => "AssignRole";
+            string IReducerArgs.ReducerName => "assign_role";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags AssignRoleFlags;
-        public void AssignRole(CallReducerFlags flags) => AssignRoleFlags = flags;
     }
 }

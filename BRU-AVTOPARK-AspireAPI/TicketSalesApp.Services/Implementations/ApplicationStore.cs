@@ -40,16 +40,25 @@ namespace TicketSalesApp.Services.Implementations
 
         public ApplicationStore(ISpacetimeDBService spacetimeService, ILogger<ApplicationStore> logger)
         {
-            _spacetimeService = spacetimeService;
-            _logger = logger;
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger.LogInformation("ApplicationStore initialized");
         }
 
         public ValueTask<long> CountAsync(CancellationToken cancellationToken)
         {
             try
             {
+                _logger.LogDebug("Counting OpenID Connect clients");
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+
                 var count = conn.Db.OpenIdConnect.Iter().Count(c => c.IsActive);
+                _logger.LogDebug("Found {Count} active OpenID Connect clients", count);
                 return new ValueTask<long>(count);
             }
             catch (Exception ex)
@@ -61,43 +70,117 @@ namespace TicketSalesApp.Services.Implementations
 
         public ValueTask<long> CountAsync<TResult>(Func<IQueryable<OpenIddictApplication>, IQueryable<TResult>> query, CancellationToken cancellationToken)
         {
+            _logger.LogWarning("CountAsync with custom query was called but is not supported");
             throw new NotSupportedException("Custom queries are not supported by this store.");
         }
 
         public ValueTask CreateAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot create null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
             try
             {
+                _logger.LogInformation("=== [ApplicationStore.CreateAsync] Creating client: {ClientId} ===", application.ClientId);
+                
                 if (string.IsNullOrEmpty(application.ClientId))
+                {
+                    _logger.LogError("Client ID cannot be null or empty");
                     throw new ArgumentException("Client ID cannot be null or empty.", nameof(application));
+                }
 
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Client details:");
+                _logger.LogInformation("  - ClientId: {ClientId}", application.ClientId);
+                _logger.LogInformation("  - DisplayName: {DisplayName}", application.DisplayName);
+                _logger.LogInformation("  - Type: {Type}", application.Type);
+                _logger.LogInformation("  - ConsentType: {ConsentType}", application.ConsentType);
+                _logger.LogInformation("  - RedirectUris: {Count} URIs", application.RedirectUris.Length);
+                foreach (var uri in application.RedirectUris)
+                {
+                    _logger.LogInformation("    * {Uri}", uri);
+                }
+                _logger.LogInformation("  - Permissions/Scopes: {Count} permissions", application.Permissions.Length);
+                foreach (var perm in application.Permissions)
+                {
+                    _logger.LogInformation("    * {Permission}", perm);
+                }
+                
+                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                var scopeNames = application.Permissions
+                    .Where(p => p.StartsWith("oc_scp:"))
+                    .Select(p => p.Substring("oc_scp:".Length))
+                    .ToList();
+                
+                _logger.LogInformation("  - Extracted {ScopeCount} scope names: {Scopes}", 
+                    scopeNames.Count, 
+                    string.Join(", ", scopeNames));
+                
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Calling SpacetimeDB reducer RegisterOpenIdClient...");
                 
                 conn.Reducers.RegisterOpenIdClient(
                     application.ClientId,
                     application.ClientSecret,
+                    application.DisplayName,
                     application.RedirectUris.ToList(),
-                    application.Permissions.ToList()
+                    application.PostLogoutRedirectUris.ToList(),
+                    scopeNames,
+                    application.ConsentType,
+                    application.Type
                 );
 
+                // Set the ID to the ClientId so OpenIddict can cache it
+                application.Id = application.ClientId;
+
+                _logger.LogInformation("[ApplicationStore.CreateAsync] ✓ Reducer call completed for client {ClientId}", application.ClientId);
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Note: Data may not be in local cache until FrameTick processes the response");
+                
                 return default;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating OpenID Connect client {ClientId}", application.ClientId);
+                _logger.LogError(ex, "[ApplicationStore.CreateAsync] ✗ Error creating client {ClientId}: {Message}", 
+                    application.ClientId, ex.Message);
                 throw;
             }
         }
 
         public ValueTask DeleteAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot delete null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
             try
             {
+                _logger.LogInformation("Deleting OpenID Connect client {ClientId}", application.ClientId);
+                
                 if (string.IsNullOrEmpty(application.ClientId))
+                {
+                    _logger.LogError("Client ID cannot be null or empty");
                     throw new ArgumentException("Client ID cannot be null or empty.", nameof(application));
+                }
 
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
                 conn.Reducers.RevokeOpenIdClient(application.ClientId);
+                _logger.LogInformation("Successfully deleted OpenID Connect client {ClientId}", application.ClientId);
                 return default;
             }
             catch (Exception ex)
@@ -109,23 +192,95 @@ namespace TicketSalesApp.Services.Implementations
 
         public ValueTask<OpenIddictApplication?> FindByClientIdAsync(string identifier, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(identifier))
+            {
+                _logger.LogError("Client identifier cannot be null or empty");
+                throw new ArgumentException("Identifier cannot be null or empty.", nameof(identifier));
+            }
+
             try
             {
+                _logger.LogInformation("=== [ApplicationStore.FindByClientIdAsync] Searching for client: {ClientId} ===", identifier);
+                
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
+                // Log ALL clients in the database for debugging
+                var allClients = conn.Db.OpenIdConnect.Iter().ToList();
+                _logger.LogInformation("[ApplicationStore] Total clients in OpenIdConnect table: {Count}", allClients.Count);
+                
+                foreach (var c in allClients)
+                {
+                    _logger.LogInformation("[ApplicationStore] - Client: {ClientId}, IsActive: {IsActive}, DisplayName: {DisplayName}", 
+                        c.ClientId, c.IsActive, c.DisplayName);
+                }
+                
+                // Now search for the specific client
                 var client = conn.Db.OpenIdConnect.Iter()
                     .Where(c => c.ClientId == identifier && c.IsActive)
-                    .Select(c => new OpenIddictApplication
+                    .Select(c =>
                     {
-                        Id = c.ClientId,
-                        ClientId = c.ClientId,
-                        ClientSecret = c.ClientSecret,
-                        RedirectUris = ImmutableArray.Create(c.RedirectUris.ToArray()),
-                        Permissions = ImmutableArray.Create(c.AllowedScopes.ToArray()),
-                        Type = "public",
-                        ConsentType = "explicit",
-                        DisplayName = c.ClientId
+                        // Convert scope names to OpenIddict permission format and add endpoint/grant permissions
+                        var permissions = new List<string>();
+                        
+                        // Add endpoint permissions
+                        permissions.Add("oc_ept:authorization");  // Permissions.Endpoints.Authorization
+                        permissions.Add("oc_ept:token");          // Permissions.Endpoints.Token
+                        permissions.Add("oc_ept:logout");         // Permissions.Endpoints.Logout
+                        permissions.Add("oc_ept:revocation");     // Permissions.Endpoints.Revocation
+                        
+                        // Add grant type permissions
+                        permissions.Add("oc_gt:authorization_code");  // Permissions.GrantTypes.AuthorizationCode
+                        permissions.Add("oc_gt:refresh_token");       // Permissions.GrantTypes.RefreshToken
+                        permissions.Add("oc_gt:client_credentials");  // Permissions.GrantTypes.ClientCredentials
+                        
+                        // Add response type permissions
+                        permissions.Add("oc_rst:code");  // Permissions.ResponseTypes.Code
+                        
+                        // Add scope permissions (e.g., "oc_scp:profile", "oc_scp:email", "oc_scp:api")
+                        foreach (var scope in c.AllowedScopes)
+                        {
+                            permissions.Add($"oc_scp:{scope}");
+                        }
+                        
+                        return new OpenIddictApplication
+                        {
+                            Id = c.ClientId,
+                            ClientId = c.ClientId,
+                            ClientSecret = c.ClientSecret,
+                            PostLogoutRedirectUris = ImmutableArray.Create(c.PostLogoutRedirectUris.ToArray()),
+                            RedirectUris = ImmutableArray.Create(c.RedirectUris.ToArray()),
+                            ConsentType = c.ConsentType,
+                            Type = c.ClientType,
+                            DisplayName = c.DisplayName,
+                            Permissions = ImmutableArray.Create(permissions.ToArray()),
+                        };
                     })
                     .FirstOrDefault();
+
+                if (client != null)
+                {
+                    _logger.LogInformation("[ApplicationStore] ✓ FOUND client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} scopes", 
+                        identifier, client.RedirectUris.Length, client.Permissions.Length);
+                }
+                else
+                {
+                    _logger.LogWarning("[ApplicationStore] ✗ NOT FOUND: Client {ClientId} not in database or not active", identifier);
+                    
+                    // Check if it exists but is inactive
+                    var inactiveClient = conn.Db.OpenIdConnect.Iter()
+                        .FirstOrDefault(c => c.ClientId == identifier);
+                    
+                    if (inactiveClient != null)
+                    {
+                        _logger.LogWarning("[ApplicationStore] Client {ClientId} exists but IsActive={IsActive}", 
+                            identifier, inactiveClient.IsActive);
+                    }
+                }
 
                 return new ValueTask<OpenIddictApplication?>(client);
             }
@@ -138,14 +293,35 @@ namespace TicketSalesApp.Services.Implementations
 
         public ValueTask<OpenIddictApplication?> FindByIdAsync(string identifier, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(identifier))
+            {
+                _logger.LogError("Identifier cannot be null or empty");
+                throw new ArgumentException("Identifier cannot be null or empty.", nameof(identifier));
+            }
+
+            _logger.LogDebug("Finding OpenID Connect client by ID {ClientId} (delegating to FindByClientIdAsync)", identifier);
             return FindByClientIdAsync(identifier, cancellationToken);
         }
 
         public IAsyncEnumerable<OpenIddictApplication> FindByPostLogoutRedirectUriAsync(string address, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(address))
+            {
+                _logger.LogError("Post-logout redirect URI cannot be null or empty");
+                throw new ArgumentException("Address cannot be null or empty.", nameof(address));
+            }
+
             try
             {
+                _logger.LogDebug("Finding OpenID Connect clients by post-logout redirect URI {Address}", address);
+                
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
                 var clients = conn.Db.OpenIdConnect.Iter()
                     .Where(c => c.RedirectUris.Contains(address) && c.IsActive)
                     .Select(c => new OpenIddictApplication
@@ -160,6 +336,7 @@ namespace TicketSalesApp.Services.Implementations
                         DisplayName = c.ClientId
                     });
 
+                _logger.LogDebug("Found {Count} OpenID Connect clients with post-logout redirect URI {Address}", clients.Count(), address);
                 return GetAsyncEnumerable(clients);
             }
             catch (Exception ex)
@@ -171,9 +348,23 @@ namespace TicketSalesApp.Services.Implementations
 
         public IAsyncEnumerable<OpenIddictApplication> FindByRedirectUriAsync(string address, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(address))
+            {
+                _logger.LogError("Redirect URI cannot be null or empty");
+                throw new ArgumentException("Address cannot be null or empty.", nameof(address));
+            }
+
             try
             {
+                _logger.LogDebug("Finding OpenID Connect clients by redirect URI {Address}", address);
+                
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
                 var clients = conn.Db.OpenIdConnect.Iter()
                     .Where(c => c.RedirectUris.Contains(address) && c.IsActive)
                     .Select(c => new OpenIddictApplication
@@ -188,6 +379,7 @@ namespace TicketSalesApp.Services.Implementations
                         DisplayName = c.ClientId
                     });
 
+                _logger.LogDebug("Found {Count} OpenID Connect clients with redirect URI {Address}", clients.Count(), address);
                 return GetAsyncEnumerable(clients);
             }
             catch (Exception ex)
@@ -209,79 +401,181 @@ namespace TicketSalesApp.Services.Implementations
             Func<IQueryable<OpenIddictApplication>, TState, IQueryable<TResult>> query,
             TState state, CancellationToken cancellationToken)
         {
+            _logger.LogWarning("GetAsync with custom query was called but is not supported");
             throw new NotSupportedException("Custom queries are not supported by this store.");
         }
 
         public ValueTask<string?> GetClientIdAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get client ID from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting client ID for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.ClientId);
         }
 
         public ValueTask<string?> GetClientSecretAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get client secret from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting client secret for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.ClientSecret);
         }
 
         public ValueTask<string?> GetClientTypeAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get client type from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting client type for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.Type);
         }
 
         public ValueTask<string?> GetConsentTypeAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get consent type from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting consent type for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.ConsentType);
         }
 
         public ValueTask<string?> GetDisplayNameAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get display name from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting display name for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.DisplayName);
         }
 
         public ValueTask<ImmutableDictionary<CultureInfo, string>> GetDisplayNamesAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get display names from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting display names for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableDictionary<CultureInfo, string>>(application.DisplayNames);
         }
 
         public ValueTask<string?> GetIdAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get ID from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting ID for application {ClientId}", application.ClientId);
             return new ValueTask<string?>(application.Id);
         }
 
         public ValueTask<ImmutableArray<string>> GetPermissionsAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get permissions from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting permissions for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableArray<string>>(application.Permissions);
         }
 
         public ValueTask<ImmutableArray<string>> GetPostLogoutRedirectUrisAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get post-logout redirect URIs from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting post-logout redirect URIs for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableArray<string>>(application.PostLogoutRedirectUris);
         }
 
         public ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get properties from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting properties for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableDictionary<string, JsonElement>>(application.Properties);
         }
 
         public ValueTask<ImmutableArray<string>> GetRedirectUrisAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get redirect URIs from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting redirect URIs for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableArray<string>>(application.RedirectUris);
         }
 
         public ValueTask<ImmutableArray<string>> GetRequirementsAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot get requirements from null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Getting requirements for application {ClientId}", application.ClientId);
             return new ValueTask<ImmutableArray<string>>(application.Requirements);
         }
 
         public ValueTask<OpenIddictApplication> InstantiateAsync(CancellationToken cancellationToken)
         {
-            return new ValueTask<OpenIddictApplication>(new OpenIddictApplication());
+            try
+            {
+                _logger.LogDebug("Instantiating new OpenIddictApplication");
+                return new ValueTask<OpenIddictApplication>(new OpenIddictApplication());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error instantiating OpenIddictApplication");
+                throw;
+            }
         }
 
         public IAsyncEnumerable<OpenIddictApplication> ListAsync(int? count, int? offset, CancellationToken cancellationToken)
         {
             try
             {
+                _logger.LogDebug("Listing OpenID Connect clients with count: {Count}, offset: {Offset}", count, offset);
+                
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
                 var query = conn.Db.OpenIdConnect.Iter()
                     .Where(c => c.IsActive)
                     .Select(c => new OpenIddictApplication
@@ -298,14 +592,17 @@ namespace TicketSalesApp.Services.Implementations
 
                 if (offset.HasValue)
                 {
+                    _logger.LogTrace("Applying offset {Offset}", offset.Value);
                     query = query.Skip(offset.Value);
                 }
 
                 if (count.HasValue)
                 {
+                    _logger.LogTrace("Applying count limit {Count}", count.Value);
                     query = query.Take(count.Value);
                 }
 
+                _logger.LogDebug("Found {Count} OpenID Connect clients", query.Count());
                 return GetAsyncEnumerable(query);
             }
             catch (Exception ex)
@@ -327,90 +624,216 @@ namespace TicketSalesApp.Services.Implementations
             Func<IQueryable<OpenIddictApplication>, TState, IQueryable<TResult>> query,
             TState state, CancellationToken cancellationToken)
         {
+            _logger.LogWarning("ListAsync with custom query was called but is not supported");
             throw new NotSupportedException("Custom queries are not supported by this store.");
         }
 
         public ValueTask SetClientIdAsync(OpenIddictApplication application, string? identifier, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set client ID on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting client ID to {ClientId} for application", identifier);
             application.ClientId = identifier ?? string.Empty;
             return default;
         }
 
         public ValueTask SetClientSecretAsync(OpenIddictApplication application, string? secret, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set client secret on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting client secret for application {ClientId}", application.ClientId);
             application.ClientSecret = secret ?? string.Empty;
             return default;
         }
 
         public ValueTask SetClientTypeAsync(OpenIddictApplication application, string? type, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set client type on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting client type to {ClientType} for application {ClientId}", type, application.ClientId);
             application.Type = type ?? string.Empty;
             return default;
         }
 
         public ValueTask SetConsentTypeAsync(OpenIddictApplication application, string? type, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set consent type on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting consent type to {ConsentType} for application {ClientId}", type, application.ClientId);
             application.ConsentType = type ?? string.Empty;
             return default;
         }
 
         public ValueTask SetDisplayNameAsync(OpenIddictApplication application, string? name, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set display name on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting display name to {DisplayName} for application {ClientId}", name, application.ClientId);
             application.DisplayName = name ?? string.Empty;
             return default;
         }
 
         public ValueTask SetDisplayNamesAsync(OpenIddictApplication application, ImmutableDictionary<CultureInfo, string> names, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set display names on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            if (names == null)
+            {
+                _logger.LogError("Cannot set null display names on application {ClientId}", application.ClientId);
+                throw new ArgumentNullException(nameof(names));
+            }
+
+            _logger.LogTrace("Setting {Count} display names for application {ClientId}", names.Count, application.ClientId);
             application.DisplayNames = names;
             return default;
         }
 
         public ValueTask SetPermissionsAsync(OpenIddictApplication application, ImmutableArray<string> permissions, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set permissions on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting {Count} permissions for application {ClientId}", permissions.Length, application.ClientId);
             application.Permissions = permissions;
             return default;
         }
 
         public ValueTask SetPostLogoutRedirectUrisAsync(OpenIddictApplication application, ImmutableArray<string> addresses, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set post-logout redirect URIs on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting {Count} post-logout redirect URIs for application {ClientId}", addresses.Length, application.ClientId);
             application.PostLogoutRedirectUris = addresses;
             return default;
         }
 
         public ValueTask SetPropertiesAsync(OpenIddictApplication application, ImmutableDictionary<string, JsonElement> properties, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set properties on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            if (properties == null)
+            {
+                _logger.LogError("Cannot set null properties on application {ClientId}", application.ClientId);
+                throw new ArgumentNullException(nameof(properties));
+            }
+
+            _logger.LogTrace("Setting {Count} properties for application {ClientId}", properties.Count, application.ClientId);
             application.Properties = properties;
             return default;
         }
 
         public ValueTask SetRedirectUrisAsync(OpenIddictApplication application, ImmutableArray<string> addresses, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set redirect URIs on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting {Count} redirect URIs for application {ClientId}", addresses.Length, application.ClientId);
             application.RedirectUris = addresses;
             return default;
         }
 
         public ValueTask SetRequirementsAsync(OpenIddictApplication application, ImmutableArray<string> requirements, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot set requirements on null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            _logger.LogTrace("Setting {Count} requirements for application {ClientId}", requirements.Length, application.ClientId);
             application.Requirements = requirements;
             return default;
         }
 
         public ValueTask UpdateAsync(OpenIddictApplication application, CancellationToken cancellationToken)
         {
+            if (application == null)
+            {
+                _logger.LogError("Cannot update null application");
+                throw new ArgumentNullException(nameof(application));
+            }
+
             try
             {
+                _logger.LogInformation("Updating OpenID Connect client {ClientId}", application.ClientId);
+                
                 if (string.IsNullOrEmpty(application.ClientId))
+                {
+                    _logger.LogError("Client ID cannot be null or empty");
                     throw new ArgumentException("Client ID cannot be null or empty.", nameof(application));
+                }
 
                 var conn = _spacetimeService.GetConnection();
+                if (conn == null)
+                {
+                    _logger.LogError("Failed to get SpacetimeDB connection");
+                    throw new InvalidOperationException("SpacetimeDB connection is null");
+                }
+                
+                _logger.LogDebug("Updating client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} permissions", 
+                    application.ClientId, 
+                    application.RedirectUris.Length, 
+                    application.Permissions.Length);
+                
+                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                var scopeNames = application.Permissions
+                    .Where(p => p.StartsWith("oc_scp:"))
+                    .Select(p => p.Substring("oc_scp:".Length))
+                    .ToList();
+                
+                _logger.LogDebug("Extracted {ScopeCount} scope names from permissions: {Scopes}", 
+                    scopeNames.Count, 
+                    string.Join(", ", scopeNames));
+                
                 conn.Reducers.UpdateOpenIdClient(
                     application.ClientId,
                     application.ClientSecret,
+                    application.DisplayName,
                     application.RedirectUris.ToList(),
-                    application.Permissions.ToList()
+                    application.PostLogoutRedirectUris.ToList(),
+                    scopeNames,
+                    application.ConsentType
                 );
 
+                _logger.LogInformation("Successfully updated OpenID Connect client {ClientId}", application.ClientId);
                 return default;
             }
             catch (Exception ex)

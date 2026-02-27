@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeactivateRouteHandler(ReducerEventContext ctx, uint routeId);
+        public delegate void DeactivateRouteHandler(ReducerEventContext ctx, uint routeId, SpacetimeDB.Identity? actingUser);
         public event DeactivateRouteHandler? OnDeactivateRoute;
 
-        public void DeactivateRoute(uint routeId)
+        public void DeactivateRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId), this.SetCallReducerFlags.DeactivateRouteFlags);
+            conn.InternalCallReducer(new Reducer.DeactivateRoute(routeId, actingUser));
         }
 
         public bool InvokeDeactivateRoute(ReducerEventContext ctx, Reducer.DeactivateRoute args)
         {
-            if (OnDeactivateRoute == null) return false;
+            if (OnDeactivateRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeactivateRoute(
                 ctx,
-                args.RouteId
+                args.RouteId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateRoute : Reducer, IReducerArgs
         {
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint RouteId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeactivateRoute(uint RouteId)
+            public DeactivateRoute(
+                uint RouteId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.RouteId = RouteId;
+                this.ActingUser = ActingUser;
             }
 
             public DeactivateRoute()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeactivateRoute";
+            string IReducerArgs.ReducerName => "deactivate_route";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeactivateRouteFlags;
-        public void DeactivateRoute(CallReducerFlags flags) => DeactivateRouteFlags = flags;
     }
 }

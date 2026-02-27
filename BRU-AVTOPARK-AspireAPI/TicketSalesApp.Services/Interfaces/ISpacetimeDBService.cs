@@ -39,24 +39,21 @@ namespace TicketSalesApp.Services.Interfaces
         void EnqueueCommand(string command, Dictionary<string, object> args);
         
         /// <summary>
-        /// Starts the message processing thread
-        /// </summary>
-        void StartMessageProcessing();
-        
-        /// <summary>
-        /// Stops the message processing thread
-        /// </summary>
-        void StopMessageProcessing();
-        
-        /// <summary>
-        /// Processes a single frame tick for the connection
+        /// Processes a single frame tick for the connection and any pending commands
+        /// This should be called regularly from the main thread
         /// </summary>
         void ProcessFrameTick();
         
         /// <summary>
-        /// Subscribes to all tables in the database
+        /// Subscribes to all tables in the database (excludes event tables in SpacetimeDB 2.0)
         /// </summary>
         void SubscribeToAllTables();
+        
+        /// <summary>
+        /// Subscribes to event tables explicitly (required in SpacetimeDB 2.0)
+        /// </summary>
+        /// <returns>The subscription handle</returns>
+        SubscriptionHandle SubscribeToEventTables();
         
         /// <summary>
         /// Subscribes to specific queries
@@ -64,5 +61,17 @@ namespace TicketSalesApp.Services.Interfaces
         /// <param name="queries">The SQL queries to subscribe to</param>
         /// <returns>The subscription handle</returns>
         SubscriptionHandle SubscribeToQueries(string[] queries);
+        
+        /// <summary>
+        /// Indicates whether the connection is active
+        /// </summary>
+        /// <returns>True if the connection is active, false otherwise</returns>
+        bool IsConnected();
+        
+        /// <summary>
+        /// Indicates whether the subscription has been applied and data is available
+        /// </summary>
+        /// <returns>True if the subscription is ready, false otherwise</returns>
+        bool IsSubscriptionReady();
     }
 } 

@@ -12,29 +12,34 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using SpacetimeDB.Types;
 using System.Linq;
+using SpacetimeDB;
+using Log = Serilog.Log;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [AllowAnonymous]
     public class UsersController : BaseController
     {
         private readonly IUserService _userService;
         private readonly IAuthenticationService _authService;
         private readonly IRoleService _roleService;
         private readonly IConfiguration _configuration;
+        private readonly ISpacetimeDBService _spacetimeService;
 
-        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration)
+        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService)
         {
             _userService = userService;
             _authService = authService;
             _roleService = roleService;
             _configuration = configuration;
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserProfile>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetUsers()
         {
             if (!IsAdmin() && !HasPermission("users.view"))
             {
@@ -43,12 +48,36 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
             Log.Information("Fetching all users");
             var users = await _userService.GetAllUsersAsync();
-            Log.Debug("Retrieved {UserCount} users", users.Count());
-            return Ok(users);
+            var conn = _spacetimeService.GetConnection();
+
+            // Map to anonymous type including Roles
+            var result = users.Select(u => {
+                var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(u.UserId)).ToList();
+                var roles = userRoles.Select(ur => {
+                    var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                    return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
+                }).Where(r => r != null).ToList();
+                
+                return new {
+                    u.LegacyUserId, // Keep legacy ID if used externally
+                    u.UserId,
+                    u.Login,
+                    u.Email,
+                    u.PhoneNumber,
+                    u.IsActive,
+                    CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)u.CreatedAt).DateTime,
+                    LastLoginAt = u.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)u.LastLoginAt.Value).DateTime : (DateTime?)null,
+                    Roles = roles
+                };
+            }).ToList();
+
+            Log.Debug("Retrieved {UserCount} users", result.Count());
+            Log.Information("FULL USERS DATA: {UsersData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<UserProfile>> GetUser(uint id)
+        public async Task<ActionResult<dynamic>> GetUser(uint id)
         {
             if (!IsAdmin() && !HasPermission("users.view"))
             {
@@ -62,8 +91,41 @@ namespace TicketSalesApp.AdminServer.Controllers
                 Log.Warning("User with ID {UserId} not found", id);
                 return NotFound();
             }
+            
+            var conn = _spacetimeService.GetConnection();
+            var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+            var roles = userRoles.Select(ur => {
+                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
+            }).Where(r => r != null).ToList();
+
+            var permissionIds = conn.Db.RolePermission.Iter()
+                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+                .Select(rp => rp.PermissionId)
+                .Distinct()
+                .ToList();
+            var permissions = permissionIds.Select(pid => {
+                var perm = conn.Db.Permission.PermissionId.Find(pid);
+                return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
+            }).Where(p => p != null).ToList();
+
+            // Map to anonymous type including Roles and Permissions
+            var result = new {
+                user.LegacyUserId,
+                user.UserId,
+                user.Login,
+                user.Email,
+                user.PhoneNumber,
+                user.IsActive,
+                CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)user.CreatedAt).DateTime,
+                LastLoginAt = user.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)user.LastLoginAt.Value).DateTime : (DateTime?)null,
+                Roles = roles,
+                Permissions = permissions
+            };
+
             Log.Debug("Successfully retrieved user with ID {UserId}", id);
-            return user;
+            Log.Information("FULL USER DATA: {UserData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpPost]
@@ -201,7 +263,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}/roles")]
-        public async Task<ActionResult<IEnumerable<Role>>> GetUserRoles(uint id)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetUserRoles(uint id)
         {
             if (!IsAdmin() && !HasPermission("users.view.roles"))
             {
@@ -221,12 +283,24 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var roles = await _userService.GetUserRolesAsync(id);
 
-            Log.Information("Retrieved {RoleCount} roles for user {UserId}", roles.Count(), id);
-            return Ok(roles);
+            // Map to anonymous type
+            var result = roles.Select(r => new {
+                r.RoleId,
+                r.LegacyRoleId,
+                r.Name,
+                r.Description,
+                r.IsActive,
+                r.Priority,
+                r.IsSystem
+            }).ToList();
+
+            Log.Information("Retrieved {RoleCount} roles for user {UserId}", result.Count(), id);
+            Log.Information("FULL USER ROLES DATA: {RolesData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpGet("{id}/permissions")]
-        public async Task<ActionResult<IEnumerable<Permission>>> GetUserPermissions(uint id)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetUserPermissions(uint id)
         {
             if (!IsAdmin() && !HasPermission("users.view.permissions"))
             {
@@ -246,8 +320,18 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var permissions = await _userService.GetUserPermissionsAsync(id);
 
-            Log.Information("Retrieved {PermissionCount} permissions for user {UserId}", permissions.Count(), id);
-            return Ok(permissions);
+            // Map to anonymous type
+            var result = permissions.Select(p => new {
+                p.PermissionId,
+                p.Name,
+                p.Description,
+                p.Category,
+                p.IsActive
+            }).ToList();
+
+            Log.Information("Retrieved {PermissionCount} permissions for user {UserId}", result.Count(), id);
+            Log.Information("FULL USER PERMISSIONS DATA: {PermissionsData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpPost("{id}/roles")]
@@ -295,15 +379,21 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("current")]
-        public async Task<ActionResult<UserProfile>> GetCurrentUser()
+        public async Task<ActionResult<dynamic>> GetCurrentUser()
         {
             try
             {
                 var userLogin = User.Identity?.Name;
                 if (string.IsNullOrEmpty(userLogin))
                 {
-                    Log.Warning("No username claim found in token");
-                    return Unauthorized(new { message = "Invalid token: no username claim found" });
+                    // Attempt to get login from other claims if Identity.Name is null
+                    userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? 
+                                User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
+                    if (string.IsNullOrEmpty(userLogin))
+                    {
+                        Log.Warning("No suitable username/login claim found in token. Claims: {@Claims}", User.Claims.Select(c => new { c.Type, c.Value }));
+                        return Unauthorized(new { message = "Invalid token: no suitable username/login claim found" });
+                    }
                 }
 
                 Log.Debug("Looking up user with login: {Login}", userLogin);
@@ -315,8 +405,40 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound(new { message = $"User '{userLogin}' not found" });
                 }
 
+                var conn = _spacetimeService.GetConnection();
+                var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+                var roles = userRoles.Select(ur => {
+                    var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                    return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
+                }).Where(r => r != null).ToList();
+
+                var permissionIds = conn.Db.RolePermission.Iter()
+                    .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+                    .Select(rp => rp.PermissionId)
+                    .Distinct()
+                    .ToList();
+                var permissions = permissionIds.Select(pid => {
+                    var perm = conn.Db.Permission.PermissionId.Find(pid);
+                    return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
+                }).Where(p => p != null).ToList();
+
+                // Map to anonymous type including Roles and Permissions
+                var result = new {
+                    user.LegacyUserId,
+                    user.UserId,
+                    user.Login,
+                    user.Email,
+                    user.PhoneNumber,
+                    user.IsActive,
+                    CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)user.CreatedAt).DateTime,
+                    LastLoginAt = user.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)user.LastLoginAt.Value).DateTime : (DateTime?)null,
+                    Roles = roles,
+                    Permissions = permissions
+                };
+
                 Log.Information("Successfully retrieved current user information for {Username}", user.Login);
-                return user;
+                Log.Information("FULL CURRENT USER DATA: {UserData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {

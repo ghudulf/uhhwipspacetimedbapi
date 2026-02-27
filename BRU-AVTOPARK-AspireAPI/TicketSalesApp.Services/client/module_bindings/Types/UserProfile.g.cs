@@ -13,28 +13,30 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class UserProfile
     {
-        [DataMember(Name = "UserId")]
+        [DataMember(Name = "user_id")]
         public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "LegacyUserId")]
+        [DataMember(Name = "legacy_user_id")]
         public uint LegacyUserId;
-        [DataMember(Name = "XUID")]
+        [DataMember(Name = "xuid")]
         public double? Xuid;
-        [DataMember(Name = "Login")]
+        [DataMember(Name = "login")]
         public string Login;
-        [DataMember(Name = "PasswordHash")]
+        [DataMember(Name = "password_hash")]
         public string? PasswordHash;
-        [DataMember(Name = "Email")]
+        [DataMember(Name = "email")]
         public string? Email;
-        [DataMember(Name = "PhoneNumber")]
+        [DataMember(Name = "phone_number")]
         public string? PhoneNumber;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "is_active")]
         public bool IsActive;
-        [DataMember(Name = "CreatedAt")]
+        [DataMember(Name = "created_at")]
         public ulong CreatedAt;
-        [DataMember(Name = "LastLoginAt")]
+        [DataMember(Name = "last_login_at")]
         public ulong? LastLoginAt;
-        [DataMember(Name = "LegacyGuid")]
+        [DataMember(Name = "legacy_guid")]
         public string? LegacyGuid;
+        [DataMember(Name = "email_confirmed")]
+        public bool? EmailConfirmed;
 
         public UserProfile(
             SpacetimeDB.Identity UserId,
@@ -47,7 +49,8 @@ namespace SpacetimeDB.Types
             bool IsActive,
             ulong CreatedAt,
             ulong? LastLoginAt,
-            string? LegacyGuid
+            string? LegacyGuid,
+            bool? EmailConfirmed
         )
         {
             this.UserId = UserId;
@@ -61,6 +64,7 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.LastLoginAt = LastLoginAt;
             this.LegacyGuid = LegacyGuid;
+            this.EmailConfirmed = EmailConfirmed;
         }
 
         public UserProfile()

@@ -15,7 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class OpenIdConnectGrantHandle : RemoteTableHandle<EventContext, OpenIdConnectGrant>
         {
-            protected override string RemoteTableName => "OpenIdConnectGrant";
+            protected override string RemoteTableName => "open_id_connect_grant";
 
             public sealed class GrantIdUniqueIndex : UniqueIndexBase<string>
             {
@@ -35,5 +35,39 @@ namespace SpacetimeDB.Types
         }
 
         public readonly OpenIdConnectGrantHandle OpenIdConnectGrant;
+    }
+
+    public sealed class OpenIdConnectGrantCols
+    {
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, string> GrantId { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, string> ClientId { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, string> Type { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, System.Collections.Generic.List<string>> Scopes { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, ulong> ExpiresAt { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, bool> IsRevoked { get; }
+
+        public OpenIdConnectGrantCols(string tableName)
+        {
+            GrantId = new global::SpacetimeDB.Col<OpenIdConnectGrant, string>(tableName, "grant_id");
+            ClientId = new global::SpacetimeDB.Col<OpenIdConnectGrant, string>(tableName, "client_id");
+            UserId = new global::SpacetimeDB.Col<OpenIdConnectGrant, SpacetimeDB.Identity>(tableName, "user_id");
+            Type = new global::SpacetimeDB.Col<OpenIdConnectGrant, string>(tableName, "type");
+            Scopes = new global::SpacetimeDB.Col<OpenIdConnectGrant, System.Collections.Generic.List<string>>(tableName, "scopes");
+            CreatedAt = new global::SpacetimeDB.Col<OpenIdConnectGrant, ulong>(tableName, "created_at");
+            ExpiresAt = new global::SpacetimeDB.Col<OpenIdConnectGrant, ulong>(tableName, "expires_at");
+            IsRevoked = new global::SpacetimeDB.Col<OpenIdConnectGrant, bool>(tableName, "is_revoked");
+        }
+    }
+
+    public sealed class OpenIdConnectGrantIxCols
+    {
+        public global::SpacetimeDB.IxCol<OpenIdConnectGrant, string> GrantId { get; }
+
+        public OpenIdConnectGrantIxCols(string tableName)
+        {
+            GrantId = new global::SpacetimeDB.IxCol<OpenIdConnectGrant, string>(tableName, "grant_id");
+        }
     }
 }

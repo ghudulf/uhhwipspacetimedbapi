@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ClaimUserAccountHandler(ReducerEventContext ctx, string login, string password);
+        public delegate void ClaimUserAccountHandler(ReducerEventContext ctx, string login, string password, string? newUserIdentity);
         public event ClaimUserAccountHandler? OnClaimUserAccount;
 
-        public void ClaimUserAccount(string login, string password)
+        public void ClaimUserAccount(string login, string password, string? newUserIdentity)
         {
-            conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password), this.SetCallReducerFlags.ClaimUserAccountFlags);
+            conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password, newUserIdentity));
         }
 
         public bool InvokeClaimUserAccount(ReducerEventContext ctx, Reducer.ClaimUserAccount args)
         {
-            if (OnClaimUserAccount == null) return false;
+            if (OnClaimUserAccount == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnClaimUserAccount(
                 ctx,
                 args.Login,
-                args.Password
+                args.Password,
+                args.NewUserIdentity
             );
             return true;
         }
@@ -42,14 +54,18 @@ namespace SpacetimeDB.Types
             public string Login;
             [DataMember(Name = "password")]
             public string Password;
+            [DataMember(Name = "new_user_identity")]
+            public string? NewUserIdentity;
 
             public ClaimUserAccount(
                 string Login,
-                string Password
+                string Password,
+                string? NewUserIdentity
             )
             {
                 this.Login = Login;
                 this.Password = Password;
+                this.NewUserIdentity = NewUserIdentity;
             }
 
             public ClaimUserAccount()
@@ -58,13 +74,7 @@ namespace SpacetimeDB.Types
                 this.Password = "";
             }
 
-            string IReducerArgs.ReducerName => "ClaimUserAccount";
+            string IReducerArgs.ReducerName => "claim_user_account";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ClaimUserAccountFlags;
-        public void ClaimUserAccount(CallReducerFlags flags) => ClaimUserAccountFlags = flags;
     }
 }

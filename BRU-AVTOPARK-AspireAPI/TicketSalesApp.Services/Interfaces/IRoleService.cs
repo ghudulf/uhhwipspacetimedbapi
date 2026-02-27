@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 
 namespace TicketSalesApp.Services.Interfaces
@@ -15,8 +16,8 @@ namespace TicketSalesApp.Services.Interfaces
         Task<bool> RemoveRoleFromUserAsync(uint userId, uint roleId);
         
         // Role management methods
-        Task<Role?> CreateRoleAsync(string name, string description, int legacyRoleId, uint priority, List<uint>? permissionIds = null, string? createdBy = null);
-        Task<bool> UpdateRoleAsync(uint roleId, string? name = null, string? description = null, uint? priority = null, List<uint>? permissionIds = null, string? updatedBy = null);
-        Task<bool> DeleteRoleAsync(uint roleId);
+        Task<Role?> CreateRoleAsync(string name, string description, int legacyRoleId, uint priority, List<uint>? permissionIds = null, string? createdBy = null, Identity? actingUser = null);
+        Task<bool> UpdateRoleAsync(uint roleId, string? name = null, string? description = null, uint? priority = null, List<uint>? permissionIds = null, string? updatedBy = null, Identity? actingUser = null);
+        Task<bool> DeleteRoleAsync(uint roleId, Identity? actingUser = null);
     }
 }

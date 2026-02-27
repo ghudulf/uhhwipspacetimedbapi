@@ -13,46 +13,70 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class OpenIdConnect
     {
-        [DataMember(Name = "ClientId")]
+        [DataMember(Name = "client_id")]
         public string ClientId;
-        [DataMember(Name = "ClientSecret")]
+        [DataMember(Name = "client_secret")]
         public string ClientSecret;
-        [DataMember(Name = "RedirectUris")]
+        [DataMember(Name = "display_name")]
+        public string DisplayName;
+        [DataMember(Name = "redirect_uris")]
         public System.Collections.Generic.List<string> RedirectUris;
-        [DataMember(Name = "AllowedScopes")]
+        [DataMember(Name = "post_logout_redirect_uris")]
+        public System.Collections.Generic.List<string> PostLogoutRedirectUris;
+        [DataMember(Name = "allowed_scopes")]
         public System.Collections.Generic.List<string> AllowedScopes;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "consent_type")]
+        public string ConsentType;
+        [DataMember(Name = "client_type")]
+        public string ClientType;
+        [DataMember(Name = "is_active")]
         public bool IsActive;
-        [DataMember(Name = "CreatedAt")]
+        [DataMember(Name = "created_at")]
         public ulong CreatedAt;
-        [DataMember(Name = "CreatedBy")]
+        [DataMember(Name = "created_by")]
         public string? CreatedBy;
+        [DataMember(Name = "require_consent")]
+        public bool RequireConsent;
 
         public OpenIdConnect(
             string ClientId,
             string ClientSecret,
+            string DisplayName,
             System.Collections.Generic.List<string> RedirectUris,
+            System.Collections.Generic.List<string> PostLogoutRedirectUris,
             System.Collections.Generic.List<string> AllowedScopes,
+            string ConsentType,
+            string ClientType,
             bool IsActive,
             ulong CreatedAt,
-            string? CreatedBy
+            string? CreatedBy,
+            bool RequireConsent
         )
         {
             this.ClientId = ClientId;
             this.ClientSecret = ClientSecret;
+            this.DisplayName = DisplayName;
             this.RedirectUris = RedirectUris;
+            this.PostLogoutRedirectUris = PostLogoutRedirectUris;
             this.AllowedScopes = AllowedScopes;
+            this.ConsentType = ConsentType;
+            this.ClientType = ClientType;
             this.IsActive = IsActive;
             this.CreatedAt = CreatedAt;
             this.CreatedBy = CreatedBy;
+            this.RequireConsent = RequireConsent;
         }
 
         public OpenIdConnect()
         {
             this.ClientId = "";
             this.ClientSecret = "";
+            this.DisplayName = "";
             this.RedirectUris = new();
+            this.PostLogoutRedirectUris = new();
             this.AllowedScopes = new();
+            this.ConsentType = "";
+            this.ClientType = "";
         }
     }
 }

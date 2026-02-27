@@ -15,7 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class OpenIdConnectHandle : RemoteTableHandle<EventContext, OpenIdConnect>
         {
-            protected override string RemoteTableName => "OpenIdConnect";
+            protected override string RemoteTableName => "open_id_connect";
 
             public sealed class ClientIdUniqueIndex : UniqueIndexBase<string>
             {
@@ -35,5 +35,47 @@ namespace SpacetimeDB.Types
         }
 
         public readonly OpenIdConnectHandle OpenIdConnect;
+    }
+
+    public sealed class OpenIdConnectCols
+    {
+        public global::SpacetimeDB.Col<OpenIdConnect, string> ClientId { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, string> ClientSecret { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, string> DisplayName { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>> RedirectUris { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>> PostLogoutRedirectUris { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>> AllowedScopes { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, string> ConsentType { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, string> ClientType { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.NullableCol<OpenIdConnect, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, bool> RequireConsent { get; }
+
+        public OpenIdConnectCols(string tableName)
+        {
+            ClientId = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "client_id");
+            ClientSecret = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "client_secret");
+            DisplayName = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "display_name");
+            RedirectUris = new global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>>(tableName, "redirect_uris");
+            PostLogoutRedirectUris = new global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>>(tableName, "post_logout_redirect_uris");
+            AllowedScopes = new global::SpacetimeDB.Col<OpenIdConnect, System.Collections.Generic.List<string>>(tableName, "allowed_scopes");
+            ConsentType = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "consent_type");
+            ClientType = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "client_type");
+            IsActive = new global::SpacetimeDB.Col<OpenIdConnect, bool>(tableName, "is_active");
+            CreatedAt = new global::SpacetimeDB.Col<OpenIdConnect, ulong>(tableName, "created_at");
+            CreatedBy = new global::SpacetimeDB.NullableCol<OpenIdConnect, string>(tableName, "created_by");
+            RequireConsent = new global::SpacetimeDB.Col<OpenIdConnect, bool>(tableName, "require_consent");
+        }
+    }
+
+    public sealed class OpenIdConnectIxCols
+    {
+        public global::SpacetimeDB.IxCol<OpenIdConnect, string> ClientId { get; }
+
+        public OpenIdConnectIxCols(string tableName)
+        {
+            ClientId = new global::SpacetimeDB.IxCol<OpenIdConnect, string>(tableName, "client_id");
+        }
     }
 }

@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void UseQrSession(string sessionId)
         {
-            conn.InternalCallReducer(new Reducer.UseQrSession(sessionId), this.SetCallReducerFlags.UseQrSessionFlags);
+            conn.InternalCallReducer(new Reducer.UseQrSession(sessionId));
         }
 
         public bool InvokeUseQrSession(ReducerEventContext ctx, Reducer.UseQrSession args)
         {
-            if (OnUseQrSession == null) return false;
+            if (OnUseQrSession == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUseQrSession(
                 ctx,
                 args.SessionId
@@ -37,7 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UseQrSession : Reducer, IReducerArgs
         {
-            [DataMember(Name = "sessionId")]
+            [DataMember(Name = "session_id")]
             public string SessionId;
 
             public UseQrSession(string SessionId)
@@ -50,13 +61,7 @@ namespace SpacetimeDB.Types
                 this.SessionId = "";
             }
 
-            string IReducerArgs.ReducerName => "UseQRSession";
+            string IReducerArgs.ReducerName => "use_qr_session";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UseQrSessionFlags;
-        public void UseQrSession(CallReducerFlags flags) => UseQrSessionFlags = flags;
     }
 }

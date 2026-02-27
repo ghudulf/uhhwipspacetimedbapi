@@ -12,24 +12,36 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateRoleReducerHandler(ReducerEventContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority);
+        public delegate void CreateRoleReducerHandler(ReducerEventContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority, SpacetimeDB.Identity? actingUserId);
         public event CreateRoleReducerHandler? OnCreateRoleReducer;
 
-        public void CreateRoleReducer(int legacyRoleId, string name, string description, bool isSystem, uint priority)
+        public void CreateRoleReducer(int legacyRoleId, string name, string description, bool isSystem, uint priority, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.CreateRoleReducer(legacyRoleId, name, description, isSystem, priority), this.SetCallReducerFlags.CreateRoleReducerFlags);
+            conn.InternalCallReducer(new Reducer.CreateRoleReducer(legacyRoleId, name, description, isSystem, priority, actingUserId));
         }
 
         public bool InvokeCreateRoleReducer(ReducerEventContext ctx, Reducer.CreateRoleReducer args)
         {
-            if (OnCreateRoleReducer == null) return false;
+            if (OnCreateRoleReducer == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateRoleReducer(
                 ctx,
                 args.LegacyRoleId,
                 args.Name,
                 args.Description,
                 args.IsSystem,
-                args.Priority
+                args.Priority,
+                args.ActingUserId
             );
             return true;
         }
@@ -41,23 +53,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateRoleReducer : Reducer, IReducerArgs
         {
-            [DataMember(Name = "legacyRoleId")]
+            [DataMember(Name = "legacy_role_id")]
             public int LegacyRoleId;
             [DataMember(Name = "name")]
             public string Name;
             [DataMember(Name = "description")]
             public string Description;
-            [DataMember(Name = "isSystem")]
+            [DataMember(Name = "is_system")]
             public bool IsSystem;
             [DataMember(Name = "priority")]
             public uint Priority;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public CreateRoleReducer(
                 int LegacyRoleId,
                 string Name,
                 string Description,
                 bool IsSystem,
-                uint Priority
+                uint Priority,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.LegacyRoleId = LegacyRoleId;
@@ -65,6 +80,7 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.IsSystem = IsSystem;
                 this.Priority = Priority;
+                this.ActingUserId = ActingUserId;
             }
 
             public CreateRoleReducer()
@@ -73,13 +89,7 @@ namespace SpacetimeDB.Types
                 this.Description = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateRoleReducer";
+            string IReducerArgs.ReducerName => "create_role_reducer";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateRoleReducerFlags;
-        public void CreateRoleReducer(CallReducerFlags flags) => CreateRoleReducerFlags = flags;
     }
 }

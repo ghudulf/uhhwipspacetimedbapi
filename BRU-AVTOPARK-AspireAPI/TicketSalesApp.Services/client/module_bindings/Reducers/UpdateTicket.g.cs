@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateTicketHandler(ReducerEventContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive);
+        public delegate void UpdateTicketHandler(ReducerEventContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateTicketHandler? OnUpdateTicket;
 
-        public void UpdateTicket(uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive)
+        public void UpdateTicket(uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive), this.SetCallReducerFlags.UpdateTicketFlags);
+            conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive, actingUser));
         }
 
         public bool InvokeUpdateTicket(ReducerEventContext ctx, Reducer.UpdateTicket args)
         {
-            if (OnUpdateTicket == null) return false;
+            if (OnUpdateTicket == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateTicket(
                 ctx,
                 args.TicketId,
@@ -30,7 +41,8 @@ namespace SpacetimeDB.Types
                 args.SeatNumber,
                 args.TicketPrice,
                 args.PaymentMethod,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -42,18 +54,20 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateTicket : Reducer, IReducerArgs
         {
-            [DataMember(Name = "ticketId")]
+            [DataMember(Name = "ticket_id")]
             public uint TicketId;
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint? RouteId;
-            [DataMember(Name = "seatNumber")]
+            [DataMember(Name = "seat_number")]
             public uint? SeatNumber;
-            [DataMember(Name = "ticketPrice")]
+            [DataMember(Name = "ticket_price")]
             public double? TicketPrice;
-            [DataMember(Name = "paymentMethod")]
+            [DataMember(Name = "payment_method")]
             public string? PaymentMethod;
-            [DataMember(Name = "isActive")]
+            [DataMember(Name = "is_active")]
             public bool? IsActive;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateTicket(
                 uint TicketId,
@@ -61,7 +75,8 @@ namespace SpacetimeDB.Types
                 uint? SeatNumber,
                 double? TicketPrice,
                 string? PaymentMethod,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.TicketId = TicketId;
@@ -70,19 +85,14 @@ namespace SpacetimeDB.Types
                 this.TicketPrice = TicketPrice;
                 this.PaymentMethod = PaymentMethod;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateTicket()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateTicket";
+            string IReducerArgs.ReducerName => "update_ticket";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateTicketFlags;
-        public void UpdateTicket(CallReducerFlags flags) => UpdateTicketFlags = flags;
     }
 }

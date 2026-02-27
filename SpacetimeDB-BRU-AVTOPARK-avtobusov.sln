@@ -4,7 +4,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StdbModule", "server\StdbModule.csproj", "{4681FD5F-785F-8066-C1E6-5F07AE19C97C}"
 EndProject
-
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketSalesApp.Services", "BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\TicketSalesApp.Services.csproj", "{87534463-19F1-0FFC-5AC1-740329962CDB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.ServiceDefaults", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj", "{675E730F-1E60-5575-F5F1-8225AECCA10E}"
@@ -12,6 +11,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.AppHost", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\BRU-AVTOPARK-AspireAPI.AppHost.csproj", "{E13606D9-1876-EFEF-26A5-62278C616ECC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.ApiService", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\BRU-AVTOPARK-AspireAPI.ApiService.csproj", "{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Web.BRU.TicketSalesApp", "Web.BRU.TicketSalesApp\Web.BRU.TicketSalesApp.csproj", "{59EBC05A-F79B-4E42-8881-BBDA77735814}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity", "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj", "{70248FFA-2E02-A9E6-C95A-3B46EA07AE22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop", "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj", "{AD6E3A88-BCF9-FACB-69ED-5A66513CFE73}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +28,6 @@ Global
 		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87534463-19F1-0FFC-5AC1-740329962CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87534463-19F1-0FFC-5AC1-740329962CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87534463-19F1-0FFC-5AC1-740329962CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -43,6 +44,18 @@ Global
 		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59EBC05A-F79B-4E42-8881-BBDA77735814}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59EBC05A-F79B-4E42-8881-BBDA77735814}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59EBC05A-F79B-4E42-8881-BBDA77735814}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59EBC05A-F79B-4E42-8881-BBDA77735814}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70248FFA-2E02-A9E6-C95A-3B46EA07AE22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70248FFA-2E02-A9E6-C95A-3B46EA07AE22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70248FFA-2E02-A9E6-C95A-3B46EA07AE22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70248FFA-2E02-A9E6-C95A-3B46EA07AE22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD6E3A88-BCF9-FACB-69ED-5A66513CFE73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD6E3A88-BCF9-FACB-69ED-5A66513CFE73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD6E3A88-BCF9-FACB-69ED-5A66513CFE73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD6E3A88-BCF9-FACB-69ED-5A66513CFE73}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

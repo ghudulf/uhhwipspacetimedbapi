@@ -13,19 +13,19 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class AdminActionLog
     {
-        [DataMember(Name = "LogId")]
+        [DataMember(Name = "log_id")]
         public uint LogId;
-        [DataMember(Name = "UserId")]
+        [DataMember(Name = "user_id")]
         public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "Action")]
+        [DataMember(Name = "action")]
         public string Action;
-        [DataMember(Name = "Details")]
+        [DataMember(Name = "details")]
         public string Details;
-        [DataMember(Name = "Timestamp")]
+        [DataMember(Name = "timestamp")]
         public ulong Timestamp;
-        [DataMember(Name = "IpAddress")]
+        [DataMember(Name = "ip_address")]
         public string? IpAddress;
-        [DataMember(Name = "UserAgent")]
+        [DataMember(Name = "user_agent")]
         public string? UserAgent;
 
         public AdminActionLog(

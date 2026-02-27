@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer, string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage);
+        public delegate void UpdateMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer, string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage, SpacetimeDB.Identity? actingUser);
         public event UpdateMaintenanceHandler? OnUpdateMaintenance;
 
-        public void UpdateMaintenance(uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer, string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage)
+        public void UpdateMaintenance(uint maintenanceId, uint? busId, ulong? lastServiceDate, string? serviceEngineer, string? foundIssues, ulong? nextServiceDate, string? roadworthiness, string? maintenanceType, string? mileage, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateMaintenance(maintenanceId, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage), this.SetCallReducerFlags.UpdateMaintenanceFlags);
+            conn.InternalCallReducer(new Reducer.UpdateMaintenance(maintenanceId, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage, actingUser));
         }
 
         public bool InvokeUpdateMaintenance(ReducerEventContext ctx, Reducer.UpdateMaintenance args)
         {
-            if (OnUpdateMaintenance == null) return false;
+            if (OnUpdateMaintenance == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateMaintenance(
                 ctx,
                 args.MaintenanceId,
@@ -33,7 +44,8 @@ namespace SpacetimeDB.Types
                 args.NextServiceDate,
                 args.Roadworthiness,
                 args.MaintenanceType,
-                args.Mileage
+                args.Mileage,
+                args.ActingUser
             );
             return true;
         }
@@ -45,24 +57,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateMaintenance : Reducer, IReducerArgs
         {
-            [DataMember(Name = "maintenanceId")]
+            [DataMember(Name = "maintenance_id")]
             public uint MaintenanceId;
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint? BusId;
-            [DataMember(Name = "lastServiceDate")]
+            [DataMember(Name = "last_service_date")]
             public ulong? LastServiceDate;
-            [DataMember(Name = "serviceEngineer")]
+            [DataMember(Name = "service_engineer")]
             public string? ServiceEngineer;
-            [DataMember(Name = "foundIssues")]
+            [DataMember(Name = "found_issues")]
             public string? FoundIssues;
-            [DataMember(Name = "nextServiceDate")]
+            [DataMember(Name = "next_service_date")]
             public ulong? NextServiceDate;
             [DataMember(Name = "roadworthiness")]
             public string? Roadworthiness;
-            [DataMember(Name = "maintenanceType")]
+            [DataMember(Name = "maintenance_type")]
             public string? MaintenanceType;
             [DataMember(Name = "mileage")]
             public string? Mileage;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateMaintenance(
                 uint MaintenanceId,
@@ -73,7 +87,8 @@ namespace SpacetimeDB.Types
                 ulong? NextServiceDate,
                 string? Roadworthiness,
                 string? MaintenanceType,
-                string? Mileage
+                string? Mileage,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.MaintenanceId = MaintenanceId;
@@ -85,19 +100,14 @@ namespace SpacetimeDB.Types
                 this.Roadworthiness = Roadworthiness;
                 this.MaintenanceType = MaintenanceType;
                 this.Mileage = Mileage;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateMaintenance()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateMaintenance";
+            string IReducerArgs.ReducerName => "update_maintenance";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateMaintenanceFlags;
-        public void UpdateMaintenance(CallReducerFlags flags) => UpdateMaintenanceFlags = flags;
     }
 }

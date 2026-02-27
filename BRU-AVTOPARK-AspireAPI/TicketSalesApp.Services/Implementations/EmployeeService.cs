@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
 using System.Collections.Generic;
@@ -56,9 +57,25 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving employees by job ID: {JobId}", jobId);
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Employee.Iter()
-                    .Where(e => e.JobId == jobId)
-                    .ToList();
+                
+                // Add detailed logging before ToList()
+                var filteredEmployees = connection.Db.Employee.Iter()
+                    .Where(e => e.JobId == jobId);
+                
+                _logger.LogDebug("Employees matching JobId {JobId} before ToList():", jobId);
+                foreach (var emp in filteredEmployees) // Iterate before ToList to log IDs
+                {
+                    _logger.LogDebug("- EmployeeId: {EmployeeId}, Name: {Surname}, JobId: {JobId}", emp.EmployeeId, emp.Surname, emp.JobId);
+                    if (emp.EmployeeId == 0)
+                    {
+                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId} before ToList()!", jobId);
+                    }
+                }
+                
+                var resultList = filteredEmployees.ToList();
+                _logger.LogDebug("Final list count for JobId {JobId}: {Count}", jobId, resultList.Count);
+                
+                return resultList;
             }
             catch (Exception ex)
             {
@@ -67,7 +84,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId)
+        public async Task<bool> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
         {
             try
             {
@@ -83,7 +100,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the CreateEmployee reducer
-                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);
+                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);// doesent need active user 
                 
                 return true;
             }
@@ -94,7 +111,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateEmployeeAsync(uint employeeId, string? employeeName = null, string? employeeSurname = null, string? employeePatronym = null, uint? jobId = null)
+        public async Task<bool> UpdateEmployeeAsync(uint employeeId, string? employeeName = null, string? employeeSurname = null, string? employeePatronym = null, uint? jobId = null, Identity? actingUser = null)
         {
             try
             {
@@ -126,7 +143,8 @@ namespace TicketSalesApp.Services.Implementations
                     employeeName ?? employee.Name,
                     employeeSurname ?? employee.Surname,
                     employeePatronym ?? employee.Patronym,
-                    jobId ?? employee.JobId
+                    jobId ?? employee.JobId,
+                    actingUser
                 );
 
                 return true;
@@ -138,7 +156,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteEmployeeAsync(uint employeeId)
+        public async Task<bool> DeleteEmployeeAsync(uint employeeId, Identity? actingUser = null)
         {
             try
             {
@@ -164,7 +182,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteEmployee reducer
-                connection.Reducers.DeleteEmployee(employeeId);
+                connection.Reducers.DeleteEmployee(employeeId, actingUser);
 
                 return true;
             }
@@ -206,7 +224,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateJobAsync(string jobTitle, string jobInternship)
+        public async Task<bool> CreateJobAsync(string jobTitle, string jobInternship, Identity? actingUser = null)
         {
             try
             {
@@ -222,7 +240,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the CreateJob reducer
-                connection.Reducers.CreateJob(jobTitle, jobInternship);
+                connection.Reducers.CreateJob(jobTitle, jobInternship); // does not need active user
 
                 return true;
             }
@@ -233,7 +251,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateJobAsync(uint jobId, string? jobTitle = null, string? jobInternship = null)
+        public async Task<bool> UpdateJobAsync(uint jobId, string? jobTitle = null, string? jobInternship = null, Identity? actingUser = null)
         {
             try
             {
@@ -263,7 +281,8 @@ namespace TicketSalesApp.Services.Implementations
                 connection.Reducers.UpdateJob(
                     jobId,
                     jobTitle ?? job.JobTitle,
-                    jobInternship ?? job.Internship
+                    jobInternship ?? job.Internship,
+                    actingUser
                 );
 
                 return true;
@@ -275,7 +294,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteJobAsync(uint jobId)
+        public async Task<bool> DeleteJobAsync(uint jobId, Identity? actingUser = null)
         {
             try
             {
@@ -301,7 +320,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteJob reducer
-                connection.Reducers.DeleteJob(jobId);
+                connection.Reducers.DeleteJob(jobId, actingUser);
 
                 return true;
             }

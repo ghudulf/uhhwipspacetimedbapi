@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ActivateBusHandler(ReducerEventContext ctx, uint busId);
+        public delegate void ActivateBusHandler(ReducerEventContext ctx, uint busId, SpacetimeDB.Identity? actingUser);
         public event ActivateBusHandler? OnActivateBus;
 
-        public void ActivateBus(uint busId)
+        public void ActivateBus(uint busId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.ActivateBus(busId), this.SetCallReducerFlags.ActivateBusFlags);
+            conn.InternalCallReducer(new Reducer.ActivateBus(busId, actingUser));
         }
 
         public bool InvokeActivateBus(ReducerEventContext ctx, Reducer.ActivateBus args)
         {
-            if (OnActivateBus == null) return false;
+            if (OnActivateBus == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnActivateBus(
                 ctx,
-                args.BusId
+                args.BusId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ActivateBus : Reducer, IReducerArgs
         {
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint BusId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public ActivateBus(uint BusId)
+            public ActivateBus(
+                uint BusId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.BusId = BusId;
+                this.ActingUser = ActingUser;
             }
 
             public ActivateBus()
             {
             }
 
-            string IReducerArgs.ReducerName => "ActivateBus";
+            string IReducerArgs.ReducerName => "activate_bus";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ActivateBusFlags;
-        public void ActivateBus(CallReducerFlags flags) => ActivateBusFlags = flags;
     }
 }

@@ -12,22 +12,34 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateJobHandler(ReducerEventContext ctx, uint jobId, string? jobTitle, string? internship);
+        public delegate void UpdateJobHandler(ReducerEventContext ctx, uint jobId, string? jobTitle, string? internship, SpacetimeDB.Identity? actingUser);
         public event UpdateJobHandler? OnUpdateJob;
 
-        public void UpdateJob(uint jobId, string? jobTitle, string? internship)
+        public void UpdateJob(uint jobId, string? jobTitle, string? internship, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship), this.SetCallReducerFlags.UpdateJobFlags);
+            conn.InternalCallReducer(new Reducer.UpdateJob(jobId, jobTitle, internship, actingUser));
         }
 
         public bool InvokeUpdateJob(ReducerEventContext ctx, Reducer.UpdateJob args)
         {
-            if (OnUpdateJob == null) return false;
+            if (OnUpdateJob == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateJob(
                 ctx,
                 args.JobId,
                 args.JobTitle,
-                args.Internship
+                args.Internship,
+                args.ActingUser
             );
             return true;
         }
@@ -39,35 +51,33 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateJob : Reducer, IReducerArgs
         {
-            [DataMember(Name = "jobId")]
+            [DataMember(Name = "job_id")]
             public uint JobId;
-            [DataMember(Name = "jobTitle")]
+            [DataMember(Name = "job_title")]
             public string? JobTitle;
             [DataMember(Name = "internship")]
             public string? Internship;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateJob(
                 uint JobId,
                 string? JobTitle,
-                string? Internship
+                string? Internship,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.JobId = JobId;
                 this.JobTitle = JobTitle;
                 this.Internship = Internship;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateJob()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateJob";
+            string IReducerArgs.ReducerName => "update_job";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateJobFlags;
-        public void UpdateJob(CallReducerFlags flags) => UpdateJobFlags = flags;
     }
 }

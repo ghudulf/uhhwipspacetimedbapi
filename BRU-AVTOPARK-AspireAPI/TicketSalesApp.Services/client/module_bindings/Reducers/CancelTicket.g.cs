@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CancelTicketHandler(ReducerEventContext ctx, uint ticketId);
+        public delegate void CancelTicketHandler(ReducerEventContext ctx, uint ticketId, SpacetimeDB.Identity? actingUser);
         public event CancelTicketHandler? OnCancelTicket;
 
-        public void CancelTicket(uint ticketId)
+        public void CancelTicket(uint ticketId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CancelTicket(ticketId), this.SetCallReducerFlags.CancelTicketFlags);
+            conn.InternalCallReducer(new Reducer.CancelTicket(ticketId, actingUser));
         }
 
         public bool InvokeCancelTicket(ReducerEventContext ctx, Reducer.CancelTicket args)
         {
-            if (OnCancelTicket == null) return false;
+            if (OnCancelTicket == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCancelTicket(
                 ctx,
-                args.TicketId
+                args.TicketId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CancelTicket : Reducer, IReducerArgs
         {
-            [DataMember(Name = "ticketId")]
+            [DataMember(Name = "ticket_id")]
             public uint TicketId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public CancelTicket(uint TicketId)
+            public CancelTicket(
+                uint TicketId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.TicketId = TicketId;
+                this.ActingUser = ActingUser;
             }
 
             public CancelTicket()
             {
             }
 
-            string IReducerArgs.ReducerName => "CancelTicket";
+            string IReducerArgs.ReducerName => "cancel_ticket";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CancelTicketFlags;
-        public void CancelTicket(CallReducerFlags flags) => CancelTicketFlags = flags;
     }
 }

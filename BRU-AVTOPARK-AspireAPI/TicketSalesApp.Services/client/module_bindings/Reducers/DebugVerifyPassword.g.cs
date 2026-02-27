@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void DebugVerifyPassword(string password, string storedHash)
         {
-            conn.InternalCallReducer(new Reducer.DebugVerifyPassword(password, storedHash), this.SetCallReducerFlags.DebugVerifyPasswordFlags);
+            conn.InternalCallReducer(new Reducer.DebugVerifyPassword(password, storedHash));
         }
 
         public bool InvokeDebugVerifyPassword(ReducerEventContext ctx, Reducer.DebugVerifyPassword args)
         {
-            if (OnDebugVerifyPassword == null) return false;
+            if (OnDebugVerifyPassword == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDebugVerifyPassword(
                 ctx,
                 args.Password,
@@ -40,7 +51,7 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "password")]
             public string Password;
-            [DataMember(Name = "storedHash")]
+            [DataMember(Name = "stored_hash")]
             public string StoredHash;
 
             public DebugVerifyPassword(
@@ -58,13 +69,7 @@ namespace SpacetimeDB.Types
                 this.StoredHash = "";
             }
 
-            string IReducerArgs.ReducerName => "DebugVerifyPassword";
+            string IReducerArgs.ReducerName => "debug_verify_password";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DebugVerifyPasswordFlags;
-        public void DebugVerifyPassword(CallReducerFlags flags) => DebugVerifyPasswordFlags = flags;
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
 using System.Collections.Generic;
@@ -40,8 +41,21 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving ticket by ID: {TicketId}", ticketId);
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.TicketId == ticketId);
+                
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                Ticket? matchingTicket = null;
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.TicketId == ticketId)
+                    {
+                        matchingTicket = ticket;
+                        break;
+                    }
+                }
+                
+                return matchingTicket;
             }
             catch (Exception ex)
             {
@@ -56,9 +70,20 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving tickets for route: {RouteId}", routeId);
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Ticket.Iter()
-                    .Where(t => t.RouteId == routeId)
-                    .ToList();
+                
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                List<Ticket> matchingTickets = new List<Ticket>();
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.RouteId == routeId)
+                    {
+                        matchingTickets.Add(ticket);
+                    }
+                }
+                
+                return matchingTickets;
             }
             catch (Exception ex)
             {
@@ -73,9 +98,12 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving tickets for passenger: {PassengerId}", passengerId);
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Ticket.Iter()
-                    //.Where(t => t.PassengerId == passengerId) // This line will be removed
-                    .ToList();
+                
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                // This is just returning all tickets since PassengerId field was removed
+                return allTickets;
             }
             catch (Exception ex)
             {
@@ -84,26 +112,47 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateTicketAsync(uint routeId, uint seatNumber, double ticketPrice, string paymentMethod, ulong purchaseTime)
+        public async Task<bool> CreateTicketAsync(uint routeId, uint seatNumber, double ticketPrice, string paymentMethod, ulong purchaseTime,Identity loggedinuser)
         {
             try
             {
                 _logger.LogInformation("Creating ticket for route {RouteId}", routeId); // Removed passengerId
                 var connection = _spacetimeDBService.GetConnection();
 
-                var route = connection.Db.Route.Iter()
-                    .FirstOrDefault(r => r.RouteId == routeId);
+                var allRoutes = connection.Db.Route.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total routes from database", allRoutes.Count);
+                
+                Route? route = null;
+                foreach (var r in allRoutes)
+                {
+                    if (r.RouteId == routeId)
+                    {
+                        route = r;
+                        break;
+                    }
+                }
+                
                 if (route == null)
                 {
                     _logger.LogWarning("Route not found: {RouteId}", routeId);
                     return false;
                 }
 
-                // Removed passengerId related code
                 // Check if seat is available
-                var existingTicket = connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.RouteId == routeId && t.SeatNumber == seatNumber);
-                if (existingTicket != null)
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                bool seatTaken = false;
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.RouteId == routeId && ticket.SeatNumber == seatNumber)
+                    {
+                        seatTaken = true;
+                        break;
+                    }
+                }
+                
+                if (seatTaken)
                 {
                     _logger.LogWarning("Seat {SeatNumber} is already taken on route {RouteId}", seatNumber, routeId);
                     return false;
@@ -116,7 +165,8 @@ namespace TicketSalesApp.Services.Implementations
                     seatNumber, // Removed passengerId
                     
                     paymentMethod,
-                    (ulong?)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() // PurchaseTime
+                    (ulong?)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), // PurchaseTime
+                    loggedinuser// logged in identity
 
 
 
@@ -131,15 +181,26 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateTicketAsync(uint ticketId, uint? routeId = null, double? ticketPrice = null, uint? seatNumber = null, string? paymentMethod = null, bool? isActive = null, ulong? updatedAt = null, string? updatedBy = null)
+        public async Task<bool> UpdateTicketAsync(uint ticketId, uint? routeId = null, double? ticketPrice = null, uint? seatNumber = null, string? paymentMethod = null, bool? isActive = null, ulong? updatedAt = null, string? updatedBy = null, Identity? actingUser = null)
         {
             try
             {
                 _logger.LogInformation("Updating ticket: {TicketId}", ticketId);
                 var connection = _spacetimeDBService.GetConnection();
                 
-                var ticket = connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.TicketId == ticketId);
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                Ticket? ticket = null;
+                foreach (var t in allTickets)
+                {
+                    if (t.TicketId == ticketId)
+                    {
+                        ticket = t;
+                        break;
+                    }
+                }
+                
                 if (ticket == null)
                 {
                     _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
@@ -149,11 +210,19 @@ namespace TicketSalesApp.Services.Implementations
                 if (seatNumber.HasValue)
                 {
                     // Check if new seat is available
-                    var existingTicket = connection.Db.Ticket.Iter()
-                        .FirstOrDefault(t => t.RouteId == ticket.RouteId && 
-                                           t.SeatNumber == seatNumber.Value &&
-                                           t.TicketId != ticketId);
-                    if (existingTicket != null)
+                    bool seatTaken = false;
+                    foreach (var t in allTickets)
+                    {
+                        if (t.RouteId == ticket.RouteId && 
+                            t.SeatNumber == seatNumber.Value &&
+                            t.TicketId != ticketId)
+                        {
+                            seatTaken = true;
+                            break;
+                        }
+                    }
+                    
+                    if (seatTaken)
                     {
                         _logger.LogWarning("Seat {SeatNumber} is already taken on route {RouteId}", seatNumber.Value, ticket.RouteId);
                         return false;
@@ -167,7 +236,8 @@ namespace TicketSalesApp.Services.Implementations
                     seatNumber ?? ticket.SeatNumber,
                     ticketPrice ?? ticket.TicketPrice,
                     paymentMethod ?? ticket.PaymentMethod,
-                    isActive // Pass the isActive parameter directly
+                    isActive, // Pass the isActive parameter directly
+                    actingUser
                 );
 
                 return true;
@@ -179,15 +249,26 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteTicketAsync(uint ticketId)
+        public async Task<bool> DeleteTicketAsync(uint ticketId, Identity? actingUser = null)
         {
             try
             {
                 _logger.LogInformation("Deleting ticket: {TicketId}", ticketId);
                 var connection = _spacetimeDBService.GetConnection();
                 
-                var ticket = connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.TicketId == ticketId);
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                Ticket? ticket = null;
+                foreach (var t in allTickets)
+                {
+                    if (t.TicketId == ticketId)
+                    {
+                        ticket = t;
+                        break;
+                    }
+                }
+                
                 if (ticket == null)
                 {
                     _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
@@ -195,7 +276,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteTicket reducer
-                connection.Reducers.DeleteTicket(ticketId);
+                connection.Reducers.DeleteTicket(ticketId, actingUser);
 
                 return true;
             }
@@ -212,9 +293,20 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Retrieving active tickets");
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Ticket.Iter()
-                    .Where(t => t.IsActive)
-                    .ToList();
+                
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                List<Ticket> activeTickets = new List<Ticket>();
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.IsActive)
+                    {
+                        activeTickets.Add(ticket);
+                    }
+                }
+                
+                return activeTickets;
             }
             catch (Exception ex)
             {
@@ -232,10 +324,23 @@ namespace TicketSalesApp.Services.Implementations
                     DateTimeOffset.FromUnixTimeMilliseconds((long)endDate).ToString());
                 
                 var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Ticket.Iter()
-                    .Where(t => t.PurchaseTime >= startDate && t.PurchaseTime <= endDate)
-                    .OrderBy(t => t.PurchaseTime)
-                    .ToList();
+                
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                List<Ticket> matchingTickets = new List<Ticket>();
+                foreach (var ticket in allTickets)
+                {
+                    if (ticket.PurchaseTime >= startDate && ticket.PurchaseTime <= endDate)
+                    {
+                        matchingTickets.Add(ticket);
+                    }
+                }
+                
+                // Sort by purchase time
+                matchingTickets.Sort((a, b) => a.PurchaseTime.CompareTo(b.PurchaseTime));
+                
+                return matchingTickets;
             }
             catch (Exception ex)
             {
@@ -246,15 +351,26 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CancelTicketAsync(uint ticketId)
+        public async Task<bool> CancelTicketAsync(uint ticketId, Identity? actingUser = null)
         {
             try
             {
                 _logger.LogInformation("Cancelling ticket: {TicketId}", ticketId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var ticket = connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.TicketId == ticketId);
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                Ticket? ticket = null;
+                foreach (var t in allTickets)
+                {
+                    if (t.TicketId == ticketId)
+                    {
+                        ticket = t;
+                        break;
+                    }
+                }
+                
                 if (ticket == null)
                 {
                     _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
@@ -262,7 +378,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the CancelTicket reducer
-                connection.Reducers.CancelTicket(ticketId);
+                connection.Reducers.CancelTicket(ticketId, actingUser);
 
                 return true;
             }
@@ -280,8 +396,19 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Creating sale for ticket: {TicketId}", ticketId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var ticket = connection.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.TicketId == ticketId);
+                var allTickets = connection.Db.Ticket.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total tickets from database", allTickets.Count);
+                
+                Ticket? ticket = null;
+                foreach (var t in allTickets)
+                {
+                    if (t.TicketId == ticketId)
+                    {
+                        ticket = t;
+                        break;
+                    }
+                }
+                
                 if (ticket == null)
                 {   
                     _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
@@ -313,8 +440,19 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Updating sale: {SaleId}", saleId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var sale = connection.Db.Sale.Iter()
-                    .FirstOrDefault(s => s.SaleId == saleId);
+                var allSales = connection.Db.Sale.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total sales from database", allSales.Count);
+                
+                Sale? sale = null;
+                foreach (var s in allSales)
+                {
+                    if (s.SaleId == saleId)
+                    {
+                        sale = s;
+                        break;
+                    }
+                }
+                
                 if (sale == null)
                 {
                     _logger.LogWarning("Sale not found: {SaleId}", saleId);
@@ -346,8 +484,19 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Deleting sale: {SaleId}", saleId);
                 var connection = _spacetimeDBService.GetConnection();
 
-                var sale = connection.Db.Sale.Iter()
-                    .FirstOrDefault(s => s.SaleId == saleId);
+                var allSales = connection.Db.Sale.Iter().ToList();
+                _logger.LogDebug("Retrieved {Count} total sales from database", allSales.Count);
+                
+                Sale? sale = null;
+                foreach (var s in allSales)
+                {
+                    if (s.SaleId == saleId)
+                    {
+                        sale = s;
+                        break;
+                    }
+                }
+                
                 if (sale == null)
                 {
                     _logger.LogWarning("Sale not found: {SaleId}", saleId);
@@ -355,7 +504,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteSale reducer
-                connection.Reducers.DeleteSale(saleId);
+                connection.Reducers.DeleteSale(saleId,null);
 
                 return true;
             }

@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void RemoveRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId);
+        public delegate void RemoveRoleHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId);
         public event RemoveRoleHandler? OnRemoveRole;
 
-        public void RemoveRole(SpacetimeDB.Identity userId, uint roleId)
+        public void RemoveRole(SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.RemoveRole(userId, roleId), this.SetCallReducerFlags.RemoveRoleFlags);
+            conn.InternalCallReducer(new Reducer.RemoveRole(userId, roleId, actingUserId));
         }
 
         public bool InvokeRemoveRole(ReducerEventContext ctx, Reducer.RemoveRole args)
         {
-            if (OnRemoveRole == null) return false;
+            if (OnRemoveRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnRemoveRole(
                 ctx,
                 args.UserId,
-                args.RoleId
+                args.RoleId,
+                args.ActingUserId
             );
             return true;
         }
@@ -38,31 +50,29 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RemoveRole : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public RemoveRole(
                 SpacetimeDB.Identity UserId,
-                uint RoleId
+                uint RoleId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.UserId = UserId;
                 this.RoleId = RoleId;
+                this.ActingUserId = ActingUserId;
             }
 
             public RemoveRole()
             {
             }
 
-            string IReducerArgs.ReducerName => "RemoveRole";
+            string IReducerArgs.ReducerName => "remove_role";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RemoveRoleFlags;
-        public void RemoveRole(CallReducerFlags flags) => RemoveRoleFlags = flags;
     }
 }

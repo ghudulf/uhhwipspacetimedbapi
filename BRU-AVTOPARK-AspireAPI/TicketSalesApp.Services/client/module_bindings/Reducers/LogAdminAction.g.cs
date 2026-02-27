@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void LogAdminActionHandler(ReducerEventContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent);
+        public delegate void LogAdminActionHandler(ReducerEventContext ctx, string userId, string action, string details, string timestamp, string ipAddress, string userAgent, SpacetimeDB.Identity? actingUser);
         public event LogAdminActionHandler? OnLogAdminAction;
 
-        public void LogAdminAction(string userId, string action, string details, string timestamp, string ipAddress, string userAgent)
+        public void LogAdminAction(string userId, string action, string details, string timestamp, string ipAddress, string userAgent, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent), this.SetCallReducerFlags.LogAdminActionFlags);
+            conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent, actingUser));
         }
 
         public bool InvokeLogAdminAction(ReducerEventContext ctx, Reducer.LogAdminAction args)
         {
-            if (OnLogAdminAction == null) return false;
+            if (OnLogAdminAction == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnLogAdminAction(
                 ctx,
                 args.UserId,
@@ -30,7 +41,8 @@ namespace SpacetimeDB.Types
                 args.Details,
                 args.Timestamp,
                 args.IpAddress,
-                args.UserAgent
+                args.UserAgent,
+                args.ActingUser
             );
             return true;
         }
@@ -42,7 +54,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class LogAdminAction : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public string UserId;
             [DataMember(Name = "action")]
             public string Action;
@@ -50,10 +62,12 @@ namespace SpacetimeDB.Types
             public string Details;
             [DataMember(Name = "timestamp")]
             public string Timestamp;
-            [DataMember(Name = "ipAddress")]
+            [DataMember(Name = "ip_address")]
             public string IpAddress;
-            [DataMember(Name = "userAgent")]
+            [DataMember(Name = "user_agent")]
             public string UserAgent;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public LogAdminAction(
                 string UserId,
@@ -61,7 +75,8 @@ namespace SpacetimeDB.Types
                 string Details,
                 string Timestamp,
                 string IpAddress,
-                string UserAgent
+                string UserAgent,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
@@ -70,6 +85,7 @@ namespace SpacetimeDB.Types
                 this.Timestamp = Timestamp;
                 this.IpAddress = IpAddress;
                 this.UserAgent = UserAgent;
+                this.ActingUser = ActingUser;
             }
 
             public LogAdminAction()
@@ -82,13 +98,7 @@ namespace SpacetimeDB.Types
                 this.UserAgent = "";
             }
 
-            string IReducerArgs.ReducerName => "LogAdminAction";
+            string IReducerArgs.ReducerName => "log_admin_action";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags LogAdminActionFlags;
-        public void LogAdminAction(CallReducerFlags flags) => LogAdminActionFlags = flags;
     }
 }

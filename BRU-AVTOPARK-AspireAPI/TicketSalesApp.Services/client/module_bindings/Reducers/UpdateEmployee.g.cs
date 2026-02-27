@@ -12,24 +12,36 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateEmployeeHandler(ReducerEventContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId);
+        public delegate void UpdateEmployeeHandler(ReducerEventContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, SpacetimeDB.Identity? actingUser);
         public event UpdateEmployeeHandler? OnUpdateEmployee;
 
-        public void UpdateEmployee(uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId)
+        public void UpdateEmployee(uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId), this.SetCallReducerFlags.UpdateEmployeeFlags);
+            conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId, actingUser));
         }
 
         public bool InvokeUpdateEmployee(ReducerEventContext ctx, Reducer.UpdateEmployee args)
         {
-            if (OnUpdateEmployee == null) return false;
+            if (OnUpdateEmployee == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateEmployee(
                 ctx,
                 args.EmployeeId,
                 args.EmployeeName,
                 args.EmployeeSurname,
                 args.EmployeePatronym,
-                args.JobId
+                args.JobId,
+                args.ActingUser
             );
             return true;
         }
@@ -41,23 +53,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateEmployee : Reducer, IReducerArgs
         {
-            [DataMember(Name = "employeeId")]
+            [DataMember(Name = "employee_id")]
             public uint EmployeeId;
-            [DataMember(Name = "employeeName")]
+            [DataMember(Name = "employee_name")]
             public string? EmployeeName;
-            [DataMember(Name = "employeeSurname")]
+            [DataMember(Name = "employee_surname")]
             public string? EmployeeSurname;
-            [DataMember(Name = "employeePatronym")]
+            [DataMember(Name = "employee_patronym")]
             public string? EmployeePatronym;
-            [DataMember(Name = "jobId")]
+            [DataMember(Name = "job_id")]
             public uint? JobId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateEmployee(
                 uint EmployeeId,
                 string? EmployeeName,
                 string? EmployeeSurname,
                 string? EmployeePatronym,
-                uint? JobId
+                uint? JobId,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.EmployeeId = EmployeeId;
@@ -65,19 +80,14 @@ namespace SpacetimeDB.Types
                 this.EmployeeSurname = EmployeeSurname;
                 this.EmployeePatronym = EmployeePatronym;
                 this.JobId = JobId;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateEmployee()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateEmployee";
+            string IReducerArgs.ReducerName => "update_employee";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateEmployeeFlags;
-        public void UpdateEmployee(CallReducerFlags flags) => UpdateEmployeeFlags = flags;
     }
 }

@@ -13,50 +13,74 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RouteSchedule
     {
-        [DataMember(Name = "ScheduleId")]
+        [DataMember(Name = "schedule_id")]
         public uint ScheduleId;
-        [DataMember(Name = "RouteId")]
+        [DataMember(Name = "route_id")]
         public uint RouteId;
-        [DataMember(Name = "StartPoint")]
+        [DataMember(Name = "start_point")]
         public string? StartPoint;
-        [DataMember(Name = "RouteStops")]
+        [DataMember(Name = "route_stops")]
         public System.Collections.Generic.List<string>? RouteStops;
-        [DataMember(Name = "EndPoint")]
+        [DataMember(Name = "end_point")]
         public string? EndPoint;
-        [DataMember(Name = "DepartureTime")]
+        [DataMember(Name = "departure_time")]
         public ulong DepartureTime;
-        [DataMember(Name = "ArrivalTime")]
+        [DataMember(Name = "arrival_time")]
         public ulong ArrivalTime;
-        [DataMember(Name = "Price")]
+        [DataMember(Name = "price")]
         public double Price;
-        [DataMember(Name = "AvailableSeats")]
+        [DataMember(Name = "available_seats")]
         public uint AvailableSeats;
-        [DataMember(Name = "DaysOfWeek")]
+        [DataMember(Name = "seated_capacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "standing_capacity")]
+        public uint? StandingCapacity;
+        [DataMember(Name = "days_of_week")]
         public System.Collections.Generic.List<string>? DaysOfWeek;
-        [DataMember(Name = "BusTypes")]
+        [DataMember(Name = "bus_types")]
         public System.Collections.Generic.List<string>? BusTypes;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "is_active")]
         public bool IsActive;
-        [DataMember(Name = "ValidFrom")]
+        [DataMember(Name = "valid_from")]
         public ulong ValidFrom;
-        [DataMember(Name = "ValidUntil")]
+        [DataMember(Name = "valid_until")]
         public ulong? ValidUntil;
-        [DataMember(Name = "StopDurationMinutes")]
+        [DataMember(Name = "stop_duration_minutes")]
         public uint? StopDurationMinutes;
-        [DataMember(Name = "IsRecurring")]
+        [DataMember(Name = "is_recurring")]
         public bool IsRecurring;
-        [DataMember(Name = "EstimatedStopTimes")]
+        [DataMember(Name = "estimated_stop_times")]
         public System.Collections.Generic.List<string>? EstimatedStopTimes;
-        [DataMember(Name = "StopDistances")]
+        [DataMember(Name = "stop_distances")]
         public System.Collections.Generic.List<double>? StopDistances;
-        [DataMember(Name = "Notes")]
+        [DataMember(Name = "notes")]
         public string? Notes;
-        [DataMember(Name = "CreatedAt")]
+        [DataMember(Name = "created_at")]
         public ulong CreatedAt;
-        [DataMember(Name = "UpdatedAt")]
+        [DataMember(Name = "updated_at")]
         public ulong? UpdatedAt;
-        [DataMember(Name = "UpdatedBy")]
+        [DataMember(Name = "updated_by")]
         public string? UpdatedBy;
+        [DataMember(Name = "peak_hour_load")]
+        public double? PeakHourLoad;
+        [DataMember(Name = "off_peak_hour_load")]
+        public double? OffPeakHourLoad;
+        [DataMember(Name = "is_special_event")]
+        public bool? IsSpecialEvent;
+        [DataMember(Name = "special_event_name")]
+        public string? SpecialEventName;
+        [DataMember(Name = "is_holiday")]
+        public bool? IsHoliday;
+        [DataMember(Name = "holiday_name")]
+        public string? HolidayName;
+        [DataMember(Name = "is_weekend")]
+        public bool? IsWeekend;
+        [DataMember(Name = "seat_configuration_id")]
+        public uint? SeatConfigurationId;
+        [DataMember(Name = "requires_seat_reservation")]
+        public bool? RequiresSeatReservation;
+        [DataMember(Name = "route_type")]
+        public string? RouteType;
 
         public RouteSchedule(
             uint ScheduleId,
@@ -68,6 +92,8 @@ namespace SpacetimeDB.Types
             ulong ArrivalTime,
             double Price,
             uint AvailableSeats,
+            uint? SeatedCapacity,
+            uint? StandingCapacity,
             System.Collections.Generic.List<string>? DaysOfWeek,
             System.Collections.Generic.List<string>? BusTypes,
             bool IsActive,
@@ -80,7 +106,17 @@ namespace SpacetimeDB.Types
             string? Notes,
             ulong CreatedAt,
             ulong? UpdatedAt,
-            string? UpdatedBy
+            string? UpdatedBy,
+            double? PeakHourLoad,
+            double? OffPeakHourLoad,
+            bool? IsSpecialEvent,
+            string? SpecialEventName,
+            bool? IsHoliday,
+            string? HolidayName,
+            bool? IsWeekend,
+            uint? SeatConfigurationId,
+            bool? RequiresSeatReservation,
+            string? RouteType
         )
         {
             this.ScheduleId = ScheduleId;
@@ -92,6 +128,8 @@ namespace SpacetimeDB.Types
             this.ArrivalTime = ArrivalTime;
             this.Price = Price;
             this.AvailableSeats = AvailableSeats;
+            this.SeatedCapacity = SeatedCapacity;
+            this.StandingCapacity = StandingCapacity;
             this.DaysOfWeek = DaysOfWeek;
             this.BusTypes = BusTypes;
             this.IsActive = IsActive;
@@ -105,6 +143,16 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.UpdatedAt = UpdatedAt;
             this.UpdatedBy = UpdatedBy;
+            this.PeakHourLoad = PeakHourLoad;
+            this.OffPeakHourLoad = OffPeakHourLoad;
+            this.IsSpecialEvent = IsSpecialEvent;
+            this.SpecialEventName = SpecialEventName;
+            this.IsHoliday = IsHoliday;
+            this.HolidayName = HolidayName;
+            this.IsWeekend = IsWeekend;
+            this.SeatConfigurationId = SeatConfigurationId;
+            this.RequiresSeatReservation = RequiresSeatReservation;
+            this.RouteType = RouteType;
         }
 
         public RouteSchedule()

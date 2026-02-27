@@ -1,0 +1,54 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="using:System">
+
+    <!-- System Colors -->
+    <Color x:Key="WindowColor">#FFFFFFFF</Color>
+    <Color x:Key="WindowTextColor">#FF000000</Color>
+    <Color x:Key="WindowFrameColor">#FF646464</Color>
+    <Color x:Key="ControlLightColor">#FFE8E8E8</Color>
+    <Color x:Key="ControlMediumColor">#FFF0F0F0</Color>
+    <Color x:Key="ControlDarkColor">#FFD6D6D6</Color>
+    <Color x:Key="ControlMouseOverColor">#FF3C7FB1</Color>
+    <Color x:Key="ControlPressedColor">#FF2C628B</Color>
+    <Color x:Key="ControlSelectedColor">#FF3C7FB1</Color>
+    
+    <!-- Common Brushes -->
+    <SolidColorBrush x:Key="WindowBrush" Color="{StaticResource WindowColor}"/>
+    <SolidColorBrush x:Key="WindowTextBrush" Color="{StaticResource WindowTextColor}"/>
+    <SolidColorBrush x:Key="WindowFrameBrush" Color="{StaticResource WindowFrameColor}"/>
+    <SolidColorBrush x:Key="ControlLightBrush" Color="{StaticResource ControlLightColor}"/>
+    <SolidColorBrush x:Key="ControlMediumBrush" Color="{StaticResource ControlMediumColor}"/>
+    <SolidColorBrush x:Key="ControlDarkBrush" Color="{StaticResource ControlDarkColor}"/>
+    <SolidColorBrush x:Key="ControlMouseOverBrush" Color="{StaticResource ControlMouseOverColor}"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="{StaticResource ControlPressedColor}"/>
+    <SolidColorBrush x:Key="ControlSelectedBrush" Color="{StaticResource ControlSelectedColor}"/>
+    
+    <!-- Common Dimensions -->
+    <sys:Double x:Key="ScrollBarWidth">18</sys:Double>
+    <sys:Double x:Key="ScrollBarHeight">18</sys:Double>
+    <Thickness x:Key="ControlBorderThickness">1</Thickness>
+    <CornerRadius x:Key="ControlCornerRadius">3</CornerRadius>
+    
+    <!-- Common Control Styles -->
+    <ControlTheme x:Key="FlatListBox" TargetType="ListBox">
+        <Setter Property="Background" Value="{StaticResource WindowBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource ControlDarkBrush}"/>
+        <Setter Property="BorderThickness" Value="{StaticResource ControlBorderThickness}"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    </ControlTheme>
+    
+    <ControlTheme x:Key="FlatFlyoutPresenter" TargetType="FlyoutPresenter">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="Background" Value="{StaticResource WindowBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource ControlDarkBrush}"/>
+        <Setter Property="BorderThickness" Value="{StaticResource ControlBorderThickness}"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    </ControlTheme>
+
+</ResourceDictionary> 

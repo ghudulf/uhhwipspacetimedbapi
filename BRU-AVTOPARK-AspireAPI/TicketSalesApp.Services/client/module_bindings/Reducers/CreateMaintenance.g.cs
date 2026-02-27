@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateMaintenanceHandler(ReducerEventContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType);
+        public delegate void CreateMaintenanceHandler(ReducerEventContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, SpacetimeDB.Identity? actingUser);
         public event CreateMaintenanceHandler? OnCreateMaintenance;
 
-        public void CreateMaintenance(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType)
+        public void CreateMaintenance(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType), this.SetCallReducerFlags.CreateMaintenanceFlags);
+            conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser));
         }
 
         public bool InvokeCreateMaintenance(ReducerEventContext ctx, Reducer.CreateMaintenance args)
         {
-            if (OnCreateMaintenance == null) return false;
+            if (OnCreateMaintenance == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateMaintenance(
                 ctx,
                 args.BusId,
@@ -31,7 +42,8 @@ namespace SpacetimeDB.Types
                 args.FoundIssues,
                 args.NextServiceDate,
                 args.Roadworthiness,
-                args.MaintenanceType
+                args.MaintenanceType,
+                args.ActingUser
             );
             return true;
         }
@@ -43,20 +55,22 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateMaintenance : Reducer, IReducerArgs
         {
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint BusId;
-            [DataMember(Name = "lastServiceDate")]
+            [DataMember(Name = "last_service_date")]
             public ulong LastServiceDate;
-            [DataMember(Name = "serviceEngineer")]
+            [DataMember(Name = "service_engineer")]
             public string ServiceEngineer;
-            [DataMember(Name = "foundIssues")]
+            [DataMember(Name = "found_issues")]
             public string FoundIssues;
-            [DataMember(Name = "nextServiceDate")]
+            [DataMember(Name = "next_service_date")]
             public ulong NextServiceDate;
             [DataMember(Name = "roadworthiness")]
             public string Roadworthiness;
-            [DataMember(Name = "maintenanceType")]
+            [DataMember(Name = "maintenance_type")]
             public string MaintenanceType;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public CreateMaintenance(
                 uint BusId,
@@ -65,7 +79,8 @@ namespace SpacetimeDB.Types
                 string FoundIssues,
                 ulong NextServiceDate,
                 string Roadworthiness,
-                string MaintenanceType
+                string MaintenanceType,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.BusId = BusId;
@@ -75,6 +90,7 @@ namespace SpacetimeDB.Types
                 this.NextServiceDate = NextServiceDate;
                 this.Roadworthiness = Roadworthiness;
                 this.MaintenanceType = MaintenanceType;
+                this.ActingUser = ActingUser;
             }
 
             public CreateMaintenance()
@@ -85,13 +101,7 @@ namespace SpacetimeDB.Types
                 this.MaintenanceType = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateMaintenance";
+            string IReducerArgs.ReducerName => "create_maintenance";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateMaintenanceFlags;
-        public void CreateMaintenance(CallReducerFlags flags) => CreateMaintenanceFlags = flags;
     }
 }

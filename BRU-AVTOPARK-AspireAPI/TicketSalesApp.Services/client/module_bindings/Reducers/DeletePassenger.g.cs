@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void DeletePassenger(uint passengerId)
         {
-            conn.InternalCallReducer(new Reducer.DeletePassenger(passengerId), this.SetCallReducerFlags.DeletePassengerFlags);
+            conn.InternalCallReducer(new Reducer.DeletePassenger(passengerId));
         }
 
         public bool InvokeDeletePassenger(ReducerEventContext ctx, Reducer.DeletePassenger args)
         {
-            if (OnDeletePassenger == null) return false;
+            if (OnDeletePassenger == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeletePassenger(
                 ctx,
                 args.PassengerId
@@ -37,7 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeletePassenger : Reducer, IReducerArgs
         {
-            [DataMember(Name = "passengerId")]
+            [DataMember(Name = "passenger_id")]
             public uint PassengerId;
 
             public DeletePassenger(uint PassengerId)
@@ -49,13 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-            string IReducerArgs.ReducerName => "DeletePassenger";
+            string IReducerArgs.ReducerName => "delete_passenger";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeletePassengerFlags;
-        public void DeletePassenger(CallReducerFlags flags) => DeletePassengerFlags = flags;
     }
 }

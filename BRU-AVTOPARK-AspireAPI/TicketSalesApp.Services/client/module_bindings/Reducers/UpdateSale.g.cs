@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateSaleHandler(ReducerEventContext ctx, uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes);
+        public delegate void UpdateSaleHandler(ReducerEventContext ctx, uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes, SpacetimeDB.Identity? actingUser);
         public event UpdateSaleHandler? OnUpdateSale;
 
-        public void UpdateSale(uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes)
+        public void UpdateSale(uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes), this.SetCallReducerFlags.UpdateSaleFlags);
+            conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes, actingUser));
         }
 
         public bool InvokeUpdateSale(ReducerEventContext ctx, Reducer.UpdateSale args)
         {
-            if (OnUpdateSale == null) return false;
+            if (OnUpdateSale == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateSale(
                 ctx,
                 args.SaleId,
@@ -30,7 +41,8 @@ namespace SpacetimeDB.Types
                 args.TicketSoldToUser,
                 args.TicketSoldToUserPhone,
                 args.SaleLocation,
-                args.SaleNotes
+                args.SaleNotes,
+                args.ActingUser
             );
             return true;
         }
@@ -42,18 +54,20 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateSale : Reducer, IReducerArgs
         {
-            [DataMember(Name = "saleId")]
+            [DataMember(Name = "sale_id")]
             public uint SaleId;
-            [DataMember(Name = "ticketId")]
+            [DataMember(Name = "ticket_id")]
             public uint? TicketId;
-            [DataMember(Name = "ticketSoldToUser")]
+            [DataMember(Name = "ticket_sold_to_user")]
             public string? TicketSoldToUser;
-            [DataMember(Name = "ticketSoldToUserPhone")]
+            [DataMember(Name = "ticket_sold_to_user_phone")]
             public string? TicketSoldToUserPhone;
-            [DataMember(Name = "saleLocation")]
+            [DataMember(Name = "sale_location")]
             public string? SaleLocation;
-            [DataMember(Name = "saleNotes")]
+            [DataMember(Name = "sale_notes")]
             public string? SaleNotes;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateSale(
                 uint SaleId,
@@ -61,7 +75,8 @@ namespace SpacetimeDB.Types
                 string? TicketSoldToUser,
                 string? TicketSoldToUserPhone,
                 string? SaleLocation,
-                string? SaleNotes
+                string? SaleNotes,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.SaleId = SaleId;
@@ -70,19 +85,14 @@ namespace SpacetimeDB.Types
                 this.TicketSoldToUserPhone = TicketSoldToUserPhone;
                 this.SaleLocation = SaleLocation;
                 this.SaleNotes = SaleNotes;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateSale()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateSale";
+            string IReducerArgs.ReducerName => "update_sale";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateSaleFlags;
-        public void UpdateSale(CallReducerFlags flags) => UpdateSaleFlags = flags;
     }
 }

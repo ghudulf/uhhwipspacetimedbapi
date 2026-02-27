@@ -13,11 +13,11 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Client
     {
-        [DataMember(Name = "Id")]
+        [DataMember(Name = "id")]
         public int Id;
-        [DataMember(Name = "ClientId")]
+        [DataMember(Name = "client_id")]
         public string ClientId;
-        [DataMember(Name = "ClientSecret")]
+        [DataMember(Name = "client_secret")]
         public string ClientSecret;
 
         public Client(

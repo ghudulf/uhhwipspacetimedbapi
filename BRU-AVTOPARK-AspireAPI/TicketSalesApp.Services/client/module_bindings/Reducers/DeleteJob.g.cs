@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteJobHandler(ReducerEventContext ctx, uint jobId);
+        public delegate void DeleteJobHandler(ReducerEventContext ctx, uint jobId, SpacetimeDB.Identity? actingUser);
         public event DeleteJobHandler? OnDeleteJob;
 
-        public void DeleteJob(uint jobId)
+        public void DeleteJob(uint jobId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteJob(jobId), this.SetCallReducerFlags.DeleteJobFlags);
+            conn.InternalCallReducer(new Reducer.DeleteJob(jobId, actingUser));
         }
 
         public bool InvokeDeleteJob(ReducerEventContext ctx, Reducer.DeleteJob args)
         {
-            if (OnDeleteJob == null) return false;
+            if (OnDeleteJob == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteJob(
                 ctx,
-                args.JobId
+                args.JobId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteJob : Reducer, IReducerArgs
         {
-            [DataMember(Name = "jobId")]
+            [DataMember(Name = "job_id")]
             public uint JobId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteJob(uint JobId)
+            public DeleteJob(
+                uint JobId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.JobId = JobId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteJob()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteJob";
+            string IReducerArgs.ReducerName => "delete_job";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteJobFlags;
-        public void DeleteJob(CallReducerFlags flags) => DeleteJobFlags = flags;
     }
 }

@@ -32,6 +32,14 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 _logger.LogDebug("Retrieved {BusCount} buses", buses.Count);
+                
+                // Log detailed information about each bus
+                foreach (var bus in buses)
+                {
+                    _logger.LogDebug("Bus details - ID: {BusId}, Model: {Model}, Registration: {Registration}",
+                        bus.BusId, bus.Model, bus.RegistrationNumber);
+                }
+                
                 return buses;
             }
             catch (Exception ex)
@@ -65,7 +73,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<Bus?> CreateBusAsync(string model, string? registrationNumber = null)
+        public async Task<Bus?> CreateBusAsync(string model, string? registrationNumber = null, Identity? actingUser = null)
         {
             try
             {
@@ -73,7 +81,7 @@ namespace TicketSalesApp.Services.Implementations
                 var conn = _spacetimeService.GetConnection();
                 
                 // Call the CreateBus reducer
-                conn.Reducers.CreateBus(model, registrationNumber);
+                conn.Reducers.CreateBus(model, registrationNumber, actingUser);
                 
                 // Wait a moment for the reducer to complete and the subscription to update
                 await Task.Delay(100);
@@ -98,7 +106,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateBusAsync(uint busId, string? model = null, string? registrationNumber = null)
+        public async Task<bool> UpdateBusAsync(uint busId, string? model = null, string? registrationNumber = null, Identity? actingUser = null)
         {
             try
             {
@@ -114,7 +122,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the UpdateBus reducer
-                conn.Reducers.UpdateBus(busId, model, registrationNumber);
+                conn.Reducers.UpdateBus(busId, model, registrationNumber, actingUser);
                 
                 _logger.LogInformation("Successfully updated bus with ID {BusId}", busId);
                 return true;
@@ -126,7 +134,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteBusAsync(uint busId)
+        public async Task<bool> DeleteBusAsync(uint busId, Identity? actingUser = null)
         {
             try
             {
@@ -154,7 +162,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the DeleteBus reducer
-                conn.Reducers.DeleteBus(busId);
+                conn.Reducers.DeleteBus(busId, actingUser);
                 
                 _logger.LogInformation("Successfully deleted bus with ID {BusId}", busId);
                 return true;
@@ -208,7 +216,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> ActivateBusAsync(uint busId)
+        public async Task<bool> ActivateBusAsync(uint busId, Identity? actingUser = null)
         {
             try
             {
@@ -224,7 +232,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the ActivateBus reducer
-                conn.Reducers.ActivateBus(busId);
+                conn.Reducers.ActivateBus(busId, actingUser);
                 
                 _logger.LogInformation("Successfully activated bus with ID {BusId}", busId);
                 return true;
@@ -236,7 +244,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeactivateBusAsync(uint busId)
+        public async Task<bool> DeactivateBusAsync(uint busId, Identity? actingUser = null)
         {
             try
             {
@@ -264,7 +272,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the DeactivateBus reducer
-                conn.Reducers.DeactivateBus(busId);
+                conn.Reducers.DeactivateBus(busId, actingUser);
                 
                 _logger.LogInformation("Successfully deactivated bus with ID {BusId}", busId);
                 return true;

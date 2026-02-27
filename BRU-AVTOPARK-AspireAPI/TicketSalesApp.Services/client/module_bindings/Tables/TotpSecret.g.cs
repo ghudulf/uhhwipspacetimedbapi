@@ -15,7 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class TotpSecretHandle : RemoteTableHandle<EventContext, TotpSecret>
         {
-            protected override string RemoteTableName => "TotpSecret";
+            protected override string RemoteTableName => "totp_secret";
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -35,5 +35,33 @@ namespace SpacetimeDB.Types
         }
 
         public readonly TotpSecretHandle TotpSecret;
+    }
+
+    public sealed class TotpSecretCols
+    {
+        public global::SpacetimeDB.Col<TotpSecret, uint> Id { get; }
+        public global::SpacetimeDB.Col<TotpSecret, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<TotpSecret, string> Secret { get; }
+        public global::SpacetimeDB.Col<TotpSecret, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.Col<TotpSecret, bool> IsActive { get; }
+
+        public TotpSecretCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.Col<TotpSecret, uint>(tableName, "id");
+            UserId = new global::SpacetimeDB.Col<TotpSecret, SpacetimeDB.Identity>(tableName, "user_id");
+            Secret = new global::SpacetimeDB.Col<TotpSecret, string>(tableName, "secret");
+            CreatedAt = new global::SpacetimeDB.Col<TotpSecret, ulong>(tableName, "created_at");
+            IsActive = new global::SpacetimeDB.Col<TotpSecret, bool>(tableName, "is_active");
+        }
+    }
+
+    public sealed class TotpSecretIxCols
+    {
+        public global::SpacetimeDB.IxCol<TotpSecret, uint> Id { get; }
+
+        public TotpSecretIxCols(string tableName)
+        {
+            Id = new global::SpacetimeDB.IxCol<TotpSecret, uint>(tableName, "id");
+        }
     }
 }

@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.UnderConstructionWindow"
+        Title="Under Construction"
+        Width="700"
+        Height="350"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        Background="#2b2b2b">
+
+    <Border Margin="20">
+        <Grid RowDefinitions="Auto,*,Auto,Auto">
+            <!-- Warning Stripes Header -->
+            <Border Grid.Row="0" 
+                    Height="40" 
+                    Background="#FFD700"
+                    CornerRadius="4 4 0 0">
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0"
+                             Text="⚠" 
+                             FontSize="24"
+                             VerticalAlignment="Center"
+                             Margin="15,0"/>
+                    <TextBlock Grid.Column="1"
+                             Text="Under Construction"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Left"
+                             Margin="0,0,15,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Content Area -->
+            <StackPanel Grid.Row="1" 
+                        Margin="15,20"
+                        Spacing="15">
+                <TextBlock Text="🚧 ПРЕДВАРИТЕЛЬНАЯ ВЕРСИЯ 🚧"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Left"
+                         Foreground="#FFD700"/>
+                
+                <TextBlock Text="Данная версия Системы управления автобусным парком находится в стадии активной разработки."
+                         TextWrapping="Wrap"
+                         HorizontalAlignment="Left"
+                         Foreground="#FFFFFF"
+                         TextAlignment="Left"
+                         Margin="0,10"/>
+                
+                <TextBlock Text="Пожалуйста, обратите внимание, что пользовательский интерфейс, функции и компоненты системы будут продолжать совершенствоваться на протяжении всего цикла разработки."
+                         TextWrapping="Wrap"
+                         HorizontalAlignment="Left"
+                         Foreground="#CCCCCC"
+                         TextAlignment="Left"/>
+            </StackPanel>
+
+            <!-- Footer Text -->
+            <TextBlock Grid.Row="2"
+                     Text="- Команда разработки"
+                     Foreground="#999999"
+                     HorizontalAlignment="Left"
+                     Margin="15,0,15,15"
+                     FontStyle="Italic"/>
+
+            <!-- Button Area -->
+            <Button Grid.Row="3"
+                    Content="ОК"
+                    HorizontalAlignment="Right"
+                    Width="100"
+                    Height="35"
+                    Classes="accent"
+                    Margin="0,0,15,0"
+                    Click="OnOKButtonClick"/>
+        </Grid>
+    </Border>
+</Window>

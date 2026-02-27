@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void GenerateTotpSecret(SpacetimeDB.Identity userId, string secret)
         {
-            conn.InternalCallReducer(new Reducer.GenerateTotpSecret(userId, secret), this.SetCallReducerFlags.GenerateTotpSecretFlags);
+            conn.InternalCallReducer(new Reducer.GenerateTotpSecret(userId, secret));
         }
 
         public bool InvokeGenerateTotpSecret(ReducerEventContext ctx, Reducer.GenerateTotpSecret args)
         {
-            if (OnGenerateTotpSecret == null) return false;
+            if (OnGenerateTotpSecret == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnGenerateTotpSecret(
                 ctx,
                 args.UserId,
@@ -38,7 +49,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GenerateTotpSecret : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "secret")]
             public string Secret;
@@ -57,13 +68,7 @@ namespace SpacetimeDB.Types
                 this.Secret = "";
             }
 
-            string IReducerArgs.ReducerName => "GenerateTotpSecret";
+            string IReducerArgs.ReducerName => "generate_totp_secret";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags GenerateTotpSecretFlags;
-        public void GenerateTotpSecret(CallReducerFlags flags) => GenerateTotpSecretFlags = flags;
     }
 }

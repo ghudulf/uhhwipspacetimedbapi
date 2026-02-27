@@ -13,9 +13,9 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RolePermissionIdCounter
     {
-        [DataMember(Name = "Key")]
+        [DataMember(Name = "key")]
         public string Key;
-        [DataMember(Name = "NextId")]
+        [DataMember(Name = "next_id")]
         public uint NextId;
 
         public RolePermissionIdCounter(

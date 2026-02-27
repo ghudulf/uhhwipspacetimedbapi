@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void RevokeOpenIdClient(string clientId)
         {
-            conn.InternalCallReducer(new Reducer.RevokeOpenIdClient(clientId), this.SetCallReducerFlags.RevokeOpenIdClientFlags);
+            conn.InternalCallReducer(new Reducer.RevokeOpenIdClient(clientId));
         }
 
         public bool InvokeRevokeOpenIdClient(ReducerEventContext ctx, Reducer.RevokeOpenIdClient args)
         {
-            if (OnRevokeOpenIdClient == null) return false;
+            if (OnRevokeOpenIdClient == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnRevokeOpenIdClient(
                 ctx,
                 args.ClientId
@@ -37,7 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokeOpenIdClient : Reducer, IReducerArgs
         {
-            [DataMember(Name = "clientId")]
+            [DataMember(Name = "client_id")]
             public string ClientId;
 
             public RevokeOpenIdClient(string ClientId)
@@ -50,13 +61,7 @@ namespace SpacetimeDB.Types
                 this.ClientId = "";
             }
 
-            string IReducerArgs.ReducerName => "RevokeOpenIdClient";
+            string IReducerArgs.ReducerName => "revoke_open_id_client";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RevokeOpenIdClientFlags;
-        public void RevokeOpenIdClient(CallReducerFlags flags) => RevokeOpenIdClientFlags = flags;
     }
 }

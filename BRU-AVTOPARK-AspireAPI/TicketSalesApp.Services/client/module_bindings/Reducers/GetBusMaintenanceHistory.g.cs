@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void GetBusMaintenanceHistoryHandler(ReducerEventContext ctx, uint busId);
+        public delegate void GetBusMaintenanceHistoryHandler(ReducerEventContext ctx, uint busId, SpacetimeDB.Identity? actingUser);
         public event GetBusMaintenanceHistoryHandler? OnGetBusMaintenanceHistory;
 
-        public void GetBusMaintenanceHistory(uint busId)
+        public void GetBusMaintenanceHistory(uint busId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId), this.SetCallReducerFlags.GetBusMaintenanceHistoryFlags);
+            conn.InternalCallReducer(new Reducer.GetBusMaintenanceHistory(busId, actingUser));
         }
 
         public bool InvokeGetBusMaintenanceHistory(ReducerEventContext ctx, Reducer.GetBusMaintenanceHistory args)
         {
-            if (OnGetBusMaintenanceHistory == null) return false;
+            if (OnGetBusMaintenanceHistory == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnGetBusMaintenanceHistory(
                 ctx,
-                args.BusId
+                args.BusId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GetBusMaintenanceHistory : Reducer, IReducerArgs
         {
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint BusId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public GetBusMaintenanceHistory(uint BusId)
+            public GetBusMaintenanceHistory(
+                uint BusId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.BusId = BusId;
+                this.ActingUser = ActingUser;
             }
 
             public GetBusMaintenanceHistory()
             {
             }
 
-            string IReducerArgs.ReducerName => "GetBusMaintenanceHistory";
+            string IReducerArgs.ReducerName => "get_bus_maintenance_history";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags GetBusMaintenanceHistoryFlags;
-        public void GetBusMaintenanceHistory(CallReducerFlags flags) => GetBusMaintenanceHistoryFlags = flags;
     }
 }

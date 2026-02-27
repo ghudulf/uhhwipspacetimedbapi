@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateRouteHandler(ReducerEventContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive);
+        public delegate void UpdateRouteHandler(ReducerEventContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateRouteHandler? OnUpdateRoute;
 
-        public void UpdateRoute(uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive)
+        public void UpdateRoute(uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive), this.SetCallReducerFlags.UpdateRouteFlags);
+            conn.InternalCallReducer(new Reducer.UpdateRoute(routeId, startPoint, endPoint, driverId, busId, travelTime, isActive, actingUser));
         }
 
         public bool InvokeUpdateRoute(ReducerEventContext ctx, Reducer.UpdateRoute args)
         {
-            if (OnUpdateRoute == null) return false;
+            if (OnUpdateRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateRoute(
                 ctx,
                 args.RouteId,
@@ -31,7 +42,8 @@ namespace SpacetimeDB.Types
                 args.DriverId,
                 args.BusId,
                 args.TravelTime,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -43,20 +55,22 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRoute : Reducer, IReducerArgs
         {
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint RouteId;
-            [DataMember(Name = "startPoint")]
+            [DataMember(Name = "start_point")]
             public string? StartPoint;
-            [DataMember(Name = "endPoint")]
+            [DataMember(Name = "end_point")]
             public string? EndPoint;
-            [DataMember(Name = "driverId")]
+            [DataMember(Name = "driver_id")]
             public uint? DriverId;
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint? BusId;
-            [DataMember(Name = "travelTime")]
+            [DataMember(Name = "travel_time")]
             public string? TravelTime;
-            [DataMember(Name = "isActive")]
+            [DataMember(Name = "is_active")]
             public bool? IsActive;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateRoute(
                 uint RouteId,
@@ -65,7 +79,8 @@ namespace SpacetimeDB.Types
                 uint? DriverId,
                 uint? BusId,
                 string? TravelTime,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.RouteId = RouteId;
@@ -75,19 +90,14 @@ namespace SpacetimeDB.Types
                 this.BusId = BusId;
                 this.TravelTime = TravelTime;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateRoute()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateRoute";
+            string IReducerArgs.ReducerName => "update_route";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateRouteFlags;
-        public void UpdateRoute(CallReducerFlags flags) => UpdateRouteFlags = flags;
     }
 }

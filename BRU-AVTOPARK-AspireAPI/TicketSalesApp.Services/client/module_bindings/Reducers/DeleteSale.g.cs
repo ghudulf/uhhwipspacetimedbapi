@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteSaleHandler(ReducerEventContext ctx, uint saleId);
+        public delegate void DeleteSaleHandler(ReducerEventContext ctx, uint saleId, SpacetimeDB.Identity? actingUser);
         public event DeleteSaleHandler? OnDeleteSale;
 
-        public void DeleteSale(uint saleId)
+        public void DeleteSale(uint saleId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteSale(saleId), this.SetCallReducerFlags.DeleteSaleFlags);
+            conn.InternalCallReducer(new Reducer.DeleteSale(saleId, actingUser));
         }
 
         public bool InvokeDeleteSale(ReducerEventContext ctx, Reducer.DeleteSale args)
         {
-            if (OnDeleteSale == null) return false;
+            if (OnDeleteSale == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteSale(
                 ctx,
-                args.SaleId
+                args.SaleId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteSale : Reducer, IReducerArgs
         {
-            [DataMember(Name = "saleId")]
+            [DataMember(Name = "sale_id")]
             public uint SaleId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteSale(uint SaleId)
+            public DeleteSale(
+                uint SaleId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.SaleId = SaleId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteSale()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteSale";
+            string IReducerArgs.ReducerName => "delete_sale";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteSaleFlags;
-        public void DeleteSale(CallReducerFlags flags) => DeleteSaleFlags = flags;
     }
 }

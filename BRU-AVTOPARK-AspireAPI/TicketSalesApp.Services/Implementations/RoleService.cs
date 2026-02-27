@@ -186,7 +186,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the AssignRole reducer
-                conn.Reducers.AssignRole(userProfile.UserId, roleId);
+                conn.Reducers.AssignRole(userProfile.UserId, roleId,userProfile.UserId);
                 
                 _logger.LogInformation("Successfully assigned role {RoleId} to user {UserId}", roleId, userId);
                 return true;
@@ -236,7 +236,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the RemoveRole reducer
-                conn.Reducers.RemoveRole(userProfile.UserId, roleId);
+                conn.Reducers.RemoveRole(userProfile.UserId, roleId,userProfile.UserId);
                 
                 _logger.LogInformation("Successfully removed role {RoleId} from user {UserId}", roleId, userId);
                 return true;
@@ -248,7 +248,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<Role?> CreateRoleAsync(string name, string description, int legacyRoleId, uint priority, List<uint>? permissionIds, string? createdBy = null)
+        public async Task<Role?> CreateRoleAsync(string name, string description, int legacyRoleId, uint priority, List<uint>? permissionIds, string? createdBy = null, Identity? actingUser = null)
         {
             try
             {
@@ -277,7 +277,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the CreateRole reducer
-                conn.Reducers.CreateRoleReducer(legacyRoleId, name, description, true, priority);
+                conn.Reducers.CreateRoleReducer(legacyRoleId, name, description, true, priority, actingUser);
                 
                 // Wait a moment for the reducer to complete and the subscription to update
                 await Task.Delay(100);
@@ -304,7 +304,7 @@ namespace TicketSalesApp.Services.Implementations
                             if (permission != null && permission.IsActive)
                             {
                                 // Call the AssignPermissionToRole reducer
-                                conn.Reducers.GrantPermissionToRole(newRole.RoleId, permissionId);
+                                conn.Reducers.GrantPermissionToRole(newRole.RoleId, permissionId, actingUser);
                             }
                             else
                             {
@@ -328,7 +328,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateRoleAsync(uint roleId, string? name, string? description, uint? priority, List<uint>? permissionIds, string? updatedBy = null)
+        public async Task<bool> UpdateRoleAsync(uint roleId, string? name, string? description, uint? priority, List<uint>? permissionIds, string? updatedBy = null, Identity? actingUser = null)
         {
             try
             {
@@ -365,7 +365,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the UpdateRole reducer
-                conn.Reducers.UpdateRoleReducer(roleId, name, description, null, priority);
+                conn.Reducers.UpdateRoleReducer(roleId, name, description, null, priority, actingUser);
                 
                 // Update permissions if needed
                 if (permissionIds != null)
@@ -386,7 +386,7 @@ namespace TicketSalesApp.Services.Implementations
                                 if (permission != null && permission.IsActive)
                                 {
                                     // Call the RemovePermissionFromRole reducer
-                                    conn.Reducers.RevokePermissionFromRole(roleId, rp.PermissionId);
+                                    conn.Reducers.RevokePermissionFromRole(roleId, rp.PermissionId, actingUser);
                                 }
                             }
                             catch (Exception ex)
@@ -408,7 +408,7 @@ namespace TicketSalesApp.Services.Implementations
                                 if (permission != null && permission.IsActive)
                                 {
                                     // Call the AssignPermissionToRole reducer
-                                    conn.Reducers.GrantPermissionToRole(roleId, permissionId);
+                                    conn.Reducers.GrantPermissionToRole(roleId, permissionId, actingUser);
                                 }
                                 else
                                 {
@@ -433,7 +433,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteRoleAsync(uint roleId)
+        public async Task<bool> DeleteRoleAsync(uint roleId, Identity? actingUser = null)
         {
             try
             {
@@ -469,7 +469,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the DeleteRole reducer
-                conn.Reducers.DeleteRoleReducer(roleId);
+                conn.Reducers.DeleteRoleReducer(roleId, actingUser);
                 
                 _logger.LogInformation("Successfully deleted role {RoleId}", roleId);
                 return true;

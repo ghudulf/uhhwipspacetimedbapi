@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateQrSession(string sessionId, SpacetimeDB.Identity userId, string validationCode, ulong expiryTime, string initiatingDevice)
         {
-            conn.InternalCallReducer(new Reducer.CreateQrSession(sessionId, userId, validationCode, expiryTime, initiatingDevice), this.SetCallReducerFlags.CreateQrSessionFlags);
+            conn.InternalCallReducer(new Reducer.CreateQrSession(sessionId, userId, validationCode, expiryTime, initiatingDevice));
         }
 
         public bool InvokeCreateQrSession(ReducerEventContext ctx, Reducer.CreateQrSession args)
         {
-            if (OnCreateQrSession == null) return false;
+            if (OnCreateQrSession == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateQrSession(
                 ctx,
                 args.SessionId,
@@ -41,15 +52,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateQrSession : Reducer, IReducerArgs
         {
-            [DataMember(Name = "sessionId")]
+            [DataMember(Name = "session_id")]
             public string SessionId;
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "validationCode")]
+            [DataMember(Name = "validation_code")]
             public string ValidationCode;
-            [DataMember(Name = "expiryTime")]
+            [DataMember(Name = "expiry_time")]
             public ulong ExpiryTime;
-            [DataMember(Name = "initiatingDevice")]
+            [DataMember(Name = "initiating_device")]
             public string InitiatingDevice;
 
             public CreateQrSession(
@@ -74,13 +85,7 @@ namespace SpacetimeDB.Types
                 this.InitiatingDevice = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateQRSession";
+            string IReducerArgs.ReducerName => "create_qr_session";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateQrSessionFlags;
-        public void CreateQrSession(CallReducerFlags flags) => CreateQrSessionFlags = flags;
     }
 }

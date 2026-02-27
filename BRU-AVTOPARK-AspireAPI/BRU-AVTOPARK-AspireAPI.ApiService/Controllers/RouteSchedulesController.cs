@@ -6,84 +6,116 @@ using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using Serilog;
-using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using System.Text.Json;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Allow all authenticated users to read
-    public class RouteSchedulesController : ControllerBase
+    [AllowAnonymous] // Allow all authenticated users to read
+    public class RouteSchedulesController : BaseController
     {
-        private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
 
-        public RouteSchedulesController(ISpacetimeDBService spacetimeService, ILogger<RouteSchedulesController> logger)
+        public RouteSchedulesController(
+            IRouteScheduleService routeScheduleService,
+            ILogger<RouteSchedulesController> logger)
         {
-            _spacetimeService = spacetimeService;
-            _logger = logger;
+            _routeScheduleService = routeScheduleService ?? throw new ArgumentNullException(nameof(routeScheduleService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
+       
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RouteSchedule>>> GetRouteSchedules()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules()
         {
-            Log.Information("Fetching all route schedules");
             try
             {
-                var conn = _spacetimeService.GetConnection();
-                var schedules = conn.Db.RouteSchedule.Iter().ToList();
-                Log.Debug("Retrieved {ScheduleCount} route schedules", schedules.Count);
-                return schedules;
+                _logger.LogInformation("Fetching all route schedules");
+                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                
+                // Map to anonymous type
+                var result = schedules.Select(s => new {
+                    s.ScheduleId,
+                    s.RouteId,
+                    s.StartPoint,
+                    s.EndPoint,
+                    s.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    s.Price,
+                    s.AvailableSeats,
+                    s.DaysOfWeek,
+                    s.BusTypes,
+                    s.StopDurationMinutes,
+                    s.IsRecurring,
+                    s.EstimatedStopTimes,
+                    s.StopDistances,
+                    s.Notes
+                }).ToList();
+
+                _logger.LogDebug("Retrieved {Count} schedules", result.Count);
+                _logger.LogInformation("FULL SCHEDULE DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error retrieving route schedules");
+                _logger.LogError(ex, "Error retrieving route schedules");
                 return StatusCode(500, "An error occurred while retrieving route schedules");
             }
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<RouteSchedule>> GetRouteSchedule(uint id)
+        public async Task<ActionResult<dynamic>> GetRouteSchedule(uint id)
         {
-            Log.Information("Fetching route schedule with ID {ScheduleId}", id);
             try
             {
-                var conn = _spacetimeService.GetConnection();
-                var schedule = conn.Db.RouteSchedule.ScheduleId.Find(id);
+                _logger.LogInformation("Fetching route schedule {ScheduleId}", id);
+                var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
 
                 if (schedule == null)
                 {
-                    Log.Warning("Route schedule with ID {ScheduleId} not found", id);
+                    _logger.LogWarning("Route schedule {ScheduleId} not found", id);
                     return NotFound();
                 }
 
-                Log.Debug("Successfully retrieved route schedule with ID {ScheduleId}", id);
-                return schedule;
+                // Map to anonymous type
+                var result = new {
+                    schedule.ScheduleId,
+                    schedule.RouteId,
+                    schedule.StartPoint,
+                    schedule.EndPoint,
+                    schedule.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                    schedule.Price,
+                    schedule.AvailableSeats,
+                    schedule.DaysOfWeek,
+                    schedule.BusTypes,
+                    schedule.StopDurationMinutes,
+                    schedule.IsRecurring,
+                    schedule.EstimatedStopTimes,
+                    schedule.StopDistances,
+                    schedule.Notes
+                };
+
+                _logger.LogInformation("Successfully retrieved schedule {ScheduleId}", id);
+                _logger.LogInformation("FULL SCHEDULE DATA: {ScheduleData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error retrieving route schedule {ScheduleId}", id);
+                _logger.LogError(ex, "Error retrieving route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while retrieving the route schedule");
             }
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<RouteSchedule>>> SearchRouteSchedules(
+        public async Task<ActionResult<IEnumerable<dynamic>>> SearchRouteSchedules(
             [FromQuery] uint? routeId = null,
             [FromQuery] DateTime? date = null,
             [FromQuery] string? dayOfWeek = null,
@@ -91,53 +123,58 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                Log.Information("Searching route schedules with parameters - RouteId: {RouteId}, Date: {Date}, Day: {Day}, Active: {Active}",
-                    routeId?.ToString() ?? "any", date?.ToString() ?? "any", dayOfWeek ?? "any", isActive?.ToString() ?? "any");
+                _logger.LogInformation("Searching route schedules with routeId: {RouteId}, date: {Date}, dayOfWeek: {DayOfWeek}, isActive: {IsActive}",
+                    routeId, date, dayOfWeek, isActive);
 
-                var conn = _spacetimeService.GetConnection();
-                var query = conn.Db.RouteSchedule.Iter().AsEnumerable();
+                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                var query = schedules.AsEnumerable(); // Start query on IEnumerable
 
                 if (routeId.HasValue)
-                {
-                    Log.Debug("Filtering by RouteId: {RouteId}", routeId.Value);
-                    query = query.Where(rs => rs.RouteId == routeId.Value);
-                }
+                    query = query.Where(s => s.RouteId == routeId.Value);
 
-                // Make date filtering very lenient
                 if (date.HasValue)
                 {
-                    var now = DateTime.Now.Date;
-                    Log.Debug("Current date: {Now}, Target date: {Date}", now, date.Value);
-                    
-                    var targetTimestamp = date.Value.ToUnixTimeMilliseconds();
-                    var nowTimestamp = now.ToUnixTimeMilliseconds();
-                    
-                    // Check if schedule is valid (either no end date, or end date is in the future)
-                    query = query.Where(rs => 
-                        !rs.ValidUntil.HasValue || // No end date
-                        rs.ValidUntil >= nowTimestamp || // Still valid
-                        rs.ValidFrom <= targetTimestamp); // Starting within target date
+                    // Convert the target date to start and end timestamps for the entire day (UTC)
+                    var startOfDay = new DateTimeOffset(date.Value.Date).ToUnixTimeMilliseconds();
+                    var endOfDay = startOfDay + 86400000; // Add 24 hours in milliseconds
+                    _logger.LogDebug("Filtering by date: Start={StartTimestamp}, End={EndTimestamp}", startOfDay, endOfDay);
+                    query = query.Where(s => s.DepartureTime >= (ulong)startOfDay && s.DepartureTime < (ulong)endOfDay);
                 }
 
                 if (!string.IsNullOrEmpty(dayOfWeek))
-                {
-                    Log.Debug("Filtering by day of week: {Day}", dayOfWeek);
-                    query = query.Where(rs => rs.DaysOfWeek != null && rs.DaysOfWeek.Contains(dayOfWeek));
-                }
+                    query = query.Where(s => s.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase)); // Use StringComparer
+                
+                // isActive filter needs to be added if RouteSchedule entity has an IsActive property
+                // if (isActive.HasValue)
+                //     query = query.Where(s => s.IsActive == isActive.Value);
 
-                if (isActive.HasValue)
-                {
-                    Log.Debug("Filtering by active status: {Active}", isActive.Value);
-                    query = query.Where(rs => rs.IsActive == isActive.Value);
-                }
+                // Map to anonymous type after filtering
+                var result = query.Select(s => new {
+                    s.ScheduleId,
+                    s.RouteId,
+                    s.StartPoint,
+                    s.EndPoint,
+                    s.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    s.Price,
+                    s.AvailableSeats,
+                    s.DaysOfWeek,
+                    s.BusTypes,
+                    s.StopDurationMinutes,
+                    s.IsRecurring,
+                    s.EstimatedStopTimes,
+                    s.StopDistances,
+                    s.Notes
+                }).ToList();
 
-                var results = query.ToList();
-                Log.Debug("Found {Count} route schedules matching search criteria", results.Count);
-                return results;
+                _logger.LogDebug("Found {Count} matching schedules", result.Count);
+                _logger.LogInformation("FULL SEARCH RESULTS DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error searching route schedules");
+                _logger.LogError(ex, "Error searching route schedules");
                 return StatusCode(500, "An error occurred while searching route schedules");
             }
         }
@@ -145,96 +182,56 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<RouteSchedule>> CreateRouteSchedule([FromBody] CreateRouteScheduleModel model)
         {
+            if (!IsAdmin())
+            {
+                _logger.LogWarning("Unauthorized attempt to create route schedule");
+                return Forbid();
+            }
+
             try
             {
-                if (!IsAdmin())
-                {
-                    Log.Warning("Unauthorized attempt to create route schedule by non-admin user");
-                    return Forbid();
-                }
+                _logger.LogInformation("Creating new route schedule for route {RouteId}", model.RouteId);
 
-                Log.Information("Creating new route schedule for route {RouteId}", model.RouteId);
-
-                // Validate model
-                if (model.RouteStops == null || model.RouteStops.Length < 2)
-                {
-                    Log.Warning("Invalid route stops provided: must have at least 2 stops");
-                    return BadRequest("Route must have at least 2 stops");
-                }
-
-                if (model.DepartureTime >= model.ArrivalTime)
-                {
-                    Log.Warning("Invalid time range: departure time must be before arrival time");
-                    return BadRequest("Departure time must be before arrival time");
-                }
-
-                if (model.Price <= 0)
-                {
-                    Log.Warning("Invalid price: must be greater than 0");
-                    return BadRequest("Price must be greater than 0");
-                }
-
-                if (model.AvailableSeats <= 0)
-                {
-                    Log.Warning("Invalid seats: must be greater than 0");
-                    return BadRequest("Available seats must be greater than 0");
-                }
-
-                var conn = _spacetimeService.GetConnection();
-                var route = conn.Db.Route.RouteId.Find(model.RouteId);
-                if (route == null)
-                {
-                    Log.Warning("Invalid route ID {RouteId} provided for schedule creation", model.RouteId);
-                    return BadRequest("Invalid route ID");
-                }
-
-                // Ensure arrays are initialized
-                model.DaysOfWeek ??= new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-                model.BusTypes ??= new[] { "МАЗ-103", "МАЗ-107" };
-                model.EstimatedStopTimes ??= new string[model.RouteStops.Length];
-                model.StopDistances ??= new double[model.RouteStops.Length];
-
-                // Call the CreateRouteSchedule reducer
-                conn.Reducers.CreateRouteSchedule(
-                    model.RouteId,
-                    model.StartPoint,
-                    model.EndPoint,
-                    model.RouteStops,
-                    model.DepartureTime.ToUnixTimeMilliseconds(),
-                    model.ArrivalTime.ToUnixTimeMilliseconds(),
-                    model.Price,
-                    model.AvailableSeats,
-                    model.DaysOfWeek,
-                    model.BusTypes,
-                    true, // IsActive
-                    DateTime.Now.ToUnixTimeMilliseconds(), // ValidFrom
-                    model.StopDurationMinutes,
-                    model.IsRecurring,
-                    model.EstimatedStopTimes,
-                    model.StopDistances,
-                    model.Notes
+                var success = await _routeScheduleService.CreateScheduleAsync(
+                    routeId: model.RouteId,
+                    startPoint: model.StartPoint,
+                    endPoint: model.EndPoint,
+                    routeStops: model.RouteStops?.ToList(),
+                    departureTime: (ulong)new DateTimeOffset(model.DepartureTime).ToUnixTimeMilliseconds(),
+                    arrivalTime: (ulong)new DateTimeOffset(model.ArrivalTime).ToUnixTimeMilliseconds(),
+                    price: model.Price,
+                    availableSeats: model.AvailableSeats,
+                    daysOfWeek: model.DaysOfWeek?.ToList(),
+                    busTypes: model.BusTypes?.ToList(),
+                    stopDurationMinutes: model.StopDurationMinutes,
+                    isRecurring: model.IsRecurring,
+                    estimatedStopTimes: model.EstimatedStopTimes?.ToList(),
+                    stopDistances: model.StopDistances?.ToList(),
+                    notes: model.Notes
                 );
 
-                // Wait a moment for the reducer to complete and the subscription to update
-                await Task.Delay(100);
+                if (!success)
+                {
+                    _logger.LogWarning("Failed to create route schedule");
+                    return BadRequest("Failed to create route schedule");
+                }
 
-                // Find the newly created schedule
-                var schedule = conn.Db.RouteSchedule.Iter()
-                    .OrderByDescending(rs => rs.ScheduleId)
-                    .FirstOrDefault();
+                // Get the newly created schedule
+                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                var schedule = schedules.LastOrDefault();
 
                 if (schedule == null)
                 {
-                    Log.Error("Schedule was not created properly");
-                    return StatusCode(500, "Failed to create schedule");
+                    _logger.LogError("Schedule was created but could not be retrieved");
+                    return StatusCode(500, "Schedule was created but could not be retrieved");
                 }
 
-                Log.Information("Successfully created route schedule with ID {ScheduleId}", schedule.ScheduleId);
+                _logger.LogInformation("Successfully created route schedule {ScheduleId}", schedule.ScheduleId);
                 return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, schedule);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error creating route schedule");
+                _logger.LogError(ex, "Error creating route schedule");
                 return StatusCode(500, "An error occurred while creating the route schedule");
             }
         }
@@ -244,61 +241,45 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             if (!IsAdmin())
             {
-                Log.Warning("Unauthorized attempt to update route schedule by non-admin user");
+                _logger.LogWarning("Unauthorized attempt to update route schedule");
                 return Forbid();
             }
 
             try
             {
-                Log.Information("Updating route schedule with ID {ScheduleId}", id);
-                var conn = _spacetimeService.GetConnection();
+                _logger.LogInformation("Updating route schedule {ScheduleId}", id);
 
-                var schedule = conn.Db.RouteSchedule.ScheduleId.Find(id);
-                if (schedule == null)
+                var success = await _routeScheduleService.UpdateScheduleAsync(
+                    scheduleId: id,
+                    routeId: model.RouteId,
+                    startPoint: model.StartPoint,
+                    endPoint: model.EndPoint,
+                    routeStops: model.RouteStops?.ToList(),
+                    departureTime: model.DepartureTime.HasValue ? (ulong)new DateTimeOffset(model.DepartureTime.Value).ToUnixTimeMilliseconds() : null,
+                    arrivalTime: model.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(model.ArrivalTime.Value).ToUnixTimeMilliseconds() : null,
+                    price: model.Price,
+                    availableSeats: model.AvailableSeats,
+                    daysOfWeek: model.DaysOfWeek?.ToList(),
+                    busTypes: model.BusTypes?.ToList(),
+                    stopDurationMinutes: model.StopDurationMinutes,
+                    isRecurring: model.IsRecurring,
+                    estimatedStopTimes: model.EstimatedStopTimes?.ToList(),
+                    stopDistances: model.StopDistances?.ToList(),
+                    notes: model.Notes
+                );
+
+                if (!success)
                 {
-                    Log.Warning("Route schedule with ID {ScheduleId} not found for update", id);
+                    _logger.LogWarning("Route schedule {ScheduleId} not found", id);
                     return NotFound();
                 }
 
-                if (model.RouteId.HasValue)
-                {
-                    var route = conn.Db.Route.RouteId.Find(model.RouteId.Value);
-                    if (route == null)
-                    {
-                        Log.Warning("Invalid route ID {RouteId} provided for schedule update", model.RouteId.Value);
-                        return BadRequest("Invalid route ID");
-                    }
-                }
-
-                // Call the UpdateRouteSchedule reducer
-                conn.Reducers.UpdateRouteSchedule(
-                    id,
-                    model.RouteId ?? schedule.RouteId,
-                    model.StartPoint ?? schedule.StartPoint,
-                    model.EndPoint ?? schedule.EndPoint,
-                    model.RouteStops ?? schedule.RouteStops,
-                    model.DepartureTime?.ToUnixTimeMilliseconds() ?? schedule.DepartureTime,
-                    model.ArrivalTime?.ToUnixTimeMilliseconds() ?? schedule.ArrivalTime,
-                    model.Price ?? schedule.Price,
-                    model.AvailableSeats ?? schedule.AvailableSeats,
-                    model.DaysOfWeek ?? schedule.DaysOfWeek,
-                    model.BusTypes ?? schedule.BusTypes,
-                    model.IsActive ?? schedule.IsActive,
-                    model.ValidUntil?.ToUnixTimeMilliseconds(),
-                    model.StopDurationMinutes ?? schedule.StopDurationMinutes,
-                    model.IsRecurring ?? schedule.IsRecurring,
-                    model.EstimatedStopTimes ?? schedule.EstimatedStopTimes,
-                    model.StopDistances ?? schedule.StopDistances,
-                    model.Notes ?? schedule.Notes,
-                    User.Identity?.Name
-                );
-
-                Log.Information("Successfully updated route schedule with ID {ScheduleId}", id);
+                _logger.LogInformation("Successfully updated route schedule {ScheduleId}", id);
                 return NoContent();
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error updating route schedule {ScheduleId}", id);
+                _logger.LogError(ex, "Error updating route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while updating the route schedule");
             }
         }
@@ -308,31 +289,27 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             if (!IsAdmin())
             {
-                Log.Warning("Unauthorized attempt to delete route schedule by non-admin user");
+                _logger.LogWarning("Unauthorized attempt to delete route schedule");
                 return Forbid();
             }
 
             try
             {
-                Log.Information("Deleting route schedule with ID {ScheduleId}", id);
-                var conn = _spacetimeService.GetConnection();
+                _logger.LogInformation("Deleting route schedule {ScheduleId}", id);
 
-                var schedule = conn.Db.RouteSchedule.ScheduleId.Find(id);
-                if (schedule == null)
+                var success = await _routeScheduleService.DeleteScheduleAsync(id);
+                if (!success)
                 {
-                    Log.Warning("Route schedule with ID {ScheduleId} not found for deletion", id);
+                    _logger.LogWarning("Route schedule {ScheduleId} not found", id);
                     return NotFound();
                 }
 
-                // Call the DeleteRouteSchedule reducer
-                conn.Reducers.DeleteRouteSchedule(id);
-
-                Log.Information("Successfully deleted route schedule with ID {ScheduleId}", id);
+                _logger.LogInformation("Successfully deleted route schedule {ScheduleId}", id);
                 return NoContent();
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error deleting route schedule {ScheduleId}", id);
+                _logger.LogError(ex, "Error deleting route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while deleting the route schedule");
             }
         }

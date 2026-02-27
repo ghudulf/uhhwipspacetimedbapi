@@ -13,22 +13,58 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Sale
     {
-        [DataMember(Name = "SaleId")]
+        [DataMember(Name = "sale_id")]
         public uint SaleId;
-        [DataMember(Name = "SaleDate")]
+        [DataMember(Name = "sale_date")]
         public ulong SaleDate;
-        [DataMember(Name = "TicketId")]
+        [DataMember(Name = "ticket_id")]
         public uint TicketId;
-        [DataMember(Name = "TicketSoldToUser")]
+        [DataMember(Name = "ticket_sold_to_user")]
         public string TicketSoldToUser;
-        [DataMember(Name = "TicketSoldToUserPhone")]
+        [DataMember(Name = "ticket_sold_to_user_phone")]
         public string TicketSoldToUserPhone;
-        [DataMember(Name = "SellerId")]
+        [DataMember(Name = "seller_id")]
         public SpacetimeDB.Identity? SellerId;
-        [DataMember(Name = "SaleLocation")]
+        [DataMember(Name = "sale_location")]
         public string? SaleLocation;
-        [DataMember(Name = "SaleNotes")]
+        [DataMember(Name = "sale_notes")]
         public string? SaleNotes;
+        [DataMember(Name = "payment_method")]
+        public string? PaymentMethod;
+        [DataMember(Name = "payment_status")]
+        public string? PaymentStatus;
+        [DataMember(Name = "transaction_id")]
+        public string? TransactionId;
+        [DataMember(Name = "tax_amount")]
+        public double? TaxAmount;
+        [DataMember(Name = "invoice_number")]
+        public string? InvoiceNumber;
+        [DataMember(Name = "is_subscription")]
+        public bool? IsSubscription;
+        [DataMember(Name = "subscription_type")]
+        public string? SubscriptionType;
+        [DataMember(Name = "subscription_start_date")]
+        public ulong? SubscriptionStartDate;
+        [DataMember(Name = "subscription_end_date")]
+        public ulong? SubscriptionEndDate;
+        [DataMember(Name = "is_gift")]
+        public bool? IsGift;
+        [DataMember(Name = "gift_recipient")]
+        public string? GiftRecipient;
+        [DataMember(Name = "promotion_code")]
+        public string? PromotionCode;
+        [DataMember(Name = "discount_amount")]
+        public double? DiscountAmount;
+        [DataMember(Name = "total_amount")]
+        public double TotalAmount;
+        [DataMember(Name = "payment_transaction_id")]
+        public string? PaymentTransactionId;
+        [DataMember(Name = "change_amount")]
+        public double? ChangeAmount;
+        [DataMember(Name = "payment_provider")]
+        public string? PaymentProvider;
+        [DataMember(Name = "payment_reference")]
+        public string? PaymentReference;
 
         public Sale(
             uint SaleId,
@@ -38,7 +74,25 @@ namespace SpacetimeDB.Types
             string TicketSoldToUserPhone,
             SpacetimeDB.Identity? SellerId,
             string? SaleLocation,
-            string? SaleNotes
+            string? SaleNotes,
+            string? PaymentMethod,
+            string? PaymentStatus,
+            string? TransactionId,
+            double? TaxAmount,
+            string? InvoiceNumber,
+            bool? IsSubscription,
+            string? SubscriptionType,
+            ulong? SubscriptionStartDate,
+            ulong? SubscriptionEndDate,
+            bool? IsGift,
+            string? GiftRecipient,
+            string? PromotionCode,
+            double? DiscountAmount,
+            double TotalAmount,
+            string? PaymentTransactionId,
+            double? ChangeAmount,
+            string? PaymentProvider,
+            string? PaymentReference
         )
         {
             this.SaleId = SaleId;
@@ -49,6 +103,24 @@ namespace SpacetimeDB.Types
             this.SellerId = SellerId;
             this.SaleLocation = SaleLocation;
             this.SaleNotes = SaleNotes;
+            this.PaymentMethod = PaymentMethod;
+            this.PaymentStatus = PaymentStatus;
+            this.TransactionId = TransactionId;
+            this.TaxAmount = TaxAmount;
+            this.InvoiceNumber = InvoiceNumber;
+            this.IsSubscription = IsSubscription;
+            this.SubscriptionType = SubscriptionType;
+            this.SubscriptionStartDate = SubscriptionStartDate;
+            this.SubscriptionEndDate = SubscriptionEndDate;
+            this.IsGift = IsGift;
+            this.GiftRecipient = GiftRecipient;
+            this.PromotionCode = PromotionCode;
+            this.DiscountAmount = DiscountAmount;
+            this.TotalAmount = TotalAmount;
+            this.PaymentTransactionId = PaymentTransactionId;
+            this.ChangeAmount = ChangeAmount;
+            this.PaymentProvider = PaymentProvider;
+            this.PaymentReference = PaymentReference;
         }
 
         public Sale()

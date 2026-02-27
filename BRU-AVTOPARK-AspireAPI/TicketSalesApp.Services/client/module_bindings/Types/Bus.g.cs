@@ -13,31 +13,108 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Bus
     {
-        [DataMember(Name = "BusId")]
+        [DataMember(Name = "bus_id")]
         public uint BusId;
-        [DataMember(Name = "Model")]
+        [DataMember(Name = "model")]
         public string Model;
-        [DataMember(Name = "RegistrationNumber")]
+        [DataMember(Name = "registration_number")]
         public string? RegistrationNumber;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "is_active")]
         public bool IsActive;
+        [DataMember(Name = "bus_type")]
+        public string BusType;
+        [DataMember(Name = "capacity")]
+        public uint Capacity;
+        [DataMember(Name = "seated_capacity")]
+        public uint? SeatedCapacity;
+        [DataMember(Name = "standing_capacity")]
+        public uint? StandingCapacity;
+        [DataMember(Name = "year")]
+        public uint Year;
+        [DataMember(Name = "vin")]
+        public string? Vin;
+        [DataMember(Name = "license_plate")]
+        public string? LicensePlate;
+        [DataMember(Name = "current_status")]
+        public string? CurrentStatus;
+        [DataMember(Name = "current_location")]
+        public string? CurrentLocation;
+        [DataMember(Name = "last_location_update")]
+        public ulong? LastLocationUpdate;
+        [DataMember(Name = "fuel_consumption")]
+        public double? FuelConsumption;
+        [DataMember(Name = "current_fuel_level")]
+        public double? CurrentFuelLevel;
+        [DataMember(Name = "fuel_type")]
+        public string? FuelType;
+        [DataMember(Name = "mileage_total")]
+        public uint? MileageTotal;
+        [DataMember(Name = "mileage_since_service")]
+        public uint? MileageSinceService;
+        [DataMember(Name = "has_accessibility")]
+        public bool? HasAccessibility;
+        [DataMember(Name = "has_air_conditioning")]
+        public bool? HasAirConditioning;
+        [DataMember(Name = "has_wifi")]
+        public bool? HasWifi;
+        [DataMember(Name = "has_usb_charging")]
+        public bool? HasUsbCharging;
 
         public Bus(
             uint BusId,
             string Model,
             string? RegistrationNumber,
-            bool IsActive
+            bool IsActive,
+            string BusType,
+            uint Capacity,
+            uint? SeatedCapacity,
+            uint? StandingCapacity,
+            uint Year,
+            string? Vin,
+            string? LicensePlate,
+            string? CurrentStatus,
+            string? CurrentLocation,
+            ulong? LastLocationUpdate,
+            double? FuelConsumption,
+            double? CurrentFuelLevel,
+            string? FuelType,
+            uint? MileageTotal,
+            uint? MileageSinceService,
+            bool? HasAccessibility,
+            bool? HasAirConditioning,
+            bool? HasWifi,
+            bool? HasUsbCharging
         )
         {
             this.BusId = BusId;
             this.Model = Model;
             this.RegistrationNumber = RegistrationNumber;
             this.IsActive = IsActive;
+            this.BusType = BusType;
+            this.Capacity = Capacity;
+            this.SeatedCapacity = SeatedCapacity;
+            this.StandingCapacity = StandingCapacity;
+            this.Year = Year;
+            this.Vin = Vin;
+            this.LicensePlate = LicensePlate;
+            this.CurrentStatus = CurrentStatus;
+            this.CurrentLocation = CurrentLocation;
+            this.LastLocationUpdate = LastLocationUpdate;
+            this.FuelConsumption = FuelConsumption;
+            this.CurrentFuelLevel = CurrentFuelLevel;
+            this.FuelType = FuelType;
+            this.MileageTotal = MileageTotal;
+            this.MileageSinceService = MileageSinceService;
+            this.HasAccessibility = HasAccessibility;
+            this.HasAirConditioning = HasAirConditioning;
+            this.HasWifi = HasWifi;
+            this.HasUsbCharging = HasUsbCharging;
         }
 
         public Bus()
         {
             this.Model = "";
+            this.BusType = "";
         }
     }
 }

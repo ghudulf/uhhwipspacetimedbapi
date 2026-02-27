@@ -12,23 +12,37 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes);
+        public delegate void UpdateOpenIdClientHandler(ReducerEventContext ctx, string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType);
         public event UpdateOpenIdClientHandler? OnUpdateOpenIdClient;
 
-        public void UpdateOpenIdClient(string clientId, string clientSecret, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> allowedScopes)
+        public void UpdateOpenIdClient(string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType)
         {
-            conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, redirectUris, allowedScopes), this.SetCallReducerFlags.UpdateOpenIdClientFlags);
+            conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType));
         }
 
         public bool InvokeUpdateOpenIdClient(ReducerEventContext ctx, Reducer.UpdateOpenIdClient args)
         {
-            if (OnUpdateOpenIdClient == null) return false;
+            if (OnUpdateOpenIdClient == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateOpenIdClient(
                 ctx,
                 args.ClientId,
                 args.ClientSecret,
+                args.DisplayName,
                 args.RedirectUris,
-                args.AllowedScopes
+                args.PostLogoutRedirectUris,
+                args.AllowedScopes,
+                args.ConsentType
             );
             return true;
         }
@@ -40,43 +54,52 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateOpenIdClient : Reducer, IReducerArgs
         {
-            [DataMember(Name = "clientId")]
+            [DataMember(Name = "client_id")]
             public string ClientId;
-            [DataMember(Name = "clientSecret")]
+            [DataMember(Name = "client_secret")]
             public string ClientSecret;
-            [DataMember(Name = "redirectUris")]
+            [DataMember(Name = "display_name")]
+            public string DisplayName;
+            [DataMember(Name = "redirect_uris")]
             public System.Collections.Generic.List<string> RedirectUris;
-            [DataMember(Name = "allowedScopes")]
+            [DataMember(Name = "post_logout_redirect_uris")]
+            public System.Collections.Generic.List<string> PostLogoutRedirectUris;
+            [DataMember(Name = "allowed_scopes")]
             public System.Collections.Generic.List<string> AllowedScopes;
+            [DataMember(Name = "consent_type")]
+            public string ConsentType;
 
             public UpdateOpenIdClient(
                 string ClientId,
                 string ClientSecret,
+                string DisplayName,
                 System.Collections.Generic.List<string> RedirectUris,
-                System.Collections.Generic.List<string> AllowedScopes
+                System.Collections.Generic.List<string> PostLogoutRedirectUris,
+                System.Collections.Generic.List<string> AllowedScopes,
+                string ConsentType
             )
             {
                 this.ClientId = ClientId;
                 this.ClientSecret = ClientSecret;
+                this.DisplayName = DisplayName;
                 this.RedirectUris = RedirectUris;
+                this.PostLogoutRedirectUris = PostLogoutRedirectUris;
                 this.AllowedScopes = AllowedScopes;
+                this.ConsentType = ConsentType;
             }
 
             public UpdateOpenIdClient()
             {
                 this.ClientId = "";
                 this.ClientSecret = "";
+                this.DisplayName = "";
                 this.RedirectUris = new();
+                this.PostLogoutRedirectUris = new();
                 this.AllowedScopes = new();
+                this.ConsentType = "";
             }
 
-            string IReducerArgs.ReducerName => "UpdateOpenIdClient";
+            string IReducerArgs.ReducerName => "update_open_id_client";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateOpenIdClientFlags;
-        public void UpdateOpenIdClient(CallReducerFlags flags) => UpdateOpenIdClientFlags = flags;
     }
 }

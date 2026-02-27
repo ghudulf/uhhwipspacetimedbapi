@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void RevokePermissionFromRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId);
+        public delegate void RevokePermissionFromRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId);
         public event RevokePermissionFromRoleHandler? OnRevokePermissionFromRole;
 
-        public void RevokePermissionFromRole(uint roleId, uint permissionId)
+        public void RevokePermissionFromRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId), this.SetCallReducerFlags.RevokePermissionFromRoleFlags);
+            conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId, actingUserId));
         }
 
         public bool InvokeRevokePermissionFromRole(ReducerEventContext ctx, Reducer.RevokePermissionFromRole args)
         {
-            if (OnRevokePermissionFromRole == null) return false;
+            if (OnRevokePermissionFromRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnRevokePermissionFromRole(
                 ctx,
                 args.RoleId,
-                args.PermissionId
+                args.PermissionId,
+                args.ActingUserId
             );
             return true;
         }
@@ -38,31 +50,29 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokePermissionFromRole : Reducer, IReducerArgs
         {
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
-            [DataMember(Name = "permissionId")]
+            [DataMember(Name = "permission_id")]
             public uint PermissionId;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public RevokePermissionFromRole(
                 uint RoleId,
-                uint PermissionId
+                uint PermissionId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.RoleId = RoleId;
                 this.PermissionId = PermissionId;
+                this.ActingUserId = ActingUserId;
             }
 
             public RevokePermissionFromRole()
             {
             }
 
-            string IReducerArgs.ReducerName => "RevokePermissionFromRole";
+            string IReducerArgs.ReducerName => "revoke_permission_from_role";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RevokePermissionFromRoleFlags;
-        public void RevokePermissionFromRole(CallReducerFlags flags) => RevokePermissionFromRoleFlags = flags;
     }
 }

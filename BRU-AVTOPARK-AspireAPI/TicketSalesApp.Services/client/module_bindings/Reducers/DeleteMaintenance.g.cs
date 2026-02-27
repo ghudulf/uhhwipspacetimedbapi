@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId);
+        public delegate void DeleteMaintenanceHandler(ReducerEventContext ctx, uint maintenanceId, SpacetimeDB.Identity? actingUser);
         public event DeleteMaintenanceHandler? OnDeleteMaintenance;
 
-        public void DeleteMaintenance(uint maintenanceId)
+        public void DeleteMaintenance(uint maintenanceId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteMaintenance(maintenanceId), this.SetCallReducerFlags.DeleteMaintenanceFlags);
+            conn.InternalCallReducer(new Reducer.DeleteMaintenance(maintenanceId, actingUser));
         }
 
         public bool InvokeDeleteMaintenance(ReducerEventContext ctx, Reducer.DeleteMaintenance args)
         {
-            if (OnDeleteMaintenance == null) return false;
+            if (OnDeleteMaintenance == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteMaintenance(
                 ctx,
-                args.MaintenanceId
+                args.MaintenanceId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteMaintenance : Reducer, IReducerArgs
         {
-            [DataMember(Name = "maintenanceId")]
+            [DataMember(Name = "maintenance_id")]
             public uint MaintenanceId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteMaintenance(uint MaintenanceId)
+            public DeleteMaintenance(
+                uint MaintenanceId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.MaintenanceId = MaintenanceId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteMaintenance()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteMaintenance";
+            string IReducerArgs.ReducerName => "delete_maintenance";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteMaintenanceFlags;
-        public void DeleteMaintenance(CallReducerFlags flags) => DeleteMaintenanceFlags = flags;
     }
 }

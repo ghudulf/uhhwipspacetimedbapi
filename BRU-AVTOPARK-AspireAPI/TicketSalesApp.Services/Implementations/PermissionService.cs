@@ -123,7 +123,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<Permission?> CreatePermissionAsync(string name, string description, string category)
+        public async Task<Permission?> CreatePermissionAsync(string name, string description, string category, Identity? actingUser = null)
         {
             try
             {
@@ -142,7 +142,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the AddNewPermission reducer
-                conn.Reducers.AddNewPermission(name, description, category);
+                conn.Reducers.AddNewPermission(name, description, category, actingUser);
                 
                 // Wait a moment for the reducer to complete and the subscription to update
                 await Task.Delay(100);
@@ -167,7 +167,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdatePermissionAsync(uint permissionId, string? name, string? description, string? category, bool? isActive)
+        public async Task<bool> UpdatePermissionAsync(uint permissionId, string? name, string? description, string? category, bool? isActive, Identity? actingUser = null)
         {
             try
             {
@@ -198,7 +198,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the UpdatePermission reducer
-                conn.Reducers.UpdatePermission(permissionId, name, description, category, isActive);
+                conn.Reducers.UpdatePermission(permissionId, name, description, category, isActive, actingUser);
                 
                 _logger.LogInformation("Successfully updated permission {PermissionId}", permissionId);
                 return true;
@@ -210,7 +210,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeletePermissionAsync(uint permissionId)
+        public async Task<bool> DeletePermissionAsync(uint permissionId, Identity? actingUser = null)
         {
             try
             {
@@ -236,7 +236,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the DeletePermission reducer
-                conn.Reducers.DeletePermission(permissionId);
+                conn.Reducers.DeletePermission(permissionId, actingUser);
                 
                 _logger.LogInformation("Successfully deleted permission {PermissionId}", permissionId);
                 return true;

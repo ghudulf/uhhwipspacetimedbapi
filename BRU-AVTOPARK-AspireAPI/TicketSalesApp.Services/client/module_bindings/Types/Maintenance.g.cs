@@ -13,24 +13,48 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Maintenance
     {
-        [DataMember(Name = "MaintenanceId")]
+        [DataMember(Name = "maintenance_id")]
         public uint MaintenanceId;
-        [DataMember(Name = "BusId")]
+        [DataMember(Name = "bus_id")]
         public uint BusId;
-        [DataMember(Name = "LastServiceDate")]
+        [DataMember(Name = "last_service_date")]
         public ulong LastServiceDate;
-        [DataMember(Name = "MileageThreshold")]
+        [DataMember(Name = "mileage_threshold")]
         public string? MileageThreshold;
-        [DataMember(Name = "MaintenanceType")]
+        [DataMember(Name = "maintenance_type")]
         public string? MaintenanceType;
-        [DataMember(Name = "ServiceEngineer")]
+        [DataMember(Name = "service_engineer")]
         public string? ServiceEngineer;
-        [DataMember(Name = "FoundIssues")]
+        [DataMember(Name = "found_issues")]
         public string? FoundIssues;
-        [DataMember(Name = "NextServiceDate")]
+        [DataMember(Name = "next_service_date")]
         public ulong NextServiceDate;
-        [DataMember(Name = "Roadworthiness")]
+        [DataMember(Name = "roadworthiness")]
         public string? Roadworthiness;
+        [DataMember(Name = "maintenance_cost")]
+        public double MaintenanceCost;
+        [DataMember(Name = "parts_replaced")]
+        public string? PartsReplaced;
+        [DataMember(Name = "maintenance_duration")]
+        public ulong MaintenanceDuration;
+        [DataMember(Name = "is_scheduled")]
+        public bool IsScheduled;
+        [DataMember(Name = "maintenance_location")]
+        public string? MaintenanceLocation;
+        [DataMember(Name = "scheduled_by_employee_id")]
+        public uint? ScheduledByEmployeeId;
+        [DataMember(Name = "completed_by_employee_id")]
+        public uint? CompletedByEmployeeId;
+        [DataMember(Name = "maintenance_notes")]
+        public string? MaintenanceNotes;
+        [DataMember(Name = "maintenance_status")]
+        public string? MaintenanceStatus;
+        [DataMember(Name = "diagnostic_codes")]
+        public System.Collections.Generic.List<string>? DiagnosticCodes;
+        [DataMember(Name = "labor_cost")]
+        public double? LaborCost;
+        [DataMember(Name = "parts_cost")]
+        public double? PartsCost;
 
         public Maintenance(
             uint MaintenanceId,
@@ -41,7 +65,19 @@ namespace SpacetimeDB.Types
             string? ServiceEngineer,
             string? FoundIssues,
             ulong NextServiceDate,
-            string? Roadworthiness
+            string? Roadworthiness,
+            double MaintenanceCost,
+            string? PartsReplaced,
+            ulong MaintenanceDuration,
+            bool IsScheduled,
+            string? MaintenanceLocation,
+            uint? ScheduledByEmployeeId,
+            uint? CompletedByEmployeeId,
+            string? MaintenanceNotes,
+            string? MaintenanceStatus,
+            System.Collections.Generic.List<string>? DiagnosticCodes,
+            double? LaborCost,
+            double? PartsCost
         )
         {
             this.MaintenanceId = MaintenanceId;
@@ -53,6 +89,18 @@ namespace SpacetimeDB.Types
             this.FoundIssues = FoundIssues;
             this.NextServiceDate = NextServiceDate;
             this.Roadworthiness = Roadworthiness;
+            this.MaintenanceCost = MaintenanceCost;
+            this.PartsReplaced = PartsReplaced;
+            this.MaintenanceDuration = MaintenanceDuration;
+            this.IsScheduled = IsScheduled;
+            this.MaintenanceLocation = MaintenanceLocation;
+            this.ScheduledByEmployeeId = ScheduledByEmployeeId;
+            this.CompletedByEmployeeId = CompletedByEmployeeId;
+            this.MaintenanceNotes = MaintenanceNotes;
+            this.MaintenanceStatus = MaintenanceStatus;
+            this.DiagnosticCodes = DiagnosticCodes;
+            this.LaborCost = LaborCost;
+            this.PartsCost = PartsCost;
         }
 
         public Maintenance()

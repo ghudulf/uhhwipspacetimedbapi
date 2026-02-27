@@ -12,24 +12,36 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdatePermissionHandler(ReducerEventContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive);
+        public delegate void UpdatePermissionHandler(ReducerEventContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive, SpacetimeDB.Identity? actingUserId);
         public event UpdatePermissionHandler? OnUpdatePermission;
 
-        public void UpdatePermission(uint permissionId, string? name, string? description, string? category, bool? isActive)
+        public void UpdatePermission(uint permissionId, string? name, string? description, string? category, bool? isActive, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive), this.SetCallReducerFlags.UpdatePermissionFlags);
+            conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive, actingUserId));
         }
 
         public bool InvokeUpdatePermission(ReducerEventContext ctx, Reducer.UpdatePermission args)
         {
-            if (OnUpdatePermission == null) return false;
+            if (OnUpdatePermission == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdatePermission(
                 ctx,
                 args.PermissionId,
                 args.Name,
                 args.Description,
                 args.Category,
-                args.IsActive
+                args.IsActive,
+                args.ActingUserId
             );
             return true;
         }
@@ -41,7 +53,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdatePermission : Reducer, IReducerArgs
         {
-            [DataMember(Name = "permissionId")]
+            [DataMember(Name = "permission_id")]
             public uint PermissionId;
             [DataMember(Name = "name")]
             public string? Name;
@@ -49,15 +61,18 @@ namespace SpacetimeDB.Types
             public string? Description;
             [DataMember(Name = "category")]
             public string? Category;
-            [DataMember(Name = "isActive")]
+            [DataMember(Name = "is_active")]
             public bool? IsActive;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public UpdatePermission(
                 uint PermissionId,
                 string? Name,
                 string? Description,
                 string? Category,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.PermissionId = PermissionId;
@@ -65,19 +80,14 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.Category = Category;
                 this.IsActive = IsActive;
+                this.ActingUserId = ActingUserId;
             }
 
             public UpdatePermission()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdatePermission";
+            string IReducerArgs.ReducerName => "update_permission";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdatePermissionFlags;
-        public void UpdatePermission(CallReducerFlags flags) => UpdatePermissionFlags = flags;
     }
 }

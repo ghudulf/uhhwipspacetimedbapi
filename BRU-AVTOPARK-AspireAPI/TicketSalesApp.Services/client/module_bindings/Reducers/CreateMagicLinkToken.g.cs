@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateMagicLinkToken(SpacetimeDB.Identity userId, string token, ulong expiresAt, string? deviceInfo, string? ipAddress)
         {
-            conn.InternalCallReducer(new Reducer.CreateMagicLinkToken(userId, token, expiresAt, deviceInfo, ipAddress), this.SetCallReducerFlags.CreateMagicLinkTokenFlags);
+            conn.InternalCallReducer(new Reducer.CreateMagicLinkToken(userId, token, expiresAt, deviceInfo, ipAddress));
         }
 
         public bool InvokeCreateMagicLinkToken(ReducerEventContext ctx, Reducer.CreateMagicLinkToken args)
         {
-            if (OnCreateMagicLinkToken == null) return false;
+            if (OnCreateMagicLinkToken == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateMagicLinkToken(
                 ctx,
                 args.UserId,
@@ -41,15 +52,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateMagicLinkToken : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "token")]
             public string Token;
-            [DataMember(Name = "expiresAt")]
+            [DataMember(Name = "expires_at")]
             public ulong ExpiresAt;
-            [DataMember(Name = "deviceInfo")]
+            [DataMember(Name = "device_info")]
             public string? DeviceInfo;
-            [DataMember(Name = "ipAddress")]
+            [DataMember(Name = "ip_address")]
             public string? IpAddress;
 
             public CreateMagicLinkToken(
@@ -72,13 +83,7 @@ namespace SpacetimeDB.Types
                 this.Token = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateMagicLinkToken";
+            string IReducerArgs.ReducerName => "create_magic_link_token";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateMagicLinkTokenFlags;
-        public void CreateMagicLinkToken(CallReducerFlags flags) => CreateMagicLinkTokenFlags = flags;
     }
 }

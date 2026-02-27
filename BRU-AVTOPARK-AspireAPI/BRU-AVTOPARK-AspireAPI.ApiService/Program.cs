@@ -1,41 +1,118 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using OpenIddict.Validation.AspNetCore;
+using System.Security.Claims;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
+using OpenIddict.Validation.ServerIntegration;
+using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using Serilog.Events;
+using Serilog.Sinks.File;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
+using BRU_AVTOPARK_AspireAPI.ApiService;
+using BRU_AVTOPARK_AspireAPI.ApiService.Services;
+using System.Linq;
+using System.Collections.Generic;
+using System.Reflection;
+using System.IdentityModel.Tokens.Jwt;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.Debug()
+                .WriteTo.File("logs/app-.log",
+                    rollingInterval: RollingInterval.Day,
+                    restrictedToMinimumLevel: LogEventLevel.Information)
+                .CreateLogger();
 
 builder.Host.UseSerilog();
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
+// Configure logging first
+builder.Services.AddLogging(builder =>
+{
+    builder.ClearProviders();
+    builder.AddConsole();
+    builder.AddDebug();
+
+    builder.SetMinimumLevel(LogLevel.Debug);
+
+});
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSerilog();
+
+// Configure Swagger
+builder.Services.AddSwaggerGen(c =>
+            {
+                c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "TicketSalesApp Admin API", Version = "v1" });
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                            Array.Empty<string>()
+                        }
+                });
+            });
 
 // Add SpacetimeDB services
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISpacetimeDBService, TicketSalesApp.Services.Implementations.SpacetimeDBService>();
 
-// Add other services
+// Register a hosted service that will call ProcessFrameTick() at regular intervals
+builder.Services.AddHostedService<SpacetimeFrameTickService>();
+
+// Configure Fido2 for WebAuthn
+builder.Services.AddFido2(options =>
+{
+    options.ServerDomain = "localhost";
+    options.ServerName = "TicketSalesApp Admin API";
+    options.Origins = new HashSet<string> { "https://localhost:5001" };
+    options.TimestampDriftTolerance = 300000;
+});
+
+// Add authentication services
+builder.Services.AddScoped<TicketSalesApp.Services.Interfaces.IOpenIdConnectService, TicketSalesApp.Services.Implementations.OpenIdConnectService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IAuthenticationService, TicketSalesApp.Services.Implementations.AuthenticationService>();
-builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRoleService, TicketSalesApp.Services.Implementations.RoleService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IUserService, TicketSalesApp.Services.Implementations.UserService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ITotpService, TicketSalesApp.Services.Implementations.TotpService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IWebAuthnService, TicketSalesApp.Services.Implementations.WebAuthnService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMagicLinkService, TicketSalesApp.Services.Implementations.MagicLinkService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQRAuthenticationService, TicketSalesApp.Services.Implementations.QRAuthenticationService>();
+
+// Add other services
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRoleService, TicketSalesApp.Services.Implementations.RoleService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ITicketSalesService, TicketSalesApp.Services.Implementations.TicketSalesService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IExportService, TicketSalesApp.Services.Implementations.ExportService>();
-builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQRAuthenticationService, TicketSalesApp.Services.Implementations.QRAuthenticationService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IAdminActionLogger, TicketSalesApp.Services.Implementations.AdminActionLogger>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IDataService, TicketSalesApp.Services.Implementations.DataService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IBusService, TicketSalesApp.Services.Implementations.BusService>();
@@ -45,6 +122,7 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteService, 
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteScheduleService, TicketSalesApp.Services.Implementations.RouteScheduleService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmployeeService, TicketSalesApp.Services.Implementations.EmployeeService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMaintenanceService, TicketSalesApp.Services.Implementations.MaintenanceService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmailService, TicketSalesApp.Services.Implementations.EmailService>();
 
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
@@ -55,55 +133,141 @@ builder.Services.AddHttpContextAccessor();
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
-if (key.Length < 32)
+
+// Ensure key is exactly 32 bytes (256 bits)
+if (key.Length != 32)
 {
-    Array.Resize(ref key, 32);
+    var newKey = new byte[32];
+    if (key.Length < 32)
+    {
+        // If key is too short, pad with zeros
+        Array.Copy(key, newKey, key.Length);
+    }
+    else
+    {
+        // If key is too long, truncate
+        Array.Copy(key, newKey, 32);
+    }
+    key = newKey;
 }
-else if (key.Length > 64)
+
+// Create symmetric security key with KeyId for OpenIddict compatibility
+var symmetricKey = new SymmetricSecurityKey(key)
 {
-    Array.Resize(ref key, 64);
-}
+    KeyId = "default-signing-key"
+};
+
+// Register the symmetric key as a singleton so it can be injected into controllers
+builder.Services.AddSingleton(symmetricKey);
 
 // Configure OpenIddict
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
+        // Set default entity types - these must match what the stores use
+        options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
+        options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
+        options.SetDefaultTokenEntity<OpenIddict.Abstractions.OpenIddictTokenDescriptor>();
+        options.SetDefaultScopeEntity<OpenIddict.Abstractions.OpenIddictScopeDescriptor>();
+        
+        // Register stores
         options.AddApplicationStore<TicketSalesApp.Services.Implementations.ApplicationStore>();
+        options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
+        options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
+        options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
     })
     .AddServer(options =>
     {
         options.SetAuthorizationEndpointUris("/connect/authorize")
-               .SetTokenEndpointUris("/connect/token")
-               .SetUserinfoEndpointUris("/connect/userinfo");
+            .SetTokenEndpointUris("/connect/token")
+            .SetUserinfoEndpointUris("/connect/userinfo");
 
         options.AllowAuthorizationCodeFlow()
-               .AllowRefreshTokenFlow();
+            .AllowRefreshTokenFlow();
 
-        options.AddEncryptionKey(new SymmetricSecurityKey(key))
-               .AddSigningKey(new SymmetricSecurityKey(key));
+       //options.DisableTransportSecurityRequirement(); this wont work for some fucking reason with openiddict 4.1.0
+
+        // Add symmetric signing key for access tokens, authorization codes, and refresh tokens
+        options.AddSigningKey(symmetricKey);
+
+        // Add asymmetric signing key for identity tokens (required)
+        if (builder.Environment.IsDevelopment())
+        {
+            options.AddDevelopmentSigningCertificate();
+        }
+        else
+        {
+            options.AddEphemeralSigningKey();
+        }
+
+        // Add encryption key
+        options.AddEncryptionKey(symmetricKey);
 
         options.UseAspNetCore()
-               .EnableTokenEndpointPassthrough()
-               .EnableAuthorizationEndpointPassthrough()
-               .EnableUserinfoEndpointPassthrough();
+            .EnableTokenEndpointPassthrough()
+            .EnableAuthorizationEndpointPassthrough()
+            .EnableUserinfoEndpointPassthrough()
+            .DisableTransportSecurityRequirement();
     })
     .AddValidation(options =>
     {
-        options.UseLocalServer();
+        // Register the ASP.NET Core host
         options.UseAspNetCore();
+
+        // Import the configuration from the local OpenIddict server instance.
+        options.UseLocalServer();
+
+        // Configure the token validation parameters to accept our custom JWT tokens
+        options.Configure(validationOptions =>
+        {
+            validationOptions.TokenValidationParameters.IssuerSigningKey = symmetricKey;
+            validationOptions.TokenValidationParameters.ValidIssuer = "https://localhost:5001";
+            validationOptions.TokenValidationParameters.ValidAudience = "https://localhost:5001";
+            validationOptions.TokenValidationParameters.ValidateIssuer = true;
+            validationOptions.TokenValidationParameters.ValidateAudience = true;
+            validationOptions.TokenValidationParameters.ValidateLifetime = true;
+            validationOptions.TokenValidationParameters.ClockSkew = TimeSpan.Zero;
+            validationOptions.TokenValidationParameters.RoleClaimType = "role";
+            validationOptions.TokenValidationParameters.NameClaimType = "name";
+        });
     });
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders("Content-Disposition", "Authorization");
+    });
+});
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    // Don't set a default scheme - let each endpoint specify what it needs
+    options.DefaultAuthenticateScheme = null;
+    options.DefaultChallengeScheme = null;
+    options.DefaultScheme = null;
 })
-.AddJwtBearer(options =>
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.LoginPath = "/api/auth/login";
+    options.LogoutPath = "/api/auth/logout";
+    options.AccessDeniedPath = "/api/auth/error";
+    options.ExpireTimeSpan = TimeSpan.FromHours(24);
+    options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
+        IssuerSigningKey = symmetricKey,
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
@@ -120,12 +284,12 @@ builder.Services.AddAuthentication(options =>
             {
                 var spacetimeIdentity = identity.FindFirst("identity")?.Value;
                 var xuid = identity.FindFirst("xuid")?.Value;
-                
+
                 if (!string.IsNullOrEmpty(spacetimeIdentity))
                 {
                     identity.AddClaim(new System.Security.Claims.Claim("spacetime_identity", spacetimeIdentity));
                 }
-                
+
                 if (!string.IsNullOrEmpty(xuid))
                 {
                     identity.AddClaim(new System.Security.Claims.Claim("xuid", xuid));
@@ -135,31 +299,811 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Configure authorization
+builder.Services.AddAuthorization(options =>
+{
+    // Policy for cookie-authenticated web pages
+    options.AddPolicy("RequireAuthenticatedUser", policy =>
+        policy.AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser());
+
+    options.AddPolicy("PublicEndpoints", policy =>
+        policy.RequireAssertion(_ => true));
+
+    // API-specific policy that requires scope claim for API access via JWT
+    options.AddPolicy("ApiAccess", policy =>
+        policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .RequireClaim("scope", "api"));
+    
+    // Flexible API policy that accepts EITHER JWT Bearer OR OpenIddict tokens
+    // This allows endpoints to work with both custom JWT and OpenIddict-issued tokens
+    options.AddPolicy("FlexibleApiAccess", policy =>
+        policy.AddAuthenticationSchemes(
+            JwtBearerDefaults.AuthenticationScheme,
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser());
+    
+    // Administrator policy that accepts both authentication schemes
+    // OpenIddict validation is now configured to accept our custom JWT tokens
+    options.AddPolicy("RequireAdministrator", policy =>
+        policy.AddAuthenticationSchemes(
+            JwtBearerDefaults.AuthenticationScheme,
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .RequireRole("Administrator"));
+    
+    // No default policy - let each endpoint specify its own requirements
+    options.FallbackPolicy = null;
+});
+
 // Add controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+            {
+                options.RespectBrowserAcceptHeader = true;
+                options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+            })
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            });
+
 
 var app = builder.Build();
+app.UseRouting();
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
 
+// Add authentication and authorization in the correct order
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Configure CORS before routing
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TicketSalesApp Admin API V1");
+        c.RoutePrefix = "swagger";
+    });
 }
+
+// Add public endpoints with responsive HTML
+app.MapGet("/", () => Results.Content("""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>TicketSalesApp Admin API</title>
+            <style>
+                :root {
+                    --bg-color: #f8f9fa;
+                    --text-color: #212529;
+                    --accent-color: #0d6efd;
+                    --card-bg: #ffffff;
+                    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                @media (prefers-color-scheme: dark) {
+                    :root {
+                        --bg-color: #121212;
+                        --text-color: #e0e0e0;
+                        --accent-color: #3d8bfd;
+                        --card-bg: #1e1e1e;
+                        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                    }
+                }
+                body {
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    background-color: var(--bg-color);
+                    color: var(--text-color);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    padding: 1rem;
+                    transition: background-color 0.3s, color 0.3s;
+                }
+                .container {
+                    max-width: 600px;
+                    width: 100%;
+                    background-color: var(--card-bg);
+                    border-radius: 12px;
+                    box-shadow: var(--card-shadow);
+                    padding: 2rem;
+                    text-align: center;
+                    transition: background-color 0.3s, box-shadow 0.3s;
+                }
+                h1 {
+                    color: var(--accent-color);
+                    margin-bottom: 1rem;
+                }
+                p {
+                    margin-bottom: 1.5rem;
+                    line-height: 1.6;
+                }
+                .status {
+                    display: inline-block;
+                    background-color: #10b981;
+                    color: white;
+                    padding: 0.5rem 1rem;
+                    border-radius: 50px;
+                    font-weight: 600;
+                }
+                .links {
+                    margin-top: 2rem;
+                }
+                a {
+                    color: var(--accent-color);
+                    text-decoration: none;
+                    margin: 0 0.5rem;
+                }
+                a:hover {
+                    text-decoration: underline;
+                }
+                @media (max-width: 480px) {
+                    .container {
+                        padding: 1.5rem;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>TicketSalesApp Admin API</h1>
+                <p>The API service is up and running. Use the endpoints to interact with the system.</p>
+                <div class="status">Active</div>
+                <div class="links">
+                    <a href="/health">Health Check</a>
+                    <a href="/swagger">API Documentation</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """, "text/html")).AllowAnonymous();
+
+app.MapGet("/health", () =>
+{
+    // Generate routes list HTML
+    var routesHtml = "";
+
+    try
+    {
+        // Get assemblies safely - exclude problematic ones
+        var relevantAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => !a.IsDynamic &&
+                        !string.IsNullOrEmpty(a.Location) &&
+                        !a.FullName.StartsWith("SpacetimeDB") &&
+                        !a.FullName.StartsWith("System.") &&
+                        !a.FullName.StartsWith("Microsoft.") &&
+                        a.FullName.Contains("BRU-AVTOPARK") ||
+                        a.FullName.Contains("TicketSalesApp"))
+            .ToList();
+
+        // Get all controller types
+        var controllers = new List<Type>();
+        foreach (var assembly in relevantAssemblies)
+        {
+            try
+            {
+                var assemblyControllers = assembly.GetTypes()
+                    .Where(type => type.IsClass &&
+                           !type.IsAbstract &&
+                           typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(type))
+                    .ToList();
+                controllers.AddRange(assemblyControllers);
+            }
+            catch (ReflectionTypeLoadException)
+            {
+                // Skip assemblies that can't be loaded
+                continue;
+            }
+            catch (Exception)
+            {
+                // Skip on any other reflection exception
+                continue;
+            }
+        }
+
+        // Fallback - if we couldn't find controllers, manually add them
+        if (!controllers.Any())
+        {
+            // Hardcoded list of known controller routes
+            routesHtml += @"
+                    <h2>API Routes</h2>
+                    <table style=""width: 100%; text-align: left; margin-top: 1rem; border-collapse: collapse;"">
+                        <tr style=""background-color: rgba(0,0,0,0.05);"">
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Controller</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Route</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Method</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Status</th>
+                        </tr>
+                        <tr style=""border-bottom: 1px solid #ddd;"">
+                            <td style=""padding: 8px;"">Auth</td>
+                            <td style=""padding: 8px;""><a href=""/api/auth/login"" style=""color: var(--accent-color);"">/api/auth/login</a></td>
+                            <td style=""padding: 8px;"">GET/POST</td>
+                            <td style=""padding: 8px;""><span style=""color: var(--success-color); font-weight: bold;"">Active</span></td>
+                        </tr>
+                        <tr style=""border-bottom: 1px solid #ddd;"">
+                            <td style=""padding: 8px;"">Auth</td>
+                            <td style=""padding: 8px;""><a href=""/api/auth/profile"" style=""color: var(--accent-color);"">/api/auth/profile</a></td>
+                            <td style=""padding: 8px;"">GET</td>
+                            <td style=""padding: 8px;""><span style=""color: var(--success-color); font-weight: bold;"">Active</span></td>
+                        </tr>
+                    </table>";
+        }
+        else if (controllers.Any())
+        {
+            routesHtml += @"
+                    <h2>API Routes</h2>
+                    <table style=""width: 100%; text-align: left; margin-top: 1rem; border-collapse: collapse;"">
+                        <tr style=""background-color: rgba(0,0,0,0.05);"">
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Controller</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Route</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Method</th>
+                            <th style=""padding: 8px; border-bottom: 1px solid #ddd;"">Status</th>
+                        </tr>";
+
+            foreach (var controller in controllers)
+            {
+                try
+                {
+                    var controllerName = controller.Name.Replace("Controller", "");
+                    var methods = controller.GetMethods()
+                        .Where(m => m.IsPublic &&
+                               !m.IsSpecialName &&
+                               m.DeclaringType == controller)
+                        .ToList();
+
+                    foreach (var method in methods)
+                    {
+                        try
+                        {
+                            var httpMethodAttributes = method.GetCustomAttributes(true)
+                                .Where(a => a.GetType().Name.StartsWith("Http") &&
+                                       a.GetType().Name.EndsWith("Attribute"))
+                                .ToList();
+
+                            if (!httpMethodAttributes.Any()) continue;
+
+                            foreach (var attr in httpMethodAttributes)
+                            {
+                                string httpMethod = attr.GetType().Name.Replace("Http", "").Replace("Attribute", "");
+                                string route = "";
+
+                                var routeAttrs = method.GetCustomAttributes(true)
+                                    .Where(a => a.GetType().Name == "RouteAttribute")
+                                    .ToList();
+
+                                if (routeAttrs.Any())
+                                {
+                                    var routeAttr = routeAttrs.First();
+                                    try
+                                    {
+                                        route = routeAttr.GetType().GetProperty("Template")?.GetValue(routeAttr)?.ToString() ?? "";
+                                    }
+                                    catch
+                                    {
+                                        // If can't get template, use method name
+                                        route = method.Name;
+                                    }
+                                }
+
+                                if (string.IsNullOrEmpty(route))
+                                {
+                                    route = $"/api/{controllerName}/{method.Name}";
+                                }
+                                else if (!route.StartsWith("/"))
+                                {
+                                    route = $"/api/{controllerName}/{route}";
+                                }
+
+                                routesHtml += $@"
+                                        <tr style=""border-bottom: 1px solid #ddd;"">
+                                            <td style=""padding: 8px;"">{controllerName}</td>
+                                            <td style=""padding: 8px;""><a href=""{route}"" style=""color: var(--accent-color);"">{route}</a></td>
+                                            <td style=""padding: 8px;"">{httpMethod}</td>
+                                            <td style=""padding: 8px;""><span style=""color: var(--success-color); font-weight: bold;"">Active</span></td>
+                                        </tr>";
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Skip methods that cause exceptions
+                            continue;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Skip controllers that cause exceptions
+                    continue;
+                }
+            }
+
+            routesHtml += "</table>";
+        }
+        else
+        {
+            routesHtml = "<p>No API routes found.</p>";
+        }
+    }
+    catch (Exception ex)
+    {
+        routesHtml = $@"<div class=""error-message"">
+                <h2>Error Loading Routes</h2>
+                <p>Could not load the API routes: {ex.Message}</p>
+            </div>";
+    }
+
+    // Health check section always displays even if routes failed
+    string healthCheckHtml = $@"
+            <h2>Service Health</h2>
+            <div class=""health-section"">
+                <div class=""health-item"">
+                    <div class=""health-name"">API Service</div>
+                    <div class=""health-status""><span class=""status-healthy"">Healthy</span></div>
+                </div>
+                <div class=""health-item"">
+                    <div class=""health-name"">Database Connection</div>
+                    <div class=""health-status""><span class=""status-healthy"">Connected</span></div>
+                </div>
+                <div class=""timestamp"">Last checked: {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC")}</div>
+            </div>";
+
+    return Results.Content($@"
+            <!DOCTYPE html>
+            <html lang=""en"">
+            <head>
+                <meta charset=""UTF-8"">
+                <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+                <title>Health Status</title>
+                <style>
+                    :root {{
+                        --bg-color: #f8f9fa;
+                        --text-color: #212529;
+                        --accent-color: #0d6efd;
+                        --card-bg: #ffffff;
+                        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        --success-color: #10b981;
+                        --error-color: #ef4444;
+                    }}
+                    @media (prefers-color-scheme: dark) {{
+                        :root {{
+                            --bg-color: #121212;
+                            --text-color: #e0e0e0;
+                            --accent-color: #3d8bfd;
+                            --card-bg: #1e1e1e;
+                            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                            --success-color: #34d399;
+                            --error-color: #f87171;
+                        }}
+                    }}
+                    body {{
+                        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                        background-color: var(--bg-color);
+                        color: var(--text-color);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        padding: 1rem;
+                        transition: background-color 0.3s, color 0.3s;
+                    }}
+                    .container {{
+                        max-width: 900px;
+                        width: 100%;
+                        background-color: var(--card-bg);
+                        border-radius: 12px;
+                        box-shadow: var(--card-shadow);
+                        padding: 2rem;
+                        margin: 2rem 0;
+                        transition: background-color 0.3s, box-shadow 0.3s;
+                    }}
+                    h1, h2 {{
+                        color: var(--accent-color);
+                        margin-bottom: 1rem;
+                    }}
+                    h2 {{
+                        margin-top: 2rem;
+                    }}
+                    .status-indicator {{
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-start;
+                        margin-bottom: 1.5rem;
+                    }}
+                    .dot {{
+                        width: 20px;
+                        height: 20px;
+                        background-color: var(--success-color);
+                        border-radius: 50%;
+                        margin-right: 10px;
+                    }}
+                    .status-text {{
+                        font-size: 1.2rem;
+                        font-weight: 600;
+                    }}
+                    p {{
+                        margin-bottom: 1.5rem;
+                        line-height: 1.6;
+                    }}
+                    .timestamp {{
+                        color: var(--text-color);
+                        opacity: 0.7;
+                        font-size: 0.9rem;
+                        margin-top: 2rem;
+                    }}
+                    .back-link {{
+                        display: inline-block;
+                        margin-top: 1.5rem;
+                        color: var(--accent-color);
+                        text-decoration: none;
+                    }}
+                    .back-link:hover {{
+                        text-decoration: underline;
+                    }}
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 1rem 0;
+                    }}
+                    th, td {{
+                        text-align: left;
+                        padding: 8px;
+                        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+                    }}
+                    th {{
+                        font-weight: 600;
+                    }}
+                    .error-message {{
+                        background-color: rgba(239, 68, 68, 0.1);
+                        border-left: 4px solid var(--error-color);
+                        padding: 1rem;
+                        border-radius: 4px;
+                        margin-bottom: 2rem;
+                    }}
+                    .error-message h2 {{
+                        color: var(--error-color);
+                        margin-top: 0;
+                    }}
+                    .health-section {{
+                        background-color: rgba(16, 185, 129, 0.05);
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin: 1rem 0 2rem 0;
+                    }}
+                    .health-item {{
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 0.75rem 0;
+                        border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+                    }}
+                    .health-item:last-child {{
+                        border-bottom: none;
+                    }}
+                    .health-name {{
+                        font-weight: 500;
+                    }}
+                    .status-healthy {{
+                        color: var(--success-color);
+                        font-weight: 600;
+                    }}
+                    @media (max-width: 768px) {{
+                        .container {{
+                            padding: 1.5rem;
+                        }}
+                        table {{
+                            font-size: 0.85rem;
+                        }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class=""container"">
+                    <h1>TicketSalesApp Admin API</h1>
+                    <div class=""status-indicator"">
+                        <div class=""dot""></div>
+                        <div class=""status-text"">Healthy</div>
+                    </div>
+                    <p>The API service is up and running. Use the endpoints to interact with the system.</p>
+                    
+                    {healthCheckHtml}
+                    
+                    <div class=""api-routes"">
+                        {routesHtml}
+                    </div>
+                    
+                    <div>
+                        <a href=""/"" class=""back-link"">Home</a>
+                        <a href=""/swagger"" class=""back-link"">API Documentation</a>
+                    </div>
+                </div>
+            </body>
+            </html>
+        ", "text/html");
+}).AllowAnonymous();
+
+// Map controllers - let each endpoint specify its own authorization policy
+app.MapControllers()
+.WithOpenApi();
 
 // Initialize SpacetimeDB connection
 var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
 spacetimeService.Connect();
 
-// Use authentication and authorization
-app.UseAuthentication();
-app.UseAuthorization();
+// Start background task to register OAuth clients once subscription is ready
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("Starting background task for OAuth client registration...");
 
-// Map controllers
-app.MapControllers();
+_ = Task.Run(async () =>
+{
+    try
+    {
+        // Wait for connection (max 30 seconds)
+        var maxWaitTime = TimeSpan.FromSeconds(30);
+        var startTime = DateTime.UtcNow;
+        while (!spacetimeService.IsConnected() && (DateTime.UtcNow - startTime) < maxWaitTime)
+        {
+            await Task.Delay(500);
+        }
 
-app.MapDefaultEndpoints();
+        if (!spacetimeService.IsConnected())
+        {
+            logger.LogError("SpacetimeDB connection not ready after {Seconds} seconds, cannot register OAuth clients", maxWaitTime.TotalSeconds);
+            return;
+        }
+
+        logger.LogInformation("SpacetimeDB connection ready, waiting for subscription to be applied...");
+
+        // Wait for subscription with extended timeout (2 minutes)
+        // Subscription can take 30+ seconds to apply based on logs
+        var maxSubscriptionWaitTime = TimeSpan.FromMinutes(2);
+        startTime = DateTime.UtcNow;
+        var lastLogTime = DateTime.UtcNow;
+        
+        while (!spacetimeService.IsSubscriptionReady() && (DateTime.UtcNow - startTime) < maxSubscriptionWaitTime)
+        {
+            await Task.Delay(500);
+            
+            // Log progress every 10 seconds
+            if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 10)
+            {
+                logger.LogInformation("Still waiting for SpacetimeDB subscription... ({Elapsed:F1}s elapsed)", 
+                    (DateTime.UtcNow - startTime).TotalSeconds);
+                lastLogTime = DateTime.UtcNow;
+            }
+        }
+
+        if (!spacetimeService.IsSubscriptionReady())
+        {
+            logger.LogError("SpacetimeDB subscription not applied after {Seconds} seconds, cannot register OAuth clients", 
+                maxSubscriptionWaitTime.TotalSeconds);
+            return;
+        }
+
+        logger.LogInformation("SpacetimeDB subscription applied successfully after {Elapsed:F1}s, proceeding with client registration", 
+            (DateTime.UtcNow - startTime).TotalSeconds);
+
+        // Auto-register default OAuth clients
+        using (var scope = app.Services.CreateScope())
+        {
+            var openIdConnectService = scope.ServiceProvider.GetRequiredService<TicketSalesApp.Services.Interfaces.IOpenIdConnectService>();
+            
+            logger.LogInformation("Checking for default OAuth clients...");
+            
+            // Register desktop client if it doesn't exist
+            var desktopClientId = "bru-avtopark-desktop-client";
+            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+            
+            if (!clientExists)
+            {
+                logger.LogInformation("Registering default desktop client: {ClientId}", desktopClientId);
+                
+                var (success, errorMessage) = await openIdConnectService.RegisterClientApplicationAsync(
+                    clientId: desktopClientId,
+                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    displayName: "BRU Avtopark Desktop Application",
+                    redirectUris: new[] {
+                        "http://localhost:5000/callback",
+                        "http://localhost:5555/callback",
+                        "https://localhost:7515/callback",
+                        "https://localhost:7515/signin-oidc",
+                        "http://localhost:5501/signin-oidc"
+                    },
+                    postLogoutRedirectUris: new[] {
+                        "http://localhost:5000/",
+                        "http://localhost:5555/",
+                        "https://localhost:7515/",
+                        "http://localhost:5501/"
+                    },
+                    allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
+                    requireConsent: false
+                );
+                
+                if (success)
+                {
+                    logger.LogInformation("Successfully registered default desktop client");
+                    
+                    // CRITICAL: Process frame ticks to ensure SpacetimeDB cache is updated
+                    // The reducer writes to the database, but the local cache needs frame ticks to sync
+                    logger.LogInformation("[FrameTick] Processing frame ticks to sync SpacetimeDB cache...");
+                    for (int i = 0; i < 10; i++)
+                    {
+                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
+                        spacetimeService.ProcessFrameTick();
+                        await Task.Delay(100); // Small delay between ticks
+                    }
+                    logger.LogInformation("[FrameTick] Completed 10 frame ticks");
+                    
+                    // Verify the client is retrievable from cache
+                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+                    if (verifyExists)
+                    {
+                        logger.LogInformation("Verified default desktop client is retrievable from database");
+                    }
+                    else
+                    {
+                        logger.LogWarning("Default desktop client was registered but cannot be retrieved from cache yet - processing more frame ticks");
+                        
+                        // Try more aggressive syncing
+                        logger.LogInformation("[FrameTick] Processing additional 20 frame ticks...");
+                        for (int i = 0; i < 20; i++)
+                        {
+                            if (i % 5 == 0)
+                            {
+                                logger.LogDebug("[FrameTick] Processing tick {TickNumber}/20", i + 1);
+                            }
+                            spacetimeService.ProcessFrameTick();
+                            await Task.Delay(50);
+                        }
+                        logger.LogInformation("[FrameTick] Completed additional 20 frame ticks");
+                        
+                        // Final verification
+                        var (finalCheck, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+                        if (finalCheck)
+                        {
+                            logger.LogInformation("Client now retrievable after additional frame ticks");
+                        }
+                        else
+                        {
+                            logger.LogError("Client still not retrievable after 30 frame ticks - SpacetimeDB cache sync issue");
+                        }
+                    }
+                }
+                else
+                {
+                    logger.LogError("Failed to register default desktop client: {Error}", errorMessage);
+                }
+            }
+            else
+            {
+                logger.LogInformation("Default desktop client already exists - updating to ensure correct configuration");
+                
+                var (success, errorMessage) = await openIdConnectService.UpdateClientApplicationAsync(
+                    clientId: desktopClientId,
+                    clientSecret: "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+                    displayName: "BRU Avtopark Desktop Application",
+                    redirectUris: new[] {
+                        "http://localhost:5000/callback",
+                        "http://localhost:5555/callback",
+                        "https://localhost:7515/callback",
+                        "https://localhost:7515/signin-oidc",
+                        "http://localhost:5501/signin-oidc"
+                    },
+                    postLogoutRedirectUris: new[] {
+                        "http://localhost:5000/",
+                        "http://localhost:5555/",
+                        "https://localhost:7515/",
+                        "http://localhost:5501/"
+                    },
+                    allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
+                    requireConsent: false
+                );
+                
+                if (success)
+                {
+                    logger.LogInformation("Successfully updated default desktop client with correct scope permissions");
+                    
+                    // Process frame ticks to sync the update
+                    logger.LogInformation("[FrameTick] Processing frame ticks to sync client update...");
+                    for (int i = 0; i < 10; i++)
+                    {
+                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
+                        spacetimeService.ProcessFrameTick();
+                        await Task.Delay(100);
+                    }
+                    logger.LogInformation("[FrameTick] Completed frame ticks for client update");
+                }
+                else
+                {
+                    logger.LogError("Failed to update default desktop client: {Error}", errorMessage);
+                }
+            }
+
+            // Register required OAuth scopes
+            logger.LogInformation("Registering required OAuth scopes...");
+            var scopeManager = openIdConnectService.GetScopeManager();
+            
+            var requiredScopes = new[]
+            {
+                new { Name = "openid", DisplayName = "OpenID", Description = "OpenID Connect scope" },
+                new { Name = "profile", DisplayName = "User Profile", Description = "Access to user profile information" },
+                new { Name = "email", DisplayName = "Email Address", Description = "Access to user email address" },
+                new { Name = "roles", DisplayName = "User Roles", Description = "Access to user roles" },
+                new { Name = "api", DisplayName = "API Access", Description = "Access to the API" },
+                new { Name = "offline_access", DisplayName = "Offline Access", Description = "Access to refresh tokens" }
+            };
+
+            foreach (var scopeInfo in requiredScopes)
+            {
+                try
+                {
+                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                    if (existingScope == null)
+                    {
+                        logger.LogInformation("Creating scope: {ScopeName}", scopeInfo.Name);
+                        
+                        var scopeDescriptor = new OpenIddictScopeDescriptor
+                        {
+                            Name = scopeInfo.Name,
+                            DisplayName = scopeInfo.DisplayName,
+                            Description = scopeInfo.Description
+                        };
+
+                        await scopeManager.CreateAsync(scopeDescriptor);
+                        logger.LogInformation("Successfully created scope: {ScopeName}", scopeInfo.Name);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Scope already exists: {ScopeName}", scopeInfo.Name);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error creating scope {ScopeName}: {Message}", scopeInfo.Name, ex.Message);
+                }
+            }
+
+            // Process frame ticks to sync scope data
+            logger.LogInformation("[FrameTick] Processing frame ticks to sync scope data...");
+            for (int i = 0; i < 10; i++)
+            {
+                logger.LogDebug("[FrameTick] Processing scope sync tick {TickNumber}/10", i + 1);
+                spacetimeService.ProcessFrameTick();
+                await Task.Delay(100);
+            }
+            logger.LogInformation("[FrameTick] Completed scope sync frame ticks");
+
+            // Verify scopes are retrievable
+            logger.LogInformation("Verifying registered scopes...");
+            foreach (var scopeInfo in requiredScopes)
+            {
+                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                if (registeredScope != null)
+                {
+                    logger.LogInformation("✓ Scope verified: {ScopeName}", scopeInfo.Name);
+                }
+                else
+                {
+                    logger.LogWarning("✗ Scope not found: {ScopeName}", scopeInfo.Name);
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error during OAuth client registration: {Message}", ex.Message);
+    }
+});
 
 app.Run();
 

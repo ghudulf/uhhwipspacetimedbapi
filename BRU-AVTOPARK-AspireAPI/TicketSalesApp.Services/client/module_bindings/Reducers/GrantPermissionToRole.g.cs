@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void GrantPermissionToRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId);
+        public delegate void GrantPermissionToRoleHandler(ReducerEventContext ctx, uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId);
         public event GrantPermissionToRoleHandler? OnGrantPermissionToRole;
 
-        public void GrantPermissionToRole(uint roleId, uint permissionId)
+        public void GrantPermissionToRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId), this.SetCallReducerFlags.GrantPermissionToRoleFlags);
+            conn.InternalCallReducer(new Reducer.GrantPermissionToRole(roleId, permissionId, actingUserId));
         }
 
         public bool InvokeGrantPermissionToRole(ReducerEventContext ctx, Reducer.GrantPermissionToRole args)
         {
-            if (OnGrantPermissionToRole == null) return false;
+            if (OnGrantPermissionToRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnGrantPermissionToRole(
                 ctx,
                 args.RoleId,
-                args.PermissionId
+                args.PermissionId,
+                args.ActingUserId
             );
             return true;
         }
@@ -38,31 +50,29 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GrantPermissionToRole : Reducer, IReducerArgs
         {
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
-            [DataMember(Name = "permissionId")]
+            [DataMember(Name = "permission_id")]
             public uint PermissionId;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public GrantPermissionToRole(
                 uint RoleId,
-                uint PermissionId
+                uint PermissionId,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.RoleId = RoleId;
                 this.PermissionId = PermissionId;
+                this.ActingUserId = ActingUserId;
             }
 
             public GrantPermissionToRole()
             {
             }
 
-            string IReducerArgs.ReducerName => "GrantPermissionToRole";
+            string IReducerArgs.ReducerName => "grant_permission_to_role";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags GrantPermissionToRoleFlags;
-        public void GrantPermissionToRole(CallReducerFlags flags) => GrantPermissionToRoleFlags = flags;
     }
 }

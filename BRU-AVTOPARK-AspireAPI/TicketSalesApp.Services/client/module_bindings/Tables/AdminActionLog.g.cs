@@ -36,4 +36,36 @@ namespace SpacetimeDB.Types
 
         public readonly AdminActionLogHandle AdminActionLog;
     }
+
+    public sealed class AdminActionLogCols
+    {
+        public global::SpacetimeDB.Col<AdminActionLog, uint> LogId { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, string> Action { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, string> Details { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, ulong> Timestamp { get; }
+        public global::SpacetimeDB.NullableCol<AdminActionLog, string> IpAddress { get; }
+        public global::SpacetimeDB.NullableCol<AdminActionLog, string> UserAgent { get; }
+
+        public AdminActionLogCols(string tableName)
+        {
+            LogId = new global::SpacetimeDB.Col<AdminActionLog, uint>(tableName, "log_id");
+            UserId = new global::SpacetimeDB.Col<AdminActionLog, SpacetimeDB.Identity>(tableName, "user_id");
+            Action = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "action");
+            Details = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "details");
+            Timestamp = new global::SpacetimeDB.Col<AdminActionLog, ulong>(tableName, "timestamp");
+            IpAddress = new global::SpacetimeDB.NullableCol<AdminActionLog, string>(tableName, "ip_address");
+            UserAgent = new global::SpacetimeDB.NullableCol<AdminActionLog, string>(tableName, "user_agent");
+        }
+    }
+
+    public sealed class AdminActionLogIxCols
+    {
+        public global::SpacetimeDB.IxCol<AdminActionLog, uint> LogId { get; }
+
+        public AdminActionLogIxCols(string tableName)
+        {
+            LogId = new global::SpacetimeDB.IxCol<AdminActionLog, uint>(tableName, "log_id");
+        }
+    }
 }

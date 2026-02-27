@@ -12,22 +12,34 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void ChangePasswordHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string currentPassword, string newPassword);
+        public delegate void ChangePasswordHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser);
         public event ChangePasswordHandler? OnChangePassword;
 
-        public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword)
+        public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword), this.SetCallReducerFlags.ChangePasswordFlags);
+            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser));
         }
 
         public bool InvokeChangePassword(ReducerEventContext ctx, Reducer.ChangePassword args)
         {
-            if (OnChangePassword == null) return false;
+            if (OnChangePassword == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnChangePassword(
                 ctx,
                 args.UserId,
                 args.CurrentPassword,
-                args.NewPassword
+                args.NewPassword,
+                args.ActingUser
             );
             return true;
         }
@@ -39,22 +51,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ChangePassword : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "currentPassword")]
+            [DataMember(Name = "current_password")]
             public string CurrentPassword;
-            [DataMember(Name = "newPassword")]
+            [DataMember(Name = "new_password")]
             public string NewPassword;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public ChangePassword(
                 SpacetimeDB.Identity UserId,
                 string CurrentPassword,
-                string NewPassword
+                string NewPassword,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
                 this.CurrentPassword = CurrentPassword;
                 this.NewPassword = NewPassword;
+                this.ActingUser = ActingUser;
             }
 
             public ChangePassword()
@@ -63,13 +79,7 @@ namespace SpacetimeDB.Types
                 this.NewPassword = "";
             }
 
-            string IReducerArgs.ReducerName => "ChangePassword";
+            string IReducerArgs.ReducerName => "change_password";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ChangePasswordFlags;
-        public void ChangePassword(CallReducerFlags flags) => ChangePasswordFlags = flags;
     }
 }

@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateJob(string jobTitle, string jobInternship)
         {
-            conn.InternalCallReducer(new Reducer.CreateJob(jobTitle, jobInternship), this.SetCallReducerFlags.CreateJobFlags);
+            conn.InternalCallReducer(new Reducer.CreateJob(jobTitle, jobInternship));
         }
 
         public bool InvokeCreateJob(ReducerEventContext ctx, Reducer.CreateJob args)
         {
-            if (OnCreateJob == null) return false;
+            if (OnCreateJob == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateJob(
                 ctx,
                 args.JobTitle,
@@ -38,9 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateJob : Reducer, IReducerArgs
         {
-            [DataMember(Name = "jobTitle")]
+            [DataMember(Name = "job_title")]
             public string JobTitle;
-            [DataMember(Name = "jobInternship")]
+            [DataMember(Name = "job_internship")]
             public string JobInternship;
 
             public CreateJob(
@@ -58,13 +69,7 @@ namespace SpacetimeDB.Types
                 this.JobInternship = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateJob";
+            string IReducerArgs.ReducerName => "create_job";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateJobFlags;
-        public void CreateJob(CallReducerFlags flags) => CreateJobFlags = flags;
     }
 }

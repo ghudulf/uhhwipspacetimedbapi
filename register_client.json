@@ -1,0 +1,29 @@
+{
+  "client_id": "bru-avtopark-desktop-client",
+  "client_secret": "K7x9mP2nQ5wR8tY3vB6cF1gH4jL0zX-DevSecret-2024",
+  "display_name": "BRU Avtopark Ticket Sales Desktop App",
+  "redirect_uris": [
+    "https://localhost:7515/signin-oidc",
+    "http://localhost:5501/signin-oidc",
+    "https://localhost:7515/callback",
+    "http://localhost:5501/callback",
+    "http://localhost:5555/callback"
+  ],
+  "post_logout_redirect_uris": [
+    "https://localhost:7515/signout-callback-oidc",
+    "http://localhost:5501/signout-callback-oidc",
+    "https://localhost:7515/",
+    "http://localhost:5501/",
+    "http://localhost:5555/"
+  ],
+  "allowed_scopes": [
+    "openid",
+    "profile",
+    "email",
+    "roles",
+    "api",
+    "offline_access"
+  ],
+  "consent_type": "implicit",
+  "client_type": "public"
+}

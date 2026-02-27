@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateRouteScheduleHandler(ReducerEventContext ctx, uint scheduleId, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes);
+        public delegate void UpdateRouteScheduleHandler(ReducerEventContext ctx, uint scheduleId, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, SpacetimeDB.Identity? actingUser);
         public event UpdateRouteScheduleHandler? OnUpdateRouteSchedule;
 
-        public void UpdateRouteSchedule(uint scheduleId, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes)
+        public void UpdateRouteSchedule(uint scheduleId, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateRouteSchedule(scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes), this.SetCallReducerFlags.UpdateRouteScheduleFlags);
+            conn.InternalCallReducer(new Reducer.UpdateRouteSchedule(scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actingUser));
         }
 
         public bool InvokeUpdateRouteSchedule(ReducerEventContext ctx, Reducer.UpdateRouteSchedule args)
         {
-            if (OnUpdateRouteSchedule == null) return false;
+            if (OnUpdateRouteSchedule == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateRouteSchedule(
                 ctx,
                 args.ScheduleId,
@@ -40,7 +51,8 @@ namespace SpacetimeDB.Types
                 args.IsRecurring,
                 args.EstimatedStopTimes,
                 args.StopDistances,
-                args.Notes
+                args.Notes,
+                args.ActingUser
             );
             return true;
         }
@@ -52,38 +64,40 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRouteSchedule : Reducer, IReducerArgs
         {
-            [DataMember(Name = "scheduleId")]
+            [DataMember(Name = "schedule_id")]
             public uint ScheduleId;
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint? RouteId;
-            [DataMember(Name = "startPoint")]
+            [DataMember(Name = "start_point")]
             public string? StartPoint;
-            [DataMember(Name = "endPoint")]
+            [DataMember(Name = "end_point")]
             public string? EndPoint;
-            [DataMember(Name = "routeStops")]
+            [DataMember(Name = "route_stops")]
             public System.Collections.Generic.List<string>? RouteStops;
-            [DataMember(Name = "departureTime")]
+            [DataMember(Name = "departure_time")]
             public ulong? DepartureTime;
-            [DataMember(Name = "arrivalTime")]
+            [DataMember(Name = "arrival_time")]
             public ulong? ArrivalTime;
             [DataMember(Name = "price")]
             public double? Price;
-            [DataMember(Name = "availableSeats")]
+            [DataMember(Name = "available_seats")]
             public uint? AvailableSeats;
-            [DataMember(Name = "daysOfWeek")]
+            [DataMember(Name = "days_of_week")]
             public System.Collections.Generic.List<string>? DaysOfWeek;
-            [DataMember(Name = "busTypes")]
+            [DataMember(Name = "bus_types")]
             public System.Collections.Generic.List<string>? BusTypes;
-            [DataMember(Name = "stopDurationMinutes")]
+            [DataMember(Name = "stop_duration_minutes")]
             public uint? StopDurationMinutes;
-            [DataMember(Name = "isRecurring")]
+            [DataMember(Name = "is_recurring")]
             public bool? IsRecurring;
-            [DataMember(Name = "estimatedStopTimes")]
+            [DataMember(Name = "estimated_stop_times")]
             public System.Collections.Generic.List<string>? EstimatedStopTimes;
-            [DataMember(Name = "stopDistances")]
+            [DataMember(Name = "stop_distances")]
             public System.Collections.Generic.List<double>? StopDistances;
             [DataMember(Name = "notes")]
             public string? Notes;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateRouteSchedule(
                 uint ScheduleId,
@@ -101,7 +115,8 @@ namespace SpacetimeDB.Types
                 bool? IsRecurring,
                 System.Collections.Generic.List<string>? EstimatedStopTimes,
                 System.Collections.Generic.List<double>? StopDistances,
-                string? Notes
+                string? Notes,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.ScheduleId = ScheduleId;
@@ -120,19 +135,14 @@ namespace SpacetimeDB.Types
                 this.EstimatedStopTimes = EstimatedStopTimes;
                 this.StopDistances = StopDistances;
                 this.Notes = Notes;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateRouteSchedule()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateRouteSchedule";
+            string IReducerArgs.ReducerName => "update_route_schedule";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateRouteScheduleFlags;
-        public void UpdateRouteSchedule(CallReducerFlags flags) => UpdateRouteScheduleFlags = flags;
     }
 }

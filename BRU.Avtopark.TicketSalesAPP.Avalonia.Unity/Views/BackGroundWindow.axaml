@@ -1,0 +1,180 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.BackGroundWindow"
+        Title="SmartStart-Автопарк автобусов - Загрузка системы"
+        WindowState="FullScreen" 
+        SystemDecorations="None" 
+       
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SystemBackground}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Light Mode -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="PanelBackgroundColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="PanelBackground" Color="{DynamicResource PanelBackgroundColor}"/>
+                    <Color x:Key="PanelBorderColor">#000000</Color>
+                    <SolidColorBrush x:Key="PanelBorder" Color="{DynamicResource PanelBorderColor}"/>
+                    <Color x:Key="PanelTextColor">#000000</Color>
+                    <SolidColorBrush x:Key="PanelText" Color="{DynamicResource PanelTextColor}"/>
+                    <Color x:Key="VersionStatusColor">#CC0000</Color>
+                    <SolidColorBrush x:Key="VersionStatusText" Color="{DynamicResource VersionStatusColor}"/>
+                    <Color x:Key="EditionBorderColor">#808080</Color>
+                    <SolidColorBrush x:Key="EditionBorder" Color="{DynamicResource EditionBorderColor}"/>
+                    <Color x:Key="BackgroundOverlayColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BackgroundOverlay" Color="{DynamicResource BackgroundOverlayColor}" Opacity="0.05"/>
+                    <Color x:Key="BuildInfoColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BuildInfoText" Color="{DynamicResource BuildInfoColor}" Opacity="0.6"/>
+                    <Color x:Key="HeaderStripeColor">#000000</Color>
+                    <SolidColorBrush x:Key="HeaderStripe" Color="{DynamicResource HeaderStripeColor}"/>
+                    <Color x:Key="MicrosoftLabelColor">#3C3C3C</Color>
+                    <SolidColorBrush x:Key="MicrosoftLabel" Color="{DynamicResource MicrosoftLabelColor}"/>
+                </ResourceDictionary>
+                <!-- Dark Mode -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="PanelBackgroundColor">#2D2D2D</Color>
+                    <SolidColorBrush x:Key="PanelBackground" Color="{DynamicResource PanelBackgroundColor}"/>
+                    <Color x:Key="PanelBorderColor">#555555</Color>
+                    <SolidColorBrush x:Key="PanelBorder" Color="{DynamicResource PanelBorderColor}"/>
+                    <Color x:Key="PanelTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="PanelText" Color="{DynamicResource PanelTextColor}"/>
+                    <Color x:Key="VersionStatusColor">#FF6666</Color>
+                    <SolidColorBrush x:Key="VersionStatusText" Color="{DynamicResource VersionStatusColor}"/>
+                    <Color x:Key="EditionBorderColor">#888888</Color>
+                    <SolidColorBrush x:Key="EditionBorder" Color="{DynamicResource EditionBorderColor}"/>
+                    <Color x:Key="BackgroundOverlayColor">#000000</Color>
+                    <SolidColorBrush x:Key="BackgroundOverlay" Color="{DynamicResource BackgroundOverlayColor}" Opacity="0.3"/>
+                    <Color x:Key="BuildInfoColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BuildInfoText" Color="{DynamicResource BuildInfoColor}" Opacity="0.5"/>
+                    <Color x:Key="HeaderStripeColor">#000000</Color>
+                    <SolidColorBrush x:Key="HeaderStripe" Color="{DynamicResource HeaderStripeColor}"/>
+                    <Color x:Key="MicrosoftLabelColor">#A0A0A0</Color>
+                    <SolidColorBrush x:Key="MicrosoftLabel" Color="{DynamicResource MicrosoftLabelColor}"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Grid>
+        <!-- Main background image with overlay for better contrast in both modes -->
+        <Grid>
+            <Image Margin="0" Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Setup_background_(Longhorn_Build_4051_Setup).png" Stretch="UniformToFill"/>
+            <Rectangle Fill="{DynamicResource BackgroundOverlay}" />
+        </Grid>
+        
+        <!-- Central Panel (Mimicking NT 5.0 Beta Splash) -->
+        <Border Name="CentralPanel"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource PanelBackground}"
+                BorderBrush="{DynamicResource PanelBorder}"
+                BorderThickness="1"
+                Width="550" Height="350"
+                BoxShadow="0 4 20 0 #40000000">
+	<Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40"/> <!-- Black header stripe row -->
+                    <RowDefinition Height="10"/> <!-- Spacing -->
+                    <RowDefinition Height="Auto"/> <!-- "Microsoft" label row -->
+                    <RowDefinition Height="Auto"/> <!-- Windows NT row -->
+                    <RowDefinition Height="Auto"/> <!-- Server row -->
+                    <RowDefinition Height="Auto"/> <!-- Version row -->
+                    <RowDefinition Height="Auto"/> <!-- "with Active Directory" row -->
+                    <RowDefinition Height="Auto"/> <!-- Edition badge row -->
+                    <RowDefinition Height="*"/> <!-- Spacer -->
+                    <RowDefinition Height="Auto"/> <!-- Copyright row -->
+                </Grid.RowDefinitions>
+                
+                <!-- Top black stripe that doesn't span full width -->
+                <Grid Grid.Row="0">
+		<Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/> <!-- For the black stripe with logo contained within it -->
+		</Grid.ColumnDefinitions>
+                    
+                    <!-- Black stripe background - covers about 2/3 of the width -->
+                    <Rectangle Grid.Column="0" 
+                               Fill="{DynamicResource HeaderStripe}" 
+                               Height="40" 
+                               Width="400"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"/>
+                    
+                    <!-- BRU ID Logo placed on top of the black stripe, positioned near right edge -->
+                    <Image Grid.Column="0"
+                           Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruidlogo.png"
+                           Width="100" Height="25" 
+                           Stretch="Uniform"
+                           HorizontalAlignment="Left" 
+                           VerticalAlignment="Center"
+                           Margin="290,0,0,0"/>
+                </Grid>
+                
+                <!-- Microsoft-like label (small text above main title) -->
+                <TextBlock Grid.Row="2" 
+                           Text="БРУ"
+                           FontSize="14" FontWeight="Light"
+                           Foreground="{DynamicResource MicrosoftLabel}" 
+                           Margin="26,10,0,0"/>
+                
+                <!-- Main Title (Windows NT-like) -->
+                <TextBlock Grid.Row="3" 
+                           Text="Автопарк"
+                           FontSize="46" FontWeight="Bold" 
+                           Foreground="{DynamicResource PanelText}" 
+                           Margin="20,0,0,0"/>
+                
+                <!-- Server-like subtitle -->
+                <TextBlock Grid.Row="4" 
+                           Text="Система Управления"
+                           FontSize="30" FontWeight="SemiBold" 
+                           Foreground="{DynamicResource PanelText}" 
+                           Margin="38,0,0,5"/>
+
+                <!-- Version Info -->
+                <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="25,10,0,3">
+                    <TextBlock Text="Версия 0.5 " FontSize="16" Foreground="{DynamicResource PanelText}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Альфа" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource VersionStatusText}" VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <!-- "with Active Directory"-like text -->
+                <TextBlock Grid.Row="6" 
+                           Text="с Модулем Продаж" 
+                           FontSize="14" 
+                           Foreground="{DynamicResource PanelText}" 
+                           Opacity="0.9" 
+                           Margin="25,3,0,15"/>
+                
+                <!-- Edition Badge (larger than before) -->
+                <Border Grid.Row="7" 
+                        BorderBrush="{DynamicResource EditionBorder}" 
+                        BorderThickness="1" 
+                        Background="White"
+                        Padding="8,3" 
+                        Margin="25,0,0,0"
+                        HorizontalAlignment="Left">
+                    <Image Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruSMARTSTARTLOGO.png" 
+                           Height="50" ToolTip.Tip="Модуль Администратора SmartStart"/> 
+                </Border>
+
+                <!-- Copyright -->
+                <TextBlock Grid.Row="9" 
+                           Text="© Белорусско-российский университет, 2024. Все права защищены.&#x0A;Программа предназначена для использования в рамках учебного процесса." 
+                           FontSize="9" TextWrapping="Wrap" 
+                           Foreground="{DynamicResource PanelText}" Opacity="0.7" 
+                           Margin="25,0,10,10" 
+                           VerticalAlignment="Bottom" 
+                           HorizontalAlignment="Left"/>
+            </Grid>
+        </Border>
+        
+        <!-- Bottom right build info (Subtle) -->
+        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Margin="0,0,15,15"
+                   Text="Сборка: SRS-9b1fCRnflakes2dd2"
+                   Foreground="{DynamicResource BuildInfoText}" FontSize="10" IsHitTestVisible="False"/>
+	</Grid>
+</Window>

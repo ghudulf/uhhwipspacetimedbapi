@@ -12,24 +12,36 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateRoleHandler(ReducerEventContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority);
+        public delegate void UpdateRoleHandler(ReducerEventContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, SpacetimeDB.Identity? actingUserId);
         public event UpdateRoleHandler? OnUpdateRole;
 
-        public void UpdateRole(uint roleId, string? name, string? description, int? legacyRoleId, uint? priority)
+        public void UpdateRole(uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.UpdateRole(roleId, name, description, legacyRoleId, priority), this.SetCallReducerFlags.UpdateRoleFlags);
+            conn.InternalCallReducer(new Reducer.UpdateRole(roleId, name, description, legacyRoleId, priority, actingUserId));
         }
 
         public bool InvokeUpdateRole(ReducerEventContext ctx, Reducer.UpdateRole args)
         {
-            if (OnUpdateRole == null) return false;
+            if (OnUpdateRole == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateRole(
                 ctx,
                 args.RoleId,
                 args.Name,
                 args.Description,
                 args.LegacyRoleId,
-                args.Priority
+                args.Priority,
+                args.ActingUserId
             );
             return true;
         }
@@ -41,23 +53,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRole : Reducer, IReducerArgs
         {
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
             [DataMember(Name = "name")]
             public string? Name;
             [DataMember(Name = "description")]
             public string? Description;
-            [DataMember(Name = "legacyRoleId")]
+            [DataMember(Name = "legacy_role_id")]
             public int? LegacyRoleId;
             [DataMember(Name = "priority")]
             public uint? Priority;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
             public UpdateRole(
                 uint RoleId,
                 string? Name,
                 string? Description,
                 int? LegacyRoleId,
-                uint? Priority
+                uint? Priority,
+                SpacetimeDB.Identity? ActingUserId
             )
             {
                 this.RoleId = RoleId;
@@ -65,19 +80,14 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.LegacyRoleId = LegacyRoleId;
                 this.Priority = Priority;
+                this.ActingUserId = ActingUserId;
             }
 
             public UpdateRole()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateRole";
+            string IReducerArgs.ReducerName => "update_role";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateRoleFlags;
-        public void UpdateRole(CallReducerFlags flags) => UpdateRoleFlags = flags;
     }
 }

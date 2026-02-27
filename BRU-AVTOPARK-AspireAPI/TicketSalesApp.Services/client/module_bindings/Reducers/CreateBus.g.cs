@@ -12,21 +12,33 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateBusHandler(ReducerEventContext ctx, string model, string? registrationNumber);
+        public delegate void CreateBusHandler(ReducerEventContext ctx, string model, string? registrationNumber, SpacetimeDB.Identity? actingUser);
         public event CreateBusHandler? OnCreateBus;
 
-        public void CreateBus(string model, string? registrationNumber)
+        public void CreateBus(string model, string? registrationNumber, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CreateBus(model, registrationNumber), this.SetCallReducerFlags.CreateBusFlags);
+            conn.InternalCallReducer(new Reducer.CreateBus(model, registrationNumber, actingUser));
         }
 
         public bool InvokeCreateBus(ReducerEventContext ctx, Reducer.CreateBus args)
         {
-            if (OnCreateBus == null) return false;
+            if (OnCreateBus == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateBus(
                 ctx,
                 args.Model,
-                args.RegistrationNumber
+                args.RegistrationNumber,
+                args.ActingUser
             );
             return true;
         }
@@ -40,16 +52,20 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "model")]
             public string Model;
-            [DataMember(Name = "registrationNumber")]
+            [DataMember(Name = "registration_number")]
             public string? RegistrationNumber;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public CreateBus(
                 string Model,
-                string? RegistrationNumber
+                string? RegistrationNumber,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.Model = Model;
                 this.RegistrationNumber = RegistrationNumber;
+                this.ActingUser = ActingUser;
             }
 
             public CreateBus()
@@ -57,13 +73,7 @@ namespace SpacetimeDB.Types
                 this.Model = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateBus";
+            string IReducerArgs.ReducerName => "create_bus";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateBusFlags;
-        public void CreateBus(CallReducerFlags flags) => CreateBusFlags = flags;
     }
 }

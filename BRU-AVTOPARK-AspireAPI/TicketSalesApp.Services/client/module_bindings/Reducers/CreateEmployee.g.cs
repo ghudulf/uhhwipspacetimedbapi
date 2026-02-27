@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateEmployee(string employeeName, string employeeSurname, string employeePatronym, uint jobId)
         {
-            conn.InternalCallReducer(new Reducer.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId), this.SetCallReducerFlags.CreateEmployeeFlags);
+            conn.InternalCallReducer(new Reducer.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId));
         }
 
         public bool InvokeCreateEmployee(ReducerEventContext ctx, Reducer.CreateEmployee args)
         {
-            if (OnCreateEmployee == null) return false;
+            if (OnCreateEmployee == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateEmployee(
                 ctx,
                 args.EmployeeName,
@@ -40,13 +51,13 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateEmployee : Reducer, IReducerArgs
         {
-            [DataMember(Name = "employeeName")]
+            [DataMember(Name = "employee_name")]
             public string EmployeeName;
-            [DataMember(Name = "employeeSurname")]
+            [DataMember(Name = "employee_surname")]
             public string EmployeeSurname;
-            [DataMember(Name = "employeePatronym")]
+            [DataMember(Name = "employee_patronym")]
             public string EmployeePatronym;
-            [DataMember(Name = "jobId")]
+            [DataMember(Name = "job_id")]
             public uint JobId;
 
             public CreateEmployee(
@@ -69,13 +80,7 @@ namespace SpacetimeDB.Types
                 this.EmployeePatronym = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateEmployee";
+            string IReducerArgs.ReducerName => "create_employee";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateEmployeeFlags;
-        public void CreateEmployee(CallReducerFlags flags) => CreateEmployeeFlags = flags;
     }
 }

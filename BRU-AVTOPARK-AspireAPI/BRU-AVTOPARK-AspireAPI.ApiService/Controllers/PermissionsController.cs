@@ -13,7 +13,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [AllowAnonymous]
     public class PermissionsController : BaseController
     {
         private readonly IPermissionService _permissionService;
@@ -30,21 +30,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private bool IsAdmin()
-        {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return false;
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-            var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role");
-            return roleClaim?.Value == "1";
-        }
+       
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Permission>>> GetPermissions()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetPermissions()
         {
             try
             {
@@ -56,8 +45,18 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("Getting all permissions");
                 var permissions = await _permissionService.GetAllPermissionsAsync();
-                _logger.LogInformation("Retrieved {Count} permissions", permissions.Count());
-                return Ok(permissions);
+                
+                // Map to anonymous type
+                var result = permissions.Select(p => new {
+                    p.PermissionId,
+                    p.Name,
+                    p.Description,
+                    p.Category,
+                    p.IsActive
+                }).ToList();
+
+                _logger.LogInformation("Retrieved {Count} permissions", result.Count());
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {
@@ -67,7 +66,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Permission>> GetPermission(uint id)
+        public async Task<ActionResult<dynamic>> GetPermission(uint id)
         {
             try
             {
@@ -86,7 +85,16 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                return Ok(permission);
+                // Map to anonymous type
+                var result = new {
+                    permission.PermissionId,
+                    permission.Name,
+                    permission.Description,
+                    permission.Category,
+                    permission.IsActive
+                };
+
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {
@@ -294,7 +302,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         [HttpGet("category/{category}")]
-        public async Task<ActionResult<IEnumerable<Permission>>> GetPermissionsByCategory(string category)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetPermissionsByCategory(string category)
         {
             try
             {
@@ -306,8 +314,18 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("Fetching permissions for category {Category}", category);
                 var permissions = await _permissionService.GetPermissionsByCategoryAsync(category);
-                _logger.LogInformation("Retrieved {Count} permissions for category {Category}", permissions.Count(), category);
-                return Ok(permissions);
+                
+                // Map to anonymous type
+                var result = permissions.Select(p => new {
+                    p.PermissionId,
+                    p.Name,
+                    p.Description,
+                    p.Category,
+                    p.IsActive
+                }).ToList();
+
+                _logger.LogInformation("Retrieved {Count} permissions for category {Category}", result.Count(), category);
+                return Ok(result); // Return mapped result
             }
             catch (Exception ex)
             {

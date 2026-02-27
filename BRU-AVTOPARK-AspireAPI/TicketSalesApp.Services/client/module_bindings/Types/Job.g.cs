@@ -13,22 +13,86 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Job
     {
-        [DataMember(Name = "JobId")]
+        [DataMember(Name = "job_id")]
         public uint JobId;
-        [DataMember(Name = "JobTitle")]
+        [DataMember(Name = "job_title")]
         public string JobTitle;
-        [DataMember(Name = "Internship")]
+        [DataMember(Name = "internship")]
         public string? Internship;
+        [DataMember(Name = "base_salary")]
+        public double? BaseSalary;
+        [DataMember(Name = "department")]
+        public string? Department;
+        [DataMember(Name = "job_description")]
+        public string? JobDescription;
+        [DataMember(Name = "required_experience")]
+        public uint? RequiredExperience;
+        [DataMember(Name = "required_skills")]
+        public System.Collections.Generic.List<string>? RequiredSkills;
+        [DataMember(Name = "required_certifications")]
+        public System.Collections.Generic.List<string>? RequiredCertifications;
+        [DataMember(Name = "education_requirements")]
+        public string? EducationRequirements;
+        [DataMember(Name = "work_schedule")]
+        public string? WorkSchedule;
+        [DataMember(Name = "is_full_time")]
+        public bool? IsFullTime;
+        [DataMember(Name = "is_part_time")]
+        public bool? IsPartTime;
+        [DataMember(Name = "is_shift_work")]
+        public bool? IsShiftWork;
+        [DataMember(Name = "benefits")]
+        public System.Collections.Generic.List<string>? Benefits;
+        [DataMember(Name = "reporting_to")]
+        public string? ReportingTo;
+        [DataMember(Name = "vacation_days")]
+        public uint? VacationDays;
+        [DataMember(Name = "sick_days")]
+        public uint? SickDays;
+        [DataMember(Name = "performance_metrics")]
+        public string? PerformanceMetrics;
 
         public Job(
             uint JobId,
             string JobTitle,
-            string? Internship
+            string? Internship,
+            double? BaseSalary,
+            string? Department,
+            string? JobDescription,
+            uint? RequiredExperience,
+            System.Collections.Generic.List<string>? RequiredSkills,
+            System.Collections.Generic.List<string>? RequiredCertifications,
+            string? EducationRequirements,
+            string? WorkSchedule,
+            bool? IsFullTime,
+            bool? IsPartTime,
+            bool? IsShiftWork,
+            System.Collections.Generic.List<string>? Benefits,
+            string? ReportingTo,
+            uint? VacationDays,
+            uint? SickDays,
+            string? PerformanceMetrics
         )
         {
             this.JobId = JobId;
             this.JobTitle = JobTitle;
             this.Internship = Internship;
+            this.BaseSalary = BaseSalary;
+            this.Department = Department;
+            this.JobDescription = JobDescription;
+            this.RequiredExperience = RequiredExperience;
+            this.RequiredSkills = RequiredSkills;
+            this.RequiredCertifications = RequiredCertifications;
+            this.EducationRequirements = EducationRequirements;
+            this.WorkSchedule = WorkSchedule;
+            this.IsFullTime = IsFullTime;
+            this.IsPartTime = IsPartTime;
+            this.IsShiftWork = IsShiftWork;
+            this.Benefits = Benefits;
+            this.ReportingTo = ReportingTo;
+            this.VacationDays = VacationDays;
+            this.SickDays = SickDays;
+            this.PerformanceMetrics = PerformanceMetrics;
         }
 
         public Job()

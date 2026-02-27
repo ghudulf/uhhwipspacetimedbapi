@@ -15,7 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class UserProfileHandle : RemoteTableHandle<EventContext, UserProfile>
         {
-            protected override string RemoteTableName => "UserProfile";
+            protected override string RemoteTableName => "user_profile";
 
             public sealed class LegacyUserIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -55,5 +55,51 @@ namespace SpacetimeDB.Types
         }
 
         public readonly UserProfileHandle UserProfile;
+    }
+
+    public sealed class UserProfileCols
+    {
+        public global::SpacetimeDB.Col<UserProfile, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<UserProfile, uint> LegacyUserId { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, double> Xuid { get; }
+        public global::SpacetimeDB.Col<UserProfile, string> Login { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, string> PasswordHash { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, string> Email { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, string> PhoneNumber { get; }
+        public global::SpacetimeDB.Col<UserProfile, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<UserProfile, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, ulong> LastLoginAt { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, string> LegacyGuid { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, bool> EmailConfirmed { get; }
+
+        public UserProfileCols(string tableName)
+        {
+            UserId = new global::SpacetimeDB.Col<UserProfile, SpacetimeDB.Identity>(tableName, "user_id");
+            LegacyUserId = new global::SpacetimeDB.Col<UserProfile, uint>(tableName, "legacy_user_id");
+            Xuid = new global::SpacetimeDB.NullableCol<UserProfile, double>(tableName, "xuid");
+            Login = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "login");
+            PasswordHash = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "password_hash");
+            Email = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "email");
+            PhoneNumber = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "phone_number");
+            IsActive = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "is_active");
+            CreatedAt = new global::SpacetimeDB.Col<UserProfile, ulong>(tableName, "created_at");
+            LastLoginAt = new global::SpacetimeDB.NullableCol<UserProfile, ulong>(tableName, "last_login_at");
+            LegacyGuid = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "legacy_guid");
+            EmailConfirmed = new global::SpacetimeDB.NullableCol<UserProfile, bool>(tableName, "email_confirmed");
+        }
+    }
+
+    public sealed class UserProfileIxCols
+    {
+        public global::SpacetimeDB.IxCol<UserProfile, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.IxCol<UserProfile, uint> LegacyUserId { get; }
+        public global::SpacetimeDB.IxCol<UserProfile, string> Login { get; }
+
+        public UserProfileIxCols(string tableName)
+        {
+            UserId = new global::SpacetimeDB.IxCol<UserProfile, SpacetimeDB.Identity>(tableName, "user_id");
+            LegacyUserId = new global::SpacetimeDB.IxCol<UserProfile, uint>(tableName, "legacy_user_id");
+            Login = new global::SpacetimeDB.IxCol<UserProfile, string>(tableName, "login");
+        }
     }
 }

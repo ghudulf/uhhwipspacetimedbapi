@@ -12,22 +12,34 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateBusHandler(ReducerEventContext ctx, uint busId, string? model, string? registrationNumber);
+        public delegate void UpdateBusHandler(ReducerEventContext ctx, uint busId, string? model, string? registrationNumber, SpacetimeDB.Identity? actingUser);
         public event UpdateBusHandler? OnUpdateBus;
 
-        public void UpdateBus(uint busId, string? model, string? registrationNumber)
+        public void UpdateBus(uint busId, string? model, string? registrationNumber, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber), this.SetCallReducerFlags.UpdateBusFlags);
+            conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber, actingUser));
         }
 
         public bool InvokeUpdateBus(ReducerEventContext ctx, Reducer.UpdateBus args)
         {
-            if (OnUpdateBus == null) return false;
+            if (OnUpdateBus == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateBus(
                 ctx,
                 args.BusId,
                 args.Model,
-                args.RegistrationNumber
+                args.RegistrationNumber,
+                args.ActingUser
             );
             return true;
         }
@@ -39,35 +51,33 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateBus : Reducer, IReducerArgs
         {
-            [DataMember(Name = "busId")]
+            [DataMember(Name = "bus_id")]
             public uint BusId;
             [DataMember(Name = "model")]
             public string? Model;
-            [DataMember(Name = "registrationNumber")]
+            [DataMember(Name = "registration_number")]
             public string? RegistrationNumber;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateBus(
                 uint BusId,
                 string? Model,
-                string? RegistrationNumber
+                string? RegistrationNumber,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.BusId = BusId;
                 this.Model = Model;
                 this.RegistrationNumber = RegistrationNumber;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateBus()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateBus";
+            string IReducerArgs.ReducerName => "update_bus";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateBusFlags;
-        public void UpdateBus(CallReducerFlags flags) => UpdateBusFlags = flags;
     }
 }

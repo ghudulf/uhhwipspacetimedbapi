@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TicketSalesApp.Services.Interfaces;
+using SpacetimeDB;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -68,7 +69,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateMaintenanceAsync(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType)
+        public async Task<bool> CreateMaintenanceAsync(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null)
         {
             try
             {
@@ -91,7 +92,8 @@ namespace TicketSalesApp.Services.Implementations
                     foundIssues,
                     nextServiceDate,
                     roadworthiness,
-                    maintenanceType
+                    maintenanceType,
+                    actingUser
                 );
 
                 return true;
@@ -103,7 +105,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> UpdateMaintenanceAsync(uint maintenanceId, uint? busId = null, ulong? lastServiceDate = null, string? serviceEngineer = null, string? foundIssues = null, ulong? nextServiceDate = null, string? roadworthiness = null, string? maintenanceType = null, string? mileage = null)
+        public async Task<bool> UpdateMaintenanceAsync(uint maintenanceId, uint? busId = null, ulong? lastServiceDate = null, string? serviceEngineer = null, string? foundIssues = null, ulong? nextServiceDate = null, string? roadworthiness = null, string? maintenanceType = null, string? mileage = null, Identity? actingUser = null)
         {
             try
             {
@@ -139,7 +141,8 @@ namespace TicketSalesApp.Services.Implementations
                     nextServiceDate ?? maintenance.NextServiceDate,
                     roadworthiness ?? maintenance.Roadworthiness,
                     maintenanceType ?? maintenance.MaintenanceType,
-                    mileage ?? maintenance.MileageThreshold
+                    mileage ?? maintenance.MileageThreshold,
+                    actingUser
                 );
 
                 return true;
@@ -151,7 +154,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> DeleteMaintenanceAsync(uint maintenanceId)
+        public async Task<bool> DeleteMaintenanceAsync(uint maintenanceId, Identity? actingUser = null)
         {
             try
             {
@@ -167,7 +170,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the DeleteMaintenance reducer
-                connection.Reducers.DeleteMaintenance(maintenanceId);
+                connection.Reducers.DeleteMaintenance(maintenanceId, actingUser);
 
                 return true;
             }

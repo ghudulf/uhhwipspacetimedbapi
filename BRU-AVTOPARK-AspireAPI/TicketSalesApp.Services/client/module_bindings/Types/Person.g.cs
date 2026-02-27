@@ -13,11 +13,11 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Person
     {
-        [DataMember(Name = "Id")]
+        [DataMember(Name = "id")]
         public int Id;
-        [DataMember(Name = "Name")]
+        [DataMember(Name = "name")]
         public string Name;
-        [DataMember(Name = "Age")]
+        [DataMember(Name = "age")]
         public int Age;
 
         public Person(

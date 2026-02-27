@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteRouteHandler(ReducerEventContext ctx, uint routeId);
+        public delegate void DeleteRouteHandler(ReducerEventContext ctx, uint routeId, SpacetimeDB.Identity? actingUser);
         public event DeleteRouteHandler? OnDeleteRoute;
 
-        public void DeleteRoute(uint routeId)
+        public void DeleteRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteRoute(routeId), this.SetCallReducerFlags.DeleteRouteFlags);
+            conn.InternalCallReducer(new Reducer.DeleteRoute(routeId, actingUser));
         }
 
         public bool InvokeDeleteRoute(ReducerEventContext ctx, Reducer.DeleteRoute args)
         {
-            if (OnDeleteRoute == null) return false;
+            if (OnDeleteRoute == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteRoute(
                 ctx,
-                args.RouteId
+                args.RouteId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRoute : Reducer, IReducerArgs
         {
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint RouteId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteRoute(uint RouteId)
+            public DeleteRoute(
+                uint RouteId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.RouteId = RouteId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteRoute()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteRoute";
+            string IReducerArgs.ReducerName => "delete_route";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteRouteFlags;
-        public void DeleteRoute(CallReducerFlags flags) => DeleteRouteFlags = flags;
     }
 }

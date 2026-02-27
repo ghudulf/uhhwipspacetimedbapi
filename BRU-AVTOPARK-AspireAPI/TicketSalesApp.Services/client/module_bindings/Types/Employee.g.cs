@@ -13,18 +13,72 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Employee
     {
-        [DataMember(Name = "EmployeeId")]
+        [DataMember(Name = "employee_id")]
         public uint EmployeeId;
-        [DataMember(Name = "Surname")]
+        [DataMember(Name = "surname")]
         public string Surname;
-        [DataMember(Name = "Name")]
+        [DataMember(Name = "name")]
         public string Name;
-        [DataMember(Name = "Patronym")]
+        [DataMember(Name = "patronym")]
         public string? Patronym;
-        [DataMember(Name = "EmployedSince")]
+        [DataMember(Name = "employed_since")]
         public ulong EmployedSince;
-        [DataMember(Name = "JobId")]
+        [DataMember(Name = "job_id")]
         public uint JobId;
+        [DataMember(Name = "badge_number")]
+        public string? BadgeNumber;
+        [DataMember(Name = "contact_phone")]
+        public string? ContactPhone;
+        [DataMember(Name = "contact_email")]
+        public string? ContactEmail;
+        [DataMember(Name = "date_of_birth")]
+        public ulong? DateOfBirth;
+        [DataMember(Name = "passport_number")]
+        public string? PassportNumber;
+        [DataMember(Name = "passport_issued_by")]
+        public string? PassportIssuedBy;
+        [DataMember(Name = "passport_issued_date")]
+        public ulong? PassportIssuedDate;
+        [DataMember(Name = "photo_url")]
+        public string? PhotoUrl;
+        [DataMember(Name = "address")]
+        public string? Address;
+        [DataMember(Name = "emergency_contact")]
+        public string? EmergencyContact;
+        [DataMember(Name = "last_training_date")]
+        public ulong? LastTrainingDate;
+        [DataMember(Name = "training_status")]
+        public string? TrainingStatus;
+        [DataMember(Name = "current_status")]
+        public string? CurrentStatus;
+        [DataMember(Name = "certifications")]
+        public System.Collections.Generic.List<string>? Certifications;
+        [DataMember(Name = "certification_expiry")]
+        public ulong? CertificationExpiry;
+        [DataMember(Name = "medical_certificate")]
+        public string? MedicalCertificate;
+        [DataMember(Name = "medical_certificate_expiry")]
+        public ulong? MedicalCertificateExpiry;
+        [DataMember(Name = "driver_license_number")]
+        public string? DriverLicenseNumber;
+        [DataMember(Name = "driver_license_category")]
+        public string? DriverLicenseCategory;
+        [DataMember(Name = "driver_license_expiry")]
+        public ulong? DriverLicenseExpiry;
+        [DataMember(Name = "years_of_experience")]
+        public uint? YearsOfExperience;
+        [DataMember(Name = "languages_spoken")]
+        public System.Collections.Generic.List<string>? LanguagesSpoken;
+        [DataMember(Name = "preferred_shift_type")]
+        public string? PreferredShiftType;
+        [DataMember(Name = "skills_and_qualifications")]
+        public System.Collections.Generic.List<string>? SkillsAndQualifications;
+        [DataMember(Name = "performance_rating")]
+        public string? PerformanceRating;
+        [DataMember(Name = "vacation_days_remaining")]
+        public uint? VacationDaysRemaining;
+        [DataMember(Name = "sick_days_used")]
+        public uint? SickDaysUsed;
 
         public Employee(
             uint EmployeeId,
@@ -32,7 +86,34 @@ namespace SpacetimeDB.Types
             string Name,
             string? Patronym,
             ulong EmployedSince,
-            uint JobId
+            uint JobId,
+            string? BadgeNumber,
+            string? ContactPhone,
+            string? ContactEmail,
+            ulong? DateOfBirth,
+            string? PassportNumber,
+            string? PassportIssuedBy,
+            ulong? PassportIssuedDate,
+            string? PhotoUrl,
+            string? Address,
+            string? EmergencyContact,
+            ulong? LastTrainingDate,
+            string? TrainingStatus,
+            string? CurrentStatus,
+            System.Collections.Generic.List<string>? Certifications,
+            ulong? CertificationExpiry,
+            string? MedicalCertificate,
+            ulong? MedicalCertificateExpiry,
+            string? DriverLicenseNumber,
+            string? DriverLicenseCategory,
+            ulong? DriverLicenseExpiry,
+            uint? YearsOfExperience,
+            System.Collections.Generic.List<string>? LanguagesSpoken,
+            string? PreferredShiftType,
+            System.Collections.Generic.List<string>? SkillsAndQualifications,
+            string? PerformanceRating,
+            uint? VacationDaysRemaining,
+            uint? SickDaysUsed
         )
         {
             this.EmployeeId = EmployeeId;
@@ -41,6 +122,33 @@ namespace SpacetimeDB.Types
             this.Patronym = Patronym;
             this.EmployedSince = EmployedSince;
             this.JobId = JobId;
+            this.BadgeNumber = BadgeNumber;
+            this.ContactPhone = ContactPhone;
+            this.ContactEmail = ContactEmail;
+            this.DateOfBirth = DateOfBirth;
+            this.PassportNumber = PassportNumber;
+            this.PassportIssuedBy = PassportIssuedBy;
+            this.PassportIssuedDate = PassportIssuedDate;
+            this.PhotoUrl = PhotoUrl;
+            this.Address = Address;
+            this.EmergencyContact = EmergencyContact;
+            this.LastTrainingDate = LastTrainingDate;
+            this.TrainingStatus = TrainingStatus;
+            this.CurrentStatus = CurrentStatus;
+            this.Certifications = Certifications;
+            this.CertificationExpiry = CertificationExpiry;
+            this.MedicalCertificate = MedicalCertificate;
+            this.MedicalCertificateExpiry = MedicalCertificateExpiry;
+            this.DriverLicenseNumber = DriverLicenseNumber;
+            this.DriverLicenseCategory = DriverLicenseCategory;
+            this.DriverLicenseExpiry = DriverLicenseExpiry;
+            this.YearsOfExperience = YearsOfExperience;
+            this.LanguagesSpoken = LanguagesSpoken;
+            this.PreferredShiftType = PreferredShiftType;
+            this.SkillsAndQualifications = SkillsAndQualifications;
+            this.PerformanceRating = PerformanceRating;
+            this.VacationDaysRemaining = VacationDaysRemaining;
+            this.SickDaysUsed = SickDaysUsed;
         }
 
         public Employee()

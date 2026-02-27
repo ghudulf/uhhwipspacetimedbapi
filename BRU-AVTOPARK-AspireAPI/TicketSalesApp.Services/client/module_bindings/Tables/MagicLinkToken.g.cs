@@ -15,7 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class MagicLinkTokenHandle : RemoteTableHandle<EventContext, MagicLinkToken>
         {
-            protected override string RemoteTableName => "MagicLinkToken";
+            protected override string RemoteTableName => "magic_link_token";
 
             public sealed class TokenUniqueIndex : UniqueIndexBase<string>
             {
@@ -35,5 +35,35 @@ namespace SpacetimeDB.Types
         }
 
         public readonly MagicLinkTokenHandle MagicLinkToken;
+    }
+
+    public sealed class MagicLinkTokenCols
+    {
+        public global::SpacetimeDB.Col<MagicLinkToken, string> Token { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, SpacetimeDB.Identity> UserId { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, ulong> ExpiresAt { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, bool> IsUsed { get; }
+        public global::SpacetimeDB.NullableCol<MagicLinkToken, string> DeviceInfo { get; }
+        public global::SpacetimeDB.NullableCol<MagicLinkToken, string> IpAddress { get; }
+
+        public MagicLinkTokenCols(string tableName)
+        {
+            Token = new global::SpacetimeDB.Col<MagicLinkToken, string>(tableName, "token");
+            UserId = new global::SpacetimeDB.Col<MagicLinkToken, SpacetimeDB.Identity>(tableName, "user_id");
+            ExpiresAt = new global::SpacetimeDB.Col<MagicLinkToken, ulong>(tableName, "expires_at");
+            IsUsed = new global::SpacetimeDB.Col<MagicLinkToken, bool>(tableName, "is_used");
+            DeviceInfo = new global::SpacetimeDB.NullableCol<MagicLinkToken, string>(tableName, "device_info");
+            IpAddress = new global::SpacetimeDB.NullableCol<MagicLinkToken, string>(tableName, "ip_address");
+        }
+    }
+
+    public sealed class MagicLinkTokenIxCols
+    {
+        public global::SpacetimeDB.IxCol<MagicLinkToken, string> Token { get; }
+
+        public MagicLinkTokenIxCols(string tableName)
+        {
+            Token = new global::SpacetimeDB.IxCol<MagicLinkToken, string>(tableName, "token");
+        }
     }
 }

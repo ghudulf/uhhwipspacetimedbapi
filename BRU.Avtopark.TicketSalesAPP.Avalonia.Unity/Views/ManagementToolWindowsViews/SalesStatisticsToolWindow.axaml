@@ -1,0 +1,156 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
+        xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+        xmlns:icons="using:Material.Icons.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.SalesStatisticsToolWindow"
+        x:DataType="vm:SalesStatisticsViewModel">
+
+    <Grid RowDefinitions="Auto,*" Margin="20">
+        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20">
+                <!-- Title and Date Range -->
+                <Grid ColumnDefinitions="*,Auto" MinHeight="90">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Статистика продаж" Theme="{StaticResource HeaderText}"/>
+                        <TextBlock Text="Анализ продаж билетов по маршрутам и периодам" Foreground="{DynamicResource SecondaryColor}"/>
+                    </StackPanel>
+                    
+                   
+                </Grid>
+
+                <!-- Summary Cards -->
+                <WrapPanel Orientation="Horizontal">
+					 <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="5">
+                        <DatePicker SelectedDate="{Binding StartDate}" />
+                    <TextBlock Text="-" VerticalAlignment="Center"/>
+                    <DatePicker SelectedDate="{Binding EndDate}" />
+                    </StackPanel>
+                    <!-- Total Sales Card -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="200" MaxWidth="500">
+                        <Grid RowDefinitions="Auto,*">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <icons:MaterialIcon Kind="ChartBar" Width="24" Height="24" 
+                                                  Foreground="{DynamicResource PrimaryColor}"/>
+                                <TextBlock Text="Общие продажи" FontWeight="SemiBold"
+                                         TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding TotalSales}" 
+                                     FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
+                                     TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Total Revenue Card -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="300" MaxWidth="400">
+                        <Grid RowDefinitions="Auto,*">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <icons:MaterialIcon Kind="CurrencyRub" Width="24" Height="24" 
+                                                  Foreground="{DynamicResource PrimaryColor}"/>
+                                <TextBlock Text="Общий доход" FontWeight="SemiBold"
+                                         TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding TotalRevenue, StringFormat={}{0:C}}" 
+                                     FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
+                                     TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Growth Rate Card -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="300" MaxWidth="400">
+                        <Grid RowDefinitions="Auto,*">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <icons:MaterialIcon Kind="TrendingUp" Width="24" Height="24" 
+                                                  Foreground="{DynamicResource PrimaryColor}"/>
+                                <TextBlock Text="Средний рост" FontWeight="SemiBold"
+                                         TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding AverageGrowthRate, StringFormat={}{0:N1}%}" 
+                                     FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
+                                     TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </Grid>
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+    
+        <!-- Content Section -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20">
+                <!-- Charts Section -->
+                <WrapPanel Orientation="Horizontal">
+                    <!-- Sales Trend Chart -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="Динамика продаж" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
+                            <lvc:CartesianChart Grid.Row="1"
+                                          Series="{Binding SalesTrendChart}"
+                                          XAxes="{Binding XAxes}"
+                                          YAxes="{Binding YAxes}"
+                                          MinHeight="250" MaxHeight="400"/>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Route Distribution Chart -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="Распределение по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
+                            <lvc:PieChart Grid.Row="1"
+                                        Series="{Binding RouteDistributionChart}"
+                                        MinHeight="250" MaxHeight="400"/>
+                        </Grid>
+                    </Border>
+                </WrapPanel>
+    
+                <!-- Data Tables Section -->
+                <WrapPanel Orientation="Horizontal">
+                    <!-- Daily Statistics Table -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="Ежедневная статистика" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
+                            <DataGrid Grid.Row="1" 
+                                    ItemsSource="{Binding DailyStatistics}"
+                                    AutoGenerateColumns="False"
+                                    IsReadOnly="True"
+                                    MinHeight="200"
+                                    MaxHeight="400"
+                                    HorizontalScrollBarVisibility="Auto">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Рост" Binding="{Binding GrowthRate, StringFormat={}{0:N1}%}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+    
+                    <!-- Route Statistics Table -->
+                    <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="Статистика по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
+                            <DataGrid Grid.Row="1" 
+                                    ItemsSource="{Binding RouteStatistics}"
+                                    AutoGenerateColumns="False"
+                                    IsReadOnly="True"
+                                    MinHeight="200"
+                                    MaxHeight="400"
+                                    HorizontalScrollBarVisibility="Auto">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Доля" Binding="{Binding SalesPercentage, StringFormat={}{0:N1}%}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

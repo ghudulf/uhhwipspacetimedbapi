@@ -1,0 +1,492 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:local="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialIcons="using:Material.Icons.Avalonia"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.AuthWindow"
+        Title="Установка - БРУ Автопарк"
+        Width="650" Height="480"
+        MinWidth="650" MinHeight="480"
+        MaxWidth="750" MaxHeight="550"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        SystemDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="False"
+        Background="{DynamicResource SystemBackground}"
+        x:DataType="vm:AuthViewModel">
+
+    <Design.DataContext>
+        <vm:AuthViewModel/>
+    </Design.DataContext>
+
+	<Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Light">
+					<!-- System Colors -->
+					<Color x:Key="SystemBackgroundColor">#D4D0C8</Color>
+					<SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+					
+					<!-- Title Bar Colors -->
+					<Color x:Key="TitleBarBackgroundColor">#000080</Color>
+					<SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+					<Color x:Key="TitleBarTextColor">#FFFFFF</Color>
+					<SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+					
+					<!-- Panel Colors -->
+					<Color x:Key="AuthPanelBackgroundColor">#EFEFEF</Color>
+					<SolidColorBrush x:Key="AuthPanelBackground" Color="{DynamicResource AuthPanelBackgroundColor}"/>
+					<Color x:Key="AuthPanelBorderColor">#808080</Color>
+					<SolidColorBrush x:Key="AuthPanelBorder" Color="{DynamicResource AuthPanelBorderColor}"/>
+					
+					<!-- Sidebar Colors -->
+					<Color x:Key="SidebarBackgroundColor">#D5D5D5</Color>
+					<SolidColorBrush x:Key="SidebarBackground" Color="{DynamicResource SidebarBackgroundColor}"/>
+					<Color x:Key="SidebarTextColor">#000000</Color>
+					<SolidColorBrush x:Key="SidebarText" Color="{DynamicResource SidebarTextColor}"/>
+					<Color x:Key="SidebarHighlightColor">#000000</Color>
+					<SolidColorBrush x:Key="SidebarHighlight" Color="{DynamicResource SidebarHighlightColor}"/>
+					<Color x:Key="SidebarActiveStepBackgroundColor">#9CBAD9</Color>
+					<SolidColorBrush x:Key="SidebarActiveStepBackground" Color="{DynamicResource SidebarActiveStepBackgroundColor}"/>
+					
+					<!-- Control Colors -->
+					<Color x:Key="ControlBackgroundColor">#FFFFFF</Color>
+					<SolidColorBrush x:Key="ControlBackground" Color="{DynamicResource ControlBackgroundColor}"/>
+					<Color x:Key="ControlBorderColor">#808080</Color>
+					<SolidColorBrush x:Key="ControlBorder" Color="{DynamicResource ControlBorderColor}"/>
+					<Color x:Key="ControlErrorBorderColor">#FF0000</Color>
+					<SolidColorBrush x:Key="ControlErrorBorder" Color="{DynamicResource ControlErrorBorderColor}"/>
+					<Color x:Key="ControlTextColor">#000000</Color>
+					<SolidColorBrush x:Key="ControlText" Color="{DynamicResource ControlTextColor}"/>
+					
+					<!-- Button Colors -->
+					<Color x:Key="ButtonOuterBorderColor">#FFFFFF</Color>
+					<Color x:Key="ButtonInnerBorderColor">#808080</Color>
+					<Color x:Key="ButtonBackgroundColor">#C0C0C0</Color>
+					<Color x:Key="ButtonTextColor">#000000</Color>
+					<Color x:Key="ButtonHoverBackgroundColor">#D4D0C8</Color>
+					<Color x:Key="ButtonPressedBackgroundColor">#A0A0A0</Color>
+					<Color x:Key="ButtonPressedOuterBorderColor">#808080</Color>
+					<Color x:Key="ButtonPressedInnerBorderColor">#FFFFFF</Color>
+					<Color x:Key="ButtonDisabledBackgroundColor">#C0C0C0</Color>
+					<Color x:Key="ButtonDisabledTextColor">#808080</Color>
+					
+					<!-- Progress Bar Colors -->
+					<Color x:Key="ProgressBarBackgroundColor">#FFFFFF</Color>
+					<SolidColorBrush x:Key="ProgressBarBackground" Color="{DynamicResource ProgressBarBackgroundColor}"/>
+					<Color x:Key="ProgressBarForegroundColor">#3A6EA5</Color>
+					<SolidColorBrush x:Key="ProgressBarForeground" Color="{DynamicResource ProgressBarForegroundColor}"/>
+					<Color x:Key="ProgressBarBorderColor">#808080</Color>
+					<SolidColorBrush x:Key="ProgressBarBorder" Color="{DynamicResource ProgressBarBorderColor}"/>
+					
+					<!-- Other Colors -->
+					<Color x:Key="ErrorTextColor">#FF0000</Color>
+					<SolidColorBrush x:Key="ErrorTextBrush" Color="{DynamicResource ErrorTextColor}"/>
+					<Color x:Key="InfoTextColor">#0000FF</Color>
+					<SolidColorBrush x:Key="InfoTextBrush" Color="{DynamicResource InfoTextColor}"/>
+					<Color x:Key="SuccessTextColor">#008000</Color>
+					<SolidColorBrush x:Key="SuccessTextBrush" Color="{DynamicResource SuccessTextColor}"/>
+				</ResourceDictionary>
+
+				<ResourceDictionary x:Key="Dark">
+					<!-- System Colors -->
+					<Color x:Key="SystemBackgroundColor">#2E2E2E</Color>
+					<SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+					
+					<!-- Title Bar Colors -->
+					<Color x:Key="TitleBarBackgroundColor">#1A1A1A</Color>
+					<SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+					<Color x:Key="TitleBarTextColor">#E0E0E0</Color>
+					<SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+					
+					<!-- Panel Colors -->
+					<Color x:Key="AuthPanelBackgroundColor">#3D3D3D</Color>
+					<SolidColorBrush x:Key="AuthPanelBackground" Color="{DynamicResource AuthPanelBackgroundColor}"/>
+					<Color x:Key="AuthPanelBorderColor">#505050</Color>
+					<SolidColorBrush x:Key="AuthPanelBorder" Color="{DynamicResource AuthPanelBorderColor}"/>
+					
+					<!-- Sidebar Colors -->
+					<Color x:Key="SidebarBackgroundColor">#252525</Color>
+					<SolidColorBrush x:Key="SidebarBackground" Color="{DynamicResource SidebarBackgroundColor}"/>
+					<Color x:Key="SidebarTextColor">#E0E0E0</Color>
+					<SolidColorBrush x:Key="SidebarText" Color="{DynamicResource SidebarTextColor}"/>
+					<Color x:Key="SidebarHighlightColor">#FFFFFF</Color>
+					<SolidColorBrush x:Key="SidebarHighlight" Color="{DynamicResource SidebarHighlightColor}"/>
+					<Color x:Key="SidebarActiveStepBackgroundColor">#2C5A85</Color>
+					<SolidColorBrush x:Key="SidebarActiveStepBackground" Color="{DynamicResource SidebarActiveStepBackgroundColor}"/>
+					
+					<!-- Control Colors -->
+					<Color x:Key="ControlBackgroundColor">#252525</Color>
+					<SolidColorBrush x:Key="ControlBackground" Color="{DynamicResource ControlBackgroundColor}"/>
+					<Color x:Key="ControlBorderColor">#5A5A5A</Color>
+					<SolidColorBrush x:Key="ControlBorder" Color="{DynamicResource ControlBorderColor}"/>
+					<Color x:Key="ControlErrorBorderColor">#FF6666</Color>
+					<SolidColorBrush x:Key="ControlErrorBorder" Color="{DynamicResource ControlErrorBorderColor}"/>
+					<Color x:Key="ControlTextColor">#E0E0E0</Color>
+					<SolidColorBrush x:Key="ControlText" Color="{DynamicResource ControlTextColor}"/>
+					
+					<!-- Button Colors -->
+					<Color x:Key="ButtonOuterBorderColor">#5A5A5A</Color>
+					<Color x:Key="ButtonInnerBorderColor">#1A1A1A</Color>
+					<Color x:Key="ButtonBackgroundColor">#3D3D3D</Color>
+					<Color x:Key="ButtonTextColor">#E0E0E0</Color>
+					<Color x:Key="ButtonHoverBackgroundColor">#4F4F4F</Color>
+					<Color x:Key="ButtonPressedBackgroundColor">#2A2A2A</Color>
+					<Color x:Key="ButtonPressedOuterBorderColor">#1A1A1A</Color>
+					<Color x:Key="ButtonPressedInnerBorderColor">#5A5A5A</Color>
+					<Color x:Key="ButtonDisabledBackgroundColor">#3D3D3D</Color>
+					<Color x:Key="ButtonDisabledTextColor">#707070</Color>
+					
+					<!-- Progress Bar Colors -->
+					<Color x:Key="ProgressBarBackgroundColor">#252525</Color>
+					<SolidColorBrush x:Key="ProgressBarBackground" Color="{DynamicResource ProgressBarBackgroundColor}"/>
+					<Color x:Key="ProgressBarForegroundColor">#4F8BC9</Color>
+					<SolidColorBrush x:Key="ProgressBarForeground" Color="{DynamicResource ProgressBarForegroundColor}"/>
+					<Color x:Key="ProgressBarBorderColor">#5A5A5A</Color>
+					<SolidColorBrush x:Key="ProgressBarBorder" Color="{DynamicResource ProgressBarBorderColor}"/>
+					
+					<!-- Other Colors -->
+					<Color x:Key="ErrorTextColor">#FF6666</Color>
+					<SolidColorBrush x:Key="ErrorTextBrush" Color="{DynamicResource ErrorTextColor}"/>
+					<Color x:Key="InfoTextColor">#6495ED</Color>
+					<SolidColorBrush x:Key="InfoTextBrush" Color="{DynamicResource InfoTextColor}"/>
+					<Color x:Key="SuccessTextColor">#66CD00</Color>
+					<SolidColorBrush x:Key="SuccessTextBrush" Color="{DynamicResource SuccessTextColor}"/>
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+
+			<local:StepToContentConverter x:Key="StepToContentConverter"/>
+			<local:StepEqualityConverter x:Key="StepEqualityConverter"/>
+		</ResourceDictionary>
+	</Window.Resources>
+
+	<Window.Styles>
+		<!-- Classic Button Style -->
+		<Style Selector="Button.ClassicButton">
+			<Setter Property="MinWidth" Value="85"/>
+			<Setter Property="Height" Value="24"/>
+			<Setter Property="Padding" Value="8,0"/>
+			<Setter Property="Margin" Value="6,0"/>
+			<Setter Property="FontSize" Value="12"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="Background" Value="{DynamicResource ButtonBackgroundColor}"/>
+			<Setter Property="Foreground" Value="{DynamicResource ButtonTextColor}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Name="PART_OuterBorder"
+							BorderBrush="{DynamicResource ButtonOuterBorderColor}"
+							BorderThickness="1">
+						<Border Name="PART_InnerBorder"
+								BorderBrush="{DynamicResource ButtonInnerBorderColor}"
+								BorderThickness="1"
+								Background="{TemplateBinding Background}"
+								Padding="{TemplateBinding Padding}">
+							<ContentPresenter Name="PART_ContentPresenter"
+											 ContentTemplate="{TemplateBinding ContentTemplate}"
+											 Content="{TemplateBinding Content}"
+											 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+											 VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+						</Border>
+					</Border>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+		<Style Selector="Button.ClassicButton:pointerover /template/ Border#PART_InnerBorder">
+			<Setter Property="Background" Value="{DynamicResource ButtonHoverBackgroundColor}"/>
+		</Style>
+		<Style Selector="Button.ClassicButton:pressed">
+			<Setter Property="Padding" Value="9,1,7,-1"/>
+		</Style>
+		<Style Selector="Button.ClassicButton:pressed /template/ Border#PART_OuterBorder">
+			<Setter Property="BorderBrush" Value="{DynamicResource ButtonPressedOuterBorderColor}"/>
+		</Style>
+		<Style Selector="Button.ClassicButton:pressed /template/ Border#PART_InnerBorder">
+			<Setter Property="Background" Value="{DynamicResource ButtonPressedBackgroundColor}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource ButtonPressedInnerBorderColor}"/>
+		</Style>
+		<Style Selector="Button.ClassicButton:disabled /template/ Border#PART_InnerBorder">
+			<Setter Property="Background" Value="{DynamicResource ButtonDisabledBackgroundColor}"/>
+			<Setter Property="Opacity" Value="0.7"/>
+		</Style>
+		<Style Selector="Button.ClassicButton:disabled TextBlock">
+			<Setter Property="Foreground" Value="{DynamicResource ButtonDisabledTextColor}"/>
+		</Style>
+
+		<!-- Classic Text Box Style -->
+		<Style Selector="TextBox.ClassicTextBox">
+			<Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
+			<Setter Property="Foreground" Value="{DynamicResource ControlText}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Padding" Value="4"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="MinHeight" Value="24"/>
+			<Setter Property="CornerRadius" Value="0"/>
+		</Style>
+		<Style Selector="TextBox.ClassicTextBox:focus">
+			<Setter Property="BorderBrush" Value="{DynamicResource ProgressBarForeground}"/>
+		</Style>
+		<Style Selector="TextBox.ClassicTextBox.error">
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlErrorBorder}"/>
+		</Style>
+
+		<!-- Classic Title Bar Button Style -->
+		<Style Selector="Button.TitleBarButton">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Width" Value="30"/>
+			<Setter Property="Height" Value="20"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="Cursor" Value="Hand"/>
+		</Style>
+		<Style Selector="Button.TitleBarButton:pointerover">
+			<Setter Property="Background" Value="#40FFFFFF"/>
+		</Style>
+		<Style Selector="Button#CloseButton:pointerover">
+			<Setter Property="Background" Value="#E81123"/>
+			<Setter Property="Foreground" Value="White"/>
+		</Style>
+
+		<!-- Progress Bar Style -->
+		<Style Selector="ProgressBar.ClassicProgressBar">
+			<Setter Property="Background" Value="{DynamicResource ProgressBarBackground}"/>
+			<Setter Property="Foreground" Value="{DynamicResource ProgressBarForeground}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource ProgressBarBorder}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Height" Value="18"/>
+			<Setter Property="CornerRadius" Value="0"/>
+		</Style>
+
+		<!-- Step Item Style -->
+		<Style Selector="Border.StepItem">
+			<Setter Property="Padding" Value="10,5"/>
+			<Setter Property="Margin" Value="0,2"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="CornerRadius" Value="0"/>
+		</Style>
+		<Style Selector="Border.StepItem.ActiveStep">
+			<Setter Property="Background" Value="{DynamicResource SidebarActiveStepBackground}"/>
+		</Style>
+		<Style Selector="Border.StepItem.ActiveStep TextBlock">
+			<Setter Property="Foreground" Value="#FFFFFF"/>
+			<Setter Property="FontWeight" Value="Bold"/>
+		</Style>
+	</Window.Styles>
+
+	<Grid>
+		<!-- Title Bar -->
+		<Grid Name="TitleBar" Height="25" VerticalAlignment="Top" Background="{DynamicResource TitleBarBackground}">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="Auto"/>
+				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="Auto"/>
+			</Grid.ColumnDefinitions>
+
+			<StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center">
+				<Image Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruidlogo.png"
+					   Width="16" Height="16" VerticalAlignment="Center" Margin="2,0,6,0"/>
+				<TextBlock Text="{Binding $parent[Window].Title}"
+						   Foreground="{DynamicResource TitleBarText}"
+						   FontWeight="Normal"
+						   FontSize="12"
+						   VerticalAlignment="Center"/>
+            </StackPanel>
+
+			<Panel Grid.Column="1" Name="TitleBarDragArea" Background="Transparent"/>
+
+			<StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,2,0" Spacing="1">
+				<Button Name="MinimizeButton" Classes="TitleBarButton">
+					<Path Data="M0 5 H8" Width="8" Height="6"
+						  Stroke="{Binding $parent.Foreground}" StrokeThickness="1"
+						  VerticalAlignment="Center" HorizontalAlignment="Center"/>
+				</Button>
+				<Button Name="CloseButton" Classes="TitleBarButton">
+					<Path Data="M0 0 L8 8 M0 8 L8 0" Width="8" Height="8"
+						 Stroke="{Binding $parent.Foreground}" StrokeThickness="1.5"
+						 VerticalAlignment="Center" HorizontalAlignment="Center"/>
+				</Button>
+            </StackPanel>
+        </Grid>
+
+		<!-- Main Content -->
+		<Grid Margin="0,25,0,0" RowDefinitions="*,Auto">
+			<!-- Main Panel with Sidebar and Content Area -->
+			<Grid Grid.Row="0" ColumnDefinitions="200,*">
+				<!-- Left Sidebar -->
+				<Border Grid.Column="0"
+						Background="{DynamicResource SidebarBackground}"
+						BorderBrush="{DynamicResource AuthPanelBorder}"
+						BorderThickness="0,1,1,0">
+					<Grid RowDefinitions="Auto,*">
+						<!-- Logo Area -->
+						<Border Grid.Row="0" 
+								Background="#FFFFFF" 
+								BorderBrush="{DynamicResource AuthPanelBorder}"
+								BorderThickness="0,0,0,1" 
+								Padding="10">
+							<Image Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruSMARTSTARTLOGO.png"
+								   Width="140" MaxHeight="56" Stretch="Uniform" />
+						</Border>
+						
+						<!-- Steps List -->
+						<StackPanel Grid.Row="1" Margin="8,15,8,10" Spacing="12">
+							<TextBlock Text="Мастер установки"
+                             FontWeight="Bold"
+									   Foreground="{DynamicResource SidebarText}"
+									   FontSize="12"
+									   Margin="0,0,0,5"/>
+							
+							<Border Classes="StepItem" Classes.ActiveStep="{Binding CurrentStep, Converter={StaticResource StepEqualityConverter}, ConverterParameter=1}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="1." Foreground="{DynamicResource SidebarText}"/>
+									<TextBlock Text="Авторизация" Foreground="{DynamicResource SidebarText}"/>
+								</StackPanel>
+							</Border>
+							
+							<Border Classes="StepItem" Classes.ActiveStep="{Binding CurrentStep, Converter={StaticResource StepEqualityConverter}, ConverterParameter=2}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="2." Foreground="{DynamicResource SidebarText}"/>
+									<TextBlock Text="Проверка системы" Foreground="{DynamicResource SidebarText}"/>
+                </StackPanel>
+							</Border>
+							
+							<Border Classes="StepItem" Classes.ActiveStep="{Binding CurrentStep, Converter={StaticResource StepEqualityConverter}, ConverterParameter=3}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="3." Foreground="{DynamicResource SidebarText}"/>
+									<TextBlock Text="Безопасность" Foreground="{DynamicResource SidebarText}"/>
+                    </StackPanel>
+							</Border>
+							
+							<Border Classes="StepItem" Classes.ActiveStep="{Binding CurrentStep, Converter={StaticResource StepEqualityConverter}, ConverterParameter=4}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="4." Foreground="{DynamicResource SidebarText}"/>
+									<TextBlock Text="Завершение" Foreground="{DynamicResource SidebarText}"/>
+                    </StackPanel>
+							</Border>
+							
+							<Separator Height="1" Background="{DynamicResource ControlBorder}" Margin="0,10,0,10"/>
+							
+							<!-- System Info -->
+							<StackPanel Spacing="10">
+								<TextBlock Text="Информация о системе:" 
+										   FontSize="11" 
+										   Foreground="{DynamicResource SidebarText}"/>
+								<Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="5,0,0,0">
+									<TextBlock Grid.Row="0" Grid.Column="0" Text="Система: " 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}" 
+											   Opacity="0.8"/>
+									<TextBlock Grid.Row="0" Grid.Column="1" Text="БРУ АВТОПАРК" 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}"/>
+									
+									<TextBlock Grid.Row="1" Grid.Column="0" Text="Версия: " 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}" 
+											   Opacity="0.8"/>
+									<TextBlock Grid.Row="1" Grid.Column="1" Text="0.5 Альфа" 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}"/>
+									
+									<TextBlock Grid.Row="2" Grid.Column="0" Text="Сборка: " 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}" 
+											   Opacity="0.8"/>
+									<TextBlock Grid.Row="2" Grid.Column="1" Text="0.5.240414" 
+											   FontSize="10" 
+											   Foreground="{DynamicResource SidebarText}"/>
+								</Grid>
+							</StackPanel>
+                </StackPanel>
+					</Grid>
+				</Border>
+
+				<!-- Main Content Area -->
+				<Border Grid.Column="1"
+						Background="{DynamicResource AuthPanelBackground}"
+						BorderBrush="{DynamicResource AuthPanelBorder}"
+						BorderThickness="0,1,0,0">
+					<Grid Margin="15" RowDefinitions="Auto,*,Auto">
+						<!-- Step Title -->
+						<TextBlock Grid.Row="0"
+								  Text="{Binding StepTitle}"
+								  FontSize="16" FontWeight="Bold"
+								  Margin="0,5,0,15"
+								  Foreground="{DynamicResource ControlText}"/>
+
+						<!-- Dynamic Step Content -->
+						<ContentControl Grid.Row="1" Name="StepContentArea" 
+									   Content="{Binding CurrentStep, Converter={StaticResource StepToContentConverter}}"/>
+
+						<!-- Progress & Error Display -->
+						<StackPanel Grid.Row="2" Spacing="5" VerticalAlignment="Bottom">
+							<TextBlock Classes="ErrorText" 
+									   Text="{Binding ErrorMessage}" 
+									   IsVisible="{Binding HasError}"
+									   Foreground="{DynamicResource ErrorTextBrush}"
+									   TextWrapping="Wrap" 
+									   Margin="0,5,0,5"/>
+							
+							<ProgressBar Classes="ClassicProgressBar" 
+									     Value="{Binding ProgressValue}" 
+									     Maximum="100" 
+									     Margin="0,10,0,5"/>
+							
+							<TextBlock Text="{Binding ProgressText}" 
+                          HorizontalAlignment="Center"
+									   FontSize="11"
+									   Foreground="{DynamicResource ControlText}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+
+			<!-- Bottom Button Bar (Command Bar) -->
+			<Border Grid.Row="1"
+				   Background="{DynamicResource SystemBackground}"
+				   BorderBrush="{DynamicResource AuthPanelBorder}"
+				   BorderThickness="0,1,0,0"
+				   Padding="10,8">
+				<Grid ColumnDefinitions="*,Auto,Auto,Auto">
+					<!-- Status Message -->
+					<TextBlock Grid.Column="0"
+							  Text="{Binding StatusMessage}"
+							  VerticalAlignment="Center"
+							  Foreground="{DynamicResource ControlText}"
+							  TextTrimming="CharacterEllipsis"/>
+
+					<!-- Command Buttons -->
+					<Button Grid.Column="1" 
+							Name="CancelButton"
+							Content="Отмена" 
+							Command="{Binding CancelCommand}" 
+							Classes="ClassicButton" 
+							IsEnabled="{Binding !IsLoading}"/>
+					
+					<Button Grid.Column="2" 
+							Name="BackButton"
+							Content="Назад" 
+							Command="{Binding GoToPreviousStepCommand}" 
+							Classes="ClassicButton" 
+							IsEnabled="{Binding CanGoBack}"/>
+					
+					<Button Grid.Column="3" 
+							Name="NextButton" 
+							Content="{Binding NextButtonText, FallbackValue='Далее'}"
+							Classes="ClassicButton" 
+							IsEnabled="{Binding CanGoForward}"
+							Command="{Binding GoToNextStepCommand}"
+							IsDefault="True"/>
+				</Grid>
+			</Border>
+		</Grid>
+	</Grid>
+</Window> 

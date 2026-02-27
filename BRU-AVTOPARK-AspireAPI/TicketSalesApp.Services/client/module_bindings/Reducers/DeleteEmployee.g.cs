@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteEmployeeHandler(ReducerEventContext ctx, uint employeeId);
+        public delegate void DeleteEmployeeHandler(ReducerEventContext ctx, uint employeeId, SpacetimeDB.Identity? actingUser);
         public event DeleteEmployeeHandler? OnDeleteEmployee;
 
-        public void DeleteEmployee(uint employeeId)
+        public void DeleteEmployee(uint employeeId, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeleteEmployee(employeeId), this.SetCallReducerFlags.DeleteEmployeeFlags);
+            conn.InternalCallReducer(new Reducer.DeleteEmployee(employeeId, actingUser));
         }
 
         public bool InvokeDeleteEmployee(ReducerEventContext ctx, Reducer.DeleteEmployee args)
         {
-            if (OnDeleteEmployee == null) return false;
+            if (OnDeleteEmployee == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteEmployee(
                 ctx,
-                args.EmployeeId
+                args.EmployeeId,
+                args.ActingUser
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteEmployee : Reducer, IReducerArgs
         {
-            [DataMember(Name = "employeeId")]
+            [DataMember(Name = "employee_id")]
             public uint EmployeeId;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeleteEmployee(uint EmployeeId)
+            public DeleteEmployee(
+                uint EmployeeId,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.EmployeeId = EmployeeId;
+                this.ActingUser = ActingUser;
             }
 
             public DeleteEmployee()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteEmployee";
+            string IReducerArgs.ReducerName => "delete_employee";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteEmployeeFlags;
-        public void DeleteEmployee(CallReducerFlags flags) => DeleteEmployeeFlags = flags;
     }
 }

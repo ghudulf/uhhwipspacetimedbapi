@@ -12,24 +12,36 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateTicketHandler(ReducerEventContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime);
+        public delegate void CreateTicketHandler(ReducerEventContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, SpacetimeDB.Identity? actingUser);
         public event CreateTicketHandler? OnCreateTicket;
 
-        public void CreateTicket(uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime)
+        public void CreateTicket(uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime), this.SetCallReducerFlags.CreateTicketFlags);
+            conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime, actingUser));
         }
 
         public bool InvokeCreateTicket(ReducerEventContext ctx, Reducer.CreateTicket args)
         {
-            if (OnCreateTicket == null) return false;
+            if (OnCreateTicket == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateTicket(
                 ctx,
                 args.RouteId,
                 args.Price,
                 args.SeatNumber,
                 args.PaymentMethod,
-                args.PurchaseTime
+                args.PurchaseTime,
+                args.ActingUser
             );
             return true;
         }
@@ -41,23 +53,26 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateTicket : Reducer, IReducerArgs
         {
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint RouteId;
             [DataMember(Name = "price")]
             public double Price;
-            [DataMember(Name = "seatNumber")]
+            [DataMember(Name = "seat_number")]
             public uint SeatNumber;
-            [DataMember(Name = "paymentMethod")]
+            [DataMember(Name = "payment_method")]
             public string PaymentMethod;
-            [DataMember(Name = "purchaseTime")]
+            [DataMember(Name = "purchase_time")]
             public ulong? PurchaseTime;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public CreateTicket(
                 uint RouteId,
                 double Price,
                 uint SeatNumber,
                 string PaymentMethod,
-                ulong? PurchaseTime
+                ulong? PurchaseTime,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.RouteId = RouteId;
@@ -65,6 +80,7 @@ namespace SpacetimeDB.Types
                 this.SeatNumber = SeatNumber;
                 this.PaymentMethod = PaymentMethod;
                 this.PurchaseTime = PurchaseTime;
+                this.ActingUser = ActingUser;
             }
 
             public CreateTicket()
@@ -72,13 +88,7 @@ namespace SpacetimeDB.Types
                 this.PaymentMethod = "";
             }
 
-            string IReducerArgs.ReducerName => "CreateTicket";
+            string IReducerArgs.ReducerName => "create_ticket";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateTicketFlags;
-        public void CreateTicket(CallReducerFlags flags) => CreateTicketFlags = flags;
     }
 }

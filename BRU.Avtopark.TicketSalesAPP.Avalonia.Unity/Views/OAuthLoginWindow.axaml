@@ -1,0 +1,231 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.OAuthLoginWindow"
+        Title="БРУ Автопарк - Авторизация"
+        Width="800" Height="600"
+        MinWidth="600" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/avalonia-logo.ico"
+        CanResize="True"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="36"
+        SystemDecorations="None"
+        Background="{DynamicResource SystemBackground}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Light Mode Resources -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#000080</Color>
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                    
+                    <Color x:Key="ContentBackgroundColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="ContentBackground" Color="{DynamicResource ContentBackgroundColor}"/>
+                    <Color x:Key="BorderColor">#808080</Color>
+                    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+                    
+                    <Color x:Key="ButtonBackgroundColor">#C0C0C0</Color>
+                    <SolidColorBrush x:Key="ButtonBackground" Color="{DynamicResource ButtonBackgroundColor}"/>
+                    <Color x:Key="ButtonHoverBackgroundColor">#D4D0C8</Color>
+                    <SolidColorBrush x:Key="ButtonHoverBackground" Color="{DynamicResource ButtonHoverBackgroundColor}"/>
+                    
+                    <Color x:Key="TextColor">#000000</Color>
+                    <SolidColorBrush x:Key="TextBrush" Color="{DynamicResource TextColor}"/>
+                    <Color x:Key="MutedTextColor">#808080</Color>
+                    <SolidColorBrush x:Key="MutedTextBrush" Color="{DynamicResource MutedTextColor}"/>
+                </ResourceDictionary>
+                
+                <!-- Dark Mode Resources -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="SystemBackgroundColor">#2D2D30</Color>
+                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
+                    
+                    <Color x:Key="TitleBarBackgroundColor">#1E1E1E</Color>
+                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
+                    <Color x:Key="TitleBarTextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
+                    
+                    <Color x:Key="ContentBackgroundColor">#252526</Color>
+                    <SolidColorBrush x:Key="ContentBackground" Color="{DynamicResource ContentBackgroundColor}"/>
+                    <Color x:Key="BorderColor">#3F3F46</Color>
+                    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+                    
+                    <Color x:Key="ButtonBackgroundColor">#3E3E42</Color>
+                    <SolidColorBrush x:Key="ButtonBackground" Color="{DynamicResource ButtonBackgroundColor}"/>
+                    <Color x:Key="ButtonHoverBackgroundColor">#505052</Color>
+                    <SolidColorBrush x:Key="ButtonHoverBackground" Color="{DynamicResource ButtonHoverBackgroundColor}"/>
+                    
+                    <Color x:Key="TextColor">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="TextBrush" Color="{DynamicResource TextColor}"/>
+                    <Color x:Key="MutedTextColor">#A0A0A0</Color>
+                    <SolidColorBrush x:Key="MutedTextBrush" Color="{DynamicResource MutedTextColor}"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom Title Bar -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource TitleBarBackground}"
+                IsHitTestVisible="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- App Icon and Title -->
+                <StackPanel Grid.Column="0" 
+                            Orientation="Horizontal" 
+                            Spacing="8"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="🔐" 
+                               FontSize="16" 
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="БРУ Автопарк - Авторизация" 
+                               FontSize="12" 
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TitleBarText}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Window Controls -->
+                <StackPanel Grid.Column="2" 
+                            Orientation="Horizontal" 
+                            Spacing="0">
+                    <Button x:Name="MinimizeButton"
+                            Width="46" Height="36"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Content="─"
+                            Foreground="{DynamicResource TitleBarText}"
+                            FontSize="14"
+                            Padding="0"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"
+                            Click="MinimizeButton_Click">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#505052"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                    
+                    <Button x:Name="CloseButton"
+                            Width="46" Height="36"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Content="✕"
+                            Foreground="{DynamicResource TitleBarText}"
+                            FontSize="14"
+                            Padding="0"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"
+                            Click="CloseButton_Click">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#E81123"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- WebView Container -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource ContentBackground}" 
+                BorderBrush="{DynamicResource BorderBrush}" 
+                BorderThickness="1,0,1,1"
+                Margin="0">
+            <Panel x:Name="WebViewContainer">
+                <!-- WebView will be added here programmatically -->
+                
+                <!-- Loading indicator -->
+                <StackPanel x:Name="LoadingPanel" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center"
+                            Spacing="15">
+                    <Border Width="60" Height="60" 
+                            Background="#000080" 
+                            CornerRadius="30"
+                            HorizontalAlignment="Center">
+                        <TextBlock Text="⏳" 
+                                   FontSize="32" 
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Загрузка страницы авторизации..." 
+                               FontSize="14" 
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Panel>
+        </Border>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" 
+                Background="{DynamicResource SystemBackground}" 
+                Padding="15,12"
+                BorderBrush="{DynamicResource BorderBrush}" 
+                BorderThickness="1,1,1,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" 
+                            Orientation="Horizontal" 
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="🛡️" FontSize="14"/>
+                    <TextBlock Text="Ваши учетные данные передаются безопасно" 
+                               FontSize="11" 
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Column="1" 
+                        x:Name="CancelButton"
+                        Content="Отмена" 
+                        Padding="20,6"
+                        Background="{DynamicResource ButtonBackground}"
+                        Foreground="{DynamicResource TextBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="0"
+                        Cursor="Hand"
+                        Click="CancelButton_Click">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                        </Style>
+                        <Style Selector="Button:pressed">
+                            <Setter Property="Background" Value="#A0A0A0"/>
+                        </Style>
+                    </Button.Styles>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

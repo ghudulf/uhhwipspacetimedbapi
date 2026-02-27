@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void ValidateQrCode(string sessionId, string validationCode)
         {
-            conn.InternalCallReducer(new Reducer.ValidateQrCode(sessionId, validationCode), this.SetCallReducerFlags.ValidateQrCodeFlags);
+            conn.InternalCallReducer(new Reducer.ValidateQrCode(sessionId, validationCode));
         }
 
         public bool InvokeValidateQrCode(ReducerEventContext ctx, Reducer.ValidateQrCode args)
         {
-            if (OnValidateQrCode == null) return false;
+            if (OnValidateQrCode == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnValidateQrCode(
                 ctx,
                 args.SessionId,
@@ -38,9 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ValidateQrCode : Reducer, IReducerArgs
         {
-            [DataMember(Name = "sessionId")]
+            [DataMember(Name = "session_id")]
             public string SessionId;
-            [DataMember(Name = "validationCode")]
+            [DataMember(Name = "validation_code")]
             public string ValidationCode;
 
             public ValidateQrCode(
@@ -58,13 +69,7 @@ namespace SpacetimeDB.Types
                 this.ValidationCode = "";
             }
 
-            string IReducerArgs.ReducerName => "ValidateQRCode";
+            string IReducerArgs.ReducerName => "validate_qr_code";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ValidateQrCodeFlags;
-        public void ValidateQrCode(CallReducerFlags flags) => ValidateQrCodeFlags = flags;
     }
 }

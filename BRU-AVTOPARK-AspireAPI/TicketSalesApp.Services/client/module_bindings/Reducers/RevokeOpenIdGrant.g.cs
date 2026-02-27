@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void RevokeOpenIdGrant(string grantId)
         {
-            conn.InternalCallReducer(new Reducer.RevokeOpenIdGrant(grantId), this.SetCallReducerFlags.RevokeOpenIdGrantFlags);
+            conn.InternalCallReducer(new Reducer.RevokeOpenIdGrant(grantId));
         }
 
         public bool InvokeRevokeOpenIdGrant(ReducerEventContext ctx, Reducer.RevokeOpenIdGrant args)
         {
-            if (OnRevokeOpenIdGrant == null) return false;
+            if (OnRevokeOpenIdGrant == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnRevokeOpenIdGrant(
                 ctx,
                 args.GrantId
@@ -37,7 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokeOpenIdGrant : Reducer, IReducerArgs
         {
-            [DataMember(Name = "grantId")]
+            [DataMember(Name = "grant_id")]
             public string GrantId;
 
             public RevokeOpenIdGrant(string GrantId)
@@ -50,13 +61,7 @@ namespace SpacetimeDB.Types
                 this.GrantId = "";
             }
 
-            string IReducerArgs.ReducerName => "RevokeOpenIdGrant";
+            string IReducerArgs.ReducerName => "revoke_open_id_grant";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RevokeOpenIdGrantFlags;
-        public void RevokeOpenIdGrant(CallReducerFlags flags) => RevokeOpenIdGrantFlags = flags;
     }
 }

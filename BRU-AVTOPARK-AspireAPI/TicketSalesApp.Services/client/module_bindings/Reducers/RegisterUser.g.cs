@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void RegisterUserHandler(ReducerEventContext ctx, string login, string password, string email, string phoneNumber, uint? roleId, string? roleName);
+        public delegate void RegisterUserHandler(ReducerEventContext ctx, string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, SpacetimeDB.Identity? actingUser, string? newUserIdentity);
         public event RegisterUserHandler? OnRegisterUser;
 
-        public void RegisterUser(string login, string password, string email, string phoneNumber, uint? roleId, string? roleName)
+        public void RegisterUser(string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, SpacetimeDB.Identity? actingUser, string? newUserIdentity)
         {
-            conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName), this.SetCallReducerFlags.RegisterUserFlags);
+            conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity));
         }
 
         public bool InvokeRegisterUser(ReducerEventContext ctx, Reducer.RegisterUser args)
         {
-            if (OnRegisterUser == null) return false;
+            if (OnRegisterUser == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnRegisterUser(
                 ctx,
                 args.Login,
@@ -30,7 +41,9 @@ namespace SpacetimeDB.Types
                 args.Email,
                 args.PhoneNumber,
                 args.RoleId,
-                args.RoleName
+                args.RoleName,
+                args.ActingUser,
+                args.NewUserIdentity
             );
             return true;
         }
@@ -48,12 +61,16 @@ namespace SpacetimeDB.Types
             public string Password;
             [DataMember(Name = "email")]
             public string Email;
-            [DataMember(Name = "phoneNumber")]
+            [DataMember(Name = "phone_number")]
             public string PhoneNumber;
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint? RoleId;
-            [DataMember(Name = "roleName")]
+            [DataMember(Name = "role_name")]
             public string? RoleName;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
+            [DataMember(Name = "new_user_identity")]
+            public string? NewUserIdentity;
 
             public RegisterUser(
                 string Login,
@@ -61,7 +78,9 @@ namespace SpacetimeDB.Types
                 string Email,
                 string PhoneNumber,
                 uint? RoleId,
-                string? RoleName
+                string? RoleName,
+                SpacetimeDB.Identity? ActingUser,
+                string? NewUserIdentity
             )
             {
                 this.Login = Login;
@@ -70,6 +89,8 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = PhoneNumber;
                 this.RoleId = RoleId;
                 this.RoleName = RoleName;
+                this.ActingUser = ActingUser;
+                this.NewUserIdentity = NewUserIdentity;
             }
 
             public RegisterUser()
@@ -80,13 +101,7 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = "";
             }
 
-            string IReducerArgs.ReducerName => "RegisterUser";
+            string IReducerArgs.ReducerName => "register_user";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RegisterUserFlags;
-        public void RegisterUser(CallReducerFlags flags) => RegisterUserFlags = flags;
     }
 }

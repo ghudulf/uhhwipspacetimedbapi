@@ -13,15 +13,15 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class TotpSecret
     {
-        [DataMember(Name = "Id")]
+        [DataMember(Name = "id")]
         public uint Id;
-        [DataMember(Name = "UserId")]
+        [DataMember(Name = "user_id")]
         public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "Secret")]
+        [DataMember(Name = "secret")]
         public string Secret;
-        [DataMember(Name = "CreatedAt")]
+        [DataMember(Name = "created_at")]
         public ulong CreatedAt;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "is_active")]
         public bool IsActive;
 
         public TotpSecret(

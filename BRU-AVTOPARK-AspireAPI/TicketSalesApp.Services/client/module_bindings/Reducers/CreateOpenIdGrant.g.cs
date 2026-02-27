@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateOpenIdGrant(string grantId, string clientId, SpacetimeDB.Identity userId, string type, System.Collections.Generic.List<string> scopes, ulong expiresAt)
         {
-            conn.InternalCallReducer(new Reducer.CreateOpenIdGrant(grantId, clientId, userId, type, scopes, expiresAt), this.SetCallReducerFlags.CreateOpenIdGrantFlags);
+            conn.InternalCallReducer(new Reducer.CreateOpenIdGrant(grantId, clientId, userId, type, scopes, expiresAt));
         }
 
         public bool InvokeCreateOpenIdGrant(ReducerEventContext ctx, Reducer.CreateOpenIdGrant args)
         {
-            if (OnCreateOpenIdGrant == null) return false;
+            if (OnCreateOpenIdGrant == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateOpenIdGrant(
                 ctx,
                 args.GrantId,
@@ -42,17 +53,17 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateOpenIdGrant : Reducer, IReducerArgs
         {
-            [DataMember(Name = "grantId")]
+            [DataMember(Name = "grant_id")]
             public string GrantId;
-            [DataMember(Name = "clientId")]
+            [DataMember(Name = "client_id")]
             public string ClientId;
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "type")]
             public string Type;
             [DataMember(Name = "scopes")]
             public System.Collections.Generic.List<string> Scopes;
-            [DataMember(Name = "expiresAt")]
+            [DataMember(Name = "expires_at")]
             public ulong ExpiresAt;
 
             public CreateOpenIdGrant(
@@ -80,13 +91,7 @@ namespace SpacetimeDB.Types
                 this.Scopes = new();
             }
 
-            string IReducerArgs.ReducerName => "CreateOpenIdGrant";
+            string IReducerArgs.ReducerName => "create_open_id_grant";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateOpenIdGrantFlags;
-        public void CreateOpenIdGrant(CallReducerFlags flags) => CreateOpenIdGrantFlags = flags;
     }
 }

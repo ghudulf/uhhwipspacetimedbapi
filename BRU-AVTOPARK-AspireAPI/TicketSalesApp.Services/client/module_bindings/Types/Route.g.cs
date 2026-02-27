@@ -13,42 +13,103 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Route
     {
-        [DataMember(Name = "RouteId")]
+        [DataMember(Name = "route_id")]
         public uint RouteId;
-        [DataMember(Name = "StartPoint")]
+        [DataMember(Name = "route_number")]
+        public string RouteNumber;
+        [DataMember(Name = "start_point")]
         public string StartPoint;
-        [DataMember(Name = "EndPoint")]
+        [DataMember(Name = "end_point")]
         public string EndPoint;
-        [DataMember(Name = "DriverId")]
+        [DataMember(Name = "driver_id")]
         public uint DriverId;
-        [DataMember(Name = "BusId")]
+        [DataMember(Name = "bus_id")]
         public uint BusId;
-        [DataMember(Name = "TravelTime")]
+        [DataMember(Name = "travel_time")]
         public string? TravelTime;
-        [DataMember(Name = "IsActive")]
+        [DataMember(Name = "stop_count")]
+        public uint StopCount;
+        [DataMember(Name = "route_description")]
+        public string? RouteDescription;
+        [DataMember(Name = "route_length")]
+        public double RouteLength;
+        [DataMember(Name = "is_active")]
         public bool IsActive;
+        [DataMember(Name = "route_type")]
+        public string? RouteType;
+        [DataMember(Name = "alternative_routes")]
+        public System.Collections.Generic.List<string>? AlternativeRoutes;
+        [DataMember(Name = "peak_hours")]
+        public System.Collections.Generic.List<string>? PeakHours;
+        [DataMember(Name = "frequency_peak")]
+        public uint? FrequencyPeak;
+        [DataMember(Name = "frequency_off_peak")]
+        public uint? FrequencyOffPeak;
+        [DataMember(Name = "special_instructions")]
+        public System.Collections.Generic.List<string>? SpecialInstructions;
+        [DataMember(Name = "is_accessible")]
+        public bool? IsAccessible;
+        [DataMember(Name = "route_features")]
+        public System.Collections.Generic.List<string>? RouteFeatures;
+        [DataMember(Name = "created_at")]
+        public ulong CreatedAt;
+        [DataMember(Name = "updated_at")]
+        public ulong? UpdatedAt;
+        [DataMember(Name = "updated_by")]
+        public string? UpdatedBy;
 
         public Route(
             uint RouteId,
+            string RouteNumber,
             string StartPoint,
             string EndPoint,
             uint DriverId,
             uint BusId,
             string? TravelTime,
-            bool IsActive
+            uint StopCount,
+            string? RouteDescription,
+            double RouteLength,
+            bool IsActive,
+            string? RouteType,
+            System.Collections.Generic.List<string>? AlternativeRoutes,
+            System.Collections.Generic.List<string>? PeakHours,
+            uint? FrequencyPeak,
+            uint? FrequencyOffPeak,
+            System.Collections.Generic.List<string>? SpecialInstructions,
+            bool? IsAccessible,
+            System.Collections.Generic.List<string>? RouteFeatures,
+            ulong CreatedAt,
+            ulong? UpdatedAt,
+            string? UpdatedBy
         )
         {
             this.RouteId = RouteId;
+            this.RouteNumber = RouteNumber;
             this.StartPoint = StartPoint;
             this.EndPoint = EndPoint;
             this.DriverId = DriverId;
             this.BusId = BusId;
             this.TravelTime = TravelTime;
+            this.StopCount = StopCount;
+            this.RouteDescription = RouteDescription;
+            this.RouteLength = RouteLength;
             this.IsActive = IsActive;
+            this.RouteType = RouteType;
+            this.AlternativeRoutes = AlternativeRoutes;
+            this.PeakHours = PeakHours;
+            this.FrequencyPeak = FrequencyPeak;
+            this.FrequencyOffPeak = FrequencyOffPeak;
+            this.SpecialInstructions = SpecialInstructions;
+            this.IsAccessible = IsAccessible;
+            this.RouteFeatures = RouteFeatures;
+            this.CreatedAt = CreatedAt;
+            this.UpdatedAt = UpdatedAt;
+            this.UpdatedBy = UpdatedBy;
         }
 
         public Route()
         {
+            this.RouteNumber = "";
             this.StartPoint = "";
             this.EndPoint = "";
         }

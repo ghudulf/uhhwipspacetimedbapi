@@ -12,20 +12,32 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeleteRoleReducerHandler(ReducerEventContext ctx, uint roleId);
+        public delegate void DeleteRoleReducerHandler(ReducerEventContext ctx, uint roleId, SpacetimeDB.Identity? actingUserId);
         public event DeleteRoleReducerHandler? OnDeleteRoleReducer;
 
-        public void DeleteRoleReducer(uint roleId)
+        public void DeleteRoleReducer(uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-            conn.InternalCallReducer(new Reducer.DeleteRoleReducer(roleId), this.SetCallReducerFlags.DeleteRoleReducerFlags);
+            conn.InternalCallReducer(new Reducer.DeleteRoleReducer(roleId, actingUserId));
         }
 
         public bool InvokeDeleteRoleReducer(ReducerEventContext ctx, Reducer.DeleteRoleReducer args)
         {
-            if (OnDeleteRoleReducer == null) return false;
+            if (OnDeleteRoleReducer == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnDeleteRoleReducer(
                 ctx,
-                args.RoleId
+                args.RoleId,
+                args.ActingUserId
             );
             return true;
         }
@@ -37,25 +49,25 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRoleReducer : Reducer, IReducerArgs
         {
-            [DataMember(Name = "roleId")]
+            [DataMember(Name = "role_id")]
             public uint RoleId;
+            [DataMember(Name = "acting_user_id")]
+            public SpacetimeDB.Identity? ActingUserId;
 
-            public DeleteRoleReducer(uint RoleId)
+            public DeleteRoleReducer(
+                uint RoleId,
+                SpacetimeDB.Identity? ActingUserId
+            )
             {
                 this.RoleId = RoleId;
+                this.ActingUserId = ActingUserId;
             }
 
             public DeleteRoleReducer()
             {
             }
 
-            string IReducerArgs.ReducerName => "DeleteRoleReducer";
+            string IReducerArgs.ReducerName => "delete_role_reducer";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteRoleReducerFlags;
-        public void DeleteRoleReducer(CallReducerFlags flags) => DeleteRoleReducerFlags = flags;
     }
 }

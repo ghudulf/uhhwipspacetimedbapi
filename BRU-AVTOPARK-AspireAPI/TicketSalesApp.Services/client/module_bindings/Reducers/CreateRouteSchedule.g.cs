@@ -17,12 +17,23 @@ namespace SpacetimeDB.Types
 
         public void CreateRouteSchedule(uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes)
         {
-            conn.InternalCallReducer(new Reducer.CreateRouteSchedule(routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes), this.SetCallReducerFlags.CreateRouteScheduleFlags);
+            conn.InternalCallReducer(new Reducer.CreateRouteSchedule(routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes));
         }
 
         public bool InvokeCreateRouteSchedule(ReducerEventContext ctx, Reducer.CreateRouteSchedule args)
         {
-            if (OnCreateRouteSchedule == null) return false;
+            if (OnCreateRouteSchedule == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnCreateRouteSchedule(
                 ctx,
                 args.RouteId,
@@ -50,31 +61,31 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateRouteSchedule : Reducer, IReducerArgs
         {
-            [DataMember(Name = "routeId")]
+            [DataMember(Name = "route_id")]
             public uint RouteId;
-            [DataMember(Name = "departureTime")]
+            [DataMember(Name = "departure_time")]
             public ulong DepartureTime;
             [DataMember(Name = "price")]
             public double Price;
-            [DataMember(Name = "availableSeats")]
+            [DataMember(Name = "available_seats")]
             public uint AvailableSeats;
-            [DataMember(Name = "daysOfWeek")]
+            [DataMember(Name = "days_of_week")]
             public System.Collections.Generic.List<string>? DaysOfWeek;
-            [DataMember(Name = "startPoint")]
+            [DataMember(Name = "start_point")]
             public string? StartPoint;
-            [DataMember(Name = "endPoint")]
+            [DataMember(Name = "end_point")]
             public string? EndPoint;
-            [DataMember(Name = "routeStops")]
+            [DataMember(Name = "route_stops")]
             public System.Collections.Generic.List<string>? RouteStops;
-            [DataMember(Name = "arrivalTime")]
+            [DataMember(Name = "arrival_time")]
             public ulong? ArrivalTime;
-            [DataMember(Name = "stopDurationMinutes")]
+            [DataMember(Name = "stop_duration_minutes")]
             public uint? StopDurationMinutes;
-            [DataMember(Name = "isRecurring")]
+            [DataMember(Name = "is_recurring")]
             public bool? IsRecurring;
-            [DataMember(Name = "estimatedStopTimes")]
+            [DataMember(Name = "estimated_stop_times")]
             public System.Collections.Generic.List<string>? EstimatedStopTimes;
-            [DataMember(Name = "stopDistances")]
+            [DataMember(Name = "stop_distances")]
             public System.Collections.Generic.List<double>? StopDistances;
             [DataMember(Name = "notes")]
             public string? Notes;
@@ -116,13 +127,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-            string IReducerArgs.ReducerName => "CreateRouteSchedule";
+            string IReducerArgs.ReducerName => "create_route_schedule";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateRouteScheduleFlags;
-        public void CreateRouteSchedule(CallReducerFlags flags) => CreateRouteScheduleFlags = flags;
     }
 }

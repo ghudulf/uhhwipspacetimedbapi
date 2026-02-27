@@ -12,17 +12,28 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive);
+        public delegate void UpdateUserHandler(ReducerEventContext ctx, SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive, SpacetimeDB.Identity? actingUser);
         public event UpdateUserHandler? OnUpdateUser;
 
-        public void UpdateUser(SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive)
+        public void UpdateUser(SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive), this.SetCallReducerFlags.UpdateUserFlags);
+            conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive, actingUser));
         }
 
         public bool InvokeUpdateUser(ReducerEventContext ctx, Reducer.UpdateUser args)
         {
-            if (OnUpdateUser == null) return false;
+            if (OnUpdateUser == null)
+            {
+                if (InternalOnUnhandledReducerError != null)
+                {
+                    switch (ctx.Event.Status)
+                    {
+                        case Status.Failed(var reason): InternalOnUnhandledReducerError(ctx, new Exception(reason)); break;
+                        case Status.OutOfEnergy(var _): InternalOnUnhandledReducerError(ctx, new Exception("out of energy")); break;
+                    }
+                }
+                return false;
+            }
             OnUpdateUser(
                 ctx,
                 args.UserId,
@@ -31,7 +42,8 @@ namespace SpacetimeDB.Types
                 args.Role,
                 args.PhoneNumber,
                 args.Email,
-                args.IsActive
+                args.IsActive,
+                args.ActingUser
             );
             return true;
         }
@@ -43,20 +55,22 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateUser : Reducer, IReducerArgs
         {
-            [DataMember(Name = "userId")]
+            [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "login")]
             public string? Login;
-            [DataMember(Name = "passwordHash")]
+            [DataMember(Name = "password_hash")]
             public string? PasswordHash;
             [DataMember(Name = "role")]
             public int? Role;
-            [DataMember(Name = "phoneNumber")]
+            [DataMember(Name = "phone_number")]
             public string? PhoneNumber;
             [DataMember(Name = "email")]
             public string? Email;
-            [DataMember(Name = "isActive")]
+            [DataMember(Name = "is_active")]
             public bool? IsActive;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
             public UpdateUser(
                 SpacetimeDB.Identity UserId,
@@ -65,7 +79,8 @@ namespace SpacetimeDB.Types
                 int? Role,
                 string? PhoneNumber,
                 string? Email,
-                bool? IsActive
+                bool? IsActive,
+                SpacetimeDB.Identity? ActingUser
             )
             {
                 this.UserId = UserId;
@@ -75,19 +90,14 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = PhoneNumber;
                 this.Email = Email;
                 this.IsActive = IsActive;
+                this.ActingUser = ActingUser;
             }
 
             public UpdateUser()
             {
             }
 
-            string IReducerArgs.ReducerName => "UpdateUser";
+            string IReducerArgs.ReducerName => "update_user";
         }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateUserFlags;
-        public void UpdateUser(CallReducerFlags flags) => UpdateUserFlags = flags;
     }
 }

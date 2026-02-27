@@ -9,6 +9,9 @@ using OpenIddict.Abstractions;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using System.Collections.Immutable;
+using OpenIddict.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -18,23 +21,32 @@ namespace TicketSalesApp.Services.Implementations
     public class OpenIdConnectService : IOpenIdConnectService
     {
         private readonly ISpacetimeDBService _spacetimeService;
-        private readonly IOpenIddictApplicationManager _applicationManager;
-        private readonly IOpenIddictAuthorizationManager _authorizationManager;
-        private readonly IOpenIddictScopeManager _scopeManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OpenIdConnectService> _logger;
 
         public OpenIdConnectService(
             ISpacetimeDBService spacetimeService,
-            IOpenIddictApplicationManager applicationManager,
-            IOpenIddictAuthorizationManager authorizationManager,
-            IOpenIddictScopeManager scopeManager,
+            IServiceProvider serviceProvider,
             ILogger<OpenIdConnectService> logger)
         {
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-            _applicationManager = applicationManager ?? throw new ArgumentNullException(nameof(applicationManager));
-            _authorizationManager = authorizationManager ?? throw new ArgumentNullException(nameof(authorizationManager));
-            _scopeManager = scopeManager ?? throw new ArgumentNullException(nameof(scopeManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        private IOpenIddictApplicationManager GetApplicationManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        }
+
+        private IOpenIddictAuthorizationManager GetAuthorizationManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        }
+
+        public IOpenIddictScopeManager GetScopeManager()
+        {
+            return _serviceProvider.GetRequiredService<IOpenIddictScopeManager>();
         }
 
         /// <summary>
@@ -46,7 +58,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting application by client ID: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -65,19 +78,27 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Gets authorizations for a user and application
         /// </summary>
-        public async Task<(bool success, List<object>? authorizations, string? errorMessage)> GetAuthorizationsAsync(string subject, object application, string status, string type, IEnumerable<string> scopes)
+        public async Task<(bool success, List<object>? authorizations, string? errorMessage)> GetAuthorizationsAsync(string subject, object application, string status, string type, string[] scopes)
         {
             try
             {
                 _logger.LogInformation("Getting authorizations for subject: {Subject}", subject);
-
-                var applicationId = await _applicationManager.GetIdAsync(application);
-                var authorizations = await _authorizationManager.FindAsync(
+                var applicationManager = GetApplicationManager();
+                var authorizationManager = GetAuthorizationManager();
+                
+                var applicationId = await applicationManager.GetIdAsync(application);
+                var authorizationsQuery = authorizationManager.FindAsync(
                     subject: subject,
                     client: applicationId,
                     status: status,
                     type: type,
-                    scopes: scopes).ToListAsync();
+                    scopes: ImmutableArray.Create(scopes));
+                
+                var authorizations = new List<object>();
+                await foreach (var authorization in authorizationsQuery)
+                {
+                    authorizations.Add(authorization);
+                }
 
                 return (true, authorizations, null);
             }
@@ -91,7 +112,7 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Creates an identity from a user
         /// </summary>
-        public async Task<(bool success, ClaimsIdentity? identity, string? errorMessage)> CreateIdentityFromUserAsync(UserProfile user, IEnumerable<string> scopes)
+        public async Task<(bool success, ClaimsIdentity? identity, string? errorMessage)> CreateIdentityFromUserAsync(UserProfile user, string[] scopes)
         {
             try
             {
@@ -137,19 +158,22 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Creates an authorization
         /// </summary>
-        public async Task<(bool success, object? authorization, string? errorMessage)> CreateAuthorizationAsync(ClaimsIdentity identity, string subject, object application, string type, IEnumerable<string> scopes)
+        public async Task<(bool success, object? authorization, string? errorMessage)> CreateAuthorizationAsync(ClaimsIdentity identity, string subject, object application, string type, string[] scopes)
         {
             try
             {
                 _logger.LogInformation("Creating authorization for subject: {Subject}", subject);
 
-                var applicationId = await _applicationManager.GetIdAsync(application);
-                var authorization = await _authorizationManager.CreateAsync(
+                var applicationManager = GetApplicationManager();
+                var authorizationManager = GetAuthorizationManager();
+                
+                var applicationId = await applicationManager.GetIdAsync(application);
+                var authorization = await authorizationManager.CreateAsync(
                     identity: identity,
                     subject: subject,
                     client: applicationId,
                     type: type,
-                    scopes: scopes);
+                    scopes: ImmutableArray.Create(scopes));
 
                 return (true, authorization, null);
             }
@@ -167,7 +191,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var id = await _authorizationManager.GetIdAsync(authorization);
+                var authorizationManager = GetAuthorizationManager();
+                var id = await authorizationManager.GetIdAsync(authorization);
                 return (true, id, null);
             }
             catch (Exception ex)
@@ -177,18 +202,21 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        
         /// <summary>
         /// Gets resources for scopes
         /// </summary>
-        public async Task<(bool success, List<string>? resources, string? errorMessage)>
-        /// <summary>
-        /// Gets resources for scopes
-        /// </summary>
-        public async Task<(bool success, List<string>? resources, string? errorMessage)> GetResourcesAsync(IEnumerable<string> scopes)
+        public async Task<(bool success, List<string>? resources, string? errorMessage)> GetResourcesAsync(string[] scopes)
         {
             try
             {
-                var resources = await _scopeManager.ListResourcesAsync(scopes).ToListAsync();
+                var scopeManager = GetScopeManager();
+                var resourcesAsync = scopeManager.ListResourcesAsync(ImmutableArray.Create(scopes));
+                var resources = new List<string>();
+                await foreach (var resource in resourcesAsync)
+                {
+                    resources.Add(resource);
+                }
                 return (true, resources, null);
             }
             catch (Exception ex)
@@ -207,34 +235,41 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Registering client application: {ClientId}", clientId);
 
+                // Validate input parameters
+                if (redirectUris == null || redirectUris.Length == 0)
+                {
+                    _logger.LogWarning("Redirect URIs cannot be null or empty");
+                    return (false, "Redirect URIs are required");
+                }
+
+                if (postLogoutRedirectUris == null)
+                {
+                    postLogoutRedirectUris = Array.Empty<string>();
+                }
+
+                if (allowedScopes == null || allowedScopes.Length == 0)
+                {
+                    _logger.LogWarning("Allowed scopes cannot be null or empty");
+                    return (false, "At least one scope is required");
+                }
+
                 // Check if application with the same client ID already exists
-                var existingApp = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var existingApp = await applicationManager.FindByClientIdAsync(clientId);
                 if (existingApp != null)
                 {
                     _logger.LogWarning("An application with this client ID already exists: {ClientId}", clientId);
                     return (false, "An application with this client ID already exists");
                 }
                 
-                var conn = _spacetimeService.GetConnection();
-                
-                // Register the client in SpacetimeDB
-                await conn.Reducers.RegisterOpenIdClientAsync(
-                    clientId,
-                    clientSecret,
-                    displayName,
-                    redirectUris,
-                    postLogoutRedirectUris,
-                    allowedScopes,
-                    requireConsent ? "explicit" : "implicit",
-                    "public"
-                );
-                
-                // Create a new OpenIddict application
-                var application = await _applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
+                // Create a new OpenIddict application descriptor
+                // Note: ApplicationStore.CreateAsync will handle writing to SpacetimeDB via RegisterOpenIdClient reducer
+                var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
                     ClientSecret = clientSecret,
                     DisplayName = displayName,
+                    ConsentType = requireConsent ? ConsentTypes.Explicit : ConsentTypes.Implicit,
                     Permissions =
                     {
                         Permissions.Endpoints.Authorization,
@@ -249,14 +284,35 @@ namespace TicketSalesApp.Services.Implementations
                         Permissions.Scopes.Email,
                         Permissions.Scopes.Profile,
                         Permissions.Scopes.Roles
-                    },
-                    RedirectUris = redirectUris.Select(uri => new Uri(uri)).ToList(),
-                    PostLogoutRedirectUris = postLogoutRedirectUris.Select(uri => new Uri(uri)).ToList(),
-                    ConsentType = requireConsent ? 
-                        ConsentTypes.Explicit : 
-                        ConsentTypes.Implicit
-                });
-                
+                    }
+                };
+
+                // Add custom scope permissions from allowedScopes parameter
+                foreach (var scope in allowedScopes)
+                {
+                    var scopePermission = $"{Permissions.Prefixes.Scope}{scope}";
+                    if (!descriptor.Permissions.Contains(scopePermission))
+                    {
+                        descriptor.Permissions.Add(scopePermission);
+                        _logger.LogDebug("Added scope permission: {Scope}", scopePermission);
+                    }
+                }
+
+                // Add redirect URIs to descriptor
+                foreach (var uri in redirectUris)
+                {
+                    descriptor.RedirectUris.Add(new Uri(uri));
+                }
+
+                // Add post-logout redirect URIs to descriptor
+                foreach (var uri in postLogoutRedirectUris)
+                {
+                    descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+                }
+
+                // Create the application with the complete descriptor
+                var application = await applicationManager.CreateAsync(descriptor);
+
                 _logger.LogInformation("Client application registered successfully: {ClientId}", clientId);
                 return (true, null);
             }
@@ -276,44 +332,24 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Updating client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
                     return (false, "Application not found");
                 }
                 
-                var conn = _spacetimeService.GetConnection();
-                
-                // Get the current client from SpacetimeDB
-                var client = conn.Db.OpenIdConnect.Iter()
-                    .FirstOrDefault(c => c.ClientId == clientId && c.IsActive);
-                
-                if (client == null)
-                {
-                    _logger.LogWarning("Client not found in SpacetimeDB with client ID: {ClientId}", clientId);
-                    return (false, "Client not found");
-                }
-                
-                // Update the client in SpacetimeDB
-                await conn.Reducers.UpdateOpenIdClientAsync(
-                    clientId,
-                    clientSecret ?? client.ClientSecret,
-                    displayName ?? client.DisplayName,
-                    redirectUris ?? client.RedirectUris,
-                    postLogoutRedirectUris ?? client.PostLogoutRedirectUris,
-                    allowedScopes ?? client.AllowedScopes,
-                    requireConsent.HasValue ? (requireConsent.Value ? "explicit" : "implicit") : client.ConsentType
-                );
-                
-                // Update the application in OpenIddict
+                // Get current values for optional parameters
+                // Note: ApplicationStore.UpdateAsync will handle writing to SpacetimeDB via UpdateOpenIdClient reducer
                 var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
-                    DisplayName = displayName ?? await _applicationManager.GetDisplayNameAsync(application),
+                    DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application),
                     ConsentType = requireConsent.HasValue ? 
                         (requireConsent.Value ? ConsentTypes.Explicit : ConsentTypes.Implicit) : 
-                        await _applicationManager.GetConsentTypeAsync(application)
+                        await applicationManager.GetConsentTypeAsync(application),
+                    Type = await applicationManager.GetClientTypeAsync(application) ?? ClientTypes.Public
                 };
                 
                 // Update client secret if provided
@@ -332,9 +368,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    foreach (var uri in await _applicationManager.GetRedirectUrisAsync(application))
+                    var existingUris = await applicationManager.GetRedirectUrisAsync(application);
+                    foreach (var uri in existingUris)
                     {
-                        descriptor.RedirectUris.Add(uri);
+                        descriptor.RedirectUris.Add(new Uri(uri));
                     }
                 }
                 
@@ -348,20 +385,50 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    foreach (var uri in await _applicationManager.GetPostLogoutRedirectUrisAsync(application))
+                    var existingUris = await applicationManager.GetPostLogoutRedirectUrisAsync(application);
+                    foreach (var uri in existingUris)
                     {
-                        descriptor.PostLogoutRedirectUris.Add(uri);
+                        descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
                     }
                 }
                 
-                // Copy existing permissions
-                foreach (var permission in await _applicationManager.GetPermissionsAsync(application))
+                // Update permissions/scopes if provided
+                if (allowedScopes != null && allowedScopes.Length > 0)
                 {
-                    descriptor.Permissions.Add(permission);
+                    // Clear existing scope permissions and add new ones
+                    descriptor.Permissions.Clear();
+                    
+                    // Add endpoint permissions
+                    descriptor.Permissions.Add(Permissions.Endpoints.Authorization);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Token);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Logout);
+                    descriptor.Permissions.Add(Permissions.Endpoints.Revocation);
+                    
+                    // Add grant type permissions
+                    descriptor.Permissions.Add(Permissions.GrantTypes.AuthorizationCode);
+                    descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken);
+                    descriptor.Permissions.Add(Permissions.GrantTypes.ClientCredentials);
+                    
+                    // Add response type permissions
+                    descriptor.Permissions.Add(Permissions.ResponseTypes.Code);
+                    
+                    // Add scope permissions
+                    foreach (var scope in allowedScopes)
+                    {
+                        descriptor.Permissions.Add(Permissions.Prefixes.Scope + scope);
+                    }
+                }
+                else
+                {
+                    // Copy existing permissions if no new scopes provided
+                    foreach (var permission in await applicationManager.GetPermissionsAsync(application))
+                    {
+                        descriptor.Permissions.Add(permission);
+                    }
                 }
                 
                 // Update the application
-                await _applicationManager.UpdateAsync(application, descriptor);
+                await applicationManager.UpdateAsync(application, descriptor);
                 
                 _logger.LogInformation("Client application updated successfully: {ClientId}", clientId);
                 return (true, null);
@@ -382,20 +449,17 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Deleting client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
                     return (false, "Application not found");
                 }
                 
-                var conn = _spacetimeService.GetConnection();
-                
-                // Revoke the client in SpacetimeDB
-                await conn.Reducers.RevokeOpenIdClientAsync(clientId);
-                
                 // Delete the application in OpenIddict
-                await _applicationManager.DeleteAsync(application);
+                // Note: ApplicationStore.DeleteAsync will handle writing to SpacetimeDB via RevokeOpenIdClient reducer
+                await applicationManager.DeleteAsync(application);
                 
                 _logger.LogInformation("Client application deleted successfully: {ClientId}", clientId);
                 return (true, null);
@@ -416,8 +480,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting all client applications");
 
+                var applicationManager = GetApplicationManager();
                 var applications = new List<object>();
-                await foreach (var application in _applicationManager.ListAsync())
+                await foreach (var application in applicationManager.ListAsync())
                 {
                     applications.Add(application);
                 }
@@ -440,7 +505,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting client application: {ClientId}", clientId);
 
-                var application = await _applicationManager.FindByClientIdAsync(clientId);
+                var applicationManager = GetApplicationManager();
+                var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -501,3 +567,9 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
+
+
+
+
+
+
