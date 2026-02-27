@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ActivateSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ActivateSchedule(scheduleId, actingUser), this.SetCallReducerFlags.ActivateScheduleFlags);
-=======
             conn.InternalCallReducer(new Reducer.ActivateSchedule(scheduleId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeActivateSchedule(ReducerEventContext ctx, Reducer.ActivateSchedule args)
         {
-<<<<<<< HEAD
-            if (OnActivateSchedule == null) return false;
-=======
             if (OnActivateSchedule == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnActivateSchedule(
                 ctx,
                 args.ScheduleId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ActivateSchedule : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "scheduleId")]
-            public uint ScheduleId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "schedule_id")]
             public uint ScheduleId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ActivateSchedule(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ActivateSchedule";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ActivateScheduleFlags;
-        public void ActivateSchedule(CallReducerFlags flags) => ActivateScheduleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "activate_schedule";
         }
     }
->>>>>>> maintofix
 }

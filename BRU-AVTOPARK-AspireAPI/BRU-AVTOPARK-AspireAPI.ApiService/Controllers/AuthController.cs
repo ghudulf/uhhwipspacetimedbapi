@@ -26,10 +26,7 @@ using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
-<<<<<<< HEAD
-=======
 using Microsoft.AspNetCore.Authentication.JwtBearer;
->>>>>>> maintofix
 using Microsoft.AspNetCore;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
@@ -49,10 +46,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IMemoryCache _cache;
         private readonly ISpacetimeDBService _spacetimeService;
-<<<<<<< HEAD
-=======
         private readonly SymmetricSecurityKey _signingKey;
->>>>>>> maintofix
 
         public AuthController(
             TicketSalesApp.Services.Interfaces.IAuthenticationService authService, 
@@ -65,12 +59,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             IConfiguration configuration,
             ILogger<AuthController> logger,
             IMemoryCache cache,
-<<<<<<< HEAD
-            ISpacetimeDBService spacetimeService)
-=======
             ISpacetimeDBService spacetimeService,
             SymmetricSecurityKey signingKey)
->>>>>>> maintofix
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _qrAuthService = qrAuthService ?? throw new ArgumentNullException(nameof(qrAuthService));
@@ -83,10 +73,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-<<<<<<< HEAD
-=======
             _signingKey = signingKey ?? throw new ArgumentNullException(nameof(signingKey));
->>>>>>> maintofix
         }
 
         #region HTML Templates
@@ -1106,9 +1093,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     </div>
                 </div>
             </div>
-<<<<<<< HEAD
-            <script>
-=======
             
             <!-- Auto-login overlay -->
             <div id=""autoLoginOverlay"" style=""display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;"">
@@ -1164,7 +1148,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }}
                 }})();
                 
->>>>>>> maintofix
                 function submitLoginForm() {{
                     // Disable button to prevent multiple submissions
                     document.getElementById('loginButton').disabled = true;
@@ -1174,26 +1157,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
                     
-<<<<<<< HEAD
-                    // Submit form using fetch instead of form submission to avoid WebSocket issues
-                    fetch('/api/auth/login', {{
-                        method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        }},
-                        body: `username=${{encodeURIComponent(username)}}&password=${{encodeURIComponent(password)}}`,
-                        credentials: 'same-origin'
-                    }})
-                    .then(response => {{
-                        if (response.redirected) {{
-                            // Follow redirect
-                            window.location.href = response.url;
-                            return;
-                        }}
-                        return response.json();
-                    }})
-                    .then(data => {{
-=======
                     // Submit form using fetch with JSON
                     fetch('/api/auth/login', {{
                         method: 'POST',
@@ -1233,7 +1196,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             return;
                         }}
                         
->>>>>>> maintofix
                         if (data && data.success) {{
                             // Store token if present
                             if (data.data && data.data.token) {{
@@ -1514,45 +1476,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         // Add this before the end of the HTML Templates region
 
-<<<<<<< HEAD
-        private string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => string.Format(BaseHtmlTemplate, "Login to " + clientName, $@"
-            <div class=""info-box"">
-                <p>The application <strong>{clientName}</strong> is requesting access to your account.</p>
-            </div>
-            
-            {(error != null ? $@"<div class=""error-message"">{error}</div>" : "")}
-            
-            <div class=""card my-4"" style=""box-shadow: none; border: 1px solid var(--border-color);"">
-                <div class=""card-header"">
-                    <h2>Requested Permissions</h2>
-                </div>
-                <div class=""card-body"">
-                    <ul style=""padding-left: 1.5rem;"">
-                        {string.Join("", scopes.Select(scope => $@"<li>{FormatScope(scope)}</li>"))}
-                    </ul>
-                </div>
-            </div>
-            
-            <form method=""POST"" action=""/api/auth/connect/authorize/callback"">
-                <input type=""hidden"" name=""requestId"" value=""{requestId}"">
-                
-                <div class=""form-group"">
-                    <label for=""username"">Username</label>
-                    <input type=""text"" id=""username"" name=""username""  placeholder=""Enter your username"">
-                </div>
-                <div class=""form-group"">
-                    <label for=""password"">Password</label>
-                    <input type=""password"" id=""password"" name=""password""  placeholder=""Enter your password"">
-                </div>
-                <button type=""submit"" class=""btn btn-block"">Login & Authorize</button>
-            </form>
-            
-            <div class=""text-center mt-4"">
-                <p class=""text-muted"">By continuing, you agree to share the requested information with {clientName}.</p>
-            </div>
-        ");
-
-=======
         private string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => string.Format(BaseHtmlTemplate, "Authorize " + clientName, $@"
             <style>
                 .oauth-container {{
@@ -1727,7 +1650,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             };
         }
 
->>>>>>> maintofix
         // Add this helper method to format OAuth scopes for display
         private string FormatScope(string scope)
         {
@@ -1744,17 +1666,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 case "roles":
                     return "Your role information and permissions";
                 case "offline_access":
-<<<<<<< HEAD
-                    return "Access to your account even when you're not logged in";
-                default:
-                    return scope;
-=======
                     return "Access to your account even when you're not logged in (refresh tokens)";
                 case "api":
                     return "Access to the BRU AVTOPARK API on your behalf";
                 default:
                     return $"Access to {scope}";
->>>>>>> maintofix
             }
         }
 
@@ -1837,9 +1753,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var result = await ProcessLoginRequest(finalRequest);
                 _logger.LogDebug("ProcessLoginRequest returned result type: {ResultType}", result.GetType().Name);
 
-<<<<<<< HEAD
-                // If the request is JSON, always return JSON response even from browser
-=======
                 // For browser requests, set cookie even if JSON was sent
                 if (IsBrowserRequest() && result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
                 {
@@ -1875,7 +1788,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
                 
                 // If the request is JSON, return JSON response
->>>>>>> maintofix
                 if (jsonRequest != null)
                 {
                     _logger.LogInformation("JSON request detected, returning JSON response");
@@ -1886,21 +1798,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     _logger.LogInformation("Processing as browser request");
                     
-<<<<<<< HEAD
-                    if (result is OkObjectResult okResult && okResult.Value is ApiResponse<LoginResponse> response)
-                    {
-                        _logger.LogInformation("LOGIN SUCCESSFUL: Browser login successful for user: {Username}", finalRequest.Username);
-                        _logger.LogDebug("Token generated with length: {TokenLength}", response.Data?.Token?.Length ?? 0);
-                        _logger.LogDebug("Redirecting to success page with token");
-                        
-                        // If it's a successful login from a browser, redirect to success page with token
-                        return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response.Data!.Token)}");
-=======
                     if (result is OkObjectResult okResult2 && okResult2.Value is ApiResponse<LoginResponse> response2)
                     {
                         // If it's a successful login from a browser, redirect to success page with token
                         return Redirect($"/api/auth/success?token={Uri.EscapeDataString(response2.Data!.Token)}");
->>>>>>> maintofix
                     }
                     
                     // For failures, redirect back to login page with error
@@ -1952,12 +1853,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             try
             {
-<<<<<<< HEAD
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                {
-                    Log.Warning("Missing or invalid Authorization header");
-=======
                 // First check if user is authenticated via ASP.NET Core Identity (cookie-based)
                 if (User?.Identity?.IsAuthenticated == true)
                 {
@@ -1979,7 +1874,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
->>>>>>> maintofix
                     return false;
                 }
 
@@ -1995,13 +1889,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Fallback to checking all role claims
-<<<<<<< HEAD
-                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role");
-                return roleClaims.Any(c => c.Value == "1");
-=======
                 var jwtRoleClaims = jwtToken.Claims.Where(c => c.Type == "role");
                 return jwtRoleClaims.Any(c => c.Value == "1");
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
@@ -2676,53 +2565,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         // Add success page renderer
-<<<<<<< HEAD
-        private string RenderSuccessPage(string token) => string.Format(BaseHtmlTemplate, "Login Successful - BRU AVTOPARK", $@"
-            <div class=""success-message"" style=""display: flex; align-items: center; justify-content: center; gap: 10px;"">
-                <svg width=""24"" height=""24"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"">
-                    <path d=""M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"" stroke=""var(--success-color)"" stroke-width=""2""/>
-                    <path d=""M8 12L11 15L16 9"" stroke=""var(--success-color)"" stroke-width=""2""/>
-                </svg>
-                <span>You have been successfully logged in!</span>
-        </div>
-                    <div class=""text-center mt-4"">
-                        <a href=""/api/auth/profile"" class=""btn"">Go to Profile</a>
-        </div>
-    <script>
-                // Store the token securely
-                const token = '{token.Replace("'", "\\'")}';
-                if (token && token !== 'null') {{
-                    localStorage.setItem('auth_token', token);
-                    
-                    // Set up authorization header for future API requests
-                    const authHeader = `Bearer ${{token}}`;
-                    
-                    // Automatically redirect to profile page after a short delay
-                    setTimeout(() => {{
-                        const profileUrl = '/api/auth/profile';
-                        // Use fetch with the auth token to check if we can access the profile
-                        fetch(profileUrl, {{
-                            headers: {{
-                                'Authorization': authHeader
-                            }}
-                        }})
-                        .then(response => {{
-                            if (response.ok) {{
-                                window.location.href = profileUrl;
-                            }} else {{
-                                throw new Error('Failed to verify profile access');
-                            }}
-                        }})
-                        .catch(error => {{
-                            console.error('Error:', error);
-                            // If there's an error, try redirecting with the token as a query parameter
-                            window.location.href = `${{profileUrl}}?token=${{encodeURIComponent(token)}}`;
-                        }});
-                    }}, 1500);
-                }}
-            </script>
-        ", "");
-=======
         private string RenderSuccessPage(string token)
         {
             var safeToken = token.Replace("'", "\\'");
@@ -2767,7 +2609,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             return string.Format(BaseHtmlTemplate, "Login Successful - BRU AVTOPARK", bodyContent, "");
         }
->>>>>>> maintofix
 
         [HttpGet("success")]
         [AllowAnonymous]
@@ -2805,20 +2646,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         // Add error page renderer
-<<<<<<< HEAD
-        private string RenderErrorPage(string error) => string.Format(BaseHtmlTemplate, "Error - BRU AVTOPARK", $@"
-            <div class=""error-message"" style=""display: flex; align-items: center; justify-content: center; gap: 10px;"">
-                <svg width=""24"" height=""24"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"">
-                    <path d=""M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"" stroke=""var(--error-color)"" stroke-width=""2""/>
-                    <path d=""M12 8V12"" stroke=""var(--error-color)"" stroke-width=""2"" stroke-linecap=""round""/>
-                    <circle cx=""12"" cy=""16"" r=""1"" fill=""var(--error-color)""/>
-                </svg>
-                <span>{error}</span>
-            </div>
-            <div class=""text-center mt-4"">
-                <a href=""/api/auth/login"" class=""btn"">Back to Login</a>
-            </div>");
-=======
         private string RenderErrorPage(string error)
         {
             var encodedError = System.Web.HttpUtility.HtmlEncode(error);
@@ -2849,7 +2676,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             return string.Format(BaseHtmlTemplate, "Error - BRU AVTOPARK", bodyContent, "");
         }
->>>>>>> maintofix
 
         [HttpGet("error")]
         [AllowAnonymous]
@@ -4198,11 +4024,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/registerclient")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-=======
         [Authorize(Policy = "RequireAdministrator")]
->>>>>>> maintofix
         public async Task<ActionResult<RegisterClientResponse>> RegisterClient([FromBody] RegisterClientRequest request)
         {
             try// NO NEED FOR TRANSACTION GARBO
@@ -4337,62 +4159,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
         }
 
-<<<<<<< HEAD
-        [HttpGet("connect/clients")]
-        [Authorize(Roles = "Administrator")]
-        public async Task<ActionResult<GetClientsResponse>> GetClients()
-        {
-            try
-            {
-                // Get all client applications
-                var (success, applications, errorMessage) = await _openIdConnectService.GetAllClientApplicationsAsync();
-
-                if (!success || applications == null)
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = errorMessage ?? "Failed to get client applications"
-                    });
-                }
-
-                // Convert to DTO
-                var clientDtos = new List<ClientDto>();
-                foreach (var app in applications)
-                {
-                    var clientId = await GetClientIdAsync(app);
-                    var displayName = await GetDisplayNameAsync(app);
-                    
-                    clientDtos.Add(new ClientDto
-                    {
-                        ClientId = clientId,
-                        DisplayName = displayName
-                    });
-                }
-
-                return Ok(new ApiResponse<GetClientsResponse>
-                {
-                    Success = true,
-                    Message = "Client applications retrieved successfully",
-                    Data = new GetClientsResponse
-                    {
-                        Clients = clientDtos
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting client applications");
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "An error occurred while getting client applications"
-                });
-            }
-        }
-
-=======
->>>>>>> maintofix
         [HttpGet("connect/client/{clientId}")]
         [Authorize(Roles = "Administrator")]
         public async Task<ActionResult<GetClientResponse>> GetClient(string clientId)
@@ -4566,24 +4332,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private string GenerateJwtToken(UserProfile userProfile)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-<<<<<<< HEAD
-            var keyString = _configuration["JwtSettings:Secret"] ?? 
-                throw new InvalidOperationException("JWT secret is not configured");
-
-            // Ensure the key is at least 32 bytes
-            var keyBytes = Encoding.UTF8.GetBytes(keyString);
-            if (keyBytes.Length < 32)
-            {
-                Array.Resize(ref keyBytes, 32);
-            }
-            else if (keyBytes.Length > 64)
-            {
-                Array.Resize(ref keyBytes, 64);
-            }
-
-            var key = new SymmetricSecurityKey(keyBytes);
-=======
->>>>>>> maintofix
             var expirationMinutes = double.Parse(_configuration["JwtSettings:ExpirationInMinutes"] ?? "120");
             
             var conn = _spacetimeService.GetConnection();
@@ -4618,13 +4366,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 new Claim(ClaimTypes.Name, userProfile.Login), // Keep for backward compatibility
                 new Claim("sub", userProfile.LegacyUserId.ToString()),
                 new Claim("identity", userProfile.UserId.ToString()),
-<<<<<<< HEAD
-                new Claim("xuid", userProfile.Xuid?.ToString() ?? "")
-=======
                 new Claim("xuid", userProfile.Xuid?.ToString() ?? ""),
                 new Claim("token_usage", "access_token"), // OpenIddict expects this
                 new Claim("oi_tkn_id", Guid.NewGuid().ToString()) // OpenIddict token ID
->>>>>>> maintofix
             };
             
             // Add role claims
@@ -4651,13 +4395,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
-<<<<<<< HEAD
-                SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
-=======
                 Issuer = "https://localhost:5001",
                 Audience = "https://localhost:5001",
                 SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256Signature)
->>>>>>> maintofix
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -5019,11 +4759,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                            <span class=""Text_root__J8eOj"" data-variant=""text-s"" style=""color: var(--id-color-text-secondary); margin-top: 4px;"">Создание новых учетных записей</span>
                                        </a>
                                      
-<<<<<<< HEAD
-                                      <a href=""/api/auth/connect/clients"" class=""UnstyledListItem_root__xsw4w"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; color: inherit; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
-=======
                                       <a href=""/api/auth/connect/clients"" class=""UnstyledListItem_root__xsw4w oidc-clients-link"" style=""padding: 20px; background: var(--id-color-surface-elevated-1); border-radius: 12px; width: calc(50% - 8px); transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; text-decoration: none; color: inherit; border: 1px solid var(--id-color-line-subtle);"" onmouseover=""this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.1)';"" onmouseout=""this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';"">
->>>>>>> maintofix
                                            <div style=""width: 48px; height: 48px; background: var(--id-color-accent-subtle); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;"">
                                                <svg width=""24"" height=""24"" fill=""var(--id-color-accent)"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon"">
                                                    <path d=""M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272-.19.057-.392.057-.582 0-2.865-.872-5.224-2.568-6.846-5.271-1.608-2.68-2.45-6.273-2.45-10.88a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0zM12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-4 2a4 4 0 1 1 8 0 4 4 0 0 1-8 0z""></path>
@@ -5044,8 +4780,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
                  </main>
             </div>
-<<<<<<< HEAD
-=======
             <script>
                 // Add token to OIDC clients link
                 document.addEventListener('DOMContentLoaded', function() {{
@@ -5058,7 +4792,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }}
                 }});
             </script>
->>>>>>> maintofix
          ", "");
         }
 
@@ -5089,9 +4822,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/api/auth/profile"" aria-current=""page"" class=""base-item_root__Z_6ST navigation-item-link_root_isActive__QZ9Ea""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M11.333 1.59c-.494.137-.94.494-1.832 1.207l-6 4.8c-.551.441-.827.662-1.025.936a2.5 2.5 0 0 0-.386.803C2 9.662 2 10.015 2 10.721v8.08c0 1.12 0 1.68.218 2.107a2 2 0 0 0 .874.874C3.52 22 4.08 22 5.2 22h13.6c1.12 0 1.68 0 2.108-.218a2 2 0 0 0 .874-.874C22 20.48 22 19.92 22 18.8v-8.08c0-.705 0-1.058-.09-1.384-.08-.289-.21-.56-.386-.803-.198-.274-.474-.495-1.025-.936l-6-4.8c-.892-.713-1.338-1.07-1.832-1.207a2.5 2.5 0 0 0-1.334 0m-7.15 8.172c.075-.108.181-.197.393-.373l6.4-5.333c.364-.304.546-.456.75-.514a1 1 0 0 1 .548 0c.204.058.386.21.75.514l6.4 5.333c.212.176.318.265.394.373q.101.144.148.315c.034.128.034.266.034.541V19.2c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.219C19.62 20 19.48 20 19.2 20H16v-4.6c0-.84 0-1.26-.164-1.58a1.5 1.5 0 0 0-.655-.656C14.861 13 14.441 13 13.6 13h-3.2c-.84 0-1.26 0-1.581.164a1.5 1.5 0 0 0-.656.655C8 14.14 8 14.56 8 15.4V20H4.8c-.28 0-.42 0-.527-.054a.5.5 0 0 1-.218-.219C4 19.62 4 19.48 4 19.2v-8.582c0-.275 0-.413.034-.54a1 1 0 0 1 .148-.316M10 20h4v-4.2c0-.28 0-.42-.055-.527a.5.5 0 0 0-.218-.218C13.62 15 13.48 15 13.2 15h-2.4c-.28 0-.42 0-.527.055a.5.5 0 0 0-.218.218C10 15.38 10 15.52 10 15.8z"" clip-rule=""evenodd""></path></svg>Главная</a></li>
                     
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/security"" class=""base-item_root__Z_6ST""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272-.19.057-.392.057-.582 0-2.865-.872-5.224-2.568-6.846-5.271-1.608-2.68-2.45-6.273-2.45-10.88a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0M12 3.73c.491.222 1.373.613 2.46 1.054 1.465.595 3.329 1.292 5.118 1.79-.089 3.993-.876 6.95-2.156 9.082C16.13 17.81 14.296 19.19 12 19.951c-2.296-.762-4.13-2.142-5.422-4.295-1.28-2.132-2.067-5.089-2.156-9.082 1.789-.498 3.653-1.195 5.118-1.79A69 69 0 0 0 12 3.73"" clip-rule=""evenodd""></path></svg>Безопасность</a></li>
-<<<<<<< HEAD
-                     
-=======
                     
                     <li class=""sidebar-navigation_item__GvUUF"">
                         <a href=""/api/auth/connect/clients"" class=""base-item_root__Z_6ST"" onclick=""event.preventDefault(); const token = localStorage.getItem('auth_token'); if(token) window.location.href='/api/auth/connect/clients?token=' + encodeURIComponent(token); else window.location.href='/api/auth/login';"">
@@ -5110,7 +4840,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             OAuth Scopes
                         </a>
                     </li>
->>>>>>> maintofix
                    
                     <li class=""sidebar-navigation_item__GvUUF""><a href=""/api/auth/logout"" class=""base-item_root__Z_6ST""><svg width=""24"" height=""24"" fill=""currentColor"" viewBox=""0 0 24 24"" aria-hidden=""true"" focusable=""false"" role=""img"" class=""svg-icon""><path fill-rule=""evenodd"" d=""M14 4.001a1 1 0 0 1 1-1h3a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-3a1 1 0 1 1 0-2h3a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3a1 1 0 0 1-1-1M9.707 3.294a1 1 0 0 1 0 1.414L6.414 8H14a1 1 0 1 1 0 2H6.414l3.293 3.293a1 1 0 0 1-1.414 1.414l-5-5a1 1 0 0 1 0-1.414l5-5a1 1 0 0 1 1.414 0"" clip-rule=""evenodd""></path></svg>Выйти</a></li>
                 </ul>
@@ -5172,13 +4901,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Redirect("/api/auth/login?error=Invalid token format");
                 }
 
-<<<<<<< HEAD
-                // Parse token without validation to get the user ID
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-                
-                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "identity");
-=======
                 // Validate the token
                 var handler = new JwtSecurityTokenHandler();
                 var validationParameters = new TokenValidationParameters
@@ -5220,7 +4942,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "identity");
->>>>>>> maintofix
                 if (userIdClaim == null)
                 {
                     return Redirect("/api/auth/login?error=Invalid token claims");
@@ -5441,159 +5162,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             });
         }
 
-<<<<<<< HEAD
-        // Add these new methods to render the OIDC admin pages
-
-        private string RenderOidcClientsList(List<ClientDto> clients) => string.Format(BaseHtmlTemplate, "OIDC Clients - BRU AVTOPARK", $@"
-            <div class=""flex justify-between items-center mb-4"">
-                <h2>OAuth 2.0 / OpenID Connect Clients</h2>
-                <a href=""/api/auth/connect/clients/new"" class=""btn-secondary"" style=""width: auto;"">New Client</a>
-            </div>
-            
-            {(clients.Any() ?
-                $@"<div class=""card"">
-                        <table style=""width: 100%; border-collapse: collapse;"">
-                            <thead>
-                                <tr style=""border-bottom: 1px solid var(--border-color);"">
-                                <th style=""text-align: left; padding: 1rem;"">Client ID</th>
-                                <th style=""text-align: left; padding: 1rem;"">Display Name</th>
-                                <th style=""padding: 1rem;"">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {string.Join("", clients.Select(client => $@"
-                                <tr style=""border-bottom: 1px solid var(--border-color);"">
-                                    <td style=""padding: 1rem;"">{client.ClientId}</td>
-                                <td style=""padding: 1rem;"">{client.DisplayName ?? client.ClientId}</td>
-                                <td style=""padding: 1rem; text-align: center;"">
-                                    <div class=""flex gap-2 justify-center"">
-                                        <a href=""/api/auth/connect/clients/{client.ClientId}"" class=""btn-secondary"" style=""width: auto; padding: 0.25rem 0.5rem; font-size: 0.875rem;"">View</a>
-                                        <a href=""/api/auth/connect/clients/{client.ClientId}/edit"" class=""btn-secondary"" style=""width: auto; padding: 0.25rem 0.5rem; font-size: 0.875rem;"">Edit</a>
-                                        <form method=""POST"" action=""/api/auth/connect/clients/{client.ClientId}/delete"" onsubmit=""return confirm('Are you sure you want to delete this client?');"">
-                                            <button type=""submit"" class=""btn-secondary"" style=""width: auto; padding: 0.25rem 0.5rem; font-size: 0.875rem; background-color: rgba(239, 68, 68, 0.1); color: var(--error-color);"">Delete</button>
-                                        </form>
-                                    </div>
-                                    </td>
-                            </tr>"))}
-                            </tbody>
-                        </table>
-                </div>" :
-                @"<div class=""info-box"">
-                    <p>No OAuth clients have been registered yet. <a href=""/api/auth/connect/clients/new"" class=""link"">Create your first client</a>.</p>
-            </div>")}
-            
-            <div class=""mt-4 text-center"">
-                <a href=""/api/auth/profile"" class=""link"">Back to Profile</a>
-            </div>
-        ");
-
-        private string RenderOidcClientDetails(GetClientResponse client) => string.Format(BaseHtmlTemplate, client.ClientId + " - BRU AVTOPARK", $@"
-            <div class=""card my-4"">
-                <div class=""card-header"">
-                    <div class=""flex justify-between items-center"">
-                        <h2>Client Details</h2>
-                        <a href=""/api/auth/connect/clients/{client.ClientId}/edit"" class=""btn"">Edit</a>
-                    </div>
-                </div>
-                <div class=""card-body"">
-                    <div class=""form-group"">
-                        <label>Client ID</label>
-                        <div class=""code-display"">{client.ClientId}</div>
-                    </div>
-                    <div class=""form-group"">
-                        <label>Display Name</label>
-                        <div class=""code-display"">{client.DisplayName}</div>
-                    </div>
-                    <div class=""form-group"">
-                        <label>Redirect URIs</label>
-                        <div class=""code-display"">
-                            {(client.RedirectUris.Length > 0 ? string.Join("<br>", client.RedirectUris) : "None")}
-                        </div>
-                    </div>
-                    <div class=""form-group"">
-                        <label>Post-Logout Redirect URIs</label>
-                        <div class=""code-display"">
-                            {(client.PostLogoutRedirectUris.Length > 0 ? string.Join("<br>", client.PostLogoutRedirectUris) : "None")}
-                        </div>
-                    </div>
-                    <div class=""form-group"">
-                        <label>Allowed Scopes</label>
-                        <div class=""code-display"">
-                            {(client.AllowedScopes.Length > 0 ? string.Join("<br>", client.AllowedScopes) : "None")}
-                        </div>
-                    </div>
-                    <div class=""form-group"">
-                        <label>Require Consent</label>
-                        <div class=""code-display"">{(client.RequireConsent ? "Yes" : "No")}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class=""text-center mt-4"">
-                <a href=""/api/auth/connect/clients"" class=""btn btn-secondary"">Back to Clients</a>
-            </div>
-        ");
-
-        private string RenderOidcClientForm(string? clientId = null, GetClientResponse? client = null) => string.Format(BaseHtmlTemplate, (clientId == null ? "New Client" : "Edit Client") + " - BRU AVTOPARK", $@"
-            <div class=""info-box"">
-                <p>{(clientId == null ? "Register a new OpenID Connect client application." : "Edit OpenID Connect client application settings.")}</p>
-            </div>
-            
-            <form method=""POST"" action=""{(clientId == null ? "/api/auth/connect/register-client" : $"/api/auth/connect/update-client/{clientId}")}"">
-                <div class=""form-group"">
-                    <label for=""clientId"">Client ID</label>
-                    <input type=""text"" id=""clientId"" name=""clientId"" value=""{(client?.ClientId ?? "")}"" {(clientId == null ? "" : "readonly")}>
-                    {(clientId != null ? @"<input type=""hidden"" name=""clientId"" value=""" + clientId + @""">" : "")}
-                </div>
-                
-                <div class=""form-group"">
-                    <label for=""displayName"">Display Name</label>
-                    <input type=""text"" id=""displayName"" name=""displayName"" value=""{(client?.DisplayName ?? "")}"" >
-                </div>
-                
-                <div class=""form-group"">
-                    <label for=""clientSecret"">Client Secret</label>
-                    <input type=""text"" id=""clientSecret"" name=""clientSecret"" {(clientId == null ? "" : "placeholder=\"Leave blank to keep current secret\"")}>
-                    {(clientId != null ? @"<p class=""text-muted"">Leave blank to keep current secret</p>" : "")}
-                </div>
-                
-                <div class=""form-group"">
-                    <label for=""redirectUris"">Redirect URIs (one per line)</label>
-                    <textarea id=""redirectUris"" name=""redirectUris"" rows=""3"" >{(client?.RedirectUris != null ? string.Join("\n", client.RedirectUris) : "")}</textarea>
-                </div>
-                
-                <div class=""form-group"">
-                    <label for=""postLogoutRedirectUris"">Post-Logout Redirect URIs (one per line)</label>
-                    <textarea id=""postLogoutRedirectUris"" name=""postLogoutRedirectUris"" rows=""3"">{(client?.PostLogoutRedirectUris != null ? string.Join("\n", client.PostLogoutRedirectUris) : "")}</textarea>
-                </div>
-                
-                <div class=""form-group"">
-                    <label for=""allowedScopes"">Allowed Scopes (one per line)</label>
-                    <textarea id=""allowedScopes"" name=""allowedScopes"" rows=""3"" >{(client?.AllowedScopes != null ? string.Join("\n", client.AllowedScopes) : "openid\nprofile\nemail")}</textarea>
-                </div>
-                
-                <div class=""form-group"">
-                    <label>
-                        <input type=""checkbox"" id=""requireConsent"" name=""requireConsent"" {(client?.RequireConsent == true ? "checked" : "")}>
-                        Require Consent
-                    </label>
-                    <p class=""text-muted"">If checked, users will be prompted to approve the requested scopes.</p>
-                </div>
-                
-                <button type=""submit"" class=""btn btn-block"">{(clientId == null ? "Create Client" : "Update Client")}</button>
-            </form>
-            
-            <div class=""text-center mt-4"">
-                <a href=""{(clientId == null ? "/api/auth/connect/clients" : $"/api/auth/connect/clients/{clientId}")}"" class=""btn btn-secondary"">Cancel</a>
-            </div>
-        ");
-
-        // Add these endpoint handlers for the OIDC admin pages
-        [HttpGet("connect/clients")]
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> ClientsListPage()
-        {
-=======
         [HttpGet("connect/scopes")]
         [AllowAnonymous]
         public async Task<IActionResult> ScopesListPage([FromQuery] string? token = null)
@@ -6384,26 +5952,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Forbid();
             }
 
->>>>>>> maintofix
             try
             {
                 // Get all client applications
                 var (success, applications, errorMessage) = await _openIdConnectService.GetAllClientApplicationsAsync();
 
-<<<<<<< HEAD
-                if (!success || applications == null)
-                {
-                    if (IsBrowserRequest())
-                    {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(errorMessage ?? "Failed to get client applications")}");
-                    }
-
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = errorMessage ?? "Failed to get client applications"
-                    });
-=======
                 if (!success)
                 {
                     // If the error is just that there are no clients, treat it as an empty list
@@ -6430,7 +5983,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 if (applications == null)
                 {
                     applications = new List<object>();
->>>>>>> maintofix
                 }
 
                 // Convert to DTO
@@ -6449,11 +6001,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
-<<<<<<< HEAD
-                    return Content(RenderOidcClientsList(clientDtos), "text/html");
-=======
                     return Content(RenderOidcClientsList(clientDtos, token), "text/html");
->>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<GetClientsResponse>
@@ -6483,11 +6031,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpGet("connect/clients/{clientId}")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> ClientDetailsPage(string clientId)
-        {
-=======
         [AllowAnonymous]
         public async Task<IActionResult> ClientDetailsPage(string clientId, [FromQuery] string? token = null)
         {
@@ -6534,7 +6077,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Forbid();
             }
 
->>>>>>> maintofix
             try
             {
                 // Get client application
@@ -6573,11 +6115,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
-<<<<<<< HEAD
-                    return Content(RenderOidcClientDetails(clientResponse), "text/html");
-=======
                     return Content(RenderOidcClientDetails(clientResponse, token), "text/html");
->>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<GetClientResponse>
@@ -6604,14 +6142,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpGet("connect/clients/new")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public IActionResult NewClientPage()
-        {
-            if (IsBrowserRequest())
-            {
-                return Content(RenderOidcClientForm(), "text/html");
-=======
         [AllowAnonymous]
         public IActionResult NewClientPage([FromQuery] string? token = null)
         {
@@ -6653,18 +6183,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             if (IsBrowserRequest())
             {
                 return Content(RenderOidcClientForm(token: token), "text/html");
->>>>>>> maintofix
             }
 
             return BadRequest("This endpoint is only available via browser");
         }
 
         [HttpGet("connect/clients/{clientId}/edit")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> EditClientPage(string clientId)
-        {
-=======
         [AllowAnonymous]
         public async Task<IActionResult> EditClientPage(string clientId, [FromQuery] string? token = null)
         {
@@ -6711,7 +6235,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Forbid();
             }
 
->>>>>>> maintofix
             try
             {
                 // Get client application
@@ -6750,11 +6273,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
-<<<<<<< HEAD
-                    return Content(RenderOidcClientForm(clientId, clientResponse), "text/html");
-=======
                     return Content(RenderOidcClientForm(clientId, clientResponse, token), "text/html");
->>>>>>> maintofix
                 }
 
                 return BadRequest("This endpoint is only available via browser");
@@ -6776,11 +6295,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/register-client")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
-        {
-=======
         [AllowAnonymous]
         public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
         {
@@ -6819,7 +6333,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Redirect("/api/auth/login");
             }
             
->>>>>>> maintofix
             try
             {
                 if (!ModelState.IsValid)
@@ -6872,12 +6385,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (IsBrowserRequest())
                 {
-<<<<<<< HEAD
-                    return Redirect("/api/auth/connect/clients");
-=======
                     var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
                     return Redirect($"/api/auth/connect/clients{tokenParam}");
->>>>>>> maintofix
                 }
 
                 return Ok(new ApiResponse<RegisterClientResponse>
@@ -6908,11 +6417,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/update-client/{clientId}")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
-        {
-=======
         [AllowAnonymous]
         public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
         {
@@ -6959,7 +6463,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Forbid();
             }
 
->>>>>>> maintofix
             try
             {
                 if (!ModelState.IsValid)
@@ -7043,11 +6546,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         [HttpPost("connect/clients/{clientId}/delete")]
-<<<<<<< HEAD
-        [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> DeleteClientSubmit(string clientId)
-        {
-=======
         [AllowAnonymous]
         public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token = null)
         {
@@ -7094,7 +6592,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Forbid();
             }
 
->>>>>>> maintofix
             try
             {
                 // Delete client application
@@ -7972,8 +7469,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public bool RequireConsent { get; set; }
     }
 
-<<<<<<< HEAD
-=======
     public class ScopeDto
     {
         public string Name { get; set; } = string.Empty;
@@ -7987,7 +7482,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public List<ScopeDto> Scopes { get; set; } = new List<ScopeDto>();
     }
 
->>>>>>> maintofix
     #endregion
 
     #region Helper Classes
@@ -8021,18 +7515,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public  string PostLogoutRedirectUris { get; set; }
         public  string AllowedScopes { get; set; }
         public bool RequireConsent { get; set; }
-<<<<<<< HEAD
-=======
         public string? Token { get; set; }
->>>>>>> maintofix
     }
 
     public class UpdateClientFormRequest
     {
-<<<<<<< HEAD
-=======
         public string? Token { get; set; }
->>>>>>> maintofix
         public  string DisplayName { get; set; }
         public string? ClientSecret { get; set; }
         public  string RedirectUris { get; set; }

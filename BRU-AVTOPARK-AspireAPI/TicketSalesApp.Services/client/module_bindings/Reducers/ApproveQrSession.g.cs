@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ApproveQrSession(string sessionId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ApproveQrSession(sessionId), this.SetCallReducerFlags.ApproveQrSessionFlags);
-=======
             conn.InternalCallReducer(new Reducer.ApproveQrSession(sessionId));
->>>>>>> maintofix
         }
 
         public bool InvokeApproveQrSession(ReducerEventContext ctx, Reducer.ApproveQrSession args)
         {
-<<<<<<< HEAD
-            if (OnApproveQrSession == null) return false;
-=======
             if (OnApproveQrSession == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnApproveQrSession(
                 ctx,
                 args.SessionId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ApproveQrSession : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "sessionId")]
-=======
             [DataMember(Name = "session_id")]
->>>>>>> maintofix
             public string SessionId;
 
             public ApproveQrSession(string SessionId)
@@ -73,19 +61,7 @@ namespace SpacetimeDB.Types
                 this.SessionId = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ApproveQrSession";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ApproveQrSessionFlags;
-        public void ApproveQrSession(CallReducerFlags flags) => ApproveQrSessionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "approve_qr_session";
         }
     }
->>>>>>> maintofix
 }

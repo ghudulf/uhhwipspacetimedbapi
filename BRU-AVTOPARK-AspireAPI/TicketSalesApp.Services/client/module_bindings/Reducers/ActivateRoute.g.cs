@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ActivateRoute(uint routeId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ActivateRoute(routeId, actingUser), this.SetCallReducerFlags.ActivateRouteFlags);
-=======
             conn.InternalCallReducer(new Reducer.ActivateRoute(routeId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeActivateRoute(ReducerEventContext ctx, Reducer.ActivateRoute args)
         {
-<<<<<<< HEAD
-            if (OnActivateRoute == null) return false;
-=======
             if (OnActivateRoute == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnActivateRoute(
                 ctx,
                 args.RouteId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ActivateRoute : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "routeId")]
-            public uint RouteId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "route_id")]
             public uint RouteId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ActivateRoute(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ActivateRoute";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ActivateRouteFlags;
-        public void ActivateRoute(CallReducerFlags flags) => ActivateRouteFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "activate_route";
         }
     }
->>>>>>> maintofix
 }

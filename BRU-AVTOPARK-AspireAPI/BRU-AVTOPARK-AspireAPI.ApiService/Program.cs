@@ -1,17 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-<<<<<<< HEAD
-=======
 using Microsoft.AspNetCore.Authentication.Cookies;
->>>>>>> maintofix
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using OpenIddict.Validation.AspNetCore;
-<<<<<<< HEAD
-
-=======
 using System.Security.Claims;
->>>>>>> maintofix
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.ServerIntegration;
@@ -158,8 +151,6 @@ if (key.Length != 32)
     key = newKey;
 }
 
-<<<<<<< HEAD
-=======
 // Create symmetric security key with KeyId for OpenIddict compatibility
 var symmetricKey = new SymmetricSecurityKey(key)
 {
@@ -169,21 +160,10 @@ var symmetricKey = new SymmetricSecurityKey(key)
 // Register the symmetric key as a singleton so it can be injected into controllers
 builder.Services.AddSingleton(symmetricKey);
 
->>>>>>> maintofix
 // Configure OpenIddict
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
-<<<<<<< HEAD
-        options.AddApplicationStore<TicketSalesApp.Services.Implementations.ApplicationStore>();
-        // ON TODO LIST AUTH STORE, TOKEN STORE, SCOPE STORE - WE'LL NEED ALL THAT SHIT FOR OPENIDDICT TO BE HAPPY
-        // THEN MAKE AUTH CONTROLLER COMPLY WITH OPENIDDICT
-        // ROYAL PAIN FROM THE DEPTH OF HELL
-        options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
-        options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
-        options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
-       
-=======
         // Set default entity types - these must match what the stores use
         options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
         options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
@@ -195,7 +175,6 @@ builder.Services.AddOpenIddict()
         options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
         options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
         options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
->>>>>>> maintofix
     })
     .AddServer(options =>
     {
@@ -209,11 +188,7 @@ builder.Services.AddOpenIddict()
        //options.DisableTransportSecurityRequirement(); this wont work for some fucking reason with openiddict 4.1.0
 
         // Add symmetric signing key for access tokens, authorization codes, and refresh tokens
-<<<<<<< HEAD
-        options.AddSigningKey(new SymmetricSecurityKey(key));
-=======
         options.AddSigningKey(symmetricKey);
->>>>>>> maintofix
 
         // Add asymmetric signing key for identity tokens (required)
         if (builder.Environment.IsDevelopment())
@@ -226,11 +201,7 @@ builder.Services.AddOpenIddict()
         }
 
         // Add encryption key
-<<<<<<< HEAD
-        options.AddEncryptionKey(new SymmetricSecurityKey(key));
-=======
         options.AddEncryptionKey(symmetricKey);
->>>>>>> maintofix
 
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
@@ -246,10 +217,6 @@ builder.Services.AddOpenIddict()
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
 
-<<<<<<< HEAD
-        // Configure the token validation parameters
-        options.Configure(options => options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(key));
-=======
         // Configure the token validation parameters to accept our custom JWT tokens
         options.Configure(validationOptions =>
         {
@@ -263,7 +230,6 @@ builder.Services.AddOpenIddict()
             validationOptions.TokenValidationParameters.RoleClaimType = "role";
             validationOptions.TokenValidationParameters.NameClaimType = "name";
         });
->>>>>>> maintofix
     });
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -280,13 +246,6 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthentication(options =>
 {
-<<<<<<< HEAD
-    options.DefaultAuthenticateScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
-    options.DefaultScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-=======
     // Don't set a default scheme - let each endpoint specify what it needs
     options.DefaultAuthenticateScheme = null;
     options.DefaultChallengeScheme = null;
@@ -304,16 +263,11 @@ builder.Services.AddAuthentication(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
->>>>>>> maintofix
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-<<<<<<< HEAD
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-=======
         IssuerSigningKey = symmetricKey,
->>>>>>> maintofix
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
@@ -348,26 +302,14 @@ builder.Services.AddAuthentication(options =>
 // Configure authorization
 builder.Services.AddAuthorization(options =>
 {
-<<<<<<< HEAD
-    options.AddPolicy("RequireAuthenticatedUser", policy =>
-        policy.RequireAuthenticatedUser());
-=======
     // Policy for cookie-authenticated web pages
     options.AddPolicy("RequireAuthenticatedUser", policy =>
         policy.AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme)
         .RequireAuthenticatedUser());
->>>>>>> maintofix
 
     options.AddPolicy("PublicEndpoints", policy =>
         policy.RequireAssertion(_ => true));
 
-<<<<<<< HEAD
-    // Default policy for controllers
-    options.DefaultPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .RequireClaim("scope", "api")
-        .Build();
-=======
     // API-specific policy that requires scope claim for API access via JWT
     options.AddPolicy("ApiAccess", policy =>
         policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
@@ -393,7 +335,6 @@ builder.Services.AddAuthorization(options =>
     
     // No default policy - let each endpoint specify its own requirements
     options.FallbackPolicy = null;
->>>>>>> maintofix
 });
 
 // Add controllers
@@ -891,27 +832,14 @@ app.MapGet("/health", () =>
         ", "text/html");
 }).AllowAnonymous();
 
-<<<<<<< HEAD
-// Map controllers with authorization
-app.MapControllers().RequireAuthorization(policy =>
-{
-    policy.RequireAuthenticatedUser();
-    // Exclude specific paths from authentication
-    policy.AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
-    policy.RequireClaim("scope", "api");
-})
-=======
 // Map controllers - let each endpoint specify its own authorization policy
 app.MapControllers()
->>>>>>> maintofix
 .WithOpenApi();
 
 // Initialize SpacetimeDB connection
 var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
 spacetimeService.Connect();
 
-<<<<<<< HEAD
-=======
 // Start background task to register OAuth clients once subscription is ready
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("Starting background task for OAuth client registration...");
@@ -1177,7 +1105,6 @@ _ = Task.Run(async () =>
     }
 });
 
->>>>>>> maintofix
 app.Run();
 
 public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

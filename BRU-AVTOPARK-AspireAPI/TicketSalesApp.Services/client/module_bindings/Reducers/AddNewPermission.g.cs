@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void AddNewPermission(string name, string description, string category, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.AddNewPermission(name, description, category, actingUserId), this.SetCallReducerFlags.AddNewPermissionFlags);
-=======
             conn.InternalCallReducer(new Reducer.AddNewPermission(name, description, category, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeAddNewPermission(ReducerEventContext ctx, Reducer.AddNewPermission args)
         {
-<<<<<<< HEAD
-            if (OnAddNewPermission == null) return false;
-=======
             if (OnAddNewPermission == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnAddNewPermission(
                 ctx,
                 args.Name,
@@ -65,11 +57,7 @@ namespace SpacetimeDB.Types
             public string Description;
             [DataMember(Name = "category")]
             public string Category;
-<<<<<<< HEAD
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public AddNewPermission(
@@ -92,19 +80,7 @@ namespace SpacetimeDB.Types
                 this.Category = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "AddNewPermission";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags AddNewPermissionFlags;
-        public void AddNewPermission(CallReducerFlags flags) => AddNewPermissionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "add_new_permission";
         }
     }
->>>>>>> maintofix
 }
