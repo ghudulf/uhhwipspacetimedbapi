@@ -1055,8 +1055,12 @@ public static partial class Module
             return;
         }
 
-        // Current timestamp in milliseconds
-        ulong now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        // Use safe timestamp generation
+        DateTime cleanDateTime = new DateTime(2025, 4, 3);
+        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
+        ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
+        
         // Типы маршрутов
         var routeTypes = new[] { "Городской", "Пригородный", "Экспресс", "Обычный", "Междугородний", "Сельский", "Кольцевой", "Сезонный", "Туристический", "Школьный", "Дачный", "Ночной" };
 
@@ -2171,8 +2175,11 @@ public static partial class Module
             return;
         }
 
-        // Current timestamp in milliseconds
-        ulong now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        // Use safe timestamp generation
+        DateTime cleanDateTime = new DateTime(2025, 4, 3);
+        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
+        ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
 
         // Ticket types and statuses for variety
         var ticketTypes = new[] { "Regular", "Student", "Senior", "Disabled", "Child" };
@@ -2234,10 +2241,14 @@ public static partial class Module
                     basePrice -= discountAmount.Value;
                 }
 
+                // Calculate timestamps relative to base date
+                ulong daysInMs = 24 * 60 * 60 * 1000UL;
+                ulong hoursInMs = 60 * 60 * 1000UL;
+                
                 // Some tickets are validated (used), some are not
                 bool isValidated = ticketStatus == "Used";
                 string? validationMethod = isValidated ? validationMethods[ticketIndex % validationMethods.Length] : null;
-                ulong? validationTime = isValidated ? now - (ulong)(ticketIndex * 3600000) : null; // Validated at different times
+                ulong? validationTime = isValidated ? now - ((ulong)ticketIndex * hoursInMs) : null; // Validated at different times
                 string? validationLocation = isValidated ? $"Stop {(ticketIndex % 5) + 1}" : null;
 
                 var ticket = new Ticket
@@ -2248,10 +2259,10 @@ public static partial class Module
                     SeatNumber = (uint)(i + 1), // Different seat numbers
                     PaymentMethod = (ticketIndex % 3 == 0) ? "card" : "cash",
                     IsActive = ticketStatus != "Cancelled",
-                    CreatedAt = now - (ulong)(ticketIndex * 86400000), // Created at different times
+                    CreatedAt = now - ((ulong)ticketIndex * daysInMs), // Created at different times
                     UpdatedAt = isValidated ? validationTime : null,
                     UpdatedBy = null,
-                    PurchaseTime = now - (ulong)(ticketIndex * 86400000),
+                    PurchaseTime = now - ((ulong)ticketIndex * daysInMs),
                     TicketType = ticketType,
                     TicketStatus = ticketStatus,
                     ValidationMethod = validationMethod,
@@ -2265,13 +2276,13 @@ public static partial class Module
                     DiscountReason = discountReason,
                     RefundStatus = ticketStatus == "Cancelled" ? "Refunded" : null,
                     RefundAmount = ticketStatus == "Cancelled" ? basePrice : null,
-                    RefundTime = ticketStatus == "Cancelled" ? now - (ulong)(ticketIndex * 3600000) : null,
+                    RefundTime = ticketStatus == "Cancelled" ? now - ((ulong)ticketIndex * hoursInMs) : null,
                     RefundReason = ticketStatus == "Cancelled" ? "Customer request" : null,
                     DiscountId = discountAmount.HasValue ? (uint?)(ticketIndex % 5 + 1) : null,
                     SeatType = seatType,
                     IsReserved = (ticketIndex % 5 == 0), // Some reserved tickets
                     ReservationStatus = (ticketIndex % 5 == 0) ? "Confirmed" : null,
-                    ReservationExpiry = (ticketIndex % 5 == 0) ? now + 86400000 : null // 24 hours from now
+                    ReservationExpiry = (ticketIndex % 5 == 0) ? now + daysInMs : null // 24 hours from now
                 };
                 ctx.Db.Ticket.Insert(ticket);
             }

@@ -54,9 +54,13 @@ namespace TicketSalesApp.Services.Implementations
             }
 
             // Check if scope with the same name already exists
-            if (conn.Db.OpenIddictSpacetimeScope.Iter().Any(s => s.Name == descriptor.Name))
+            var existingScope = conn.Db.OpenIddictSpacetimeScope.Iter().FirstOrDefault(s => s.Name == descriptor.Name);
+            if (existingScope != null)
             {
-                throw new OpenIddictExceptions.ConcurrencyException($"A scope with the name '{descriptor.Name}' already exists.");
+                _logger.LogInformation("Scope '{ScopeName}' already exists with ID {OidcScopeId}, skipping creation", descriptor.Name, existingScope.OpenIddictScopeId);
+                // Store in pending dictionary so GetIdAsync can retrieve it immediately
+                _pendingScopeIds[descriptor.Name] = existingScope.OpenIddictScopeId;
+                return default;
             }
 
             var oidcScopeId = Guid.NewGuid().ToString(); // Generate unique ID for OpenIddict

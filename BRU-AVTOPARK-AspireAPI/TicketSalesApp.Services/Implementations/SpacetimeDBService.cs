@@ -163,6 +163,13 @@ namespace TicketSalesApp.Services.Implementations
                 _connection.FrameTick();
                 ProcessCommands();
             }
+            catch (ArgumentException ex) when (ex.Message.Contains("An item with the same key has already been added"))
+            {
+                // This can happen when multiple reducers are called in rapid succession
+                // and the client cache hasn't been fully updated yet. This is not a critical error.
+                _logger.LogWarning("Duplicate key detected during frame tick processing. This is expected when multiple reducers are called rapidly. Key: {Message}", ex.Message);
+                // Continue processing - the data is already in the cache
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing frame tick: {ErrorMessage}", ex.Message);
