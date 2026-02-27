@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Avalonia;
 using Avalonia.Controls;
+using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using Serilog;
@@ -204,6 +205,27 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                         Log.Debug("Access token length: {Length}, expires in: {ExpiresIn} seconds", 
                             tokens.AccessToken.Length, tokens.ExpiresIn);
                         
+                        // Log token metadata
+                        Log.Information("=== OAuth Token Metadata ===");
+                        Log.Information("Token Type: {TokenType}", tokens.TokenType);
+                        Log.Information("Expires In: {ExpiresIn} seconds", tokens.ExpiresIn);
+                        Log.Information("Expires At: {ExpiresAt}", tokens.ExpiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
+                        Log.Information("Has Refresh Token: {HasRefreshToken}", !string.IsNullOrEmpty(tokens.RefreshToken));
+                        Log.Information("Has ID Token: {HasIdToken}", !string.IsNullOrEmpty(tokens.IdToken));
+                        Log.Information("Scopes: {Scopes}", tokens.Scope ?? "none");
+                        Log.Information("=== End OAuth Token Metadata ===");
+                        
+                        // CRITICAL: Set the access token in ApiClientService so API calls work
+                        Log.Information("Setting access token in ApiClientService");
+                        ApiClientService.Instance.AuthToken = tokens.AccessToken;
+                        Log.Information("Access token set in ApiClientService for authenticated API calls");
+                        Log.Debug("Verifying token was set - AuthToken is null: {IsNull}, length: {Length}", 
+                            ApiClientService.Instance.AuthToken == null, 
+                            ApiClientService.Instance.AuthToken?.Length ?? 0);
+                        
+                        // ENHANCEMENT: Fetch and log token claims from server
+                        await FetchAndLogTokenClaimsAsync(tokens.AccessToken);
+                        
                         AuthenticationStateChanged?.Invoke(this, true);
                         return true;
                     }
@@ -250,8 +272,26 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         public async Task LogoutAsync()
         {
+            Log.Information("=== LOGOUT: Starting logout process ===");
+            
+            // Clear OAuth tokens from storage
             await _oauthService.LogoutAsync();
+            Log.Information("LOGOUT: Cleared OAuth tokens from storage");
+            
+            // Clear token from ApiClientService
+            ApiClientService.Instance.AuthToken = null;
+            Log.Information("LOGOUT: Cleared token from ApiClientService");
+            
+            // Clear any cached user data
+            ApiClientService.Instance.IsAdmin = null;
+            ApiClientService.Instance.UserRole = null;
+            Log.Information("LOGOUT: Cleared cached user data");
+            
+            // Notify listeners
             AuthenticationStateChanged?.Invoke(this, false);
+            Log.Information("LOGOUT: Notified authentication state changed");
+            
+            Log.Information("=== LOGOUT: Logout complete ===");
         }
 
         public async Task<bool> RefreshAuthenticationAsync()
@@ -345,6 +385,68 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public async Task ResetAuthenticationAsync()
         {
             await ResetAuthenticationStateAsync();
+        }
+
+        /// <summary>
+        /// ENHANCEMENT: Fetches and logs token claims from the server's tokeninfo endpoint
+        /// This is useful for encrypted/opaque tokens where client-side parsing isn't possible
+        /// </summary>
+        private async Task FetchAndLogTokenClaimsAsync(string accessToken)
+        {
+            try
+            {
+                Log.Information("Fetching token claims from server tokeninfo endpoint");
+                
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                
+                var response = await httpClient.GetAsync("http://localhost:5000/connect/tokeninfo");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                    
+                    Log.Information("=== OAuth Access Token Claims (from server) ===");
+                    
+                    if (tokenInfo.TryGetProperty("claims", out var claims))
+                    {
+                        foreach (var claim in claims.EnumerateObject())
+                        {
+                            if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                var values = new List<string>();
+                                foreach (var item in claim.Value.EnumerateArray())
+                                {
+                                    values.Add(item.GetString() ?? "");
+                                }
+                                Log.Information("  {ClaimType}: [{Values}]", claim.Name, string.Join(", ", values));
+                            }
+                            else
+                            {
+                                Log.Information("  {ClaimType}: {Value}", claim.Name, claim.Value.GetString());
+                            }
+                        }
+                    }
+                    
+                    if (tokenInfo.TryGetProperty("authenticated", out var authenticated))
+                        Log.Information("  Authenticated: {Value}", authenticated.GetBoolean());
+                    
+                    if (tokenInfo.TryGetProperty("authentication_type", out var authType))
+                        Log.Information("  Authentication Type: {Value}", authType.GetString());
+                    
+                    Log.Information("=== End OAuth Access Token Claims ===");
+                }
+                else
+                {
+                    Log.Warning("Failed to fetch token claims from server. Status: {StatusCode}", response.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error fetching token claims from server: {Message}", ex.Message);
+            }
         }
     }
 }

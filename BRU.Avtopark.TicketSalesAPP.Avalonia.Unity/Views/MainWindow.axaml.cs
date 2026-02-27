@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using Material.Icons;
 using Reactive.Bindings;
 using ReDocking;
@@ -38,10 +39,12 @@ public partial class MainWindow : Window
     private Button? _openCentralViewButton;
     private Button? _systemSettingsButton;
     private Button? _createBackupButton;
+    private Button? _testTokenButton;
     
     // Command buttons
     private Button? _okButton;
     private Button? _exitButton;
+    private Button? _logoutAndExitButton;
     private Button? _helpButton;
 
     private void InitializeComponent()
@@ -319,6 +322,7 @@ public partial class MainWindow : Window
         _openCentralViewButton = this.FindControl<Button>("OpenCentralViewButton");
         _systemSettingsButton = this.FindControl<Button>("SystemSettingsButton");
         _createBackupButton = this.FindControl<Button>("CreateBackupButton");
+        _testTokenButton = this.FindControl<Button>("TestTokenButton");
         
         // Attach event handlers to utility buttons
         if (_runEmployeeManagementButton != null)
@@ -347,6 +351,9 @@ public partial class MainWindow : Window
             
         if (_createBackupButton != null)
             _createBackupButton.Click += CreateBackup_Click;
+            
+        if (_testTokenButton != null)
+            _testTokenButton.Click += TestToken_Click;
     }
     
     private void SetupCommandButtons()
@@ -354,6 +361,7 @@ public partial class MainWindow : Window
         // Connect command buttons from XAML
         _okButton = this.FindControl<Button>("OKButton");
         _exitButton = this.FindControl<Button>("ExitButton");
+        _logoutAndExitButton = this.FindControl<Button>("LogoutAndExitButton");
         _helpButton = this.FindControl<Button>("HelpButton");
         
         // Attach event handlers to command buttons
@@ -362,6 +370,9 @@ public partial class MainWindow : Window
             
         if (_exitButton != null)
             _exitButton.Click += ExitButton_Click;
+            
+        if (_logoutAndExitButton != null)
+            _logoutAndExitButton.Click += LogoutAndExitButton_Click;
             
         if (_helpButton != null)
             _helpButton.Click += HelpButton_Click;
@@ -433,6 +444,110 @@ public partial class MainWindow : Window
         // Example: new BackupWindow().Show();
     }
 
+    private async void TestToken_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Serilog.Log.Information("Testing token via debug endpoint");
+            
+            var apiClient = ApiClientService.Instance;
+            var httpClient = apiClient.CreateClient();
+            httpClient.BaseAddress = new Uri("http://localhost:5000/");
+            var response = await httpClient.GetAsync("debug/tokentest");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Serilog.Log.Information("Token test response: {Response}", content);
+                
+                // Show dialog with results
+                var dialog = new Window
+                {
+                    Title = "Результат Теста Токена",
+                    Width = 600,
+                    Height = 400,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Content = new ScrollViewer
+                    {
+                        Content = new TextBox
+                        {
+                            Text = content,
+                            IsReadOnly = true,
+                            TextWrapping = TextWrapping.Wrap,
+                            Margin = new Thickness(10)
+                        }
+                    }
+                };
+                
+                await dialog.ShowDialog(this);
+            }
+            else
+            {
+                Serilog.Log.Warning("Token test failed with status: {Status}", response.StatusCode);
+                
+                var dialog = new Window
+                {
+                    Title = "Ошибка Теста Токена",
+                    Width = 400,
+                    Height = 200,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Content = new StackPanel
+                    {
+                        Margin = new Thickness(20),
+                        Children =
+                        {
+                            new TextBlock 
+                            { 
+                                Text = $"Ошибка: {response.StatusCode}",
+                                FontSize = 14,
+                                Margin = new Thickness(0, 0, 0, 10)
+                            },
+                            new TextBlock 
+                            { 
+                                Text = await response.Content.ReadAsStringAsync(),
+                                TextWrapping = TextWrapping.Wrap
+                            }
+                        }
+                    }
+                };
+                
+                await dialog.ShowDialog(this);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Error testing token");
+            
+            var dialog = new Window
+            {
+                Title = "Ошибка",
+                Width = 400,
+                Height = 200,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Content = new StackPanel
+                {
+                    Margin = new Thickness(20),
+                    Children =
+                    {
+                        new TextBlock 
+                        { 
+                            Text = "Ошибка при тестировании токена:",
+                            FontSize = 14,
+                            Margin = new Thickness(0, 0, 0, 10)
+                        },
+                        new TextBlock 
+                        { 
+                            Text = ex.Message,
+                            TextWrapping = TextWrapping.Wrap
+                        }
+                    }
+                }
+            };
+            
+            await dialog.ShowDialog(this);
+        }
+    }
+
     // Event handlers for command buttons
     private void OKButton_Click(object? sender, RoutedEventArgs e)
     {
@@ -441,6 +556,36 @@ public partial class MainWindow : Window
     
     private void ExitButton_Click(object? sender, RoutedEventArgs e)
     {
+        // Just close without logout - user stays logged in for next session
+        Close();
+        
+        // Get the current application instance
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            // Shutdown the entire application
+            desktop.Shutdown();
+        }
+        else
+        {
+            // Fallback method if the above doesn't work
+            Environment.Exit(0);
+        }
+    }
+    
+    private async void LogoutAndExitButton_Click(object? sender, RoutedEventArgs e)
+    {
+        // Logout and clear all tokens before exiting
+        try
+        {
+            Serilog.Log.Information("User clicked Logout and Exit");
+            await AuthenticationManager.Instance.LogoutAsync();
+            Serilog.Log.Information("User logged out successfully");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Error during logout");
+        }
+        
         // Close this window
         Close();
         

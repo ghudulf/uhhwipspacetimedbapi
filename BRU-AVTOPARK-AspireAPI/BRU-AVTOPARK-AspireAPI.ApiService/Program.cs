@@ -282,10 +282,12 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthentication(options =>
 {
-    // Don't set a default scheme - let each endpoint specify what it needs
-    options.DefaultAuthenticateScheme = null;
-    options.DefaultChallengeScheme = null;
-    options.DefaultScheme = null;
+    // Set JWT Bearer as default for API authentication
+    // This prevents "No authenticationScheme was specified" errors when returning ForbidResult
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultForbidScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
 {

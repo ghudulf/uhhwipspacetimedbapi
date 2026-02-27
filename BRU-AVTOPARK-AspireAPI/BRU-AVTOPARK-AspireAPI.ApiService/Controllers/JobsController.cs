@@ -14,7 +14,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous]
+    [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class JobsController : BaseController
     {
         private readonly IEmployeeService _employeeService;

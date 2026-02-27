@@ -37,8 +37,25 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             get => _authToken;
             set
             {
-                _authToken = value;
-                OnAuthTokenChanged?.Invoke(this, value);
+                if (_authToken != value)
+                {
+                    Serilog.Log.Information("ApiClientService.AuthToken: Setting new token");
+                    if (value != null)
+                    {
+                        Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...", 
+                            value.Length, value.Length > 20 ? value.Substring(0, 20) : value);
+                    }
+                    else
+                    {
+                        Serilog.Log.Information("ApiClientService.AuthToken: Token cleared (set to null)");
+                    }
+                    _authToken = value;
+                    OnAuthTokenChanged?.Invoke(this, value);
+                }
+                else
+                {
+                    Serilog.Log.Debug("ApiClientService.AuthToken: Token value unchanged, skipping event");
+                }
             }
         }
 
@@ -90,6 +107,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 client.DefaultRequestHeaders.Authorization = 
                     new AuthenticationHeaderValue("Bearer", _authToken);
+                Serilog.Log.Debug("ApiClientService.CreateClient: Authorization header added with token (length: {Length})", _authToken.Length);
+                Serilog.Log.Debug("ApiClientService.CreateClient: Token preview: {TokenPreview}...", 
+                    _authToken.Length > 20 ? _authToken.Substring(0, 20) : _authToken);
+            }
+            else
+            {
+                Serilog.Log.Warning("ApiClientService.CreateClient: No auth token available, Authorization header NOT added");
+                Serilog.Log.Warning("ApiClientService.CreateClient: _authToken is null or empty. Current value: {TokenValue}", 
+                    _authToken ?? "(null)");
             }
 
             return client;

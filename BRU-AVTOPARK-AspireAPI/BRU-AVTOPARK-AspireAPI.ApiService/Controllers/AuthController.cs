@@ -171,6 +171,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             position: relative;
             z-index: 10;
         }}
+        
+        @media (max-width: 480px) {{
+            .navbar {{
+                padding: 0.75rem 1rem;
+            }}
+        }}
 
         .logo {{
             font-size: 1.5rem;
@@ -211,14 +217,29 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }}
 
         .container {{
-            max-width: 400px;
+            max-width: min(500px, 85vw);
             margin: 2rem auto;
-            padding: 0 1rem;
+            padding: 0 1.5rem;
             width: 100%;
             flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
+        }}
+        
+        @media (max-width: 600px) {{
+            .container {{
+                max-width: 90vw;
+                margin: 1rem auto;
+                padding: 0 1rem;
+            }}
+        }}
+        
+        @media (max-width: 480px) {{
+            .container {{
+                margin: 1rem auto;
+                padding: 0 0.5rem;
+            }}
         }}
 
         .login-container {{
@@ -237,7 +258,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             overflow: hidden;
             transition: all 0.3s ease;
             width: 100%;
-            max-width: 400px;
+            max-width: min(500px, 85vw);
         }}
 
         .auth-card {{
@@ -245,7 +266,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             color: white;
             border-radius: 1rem;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            max-width: 360px;
+            max-width: min(480px, 85vw);
         }}
 
         .card-header {{
@@ -569,8 +590,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }}
 
         .Section_inner__N7MeR {{
-            max-width: 520px;
+            max-width: min(600px, 85vw);
             margin: 0 auto;
+        }}
+        
+        @media (max-width: 600px) {{
+            .Section_inner__N7MeR {{
+                max-width: 90vw;
+            }}
         }}
 
         .Heading_root__P0ine {{
@@ -1479,8 +1506,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => string.Format(BaseHtmlTemplate, "Authorize " + clientName, $@"
             <style>
                 .oauth-container {{
-                    max-width: 500px;
+                    max-width: min(600px, 85vw);
                     margin: 2rem auto;
+                    padding: 0 1rem;
+                }}
+                @media (max-width: 600px) {{
+                    .oauth-container {{
+                        max-width: 90vw;
+                        margin: 1rem auto;
+                    }}
                 }}
                 .oauth-header {{
                     text-align: center;
@@ -1853,7 +1887,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             try
             {
-                // First check if user is authenticated via ASP.NET Core Identity (cookie-based)
+                // First check if user is authenticated via ASP.NET Core (cookie-based OR OpenIddict)
                 if (User?.Identity?.IsAuthenticated == true)
                 {
                     // Check if user has Administrator role claim
@@ -1862,7 +1896,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         return true;
                     }
                     
-                    // Check for role claims with value "1" (legacy admin role ID)
+                    // Check for primary_role claim first (highest priority)
+                    var primaryRoleAuth = User.FindFirst("primary_role");
+                    if (primaryRoleAuth?.Value == "1")
+                    {
+                        return true;
+                    }
+                    
+                    // Check for role claims with value "1" (legacy admin role ID) or "Administrator"
                     var userRoleClaims = User.Claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role");
                     if (userRoleClaims.Any(c => c.Value == "Administrator" || c.Value == "1"))
                     {
@@ -1870,7 +1911,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }
                 }
 
-                // Fallback to JWT token validation for API requests
+                // Fallback to JWT token validation for custom JWT API requests
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
@@ -1879,18 +1920,25 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
+                
+                // Check if it's a valid JWT token (not an opaque OpenIddict token)
+                if (!tokenHandler.CanReadToken(token))
+                {
+                    return false;
+                }
+                
                 var jwtToken = tokenHandler.ReadJwtToken(token);
 
                 // Check primary role first (highest priority role)
-                var primaryRoleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
-                if (primaryRoleClaim?.Value == "1") // Admin role has legacy ID 1
+                var jwtPrimaryRoleAuth = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
+                if (jwtPrimaryRoleAuth?.Value == "1") // Admin role has legacy ID 1
                 {
                     return true;
                 }
 
                 // Fallback to checking all role claims
-                var jwtRoleClaims = jwtToken.Claims.Where(c => c.Type == "role");
-                return jwtRoleClaims.Any(c => c.Value == "1");
+                var jwtRoleClaimsAuth = jwtToken.Claims.Where(c => c.Type == "role");
+                return jwtRoleClaimsAuth.Any(c => c.Value == "1");
             }
             catch (Exception ex)
             {
@@ -1903,6 +1951,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             try
             {
+                // First check if user is authenticated via ASP.NET Core (cookie-based OR OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var permissionClaimsAuth = User.Claims.Where(c => c.Type == "permission");
+                    if (permissionClaimsAuth.Any(c => c.Value == permissionName))
+                    {
+                        return true;
+                    }
+                }
+
+                // Fallback to custom JWT token validation
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
@@ -1912,10 +1971,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
+                
+                // Check if it's a valid JWT token (not an opaque OpenIddict token)
+                if (!tokenHandler.CanReadToken(token))
+                {
+                    return false;
+                }
+                
                 var jwtToken = tokenHandler.ReadJwtToken(token);
 
-                var permissionClaims = jwtToken.Claims.Where(c => c.Type == "permission");
-                return permissionClaims.Any(c => c.Value == permissionName);
+                var jwtPermissionClaimsAuth = jwtToken.Claims.Where(c => c.Type == "permission");
+                return jwtPermissionClaimsAuth.Any(c => c.Value == permissionName);
             }
             catch (Exception ex)
             {
@@ -2086,6 +2152,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 // Generate JWT token
                 var token = GenerateJwtToken(user);
+                
+                // ENHANCEMENT: Extract and include token claims in response for client-side logging
+                var tokenClaims = ExtractTokenClaims(token);
 
                 return Ok(new ApiResponse<LoginResponse>
                 {
@@ -2094,6 +2163,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     Data = new LoginResponse
                     {
                         Token = token,
+                        Claims = tokenClaims, // Include claims for client-side logging
                         User = new UserDto
                         {
                             Id = user.LegacyUserId,
@@ -4112,6 +4182,61 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                     _logger.LogInformation("Added {RoleCount} roles to token for user {Username}", roles.Count, user.Login);
 
+                    // CRITICAL FIX: Add permission claims for authorization
+                    // Query user's permissions from SpacetimeDB
+                    var userRoleIds = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .Select(ur => ur.RoleId)
+                        .ToList();
+                    
+                    _logger.LogInformation("DEBUG: User {UserId} has {RoleCount} roles: {RoleIds}", 
+                        user.UserId, userRoleIds.Count, string.Join(", ", userRoleIds));
+                    
+                    var permissions = conn.Db.RolePermission.Iter()
+                        .Where(rp => userRoleIds.Contains(rp.RoleId))
+                        .Join(conn.Db.Permission.Iter(),
+                              rp => rp.PermissionId,
+                              p => p.PermissionId,
+                              (rp, p) => p.Name)
+                        .Distinct()
+                        .ToList();
+                    
+                    _logger.LogInformation("DEBUG: Found {PermissionCount} permissions for user {Username}: {Permissions}", 
+                        permissions.Count, user.Login, string.Join(", ", permissions));
+                    
+                    foreach (var permission in permissions)
+                    {
+                        identity.AddClaim(new Claim("permission", permission));
+                        _logger.LogDebug("DEBUG: Added permission claim: {Permission}", permission);
+                    }
+                    
+                    _logger.LogInformation("Added {PermissionCount} permissions to token for user {Username}", permissions.Count, user.Login);
+                    
+                    // Add primary role for admin checks
+                    var primaryRole = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .OrderBy(ur => ur.RoleId)
+                        .FirstOrDefault();
+                    
+                    if (primaryRole != null)
+                    {
+                        identity.AddClaim(new Claim("primary_role", primaryRole.RoleId.ToString()));
+                        _logger.LogInformation("Added primary_role claim: {RoleId}", primaryRole.RoleId);
+                    }
+                    
+                    // Add SpacetimeDB identity for database operations
+                    identity.AddClaim(new Claim("identity", user.UserId.ToString()));
+                    
+                    // Add XUID if available
+                    if (user.Xuid.HasValue)
+                    {
+                        identity.AddClaim(new Claim("xuid", user.Xuid.Value.ToString()));
+                    }
+                    else
+                    {
+                        identity.AddClaim(new Claim("xuid", user.LegacyUserId.ToString()));
+                    }
+
                     // Copy scopes and resources from the original principal
                     // NOTE: Authorization storage is disabled, so no authorization ID to copy
                     identity.SetScopes(principal.GetScopes());
@@ -4190,10 +4315,83 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }
 
                     // Create a new identity with refreshed claims
-                    var identity = new ClaimsIdentity(principal.Claims,
+                    var identity = new ClaimsIdentity(
                         authenticationType: TokenValidationParameters.DefaultAuthenticationType,
                         nameType: Claims.Name,
                         roleType: Claims.Role);
+
+                    // Add standard claims from principal
+                    identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString()));
+                    identity.AddClaim(new Claim(Claims.Name, user.Login));
+                    
+                    // Re-query roles and permissions for fresh data
+                    var roles = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .Join(conn.Db.Role.Iter(), 
+                              ur => ur.RoleId, 
+                              r => r.RoleId, 
+                              (ur, r) => r.Name)
+                        .ToList();
+                    
+                    foreach (var role in roles)
+                    {
+                        identity.AddClaim(new Claim(Claims.Role, role));
+                    }
+                    
+                    // Add permissions
+                    var userRoleIds = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .Select(ur => ur.RoleId)
+                        .ToList();
+                    
+                    _logger.LogInformation("DEBUG (Refresh): User {UserId} has {RoleCount} roles: {RoleIds}", 
+                        user.UserId, userRoleIds.Count, string.Join(", ", userRoleIds));
+                    
+                    var permissions = conn.Db.RolePermission.Iter()
+                        .Where(rp => userRoleIds.Contains(rp.RoleId))
+                        .Join(conn.Db.Permission.Iter(),
+                              rp => rp.PermissionId,
+                              p => p.PermissionId,
+                              (rp, p) => p.Name)
+                        .Distinct()
+                        .ToList();
+                    
+                    _logger.LogInformation("DEBUG (Refresh): Found {PermissionCount} permissions: {Permissions}", 
+                        permissions.Count, string.Join(", ", permissions));
+                    
+                    foreach (var permission in permissions)
+                    {
+                        identity.AddClaim(new Claim("permission", permission));
+                        _logger.LogDebug("DEBUG (Refresh): Added permission claim: {Permission}", permission);
+                    }
+                    
+                    // Add primary role
+                    var primaryRole = conn.Db.UserRole.Iter()
+                        .Where(ur => ur.UserId.Equals(user.UserId))
+                        .OrderBy(ur => ur.RoleId)
+                        .FirstOrDefault();
+                    
+                    if (primaryRole != null)
+                    {
+                        identity.AddClaim(new Claim("primary_role", primaryRole.RoleId.ToString()));
+                    }
+                    
+                    // Add SpacetimeDB identity
+                    identity.AddClaim(new Claim("identity", user.UserId.ToString()));
+                    
+                    // Add XUID
+                    if (user.Xuid.HasValue)
+                    {
+                        identity.AddClaim(new Claim("xuid", user.Xuid.Value.ToString()));
+                    }
+                    else
+                    {
+                        identity.AddClaim(new Claim("xuid", user.LegacyUserId.ToString()));
+                    }
+                    
+                    // Copy scopes and resources from original principal
+                    identity.SetScopes(principal.GetScopes());
+                    identity.SetResources(principal.GetResources());
 
                     // Set claim destinations
                     foreach (var claim in identity.Claims)
@@ -4201,7 +4399,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
                     }
 
-                    _logger.LogInformation("Refresh token exchange successful for user {Username}", user.Login);
+                    _logger.LogInformation("Refresh token exchange successful for user {Username} with {PermissionCount} permissions", 
+                        user.Login, permissions.Count);
 
                     return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
                 }
@@ -4299,6 +4498,165 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 _logger.LogError(ex, "Error processing userinfo request");
                 return StatusCode(500, "An error occurred while processing the userinfo request");
+            }
+        }
+
+        /// <summary>
+        /// ENHANCEMENT: Returns decoded token claims for debugging and client-side logging
+        /// This endpoint allows clients to retrieve structured claim information from their access token
+        /// CRITICAL FIX: Uses AllowAnonymous and manually validates token to avoid circular dependency
+        /// when BaseController calls this endpoint for OAuth token validation
+        /// </summary>
+        [HttpGet("~/connect/tokeninfo")]
+        [Produces("application/json")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TokenInfo()
+        {
+            try
+            {
+                _logger.LogInformation("TokenInfo endpoint called");
+                
+                // Manually authenticate the request using OpenIddict validation
+                var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                
+                if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
+                {
+                    _logger.LogWarning("TokenInfo - Authentication failed");
+                    return Unauthorized(new { error = "invalid_token", error_description = "The access token is invalid or expired" });
+                }
+                
+                // Extract all claims from the authenticated principal
+                var claimsDict = new Dictionary<string, object>();
+                
+                foreach (var claim in authenticateResult.Principal.Claims)
+                {
+                    // Group multiple claims with the same type into arrays
+                    if (claimsDict.ContainsKey(claim.Type))
+                    {
+                        // Convert to list if not already
+                        if (claimsDict[claim.Type] is List<string> list)
+                        {
+                            list.Add(claim.Value);
+                        }
+                        else
+                        {
+                            // Convert single value to list
+                            var existingValue = claimsDict[claim.Type].ToString();
+                            claimsDict[claim.Type] = new List<string> { existingValue!, claim.Value };
+                        }
+                    }
+                    else
+                    {
+                        claimsDict[claim.Type] = claim.Value;
+                    }
+                }
+                
+                _logger.LogInformation("TokenInfo - Returning {ClaimCount} claims from token", claimsDict.Count);
+                _logger.LogDebug("TokenInfo - Claims: {Claims}", string.Join(", ", claimsDict.Keys));
+                
+                return Ok(new
+                {
+                    claims = claimsDict,
+                    token_type = "Bearer",
+                    authenticated = authenticateResult.Principal.Identity?.IsAuthenticated ?? false,
+                    authentication_type = authenticateResult.Principal.Identity?.AuthenticationType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing tokeninfo request");
+                return StatusCode(500, "An error occurred while processing the tokeninfo request");
+            }
+        }
+
+        /// <summary>
+        /// DEBUG ENDPOINT: Test token parsing and validation
+        /// </summary>
+        [HttpGet("~/debug/tokentest")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TokenTest()
+        {
+            try
+            {
+                var authHeader = Request.Headers["Authorization"].ToString();
+                _logger.LogInformation("TokenTest - Authorization header: {Header}", authHeader?.Substring(0, Math.Min(50, authHeader?.Length ?? 0)));
+                
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                {
+                    return Ok(new { error = "No Bearer token found" });
+                }
+
+                var token = authHeader.Substring("Bearer ".Length);
+                _logger.LogInformation("TokenTest - Token length: {Length}", token.Length);
+                _logger.LogInformation("TokenTest - Token starts with: {Start}", token.Substring(0, Math.Min(20, token.Length)));
+                
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var canRead = tokenHandler.CanReadToken(token);
+                _logger.LogInformation("TokenTest - CanReadToken: {CanRead}", canRead);
+                
+                // Check if it's a JWE (encrypted) token
+                var isJwe = token.StartsWith("eyJhbGciOiJBMjU2S1ci") || token.StartsWith("eyJhbGciOiJSU0EtT0FFUC0yNTYi");
+                _logger.LogInformation("TokenTest - Is JWE (encrypted): {IsJwe}", isJwe);
+                
+                if (canRead && !isJwe)
+                {
+                    // Regular JWT - can parse claims directly
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    var claims = jwtToken.Claims.Select(c => new { c.Type, c.Value }).ToList();
+                    return Ok(new { 
+                        token_type = "JWT (parseable)",
+                        can_read = true,
+                        is_encrypted = false,
+                        claims = claims,
+                        claim_count = claims.Count
+                    });
+                }
+                
+                if (isJwe)
+                {
+                    // JWE token - need OpenIddict validation
+                    _logger.LogInformation("TokenTest - Attempting OpenIddict validation for JWE token");
+                    var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                    
+                    if (authenticateResult.Succeeded && authenticateResult.Principal != null)
+                    {
+                        var claims = authenticateResult.Principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
+                        _logger.LogInformation("TokenTest - OpenIddict validation SUCCESS, found {ClaimCount} claims", claims.Count);
+                        return Ok(new {
+                            token_type = "JWE (encrypted - OpenIddict)",
+                            can_read = canRead,
+                            is_encrypted = true,
+                            openiddict_validation = "SUCCESS",
+                            claims = claims,
+                            claim_count = claims.Count
+                        });
+                    }
+                    else
+                    {
+                        _logger.LogWarning("TokenTest - OpenIddict validation FAILED: {Failure}", authenticateResult.Failure?.Message);
+                        return Ok(new {
+                            token_type = "JWE (encrypted - OpenIddict)",
+                            can_read = canRead,
+                            is_encrypted = true,
+                            openiddict_validation = "FAILED",
+                            error = authenticateResult.Failure?.Message,
+                            claims = new List<object>(),
+                            claim_count = 0
+                        });
+                    }
+                }
+                
+                return Ok(new {
+                    token_type = "Unknown",
+                    can_read = false,
+                    is_encrypted = false,
+                    error = "Token format not recognized"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TokenTest error");
+                return Ok(new { error = ex.Message, stack = ex.StackTrace });
             }
         }
 
@@ -4680,7 +5038,54 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
+            
+            // ENHANCEMENT: Log token generation with claims summary
+            _logger.LogInformation("Generated JWT token for user {Username} with {RoleCount} roles and {PermissionCount} permissions",
+                userProfile.Login, roles.Count, permissions.Count);
+            
             return tokenHandler.WriteToken(token);
+        }
+
+        /// <summary>
+        /// ENHANCEMENT: Extracts claims from a JWT token for inclusion in API responses
+        /// </summary>
+        private Dictionary<string, object> ExtractTokenClaims(string token)
+        {
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                
+                var claimsDict = new Dictionary<string, object>();
+                
+                foreach (var claim in jwtToken.Claims)
+                {
+                    // Group multiple claims with the same type into arrays
+                    if (claimsDict.ContainsKey(claim.Type))
+                    {
+                        if (claimsDict[claim.Type] is List<string> list)
+                        {
+                            list.Add(claim.Value);
+                        }
+                        else
+                        {
+                            var existingValue = claimsDict[claim.Type].ToString();
+                            claimsDict[claim.Type] = new List<string> { existingValue!, claim.Value };
+                        }
+                    }
+                    else
+                    {
+                        claimsDict[claim.Type] = claim.Value;
+                    }
+                }
+                
+                return claimsDict;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting token claims");
+                return new Dictionary<string, object>();
+            }
         }
 
         private async Task<string> GenerateJwtForRegistration()
@@ -7564,6 +7969,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     {
         public string Token { get; set; } = string.Empty;
         public UserDto User { get; set; } = new UserDto();
+        
+        // ENHANCEMENT: Add token claims for client-side logging and debugging
+        public Dictionary<string, object>? Claims { get; set; }
     }
 
     public class RegisterResponse
@@ -7699,6 +8107,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         public string? RefreshToken { get; set; }
         public string? IdToken { get; set; }
         public string Scope { get; set; } = string.Empty;
+        
+        // ENHANCEMENT: Add token claims for client-side logging
+        public Dictionary<string, object>? Claims { get; set; }
     }
 
     public class UserInfoResponse

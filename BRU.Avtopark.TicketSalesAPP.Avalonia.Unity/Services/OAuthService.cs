@@ -130,6 +130,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Log.Information("Token deserialized successfully, saving to storage");
                     tokenResponse.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
                     
+                    // LOGGING: Parse and log OAuth token claims
+                    LogTokenClaims(tokenResponse.AccessToken, "OAuth Access Token");
+                    
+                    if (!string.IsNullOrEmpty(tokenResponse.IdToken))
+                    {
+                        LogTokenClaims(tokenResponse.IdToken, "OAuth ID Token");
+                    }
+                    
                     // Store tokens persistently
                     await _tokenStorage.SaveTokensAsync(tokenResponse);
                     Log.Debug("Tokens saved to storage");
@@ -203,6 +211,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (tokenResponse != null)
                 {
                     tokenResponse.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+                    
+                    // LOGGING: Parse and log refreshed token claims
+                    LogTokenClaims(tokenResponse.AccessToken, "Refreshed OAuth Access Token");
+                    
                     // Update stored tokens
                     await _tokenStorage.SaveTokensAsync(tokenResponse);
                     Log.Information("Token refreshed successfully");
@@ -271,6 +283,139 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 .TrimEnd('=')
                 .Replace('+', '-')
                 .Replace('/', '_');
+        }
+
+        /// <summary>
+        /// Parses and logs JWT token claims for debugging and auditing
+        /// </summary>
+        private void LogTokenClaims(string token, string tokenType)
+        {
+            try
+            {
+                Log.Information("=== {TokenType} Claims ===", tokenType);
+                
+                // Parse JWT token (format: header.payload.signature)
+                var parts = token.Split('.');
+                if (parts.Length != 3)
+                {
+                    Log.Warning("Invalid JWT token format for {TokenType}", tokenType);
+                    return;
+                }
+                
+                // Decode payload (Base64Url encoded)
+                var payload = parts[1];
+                
+                // Add padding if needed for Base64 decoding
+                switch (payload.Length % 4)
+                {
+                    case 2: payload += "=="; break;
+                    case 3: payload += "="; break;
+                }
+                
+                // Replace URL-safe characters
+                payload = payload.Replace('-', '+').Replace('_', '/');
+                
+                // Decode and parse JSON
+                var payloadBytes = Convert.FromBase64String(payload);
+                var payloadJson = Encoding.UTF8.GetString(payloadBytes);
+                
+                Log.Debug("Token payload JSON: {Payload}", payloadJson);
+                
+                // Parse as JSON document for structured logging
+                using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+                var root = doc.RootElement;
+                
+                // Log standard claims
+                if (root.TryGetProperty("sub", out var sub))
+                    Log.Information("  Subject (sub): {Value}", sub.GetString());
+                
+                if (root.TryGetProperty("name", out var name))
+                    Log.Information("  Name: {Value}", name.GetString());
+                
+                if (root.TryGetProperty("email", out var email))
+                    Log.Information("  Email: {Value}", email.GetString());
+                
+                if (root.TryGetProperty("email_verified", out var emailVerified))
+                    Log.Information("  Email Verified: {Value}", emailVerified.GetString());
+                
+                if (root.TryGetProperty("phone_number", out var phone))
+                    Log.Information("  Phone: {Value}", phone.GetString());
+                
+                // Log roles
+                if (root.TryGetProperty("role", out var roles))
+                {
+                    if (roles.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var roleList = new List<string>();
+                        foreach (var role in roles.EnumerateArray())
+                        {
+                            roleList.Add(role.GetString() ?? "");
+                        }
+                        Log.Information("  Roles: {Roles}", string.Join(", ", roleList));
+                    }
+                    else
+                    {
+                        Log.Information("  Role: {Role}", roles.GetString());
+                    }
+                }
+                
+                // Log permissions
+                if (root.TryGetProperty("permission", out var permissions))
+                {
+                    if (permissions.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var permList = new List<string>();
+                        foreach (var perm in permissions.EnumerateArray())
+                        {
+                            permList.Add(perm.GetString() ?? "");
+                        }
+                        Log.Information("  Permissions: {Permissions}", string.Join(", ", permList));
+                    }
+                    else
+                    {
+                        Log.Information("  Permission: {Permission}", permissions.GetString());
+                    }
+                }
+                
+                // Log custom claims
+                if (root.TryGetProperty("primary_role", out var primaryRole))
+                    Log.Information("  Primary Role: {Value}", primaryRole.GetString());
+                
+                if (root.TryGetProperty("identity", out var identity))
+                    Log.Information("  Identity: {Value}", identity.GetString());
+                
+                if (root.TryGetProperty("xuid", out var xuid))
+                    Log.Information("  XUID: {Value}", xuid.GetString());
+                
+                // Log token metadata
+                if (root.TryGetProperty("iat", out var iat))
+                {
+                    var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iat.GetInt64());
+                    Log.Information("  Issued At: {Value}", issuedAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
+                }
+                
+                if (root.TryGetProperty("exp", out var exp))
+                {
+                    var expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64());
+                    Log.Information("  Expires At: {Value}", expiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
+                }
+                
+                if (root.TryGetProperty("iss", out var issuer))
+                    Log.Information("  Issuer: {Value}", issuer.GetString());
+                
+                if (root.TryGetProperty("aud", out var audience))
+                    Log.Information("  Audience: {Value}", audience.GetString());
+                
+                // Log scopes
+                if (root.TryGetProperty("scope", out var scope))
+                    Log.Information("  Scopes: {Value}", scope.GetString());
+                
+                Log.Information("=== End {TokenType} Claims ===", tokenType);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error parsing {TokenType} claims: {Message}", tokenType, ex.Message);
+            }
         }
     }
 

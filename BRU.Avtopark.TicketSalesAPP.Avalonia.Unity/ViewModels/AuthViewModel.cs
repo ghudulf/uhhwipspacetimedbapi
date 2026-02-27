@@ -395,6 +395,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         {
                            token = handler.ReadJwtToken(result.Data.Token);
                             Log.Debug("JWT token claims: {@Claims}", token.Claims.Select(c => new { c.Type, c.Value }));
+                            
+                            // LOGGING: Log JWT token claims for debugging
+                            LogJwtTokenClaims(result.Data.Token, "Regular JWT Login Token");
                         }
                         catch(Exception ex)
                         {
@@ -408,6 +411,36 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         bool isAdmin = CheckAdminPermissions(token.Claims);
                         int userRole = GetUserRole(token.Claims);
                         Log.Information("User role determined: {Role} (Admin: {IsAdmin})", userRole, isAdmin);
+                        
+                        // ENHANCEMENT: Log claims from server response if available
+                        if (result.Data.Claims != null && result.Data.Claims.Count > 0)
+                        {
+                            Log.Information("=== Server-Provided JWT Token Claims ===");
+                            foreach (var claim in result.Data.Claims)
+                            {
+                                if (claim.Value is System.Text.Json.JsonElement jsonElement)
+                                {
+                                    if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                    {
+                                        var values = new List<string>();
+                                        foreach (var item in jsonElement.EnumerateArray())
+                                        {
+                                            values.Add(item.GetString() ?? "");
+                                        }
+                                        Log.Information("  {ClaimType}: [{Values}]", claim.Key, string.Join(", ", values));
+                                    }
+                                    else
+                                    {
+                                        Log.Information("  {ClaimType}: {Value}", claim.Key, jsonElement.GetString());
+                                    }
+                                }
+                                else
+                                {
+                                    Log.Information("  {ClaimType}: {Value}", claim.Key, claim.Value);
+                                }
+                            }
+                            Log.Information("=== End Server-Provided Claims ===");
+                        }
 
                         // Store both token and role information in ApiClientService
                         ApiClientService.Instance.AuthToken = result.Data.Token;
@@ -789,6 +822,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         if (result?.Token != null)
                         {
                         Log.Information("TOTP validation successful for user {Username}", Username);
+                            
+                            // LOGGING: Log JWT token claims after TOTP validation
+                            LogJwtTokenClaims(result.Token, "JWT Token after TOTP Validation");
+                            
                             ApiClientService.Instance.AuthToken = result.Token;
                             IsAuthenticated = true;
                         UserInfo = $"Пользователь: {Username}\nРоль: Администратор"; // Update user info if needed
@@ -886,6 +923,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             public string TwoFactorType { get; set; } = string.Empty;
             public string TempToken { get; set; } = string.Empty;
             public UserDto? User { get; set; }
+            
+            // ENHANCEMENT: Add Claims property for server-provided token claims
+            public Dictionary<string, object>? Claims { get; set; }
         }
 
         private class ValidateTotpResponse
@@ -949,6 +989,135 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public void UpdateStepContent(int step)
         {
             UpdateStepContentDirect(step);
+        }
+
+        /// <summary>
+        /// Parses and logs JWT token claims for debugging and auditing
+        /// </summary>
+        private void LogJwtTokenClaims(string token, string tokenType)
+        {
+            try
+            {
+                Log.Information("=== {TokenType} Claims ===", tokenType);
+                
+                // Parse JWT token (format: header.payload.signature)
+                var parts = token.Split('.');
+                if (parts.Length != 3)
+                {
+                    Log.Warning("Invalid JWT token format for {TokenType}", tokenType);
+                    return;
+                }
+                
+                // Decode payload (Base64Url encoded)
+                var payload = parts[1];
+                
+                // Add padding if needed for Base64 decoding
+                switch (payload.Length % 4)
+                {
+                    case 2: payload += "=="; break;
+                    case 3: payload += "="; break;
+                }
+                
+                // Replace URL-safe characters
+                payload = payload.Replace('-', '+').Replace('_', '/');
+                
+                // Decode and parse JSON
+                var payloadBytes = Convert.FromBase64String(payload);
+                var payloadJson = System.Text.Encoding.UTF8.GetString(payloadBytes);
+                
+                Log.Debug("Token payload JSON: {Payload}", payloadJson);
+                
+                // Parse as JSON document for structured logging
+                using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+                var root = doc.RootElement;
+                
+                // Log standard claims
+                if (root.TryGetProperty("sub", out var sub))
+                    Log.Information("  Subject (sub): {Value}", sub.GetString());
+                
+                if (root.TryGetProperty("unique_name", out var uniqueName))
+                    Log.Information("  Unique Name: {Value}", uniqueName.GetString());
+                
+                if (root.TryGetProperty("name", out var name))
+                    Log.Information("  Name: {Value}", name.GetString());
+                
+                if (root.TryGetProperty("email", out var email))
+                    Log.Information("  Email: {Value}", email.GetString());
+                
+                // Log roles
+                if (root.TryGetProperty("role", out var roles))
+                {
+                    if (roles.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var roleList = new List<string>();
+                        foreach (var role in roles.EnumerateArray())
+                        {
+                            roleList.Add(role.GetString() ?? "");
+                        }
+                        Log.Information("  Roles: {Roles}", string.Join(", ", roleList));
+                    }
+                    else
+                    {
+                        Log.Information("  Role: {Role}", roles.GetString());
+                    }
+                }
+                
+                // Log permissions
+                if (root.TryGetProperty("permission", out var permissions))
+                {
+                    if (permissions.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var permList = new List<string>();
+                        foreach (var perm in permissions.EnumerateArray())
+                        {
+                            permList.Add(perm.GetString() ?? "");
+                        }
+                        Log.Information("  Permissions: {Permissions}", string.Join(", ", permList));
+                    }
+                    else
+                    {
+                        Log.Information("  Permission: {Permission}", permissions.GetString());
+                    }
+                }
+                
+                // Log custom claims
+                if (root.TryGetProperty("primary_role", out var primaryRole))
+                    Log.Information("  Primary Role: {Value}", primaryRole.GetString());
+                
+                if (root.TryGetProperty("identity", out var identity))
+                    Log.Information("  Identity: {Value}", identity.GetString());
+                
+                if (root.TryGetProperty("xuid", out var xuid))
+                    Log.Information("  XUID: {Value}", xuid.GetString());
+                
+                // Log token metadata
+                if (root.TryGetProperty("iat", out var iat))
+                {
+                    var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iat.GetInt64());
+                    Log.Information("  Issued At: {Value}", issuedAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
+                }
+                
+                if (root.TryGetProperty("exp", out var exp))
+                {
+                    var expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64());
+                    Log.Information("  Expires At: {Value}", expiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
+                }
+                
+                if (root.TryGetProperty("iss", out var issuer))
+                    Log.Information("  Issuer: {Value}", issuer.GetString());
+                
+                if (root.TryGetProperty("aud", out var audience))
+                    Log.Information("  Audience: {Value}", audience.GetString());
+                
+                if (root.TryGetProperty("token_usage", out var tokenUsage))
+                    Log.Information("  Token Usage: {Value}", tokenUsage.GetString());
+                
+                Log.Information("=== End {TokenType} Claims ===", tokenType);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error parsing {TokenType} claims: {Message}", tokenType, ex.Message);
+            }
         }
     }
 } 

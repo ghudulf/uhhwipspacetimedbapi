@@ -458,6 +458,15 @@
                                     <TextBlock Classes="ButtonSubtitle" Text="Сохранение данных"/>
 						</StackPanel>
 					</Button>
+
+                            <!-- Test Token (Debug) -->
+                            <Button Classes="UtilityButton" x:Name="TestTokenButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="ShieldKey"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Тест Токена"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Проверка аутентификации"/>
+						</StackPanel>
+					</Button>
                         </WrapPanel>
                     </ScrollViewer>
                 </Grid>
@@ -477,6 +486,7 @@
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="OKButton" Classes="CommandButton" Content="OK"/>
+                    <Button x:Name="LogoutAndExitButton" Classes="CommandButton" Content="Выйти из системы"/>
                     <Button x:Name="ExitButton" Classes="CommandButton" Content="Выход"/>
                     <Button x:Name="HelpButton" Classes="CommandButton" Content="Помощь"/>
 			</StackPanel>

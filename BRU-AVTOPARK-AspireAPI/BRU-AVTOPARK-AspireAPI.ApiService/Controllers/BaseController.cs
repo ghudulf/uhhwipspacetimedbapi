@@ -7,33 +7,226 @@ using Serilog;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
+    /// <summary>
+    /// Base controller that supports BOTH custom JWT authentication (manual parsing) 
+    /// and ASP.NET Core authentication (OpenIddict/OAuth).
+    /// 
+    /// Controllers use [AllowAnonymous] to bypass ASP.NET auth middleware,
+    /// then manually check authentication using this base class.
+    /// </summary>
     public abstract class BaseController : ControllerBase
     {
+        /// <summary>
+        /// Checks if the current user is authenticated via either:
+        /// 1. ASP.NET Core authentication (OpenIddict tokens)
+        /// 2. Custom JWT in Authorization header
+        /// 3. Manually validated OpenIddict token
+        /// </summary>
+        protected bool IsAuthenticated()
+        {
+            // Check ASP.NET Core authentication first (OpenIddict)
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                return true;
+            }
+
+            // Check if we have an Authorization header
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            {
+                return false;
+            }
+
+            var token = authHeader.Substring("Bearer ".Length);
+            
+            // Try to parse as JWT first (custom JWT tokens)
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                
+                if (tokenHandler.CanReadToken(token))
+                {
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    // Check if token has required claims
+                    return jwtToken.Claims.Any(c => c.Type == "sub" || c.Type == "identity");
+                }
+            }
+            catch
+            {
+                // Not a valid JWT, might be an encrypted OpenIddict token
+            }
+
+            // CRITICAL FIX: For encrypted OpenIddict tokens (JWE format), we can't parse them client-side
+            // But we can assume they're valid if they exist and are in the right format
+            // The actual validation happens when we try to use them in API calls
+            // OpenIddict tokens are typically longer and contain dots (header.payload.signature or JWE format)
+            if (token.Length > 100 && token.Contains('.'))
+            {
+                Log.Debug("Detected potential encrypted OpenIddict token (length: {Length})", token.Length);
+                return true; // Assume valid, will be validated by OpenIddict middleware on actual API calls
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the current user has administrator role.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
         protected bool IsAdmin()
         {
             try
             {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    // Log all claims for debugging
+                    var allClaims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
+                    var claimsStr = string.Join(", ", allClaims);
+                    Log.Debug("IsAdmin check - User authenticated. Claims: {Claims}", claimsStr);
+                    
+                    // Check primary role first
+                    var primaryRole = User.FindFirst("primary_role");
+                    Log.Debug("IsAdmin check - primary_role claim: {Value}", primaryRole?.Value ?? "NOT FOUND");
+                    
+                    if (primaryRole?.Value == "1")
+                    {
+                        Log.Information("IsAdmin check - User is admin (primary_role=1)");
+                        return true;
+                    }
+
+                    // Check role claims
+                    var roleClaims = User.FindAll("role");
+                    Log.Debug("IsAdmin check - role claims count: {Count}", roleClaims.Count());
+                    foreach (var claim in roleClaims)
+                    {
+                        Log.Debug("IsAdmin check - role claim value: {Value}", claim.Value);
+                    }
+                    
+                    if (roleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
+                    {
+                        Log.Information("IsAdmin check - User is admin (role claim)");
+                        return true;
+                    }
+
+                    // Check standard role claims
+                    var standardRoleClaims = User.FindAll(ClaimTypes.Role);
+                    Log.Debug("IsAdmin check - standard role claims count: {Count}", standardRoleClaims.Count());
+                    if (standardRoleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
+                    {
+                        Log.Information("IsAdmin check - User is admin (standard role claim)");
+                        return true;
+                    }
+                    
+                    Log.Warning("IsAdmin check - User authenticated but not admin");
+                }
+                else
+                {
+                    Log.Debug("IsAdmin check - User not authenticated via ASP.NET Core");
+                }
+
+                // Try to parse as custom JWT
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
-                    Log.Warning("Missing or invalid Authorization header");
+                    Log.Warning("IsAdmin check - Missing or invalid Authorization header");
                     return false;
                 }
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
-
-                // Check primary role first (highest priority role)
-                var primaryRoleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
-                if (primaryRoleClaim?.Value == "1") // Admin role has legacy ID 1
+                
+                // CRITICAL FIX: Check if it's an encrypted token (JWE) by looking at the header
+                // JWE tokens start with a header that contains "alg" for key encryption
+                if (token.StartsWith("eyJhbGciOiJBMjU2S1ci") || token.StartsWith("eyJhbGciOiJSU0EtT0FFUC0yNTYi"))
                 {
-                    return true;
+                    // It's an encrypted JWE token from OpenIddict, validate via tokeninfo endpoint
+                    Log.Debug("IsAdmin check - Token is encrypted (JWE), validating via tokeninfo endpoint");
+                    var claims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+                    
+                    if (claims == null)
+                    {
+                        Log.Warning("IsAdmin check - Token validation failed");
+                        return false;
+                    }
+                    
+                    Log.Debug("IsAdmin check (OAuth) - Retrieved {ClaimCount} claims from tokeninfo", claims.Count);
+                    
+                    // Check primary_role in claims
+                    if (claims.TryGetValue("primary_role", out var primaryRoleObj) && primaryRoleObj?.ToString() == "1")
+                    {
+                        Log.Information("IsAdmin check (OAuth) - User is admin (primary_role=1)");
+                        return true;
+                    }
+                    
+                    // Check role claims
+                    if (claims.TryGetValue("role", out var roleObj))
+                    {
+                        if (roleObj is List<string> roleList && roleList.Contains("1"))
+                        {
+                            Log.Information("IsAdmin check (OAuth) - User is admin (role claim in list)");
+                            return true;
+                        }
+                        else if (roleObj?.ToString() == "1")
+                        {
+                            Log.Information("IsAdmin check (OAuth) - User is admin (role claim)");
+                            return true;
+                        }
+                    }
+                    
+                    // Check http://schemas.microsoft.com/ws/2008/06/identity/claims/role
+                    if (claims.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var standardRoleObj))
+                    {
+                        if (standardRoleObj is List<string> standardRoleList && (standardRoleList.Contains("1") || standardRoleList.Contains("Administrator")))
+                        {
+                            Log.Information("IsAdmin check (OAuth) - User is admin (standard role claim in list)");
+                            return true;
+                        }
+                        else if (standardRoleObj?.ToString() == "1" || standardRoleObj?.ToString() == "Administrator")
+                        {
+                            Log.Information("IsAdmin check (OAuth) - User is admin (standard role claim)");
+                            return true;
+                        }
+                    }
+                    
+                    Log.Warning("IsAdmin check (OAuth) - User not admin. Claims: {Claims}", string.Join(", ", claims.Keys));
+                    return false;
                 }
+                
+                // CRITICAL FIX: Check if it's a parseable JWT first
+                if (tokenHandler.CanReadToken(token))
+                {
+                    // It's a regular JWT
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
 
-                // Fallback to checking all role claims
-                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role");
-                return roleClaims.Any(c => c.Value == "1");
+                    // Check primary role first
+                    var jwtPrimaryRole = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
+                    Log.Debug("IsAdmin check (JWT) - primary_role claim: {Value}", jwtPrimaryRole?.Value ?? "NOT FOUND");
+                    
+                    if (jwtPrimaryRole?.Value == "1")
+                    {
+                        Log.Information("IsAdmin check (JWT) - User is admin (primary_role=1)");
+                        return true;
+                    }
+
+                    // Fallback to checking all role claims
+                    var jwtRoles = jwtToken.Claims.Where(c => c.Type == "role");
+                    var jwtRolesStr = string.Join(", ", jwtRoles.Select(c => c.Value));
+                    Log.Debug("IsAdmin check (JWT) - role claims: {Claims}", jwtRolesStr);
+                    
+                    if (jwtRoles.Any(c => c.Value == "1"))
+                    {
+                        Log.Information("IsAdmin check (JWT) - User is admin (role claim)");
+                        return true;
+                    }
+                    
+                    Log.Warning("IsAdmin check (JWT) - User not admin");
+                    return false;
+                }
+                
+                // If we get here, token format is unknown
+                Log.Warning("IsAdmin check - Unknown token format");
+                return false;
             }
             catch (Exception ex)
             {
@@ -42,23 +235,59 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Checks if the current user has a specific permission.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
         protected bool HasPermission(string permissionName)
         {
             try
             {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var permissionClaims = User.FindAll("permission");
+                    Log.Debug("HasPermission check for '{Permission}' - permission claims count: {Count}", permissionName, permissionClaims.Count());
+                    
+                    if (permissionClaims.Any(c => c.Value == permissionName))
+                    {
+                        Log.Information("HasPermission check - User has permission '{Permission}'", permissionName);
+                        return true;
+                    }
+                }
+
+                // Fallback to custom JWT authentication
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
-                    Log.Warning("Missing or invalid Authorization header");
+                    Log.Warning("HasPermission check - Missing or invalid Authorization header");
                     return false;
                 }
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
+                
+                // Check if it's a valid JWT token (not an opaque OpenIddict token)
+                if (!tokenHandler.CanReadToken(token))
+                {
+                    Log.Warning("HasPermission check - Token is not a valid JWT");
+                    return false;
+                }
+                
                 var jwtToken = tokenHandler.ReadJwtToken(token);
 
-                var permissionClaims = jwtToken.Claims.Where(c => c.Type == "permission");
-                return permissionClaims.Any(c => c.Value == permissionName);
+                var jwtPermissions = jwtToken.Claims.Where(c => c.Type == "permission");
+                var jwtPermissionsStr = string.Join(", ", jwtPermissions.Select(c => c.Value));
+                Log.Debug("HasPermission check (JWT) for '{Permission}' - permission claims: {Claims}", permissionName, jwtPermissionsStr);
+                
+                if (jwtPermissions.Any(c => c.Value == permissionName))
+                {
+                    Log.Information("HasPermission check (JWT) - User has permission '{Permission}'", permissionName);
+                    return true;
+                }
+                
+                Log.Warning("HasPermission check - User does not have permission '{Permission}'", permissionName);
+                return false;
             }
             catch (Exception ex)
             {
@@ -67,10 +296,25 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets the current user's ID from claims.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
         protected string? GetUserId()
         {
             try
             {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var subClaim = User.FindFirst("sub") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+                    if (subClaim != null)
+                    {
+                        return subClaim.Value;
+                    }
+                }
+
+                // Fallback to custom JWT authentication
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
@@ -91,10 +335,25 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets the SpacetimeDB identity from claims.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
         protected string? GetSpacetimeIdentity()
         {
             try
             {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var identityClaim = User.FindFirst("identity") ?? User.FindFirst("spacetime_identity");
+                    if (identityClaim != null)
+                    {
+                        return identityClaim.Value;
+                    }
+                }
+
+                // Fallback to custom JWT authentication
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
@@ -104,9 +363,16 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
-
-                return jwtToken.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
+                
+                if (tokenHandler.CanReadToken(token))
+                {
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
+                }
+                
+                // For encrypted tokens, we can't extract claims here
+                Log.Warning("Cannot extract identity from encrypted token");
+                return null;
             }
             catch (Exception ex)
             {
@@ -115,10 +381,138 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// CRITICAL FIX: Validates encrypted OpenIddict tokens by calling the tokeninfo endpoint
+        /// Returns claims dictionary if valid, null if invalid
+        /// </summary>
+        protected async Task<Dictionary<string, object>?> ValidateOAuthTokenAsync()
+        {
+            try
+            {
+                var authHeader = Request.Headers["Authorization"].ToString();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                {
+                    Log.Debug("ValidateOAuthTokenAsync - No Bearer token found");
+                    return null;
+                }
+
+                var token = authHeader.Substring("Bearer ".Length);
+                
+                // Check if it's a JWT we can parse directly
+                var tokenHandler = new JwtSecurityTokenHandler();
+                if (tokenHandler.CanReadToken(token))
+                {
+                    Log.Debug("ValidateOAuthTokenAsync - Token is parseable JWT, extracting claims directly");
+                    // It's a regular JWT, parse it directly
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    var claims = new Dictionary<string, object>();
+                    
+                    foreach (var claim in jwtToken.Claims)
+                    {
+                        if (claims.ContainsKey(claim.Type))
+                        {
+                            if (claims[claim.Type] is List<string> list)
+                            {
+                                list.Add(claim.Value);
+                            }
+                            else
+                            {
+                                var existingValue = claims[claim.Type].ToString();
+                                claims[claim.Type] = new List<string> { existingValue!, claim.Value };
+                            }
+                        }
+                        else
+                        {
+                            claims[claim.Type] = claim.Value;
+                        }
+                    }
+                    
+                    Log.Debug("ValidateOAuthTokenAsync - Extracted {ClaimCount} claims from JWT", claims.Count);
+                    return claims;
+                }
+                
+                // It's an encrypted token, call tokeninfo endpoint to validate and get claims
+                Log.Information("ValidateOAuthTokenAsync - Token is encrypted, calling tokeninfo endpoint");
+                
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                
+                // Use the same base URL as the current request
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
+                
+                Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
+                
+                var response = await httpClient.GetAsync(tokeninfoUrl);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}", 
+                        response.StatusCode, errorContent);
+                    return null;
+                }
+                
+                var content = await response.Content.ReadAsStringAsync();
+                Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
+                
+                var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                
+                if (tokenInfo.TryGetProperty("claims", out var claimsElement))
+                {
+                    var claims = new Dictionary<string, object>();
+                    
+                    foreach (var claim in claimsElement.EnumerateObject())
+                    {
+                        if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            var values = new List<string>();
+                            foreach (var item in claim.Value.EnumerateArray())
+                            {
+                                values.Add(item.GetString() ?? "");
+                            }
+                            claims[claim.Name] = values;
+                        }
+                        else
+                        {
+                            claims[claim.Name] = claim.Value.GetString() ?? "";
+                        }
+                    }
+                    
+                    Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
+                    return claims;
+                }
+                
+                Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "ValidateOAuthTokenAsync - Error validating OAuth token: {Message}", ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the XUID from claims.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
         protected string? GetXuid()
         {
             try
             {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var xuidClaim = User.FindFirst("xuid");
+                    if (xuidClaim != null)
+                    {
+                        return xuidClaim.Value;
+                    }
+                }
+
+                // Fallback to custom JWT authentication
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {

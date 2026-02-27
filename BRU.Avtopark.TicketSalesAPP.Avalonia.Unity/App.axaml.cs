@@ -69,6 +69,32 @@ public partial class App : Application
             // Short delay to ensure background window is displayed
             await Task.Delay(500);
 
+            // CRITICAL: Try to load existing OAuth token from storage
+            // This allows users to stay logged in across app restarts
+            Log.Information("Attempting to load existing OAuth token from storage");
+            var tokenStorage = new Services.TokenStorageService();
+            var existingTokens = await tokenStorage.GetTokensAsync();
+            
+            if (existingTokens != null && !string.IsNullOrEmpty(existingTokens.AccessToken))
+            {
+                // Check if token is still valid (with 5 minute buffer)
+                if (existingTokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5))
+                {
+                    Log.Information("Valid OAuth token found in storage, setting in ApiClientService");
+                    Services.ApiClientService.Instance.AuthToken = existingTokens.AccessToken;
+                    Log.Information("OAuth token loaded from storage and set in ApiClientService");
+                }
+                else
+                {
+                    Log.Warning("Stored OAuth token has expired, clearing and requiring new login");
+                    await tokenStorage.ClearTokensAsync();
+                }
+            }
+            else
+            {
+                Log.Information("No valid OAuth token found in storage");
+            }
+
             // Show login method selector
             var loginMethodSelector = new LoginMethodSelectorWindow();
             var selectedMethod = await loginMethodSelector.ShowDialog<LoginMethod?>(backgroundWindow);

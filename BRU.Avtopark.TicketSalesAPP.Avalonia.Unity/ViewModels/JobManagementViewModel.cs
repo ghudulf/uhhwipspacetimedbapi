@@ -99,7 +99,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 LoadData().ConfigureAwait(false);
             };
 
-            LoadData().ConfigureAwait(false);
+            // Only load data if token is already set, otherwise wait for OnAuthTokenChanged event
+            if (!string.IsNullOrEmpty(ApiClientService.Instance.AuthToken))
+            {
+                Log.Information("Token already set in JobManagementViewModel constructor, loading data");
+                LoadData().ConfigureAwait(false);
+            }
+            else
+            {
+                Log.Warning("Token not set in JobManagementViewModel constructor, waiting for OnAuthTokenChanged event");
+            }
         }
 
         [RelayCommand]

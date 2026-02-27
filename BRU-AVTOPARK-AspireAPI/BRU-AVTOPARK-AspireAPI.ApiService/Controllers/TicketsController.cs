@@ -17,7 +17,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous] // Allow all authenticated users to read
+    [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class TicketsController : BaseController
     {
         private readonly ISpacetimeDBService _spacetimeService;

@@ -2869,8 +2869,28 @@
   },
   {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "TokenInfo",
+    "RelativePath": "connect/tokeninfo",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "Userinfo",
     "RelativePath": "connect/userinfo",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
+    "Method": "TokenTest",
+    "RelativePath": "debug/tokentest",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
