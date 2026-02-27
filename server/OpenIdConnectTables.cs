@@ -931,7 +931,7 @@ public static partial class Module
     }
 
      [SpacetimeDB.Reducer]
-     public static void UpdateOidcToken(ReducerContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status)
+     public static void UpdateOidcToken(ReducerContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status, string? referenceId)
      {
           var token = ctx.Db.OpenIddictSpacetimeToken.Id.Find(internalId);
           if (token != null) {
@@ -940,8 +940,9 @@ public static partial class Module
                if(propertiesJson != null) token.Properties = propertiesJson;
                if(redemptionDate.HasValue) token.RedemptionDate = redemptionDate;
                if(status != null) token.Status = status;
+               if(referenceId != null) token.ReferenceId = referenceId;
                ctx.Db.OpenIddictSpacetimeToken.Id.Update(token);
-               Log.Info($"Reducer: Updated OIDC Token internal ID {internalId}");
+               Log.Info($"Reducer: Updated OIDC Token internal ID {internalId}, ReferenceId: {referenceId ?? "(unchanged)"}");
           } else {
                Log.Warn($"Reducer: Could not update OIDC Token, internal ID {internalId} not found.");
           }

@@ -3681,27 +3681,26 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 if (!authenticateResult.Succeeded)
                 {
-                    // Store request for later
+                    // Store request for later - CRITICAL: Store the ENTIRE OpenIddict request context
+                    // This preserves ALL parameters including PKCE (code_challenge, code_challenge_method)
                     var requestId = Guid.NewGuid().ToString();
-                    _cache.Set($"oidc_request_{requestId}", new OpenIdConnectRequest
+                    
+                    // Store ALL request parameters to preserve OpenIddict context
+                    var requestParams = new Dictionary<string, string>();
+                    foreach (var param in oidcRequest.GetParameters())
                     {
-                        ClientId = oidcRequest.ClientId,
-                        RedirectUri = oidcRequest.RedirectUri,
-                        ResponseType = oidcRequest.ResponseType,
-                        Scope = oidcRequest.Scope,
-                        State = oidcRequest.State,
-                        Nonce = oidcRequest.Nonce
-                    }, TimeSpan.FromMinutes(10));
-
-                    // Store PKCE parameters if present
-                    if (!string.IsNullOrEmpty(oidcRequest.CodeChallenge))
-                    {
-                        _cache.Set($"code_challenge_{requestId}", oidcRequest.CodeChallenge, TimeSpan.FromMinutes(10));
-                        if (!string.IsNullOrEmpty(oidcRequest.CodeChallengeMethod))
+                        // OpenIddictParameter is a struct that wraps the actual value
+                        // Convert to string, handling null values
+                        var stringValue = param.Value.Value?.ToString();
+                        if (!string.IsNullOrEmpty(stringValue))
                         {
-                            _cache.Set($"code_challenge_method_{requestId}", oidcRequest.CodeChallengeMethod, TimeSpan.FromMinutes(10));
+                            requestParams[param.Key] = stringValue;
                         }
                     }
+                    
+                    _cache.Set($"oidc_request_params_{requestId}", requestParams, TimeSpan.FromMinutes(10));
+                    
+                    _logger.LogInformation("Stored OIDC request with {Count} parameters including PKCE data", requestParams.Count);
 
                     if (IsBrowserRequest())
                     {
@@ -3778,45 +3777,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var requestedScopes = oidcRequest.GetScopes();
                 identity.SetScopes(requestedScopes);
 
-                // Check if we need to create/update authorization
-                var authorizationsResult = await _openIdConnectService.GetAuthorizationsAsync(
-                    user.UserId.ToString(),
-                    clientResult.application,
-                    Statuses.Valid,
-                    AuthorizationTypes.Permanent,
-                    requestedScopes.ToArray());
-
-                if (authorizationsResult.success && authorizationsResult.authorizations != null)
-                {
-                    var authorization = authorizationsResult.authorizations.LastOrDefault();
-                    if (authorization == null)
-                    {
-                        // Create new authorization
-                        var createAuthResult = await _openIdConnectService.CreateAuthorizationAsync(
-                            identity,
-                            user.UserId.ToString(),
-                            clientResult.application,
-                            AuthorizationTypes.Permanent,
-                            requestedScopes.ToArray());
-
-                        if (createAuthResult.success && createAuthResult.authorization != null)
-                        {
-                            var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(createAuthResult.authorization);
-                            if (authIdResult.success && authIdResult.id != null)
-                            {
-                                identity.SetAuthorizationId(authIdResult.id);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
-                        if (authIdResult.success && authIdResult.id != null)
-                        {
-                            identity.SetAuthorizationId(authIdResult.id);
-                        }
-                    }
-                }
+                // CRITICAL: OpenIddict stores PKCE data in the authorization's properties.
+                // We must let OpenIddict create an ad-hoc authorization automatically by NOT setting
+                // an authorization ID. OpenIddict will create one when we call SignIn().
 
                 // Get resources for scopes
                 var resourcesResult = await _openIdConnectService.GetResourcesAsync(requestedScopes.ToArray());
@@ -3849,9 +3812,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogInformation("OIDC Authorize Callback: Processing login for RequestId: {RequestId}, Username: {Username}", 
                     request.RequestId, request.Username);
 
-                // Get the original OpenIddict request from cache
-                var originalRequest = _cache.Get<OpenIdConnectRequest>($"oidc_request_{request.RequestId}");
-                if (originalRequest == null)
+                // Get the original OpenIddict request parameters from cache
+                var requestParams = _cache.Get<Dictionary<string, string>>($"oidc_request_params_{request.RequestId}");
+                if (requestParams == null)
                 {
                     _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
                     if (IsBrowserRequest())
@@ -3861,6 +3824,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     }
                     return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
                 }
+                
+                // Extract key parameters for validation
+                var clientId = requestParams.GetValueOrDefault("client_id", "");
+                var redirectUri = requestParams.GetValueOrDefault("redirect_uri", "");
+                var scope = requestParams.GetValueOrDefault("scope", "");
 
                 // Authenticate user against SpacetimeDB
                 var user = await _authService.AuthenticateAsync(request.Username, request.Password);
@@ -3869,11 +3837,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     _logger.LogWarning("Authentication failed for user: {Username}", request.Username);
                     
                     // Get client info for re-rendering the form
-                    var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
+                    var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
                     var clientName = clientResult.success && clientResult.application != null 
-                        ? await GetDisplayNameAsync(clientResult.application) ?? originalRequest.ClientId
-                        : originalRequest.ClientId;
-                    var scopes = originalRequest.Scope?.Split(' ') ?? Array.Empty<string>();
+                        ? await GetDisplayNameAsync(clientResult.application) ?? clientId
+                        : clientId;
+                    var scopes = scope?.Split(' ') ?? Array.Empty<string>();
                     
                     if (IsBrowserRequest())
                     {
@@ -3886,11 +3854,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogInformation("User authenticated successfully: {Username}, UserId: {UserId}", user.Login, user.UserId);
 
                 // Get the application for authorization
-                var appResult = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
+                var appResult = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
                 if (!appResult.success || appResult.application == null)
                 {
                     _logger.LogError("Failed to get application: {ClientId}, Error: {Error}", 
-                        originalRequest.ClientId, appResult.errorMessage);
+                        clientId, appResult.errorMessage);
                     return Forbid(
                         authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                         properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -3940,61 +3908,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogInformation("Added {RoleCount} roles to user {Username}", roles.Count, user.Login);
 
                 // Set requested scopes
-                var requestedScopes = originalRequest.Scope?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                var requestedScopes = scope?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                 identity.SetScopes(requestedScopes);
 
                 _logger.LogInformation("Setting scopes: {Scopes}", string.Join(", ", requestedScopes));
 
-                // Create or get authorization
-                var authorizationsResult = await _openIdConnectService.GetAuthorizationsAsync(
-                    user.UserId.ToString(),
-                    appResult.application,
-                    Statuses.Valid,
-                    AuthorizationTypes.Permanent,
-                    requestedScopes);
-
-                object? authorization = null;
-                if (authorizationsResult.success && authorizationsResult.authorizations != null)
-                {
-                    authorization = authorizationsResult.authorizations.LastOrDefault();
-                    if (authorization == null)
-                    {
-                        _logger.LogInformation("Creating new authorization for user {Username} and client {ClientId}", 
-                            user.Login, originalRequest.ClientId);
-                        
-                        // Create new authorization
-                        var createAuthResult = await _openIdConnectService.CreateAuthorizationAsync(
-                            identity,
-                            user.UserId.ToString(),
-                            appResult.application,
-                            AuthorizationTypes.Permanent,
-                            requestedScopes);
-
-                        if (createAuthResult.success && createAuthResult.authorization != null)
-                        {
-                            authorization = createAuthResult.authorization;
-                            var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
-                            if (authIdResult.success && authIdResult.id != null)
-                            {
-                                identity.SetAuthorizationId(authIdResult.id);
-                                _logger.LogInformation("Authorization created with ID: {AuthId}", authIdResult.id);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Failed to create authorization: {Error}", createAuthResult.errorMessage);
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Using existing authorization for user {Username}", user.Login);
-                        var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
-                        if (authIdResult.success && authIdResult.id != null)
-                        {
-                            identity.SetAuthorizationId(authIdResult.id);
-                        }
-                    }
-                }
+                // NOTE: Authorization storage is disabled (.DisableAuthorizationStorage())
+                // PKCE data is stored in the encrypted authorization code payload, not in authorization entities
+                // No need to create/get authorizations - OpenIddict handles PKCE validation internally
 
                 // Get resources for the requested scopes
                 var resourcesResult = await _openIdConnectService.GetResourcesAsync(requestedScopes);
@@ -4031,40 +3952,24 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 _logger.LogInformation("Cookie authentication successful for user: {Username}", user.Login);
 
-                // Remove the cached request as it's been processed
-                _cache.Remove($"oidc_request_{request.RequestId}");
-                _cache.Remove($"code_challenge_{request.RequestId}");
-                _cache.Remove($"code_challenge_method_{request.RequestId}");
-
                 _logger.LogInformation("Completing OpenIddict authorization flow for user {Username}", user.Login);
 
-                var authUrl = $"/connect/authorize?client_id={Uri.EscapeDataString(originalRequest.ClientId)}" +
-                             $"&response_type={Uri.EscapeDataString(originalRequest.ResponseType ?? "code")}" +
-                             $"&redirect_uri={Uri.EscapeDataString(originalRequest.RedirectUri ?? "")}" +
-                             $"&scope={Uri.EscapeDataString(originalRequest.Scope ?? "")}" +
-                             $"&state={Uri.EscapeDataString(originalRequest.State ?? "")}";
-
-                if (!string.IsNullOrEmpty(originalRequest.Nonce))
-                {
-                    authUrl += $"&nonce={Uri.EscapeDataString(originalRequest.Nonce)}";
-                }
-
-                // Add code challenge if present (PKCE) - critical for security
-                var codeChallenge = _cache.Get<string>($"code_challenge_{request.RequestId}");
-                var codeChallengeMethod = _cache.Get<string>($"code_challenge_method_{request.RequestId}");
+                // CRITICAL: Reconstruct the authorization URL with ALL original parameters
+                // This preserves the OpenIddict request context including PKCE data
+                var authUrl = "/connect/authorize?";
+                var queryParams = new List<string>();
                 
-                if (!string.IsNullOrEmpty(codeChallenge))
+                foreach (var param in requestParams)
                 {
-                    authUrl += $"&code_challenge={Uri.EscapeDataString(codeChallenge)}";
-                    if (!string.IsNullOrEmpty(codeChallengeMethod))
-                    {
-                        authUrl += $"&code_challenge_method={Uri.EscapeDataString(codeChallengeMethod)}";
-                    }
-                    _cache.Remove($"code_challenge_{request.RequestId}");
-                    _cache.Remove($"code_challenge_method_{request.RequestId}");
+                    queryParams.Add($"{Uri.EscapeDataString(param.Key)}={Uri.EscapeDataString(param.Value)}");
                 }
-
-                _logger.LogInformation("Redirecting to authorization endpoint: {AuthUrl}", authUrl);
+                
+                authUrl += string.Join("&", queryParams);
+                
+                _logger.LogInformation("Redirecting to authorization endpoint with {Count} parameters (including PKCE)", requestParams.Count);
+                
+                // Remove the cached request as it's been processed
+                _cache.Remove($"oidc_request_params_{request.RequestId}");
                 
                 // Redirect back to the authorize endpoint
                 // The authorize endpoint will:
@@ -4103,10 +4008,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (oidcRequest.IsAuthorizationCodeGrantType())
                 {
-                    // Validate authorization code
-                    var codeData = _cache.Get<AuthorizationCodeData>($"auth_code_{oidcRequest.Code}");
-                    if (codeData == null)
+                    // Authenticate using OpenIddict's built-in validation
+                    // This validates the authorization code and retrieves the principal
+                    var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                    
+                    if (!authenticateResult.Succeeded)
                     {
+                        _logger.LogWarning("Authorization code authentication failed");
                         return Forbid(
                             authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                             properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -4117,40 +4025,75 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             }));
                     }
 
-                    // Get the user from SpacetimeDB using LegacyUserId
-                    var conn = _spacetimeService.GetConnection();
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.LegacyUserId == codeData.UserId && u.IsActive);
-
-                    if (user == null)
+                    var principal = authenticateResult.Principal;
+                    if (principal == null)
                     {
+                        _logger.LogWarning("No principal found in authorization code");
                         return Forbid(
                             authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                             properties: new AuthenticationProperties(new Dictionary<string, string?>
                             {
                                 [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
                                 [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
-                                    "The user associated with the authorization code no longer exists."
+                                    "The authorization code is invalid."
                             }));
                     }
 
-                    // Create claims identity
+                    // Get the user identifier from the principal
+                    var userIdClaim = principal.FindFirst(Claims.Subject)?.Value;
+                    if (string.IsNullOrEmpty(userIdClaim))
+                    {
+                        _logger.LogWarning("No subject claim found in principal");
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The authorization code does not contain a valid user identifier."
+                            }));
+                    }
+
+                    _logger.LogInformation("Authorization code validated successfully for user: {UserId}", userIdClaim);
+
+                    // Verify the user still exists and is active
+                    var conn = _spacetimeService.GetConnection();
+                    var user = conn.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.ToString() == userIdClaim && u.IsActive);
+
+                    if (user == null)
+                    {
+                        _logger.LogWarning("User {UserId} not found or inactive", userIdClaim);
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The user associated with the authorization code no longer exists or is inactive."
+                            }));
+                    }
+
+                    // Create a new identity for the access token with fresh claims
                     var identity = new ClaimsIdentity(
                         authenticationType: TokenValidationParameters.DefaultAuthenticationType,
                         nameType: Claims.Name,
                         roleType: Claims.Role);
 
-                    // Add claims
+                    // Add standard claims
                     identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString()));
                     identity.AddClaim(new Claim(Claims.Name, user.Login));
+                    
                     if (!string.IsNullOrEmpty(user.Email))
                     {
                         identity.AddClaim(new Claim(Claims.Email, user.Email));
-                        identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailConfirmed?.ToString() ?? "false"));
+                        identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailConfirmed?.ToString().ToLower() ?? "false"));
                     }
+                    
                     if (!string.IsNullOrEmpty(user.PhoneNumber))
                     {
                         identity.AddClaim(new Claim(Claims.PhoneNumber, user.PhoneNumber));
+                        identity.AddClaim(new Claim(Claims.PhoneNumberVerified, user.PhoneNumberConfirmed?.ToString().ToLower() ?? "false"));
                     }
 
                     // Add roles
@@ -4161,18 +4104,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                               r => r.RoleId, 
                               (ur, r) => r.Name)
                         .ToList();
+                    
                     foreach (var role in roles)
                     {
                         identity.AddClaim(new Claim(Claims.Role, role));
                     }
 
-                    // Set scopes and resources
-                    identity.SetScopes(codeData.Scopes);
-                    var resourcesResult = await _openIdConnectService.GetResourcesAsync(codeData.Scopes);
-                    if (resourcesResult.success && resourcesResult.resources != null)
-                    {
-                        identity.SetResources(resourcesResult.resources);
-                    }
+                    _logger.LogInformation("Added {RoleCount} roles to token for user {Username}", roles.Count, user.Login);
+
+                    // Copy scopes and resources from the original principal
+                    // NOTE: Authorization storage is disabled, so no authorization ID to copy
+                    identity.SetScopes(principal.GetScopes());
+                    identity.SetResources(principal.GetResources());
 
                     // Set claim destinations
                     foreach (var claim in identity.Claims)
@@ -4180,12 +4123,90 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
                     }
 
-                    // Remove the authorization code
-                    _cache.Remove($"auth_code_{oidcRequest.Code}");
+                    _logger.LogInformation("Token exchange successful for user {Username}, issuing access token", user.Login);
 
                     return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
                 }
 
+                if (oidcRequest.IsRefreshTokenGrantType())
+                {
+                    // Authenticate using the refresh token
+                    var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                    
+                    if (!authenticateResult.Succeeded)
+                    {
+                        _logger.LogWarning("Refresh token authentication failed");
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The refresh token is invalid or has expired."
+                            }));
+                    }
+
+                    var principal = authenticateResult.Principal;
+                    if (principal == null)
+                    {
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The refresh token is invalid."
+                            }));
+                    }
+
+                    // Verify the user still exists and is active
+                    var userIdClaim = principal.FindFirst(Claims.Subject)?.Value;
+                    if (string.IsNullOrEmpty(userIdClaim))
+                    {
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The refresh token does not contain a valid user identifier."
+                            }));
+                    }
+
+                    var conn = _spacetimeService.GetConnection();
+                    var user = conn.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.ToString() == userIdClaim && u.IsActive);
+
+                    if (user == null)
+                    {
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = 
+                                    "The user associated with the refresh token no longer exists or is inactive."
+                            }));
+                    }
+
+                    // Create a new identity with refreshed claims
+                    var identity = new ClaimsIdentity(principal.Claims,
+                        authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                        nameType: Claims.Name,
+                        roleType: Claims.Role);
+
+                    // Set claim destinations
+                    foreach (var claim in identity.Claims)
+                    {
+                        claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
+                    }
+
+                    _logger.LogInformation("Refresh token exchange successful for user {Username}", user.Login);
+
+                    return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                }
+
+                _logger.LogWarning("Unsupported grant type: {GrantType}", oidcRequest.GrantType);
                 return Forbid(
                     authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                     properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -5388,22 +5409,26 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return BadRequest("Missing request_id parameter");
             }
 
-            // Get the original request from cache
-            var originalRequest = _cache.Get<OpenIdConnectRequest>($"oidc_request_{request_id}");
-            if (originalRequest == null)
+            // Get the original request parameters from cache
+            var requestParams = _cache.Get<Dictionary<string, string>>($"oidc_request_params_{request_id}");
+            if (requestParams == null)
             {
                 return BadRequest("Invalid or expired request_id");
             }
 
+            // Extract client_id and scope
+            var clientId = requestParams.GetValueOrDefault("client_id", "");
+            var scope = requestParams.GetValueOrDefault("scope", "");
+
             // Get client display name
-            var (clientSuccess, application, clientError) = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
+            var (clientSuccess, application, clientError) = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
             if (!clientSuccess || application == null)
             {
                 return BadRequest($"Invalid client: {clientError}");
             }
 
-            var clientName = await GetDisplayNameAsync(application) ?? originalRequest.ClientId;
-            var scopes = originalRequest.Scope.Split(' ');
+            var clientName = await GetDisplayNameAsync(application) ?? clientId;
+            var scopes = scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             if (IsBrowserRequest())
             {
@@ -5413,9 +5438,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             return Ok(new
             {
-                client_id = originalRequest.ClientId,
-                redirect_uri = originalRequest.RedirectUri,
-                scope = originalRequest.Scope,
+                client_id = clientId,
+                redirect_uri = requestParams.GetValueOrDefault("redirect_uri", ""),
+                scope = scope,
                 request_id = request_id
             });
         }

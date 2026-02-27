@@ -71,9 +71,14 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     try
                     {
-                        _logger.LogDebug("Calling CreateOidcAuthorization reducer for OIDC ID {OidcAuthId}", oidcAuthId);
-                        _logger.LogDebug("Authorization details - Subject: {Subject}, ClientId: {ClientId}, Type: {Type}, Status: {Status}", 
-                            authorization.Subject, authorization.ApplicationClientId, authorization.Type, authorization.Status);
+                        _logger.LogInformation("=== Creating Authorization in SpacetimeDB ===");
+                        _logger.LogInformation("OIDC ID: {OidcAuthId}", oidcAuthId);
+                        _logger.LogInformation("Subject: {Subject}", authorization.Subject);
+                        _logger.LogInformation("ClientId: {ClientId}", authorization.ApplicationClientId);
+                        _logger.LogInformation("Type: {Type}", authorization.Type);
+                        _logger.LogInformation("Status: {Status}", authorization.Status);
+                        _logger.LogInformation("Properties: {Props}", authorization.Properties ?? "(null)");
+                        _logger.LogInformation("Scopes: {Scopes}", authorization.Scopes ?? "(null)");
                         
                         conn.Reducers.CreateOidcAuthorization(
                             oidcAuthId,
@@ -400,7 +405,36 @@ namespace TicketSalesApp.Services.Implementations
         { authorization.CreationDate = date != null ? (ulong)date.Value.ToUnixTimeMilliseconds() : null; return default; }
 
         public virtual ValueTask SetPropertiesAsync(OpenIddictSpacetimeAuthorization authorization, ImmutableDictionary<string, JsonElement>? properties, CancellationToken cancellationToken)
-        { authorization.Properties = SerializeProperties(properties, authorization.OpenIddictAuthorizationId); return default; }
+        { 
+            _logger.LogInformation("=== AuthorizationStore.SetPropertiesAsync called ===");
+            _logger.LogInformation("Authorization ID: {AuthId}, Properties count: {Count}", 
+                authorization.OpenIddictAuthorizationId, properties?.Count ?? 0);
+            
+            if (properties != null && properties.Count > 0)
+            {
+                foreach (var prop in properties)
+                {
+                    var valueStr = prop.Value.ValueKind == JsonValueKind.String 
+                        ? prop.Value.GetString() 
+                        : prop.Value.ToString();
+                    _logger.LogInformation("  PKCE Property: {Key} = {Value}", prop.Key, valueStr);
+                    
+                    // CRITICAL: Log PKCE-specific properties
+                    if (prop.Key == ".code_challenge" || prop.Key == ".code_challenge_method")
+                    {
+                        _logger.LogWarning("✓ FOUND PKCE DATA: {Key} = {Value}", prop.Key, valueStr);
+                    }
+                }
+            }
+            else
+            {
+                _logger.LogError("✗ NO PROPERTIES PASSED TO SetPropertiesAsync - PKCE DATA MISSING!");
+            }
+            
+            authorization.Properties = SerializeProperties(properties, authorization.OpenIddictAuthorizationId); 
+            _logger.LogInformation("Serialized properties JSON length: {Length}", authorization.Properties?.Length ?? 0);
+            return default; 
+        }
 
         public virtual ValueTask SetScopesAsync(OpenIddictSpacetimeAuthorization authorization, ImmutableArray<string> scopes, CancellationToken cancellationToken)
         { authorization.Scopes = SerializeScopes(scopes, authorization.OpenIddictAuthorizationId); return default; }

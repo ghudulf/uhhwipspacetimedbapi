@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BRU-AVTOPARK-AspireAPI.ApiService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef2a188baa347d4af6fb0eccee1535eb65f48fee")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+82c5d62f687ae4825040818662bf10eb0e497250")]
 [assembly: System.Reflection.AssemblyProductAttribute("BRU-AVTOPARK-AspireAPI.ApiService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BRU-AVTOPARK-AspireAPI.ApiService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -23,6 +23,7 @@ namespace TicketSalesApp.Services.Implementations
         private readonly ConcurrentQueue<(string Command, Dictionary<string, object> Args)> _inputQueue; // Thread-safe queue for commands
         private volatile bool _isConnecting = false; // Flag to track connection state
         private volatile bool _subscriptionApplied = false; // Flag to track if subscription has been applied
+        private readonly bool _logReducerLogsToFile; // Flag to control whether reducer logs are logged to file
 
         // Constructor to initialize configuration and logger
         public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger)
@@ -30,6 +31,7 @@ namespace TicketSalesApp.Services.Implementations
             _configuration = configuration; // Assign configuration
             _logger = logger; // Assign logger
             _inputQueue = new ConcurrentQueue<(string Command, Dictionary<string, object> Args)>(); // Initialize the input queue
+            _logReducerLogsToFile = _configuration.GetValue<bool>("SpacetimeDB:LogReducerLogsToFile", true); // Default to true for backward compatibility
             _logger.LogInformation("SpacetimeDBService initialized");
         }
 
@@ -368,7 +370,7 @@ namespace TicketSalesApp.Services.Implementations
                 var filteredLogs = string.Join("\n", reducerLogs);
                 _logger.LogInformation("Found {Count} log lines for reducer: {ReducerName}", reducerLogs.Count, reducerName);
                 
-                // Also log to console for visibility
+                // Log to console - Serilog filter will handle whether it goes to file
                 _logger.LogInformation("=== SpacetimeDB Reducer Logs: {ReducerName} ===", reducerName);
                 foreach (var line in reducerLogs)
                 {

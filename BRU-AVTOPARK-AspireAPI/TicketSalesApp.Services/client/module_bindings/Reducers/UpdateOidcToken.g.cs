@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateOidcTokenHandler(ReducerEventContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status);
+        public delegate void UpdateOidcTokenHandler(ReducerEventContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status, string? referenceId);
         public event UpdateOidcTokenHandler? OnUpdateOidcToken;
 
-        public void UpdateOidcToken(uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status)
+        public void UpdateOidcToken(uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status, string? referenceId)
         {
-            conn.InternalCallReducer(new Reducer.UpdateOidcToken(internalId, expirationDate, payload, propertiesJson, redemptionDate, status));
+            conn.InternalCallReducer(new Reducer.UpdateOidcToken(internalId, expirationDate, payload, propertiesJson, redemptionDate, status, referenceId));
         }
 
         public bool InvokeUpdateOidcToken(ReducerEventContext ctx, Reducer.UpdateOidcToken args)
@@ -41,7 +41,8 @@ namespace SpacetimeDB.Types
                 args.Payload,
                 args.PropertiesJson,
                 args.RedemptionDate,
-                args.Status
+                args.Status,
+                args.ReferenceId
             );
             return true;
         }
@@ -65,6 +66,8 @@ namespace SpacetimeDB.Types
             public ulong? RedemptionDate;
             [DataMember(Name = "status")]
             public string? Status;
+            [DataMember(Name = "reference_id")]
+            public string? ReferenceId;
 
             public UpdateOidcToken(
                 uint InternalId,
@@ -72,7 +75,8 @@ namespace SpacetimeDB.Types
                 string? Payload,
                 string? PropertiesJson,
                 ulong? RedemptionDate,
-                string? Status
+                string? Status,
+                string? ReferenceId
             )
             {
                 this.InternalId = InternalId;
@@ -81,6 +85,7 @@ namespace SpacetimeDB.Types
                 this.PropertiesJson = PropertiesJson;
                 this.RedemptionDate = RedemptionDate;
                 this.Status = Status;
+                this.ReferenceId = ReferenceId;
             }
 
             public UpdateOidcToken()

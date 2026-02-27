@@ -20,18 +20,47 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.DataProtection;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Data Protection with persistent key storage
+// CRITICAL: This ensures encryption keys are stable across requests and app restarts
+// Without this, OpenIddict cannot decrypt PKCE data from authorization code payloads
+var dataProtectionPath = Path.Combine(Directory.GetCurrentDirectory(), "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionPath); // Ensure directory exists
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("BRU-AVTOPARK-AspireAPI");
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .WriteTo.Debug()
-                .WriteTo.File("logs/app-.log",
-                    rollingInterval: RollingInterval.Day,
-                    restrictedToMinimumLevel: LogEventLevel.Information)
+                .WriteTo.Logger(lc => lc
+                    .Filter.ByExcluding(logEvent =>
+                    {
+                        // Check if LogReducerLogsToFile is disabled in configuration
+                        var logReducerLogs = builder.Configuration.GetValue<bool>("SpacetimeDB:LogReducerLogsToFile", true);
+                        if (logReducerLogs)
+                        {
+                            return false; // Don't exclude anything if logging is enabled
+                        }
+                        
+                        // Exclude logs that contain reducer log markers
+                        var message = logEvent.RenderMessage();
+                        return message.Contains("SpacetimeDB Reducer Logs") ||
+                               message.Contains("Fetching SpacetimeDB reducer logs") ||
+                               message.Contains("Found") && message.Contains("log lines for reducer") ||
+                               (message.StartsWith("{") && message.Contains("\"target\":\"UpdateOpenIdClient\"")) ||
+                               (message.StartsWith("{") && message.Contains("\"target\":\"RegisterOpenIdClient\""));
+                    })
+                    .WriteTo.File("logs/app-.log",
+                        rollingInterval: RollingInterval.Day,
+                        restrictedToMinimumLevel: LogEventLevel.Information))
                 .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -166,13 +195,15 @@ builder.Services.AddOpenIddict()
     {
         // Set default entity types - these must match what the stores use
         options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
-        options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
+        // Authorization storage disabled - PKCE data stored in token payload
+        // options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
         options.SetDefaultTokenEntity<OpenIddict.Abstractions.OpenIddictTokenDescriptor>();
         options.SetDefaultScopeEntity<OpenIddict.Abstractions.OpenIddictScopeDescriptor>();
         
         // Register stores
         options.AddApplicationStore<TicketSalesApp.Services.Implementations.ApplicationStore>();
-        options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
+        // Authorization store disabled - not needed when DisableAuthorizationStorage is used
+        // options.AddAuthorizationStore<TicketSalesApp.Services.Implementations.AuthorizationStore>();
         options.AddTokenStore<TicketSalesApp.Services.Implementations.TokenStore>();
         options.AddScopeStore<TicketSalesApp.Services.Implementations.ScopeStore>();
     })
@@ -183,7 +214,9 @@ builder.Services.AddOpenIddict()
             .SetUserinfoEndpointUris("/connect/userinfo");
 
         options.AllowAuthorizationCodeFlow()
-            .AllowRefreshTokenFlow();
+            .AllowRefreshTokenFlow()
+            .RequireProofKeyForCodeExchange() // CRITICAL: Enforce PKCE for public clients
+            .DisableAuthorizationStorage(); // CRITICAL: PKCE data stored in token payload, not authorization
 
        //options.DisableTransportSecurityRequirement(); this wont work for some fucking reason with openiddict 4.1.0
 
@@ -202,6 +235,9 @@ builder.Services.AddOpenIddict()
 
         // Add encryption key
         options.AddEncryptionKey(symmetricKey);
+
+        // Set a fixed issuer to work with both HTTP and HTTPS
+        options.SetIssuer(new Uri("http://localhost:5000/"));
 
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
