@@ -449,6 +449,16 @@ namespace TicketSalesApp.Services.Implementations
             }
 
             _logger.LogTrace("Getting client secret for application {ClientId}", application.ClientId);
+            
+            // CRITICAL: For public clients (like desktop/mobile apps), return null for client secret
+            // This tells OpenIddict not to require client authentication
+            // Public clients use PKCE (code_challenge/code_verifier) for security instead
+            if (application.Type == OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Public)
+            {
+                _logger.LogDebug("Client {ClientId} is public - returning null secret (PKCE will be used)", application.ClientId);
+                return new ValueTask<string?>((string?)null);
+            }
+            
             return new ValueTask<string?>(application.ClientSecret);
         }
 

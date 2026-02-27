@@ -4010,7 +4010,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
                 }
 
-                // Create authentication cookie for the user session (for future requests)
+               // Create authentication cookie for the user session (for future requests)
                 var cookieIdentity = new ClaimsIdentity(
                     new[]
                     {

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Serilog;
 using WebViewCore.Events;
+using System.Collections.Generic;
 using Avalonia.Threading;
 using AvaloniaWebView;
 
@@ -74,6 +75,37 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             
             if (!string.IsNullOrEmpty(_authorizationUrl))
             {
+                Log.Information("=== OAUTH WINDOW OPENED ===");
+                Log.Information("Authorization URL: {Url}", _authorizationUrl);
+                Log.Information("Redirect URI: {RedirectUri}", _redirectUri);
+                
+                // CRITICAL: Check if the authorization URL is actually a callback URL
+                // This indicates stored invalid authorization data
+                if (_authorizationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
+                    _authorizationUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Error("CRITICAL: Authorization URL is a callback URL! This indicates stored invalid auth data.");
+                    Log.Error("Authorization URL: {Url}", _authorizationUrl);
+                    Log.Error("Redirect URI: {RedirectUri}", _redirectUri);
+                    
+                    // Show error immediately and trigger reset
+                    ShowCallbackLoopError();
+                    return;
+                }
+                
+                // Additional validation: Check if URL contains required authorization parameters
+                if (!_authorizationUrl.Contains("client_id=", StringComparison.OrdinalIgnoreCase) ||
+                    !_authorizationUrl.Contains("response_type=", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Error("CRITICAL: Authorization URL is missing required parameters!");
+                    Log.Error("Authorization URL: {Url}", _authorizationUrl);
+                    
+                    // Show error and trigger reset
+                    ShowCallbackLoopError();
+                    return;
+                }
+                
+                Log.Information("Authorization URL validation passed, proceeding with OAuth flow");
                 _ = LoadAuthorizationPageAsync();
             }
         }
@@ -143,13 +175,38 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             // or configure the WebView to accept self-signed certificates
             var navigationUrl = _authorizationUrl;
             
+            Log.Information("=== PREPARING TO NAVIGATE WEBVIEW ===");
+            Log.Information("Original authorization URL: {Url}", _authorizationUrl);
+            
             // Check if this is localhost HTTPS and convert to HTTP for WebView compatibility
-            if (_authorizationUrl.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase))
+            // IMPORTANT: Server listens on HTTP port 5000 and HTTPS port 5001
+            // WebView needs to use HTTP port 5000 to avoid SSL certificate issues
+            if (_authorizationUrl.StartsWith("https://localhost:5001", StringComparison.OrdinalIgnoreCase))
             {
+                navigationUrl = _authorizationUrl.Replace("https://localhost:5001", "http://localhost:5000");
+                Log.Warning("Converting HTTPS localhost:5001 to HTTP localhost:5000 for WebView compatibility: {Url}", navigationUrl);
+                Log.Warning("Note: This is only for local development. Production should use HTTPS.");
+            }
+            else if (_authorizationUrl.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                // Fallback for other HTTPS localhost URLs
                 navigationUrl = _authorizationUrl.Replace("https://localhost", "http://localhost");
                 Log.Warning("Converting HTTPS localhost to HTTP for WebView compatibility: {Url}", navigationUrl);
                 Log.Warning("Note: This is only for local development. Production should use HTTPS.");
             }
+            
+            // CRITICAL: Final validation before navigation
+            if (navigationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
+                navigationUrl.StartsWith(_redirectUri.Replace("https://", "http://"), StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Error("CRITICAL: Navigation URL is a callback URL after conversion!");
+                Log.Error("Navigation URL: {Url}", navigationUrl);
+                ShowCallbackLoopError();
+                return;
+            }
+            
+            Log.Information("Final navigation URL: {Url}", navigationUrl);
+            Log.Information("=== STARTING WEBVIEW NAVIGATION ===");
             
             // Navigate to authorization URL
             Log.Debug("Navigating WebView to authorization URL");
@@ -496,7 +553,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
         private void OnWebViewNavigationCompleted(object? sender, WebViewUrlLoadedEventArg e)
         {
-            Log.Debug("WebView navigation completed, Success: {Success}", e.IsSuccess);
+            Log.Information("=== WEBVIEW NAVIGATION COMPLETED ===");
+            Log.Information("Navigation Success: {Success}", e.IsSuccess);
             
             // Cancel navigation timeout since navigation completed
             _navigationTimeoutCts?.Cancel();
@@ -508,37 +566,66 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 _loadingPanel.IsVisible = false;
             }
             
-            // Check if navigation failed (HTTP error like 500, 404, etc.)
-            if (!e.IsSuccess)
-            {
-                Log.Error("WebView navigation failed");
-                HandleNavigationError("Navigation failed with error status");
-                return;
-            }
-            
             // Check URL after navigation completes
             if (_webView?.Url != null)
             {
                 var currentUrl = _webView.Url.ToString();
                 
-                Log.Debug("Current URL after navigation: {Url}", currentUrl);
+                Log.Information("Current URL after navigation: {Url}", currentUrl);
                 
-                // Check for error indicators in the URL or page
-                if (currentUrl.Contains("/error", StringComparison.OrdinalIgnoreCase) ||
-                    currentUrl.Contains("error=", StringComparison.OrdinalIgnoreCase) ||
-                    currentUrl.Contains("500", StringComparison.OrdinalIgnoreCase) ||
-                    currentUrl.Contains("400", StringComparison.OrdinalIgnoreCase))
+                // Check if this is the callback URL (success case)
+                if (currentUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("Error detected in navigation URL: {Url}", currentUrl);
+                    Log.Information("Redirect URI detected after navigation completed - processing callback");
+                    ProcessRedirectUrl(currentUrl);
+                    return;
+                }
+                
+                // Check for OAuth error in URL (error=something)
+                if (currentUrl.Contains("error=", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("OAuth error parameter detected in URL: {Url}", currentUrl);
                     HandleNavigationError(currentUrl);
                     return;
                 }
                 
-                if (currentUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                // Check for HTTP error pages (actual error pages, not just URLs containing numbers)
+                if (currentUrl.Contains("/error/500", StringComparison.OrdinalIgnoreCase) ||
+                    currentUrl.Contains("/error/400", StringComparison.OrdinalIgnoreCase) ||
+                    currentUrl.EndsWith("/error", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Information("Redirect URI detected after navigation completed");
-                    ProcessRedirectUrl(currentUrl);
+                    Log.Warning("HTTP error page detected in URL: {Url}", currentUrl);
+                    HandleNavigationError(currentUrl);
+                    return;
                 }
+            }
+            
+            // If navigation failed AND we're not on a valid page, handle error
+            // But don't treat every IsSuccess=false as an error - the page might have loaded fine
+            if (!e.IsSuccess)
+            {
+                Log.Warning("WebView reported navigation as unsuccessful, but checking if page loaded anyway");
+                
+                // Only treat as error if we're not on the authorization or callback page
+                if (_webView?.Url != null)
+                {
+                    var currentUrl = _webView.Url.ToString();
+                    
+                    // If we're on the authorization endpoint or callback, consider it success
+                    if (currentUrl.Contains("/connect/authorize", StringComparison.OrdinalIgnoreCase) ||
+                        currentUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Log.Information("Navigation reported as unsuccessful but we're on a valid OAuth page, continuing");
+                        return;
+                    }
+                }
+                
+                Log.Error("WebView navigation failed and not on a valid OAuth page");
+                HandleNavigationError("Navigation failed with error status");
+            }
+            else
+            {
+                Log.Information("Navigation completed successfully");
             }
         }
 
@@ -1047,13 +1134,28 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             };
 
             // Find the stack panel and add error message
-            var stackPanel = _webViewContainer.Children.OfType<StackPanel>().FirstOrDefault();
+            StackPanel? stackPanel = null;
+            foreach (var child in _webViewContainer.Children)
+            {
+                if (child is StackPanel sp)
+                {
+                    stackPanel = sp;
+                    break;
+                }
+            }
+            
             if (stackPanel != null)
             {
                 // Remove any existing error messages
-                var existingErrors = stackPanel.Children.OfType<TextBlock>()
-                    .Where(tb => tb.Foreground is SolidColorBrush brush && brush.Color == Colors.Red)
-                    .ToList();
+                var existingErrors = new List<TextBlock>();
+                foreach (var child in stackPanel.Children)
+                {
+                    if (child is TextBlock tb && tb.Foreground is SolidColorBrush brush && brush.Color == Colors.Red)
+                    {
+                        existingErrors.Add(tb);
+                    }
+                }
+                
                 foreach (var error in existingErrors)
                 {
                     stackPanel.Children.Remove(error);

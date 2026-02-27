@@ -44,9 +44,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             // Configure OAuth settings
             var clientId = "bru-avtopark-desktop-client";
             var clientSecret = "your-secure-client-secret-here-change-in-production";
-            // Keep HTTPS for production security, SSL issues will be handled by fallback to browser
+            // Use HTTPS for authorization endpoint (server listens on HTTPS 5001)
             var authorizationEndpoint = "https://localhost:5001/connect/authorize";
+            // Use HTTPS for token endpoint (server listens on HTTPS 5001)
             var tokenEndpoint = "https://localhost:5001/connect/token";
+            // Callback uses HTTP on port 5000 (server listens on HTTP 5000)
             var redirectUri = "http://localhost:5000/callback";
 
             _oauthService = new OAuthService(
@@ -80,6 +82,35 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 }
 
                 Log.Debug("User not authenticated, starting OAuth flow");
+                
+                // CRITICAL: Clear any stale OAuth state files before starting new flow
+                // This prevents callback loop issues from previous failed attempts
+                try
+                {
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    var appFolder = Path.Combine(appDataPath, "BRU.Avtopark.TicketSalesApp");
+                    
+                    if (Directory.Exists(appFolder))
+                    {
+                        var tempFiles = Directory.GetFiles(appFolder, "oauth_*");
+                        foreach (var file in tempFiles)
+                        {
+                            try
+                            {
+                                File.Delete(file);
+                                Log.Debug("Cleared stale OAuth state file: {File}", file);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Warning(ex, "Could not delete OAuth state file: {File}", file);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error clearing stale OAuth state files: {Message}", ex.Message);
+                }
 
                 // Define requested scopes
                 var scopes = new[]

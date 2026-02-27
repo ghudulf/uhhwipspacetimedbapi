@@ -108,8 +108,38 @@ namespace TicketSalesApp.Services.Implementations
         {
             if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
 
+            _logger.LogInformation("TokenStore.CreateAsync called");
+            _logger.LogInformation("Token Type: {Type}, Status: {Status}, Subject: {Subject}", 
+                descriptor.Type, descriptor.Status, descriptor.Subject);
+
+            if (string.IsNullOrEmpty(descriptor.Type))
+            {
+                _logger.LogError("Token Type is null or empty - this should have been set by OpenIddict");
+                throw new InvalidOperationException("Token Type must be set before creating a token");
+            }
+
+            if (string.IsNullOrEmpty(descriptor.Status))
+            {
+                _logger.LogError("Token Status is null or empty - this should have been set by OpenIddict");
+                throw new InvalidOperationException("Token Status must be set before creating a token");
+            }
+
             var conn = await EnsureConnectedAsync();
             var tokenId = Guid.NewGuid().ToString();
+            
+            // CRITICAL: Set the token ID on the descriptor so OpenIddict can extract it for caching
+            // OpenIddict will call GetIdAsync on this descriptor after CreateAsync completes
+            // We store the ID in the ReferenceId property which OpenIddict uses as the identifier
+            if (string.IsNullOrEmpty(descriptor.ReferenceId))
+            {
+                descriptor.ReferenceId = tokenId;
+            }
+            else
+            {
+                tokenId = descriptor.ReferenceId;
+            }
+
+            _logger.LogInformation("Creating token with ID: {TokenId}", tokenId);
 
             // Convert dates to Unix timestamps with explicit casting
             ulong? creationDate = descriptor.CreationDate.HasValue ? (ulong?)descriptor.CreationDate.Value.ToUnixTimeMilliseconds() : null;
@@ -130,6 +160,31 @@ namespace TicketSalesApp.Services.Implementations
                 descriptor.Subject,
                 descriptor.Type
             );
+            
+            _logger.LogInformation("Token reducer called, waiting for SpacetimeDB to confirm creation...");
+
+            // CRITICAL: Wait for SpacetimeDB reducer to complete before returning
+            // Poll the database to confirm the token exists before OpenIddict tries to use it
+            const int maxAttempts = 50; // 5 seconds total (50 * 100ms)
+            const int delayMs = 100;
+            
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                await Task.Delay(delayMs, cancellationToken);
+                
+                var token = conn.Db.OpenIddictSpacetimeToken.Iter()
+                    .FirstOrDefault(t => t.ReferenceId == tokenId);
+                
+                if (token != null)
+                {
+                    _logger.LogInformation("Token confirmed in database after {Attempts} attempts ({Ms}ms): {TokenId}", 
+                        attempt + 1, (attempt + 1) * delayMs, tokenId);
+                    return;
+                }
+            }
+            
+            _logger.LogWarning("Token not confirmed in database after {MaxAttempts} attempts ({Ms}ms): {TokenId}", 
+                maxAttempts, maxAttempts * delayMs, tokenId);
         }
 
         public async ValueTask DeleteAsync(OpenIddictTokenDescriptor descriptor, CancellationToken cancellationToken)
@@ -137,12 +192,18 @@ namespace TicketSalesApp.Services.Implementations
             if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
 
             var conn = await EnsureConnectedAsync();
+            // Use ReferenceId to find the token since that's our token identifier
             var token = conn.Db.OpenIddictSpacetimeToken.Iter()
-                .FirstOrDefault(t => t.OpenIddictTokenId == descriptor.AuthorizationId);
+                .FirstOrDefault(t => t.ReferenceId == descriptor.ReferenceId);
 
             if (token != null)
             {
+                _logger.LogInformation("Deleting token with ReferenceId: {ReferenceId}", descriptor.ReferenceId);
                 conn.Reducers.DeleteOidcToken(token.Id);
+            }
+            else
+            {
+                _logger.LogWarning("Token not found for deletion with ReferenceId: {ReferenceId}", descriptor.ReferenceId);
             }
         }
 
@@ -229,9 +290,21 @@ namespace TicketSalesApp.Services.Implementations
         {
             if (string.IsNullOrEmpty(identifier)) throw new ArgumentException("Identifier cannot be null or empty.", nameof(identifier));
 
+            _logger.LogDebug("FindByIdAsync called with identifier: {Identifier}", identifier);
+            
             var conn = await EnsureConnectedAsync();
+            // Use ReferenceId to find tokens since that's what we use as the token ID
             var token = conn.Db.OpenIddictSpacetimeToken.Iter()
-                .FirstOrDefault(t => t.OpenIddictTokenId == identifier);
+                .FirstOrDefault(t => t.ReferenceId == identifier);
+
+            if (token != null)
+            {
+                _logger.LogDebug("Token found with ReferenceId: {ReferenceId}", identifier);
+            }
+            else
+            {
+                _logger.LogDebug("Token not found with ReferenceId: {ReferenceId}", identifier);
+            }
 
             return token != null ? MapToDescriptor(token) : null;
         }
@@ -300,7 +373,11 @@ namespace TicketSalesApp.Services.Implementations
         public async ValueTask<string?> GetIdAsync(OpenIddictTokenDescriptor descriptor, CancellationToken cancellationToken)
         {
             if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
-            return await Task.FromResult(descriptor.AuthorizationId);
+            // CRITICAL: Return ReferenceId which contains the token ID, not AuthorizationId
+            // OpenIddict uses this to extract the token identifier for caching
+            var tokenId = descriptor.ReferenceId;
+            _logger.LogDebug("GetIdAsync called - returning token ID: {TokenId}", tokenId);
+            return await Task.FromResult(tokenId);
         }
 
         public async ValueTask<string?> GetPayloadAsync(OpenIddictTokenDescriptor descriptor, CancellationToken cancellationToken)
@@ -347,7 +424,17 @@ namespace TicketSalesApp.Services.Implementations
 
         public ValueTask<OpenIddictTokenDescriptor> InstantiateAsync(CancellationToken cancellationToken)
         {
-            return new ValueTask<OpenIddictTokenDescriptor>(new OpenIddictTokenDescriptor());
+            // Return a descriptor with default values
+            // OpenIddict will populate the actual values before calling CreateAsync
+            var descriptor = new OpenIddictTokenDescriptor
+            {
+                // Set default values to pass OpenIddict's validation
+                // These will be overridden by OpenIddict's handlers
+                Type = "unknown", // Will be set to actual type by OpenIddict
+                Status = "valid"  // Will be set to actual status by OpenIddict
+            };
+            
+            return new ValueTask<OpenIddictTokenDescriptor>(descriptor);
         }
 
         public async IAsyncEnumerable<OpenIddictTokenDescriptor> ListAsync(int? count, int? offset, CancellationToken cancellationToken)
@@ -400,10 +487,17 @@ namespace TicketSalesApp.Services.Implementations
             if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
 
             var conn = await EnsureConnectedAsync();
+            // Use ReferenceId to find the token since that's our token identifier
             var token = conn.Db.OpenIddictSpacetimeToken.Iter()
-                .FirstOrDefault(t => t.OpenIddictTokenId == descriptor.AuthorizationId);
+                .FirstOrDefault(t => t.ReferenceId == descriptor.ReferenceId);
 
-            if (token == null) throw new InvalidOperationException("Token not found.");
+            if (token == null)
+            {
+                _logger.LogError("Token not found for update with ReferenceId: {ReferenceId}", descriptor.ReferenceId);
+                throw new InvalidOperationException("Token not found.");
+            }
+
+            _logger.LogInformation("Updating token with ReferenceId: {ReferenceId}", descriptor.ReferenceId);
 
             conn.Reducers.UpdateOidcToken(
                 token.Id,
