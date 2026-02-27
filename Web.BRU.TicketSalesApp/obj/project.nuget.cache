@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "dgSpecHash": "uZfgRX8UCto=",
+  "success": true,
+  "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\Web.BRU.TicketSalesApp\\Web.BRU.TicketSalesApp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor\\24.2.5\\devexpress.blazor.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor.resources\\24.2.5\\devexpress.blazor.resources.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.blazor.themes\\24.2.5\\devexpress.blazor.themes.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.data\\24.2.5\\devexpress.data.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.drawing\\24.2.5\\devexpress.drawing.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.pdf.core\\24.2.5\\devexpress.pdf.core.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.pdf.drawing\\24.2.5\\devexpress.pdf.drawing.24.2.5.nupkg.sha512",
+    "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages\\devexpress.printing.core\\24.2.5\\devexpress.printing.core.24.2.5.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\devextreme.aspnet.data\\4.0.0\\devextreme.aspnet.data.4.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.objectpool\\6.0.16\\microsoft.extensions.objectpool.6.0.16.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.netcore.platforms\\3.1.4\\microsoft.netcore.platforms.3.1.4.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.win32.systemevents\\4.7.0\\microsoft.win32.systemevents.4.7.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.drawing.common\\4.7.2\\system.drawing.common.4.7.2.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.reactive\\5.0.0\\system.reactive.5.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.security.accesscontrol\\6.0.0\\system.security.accesscontrol.6.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.security.cryptography.pkcs\\8.0.1\\system.security.cryptography.pkcs.8.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.security.cryptography.xml\\6.0.1\\system.security.cryptography.xml.6.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.servicemodel.http\\6.2.0\\system.servicemodel.http.6.2.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.servicemodel.primitives\\6.2.0\\system.servicemodel.primitives.6.2.0.nupkg.sha512"
+  ],
+  "logs": []
+}

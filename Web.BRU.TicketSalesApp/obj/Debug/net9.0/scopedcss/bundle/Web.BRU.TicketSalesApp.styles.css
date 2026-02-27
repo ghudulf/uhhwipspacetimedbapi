@@ -1,0 +1,356 @@
+/* _content/Web.BRU.TicketSalesApp/Components/Layout/MainLayout.razor.rz.scp.css */
+.page[b-qklsm2jv8m] {
+    height: 100%;
+    font-family: var(--bs-font-sans-serif);
+}
+
+[b-qklsm2jv8m] .icon {
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    mask-position: center center;
+    -webkit-mask-mask-position: center center;
+    width: 1rem;
+    height: 1rem;
+    background-repeat: no-repeat;
+    background-color: var(--dxbl-btn-color);
+}
+
+[b-qklsm2jv8m] #menu-top {
+    display: block;
+}
+
+    [b-qklsm2jv8m] #menu-top.hidden {
+        display: none;
+    }
+
+[b-qklsm2jv8m] .icon-back {
+    -webkit-mask-image: url("images/back.svg");
+    mask-image: url("images/back.svg");
+}
+
+[b-qklsm2jv8m] .icon-menu {
+    -webkit-mask-image: url("images/menu.svg");
+    mask-image: url("images/menu.svg");
+}
+
+[b-qklsm2jv8m] .content {
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+[b-qklsm2jv8m] .menu-button:hover .icon {
+    background-color: var(--dxbl-btn-hover-color);
+}
+
+.nav-buttons-container[b-qklsm2jv8m] {
+    display: flex;
+    gap: 10px;
+    padding: 2rem 0rem;
+}
+
+    .nav-buttons-container[b-qklsm2jv8m]  .menubutton-float-end {
+        margin-left: auto;
+    }
+
+    .nav-buttons-container[b-qklsm2jv8m]  .dxbl-btn-icon-only {
+        --dxbl-btn-padding-x: 0.75rem;
+        --dxbl-btn-padding-y: 0.25rem;
+    }
+
+@media (max-width: 768px) {
+    [b-qklsm2jv8m] .layout-sidebar {
+        grid-area: header / header / header / header !important;
+    }
+}
+
+@media (max-width: 768px) {
+    [b-qklsm2jv8m] #menu-top {
+        display: none;
+    }
+}
+/* _content/Web.BRU.TicketSalesApp/Components/Layout/NavMenu.razor.rz.scp.css */
+#sidebar[b-7e80k74q4j] {
+    min-width: 15rem;
+    max-width: 15rem;
+    box-shadow: 0px 2px 8px 0px rgba(0, 0, 0, 0.16);
+    transition: transform 0.1s ease-out;
+    height: 100%;
+    max-height: 100%;
+    background-image: linear-gradient(180deg, var(--bs-primary) 0%, var(--bs-black) 150%);
+    display: block;
+}
+
+    #sidebar.auto-expanded[b-7e80k74q4j] {
+        display: none;
+    }
+
+    #sidebar .menu-closeonclick-placeholder[b-7e80k74q4j] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: none;
+    }
+
+[b-7e80k74q4j] .sidebar-header {
+    padding: 2rem 1rem;
+}
+
+.logo[b-7e80k74q4j] {
+    text-align: center;
+}
+
+[b-7e80k74q4j] .menu-button-container {
+    align-self: center;
+}
+
+.menu-button[b-7e80k74q4j] {
+    padding: 0.375rem;
+    width: 1rem;
+    height: 1rem;
+    background-image: url("images/menu.svg");
+    background-position: center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+[b-7e80k74q4j] .menu.display-mobile {
+    margin-bottom: 2rem;
+}
+
+[b-7e80k74q4j] .menu {
+    background-color: inherit;
+}
+
+    [b-7e80k74q4j] .menu .dxbl-menu-item-list {
+        gap: 0.5rem;
+    }
+
+[b-7e80k74q4j] .menu-item {
+    color: var(--bs-white);
+}
+
+[b-7e80k74q4j] .icon {
+    width: 1rem;
+    height: 1rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin-left: 0.5rem;
+    opacity: 0.4;
+}
+
+[b-7e80k74q4j] .home-icon {
+    background-image: url("images/home.svg");
+}
+
+[b-7e80k74q4j] .weather-icon {
+    background-image: url("images/weather.svg");
+}
+
+[b-7e80k74q4j] .counter-icon {
+    background-image: url("images/counter.svg");
+}
+
+
+[b-7e80k74q4j] .docs-icon {
+    mask-image: url("images/doc.svg");
+    -webkit-mask-image: url("images/doc.svg");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    background-color: var(--dxbl-btn-color);
+}
+
+[b-7e80k74q4j] .demos-icon {
+    mask-image: url("images/demos.svg");
+    -webkit-mask-image: url("images/demos.svg");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    background-color: var(--dxbl-btn-color);
+}
+
+[b-7e80k74q4j] .footer-button:hover .demos-icon {
+    background-color: var(--dxbl-btn-hover-color);
+}
+
+[b-7e80k74q4j] .footer-button:hover .docs-icon {
+    background-color: var(--dxbl-btn-hover-color);
+}
+
+[b-7e80k74q4j] .footer {
+    text-align: center;
+    gap: 0.5rem;
+    padding-bottom: 1.5rem;
+}
+
+    [b-7e80k74q4j] .footer .icon {
+        margin-left: 0;
+    }
+
+#sidebar.auto-expanded[b-7e80k74q4j]  .layout-item {
+    display: block;
+}
+
+#sidebar.auto-expanded[b-7e80k74q4j]  .footer {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    #sidebar[b-7e80k74q4j] {
+        min-width: inherit;
+        max-width: inherit;
+        display: block;
+    }
+
+        #sidebar .menu-closeonclick-placeholder[b-7e80k74q4j] {
+            display: block;
+        }
+
+        #sidebar.auto-expanded[b-7e80k74q4j] {
+            position: fixed;
+            width: 100%;
+            z-index: 3;
+            display: block;
+        }
+
+            #sidebar.auto-expanded[b-7e80k74q4j]  .sidebar-header {
+                border-bottom: 1px solid var(--bs-white);
+            }
+
+            #sidebar.auto-expanded .menu-button[b-7e80k74q4j] {
+                background-image: url("images/close.svg");
+                width: 1.875rem;
+                height: 1.875rem;
+            }
+
+        #sidebar:not(.auto-expanded)[b-7e80k74q4j]  .dxbl-gridlayout-root {
+            gap: unset !important;
+        }
+
+    .logo[b-7e80k74q4j] {
+        text-align: inherit;
+    }
+
+    [b-7e80k74q4j] .menu-button-container {
+        display: block;
+    }
+
+    [b-7e80k74q4j] .layout-item {
+        display: none;
+    }
+
+    [b-7e80k74q4j] .footer {
+        display: none;
+    }
+}
+/* _content/Web.BRU.TicketSalesApp/Components/Pages/Counter.razor.rz.scp.css */
+.counter-block[b-2hzr95htkq] {
+    display: flex;
+    padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+    flex-direction: column;
+    border-radius: 1rem;
+    gap: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    width: 16.875rem;
+    height: 17rem;
+    position: relative;
+}
+
+    .counter-block .counter-content[b-2hzr95htkq] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .counter-block .counter-count[b-2hzr95htkq] {
+        font-size: 7.5rem;
+        font-weight: 400;
+        line-height: 7.75rem;
+    }
+
+    .counter-block .counter-block-back[b-2hzr95htkq] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bs-body-color);
+        opacity: 0.05;
+        border-radius: 1rem;
+        z-index: -2;
+    }
+/* _content/Web.BRU.TicketSalesApp/Components/Pages/Index.razor.rz.scp.css */
+[b-8dz85bqu19] .welcome-gridlayout {
+    margin: auto;
+    width: auto;
+    height: auto;
+}
+
+    [b-8dz85bqu19] .welcome-gridlayout .dxbl-gridlayout-root {
+        align-content: center;
+        justify-content: center;
+    }
+
+
+[b-8dz85bqu19] .title {
+    text-align: center;
+}
+
+[b-8dz85bqu19] .welcome-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+}
+
+[b-8dz85bqu19] .welcome-card {
+    width: 26.25rem;
+    height: 15rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s;
+    border-radius: 1rem;
+    color: var(--bs-link-color-rgb);
+    gap: 1.5rem;
+    text-decoration: none;
+    position: relative;
+}
+
+    [b-8dz85bqu19] .welcome-card:hover {
+        box-shadow: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+
+    [b-8dz85bqu19] .welcome-card .welcome-card-img {
+        width: 6.5rem;
+        height: 6.5rem;
+    }
+
+    [b-8dz85bqu19] .welcome-card .welcome-card-text {
+        font-size: 1.75rem;
+        font-weight: 600;
+        letter-spacing: 0em;
+        text-align: center;
+        text-decoration: unset;
+    }
+
+[b-8dz85bqu19] .icon-fill {
+    fill: var(--bs-primary);
+}
+
+[b-8dz85bqu19] .welcome-card .welcome-card-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bs-body-color);
+    opacity: 0.05;
+    border-radius: 1rem;
+    z-index: -2;
+}
