@@ -73,5 +73,21 @@ namespace TicketSalesApp.Services.Interfaces
         /// </summary>
         /// <returns>True if the subscription is ready, false otherwise</returns>
         bool IsSubscriptionReady();
+        
+        /// <summary>
+        /// Fetches logs from SpacetimeDB HTTP API
+        /// </summary>
+        /// <param name="numLines">Number of most recent log lines to retrieve</param>
+        /// <param name="follow">Whether to continue receiving new logs via a stream</param>
+        /// <returns>The log content as a string</returns>
+        Task<string> FetchLogsAsync(int numLines = 100, bool follow = false);
+        
+        /// <summary>
+        /// Fetches and filters logs for a specific reducer from SpacetimeDB
+        /// </summary>
+        /// <param name="reducerName">The name of the reducer to filter logs for</param>
+        /// <param name="numLines">Number of most recent log lines to retrieve</param>
+        /// <returns>The filtered log content as a string</returns>
+        Task<string> FetchReducerLogsAsync(string reducerName = "RegisterOpenIdClient", int numLines = 200);
     }
 } 

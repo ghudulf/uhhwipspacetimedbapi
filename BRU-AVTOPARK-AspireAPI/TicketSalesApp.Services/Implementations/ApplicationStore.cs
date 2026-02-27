@@ -115,17 +115,40 @@ namespace TicketSalesApp.Services.Implementations
                     _logger.LogInformation("    * {Permission}", perm);
                 }
                 
-                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                // Extract scope names from permissions (handle both "scp:" and "oc_scp:" prefixes)
+                // OpenIddict can use either format depending on version/configuration
                 var scopeNames = application.Permissions
-                    .Where(p => p.StartsWith("oc_scp:"))
-                    .Select(p => p.Substring("oc_scp:".Length))
+                    .Where(p => p.StartsWith("scp:") || p.StartsWith("oc_scp:"))
+                    .Select(p => {
+                        if (p.StartsWith("oc_scp:"))
+                            return p.Substring("oc_scp:".Length);
+                        else if (p.StartsWith("scp:"))
+                            return p.Substring("scp:".Length);
+                        return p;
+                    })
                     .ToList();
                 
-                _logger.LogInformation("  - Extracted {ScopeCount} scope names: {Scopes}", 
+                _logger.LogInformation("  - Extracted {ScopeCount} scope names: [{Scopes}]", 
                     scopeNames.Count, 
                     string.Join(", ", scopeNames));
                 
+                if (scopeNames.Count == 0)
+                {
+                    _logger.LogError("[ApplicationStore.CreateAsync] ✗ NO SCOPES EXTRACTED! This will result in empty AllowedScopes in database!");
+                    _logger.LogError("[ApplicationStore.CreateAsync] All permissions: [{Permissions}]", 
+                        string.Join(", ", application.Permissions));
+                    _logger.LogError("[ApplicationStore.CreateAsync] Checking for scope prefixes: scp: or oc_scp:");
+                }
+                
                 _logger.LogInformation("[ApplicationStore.CreateAsync] Calling SpacetimeDB reducer RegisterOpenIdClient...");
+                _logger.LogInformation("[ApplicationStore.CreateAsync] Reducer parameters:");
+                _logger.LogInformation("  - clientId: {ClientId}", application.ClientId);
+                _logger.LogInformation("  - displayName: {DisplayName}", application.DisplayName);
+                _logger.LogInformation("  - redirectUris: [{Uris}]", string.Join(", ", application.RedirectUris));
+                _logger.LogInformation("  - postLogoutRedirectUris: [{Uris}]", string.Join(", ", application.PostLogoutRedirectUris));
+                _logger.LogInformation("  - allowedScopes: [{Scopes}]", string.Join(", ", scopeNames));
+                _logger.LogInformation("  - consentType: {ConsentType}", application.ConsentType);
+                _logger.LogInformation("  - clientType: {Type}", application.Type);
                 
                 conn.Reducers.RegisterOpenIdClient(
                     application.ClientId,
@@ -227,24 +250,24 @@ namespace TicketSalesApp.Services.Implementations
                         // Convert scope names to OpenIddict permission format and add endpoint/grant permissions
                         var permissions = new List<string>();
                         
-                        // Add endpoint permissions
-                        permissions.Add("oc_ept:authorization");  // Permissions.Endpoints.Authorization
-                        permissions.Add("oc_ept:token");          // Permissions.Endpoints.Token
-                        permissions.Add("oc_ept:logout");         // Permissions.Endpoints.Logout
-                        permissions.Add("oc_ept:revocation");     // Permissions.Endpoints.Revocation
+                        // Add endpoint permissions (using short prefixes that match runtime values)
+                        permissions.Add("ept:authorization");  // Permissions.Endpoints.Authorization
+                        permissions.Add("ept:token");          // Permissions.Endpoints.Token
+                        permissions.Add("ept:logout");         // Permissions.Endpoints.Logout
+                        permissions.Add("ept:revocation");     // Permissions.Endpoints.Revocation
                         
                         // Add grant type permissions
-                        permissions.Add("oc_gt:authorization_code");  // Permissions.GrantTypes.AuthorizationCode
-                        permissions.Add("oc_gt:refresh_token");       // Permissions.GrantTypes.RefreshToken
-                        permissions.Add("oc_gt:client_credentials");  // Permissions.GrantTypes.ClientCredentials
+                        permissions.Add("gt:authorization_code");  // Permissions.GrantTypes.AuthorizationCode
+                        permissions.Add("gt:refresh_token");       // Permissions.GrantTypes.RefreshToken
+                        permissions.Add("gt:client_credentials");  // Permissions.GrantTypes.ClientCredentials
                         
                         // Add response type permissions
-                        permissions.Add("oc_rst:code");  // Permissions.ResponseTypes.Code
+                        permissions.Add("rst:code");  // Permissions.ResponseTypes.Code
                         
-                        // Add scope permissions (e.g., "oc_scp:profile", "oc_scp:email", "oc_scp:api")
+                        // Add scope permissions (using short prefix that matches runtime values)
                         foreach (var scope in c.AllowedScopes)
                         {
-                            permissions.Add($"oc_scp:{scope}");
+                            permissions.Add($"scp:{scope}");
                         }
                         
                         return new OpenIddictApplication
@@ -808,20 +831,45 @@ namespace TicketSalesApp.Services.Implementations
                     throw new InvalidOperationException("SpacetimeDB connection is null");
                 }
                 
-                _logger.LogDebug("Updating client {ClientId} with {RedirectUriCount} redirect URIs and {ScopeCount} permissions", 
-                    application.ClientId, 
-                    application.RedirectUris.Length, 
-                    application.Permissions.Length);
+                _logger.LogInformation("[ApplicationStore.UpdateAsync] Client details:");
+                _logger.LogInformation("  - ClientId: {ClientId}", application.ClientId);
+                _logger.LogInformation("  - DisplayName: {DisplayName}", application.DisplayName);
+                _logger.LogInformation("  - RedirectUris: {Count} URIs", application.RedirectUris.Length);
+                _logger.LogInformation("  - Permissions: {Count} permissions", application.Permissions.Length);
                 
-                // Extract scope names from permissions (remove "oc_scp:" prefix)
+                // Extract scope names from permissions (handle both "scp:" and "oc_scp:" prefixes)
+                // OpenIddict can use either format depending on version/configuration
                 var scopeNames = application.Permissions
-                    .Where(p => p.StartsWith("oc_scp:"))
-                    .Select(p => p.Substring("oc_scp:".Length))
+                    .Where(p => p.StartsWith("scp:") || p.StartsWith("oc_scp:"))
+                    .Select(p => {
+                        if (p.StartsWith("oc_scp:"))
+                            return p.Substring("oc_scp:".Length);
+                        else if (p.StartsWith("scp:"))
+                            return p.Substring("scp:".Length);
+                        return p;
+                    })
                     .ToList();
                 
-                _logger.LogDebug("Extracted {ScopeCount} scope names from permissions: {Scopes}", 
+                _logger.LogInformation("  - Extracted {ScopeCount} scope names: [{Scopes}]", 
                     scopeNames.Count, 
                     string.Join(", ", scopeNames));
+                
+                if (scopeNames.Count == 0)
+                {
+                    _logger.LogError("[ApplicationStore.UpdateAsync] ✗ NO SCOPES EXTRACTED! This will result in empty AllowedScopes in database!");
+                    _logger.LogError("[ApplicationStore.UpdateAsync] All permissions: [{Permissions}]", 
+                        string.Join(", ", application.Permissions));
+                    _logger.LogError("[ApplicationStore.UpdateAsync] Checking for scope prefixes: scp: or oc_scp:");
+                }
+                
+                _logger.LogInformation("[ApplicationStore.UpdateAsync] Calling SpacetimeDB reducer UpdateOpenIdClient...");
+                _logger.LogInformation("[ApplicationStore.UpdateAsync] Reducer parameters:");
+                _logger.LogInformation("  - clientId: {ClientId}", application.ClientId);
+                _logger.LogInformation("  - displayName: {DisplayName}", application.DisplayName);
+                _logger.LogInformation("  - redirectUris: [{Uris}]", string.Join(", ", application.RedirectUris));
+                _logger.LogInformation("  - postLogoutRedirectUris: [{Uris}]", string.Join(", ", application.PostLogoutRedirectUris));
+                _logger.LogInformation("  - allowedScopes: [{Scopes}]", string.Join(", ", scopeNames));
+                _logger.LogInformation("  - consentType: {ConsentType}", application.ConsentType);
                 
                 conn.Reducers.UpdateOpenIdClient(
                     application.ClientId,

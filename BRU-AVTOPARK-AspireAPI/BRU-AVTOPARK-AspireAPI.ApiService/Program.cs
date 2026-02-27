@@ -944,6 +944,16 @@ _ = Task.Run(async () =>
                     }
                     logger.LogInformation("[FrameTick] Completed 10 frame ticks");
                     
+                    // Fetch and display reducer logs from SpacetimeDB
+                    logger.LogInformation("Fetching SpacetimeDB reducer logs for RegisterOpenIdClient...");
+                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("RegisterOpenIdClient", numLines: 300);
+                    if (!reducerLogs.StartsWith("Error"))
+                    {
+                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
+                        logger.LogInformation(reducerLogs);
+                        logger.LogInformation("=== End of Reducer Logs ===");
+                    }
+                    
                     // Verify the client is retrievable from cache
                     var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
                     if (verifyExists)
@@ -1022,6 +1032,16 @@ _ = Task.Run(async () =>
                         await Task.Delay(100);
                     }
                     logger.LogInformation("[FrameTick] Completed frame ticks for client update");
+                    
+                    // Fetch and display reducer logs from SpacetimeDB
+                    logger.LogInformation("Fetching SpacetimeDB reducer logs for UpdateOpenIdClient...");
+                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("UpdateOpenIdClient", numLines: 300);
+                    if (!reducerLogs.StartsWith("Error"))
+                    {
+                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
+                        logger.LogInformation(reducerLogs);
+                        logger.LogInformation("=== End of Reducer Logs ===");
+                    }
                 }
                 else
                 {

@@ -373,15 +373,43 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RegisterOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType, string clientType)
     {
+        Log.Info($"[RegisterOpenIdClient] ========================================");
         Log.Info($"[RegisterOpenIdClient] Starting registration for client: {clientId}");
         Log.Info($"[RegisterOpenIdClient] Display name: {displayName}, Type: {clientType}, Consent: {consentType}");
-        Log.Info($"[RegisterOpenIdClient] Redirect URIs count: {redirectUris.Length}, Scopes count: {allowedScopes.Length}");
+        Log.Info($"[RegisterOpenIdClient] Redirect URIs count: {redirectUris.Length}");
+        for (int i = 0; i < redirectUris.Length; i++)
+        {
+            Log.Info($"[RegisterOpenIdClient]   RedirectUri[{i}]: {redirectUris[i]}");
+        }
+        Log.Info($"[RegisterOpenIdClient] PostLogout URIs count: {postLogoutRedirectUris.Length}");
+        for (int i = 0; i < postLogoutRedirectUris.Length; i++)
+        {
+            Log.Info($"[RegisterOpenIdClient]   PostLogoutUri[{i}]: {postLogoutRedirectUris[i]}");
+        }
+        Log.Info($"[RegisterOpenIdClient] ✓ ALLOWED SCOPES COUNT: {allowedScopes.Length}");
+        if (allowedScopes.Length == 0)
+        {
+            Log.Error($"[RegisterOpenIdClient] ✗ CRITICAL: allowedScopes array is EMPTY! Client will have no scopes!");
+        }
+        else
+        {
+            for (int i = 0; i < allowedScopes.Length; i++)
+            {
+                Log.Info($"[RegisterOpenIdClient]   AllowedScope[{i}]: {allowedScopes[i]}");
+            }
+        }
         
         // Check if client already exists
         var existing = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
         if (existing != null)
         {
             Log.Warn($"[RegisterOpenIdClient] Client {clientId} already exists! IsActive: {existing.IsActive}");
+            Log.Info($"[RegisterOpenIdClient] BEFORE UPDATE - existing.AllowedScopes.Length: {existing.AllowedScopes.Length}");
+            if (existing.AllowedScopes.Length > 0)
+            {
+                Log.Info($"[RegisterOpenIdClient] BEFORE UPDATE - existing scopes: [{string.Join(", ", existing.AllowedScopes)}]");
+            }
+            
             Log.Info($"[RegisterOpenIdClient] Updating existing client {clientId} and setting IsActive=True");
             
             // Update the existing client
@@ -395,8 +423,34 @@ public static partial class Module
             existing.IsActive = true; // CRITICAL: Reactivate the client
             existing.RequireConsent = consentType == "explicit";
             
+            Log.Info($"[RegisterOpenIdClient] AFTER ASSIGNMENT - existing.AllowedScopes.Length: {existing.AllowedScopes.Length}");
+            if (existing.AllowedScopes.Length > 0)
+            {
+                Log.Info($"[RegisterOpenIdClient] AFTER ASSIGNMENT - new scopes: [{string.Join(", ", existing.AllowedScopes)}]");
+            }
+            else
+            {
+                Log.Error($"[RegisterOpenIdClient] ✗ CRITICAL: After assignment, AllowedScopes is still EMPTY!");
+            }
+            
             ctx.Db.OpenIdConnect.ClientId.Update(existing);
             Log.Info($"[RegisterOpenIdClient] Successfully updated and reactivated client {clientId}");
+            
+            // Verify update
+            var verifyUpdate = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
+            if (verifyUpdate != null)
+            {
+                Log.Info($"[RegisterOpenIdClient] POST-UPDATE VERIFICATION - AllowedScopes.Length: {verifyUpdate.AllowedScopes.Length}");
+                if (verifyUpdate.AllowedScopes.Length > 0)
+                {
+                    Log.Info($"[RegisterOpenIdClient] POST-UPDATE VERIFICATION - scopes: [{string.Join(", ", verifyUpdate.AllowedScopes)}]");
+                }
+                else
+                {
+                    Log.Error($"[RegisterOpenIdClient] ✗ POST-UPDATE VERIFICATION FAILED: AllowedScopes is EMPTY in database!");
+                }
+            }
+            Log.Info($"[RegisterOpenIdClient] ========================================");
             return;
         }
         
@@ -418,6 +472,16 @@ public static partial class Module
             RequireConsent = consentType == "explicit"
         };
         
+        Log.Info($"[RegisterOpenIdClient] BEFORE INSERT - openIdConnect.AllowedScopes.Length: {openIdConnect.AllowedScopes.Length}");
+        if (openIdConnect.AllowedScopes.Length > 0)
+        {
+            Log.Info($"[RegisterOpenIdClient] BEFORE INSERT - scopes: [{string.Join(", ", openIdConnect.AllowedScopes)}]");
+        }
+        else
+        {
+            Log.Error($"[RegisterOpenIdClient] ✗ CRITICAL: About to insert client with EMPTY AllowedScopes!");
+        }
+        
         ctx.Db.OpenIdConnect.Insert(openIdConnect);
         Log.Info($"[RegisterOpenIdClient] Successfully inserted new client {clientId} into database");
         
@@ -425,18 +489,45 @@ public static partial class Module
         var verify = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
         if (verify != null)
         {
-            Log.Info($"[RegisterOpenIdClient] Verification successful - client {clientId} is now in database with IsActive={verify.IsActive}");
+            Log.Info($"[RegisterOpenIdClient] POST-INSERT VERIFICATION - client {clientId} found in database");
+            Log.Info($"[RegisterOpenIdClient] POST-INSERT VERIFICATION - IsActive: {verify.IsActive}");
+            Log.Info($"[RegisterOpenIdClient] POST-INSERT VERIFICATION - AllowedScopes.Length: {verify.AllowedScopes.Length}");
+            if (verify.AllowedScopes.Length > 0)
+            {
+                Log.Info($"[RegisterOpenIdClient] POST-INSERT VERIFICATION - scopes: [{string.Join(", ", verify.AllowedScopes)}]");
+            }
+            else
+            {
+                Log.Error($"[RegisterOpenIdClient] ✗ POST-INSERT VERIFICATION FAILED: AllowedScopes is EMPTY in database!");
+            }
         }
         else
         {
-            Log.Error($"[RegisterOpenIdClient] Verification FAILED - client {clientId} not found after insert!");
+            Log.Error($"[RegisterOpenIdClient] ✗ POST-INSERT VERIFICATION FAILED - client {clientId} not found after insert!");
         }
+        Log.Info($"[RegisterOpenIdClient] ========================================");
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType)
     {
+        Log.Info($"[UpdateOpenIdClient] ========================================");
         Log.Info($"[UpdateOpenIdClient] Updating client: {clientId}");
+        Log.Info($"[UpdateOpenIdClient] Display name: {displayName}, Consent: {consentType}");
+        Log.Info($"[UpdateOpenIdClient] Redirect URIs count: {redirectUris.Length}");
+        Log.Info($"[UpdateOpenIdClient] PostLogout URIs count: {postLogoutRedirectUris.Length}");
+        Log.Info($"[UpdateOpenIdClient] ✓ ALLOWED SCOPES COUNT: {allowedScopes.Length}");
+        if (allowedScopes.Length == 0)
+        {
+            Log.Error($"[UpdateOpenIdClient] ✗ CRITICAL: allowedScopes array is EMPTY! Client will have no scopes!");
+        }
+        else
+        {
+            for (int i = 0; i < allowedScopes.Length; i++)
+            {
+                Log.Info($"[UpdateOpenIdClient]   AllowedScope[{i}]: {allowedScopes[i]}");
+            }
+        }
         
         var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
         if (openIdConnect == null)
@@ -446,6 +537,12 @@ public static partial class Module
         }
         
         Log.Info($"[UpdateOpenIdClient] Found client {clientId}, applying updates");
+        Log.Info($"[UpdateOpenIdClient] BEFORE UPDATE - AllowedScopes.Length: {openIdConnect.AllowedScopes.Length}");
+        if (openIdConnect.AllowedScopes.Length > 0)
+        {
+            Log.Info($"[UpdateOpenIdClient] BEFORE UPDATE - old scopes: [{string.Join(", ", openIdConnect.AllowedScopes)}]");
+        }
+        
         openIdConnect.ClientSecret = clientSecret;
         openIdConnect.DisplayName = displayName;
         openIdConnect.RedirectUris = redirectUris;
@@ -454,8 +551,34 @@ public static partial class Module
         openIdConnect.ConsentType = consentType;
         openIdConnect.RequireConsent = consentType == "explicit";
 
+        Log.Info($"[UpdateOpenIdClient] AFTER ASSIGNMENT - AllowedScopes.Length: {openIdConnect.AllowedScopes.Length}");
+        if (openIdConnect.AllowedScopes.Length > 0)
+        {
+            Log.Info($"[UpdateOpenIdClient] AFTER ASSIGNMENT - new scopes: [{string.Join(", ", openIdConnect.AllowedScopes)}]");
+        }
+        else
+        {
+            Log.Error($"[UpdateOpenIdClient] ✗ CRITICAL: After assignment, AllowedScopes is still EMPTY!");
+        }
+
         ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
         Log.Info($"[UpdateOpenIdClient] Successfully updated client {clientId}");
+        
+        // Verify update
+        var verify = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
+        if (verify != null)
+        {
+            Log.Info($"[UpdateOpenIdClient] POST-UPDATE VERIFICATION - AllowedScopes.Length: {verify.AllowedScopes.Length}");
+            if (verify.AllowedScopes.Length > 0)
+            {
+                Log.Info($"[UpdateOpenIdClient] POST-UPDATE VERIFICATION - scopes: [{string.Join(", ", verify.AllowedScopes)}]");
+            }
+            else
+            {
+                Log.Error($"[UpdateOpenIdClient] ✗ POST-UPDATE VERIFICATION FAILED: AllowedScopes is EMPTY in database!");
+            }
+        }
+        Log.Info($"[UpdateOpenIdClient] ========================================");
     }
 
     [SpacetimeDB.Reducer]

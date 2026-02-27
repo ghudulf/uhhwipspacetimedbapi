@@ -280,22 +280,17 @@ namespace TicketSalesApp.Services.Implementations
                         Permissions.GrantTypes.ClientCredentials,
                         Permissions.GrantTypes.RefreshToken,
                         Permissions.GrantTypes.Password,
-                        Permissions.ResponseTypes.Code,
-                        Permissions.Scopes.Email,
-                        Permissions.Scopes.Profile,
-                        Permissions.Scopes.Roles
+                        Permissions.ResponseTypes.Code
                     }
                 };
 
-                // Add custom scope permissions from allowedScopes parameter
+                // Add ALL scope permissions from allowedScopes parameter (don't use hardcoded scopes)
+                _logger.LogInformation("[RegisterClientApplicationAsync] Adding {Count} scopes from allowedScopes parameter", allowedScopes.Length);
                 foreach (var scope in allowedScopes)
                 {
                     var scopePermission = $"{Permissions.Prefixes.Scope}{scope}";
-                    if (!descriptor.Permissions.Contains(scopePermission))
-                    {
-                        descriptor.Permissions.Add(scopePermission);
-                        _logger.LogDebug("Added scope permission: {Scope}", scopePermission);
-                    }
+                    descriptor.Permissions.Add(scopePermission);
+                    _logger.LogInformation("[RegisterClientApplicationAsync] Added scope permission: {Scope}", scopePermission);
                 }
 
                 // Add redirect URIs to descriptor

@@ -140,11 +140,164 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         var allOidcApps = conn.Db.OpenIdConnect.Iter().ToList();
                         totalItems = allOidcApps.Count;
                         pageItems = allOidcApps.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                        
+                        // Detailed logging for OIDC clients
+                        _logger.LogInformation("=== OIDC Clients Debug Information ===");
+                        _logger.LogInformation("Total OIDC Clients: {Count}", allOidcApps.Count);
+                        foreach (var client in allOidcApps)
+                        {
+                            _logger.LogInformation("--- OIDC Client: {ClientId} ---", client.ClientId);
+                            _logger.LogInformation("  DisplayName: {DisplayName}", client.DisplayName ?? "null");
+                            _logger.LogInformation("  ClientType: {ClientType}", client.ClientType ?? "null");
+                            _logger.LogInformation("  ConsentType: {ConsentType}", client.ConsentType ?? "null");
+                            _logger.LogInformation("  IsActive: {IsActive}", client.IsActive);
+                            _logger.LogInformation("  RequireConsent: {RequireConsent}", client.RequireConsent);
+                            
+                            // Log RedirectUris
+                            if (client.RedirectUris != null && client.RedirectUris.Count > 0)
+                            {
+                                _logger.LogInformation("  RedirectUris ({Count}): [{Uris}]", 
+                                    client.RedirectUris.Count, 
+                                    string.Join(", ", client.RedirectUris));
+                            }
+                            else
+                            {
+                                _logger.LogWarning("  RedirectUris: EMPTY or NULL (Count: {Count})", 
+                                    client.RedirectUris?.Count ?? -1);
+                            }
+                            
+                            // Log PostLogoutRedirectUris
+                            if (client.PostLogoutRedirectUris != null && client.PostLogoutRedirectUris.Count > 0)
+                            {
+                                _logger.LogInformation("  PostLogoutRedirectUris ({Count}): [{Uris}]", 
+                                    client.PostLogoutRedirectUris.Count, 
+                                    string.Join(", ", client.PostLogoutRedirectUris));
+                            }
+                            else
+                            {
+                                _logger.LogWarning("  PostLogoutRedirectUris: EMPTY or NULL");
+                            }
+                            
+                            // Log AllowedScopes - THIS IS THE KEY FIELD
+                            if (client.AllowedScopes != null && client.AllowedScopes.Count > 0)
+                            {
+                                _logger.LogInformation("  AllowedScopes ({Count}): [{Scopes}]", 
+                                    client.AllowedScopes.Count, 
+                                    string.Join(", ", client.AllowedScopes));
+                            }
+                            else
+                            {
+                                _logger.LogWarning("  AllowedScopes: EMPTY or NULL (Count: {Count})", 
+                                    client.AllowedScopes?.Count ?? -1);
+                                _logger.LogWarning("  AllowedScopes is null: {IsNull}", client.AllowedScopes == null);
+                                _logger.LogWarning("  AllowedScopes type: {Type}", client.AllowedScopes?.GetType().Name ?? "null");
+                            }
+                            
+                            // Log other important fields
+                            _logger.LogInformation("  ClientSecret: {HasSecret}", !string.IsNullOrEmpty(client.ClientSecret) ? "SET" : "NOT SET");
+                            _logger.LogInformation("  CreatedAt: {CreatedAt}", client.CreatedAt);
+                            _logger.LogInformation("  CreatedBy: {CreatedBy}", client.CreatedBy ?? "null");
+                        }
                         break;
                     case "OpenIdConnectGrant":
                         var allOidcGrants = conn.Db.OpenIdConnectGrant.Iter().ToList();
                         totalItems = allOidcGrants.Count;
                         pageItems = allOidcGrants.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                        
+                        // Detailed logging for OIDC grants
+                        _logger.LogInformation("=== OIDC Grants Debug Information ===");
+                        _logger.LogInformation("Total OIDC Grants: {Count}", allOidcGrants.Count);
+                        foreach (var grant in allOidcGrants)
+                        {
+                            _logger.LogInformation("--- OIDC Grant: {GrantId} ---", grant.GrantId);
+                            _logger.LogInformation("  ClientId: {ClientId}", grant.ClientId);
+                            _logger.LogInformation("  UserId: {UserId}", grant.UserId);
+                            _logger.LogInformation("  Type: {Type}", grant.Type ?? "null");
+                            
+                            if (grant.Scopes != null && grant.Scopes.Count > 0)
+                            {
+                                _logger.LogInformation("  Scopes ({Count}): [{Scopes}]", 
+                                    grant.Scopes.Count, 
+                                    string.Join(", ", grant.Scopes));
+                            }
+                            else
+                            {
+                                _logger.LogWarning("  Scopes: EMPTY or NULL");
+                            }
+                            
+                            _logger.LogInformation("  CreatedAt: {CreatedAt}", grant.CreatedAt);
+                            _logger.LogInformation("  ExpiresAt: {ExpiresAt}", grant.ExpiresAt);
+                            _logger.LogInformation("  IsRevoked: {IsRevoked}", grant.IsRevoked);
+                        }
+                        break;
+                    case "OpenIddictSpacetimeScope":
+                        var allOidcScopes = conn.Db.OpenIddictSpacetimeScope.Iter().ToList();
+                        totalItems = allOidcScopes.Count;
+                        pageItems = allOidcScopes.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                        
+                        // Detailed logging for OIDC scopes
+                        _logger.LogInformation("=== OIDC Scopes Debug Information ===");
+                        _logger.LogInformation("Total OIDC Scopes: {Count}", allOidcScopes.Count);
+                        foreach (var scope in allOidcScopes)
+                        {
+                            _logger.LogInformation("--- OIDC Scope: {Name} ---", scope.Name);
+                            _logger.LogInformation("  Id (Internal): {Id}", scope.Id);
+                            _logger.LogInformation("  OpenIddictScopeId: {OidcId}", scope.OpenIddictScopeId);
+                            _logger.LogInformation("  DisplayName: {DisplayName}", scope.DisplayName ?? "null");
+                            _logger.LogInformation("  Description: {Description}", scope.Description ?? "null");
+                            _logger.LogInformation("  Descriptions (JSON): {Descriptions}", scope.Descriptions ?? "null");
+                            _logger.LogInformation("  DisplayNames (JSON): {DisplayNames}", scope.DisplayNames ?? "null");
+                            _logger.LogInformation("  Resources (JSON): {Resources}", scope.Resources ?? "null");
+                            _logger.LogInformation("  Properties (JSON): {Properties}", scope.Properties ?? "null");
+                        }
+                        break;
+                    case "OpenIddictSpacetimeAuthorization":
+                        var allOidcAuths = conn.Db.OpenIddictSpacetimeAuthorization.Iter().ToList();
+                        totalItems = allOidcAuths.Count;
+                        pageItems = allOidcAuths.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                        
+                        // Detailed logging for OIDC authorizations
+                        _logger.LogInformation("=== OIDC Authorizations Debug Information ===");
+                        _logger.LogInformation("Total OIDC Authorizations: {Count}", allOidcAuths.Count);
+                        foreach (var auth in allOidcAuths)
+                        {
+                            _logger.LogInformation("--- OIDC Authorization: {Id} ---", auth.OpenIddictAuthorizationId);
+                            _logger.LogInformation("  Id (Internal): {Id}", auth.Id);
+                            _logger.LogInformation("  ApplicationClientId: {AppId}", auth.ApplicationClientId ?? "null");
+                            _logger.LogInformation("  Subject: {Subject}", auth.Subject ?? "null");
+                            _logger.LogInformation("  Type: {Type}", auth.Type ?? "null");
+                            _logger.LogInformation("  Status: {Status}", auth.Status ?? "null");
+                            _logger.LogInformation("  Scopes (JSON): {Scopes}", auth.Scopes ?? "null");
+                            _logger.LogInformation("  CreationDate: {CreationDate}", auth.CreationDate.HasValue ? auth.CreationDate.Value.ToString() : "null");
+                            _logger.LogInformation("  Properties (JSON): {Properties}", auth.Properties ?? "null");
+                        }
+                        break;
+                    case "OpenIddictSpacetimeToken":
+                        var allOidcTokens = conn.Db.OpenIddictSpacetimeToken.Iter().ToList();
+                        totalItems = allOidcTokens.Count;
+                        pageItems = allOidcTokens.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                        
+                        // Detailed logging for OIDC tokens
+                        _logger.LogInformation("=== OIDC Tokens Debug Information ===");
+                        _logger.LogInformation("Total OIDC Tokens: {Count}", allOidcTokens.Count);
+                        foreach (var token in allOidcTokens)
+                        {
+                            _logger.LogInformation("--- OIDC Token: {Id} ---", token.OpenIddictTokenId);
+                            _logger.LogInformation("  Id (Internal): {Id}", token.Id);
+                            _logger.LogInformation("  ApplicationClientId: {AppId}", token.ApplicationClientId ?? "null");
+                            _logger.LogInformation("  AuthorizationId: {AuthId}", token.AuthorizationId.HasValue ? token.AuthorizationId.Value.ToString() : "null");
+                            _logger.LogInformation("  Subject: {Subject}", token.Subject ?? "null");
+                            _logger.LogInformation("  Type: {Type}", token.Type ?? "null");
+                            _logger.LogInformation("  Status: {Status}", token.Status ?? "null");
+                            _logger.LogInformation("  CreationDate: {CreationDate}", token.CreationDate.HasValue ? token.CreationDate.Value.ToString() : "null");
+                            _logger.LogInformation("  ExpirationDate: {ExpirationDate}", token.ExpirationDate.HasValue ? token.ExpirationDate.Value.ToString() : "null");
+                            _logger.LogInformation("  RedemptionDate: {RedemptionDate}", token.RedemptionDate.HasValue ? token.RedemptionDate.Value.ToString() : "null");
+                            _logger.LogInformation("  ReferenceId: {ReferenceId}", token.ReferenceId ?? "null");
+                            _logger.LogInformation("  Payload (truncated): {Payload}", 
+                                token.Payload != null && token.Payload.Length > 100 
+                                    ? token.Payload.Substring(0, 100) + "..." 
+                                    : token.Payload ?? "null");
+                        }
                         break;
                     // --- App Specific Tables ---
                     case "Bus":
@@ -246,9 +399,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 PropertiesToShow = new List<string> { "SessionId", "UserId", "ValidationCode", "ExpiryTime", "InitiatingDevice", "IsUsed" } },
             // OIDC Tables
             new DebugTableInfo { TableDbName = "OpenIdConnect", DisplayName = "OIDC Clients", EntityType = typeof(OpenIdConnect),
-                PropertiesToShow = new List<string> { "ClientId", "DisplayName", "ClientType", "ConsentType", "IsActive", "RedirectUris", "AllowedScopes" } }, // Add more as needed
+                PropertiesToShow = new List<string> { "ClientId", "DisplayName", "ClientType", "ConsentType", "IsActive", "RedirectUris", "AllowedScopes" } },
             new DebugTableInfo { TableDbName = "OpenIdConnectGrant", DisplayName = "OIDC Grants", EntityType = typeof(OpenIdConnectGrant),
-                PropertiesToShow = new List<string> { "GrantId", "ClientId", "UserId", "Type", "Status", "Scopes", "ExpiresAt", "IsRevoked" } }, // Add more as needed
+                PropertiesToShow = new List<string> { "GrantId", "ClientId", "UserId", "Type", "Scopes", "ExpiresAt", "IsRevoked" } },
+            new DebugTableInfo { TableDbName = "OpenIddictSpacetimeScope", DisplayName = "OIDC Scopes", EntityType = typeof(OpenIddictSpacetimeScope),
+                PropertiesToShow = new List<string> { "Id", "OpenIddictScopeId", "Name", "DisplayName", "Description", "Resources" } },
+            new DebugTableInfo { TableDbName = "OpenIddictSpacetimeAuthorization", DisplayName = "OIDC Authorizations", EntityType = typeof(OpenIddictSpacetimeAuthorization),
+                PropertiesToShow = new List<string> { "Id", "OpenIddictAuthorizationId", "ApplicationClientId", "Subject", "Type", "Status", "Scopes", "CreationDate" } },
+            new DebugTableInfo { TableDbName = "OpenIddictSpacetimeToken", DisplayName = "OIDC Tokens", EntityType = typeof(OpenIddictSpacetimeToken),
+                PropertiesToShow = new List<string> { "Id", "OpenIddictTokenId", "ApplicationClientId", "AuthorizationId", "Subject", "Type", "Status", "CreationDate", "ExpirationDate" } },
 
             // App Specific Tables
             new DebugTableInfo { TableDbName = "Bus", DisplayName = "Buses", EntityType = typeof(Bus),

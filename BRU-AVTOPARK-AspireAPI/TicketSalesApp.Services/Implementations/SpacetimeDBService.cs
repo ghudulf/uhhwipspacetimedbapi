@@ -102,6 +102,290 @@ namespace TicketSalesApp.Services.Implementations
             return _connection; // Return the current connection
         }
 
+        // Method to get database identity from SpacetimeDB API
+        private async Task<string?> GetDatabaseIdentityAsync(string databaseNameOrIdentity, string token)
+        {
+            try
+            {
+                var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
+                var baseUrl = host.TrimEnd('/');
+                
+                // Try the /identity endpoint first (simpler, returns just the hex string)
+                var identityUrl = $"{baseUrl}/v1/database/{databaseNameOrIdentity}/identity";
+                
+                _logger.LogDebug("Fetching database identity from: {Url}", identityUrl);
+
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                var response = await httpClient.GetAsync(identityUrl);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var identity = await response.Content.ReadAsStringAsync();
+                    identity = identity.Trim().Trim('"'); // Remove quotes if present
+                    
+                    _logger.LogDebug("Successfully obtained database identity: {Identity}", identity);
+                    return identity;
+                }
+                
+                // If /identity endpoint fails, try the describe endpoint
+                _logger.LogDebug("Identity endpoint failed with {Status}, trying describe endpoint", response.StatusCode);
+                
+                var describeUrl = $"{baseUrl}/v1/database/{databaseNameOrIdentity}";
+                var describeResponse = await httpClient.GetAsync(describeUrl);
+                
+                if (describeResponse.IsSuccessStatusCode)
+                {
+                    var describeContent = await describeResponse.Content.ReadAsStringAsync();
+                    var describeJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(describeContent);
+                    
+                    if (describeJson.TryGetProperty("database_identity", out var identityElement))
+                    {
+                        var identity = identityElement.GetString();
+                        _logger.LogDebug("Successfully obtained database identity from describe: {Identity}", identity);
+                        return identity;
+                    }
+                }
+                
+                _logger.LogWarning("Failed to get database identity. Status: {Status}", response.StatusCode);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error getting database identity: {Message}", ex.Message);
+                return null;
+            }
+        }
+
+        // Method to get a short-lived token with proper permissions for HTTP API calls
+        private async Task<string?> GetWebSocketTokenAsync()
+        {
+            try
+            {
+                var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
+                var currentToken = AuthToken.Token;
+
+                if (string.IsNullOrEmpty(currentToken))
+                {
+                    _logger.LogWarning("Cannot get WebSocket token: No current token available");
+                    return null;
+                }
+
+                var baseUrl = host.TrimEnd('/');
+                var url = $"{baseUrl}/v1/identity/websocket-token";
+
+                _logger.LogDebug("Requesting WebSocket token from: {Url}", url);
+
+                using var httpClient = new HttpClient();
+                // Use Basic authorization with the current Spacetime token
+                var authValue = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"token:{currentToken}"));
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {authValue}");
+                httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                var response = await httpClient.PostAsync(url, null);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Failed to get WebSocket token. Status: {StatusCode}, Error: {Error}", 
+                        response.StatusCode, errorContent);
+                    return null;
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var tokenResponse = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(responseContent);
+                
+                if (tokenResponse.TryGetProperty("token", out var tokenElement))
+                {
+                    var newToken = tokenElement.GetString();
+                    _logger.LogDebug("Successfully obtained WebSocket token");
+                    return newToken;
+                }
+
+                _logger.LogWarning("WebSocket token response did not contain 'token' field");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error getting WebSocket token: {Message}", ex.Message);
+                return null;
+            }
+        }
+
+        // Method to fetch logs from SpacetimeDB HTTP API
+        public async Task<string> FetchLogsAsync(int numLines = 100, bool follow = false)
+        {
+            try
+            {
+                var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
+                var databaseName = _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark";
+                
+                // Try multiple token sources in order of preference:
+                // 1. Configuration AdminToken (highest priority - owner token)
+                // 2. Environment variable SPACETIME_TOKEN
+                // 3. WebSocket token (short-lived token from current connection)
+                // 4. AuthToken (client connection token - may not have log permissions)
+                var token = _configuration["SpacetimeDB:AdminToken"]
+                           ?? Environment.GetEnvironmentVariable("SPACETIME_TOKEN")
+                           ?? await GetWebSocketTokenAsync()
+                           ?? AuthToken.Token;
+
+                if (string.IsNullOrEmpty(token))
+                {
+                    _logger.LogWarning("Cannot fetch logs: No authentication token available");
+                    return "Warning: No authentication token available. Logs cannot be fetched.";
+                }
+
+                // Try to get database identity dynamically, fall back to configured value or name
+                string? databaseIdentity = null;
+                
+                // First try configured identity
+                databaseIdentity = _configuration["SpacetimeDB:DatabaseIdentity"];
+                
+                // If not configured, try to fetch it from the API using database name
+                if (string.IsNullOrEmpty(databaseIdentity))
+                {
+                    _logger.LogDebug("Database identity not configured, fetching from API using name: {Name}", databaseName);
+                    databaseIdentity = await GetDatabaseIdentityAsync(databaseName, token);
+                }
+                
+                var baseUrl = host.TrimEnd('/');
+                
+                // Try with identity first if available
+                if (!string.IsNullOrEmpty(databaseIdentity))
+                {
+                    var identityUrl = $"{baseUrl}/v1/database/{databaseIdentity}/logs?num_lines={numLines}";
+                    if (follow) identityUrl += "&follow=true";
+                    
+                    _logger.LogDebug("Attempting to fetch logs using database identity: {Identity}", databaseIdentity);
+                    
+                    using var httpClient1 = new HttpClient();
+                    httpClient1.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+                    httpClient1.Timeout = TimeSpan.FromSeconds(30);
+                    
+                    var response1 = await httpClient1.GetAsync(identityUrl);
+                    
+                    if (response1.IsSuccessStatusCode)
+                    {
+                        var logs = await response1.Content.ReadAsStringAsync();
+                        _logger.LogInformation("Successfully fetched {Lines} lines of logs using identity", numLines);
+                        return logs;
+                    }
+                    else if (response1.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        _logger.LogWarning("Current identity does not have permission to view module logs.");
+                        return GetForbiddenMessage(databaseName);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Identity-based fetch failed with {Status}, trying with database name", response1.StatusCode);
+                    }
+                }
+                
+                // Fall back to database name
+                var nameUrl = $"{baseUrl}/v1/database/{databaseName}/logs?num_lines={numLines}";
+                if (follow) nameUrl += "&follow=true";
+                
+                _logger.LogDebug("Fetching logs using database name: {Name}", databaseName);
+
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+                var response = await httpClient.GetAsync(nameUrl);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    _logger.LogWarning("Current identity does not have permission to view module logs.");
+                    return GetForbiddenMessage(databaseName);
+                }
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Failed to fetch logs. Status: {StatusCode}, Error: {Error}", 
+                        response.StatusCode, errorContent);
+                    _logger.LogInformation("Reducer logs not available via HTTP API. Check SpacetimeDB server console for reducer logs.");
+                    return $"Warning: Failed to fetch logs: {response.StatusCode} - {errorContent}";
+                }
+
+                var finalLogs = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation("Successfully fetched {Lines} lines of logs using database name", numLines);
+                
+                return finalLogs;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error fetching SpacetimeDB logs: {Message}", ex.Message);
+                return $"Warning: Error fetching logs: {ex.Message}";
+            }
+        }
+
+        private string GetForbiddenMessage(string databaseName)
+        {
+            _logger.LogInformation("To enable log fetching:");
+            _logger.LogInformation("  Option 1: Add admin token to appsettings.json:");
+            _logger.LogInformation("    \"SpacetimeDB\": {{");
+            _logger.LogInformation("      \"AdminToken\": \"<your-token-from-spacetime-login-show>\"");
+            _logger.LogInformation("    }}");
+            _logger.LogInformation("  Option 2: Set SPACETIME_TOKEN environment variable");
+            _logger.LogInformation("  Option 3: Use CLI: spacetime logs {DatabaseName}", databaseName);
+            return $"Warning: Current identity does not have permission to view module logs.\n" +
+                   $"To enable log fetching, add AdminToken to appsettings.json or set SPACETIME_TOKEN env var.\n" +
+                   $"Run 'spacetime login show --token' to get your token.\n\n" +
+                   $"Alternatively, use the SpacetimeDB CLI:\n" +
+                   $"  spacetime logs {databaseName}";
+        }
+
+        // Method to fetch and log recent reducer logs (convenience method)
+        public async Task<string> FetchReducerLogsAsync(string reducerName = "RegisterOpenIdClient", int numLines = 200)
+        {
+            try
+            {
+                _logger.LogDebug("Attempting to fetch recent logs for reducer: {ReducerName}", reducerName);
+                
+                var allLogs = await FetchLogsAsync(numLines, follow: false);
+                
+                if (allLogs.StartsWith("Warning:"))
+                {
+                    _logger.LogInformation("Reducer logs not available via HTTP API. Check SpacetimeDB server console for reducer logs.");
+                    return allLogs;
+                }
+
+                // Filter logs for the specific reducer
+                var lines = allLogs.Split('\n');
+                var reducerLogs = lines.Where(line => line.Contains($"[{reducerName}]")).ToList();
+
+                if (reducerLogs.Count == 0)
+                {
+                    _logger.LogDebug("No logs found for reducer: {ReducerName} in fetched logs", reducerName);
+                    return $"No logs found for reducer: {reducerName} in the last {numLines} log lines.\n" +
+                           $"Check the SpacetimeDB server console for detailed reducer logs.";
+                }
+
+                var filteredLogs = string.Join("\n", reducerLogs);
+                _logger.LogInformation("Found {Count} log lines for reducer: {ReducerName}", reducerLogs.Count, reducerName);
+                
+                // Also log to console for visibility
+                _logger.LogInformation("=== SpacetimeDB Reducer Logs: {ReducerName} ===", reducerName);
+                foreach (var line in reducerLogs)
+                {
+                    _logger.LogInformation(line);
+                }
+                _logger.LogInformation("=== End of Reducer Logs ===");
+
+                return filteredLogs;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error fetching reducer logs: {Message}", ex.Message);
+                return $"Warning: Error fetching reducer logs: {ex.Message}\n" +
+                       $"Check the SpacetimeDB server console for detailed reducer logs.";
+            }
+        }
+
         // Method to get the local identity
         public Identity? GetLocalIdentity()
         {
