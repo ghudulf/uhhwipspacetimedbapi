@@ -1,0 +1,53 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StdbModule", "server\StdbModule.csproj", "{4681FD5F-785F-8066-C1E6-5F07AE19C97C}"
+EndProject
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketSalesApp.Services", "BRU-AVTOPARK-AspireAPI\TicketSalesApp.Services\TicketSalesApp.Services.csproj", "{87534463-19F1-0FFC-5AC1-740329962CDB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.ServiceDefaults", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj", "{675E730F-1E60-5575-F5F1-8225AECCA10E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.AppHost", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.AppHost\BRU-AVTOPARK-AspireAPI.AppHost.csproj", "{E13606D9-1876-EFEF-26A5-62278C616ECC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BRU-AVTOPARK-AspireAPI.ApiService", "BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\BRU-AVTOPARK-AspireAPI.ApiService.csproj", "{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4681FD5F-785F-8066-C1E6-5F07AE19C97C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02204E44-8456-3AB0-A9D4-BB25F23A766E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87534463-19F1-0FFC-5AC1-740329962CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87534463-19F1-0FFC-5AC1-740329962CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87534463-19F1-0FFC-5AC1-740329962CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87534463-19F1-0FFC-5AC1-740329962CDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{675E730F-1E60-5575-F5F1-8225AECCA10E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{675E730F-1E60-5575-F5F1-8225AECCA10E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{675E730F-1E60-5575-F5F1-8225AECCA10E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{675E730F-1E60-5575-F5F1-8225AECCA10E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E13606D9-1876-EFEF-26A5-62278C616ECC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E13606D9-1876-EFEF-26A5-62278C616ECC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E13606D9-1876-EFEF-26A5-62278C616ECC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E13606D9-1876-EFEF-26A5-62278C616ECC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50401C8A-F7A7-94E8-166A-9D7C15A3FCC6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5D3FFD9B-3FC5-470E-B33F-2F0C1B702633}
+	EndGlobalSection
+EndGlobal
