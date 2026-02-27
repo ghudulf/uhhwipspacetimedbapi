@@ -17,6 +17,4 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesA
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\BRU.Avto.75FB1EE8.Up2Date
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.genruntimeconfig.cache
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\ref\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\refint\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.pdb
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\obj\Debug\net9.0\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.sourcelink.json
