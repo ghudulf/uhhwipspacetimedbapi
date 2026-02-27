@@ -27,15 +27,11 @@ using MsBox.Avalonia;
 using Avalonia.Data;
 using Avalonia.Markup.Xaml.Templates;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
-<<<<<<< HEAD
-using SpacetimeDB.Types;
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 using SpacetimeDB.Types;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Globalization;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -45,10 +41,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-=======
         private List<UserProfile> _allUsers = new();
->>>>>>> maintofix
         private ObservableCollection<UserProfile> _users = new();
         public ObservableCollection<UserProfile> Users
         {
@@ -56,10 +49,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _users, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Role> _allRoles = new();
->>>>>>> maintofix
         private ObservableCollection<Role> _roles = new();
         public ObservableCollection<Role> Roles
         {
@@ -67,10 +57,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _roles, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Permission> _allPermissions = new();
->>>>>>> maintofix
         private ObservableCollection<Permission> _permissions = new();
         public ObservableCollection<Permission> Permissions
         {
@@ -153,18 +140,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-<<<<<<< HEAD
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-            };
-
-            // Subscribe to auth token changes
-            ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
-            {
-                // Create a new client with the updated token
-                _httpClient.Dispose();
-                _httpClient = ApiClientService.Instance.CreateClient();
-                // Reload data with the new token
-=======
             };
 
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
@@ -172,7 +147,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Auth token changed in UserManagementViewModel. Recreating HttpClient and reloading data.");
                 _httpClient.Dispose();
                 _httpClient = ApiClientService.Instance.CreateClient();
->>>>>>> maintofix
                 LoadData().ConfigureAwait(false);
             };
 
@@ -182,53 +156,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task LoadData()
         {
-<<<<<<< HEAD
-=======
             Log.Information("Starting LoadData for UserManagementViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                // Load Users
-                var usersResponse = await _httpClient.GetAsync($"{_baseUrl}/Users");
-                if (usersResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await usersResponse.Content.ReadAsStringAsync();
-                    var loadedUsers = JsonSerializer.Deserialize<List<UserProfile>>(jsonString, _jsonOptions);
-                    if (loadedUsers != null)
-                    {
-                        Users = new ObservableCollection<UserProfile>(loadedUsers);
-                    }
-                }
-
-                // Load Roles
-                var rolesResponse = await _httpClient.GetAsync($"{_baseUrl}/Roles");
-                if (rolesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await rolesResponse.Content.ReadAsStringAsync();
-                    var loadedRoles = JsonSerializer.Deserialize<List<Role>>(jsonString, _jsonOptions);
-                    if (loadedRoles != null)
-                    {
-                        Roles = new ObservableCollection<Role>(loadedRoles);
-                    }
-                }
-
-                // Load Permissions
-                var permissionsResponse = await _httpClient.GetAsync($"{_baseUrl}/Permissions");
-                if (permissionsResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await permissionsResponse.Content.ReadAsStringAsync();
-                    var loadedPermissions = JsonSerializer.Deserialize<List<Permission>>(jsonString, _jsonOptions);
-                    if (loadedPermissions != null)
-                    {
-                        Permissions = new ObservableCollection<Permission>(loadedPermissions);
-                    }
-                }
-=======
                 Log.Debug("Initiating API calls for Users, Roles, Permissions");
                 Task<HttpResponseMessage> usersTask = _httpClient.GetAsync($"{_baseUrl}/Users");
                 Task<HttpResponseMessage> rolesTask = _httpClient.GetAsync($"{_baseUrl}/Roles");
@@ -436,15 +370,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Permissions = new ObservableCollection<Permission>(_allPermissions);
 
                 Log.Information("Finished processing data. Displaying {UserCount} users, {RoleCount} roles, {PermissionCount} permissions.", Users.Count, Roles.Count, Permissions.Count);
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in UserManagementViewModel");
                 // Clear collections on fatal error
@@ -456,65 +385,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Permissions = new ObservableCollection<Permission>();
                 SelectedUserPermissions = new ObservableCollection<Permission>();
                 SelectedRolePermissions = new ObservableCollection<Permission>();
->>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-=======
                 Log.Information("LoadData finished for UserManagementViewModel.");
->>>>>>> maintofix
             }
         }
 
         private async Task LoadUserRolesAndPermissions()
         {
-<<<<<<< HEAD
-            if (SelectedUser == null) return;
-
-            try
-            {
-                // Load user permissions
-                var permissionsResponse = await _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/permissions");
-                if (permissionsResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await permissionsResponse.Content.ReadAsStringAsync();
-                    var permissions = JsonSerializer.Deserialize<List<Permission>>(jsonString, _jsonOptions);
-                    if (permissions != null)
-                    {
-                        SelectedUserPermissions = new ObservableCollection<Permission>(permissions);
-                    }
-                }
-                else
-                {
-                    Log.Warning("Failed to load permissions for user {UserId}. Status: {StatusCode}", 
-                        SelectedUser.LegacyUserId, permissionsResponse.StatusCode);
-                }
-
-                // Load user roles
-                var rolesResponse = await _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/roles");
-                if (rolesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await rolesResponse.Content.ReadAsStringAsync();
-                    var userRoles = JsonSerializer.Deserialize<List<Role>>(jsonString, _jsonOptions);
-                    if (userRoles != null)
-                    {
-                        // Update the roles collection to highlight the user's roles
-                        var allRoles = Roles.ToList();
-                        foreach (var role in allRoles)
-                        {
-                            role.IsActive = userRoles.Any(ur => ur.RoleId == role.RoleId);
-                        }
-                        Roles = new ObservableCollection<Role>(allRoles);
-                    }
-                }
-                else
-                {
-                    Log.Warning("Failed to load roles for user {UserId}. Status: {StatusCode}", 
-                        SelectedUser.LegacyUserId, rolesResponse.StatusCode);
-                }
-=======
             if (SelectedUser == null)
             {
                  Log.Debug("SelectedUser is null, clearing user-specific roles/permissions.");
@@ -650,15 +530,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  Roles = new ObservableCollection<Role>(currentRoles); // Re-assign to trigger update
 
                  Log.Information("Finished loading roles and permissions for User {UserId}. Assigned Roles Count: {RoleCount}, Permissions Count: {PermCount}", SelectedUser.LegacyUserId, userRoleIds.Count, SelectedUserPermissions.Count);
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error loading user roles and permissions for user {UserId}", SelectedUser.LegacyUserId);
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading user roles and permissions: {ex.Message}";
-=======
                 ErrorMessage = $"Ошибка загрузки ролей/разрешений пользователя: {ex.Message}";
                 SelectedUserPermissions = new ObservableCollection<Permission>(); // Clear on error
                  // Optionally reset Roles check state
@@ -668,15 +544,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                  IsBusy = false;
                   Log.Debug("LoadUserRolesAndPermissions finished for User {UserId}", SelectedUser?.LegacyUserId ?? 0);
->>>>>>> maintofix
             }
         }
 
         private async Task LoadRolePermissions()
         {
-<<<<<<< HEAD
-            if (SelectedRole == null) return;
-=======
             if (SelectedRole == null)
             {
                  Log.Debug("SelectedRole is null, clearing role-specific permissions.");
@@ -686,27 +558,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
              Log.Information("Loading permissions for selected role: {RoleId} ({RoleName})", SelectedRole.RoleId, SelectedRole.Name);
              IsBusy = true;
->>>>>>> maintofix
 
             try
             {
                 var response = await _httpClient.GetAsync($"{_baseUrl}/Roles/{SelectedRole.RoleId}/permissions");
-<<<<<<< HEAD
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var permissions = JsonSerializer.Deserialize<List<Permission>>(jsonString, _jsonOptions);
-                    if (permissions != null)
-                    {
-                        SelectedRolePermissions = new ObservableCollection<Permission>(permissions);
-                    }
-                }
-                else
-                {
-                    Log.Warning("Failed to load permissions for role {RoleId}. Status: {StatusCode}", 
-                        SelectedRole.RoleId, response.StatusCode);
-                }
-=======
                 Log.Information("Processing Role Permissions response for Role {RoleId}. Status: {StatusCode}", SelectedRole.RoleId, response.StatusCode);
                 List<Permission> loadedRolePermissions = new();
                 if (response.IsSuccessStatusCode)
@@ -757,15 +612,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 SelectedRolePermissions = new ObservableCollection<Permission>(loadedRolePermissions);
                  Log.Debug("Set SelectedRolePermissions count: {Count}", SelectedRolePermissions.Count);
 
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error loading role permissions for role {RoleId}", SelectedRole.RoleId);
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading role permissions: {ex.Message}";
-=======
                 ErrorMessage = $"Ошибка загрузки разрешений роли: {ex.Message}";
                  SelectedRolePermissions = new ObservableCollection<Permission>(); // Clear on error
             }
@@ -773,7 +624,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
              {
                  IsBusy = false;
                   Log.Debug("LoadRolePermissions finished for Role {RoleId}", SelectedRole?.RoleId ?? 0);
->>>>>>> maintofix
             }
         }
 
@@ -984,18 +834,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Login = loginBox.Text,
                         Password = passwordBox.Text,
-<<<<<<< HEAD
-                        Role = legacyRoleComboBox.SelectedIndex,
-                        RoleId = selectedRole.RoleId
-                    };
-
-                    var json = JsonSerializer.Serialize(newUser);
-=======
                         Role = selectedRole.LegacyRoleId,
                     };
 
                     var json = JsonSerializer.Serialize(newUser, _jsonOptions);
->>>>>>> maintofix
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.PostAsync($"{_baseUrl}/Users", content);
@@ -1166,17 +1008,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Login = loginBox.Text,
                         Password = string.IsNullOrWhiteSpace(passwordBox.Text) ? null : passwordBox.Text,
-<<<<<<< HEAD
-                        RoleId = selectedRole.RoleId,
-                        Email = string.IsNullOrWhiteSpace(emailBox.Text) ? null : emailBox.Text,
-                        PhoneNumber = string.IsNullOrWhiteSpace(phoneBox.Text) ? null : phoneBox.Text,
-                        IsActive = isActiveCheckBox.IsChecked
-=======
                         Role = selectedRole.LegacyRoleId,
                         Email = string.IsNullOrWhiteSpace(emailBox.Text) ? null : emailBox.Text,
                         PhoneNumber = string.IsNullOrWhiteSpace(phoneBox.Text) ? null : phoneBox.Text,
                         IsActive = isActiveCheckBox.IsChecked ?? false
->>>>>>> maintofix
                     };
 
                     var json = JsonSerializer.Serialize(updateUser, _jsonOptions);
@@ -1377,25 +1212,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
-<<<<<<< HEAD
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                LoadData().ConfigureAwait(false);
-                return;
-            }
-
-            var filteredUsers = Users.Where(u => 
-                u.Login.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                u.LegacyUserId.ToString().Contains(value) ||
-                (u.Email?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (u.PhoneNumber?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false)
-            ).ToList();
-
-            Users = new ObservableCollection<UserProfile>(filteredUsers);
-        }
-    }
-}
-=======
              Log.Debug("Search text changed: '{SearchText}'", value);
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -1417,4 +1233,3 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
     }
 }
->>>>>>> maintofix

@@ -1000,7 +1000,7 @@
       "Microsoft.Bcl.AsyncInterfaces/7.0.0": {
         "type": "package",
         "compile": {
-          "lib/netstandard2.1/_._": {
+          "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
             "related": ".xml"
           }
         },
@@ -1625,6 +1625,25 @@
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Abstractions/7.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "7.0.0"
+        },
+        "compile": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
         }
       },
       "Microsoft.Extensions.Http/6.0.0": {
@@ -2254,7 +2273,7 @@
           }
         }
       },
-      "SpacetimeDB.BSATN.Runtime/1.0.0": {
+      "SpacetimeDB.BSATN.Runtime/2.0.1": {
         "type": "package",
         "compile": {
           "lib/net8.0/SpacetimeDB.BSATN.Runtime.dll": {
@@ -2267,10 +2286,10 @@
           }
         }
       },
-      "SpacetimeDB.ClientSDK/1.0.1": {
+      "SpacetimeDB.ClientSDK/2.0.1": {
         "type": "package",
         "dependencies": {
-          "SpacetimeDB.BSATN.Runtime": "1.0.0"
+          "SpacetimeDB.BSATN.Runtime": "2.0.1"
         },
         "compile": {
           "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll": {}
@@ -2445,6 +2464,15 @@
           "lib/netstandard2.0/SukiUI.dll": {
             "related": ".xml"
           }
+        }
+      },
+      "System.Buffers/4.5.1": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
         }
       },
       "System.CodeDom/6.0.0": {
@@ -2765,6 +2793,33 @@
           "lib/net8.0/Tmds.DBus.Protocol.dll": {}
         }
       },
+      "WebView.Avalonia/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "Microsoft.Bcl.AsyncInterfaces": "7.0.0",
+          "Microsoft.Extensions.FileProviders.Abstractions": "7.0.0",
+          "System.Buffers": "4.5.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.dll": {},
+          "lib/netstandard2.0/AvaloniaWebView.Shared.dll": {},
+          "lib/netstandard2.0/DryIoc.Shared.dll": {},
+          "lib/netstandard2.0/WebView.Avalonia.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/WebView.Core.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.dll": {},
+          "lib/netstandard2.0/AvaloniaWebView.Shared.dll": {},
+          "lib/netstandard2.0/DryIoc.Shared.dll": {},
+          "lib/netstandard2.0/WebView.Avalonia.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/WebView.Core.dll": {}
+        }
+      },
       "TicketSalesApp.Services/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -2778,7 +2833,7 @@
           "OpenIddict.Server.AspNetCore": "4.1.0",
           "OpenIddict.Validation.AspNetCore": "4.1.0",
           "QRCoder": "1.6.0",
-          "SpacetimeDB.ClientSDK": "1.0.1"
+          "SpacetimeDB.ClientSDK": "2.0.1"
         },
         "compile": {
           "bin/placeholder/TicketSalesApp.Services.dll": {}
@@ -5457,6 +5512,33 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "Microsoft.Extensions.FileProviders.Abstractions/7.0.0": {
+      "sha512": "NyawiW9ZT/liQb34k9YqBSNPLuuPkrjMgQZ24Y/xXX1RoiBkLUdPMaQTmxhZ5TYu8ZKZ9qayzil75JX95vGQUg==",
+      "type": "package",
+      "path": "microsoft.extensions.fileproviders.abstractions/7.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.FileProviders.Abstractions.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.FileProviders.Abstractions.targets",
+        "lib/net462/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net462/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "microsoft.extensions.fileproviders.abstractions.7.0.0.nupkg.sha512",
+        "microsoft.extensions.fileproviders.abstractions.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
     "Microsoft.Extensions.Http/6.0.0": {
       "sha512": "15+pa2G0bAMHbHewaQIdr/y6ag2H3yh4rd9hTXavtWDzQBkvpe2RMqFg8BxDpcQWssmjmBApGPcw93QRz6YcMg==",
       "type": "package",
@@ -6440,10 +6522,10 @@
         "skiasharp.nativeassets.win32.nuspec"
       ]
     },
-    "SpacetimeDB.BSATN.Runtime/1.0.0": {
-      "sha512": "44h4TB3IO2It4H0ieuI2/3ZdhGsvuR195sLUa7IiGlpWi0hwePv/TiMcQlFI6+AicKyx5v8F5CqA1IztKdQahQ==",
+    "SpacetimeDB.BSATN.Runtime/2.0.1": {
+      "sha512": "dq+J9fG56/zoeOydfITCAvboPcBeW4zI87bPD3QQ5d6mlpaAlkVvuAOM/B7iHgOLu29pPhVnx2mQ92rhoBHu+w==",
       "type": "package",
-      "path": "spacetimedb.bsatn.runtime/1.0.0",
+      "path": "spacetimedb.bsatn.runtime/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -6455,21 +6537,21 @@
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.dll",
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.xml",
         "logo.png",
-        "spacetimedb.bsatn.runtime.1.0.0.nupkg.sha512",
+        "spacetimedb.bsatn.runtime.2.0.1.nupkg.sha512",
         "spacetimedb.bsatn.runtime.nuspec"
       ]
     },
-    "SpacetimeDB.ClientSDK/1.0.1": {
-      "sha512": "GqG5Wt/Onk0uOuYDfS7x94Ic7ZBfoFdhmdk1Ega9D8DS0oUT2dVq4bTwJ1zlPC+pn/+ZRC+jkeuzVIaTY5CHuQ==",
+    "SpacetimeDB.ClientSDK/2.0.1": {
+      "sha512": "Uw4lkwDVzrI3B9doHqXQWpEmoqcqiUF1wQUVJ7gDVOGQvqBu+3lfol5yz0KhSptBvrVrUgI4ObVdYrMyddP9ew==",
       "type": "package",
-      "path": "spacetimedb.clientsdk/1.0.1",
+      "path": "spacetimedb.clientsdk/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
         "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll",
         "logo.png",
-        "spacetimedb.clientsdk.1.0.1.nupkg.sha512",
+        "spacetimedb.clientsdk.2.0.1.nupkg.sha512",
         "spacetimedb.clientsdk.nuspec"
       ]
     },
@@ -6595,6 +6677,37 @@
         "lib/netstandard2.0/SukiUI.xml",
         "sukiui.6.0.0.nupkg.sha512",
         "sukiui.nuspec"
+      ]
+    },
+    "System.Buffers/4.5.1": {
+      "sha512": "Rw7ijyl1qqRS0YQD/WycNst8hUUMgrMH4FCn1nNm27M4VxchZ1js3fVjQaANHO5f3sN4isvP4a+Met9Y4YomAg==",
+      "type": "package",
+      "path": "system.buffers/4.5.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net461/System.Buffers.dll",
+        "lib/net461/System.Buffers.xml",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.1/System.Buffers.dll",
+        "lib/netstandard1.1/System.Buffers.xml",
+        "lib/netstandard2.0/System.Buffers.dll",
+        "lib/netstandard2.0/System.Buffers.xml",
+        "lib/uap10.0.16299/_._",
+        "ref/net45/System.Buffers.dll",
+        "ref/net45/System.Buffers.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.1/System.Buffers.dll",
+        "ref/netstandard1.1/System.Buffers.xml",
+        "ref/netstandard2.0/System.Buffers.dll",
+        "ref/netstandard2.0/System.Buffers.xml",
+        "ref/uap10.0.16299/_._",
+        "system.buffers.4.5.1.nupkg.sha512",
+        "system.buffers.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
       ]
     },
     "System.CodeDom/6.0.0": {
@@ -7202,6 +7315,26 @@
         "tmds.dbus.protocol.nuspec"
       ]
     },
+    "WebView.Avalonia/11.0.0.1": {
+      "sha512": "uKIc+XdPM8Q1pMi6F5WvK+2nssaceCetV9xvnWRDU4j8Hc8mVGlPzOvmqJW1OqrXxTKzY3NZsInVIQ5PYRs3zg==",
+      "type": "package",
+      "path": "webview.avalonia/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/Avalonia.WebView.dll",
+        "lib/netstandard2.0/AvaloniaWebView.Shared.dll",
+        "lib/netstandard2.0/DryIoc.Shared.dll",
+        "lib/netstandard2.0/WebView.Avalonia.dll",
+        "lib/netstandard2.0/WebView.Avalonia.pdb",
+        "lib/netstandard2.0/WebView.Avalonia.xml",
+        "lib/netstandard2.0/WebView.Core.dll",
+        "webview.avalonia.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
     "TicketSalesApp.Services/1.0.0": {
       "type": "project",
       "path": "../BRU-AVTOPARK-AspireAPI/TicketSalesApp.Services/TicketSalesApp.Services.csproj",
@@ -7214,7 +7347,7 @@
       "Avalonia.Desktop >= 11.2.3",
       "Avalonia.Diagnostics >= 11.2.3",
       "Avalonia.Fonts.Inter >= 11.2.3",
-      "Avalonia.Labs.Controls >= 11.0.5",
+      "Avalonia.Labs.Controls >= 11.0.10",
       "Avalonia.ReactiveUI >= 11.2.3",
       "Avalonia.Themes.Fluent >= 11.2.3",
       "Classic.Avalonia.Theme >= 11.2.0.7",
@@ -7240,10 +7373,12 @@
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.Debug >= 3.0.0",
       "Serilog.Sinks.File >= 6.0.0",
+      "SpacetimeDB.ClientSDK >= 2.0.1",
       "SukiUI >= 6.0.0",
       "System.IdentityModel.Tokens.Jwt >= 7.4.0",
       "System.Text.Json >= 9.0.1",
-      "TicketSalesApp.Services >= 1.0.0"
+      "TicketSalesApp.Services >= 1.0.0",
+      "WebView.Avalonia >= 11.0.0.1"
     ]
   },
   "packageFolders": {
@@ -7323,7 +7458,7 @@
           },
           "Avalonia.Labs.Controls": {
             "target": "Package",
-            "version": "[11.0.5, )"
+            "version": "[11.0.10, )"
           },
           "Avalonia.ReactiveUI": {
             "target": "Package",
@@ -7427,6 +7562,10 @@
             "target": "Package",
             "version": "[6.0.0, )"
           },
+          "SpacetimeDB.ClientSDK": {
+            "target": "Package",
+            "version": "[2.0.1, )"
+          },
           "SukiUI": {
             "target": "Package",
             "version": "[6.0.0, )"
@@ -7438,6 +7577,10 @@
           "System.Text.Json": {
             "target": "Package",
             "version": "[9.0.1, )"
+          },
+          "WebView.Avalonia": {
+            "target": "Package",
+            "version": "[11.0.0.1, )"
           }
         },
         "imports": [
@@ -7459,17 +7602,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
-      "libraryId": "Avalonia.Labs.Controls",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  }
 }

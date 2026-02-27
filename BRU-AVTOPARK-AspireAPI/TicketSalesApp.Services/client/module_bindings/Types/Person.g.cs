@@ -13,19 +13,11 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Person
     {
-<<<<<<< HEAD
-        [DataMember(Name = "Id")]
-        public int Id;
-        [DataMember(Name = "Name")]
-        public string Name;
-        [DataMember(Name = "Age")]
-=======
         [DataMember(Name = "id")]
         public int Id;
         [DataMember(Name = "name")]
         public string Name;
         [DataMember(Name = "age")]
->>>>>>> maintofix
         public int Age;
 
         public Person(

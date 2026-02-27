@@ -14,11 +14,8 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SpacetimeDB.Types;
 using System.Net.Http.Json;
-<<<<<<< HEAD
-=======
 using System.Text.Json.Nodes;
 using System.Globalization;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -44,10 +41,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-=======
         private List<RouteStatistic> _allRouteStatistics = new();
->>>>>>> maintofix
         private ObservableCollection<RouteStatistic> _routeStatistics = new();
         public ObservableCollection<RouteStatistic> RouteStatistics
         {
@@ -55,10 +49,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _routeStatistics, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<DailyStatistic> _allDailyStatistics = new();
->>>>>>> maintofix
         private ObservableCollection<DailyStatistic> _dailyStatistics = new();
         public ObservableCollection<DailyStatistic> DailyStatistics
         {
@@ -165,24 +156,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-<<<<<<< HEAD
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-=======
                 // ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
->>>>>>> maintofix
             };
 
             InitializeCharts();
 
-<<<<<<< HEAD
-            ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
-            {
-=======
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) => // Use sender and token
             {
                  Log.Information("Auth token changed in SalesStatisticsViewModel. Recreating HttpClient and reloading data.");
                  _httpClient.Dispose();
->>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -241,61 +223,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private async Task LoadData()
         {
-<<<<<<< HEAD
-=======
             Log.Information("Starting LoadData for SalesStatisticsViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
-<<<<<<< HEAD
-
-                var salesResponse = await _httpClient.GetAsync(
-                    $"{_baseUrl}/TicketSales/search?startDate={StartDate.Date:yyyy-MM-dd}&endDate={EndDate.Date:yyyy-MM-dd}");
-
-                if (salesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await salesResponse.Content.ReadAsStringAsync();
-                    var sales = JsonSerializer.Deserialize<List<Sale>>(jsonString, _jsonOptions);
-
-                    if (sales != null && sales.Any())
-                    {
-                        // Fetch Tickets and Routes data separately for calculations
-                        var ticketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets");
-                        var routesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-                        
-                        List<Ticket> allTickets = new();
-                        List<Route> allRoutes = new();
-
-                        if (ticketsResponse.IsSuccessStatusCode)
-                            allTickets = await ticketsResponse.Content.ReadFromJsonAsync<List<Ticket>>(_jsonOptions) ?? new();
-                        if (routesResponse.IsSuccessStatusCode)
-                            allRoutes = await routesResponse.Content.ReadFromJsonAsync<List<Route>>(_jsonOptions) ?? new();
-
-                        // Calculate route statistics using fetched data
-                        var routeStats = sales
-                            .GroupBy(s => 
-                            {
-                                var ticket = allTickets.FirstOrDefault(t => t.TicketId == s.TicketId);
-                                var route = allRoutes.FirstOrDefault(r => r.RouteId == ticket?.RouteId);
-                                return route != null ? $"{route.StartPoint} - {route.EndPoint}" : "Unknown Route";
-                            })
-                            .Select(g => new RouteStatistic
-                            {
-                                RouteName = g.Key,
-                                TotalSales = g.Count(),
-                                TotalRevenue = (decimal)g.Sum(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)?.TicketPrice ?? 0),
-                                SalesPercentage = (double)g.Count() / sales.Count * 100
-                            })
-                            .OrderByDescending(r => r.TotalSales)
-                            .ToList();
-
-                        // Calculate daily statistics
-                        var dailyStats = sales
-                            .GroupBy(s => DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).Date)
-=======
                 // Reset calculated values
                 TotalSales = 0;
                 TotalRevenue = 0M;
@@ -462,44 +395,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         .Select(s => new { Sale = s, Ticket = ticketsDict.GetValueOrDefault(s.TicketId) })
                         .Where(st => st.Ticket != null) // Only consider sales with valid tickets
                         .GroupBy(st => DateTimeOffset.FromUnixTimeMilliseconds((long)st.Sale.SaleDate).Date) // Group by Date part only
->>>>>>> maintofix
                             .Select(g => new DailyStatistic
                             {
                                 Date = g.Key,
                                 TotalSales = g.Count(),
-<<<<<<< HEAD
-                                TotalRevenue = (decimal)g.Sum(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)?.TicketPrice ?? 0)
-=======
                             TotalRevenue = (decimal)g.Sum(st => st.Ticket!.TicketPrice)
->>>>>>> maintofix
                             })
                             .OrderBy(d => d.Date)
                             .ToList();
 
-<<<<<<< HEAD
-                        // Calculate growth rates
-                        for (int i = 1; i < dailyStats.Count; i++)
-                        {
-                            var previousSales = dailyStats[i - 1].TotalSales;
-                            var currentSales = dailyStats[i].TotalSales;
-                            dailyStats[i].GrowthRate = previousSales > 0 
-                                ? ((double)(currentSales - previousSales) / previousSales) * 100 
-                                : 0;
-                        }
-
-                        // Update collections
-                        RouteStatistics = new ObservableCollection<RouteStatistic>(routeStats);
-                        DailyStatistics = new ObservableCollection<DailyStatistic>(dailyStats);
-
-                        // Update summary statistics
-                        TotalSales = sales.Count;
-                        TotalRevenue = (decimal)sales.Sum(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)?.TicketPrice ?? 0);
-                        AverageGrowthRate = dailyStats.Count > 1 ? dailyStats.Skip(1).Average(d => d.GrowthRate) : 0;
-
-                        // Update charts
-                        UpdateChartsWithData(dailyStats, routeStats);
-                    }
-=======
                      Log.Information("Calculated {Count} daily statistics points.", dailyGrouped.Count);
                     _allDailyStatistics = CalculateGrowthRate(dailyGrouped);
                     DailyStatistics = new ObservableCollection<DailyStatistic>(_allDailyStatistics);
@@ -552,16 +456,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     _allRouteStatistics = new List<RouteStatistic>();
                     RouteStatistics = new ObservableCollection<RouteStatistic>();
                     InitializeCharts(); // Reset charts to default/empty state
->>>>>>> maintofix
                 }
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading sales statistics data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки и обработки статистики: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in SalesStatisticsViewModel");
                 // Clear data and reset charts on fatal error
@@ -572,17 +471,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  TotalSales = 0;
                  TotalRevenue = 0M;
                  AverageGrowthRate = 0.0;
->>>>>>> maintofix
                 InitializeCharts();
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-            }
-        }
-
-=======
                 Log.Information("LoadData finished for SalesStatisticsViewModel.");
             }
         }
@@ -622,7 +515,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
              return dailyStats;
         }
 
->>>>>>> maintofix
         private void UpdateChartsWithData(List<DailyStatistic> dailyStats, List<RouteStatistic> routeStats)
         {
             try

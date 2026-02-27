@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class ConductorStatisticsHandle : RemoteTableHandle<EventContext, ConductorStatistics>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "ConductorStatistics";
-=======
             protected override string RemoteTableName => "conductor_statistics";
->>>>>>> maintofix
 
             public sealed class StatIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly ConductorStatisticsHandle ConductorStatistics;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class ConductorStatisticsCols
     {
@@ -104,5 +98,4 @@ namespace SpacetimeDB.Types
             StatId = new global::SpacetimeDB.IxCol<ConductorStatistics, uint>(tableName, "stat_id");
         }
     }
->>>>>>> maintofix
 }

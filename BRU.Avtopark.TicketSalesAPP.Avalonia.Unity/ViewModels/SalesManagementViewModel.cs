@@ -15,22 +15,16 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Serilog;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
-<<<<<<< HEAD
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
->>>>>>> maintofix
 using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
 using Avalonia.Controls.Templates;
 
 using System.Windows.Input;
-<<<<<<< HEAD
-=======
 using System.Text.Json.Nodes;
 using System.Globalization;
 using Avalonia.Data.Converters;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -40,10 +34,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-=======
         private List<Sale> _allSales = new();
->>>>>>> maintofix
         private ObservableCollection<Sale> _sales = new();
         public ObservableCollection<Sale> Sales
         {
@@ -51,10 +42,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _sales, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Ticket> _allAvailableTickets = new();
->>>>>>> maintofix
         private ObservableCollection<Ticket> _availableTickets = new();
         public ObservableCollection<Ticket> AvailableTickets
         {
@@ -62,11 +50,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _availableTickets, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Route> _allRoutes = new();
 
->>>>>>> maintofix
         private Sale? _selectedSale;
         public Sale? SelectedSale
         {
@@ -124,11 +109,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _hasError, value);
         }
 
-<<<<<<< HEAD
-=======
         private Dictionary<uint, Ticket> _allTicketsDict = new();
 
->>>>>>> maintofix
         public SalesManagementViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
@@ -136,20 +118,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-<<<<<<< HEAD
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-            };
-
-            ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
-            {
-=======
             };
 
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
                 Log.Information("Auth token changed in SalesManagementViewModel. Recreating HttpClient and reloading data.");
                 _httpClient.Dispose();
->>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -179,63 +153,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task LoadData()
         {
-<<<<<<< HEAD
-=======
             Log.Information("Starting LoadData for SalesManagementViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
-<<<<<<< HEAD
-
-                // First get all routes
-                var routesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-                if (!routesResponse.IsSuccessStatusCode)
-                {
-                    var error = await routesResponse.Content.ReadAsStringAsync();
-                    ErrorMessage = $"Failed to load routes: {error}";
-                    HasError = true;
-                    Log.Error("Failed to load routes: {Error}", error);
-                    return;
-                }
-
-                var routesJson = await routesResponse.Content.ReadAsStringAsync();
-                var routes = JsonSerializer.Deserialize<List<Route>>(routesJson, _jsonOptions);
-
-                if (routes == null || !routes.Any())
-                {
-                    ErrorMessage = "No routes available";
-                    HasError = true;
-                    return;
-                }
-
-                // Get sales for date range
-                var salesResponse = await _httpClient.GetAsync(
-                    $"{_baseUrl}/TicketSales/search?startDate={StartDate.Date:yyyy-MM-dd}&endDate={EndDate.Date:yyyy-MM-dd}");
-
-                if (salesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await salesResponse.Content.ReadAsStringAsync();
-                    var sales = JsonSerializer.Deserialize<List<Sale>>(jsonString, _jsonOptions);
-
-                    if (sales != null)
-                    {
-                        // Fetch all tickets to get prices for income calculation
-                        var allTicketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets");
-                        List<Ticket> allTickets = new();
-                        if (allTicketsResponse.IsSuccessStatusCode)
-                        {
-                            var ticketsJson = await allTicketsResponse.Content.ReadAsStringAsync();
-                            allTickets = JsonSerializer.Deserialize<List<Ticket>>(ticketsJson, _jsonOptions) ?? new();
-                        }
-
-                        Sales = new ObservableCollection<Sale>(sales.OrderByDescending(s => s.SaleDate));
-                        TotalIncome = (decimal)sales.Sum(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)?.TicketPrice ?? 0);
-                        Log.Information("Loaded {Count} sales with total income {Income}", sales.Count, TotalIncome);
-                    }
-=======
                 TotalIncome = 0M;
 
                 Log.Debug("Initiating API calls for Routes, All Tickets, Sales, and Available Tickets");
@@ -404,48 +327,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     }
                     catch (JsonException jsonEx) { Log.Error(jsonEx, "Failed to parse Sales JSON: {RawJson}", salesJsonString); }
                     catch (Exception ex) { Log.Error(ex, "Unexpected error during manual sales parsing."); }
->>>>>>> maintofix
                 }
                 else
                 {
                     var error = await salesResponse.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                    ErrorMessage = $"Failed to load sales: {error}";
-                    HasError = true;
-                    Log.Error("Failed to load sales: {Error}", error);
-                }
-
-                // Get available tickets (using dedicated endpoint)
-                var availableTicketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets/available");
-                if (availableTicketsResponse.IsSuccessStatusCode)
-                {
-                    var ticketsJson = await availableTicketsResponse.Content.ReadAsStringAsync();
-                    var availableTicketsList = JsonSerializer.Deserialize<List<Ticket>>(ticketsJson, _jsonOptions) ?? new();
-                    
-                    // Need route info for display, fetch all routes
-                    // Consider optimizing this if performance is an issue
-                    var allRoutesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-                    var routesJsonS = await allRoutesResponse.Content.ReadAsStringAsync();
-                    List<Route> allRoutes = new();
-                    if (allRoutesResponse.IsSuccessStatusCode)
-                    {
-                         
-                         allRoutes = JsonSerializer.Deserialize<List<Route>>(routesJsonS, _jsonOptions) ?? new();
-                    }
-
-                    // Order tickets by route start/end points
-                    var orderedTickets = availableTicketsList
-                        .Select(t => new { Ticket = t, Route = allRoutes.FirstOrDefault(r => r.RouteId == t.RouteId) })
-                        .Where(x => x.Route != null) // Ensure route exists
-                        .OrderBy(x => x.Route!.StartPoint)
-                        .ThenBy(x => x.Route!.EndPoint)
-                        .Select(x => x.Ticket)
-                        .ToList();
-
-                    AvailableTickets = new ObservableCollection<Ticket>(orderedTickets);
-                    Log.Information("Loaded {Count} available tickets across {RouteCount} routes", 
-                        orderedTickets.Count, routes.Count);
-=======
                     Log.Error("Failed to load sales. Status: {StatusCode}, Error: {Error}", salesResponse.StatusCode, error);
                     ErrorMessage = $"Ошибка загрузки продаж: {error}";
                     HasError = true;
@@ -507,17 +392,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     }
                     catch (JsonException jsonEx) { Log.Error(jsonEx, "Failed to parse Available Tickets JSON: {RawJson}", availableTicketsJson); }
                     catch (Exception ex) { Log.Error(ex, "Unexpected error during manual available tickets parsing."); }
->>>>>>> maintofix
                 }
                  else
                 {
                     var error = await availableTicketsResponse.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                    ErrorMessage = $"Failed to load available tickets: {error}";
-                    HasError = true;
-                    Log.Error("Failed to load available tickets: {Error}", error);
-                }
-=======
                     Log.Error("Failed to load available tickets. Status: {StatusCode}, Error: {Error}", availableTicketsResponse.StatusCode, error);
                     ErrorMessage = $"Ошибка загрузки доступных билетов: {error}";
                     HasError = true;
@@ -535,15 +413,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 AvailableTickets = new ObservableCollection<Ticket>(orderedAvailableTickets);
                 Log.Information("Updated Available Tickets collection. Count: {Count}", AvailableTickets.Count);
 
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading sales data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in SalesManagementViewModel");
                 _allSales = new List<Sale>();
@@ -552,7 +425,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 AvailableTickets = new ObservableCollection<Ticket>();
                 _allRoutes = new List<Route>();
                 TotalIncome = 0M;
->>>>>>> maintofix
             }
             finally
             {
@@ -576,10 +448,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     return;
                 }
 
-<<<<<<< HEAD
-                // Get all available tickets
-=======
->>>>>>> maintofix
                 var ticketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets/available");
                 if (!ticketsResponse.IsSuccessStatusCode)
                 {
@@ -774,10 +642,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     return;
                 }
 
-<<<<<<< HEAD
-                // Need to fetch Ticket and Route data to display info
-=======
->>>>>>> maintofix
                 var ticket = AvailableTickets.FirstOrDefault(t => t.TicketId == SelectedSale.TicketId) ?? 
                              (await _httpClient.GetFromJsonAsync<Ticket>($"{_baseUrl}/Tickets/{SelectedSale.TicketId}"));
                 var route = ticket != null ? (await _httpClient.GetFromJsonAsync<Route>($"{_baseUrl}/Routes/{ticket.RouteId}")) : null;
@@ -886,11 +750,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 if (mainWindow != null)
                 {
                     await dialog.ShowDialog(mainWindow);
-<<<<<<< HEAD
-                    await tcs.Task; // Wait for dialog result
-=======
                     await tcs.Task;
->>>>>>> maintofix
                 }
                 else
                 {
@@ -906,8 +766,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Error(ex, "Error in Delete method");
             }
         }
-<<<<<<< HEAD
-=======
 
         private void OnSearchTextChanged(string value)
         {
@@ -948,6 +806,5 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 throw new NotImplementedException();
             }
         }
->>>>>>> maintofix
     }
 } 

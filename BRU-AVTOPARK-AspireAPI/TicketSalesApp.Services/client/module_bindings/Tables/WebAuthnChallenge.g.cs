@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class WebAuthnChallengeHandle : RemoteTableHandle<EventContext, WebAuthnChallenge>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "WebAuthnChallenge";
-=======
             protected override string RemoteTableName => "web_authn_challenge";
->>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly WebAuthnChallengeHandle WebAuthnChallenge;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class WebAuthnChallengeCols
     {
@@ -70,5 +64,4 @@ namespace SpacetimeDB.Types
             Id = new global::SpacetimeDB.IxCol<WebAuthnChallenge, uint>(tableName, "id");
         }
     }
->>>>>>> maintofix
 }

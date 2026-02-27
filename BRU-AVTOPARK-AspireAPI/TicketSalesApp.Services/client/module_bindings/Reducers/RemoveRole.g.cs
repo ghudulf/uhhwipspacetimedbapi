@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void RemoveRole(SpacetimeDB.Identity userId, uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.RemoveRole(userId, roleId, actingUserId), this.SetCallReducerFlags.RemoveRoleFlags);
-=======
             conn.InternalCallReducer(new Reducer.RemoveRole(userId, roleId, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeRemoveRole(ReducerEventContext ctx, Reducer.RemoveRole args)
         {
-<<<<<<< HEAD
-            if (OnRemoveRole == null) return false;
-=======
             if (OnRemoveRole == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnRemoveRole(
                 ctx,
                 args.UserId,
@@ -58,19 +50,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RemoveRole : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "roleId")]
-            public uint RoleId;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "role_id")]
             public uint RoleId;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public RemoveRole(
@@ -88,19 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "RemoveRole";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RemoveRoleFlags;
-        public void RemoveRole(CallReducerFlags flags) => RemoveRoleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "remove_role";
         }
     }
->>>>>>> maintofix
 }

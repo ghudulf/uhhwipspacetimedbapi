@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateMaintenance(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser), this.SetCallReducerFlags.CreateMaintenanceFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateMaintenance(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateMaintenance(ReducerEventContext ctx, Reducer.CreateMaintenance args)
         {
-<<<<<<< HEAD
-            if (OnCreateMaintenance == null) return false;
-=======
             if (OnCreateMaintenance == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateMaintenance(
                 ctx,
                 args.BusId,
@@ -63,23 +55,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateMaintenance : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "busId")]
-            public uint BusId;
-            [DataMember(Name = "lastServiceDate")]
-            public ulong LastServiceDate;
-            [DataMember(Name = "serviceEngineer")]
-            public string ServiceEngineer;
-            [DataMember(Name = "foundIssues")]
-            public string FoundIssues;
-            [DataMember(Name = "nextServiceDate")]
-            public ulong NextServiceDate;
-            [DataMember(Name = "roadworthiness")]
-            public string Roadworthiness;
-            [DataMember(Name = "maintenanceType")]
-            public string MaintenanceType;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "bus_id")]
             public uint BusId;
             [DataMember(Name = "last_service_date")]
@@ -95,7 +70,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "maintenance_type")]
             public string MaintenanceType;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public CreateMaintenance(
@@ -127,19 +101,7 @@ namespace SpacetimeDB.Types
                 this.MaintenanceType = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateMaintenance";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateMaintenanceFlags;
-        public void CreateMaintenance(CallReducerFlags flags) => CreateMaintenanceFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_maintenance";
         }
     }
->>>>>>> maintofix
 }

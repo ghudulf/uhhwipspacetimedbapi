@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class FuelRecordHandle : RemoteTableHandle<EventContext, FuelRecord>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "FuelRecord";
-=======
             protected override string RemoteTableName => "fuel_record";
->>>>>>> maintofix
 
             public sealed class FuelRecordIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly FuelRecordHandle FuelRecord;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class FuelRecordCols
     {
@@ -86,5 +80,4 @@ namespace SpacetimeDB.Types
             FuelRecordId = new global::SpacetimeDB.IxCol<FuelRecord, uint>(tableName, "fuel_record_id");
         }
     }
->>>>>>> maintofix
 }

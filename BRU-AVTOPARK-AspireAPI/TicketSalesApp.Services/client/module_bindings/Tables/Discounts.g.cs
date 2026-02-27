@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class DiscountsHandle : RemoteTableHandle<EventContext, Discounts>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Discounts";
-=======
             protected override string RemoteTableName => "discounts";
->>>>>>> maintofix
 
             public sealed class DiscountIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly DiscountsHandle Discounts;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class DiscountsCols
     {
@@ -84,5 +78,4 @@ namespace SpacetimeDB.Types
             DiscountId = new global::SpacetimeDB.IxCol<Discounts, uint>(tableName, "discount_id");
         }
     }
->>>>>>> maintofix
 }

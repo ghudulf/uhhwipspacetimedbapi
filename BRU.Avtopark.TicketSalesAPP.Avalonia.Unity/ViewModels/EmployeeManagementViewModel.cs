@@ -16,14 +16,6 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Serilog;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
-<<<<<<< HEAD
-using System.Collections.Generic;
-using Avalonia.Controls.ApplicationLifetimes;
-using SpacetimeDB.Types;
-
-namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
-{
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -75,30 +67,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
     }
 
->>>>>>> maintofix
     public partial class EmployeeManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-        private ObservableCollection<Employee> _employees = new();
-        public ObservableCollection<Employee> Employees
-=======
         private List<EmployeeDisplayModel> _allEmployees = new();
         private ObservableCollection<EmployeeDisplayModel> _employees = new();
         public ObservableCollection<EmployeeDisplayModel> Employees
->>>>>>> maintofix
         {
             get => _employees;
             set => this.RaiseAndSetIfChanged(ref _employees, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Job> _allJobs = new();
->>>>>>> maintofix
         private ObservableCollection<Job> _jobs = new();
         public ObservableCollection<Job> Jobs
         {
@@ -106,13 +89,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _jobs, value);
         }
 
-<<<<<<< HEAD
-        private Employee? _selectedEmployee;
-        public Employee? SelectedEmployee
-=======
         private EmployeeDisplayModel? _selectedEmployee;
         public EmployeeDisplayModel? SelectedEmployee
->>>>>>> maintofix
         {
             get => _selectedEmployee;
             set => this.RaiseAndSetIfChanged(ref _selectedEmployee, value);
@@ -163,10 +141,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             // Subscribe to auth token changes
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
-<<<<<<< HEAD
-=======
                 Log.Information("Auth token changed in EmployeeManagementViewModel. Recreating HttpClient and reloading data.");
->>>>>>> maintofix
                 // Create a new client with the updated token
                 _httpClient.Dispose();
                 _httpClient = ApiClientService.Instance.CreateClient();
@@ -177,44 +152,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             LoadData().ConfigureAwait(false);
         }
 
-<<<<<<< HEAD
-        [RelayCommand]
-        private async Task LoadData()
-        {
-=======
         private async Task LoadData()
         {
             Log.Information("Starting LoadData for EmployeeManagementViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                // Load jobs first
-                var jobsResponse = await _httpClient.GetAsync($"{_baseUrl}/Jobs");
-                if (jobsResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await jobsResponse.Content.ReadAsStringAsync();
-                    var loadedJobs = JsonSerializer.Deserialize<List<Job>>(jsonString, _jsonOptions);
-                    if (loadedJobs != null)
-                    {
-                        Jobs = new ObservableCollection<Job>(loadedJobs);
-                    }
-                }
-
-                // Then load employees
-                var response = await _httpClient.GetAsync($"{_baseUrl}/Employees");
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var loadedEmployees = JsonSerializer.Deserialize<List<Employee>>(jsonString, _jsonOptions);
-                    if (loadedEmployees != null)
-                    {
-                        Employees = new ObservableCollection<Employee>(loadedEmployees);
-=======
                 // --- Fetch all required data concurrently ---
                 Log.Debug("Initiating API calls for Employees and Jobs");
                 Task<HttpResponseMessage> employeesTask = _httpClient.GetAsync($"{_baseUrl}/Employees");
@@ -281,18 +227,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         Log.Error(ex, "Unexpected error during manual job parsing.");
                         HasError = true;
                         ErrorMessage = "Непредвиденная ошибка загрузки списка должностей.";
->>>>>>> maintofix
                     }
                 }
                 else
                 {
-<<<<<<< HEAD
-                    var error = await response.Content.ReadAsStringAsync();
-                    Log.Error("Failed to load employees. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, error);
-                    throw new Exception($"Failed to load employees. Status: {response.StatusCode}, Error: {error}");
-                }
-=======
                     var error = await jobsResponse.Content.ReadAsStringAsync();
                     Log.Error("Failed to load jobs. Status: {StatusCode}, Error: {Error}", jobsResponse.StatusCode, error);
                     HasError = true;
@@ -381,30 +319,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 Log.Information("Finished processing data. Displaying {JobCount} jobs and {EmployeeCount} employees.", 
                     Jobs.Count, Employees.Count);
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in EmployeeManagementViewModel");
                 _allJobs = new List<Job>();
                 Jobs = new ObservableCollection<Job>();
                 _allEmployees = new List<EmployeeDisplayModel>();
                 Employees = new ObservableCollection<EmployeeDisplayModel>();
->>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-=======
                 Log.Information("LoadData finished for EmployeeManagementViewModel.");
->>>>>>> maintofix
             }
         }
 
@@ -474,13 +403,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Surname = surnameBox.Text,
                         Name = nameBox.Text,
-<<<<<<< HEAD
-                        Patronym = patronymBox.Text ?? string.Empty,
-                        JobId = selectedJob.JobId,
-=======
                         Patronym = patronymBox.Text,
                         JobId = selectedJob.JobId
->>>>>>> maintofix
                     };
 
                     try 
@@ -536,42 +460,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         {
             if (SelectedEmployee == null) return;
 
-<<<<<<< HEAD
-=======
             Log.Information("Edit command initiated for employee: {EmployeeId}", SelectedEmployee.EmployeeId);
 
->>>>>>> maintofix
             try
             {
                 var dialog = new Window
                 {
-<<<<<<< HEAD
-                    Title = "Edit Employee",
-                    Width = 400,
-                    Height = 400,
-=======
                     Title = $"Редактировать сотрудника: {SelectedEmployee.Surname} {SelectedEmployee.Name}",
                     Width = 400,
                     Height = 350,
->>>>>>> maintofix
                     WindowStartupLocation = WindowStartupLocation.CenterOwner
                 };
 
                 var grid = new Grid
                 {
-<<<<<<< HEAD
-                    RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,Auto"),
-                    Margin = new Thickness(10)
-                };
-
-                var surnameBox = new TextBox { Text = SelectedEmployee.Surname, Watermark = "Surname" };
-                var nameBox = new TextBox { Text = SelectedEmployee.Name, Watermark = "Name" };
-                var patronymBox = new TextBox { Text = SelectedEmployee.Patronym, Watermark = "Patronym" };
-                var employedSincePicker = new DatePicker 
-                { 
-                    SelectedDate = DateTimeOffset.Now
-                };
-=======
                     RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,Auto,Auto"),
                     ColumnDefinitions = new ColumnDefinitions("Auto,*"),
                     Margin = new Thickness(10)
@@ -593,35 +495,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 grid.Children.Add(patronymBox);
 
                 grid.Children.Add(new TextBlock { Text = "Должность:", Margin = new Thickness(0, 5), VerticalAlignment = VerticalAlignment.Center });
->>>>>>> maintofix
                 var jobComboBox = new ComboBox
                 {
                     ItemsSource = Jobs,
                     DisplayMemberBinding = new global::Avalonia.Data.Binding("JobTitle"),
                     SelectedItem = Jobs.FirstOrDefault(j => j.JobId == SelectedEmployee.JobId)
                 };
-<<<<<<< HEAD
-
-                var updateButton = new Button
-                {
-                    Content = "Update",
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 10, 0, 0)
-                };
-
-                grid.Children.Add(surnameBox);
-                Grid.SetRow(surnameBox, 0);
-                grid.Children.Add(nameBox);
-                Grid.SetRow(nameBox, 1);
-                grid.Children.Add(patronymBox);
-                Grid.SetRow(patronymBox, 2);
-                grid.Children.Add(employedSincePicker);
-                Grid.SetRow(employedSincePicker, 3);
-                grid.Children.Add(jobComboBox);
-                Grid.SetRow(jobComboBox, 4);
-                grid.Children.Add(updateButton);
-                Grid.SetRow(updateButton, 5);
-=======
                 Grid.SetRow(jobComboBox, 3); Grid.SetColumn(jobComboBox, 1);
                 grid.Children.Add(jobComboBox);
 
@@ -638,78 +517,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 };
                 Grid.SetRow(updateButton, 6); Grid.SetColumnSpan(updateButton, 2);
                 grid.Children.Add(updateButton);
->>>>>>> maintofix
 
                 dialog.Content = grid;
 
                 updateButton.Click += async (s, e) =>
                 {
-<<<<<<< HEAD
-                    if (string.IsNullOrWhiteSpace(surnameBox.Text) || 
-                        string.IsNullOrWhiteSpace(nameBox.Text) ||
-                        jobComboBox.SelectedItem == null)
-                    {
-                        ErrorMessage = "Surname, name and job are required";
-=======
                     if (string.IsNullOrWhiteSpace(surnameBox.Text) || string.IsNullOrWhiteSpace(nameBox.Text))
                     {
                         var errorDialog = MessageBoxManager.GetMessageBoxStandard(
                                 "Ошибка", "Фамилия и Имя обязательны.", ButtonEnum.Ok, Icon.Error);
                         var mw = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
                         if (mw != null) await errorDialog.ShowAsync();
->>>>>>> maintofix
                         return;
                     }
 
                     var selectedJob = jobComboBox.SelectedItem as Job;
-<<<<<<< HEAD
-                    var updatedEmployee = new
-                    {
-                        Surname = surnameBox.Text,
-                        Name = nameBox.Text,
-                        Patronym = patronymBox.Text,
-                        JobId = selectedJob.JobId,
-                    };
-
-                    try
-                    {
-                        var json = JsonSerializer.Serialize(updatedEmployee, _jsonOptions);
-                        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                        var response = await _httpClient.PutAsync($"{_baseUrl}/Employees/{SelectedEmployee.EmployeeId}", content);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            await LoadData();
-                            dialog.Close();
-                        }
-                        else
-                        {
-                            var error = await response.Content.ReadAsStringAsync();
-                            ErrorMessage = $"Failed to update employee: {error}";
-                            Log.Error("Failed to update employee. Status: {StatusCode}, Error: {Error}", 
-                                response.StatusCode, error);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ErrorMessage = $"Error updating employee: {ex.Message}";
-                        Log.Error(ex, "Error updating employee");
-                    }
-                };
-
-                // Get the main window as owner
-                var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-                    ? desktop.MainWindow
-                    : null;
-
-                if (mainWindow != null)
-                {
-                    await dialog.ShowDialog(mainWindow);
-                }
-                else
-                {
-                    Log.Error("Could not find main window for dialog");
-=======
                     if (selectedJob == null)
                     {
                          var errorDialog = MessageBoxManager.GetMessageBoxStandard(
@@ -762,20 +584,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 else
                 {
                     Log.Error("Could not find main window to show edit dialog");
->>>>>>> maintofix
                 }
             }
             catch (Exception ex)
             {
-<<<<<<< HEAD
-                HasError = true;
-                ErrorMessage = $"Error updating employee: {ex.Message}";
-                Log.Error(ex, "Error updating employee");
-=======
                  Log.Error(ex, "Exception occurred during edit operation for employee {EmployeeId}", SelectedEmployee?.EmployeeId ?? 0);
                  HasError = true;
                  ErrorMessage = $"Ошибка редактирования: {ex.Message}";
->>>>>>> maintofix
             }
         }
 
@@ -869,22 +684,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
-<<<<<<< HEAD
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                LoadData().ConfigureAwait(false);
-                return;
-            }
-
-            var filteredEmployees = Employees.Where(e => 
-                e.Surname.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                e.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                e.Patronym.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                (Jobs.FirstOrDefault(j => j.JobId == e.JobId)?.JobTitle.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false)
-            ).ToList();
-
-            Employees = new ObservableCollection<Employee>(filteredEmployees);
-=======
             Log.Debug("Search text changed: '{SearchText}'", value);
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -904,7 +703,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
             Log.Information("Filtering complete. Found {Count} employees matching '{SearchText}'", filteredEmployees.Count, value);
             Employees = new ObservableCollection<EmployeeDisplayModel>(filteredEmployees);
->>>>>>> maintofix
         }
     }
 } 

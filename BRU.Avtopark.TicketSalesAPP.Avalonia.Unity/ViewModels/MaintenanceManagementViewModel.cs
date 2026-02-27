@@ -18,11 +18,6 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
-<<<<<<< HEAD
-
-namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
-{
-=======
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Globalization;
@@ -104,30 +99,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
     }
 
->>>>>>> maintofix
     public partial class MaintenanceManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-        private ObservableCollection<Maintenance> _maintenanceRecords = new();
-        public ObservableCollection<Maintenance> MaintenanceRecords
-=======
         private List<MaintenanceDisplayModel> _allMaintenanceRecords = new();
         private ObservableCollection<MaintenanceDisplayModel> _maintenanceRecords = new();
         public ObservableCollection<MaintenanceDisplayModel> MaintenanceRecords
->>>>>>> maintofix
         {
             get => _maintenanceRecords;
             set => this.RaiseAndSetIfChanged(ref _maintenanceRecords, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Bus> _allBuses = new();
->>>>>>> maintofix
         private ObservableCollection<Bus> _buses = new();
         public ObservableCollection<Bus> Buses
         {
@@ -135,13 +121,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _buses, value);
         }
 
-<<<<<<< HEAD
-        private Maintenance? _selectedRecord;
-        public Maintenance? SelectedRecord
-=======
         private MaintenanceDisplayModel? _selectedRecord;
         public MaintenanceDisplayModel? SelectedRecord
->>>>>>> maintofix
         {
             get => _selectedRecord;
             set => this.RaiseAndSetIfChanged(ref _selectedRecord, value);
@@ -189,15 +170,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
             };
 
-<<<<<<< HEAD
-            ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
-            {
-=======
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
                 Log.Information("Auth token changed in MaintenanceManagementViewModel. Recreating HttpClient and reloading data.");
                 _httpClient.Dispose();
->>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -208,39 +184,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task LoadData()
         {
-<<<<<<< HEAD
-=======
             Log.Information("Starting LoadData for MaintenanceManagementViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                // Get raw response first
-                var maintenanceResponse = await _httpClient.GetAsync($"{_baseUrl}/Maintenance");
-                var busesResponse = await _httpClient.GetAsync($"{_baseUrl}/Buses");
-
-                if (maintenanceResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await maintenanceResponse.Content.ReadAsStringAsync();
-                    var maintenanceRecords = JsonSerializer.Deserialize<List<Maintenance>>(jsonString, _jsonOptions);
-
-                    if (maintenanceRecords != null)
-                        MaintenanceRecords = new ObservableCollection<Maintenance>(maintenanceRecords);
-                }
-
-                if (busesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await busesResponse.Content.ReadAsStringAsync();
-                    var buses = JsonSerializer.Deserialize<List<Bus>>(jsonString, _jsonOptions);
-
-                    if (buses != null)
-                        Buses = new ObservableCollection<Bus>(buses);
-                }
-=======
                 Log.Debug("Initiating API calls for Maintenance and Buses");
                 Task<HttpResponseMessage> maintenanceTask = _httpClient.GetAsync($"{_baseUrl}/Maintenance");
                 Task<HttpResponseMessage> busesTask = _httpClient.GetAsync($"{_baseUrl}/Buses");
@@ -373,15 +323,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 _allMaintenanceRecords = loadedMaintenance.Select(m => new MaintenanceDisplayModel(m, _allBuses.FirstOrDefault(b => b.BusId == m.BusId))).ToList();
                 MaintenanceRecords = new ObservableCollection<MaintenanceDisplayModel>(_allMaintenanceRecords);
                 Log.Information("Finished processing data. Displaying {MaintCount} maintenance records and {BusCount} buses.", MaintenanceRecords.Count, Buses.Count);
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading maintenance data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in MaintenanceManagementViewModel");
                 // Clear collections on fatal error
@@ -389,15 +334,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Buses = new ObservableCollection<Bus>();
                 _allMaintenanceRecords = new List<MaintenanceDisplayModel>();
                 MaintenanceRecords = new ObservableCollection<MaintenanceDisplayModel>();
->>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-=======
                 Log.Information("LoadData finished for MaintenanceManagementViewModel.");
->>>>>>> maintofix
             }
         }
 
@@ -524,8 +465,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         {
             if (SelectedRecord == null) return;
 
-<<<<<<< HEAD
-=======
             // Convert ulong timestamps back to DateTimeOffset for DatePicker
             DateTimeOffset lastServiceDto = DateTimeOffset.MinValue;
             DateTimeOffset nextServiceDto = DateTimeOffset.MinValue;
@@ -544,7 +483,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  // Keep MinValue
             }
 
->>>>>>> maintofix
             try
             {
                 var dialog = new Window
@@ -566,58 +504,34 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     PlaceholderText = "Выберите автобус",
                     ItemsSource = Buses,
                     DisplayMemberBinding = new global::Avalonia.Data.Binding("Model"),
-<<<<<<< HEAD
-                    SelectedItem = Buses.FirstOrDefault(b => b.BusId == SelectedRecord.BusId)
-=======
                     SelectedItem = Buses.FirstOrDefault(b => b.BusId == SelectedRecord.Maintenance.BusId)
->>>>>>> maintofix
                 };
 
                 var lastServiceDatePicker = new DatePicker
                 {
-<<<<<<< HEAD
-                    SelectedDate = DateTimeOffset.FromUnixTimeMilliseconds((long)SelectedRecord.LastServiceDate)
-=======
                     SelectedDate = lastServiceDto != DateTimeOffset.MinValue ? lastServiceDto : (DateTimeOffset?)null // Handle MinValue case
->>>>>>> maintofix
                 };
 
                 var nextServiceDatePicker = new DatePicker
                 {
-<<<<<<< HEAD
-                    SelectedDate = DateTimeOffset.FromUnixTimeMilliseconds((long)SelectedRecord.NextServiceDate)
-=======
                      SelectedDate = nextServiceDto != DateTimeOffset.MinValue ? nextServiceDto : (DateTimeOffset?)null // Handle MinValue case
->>>>>>> maintofix
                 };
 
                 var serviceEngineerBox = new TextBox
                 {
-<<<<<<< HEAD
-                    Text = SelectedRecord.ServiceEngineer,
-=======
                     Text = SelectedRecord.Maintenance.ServiceEngineer,
->>>>>>> maintofix
                     Watermark = "Инженер"
                 };
 
                 var foundIssuesBox = new TextBox
                 {
-<<<<<<< HEAD
-                    Text = SelectedRecord.FoundIssues,
-=======
                     Text = SelectedRecord.Maintenance.FoundIssues,
->>>>>>> maintofix
                     Watermark = "Найденные проблемы"
                 };
 
                 var roadworthinessBox = new TextBox
                 {
-<<<<<<< HEAD
-                    Text = SelectedRecord.Roadworthiness,
-=======
                     Text = SelectedRecord.Maintenance.Roadworthiness,
->>>>>>> maintofix
                     Watermark = "Состояние"
                 };
 
@@ -658,20 +572,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                     var selectedBus = busComboBox.SelectedItem as Bus;
 
-<<<<<<< HEAD
-                    var maintenance = new
-                    {
-                        BusId = selectedBus!.BusId,
-                        LastServiceDate = lastServiceDatePicker.SelectedDate?.DateTime,
-                        NextServiceDate = nextServiceDatePicker.SelectedDate?.DateTime,
-                        ServiceEngineer = serviceEngineerBox.Text,
-                        FoundIssues = foundIssuesBox.Text,
-                        Roadworthiness = roadworthinessBox.Text
-                    };
-
-                    var content = new StringContent(
-                        JsonSerializer.Serialize(maintenance),
-=======
                     // Convert DateTimeOffset back to ulong
                     ulong lastServiceUnix = 0;
                     if (lastServiceDatePicker.SelectedDate.HasValue) {
@@ -708,16 +608,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                     var content = new StringContent(
                         JsonSerializer.Serialize(maintenance, _jsonOptions), // Use options if needed
->>>>>>> maintofix
                         Encoding.UTF8,
                         "application/json");
 
                     var response = await _httpClient.PutAsync(
-<<<<<<< HEAD
-                        $"{_baseUrl}/Maintenance/{SelectedRecord.MaintenanceId}",
-=======
                         $"{_baseUrl}/Maintenance/{SelectedRecord.Maintenance.MaintenanceId}",
->>>>>>> maintofix
                         content);
 
                     if (response.IsSuccessStatusCode)
@@ -804,11 +699,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 yesButton.Click += async (s, e) =>
                 {
-<<<<<<< HEAD
-                    var response = await _httpClient.DeleteAsync($"{_baseUrl}/Maintenance/{SelectedRecord.MaintenanceId}");
-=======
                     var response = await _httpClient.DeleteAsync($"{_baseUrl}/Maintenance/{SelectedRecord.Maintenance.MaintenanceId}");
->>>>>>> maintofix
                     if (response.IsSuccessStatusCode)
                     {
                         await LoadData();
@@ -846,22 +737,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
-<<<<<<< HEAD
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                LoadData().ConfigureAwait(false);
-                return;
-            }
-
-            var filteredRecords = MaintenanceRecords.Where(m =>
-                m.ServiceEngineer.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                m.FoundIssues.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                m.Roadworthiness.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                (Buses.FirstOrDefault(b => b.BusId == m.BusId)?.Model.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false)
-            ).ToList();
-
-            MaintenanceRecords = new ObservableCollection<Maintenance>(filteredRecords);
-=======
             Log.Debug("Search text changed: '{SearchText}'", value);
             
             if (string.IsNullOrWhiteSpace(value))
@@ -887,7 +762,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
             Log.Information("Filtering complete. Found {Count} maintenance records matching '{SearchText}'", filteredRecords.Count, value);
             MaintenanceRecords = new ObservableCollection<MaintenanceDisplayModel>(filteredRecords);
->>>>>>> maintofix
         }
     }
 } 

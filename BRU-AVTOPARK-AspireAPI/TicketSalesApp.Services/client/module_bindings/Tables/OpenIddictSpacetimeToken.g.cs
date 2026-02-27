@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class OpenIddictSpacetimeTokenHandle : RemoteTableHandle<EventContext, OpenIddictSpacetimeToken>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "OpenIddictSpacetimeToken";
-=======
             protected override string RemoteTableName => "open_iddict_spacetime_token";
->>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly OpenIddictSpacetimeTokenHandle OpenIddictSpacetimeToken;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class OpenIddictSpacetimeTokenCols
     {
@@ -86,5 +80,4 @@ namespace SpacetimeDB.Types
             Id = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeToken, uint>(tableName, "id");
         }
     }
->>>>>>> maintofix
 }

@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class IncidentHandle : RemoteTableHandle<EventContext, Incident>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Incident";
-=======
             protected override string RemoteTableName => "incident";
->>>>>>> maintofix
 
             public sealed class IncidentIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly IncidentHandle Incident;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class IncidentCols
     {
@@ -96,5 +90,4 @@ namespace SpacetimeDB.Types
             IncidentId = new global::SpacetimeDB.IxCol<Incident, uint>(tableName, "incident_id");
         }
     }
->>>>>>> maintofix
 }

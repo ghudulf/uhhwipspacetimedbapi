@@ -54,18 +54,6 @@
                                   Binding="{Binding TicketCount}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Остановки" 
-<<<<<<< HEAD
-                                  Binding="{Binding Route.StopCount}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Длина (км)" 
-                                  Binding="{Binding Route.RouteLength, StringFormat={}{0:N1}}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Тип" 
-                                  Binding="{Binding Route.RouteType}"
-                                  Width="Auto"/>
-                <DataGridCheckBoxColumn Header="Активен" 
-                                  Binding="{Binding Route.IsActive}"
-=======
                                   Binding="{Binding StopCount}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Длина (км)" 
@@ -76,7 +64,6 @@
                                   Width="Auto"/>
                 <DataGridCheckBoxColumn Header="Активен" 
                                   Binding="{Binding IsActive}"
->>>>>>> maintofix
                                   Width="Auto"/>
             </DataGrid.Columns>
         </DataGrid>

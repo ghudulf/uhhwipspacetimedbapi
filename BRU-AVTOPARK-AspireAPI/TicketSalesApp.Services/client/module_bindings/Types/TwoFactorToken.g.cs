@@ -13,21 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class TwoFactorToken
     {
-<<<<<<< HEAD
-        [DataMember(Name = "Id")]
-        public uint Id;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "Token")]
-        public string Token;
-        [DataMember(Name = "ExpiresAt")]
-        public ulong ExpiresAt;
-        [DataMember(Name = "IsUsed")]
-        public bool IsUsed;
-        [DataMember(Name = "DeviceInfo")]
-        public string? DeviceInfo;
-        [DataMember(Name = "IpAddress")]
-=======
         [DataMember(Name = "id")]
         public uint Id;
         [DataMember(Name = "user_id")]
@@ -41,7 +26,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "device_info")]
         public string? DeviceInfo;
         [DataMember(Name = "ip_address")]
->>>>>>> maintofix
         public string? IpAddress;
 
         public TwoFactorToken(

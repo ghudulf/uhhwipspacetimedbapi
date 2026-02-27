@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class PermissionHandle : RemoteTableHandle<EventContext, Permission>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Permission";
-=======
             protected override string RemoteTableName => "permission";
->>>>>>> maintofix
 
             public sealed class PermissionIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly PermissionHandle Permission;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class PermissionCols
     {
@@ -72,5 +66,4 @@ namespace SpacetimeDB.Types
             PermissionId = new global::SpacetimeDB.IxCol<Permission, uint>(tableName, "permission_id");
         }
     }
->>>>>>> maintofix
 }

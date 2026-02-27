@@ -13,23 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class OpenIdConnectGrant
     {
-<<<<<<< HEAD
-        [DataMember(Name = "GrantId")]
-        public string GrantId;
-        [DataMember(Name = "ClientId")]
-        public string ClientId;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "Type")]
-        public string Type;
-        [DataMember(Name = "Scopes")]
-        public System.Collections.Generic.List<string> Scopes;
-        [DataMember(Name = "CreatedAt")]
-        public ulong CreatedAt;
-        [DataMember(Name = "ExpiresAt")]
-        public ulong ExpiresAt;
-        [DataMember(Name = "IsRevoked")]
-=======
         [DataMember(Name = "grant_id")]
         public string GrantId;
         [DataMember(Name = "client_id")]
@@ -45,7 +28,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "expires_at")]
         public ulong ExpiresAt;
         [DataMember(Name = "is_revoked")]
->>>>>>> maintofix
         public bool IsRevoked;
 
         public OpenIdConnectGrant(

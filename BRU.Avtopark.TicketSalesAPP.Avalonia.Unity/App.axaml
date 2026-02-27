@@ -6,10 +6,7 @@
 			 xmlns:toolviews="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews"
              xmlns:sty="using:FluentAvalonia.Styling"   
 			 xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
-<<<<<<< HEAD
-=======
 			xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
->>>>>>> maintofix
              xmlns:materialIcons="using:Material.Icons.Avalonia"    
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
@@ -29,8 +26,6 @@
 		 <StyleInclude Source="avares://FluentAvalonia.ProgressRing/Styling/Controls/ProgressRing.axaml" />
     </Application.Styles>
 
-<<<<<<< HEAD
-=======
 	<Application.DataTemplates>
 		<DataTemplate x:DataType="viewModels:ExplorerViewModel">
 			<views:Explorer />
@@ -86,5 +81,4 @@
 	</Application.DataTemplates>
 
 
->>>>>>> maintofix
 </Application>

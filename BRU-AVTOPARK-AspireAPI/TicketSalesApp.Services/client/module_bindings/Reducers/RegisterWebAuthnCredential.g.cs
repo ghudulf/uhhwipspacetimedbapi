@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void RegisterWebAuthnCredential(SpacetimeDB.Identity userId, System.Collections.Generic.List<byte> credentialId, string publicKey, uint counter, string? deviceName)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.RegisterWebAuthnCredential(userId, credentialId, publicKey, counter, deviceName), this.SetCallReducerFlags.RegisterWebAuthnCredentialFlags);
-=======
             conn.InternalCallReducer(new Reducer.RegisterWebAuthnCredential(userId, credentialId, publicKey, counter, deviceName));
->>>>>>> maintofix
         }
 
         public bool InvokeRegisterWebAuthnCredential(ReducerEventContext ctx, Reducer.RegisterWebAuthnCredential args)
         {
-<<<<<<< HEAD
-            if (OnRegisterWebAuthnCredential == null) return false;
-=======
             if (OnRegisterWebAuthnCredential == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnRegisterWebAuthnCredential(
                 ctx,
                 args.UserId,
@@ -60,17 +52,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RegisterWebAuthnCredential : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "credentialId")]
-            public System.Collections.Generic.List<byte> CredentialId;
-            [DataMember(Name = "publicKey")]
-            public string PublicKey;
-            [DataMember(Name = "counter")]
-            public uint Counter;
-            [DataMember(Name = "deviceName")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "credential_id")]
@@ -80,7 +61,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "counter")]
             public uint Counter;
             [DataMember(Name = "device_name")]
->>>>>>> maintofix
             public string? DeviceName;
 
             public RegisterWebAuthnCredential(
@@ -104,19 +84,7 @@ namespace SpacetimeDB.Types
                 this.PublicKey = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "RegisterWebAuthnCredential";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RegisterWebAuthnCredentialFlags;
-        public void RegisterWebAuthnCredential(CallReducerFlags flags) => RegisterWebAuthnCredentialFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "register_web_authn_credential";
         }
     }
->>>>>>> maintofix
 }

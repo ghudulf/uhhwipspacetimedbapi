@@ -23,10 +23,7 @@ using System.Text.Json.Serialization;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using System.Text.Json.Nodes;
-<<<<<<< HEAD
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -53,27 +50,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [JsonIgnore]
         public string Model => Bus.Model;
         [JsonIgnore]
-<<<<<<< HEAD
-=======
         public string? BusType => Bus.BusType;
         [JsonIgnore]
         public uint Year => Bus.Year;
         [JsonIgnore]
->>>>>>> maintofix
         public string? RegistrationNumber => Bus.RegistrationNumber;
         [JsonIgnore]
         public bool IsActive => Bus.IsActive;
         [JsonIgnore]
         public uint Capacity => Bus.Capacity;
-<<<<<<< HEAD
-=======
         [JsonIgnore]
         public string? Vin => Bus.Vin;
         [JsonIgnore]
         public string? LicensePlate => Bus.LicensePlate;
         [JsonIgnore]
         public string? CurrentStatus => Bus.CurrentStatus;
->>>>>>> maintofix
         // ... add other frequently used Bus properties if direct binding is preferred ...
     }
 
@@ -154,17 +145,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         {
             Log.Information("Starting LoadData for BusManagementViewModel");
             try
-<<<<<<< HEAD
-        {
-            IsBusy = true;
-            HasError = false;
-            ErrorMessage = string.Empty;
-=======
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
->>>>>>> maintofix
 
                  // --- Fetch all required data concurrently ---
                  Log.Debug("Initiating API calls for Buses, Routes, Maintenance");
@@ -185,73 +169,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  
                  // Log the raw response content
                  var busJsonString = await busesResponse.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                 Log.Debug("Raw Buses response received: {RawResponse}", busJsonString);
-=======
                  Log.Verbose("Raw Buses response received: {RawResponse}", busJsonString);
->>>>>>> maintofix
                  
                  if (busesResponse.IsSuccessStatusCode)
                  {
                       Log.Debug("Raw Buses JSON received: {RawJson}", busJsonString);
                       try
                       {
-<<<<<<< HEAD
-                           JsonNode? busesNode = JsonNode.Parse(busJsonString);
-                           if (busesNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var busesValuesNode) && busesValuesNode is JsonArray busesArray)
-=======
                            var busesArray = JsonReferenceHelper.ParseArrayWithReferences(busJsonString, "Buses");
                            if (busesArray != null)
->>>>>>> maintofix
                            {
                                 Log.Information("Parsing {Count} bus objects from JSON array.", busesArray.Count);
                                 foreach(var busNode in busesArray)
                                 {
                                      if (busNode is JsonObject busObj)
                                      {
-<<<<<<< HEAD
-                                          Log.Verbose("--- Parsing Bus Object: {BusJson} ---", busObj.ToJsonString());
-                                          uint busId = busObj["busId"]?.GetValue<uint>() ?? 0;
-                                          if (busId == 0)
-                                          {
-                                               Log.Error("CRITICAL DATA ISSUE: Bus object has BusId 0. Filtering out. JSON: {BusJson}", busObj.ToJsonString());
-                                               continue; // Filter out
-                                          }
-                                          string model = busObj["model"]?.GetValue<string>() ?? "N/A";
-                                          string? regNum = busObj["registrationNumber"]?.GetValue<string>();
-                                          uint capacity = busObj["capacity"]?.GetValue<uint>() ?? 0;
-                                          bool busIsActive = busObj["isActive"]?.GetValue<bool>() ?? false;
-                                          string? busType = busObj["busType"]?.GetValue<string>();
-                                          // Add other fields as needed from Bus model
-                                          uint year = busObj["year"]?.GetValue<uint>() ?? 0;
-                                          string? vin = busObj["vin"]?.GetValue<string>();
-                                          string? licensePlate = busObj["licensePlate"]?.GetValue<string>();
-                                          string? currentStatus = busObj["currentStatus"]?.GetValue<string>();
-
-                                           Log.Verbose("Parsed Bus: Id={BusId}, Model='{Model}', Reg='{RegNum}', Active={IsActive}, Capacity={Capacity}, Type='{Type}'",
-                                               busId, model, regNum, busIsActive, capacity, busType);
-
-                                           // Create SpacetimeDB.Types.Bus object
-                                           loadedBuses.Add(new Bus {
-                                                 BusId = busId,
-                                                 Model = model,
-                                                 RegistrationNumber = regNum,
-                                                 Capacity = capacity,
-                                                 IsActive = busIsActive,
-                                                 BusType = busType ?? string.Empty,
-                                                 Year = year,
-                                                 Vin = vin,
-                                                 LicensePlate = licensePlate,
-                                                 CurrentStatus = currentStatus
-                                                 // Map other properties as needed
-                                            });
-                                     }
-                                      else { Log.Warning("Item in buses array was not a JSON object: {Node}", busNode?.ToJsonString()); }
-                                }
-                                 Log.Information("Successfully parsed and filtered {Count} valid buses.", loadedBuses.Count);
-                           }
-                            else { Log.Error("Buses JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", busesNode?.GetType().Name, busJsonString); }
-=======
                                           var bus = busObj.ParseBus();
                                           if (bus != null)
                                           {
@@ -266,7 +198,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                            { 
                                 Log.Error("Failed to parse buses array from JSON. Raw JSON: {RawJson}", busJsonString); 
                            }
->>>>>>> maintofix
                       }
                       catch (JsonException jsonEx)
                       {
@@ -297,28 +228,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                       Log.Debug("Raw Routes JSON received (for counts): {RawJson}", routeJsonString);
                       try
                       {
-<<<<<<< HEAD
-                           JsonNode? routesNode = JsonNode.Parse(routeJsonString);
-                           if (routesNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var routeValuesNode) && routeValuesNode is JsonArray routesArray)
-=======
                            var routesArray = JsonReferenceHelper.ParseArrayWithReferences(routeJsonString, "Routes");
                            if (routesArray != null)
->>>>>>> maintofix
                            {
                                 Log.Information("Parsing {Count} route objects from JSON array (for counts).", routesArray.Count);
                                 foreach(var routeNode in routesArray)
                                 {
                                      if (routeNode is JsonObject routeObj)
                                      {
-<<<<<<< HEAD
-                                          uint busId = routeObj["busId"]?.GetValue<uint>() ?? 0;
-                                          bool routeIsActive = routeObj["isActive"]?.GetValue<bool>() ?? false; // Assuming API sends isActive
-                                          if (busId > 0 && routeIsActive) // Count only active routes for valid buses
-=======
                                           uint busId = routeObj.GetValue<uint>("busId", 0);
                                           bool routeIsActive = routeObj.GetValue<bool>("isActive", false);
                                           if (busId > 0 && routeIsActive)
->>>>>>> maintofix
                                           {
                                                routeCounts[busId] = routeCounts.GetValueOrDefault(busId, 0) + 1;
                                           }
@@ -328,11 +248,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                 }
                                  Log.Information("Successfully calculated route counts for {Count} buses.", routeCounts.Count);
                            }
-<<<<<<< HEAD
-                            else { Log.Error("Routes JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", routesNode?.GetType().Name, routeJsonString); }
-=======
                            else { Log.Error("Failed to parse routes array from JSON. Raw JSON: {RawJson}", routeJsonString); }
->>>>>>> maintofix
                       }
                       catch (JsonException jsonEx)
                       {
@@ -359,25 +275,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Log.Debug("Raw Maintenance JSON received (for counts): {RawJson}", maintenanceJsonString);
                     try
                     {
-<<<<<<< HEAD
-                         JsonNode? maintenanceNode = JsonNode.Parse(maintenanceJsonString);
-                         if (maintenanceNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var maintValuesNode) && maintValuesNode is JsonArray maintenanceArray)
-=======
                          var maintenanceArray = JsonReferenceHelper.ParseArrayWithReferences(maintenanceJsonString, "Maintenance");
                          if (maintenanceArray != null)
->>>>>>> maintofix
                          {
                               Log.Information("Parsing {Count} maintenance objects from JSON array (for counts).", maintenanceArray.Count);
                               foreach(var maintNode in maintenanceArray)
                               {
                                    if (maintNode is JsonObject maintObj)
                                    {
-<<<<<<< HEAD
-                                        uint busId = maintObj["busId"]?.GetValue<uint>() ?? 0;
-                                        // Decide if you need to filter maintenance records (e.g., only active/recent)
-=======
                                         uint busId = maintObj.GetValue<uint>("busId", 0);
->>>>>>> maintofix
                                         if (busId > 0)
                                         {
                                              maintenanceCounts[busId] = maintenanceCounts.GetValueOrDefault(busId, 0) + 1;
@@ -388,11 +294,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                               }
                                Log.Information("Successfully calculated maintenance counts for {Count} buses.", maintenanceCounts.Count);
                          }
-<<<<<<< HEAD
-                          else { Log.Error("Maintenance JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", maintenanceNode?.GetType().Name, maintenanceJsonString); }
-=======
                          else { Log.Error("Failed to parse maintenance array from JSON. Raw JSON: {RawJson}", maintenanceJsonString); }
->>>>>>> maintofix
                     }
                     catch (JsonException jsonEx)
                     {

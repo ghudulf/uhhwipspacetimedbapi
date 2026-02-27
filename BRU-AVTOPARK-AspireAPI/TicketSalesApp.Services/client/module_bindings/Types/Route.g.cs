@@ -13,51 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Route
     {
-<<<<<<< HEAD
-        [DataMember(Name = "RouteId")]
-        public uint RouteId;
-        [DataMember(Name = "RouteNumber")]
-        public string RouteNumber;
-        [DataMember(Name = "StartPoint")]
-        public string StartPoint;
-        [DataMember(Name = "EndPoint")]
-        public string EndPoint;
-        [DataMember(Name = "DriverId")]
-        public uint DriverId;
-        [DataMember(Name = "BusId")]
-        public uint BusId;
-        [DataMember(Name = "TravelTime")]
-        public string? TravelTime;
-        [DataMember(Name = "StopCount")]
-        public uint StopCount;
-        [DataMember(Name = "RouteDescription")]
-        public string? RouteDescription;
-        [DataMember(Name = "RouteLength")]
-        public double RouteLength;
-        [DataMember(Name = "IsActive")]
-        public bool IsActive;
-        [DataMember(Name = "RouteType")]
-        public string? RouteType;
-        [DataMember(Name = "AlternativeRoutes")]
-        public System.Collections.Generic.List<string>? AlternativeRoutes;
-        [DataMember(Name = "PeakHours")]
-        public System.Collections.Generic.List<string>? PeakHours;
-        [DataMember(Name = "FrequencyPeak")]
-        public uint? FrequencyPeak;
-        [DataMember(Name = "FrequencyOffPeak")]
-        public uint? FrequencyOffPeak;
-        [DataMember(Name = "SpecialInstructions")]
-        public System.Collections.Generic.List<string>? SpecialInstructions;
-        [DataMember(Name = "IsAccessible")]
-        public bool? IsAccessible;
-        [DataMember(Name = "RouteFeatures")]
-        public System.Collections.Generic.List<string>? RouteFeatures;
-        [DataMember(Name = "CreatedAt")]
-        public ulong CreatedAt;
-        [DataMember(Name = "UpdatedAt")]
-        public ulong? UpdatedAt;
-        [DataMember(Name = "UpdatedBy")]
-=======
         [DataMember(Name = "route_id")]
         public uint RouteId;
         [DataMember(Name = "route_number")]
@@ -101,7 +56,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "updated_at")]
         public ulong? UpdatedAt;
         [DataMember(Name = "updated_by")]
->>>>>>> maintofix
         public string? UpdatedBy;
 
         public Route(

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateOidcAuthorization(string oidcAuthId, string? appClientId, ulong? creationDate, string? propertiesJson, string? scopesJson, string? status, string? subject, string? type)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateOidcAuthorization(oidcAuthId, appClientId, creationDate, propertiesJson, scopesJson, status, subject, type), this.SetCallReducerFlags.CreateOidcAuthorizationFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateOidcAuthorization(oidcAuthId, appClientId, creationDate, propertiesJson, scopesJson, status, subject, type));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateOidcAuthorization(ReducerEventContext ctx, Reducer.CreateOidcAuthorization args)
         {
-<<<<<<< HEAD
-            if (OnCreateOidcAuthorization == null) return false;
-=======
             if (OnCreateOidcAuthorization == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateOidcAuthorization(
                 ctx,
                 args.OidcAuthId,
@@ -63,17 +55,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateOidcAuthorization : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "oidcAuthId")]
-            public string OidcAuthId;
-            [DataMember(Name = "appClientId")]
-            public string? AppClientId;
-            [DataMember(Name = "creationDate")]
-            public ulong? CreationDate;
-            [DataMember(Name = "propertiesJson")]
-            public string? PropertiesJson;
-            [DataMember(Name = "scopesJson")]
-=======
             [DataMember(Name = "oidc_auth_id")]
             public string OidcAuthId;
             [DataMember(Name = "app_client_id")]
@@ -83,7 +64,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "properties_json")]
             public string? PropertiesJson;
             [DataMember(Name = "scopes_json")]
->>>>>>> maintofix
             public string? ScopesJson;
             [DataMember(Name = "status")]
             public string? Status;
@@ -118,19 +98,7 @@ namespace SpacetimeDB.Types
                 this.OidcAuthId = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateOidcAuthorization";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateOidcAuthorizationFlags;
-        public void CreateOidcAuthorization(CallReducerFlags flags) => CreateOidcAuthorizationFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_oidc_authorization";
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteOidcScope(uint internalId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteOidcScope(internalId), this.SetCallReducerFlags.DeleteOidcScopeFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteOidcScope(internalId));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteOidcScope(ReducerEventContext ctx, Reducer.DeleteOidcScope args)
         {
-<<<<<<< HEAD
-            if (OnDeleteOidcScope == null) return false;
-=======
             if (OnDeleteOidcScope == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteOidcScope(
                 ctx,
                 args.InternalId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteOidcScope : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "internalId")]
-=======
             [DataMember(Name = "internal_id")]
->>>>>>> maintofix
             public uint InternalId;
 
             public DeleteOidcScope(uint InternalId)
@@ -72,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteOidcScope";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteOidcScopeFlags;
-        public void DeleteOidcScope(CallReducerFlags flags) => DeleteOidcScopeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_oidc_scope";
         }
     }
->>>>>>> maintofix
 }

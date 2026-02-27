@@ -175,10 +175,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateUserSettings(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateUserSettings] Starting for user: {userId}");
->>>>>>> maintofix
         var userSettings = new UserSettings
         {
             UserId = userId,
@@ -192,27 +189,18 @@ public static partial class Module
             IsDiscordNotificationsEnabled = true
         };
         ctx.Db.UserSettings.Insert(userSettings);
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateUserSettings] Successfully created settings for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void StoreTotpSecret(ReducerContext ctx, Identity userId, string secret)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[StoreTotpSecret] Starting for user: {userId}");
->>>>>>> maintofix
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
         if (userSettings == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[StoreTotpSecret] User settings not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("User settings not found");
         }
         var totpSecret = new TotpSecret
@@ -224,85 +212,55 @@ public static partial class Module
             IsActive = true
         };
         ctx.Db.TotpSecret.Insert(totpSecret);
-<<<<<<< HEAD
-=======
         Log.Info($"[StoreTotpSecret] Successfully stored TOTP secret for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void EnableTotp(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[EnableTotp] Starting for user: {userId}");
->>>>>>> maintofix
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
         if (userSettings == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[EnableTotp] User settings not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("User settings not found");
         }
         userSettings.TotpEnabled = true;
         ctx.Db.UserSettings.UserSettingId.Update(userSettings);
-<<<<<<< HEAD
-=======
         Log.Info($"[EnableTotp] Successfully enabled TOTP for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DisableTotp(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[DisableTotp] Starting for user: {userId}");
->>>>>>> maintofix
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
         if (userSettings == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[DisableTotp] User settings not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("User settings not found");
         }
         userSettings.TotpEnabled = false;
         ctx.Db.UserSettings.UserSettingId.Update(userSettings);
-<<<<<<< HEAD
-=======
         Log.Info($"[DisableTotp] Successfully disabled TOTP for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void EnableWebAuthn(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[EnableWebAuthn] Starting for user: {userId}");
->>>>>>> maintofix
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
         if (userSettings == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[EnableWebAuthn] User settings not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("User settings not found");
         }
         userSettings.WebAuthnEnabled = true;
         ctx.Db.UserSettings.UserSettingId.Update(userSettings);
-<<<<<<< HEAD
-=======
         Log.Info($"[EnableWebAuthn] Successfully enabled WebAuthn for user: {userId}");
->>>>>>> maintofix
     }
 
 
@@ -313,10 +271,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateTwoFactorToken(ReducerContext ctx, Identity userId, string token, bool isUsed, ulong expiresAt, string? deviceInfo = null, string? ipAddress = null)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateTwoFactorToken] Starting for user: {userId}, expiresAt: {expiresAt}");
->>>>>>> maintofix
         var twoFactorToken = new TwoFactorToken
         {
             Id = GetNextId(ctx, "twoFactorTokenId"),
@@ -328,23 +283,12 @@ public static partial class Module
             IpAddress = ipAddress
         };
         ctx.Db.TwoFactorToken.Insert(twoFactorToken);
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateTwoFactorToken] Successfully created 2FA token for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DeleteTwoFactorToken(ReducerContext ctx, uint id)
     {
-<<<<<<< HEAD
-        var token = ctx.Db.TwoFactorToken.Id.Find(id);
-        if (token == null)
-        {
-            throw new Exception("Two-factor token not found");
-        }
-        ctx.Db.TwoFactorToken.Id.Delete(id);
-=======
         Log.Info($"[DeleteTwoFactorToken] Starting for token ID: {id}");
         var token = ctx.Db.TwoFactorToken.Id.Find(id);
         if (token == null)
@@ -354,16 +298,12 @@ public static partial class Module
         }
         ctx.Db.TwoFactorToken.Id.Delete(id);
         Log.Info($"[DeleteTwoFactorToken] Successfully deleted token: {id}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void GenerateTotpSecret(ReducerContext ctx, Identity userId, string secret)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[GenerateTotpSecret] Starting for user: {userId}");
->>>>>>> maintofix
         var totpSecret = new TotpSecret
         {
             Id = GetNextId(ctx, "totpSecretId"),
@@ -373,19 +313,13 @@ public static partial class Module
             IsActive = true
         };
         ctx.Db.TotpSecret.Insert(totpSecret);
-<<<<<<< HEAD
-=======
         Log.Info($"[GenerateTotpSecret] Successfully generated TOTP secret for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void RegisterWebAuthnCredential(ReducerContext ctx, Identity userId, byte[] credentialId, string publicKey, uint counter, string? deviceName = null)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[RegisterWebAuthnCredential] Starting for user: {userId}, device: {deviceName ?? "unnamed"}");
->>>>>>> maintofix
         var webAuthnCredential = new WebAuthnCredential
         {
             Id = GetNextId(ctx, "webAuthnCredentialId"),
@@ -398,44 +332,29 @@ public static partial class Module
             DeviceName = deviceName
         };
         ctx.Db.WebAuthnCredential.Insert(webAuthnCredential);
-<<<<<<< HEAD
-=======
         Log.Info($"[RegisterWebAuthnCredential] Successfully registered WebAuthn credential for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DeactivateWebAuthnCredential(ReducerContext ctx, uint id)
     {
-<<<<<<< HEAD
-        var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
-        if (credential == null)
-        {
-=======
         Log.Info($"[DeactivateWebAuthnCredential] Starting for credential ID: {id}");
         var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
         if (credential == null)
         {
             Log.Error($"[DeactivateWebAuthnCredential] Credential not found: {id}");
->>>>>>> maintofix
             throw new Exception("WebAuthn credential not found");
         }
         credential.IsActive = false;
         ctx.Db.WebAuthnCredential.Id.Update(credential);
-<<<<<<< HEAD
-=======
         Log.Info($"[DeactivateWebAuthnCredential] Successfully deactivated credential: {id}");
->>>>>>> maintofix
     }
 
 
     [SpacetimeDB.Reducer]
     public static void CreateMagicLinkToken(ReducerContext ctx, Identity userId, string token, ulong expiresAt, string? deviceInfo = null, string? ipAddress = null)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateMagicLinkToken] Starting for user: {userId}, expiresAt: {expiresAt}");
->>>>>>> maintofix
         var magicLinkToken = new MagicLinkToken
         {
             Token = token,
@@ -446,10 +365,7 @@ public static partial class Module
             IpAddress = ipAddress
         };
         ctx.Db.MagicLinkToken.Insert(magicLinkToken);
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateMagicLinkToken] Successfully created magic link token for user: {userId}");
->>>>>>> maintofix
     }
 
 
@@ -457,8 +373,6 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RegisterOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType, string clientType)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[RegisterOpenIdClient] Starting registration for client: {clientId}");
         Log.Info($"[RegisterOpenIdClient] Display name: {displayName}, Type: {clientType}, Consent: {consentType}");
         Log.Info($"[RegisterOpenIdClient] Redirect URIs count: {redirectUris.Length}, Scopes count: {allowedScopes.Length}");
@@ -488,7 +402,6 @@ public static partial class Module
         
         Log.Info($"[RegisterOpenIdClient] Client {clientId} does not exist, creating new entry");
         
->>>>>>> maintofix
         var openIdConnect = new OpenIdConnect
         {
             ClientId = clientId,
@@ -502,11 +415,6 @@ public static partial class Module
             IsActive = true,
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             CreatedBy = ctx.Identity.ToString(),
-<<<<<<< HEAD
-            RequireConsent = consentType == "explicit" // If consentType is "explicit", RequireConsent is true, otherwise false
-        };
-        ctx.Db.OpenIdConnect.Insert(openIdConnect);
-=======
             RequireConsent = consentType == "explicit"
         };
         
@@ -523,19 +431,11 @@ public static partial class Module
         {
             Log.Error($"[RegisterOpenIdClient] Verification FAILED - client {clientId} not found after insert!");
         }
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType)
     {
-<<<<<<< HEAD
-        var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
-        if (openIdConnect == null)
-        {
-            throw new Exception("OpenID Connect client not found");
-        }
-=======
         Log.Info($"[UpdateOpenIdClient] Updating client: {clientId}");
         
         var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
@@ -546,7 +446,6 @@ public static partial class Module
         }
         
         Log.Info($"[UpdateOpenIdClient] Found client {clientId}, applying updates");
->>>>>>> maintofix
         openIdConnect.ClientSecret = clientSecret;
         openIdConnect.DisplayName = displayName;
         openIdConnect.RedirectUris = redirectUris;
@@ -556,24 +455,12 @@ public static partial class Module
         openIdConnect.RequireConsent = consentType == "explicit";
 
         ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
-<<<<<<< HEAD
-=======
         Log.Info($"[UpdateOpenIdClient] Successfully updated client {clientId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void RevokeOpenIdClient(ReducerContext ctx, string clientId)
     {
-<<<<<<< HEAD
-        var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
-        if (openIdConnect == null)
-        {
-            throw new Exception("OpenID Connect client not found");
-        }
-        openIdConnect.IsActive = false;
-        ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
-=======
         Log.Info($"[RevokeOpenIdClient] Revoking client: {clientId}");
         
         var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
@@ -587,17 +474,13 @@ public static partial class Module
         openIdConnect.IsActive = false;
         ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
         Log.Info($"[RevokeOpenIdClient] Successfully revoked client {clientId}");
->>>>>>> maintofix
     }
 
 
     [SpacetimeDB.Reducer]
     public static void CreateOpenIdGrant(ReducerContext ctx, string grantId, string clientId, Identity userId, string type, string[] scopes, ulong expiresAt)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateOpenIdGrant] Starting for client: {clientId}, user: {userId}, type: {type}");
->>>>>>> maintofix
         var openIdConnectGrant = new OpenIdConnectGrant
         {
             GrantId = grantId,
@@ -610,60 +493,42 @@ public static partial class Module
             IsRevoked = false
         };
         ctx.Db.OpenIdConnectGrant.Insert(openIdConnectGrant);
-<<<<<<< HEAD
-=======
         Log.Info($"[CreateOpenIdGrant] Successfully created grant: {grantId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void RevokeOpenIdGrant(ReducerContext ctx, string grantId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[RevokeOpenIdGrant] Starting for grant: {grantId}");
->>>>>>> maintofix
         var grant = ctx.Db.OpenIdConnectGrant.GrantId.Find(grantId);
         if (grant != null)
         {
             grant.IsRevoked = true;
             ctx.Db.OpenIdConnectGrant.GrantId.Update(grant);
-<<<<<<< HEAD
-=======
             Log.Info($"[RevokeOpenIdGrant] Successfully revoked grant: {grantId}");
         }
         else
         {
             Log.Warn($"[RevokeOpenIdGrant] Grant not found: {grantId}");
->>>>>>> maintofix
         }
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateWebAuthnCounter(ReducerContext ctx, byte[] credentialId, uint counter)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[UpdateWebAuthnCounter] Starting with counter: {counter}");
->>>>>>> maintofix
         var credential = ctx.Db.WebAuthnCredential.Iter()
             .FirstOrDefault(c => c.CredentialId.SequenceEqual(credentialId));
 
         if (credential == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[UpdateWebAuthnCounter] Credential not found");
->>>>>>> maintofix
             throw new Exception("WebAuthn credential not found");
         }
 
         credential.Counter = counter;
         ctx.Db.WebAuthnCredential.Id.Update(credential);
-<<<<<<< HEAD
-=======
         Log.Info($"[UpdateWebAuthnCounter] Successfully updated counter to: {counter}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -711,36 +576,24 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UseMagicLinkToken(ReducerContext ctx, string token)
     {
-<<<<<<< HEAD
-        var magicLinkToken = ctx.Db.MagicLinkToken.Token.Find(token);
-        if (magicLinkToken == null)
-        {
-=======
         Log.Info($"[UseMagicLinkToken] Starting for token");
         var magicLinkToken = ctx.Db.MagicLinkToken.Token.Find(token);
         if (magicLinkToken == null)
         {
             Log.Error($"[UseMagicLinkToken] Token not found");
->>>>>>> maintofix
             throw new Exception("Magic link token not found");
         }
 
         magicLinkToken.IsUsed = true;
         ctx.Db.MagicLinkToken.Token.Update(magicLinkToken);
-<<<<<<< HEAD
-=======
         Log.Info($"[UseMagicLinkToken] Successfully marked token as used");
->>>>>>> maintofix
     }
 
 
     [SpacetimeDB.Reducer]
     public static void StoreWebAuthnChallenge(ReducerContext ctx, Identity userId, string challenge, ulong expiresAt)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[StoreWebAuthnChallenge] Starting for user: {userId}, expiresAt: {expiresAt}");
->>>>>>> maintofix
         var webAuthnChallenge = new WebAuthnChallenge
         {
             Id = GetNextId(ctx, "webAuthnChallengeId"),
@@ -750,23 +603,12 @@ public static partial class Module
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000
         };
         ctx.Db.WebAuthnChallenge.Insert(webAuthnChallenge);
-<<<<<<< HEAD
-=======
         Log.Info($"[StoreWebAuthnChallenge] Successfully stored challenge for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DeleteWebAuthnChallenge(ReducerContext ctx, uint id)
     {
-<<<<<<< HEAD
-        var challenge = ctx.Db.WebAuthnChallenge.Id.Find(id);
-        if (challenge == null)
-        {
-            throw new Exception("WebAuthn challenge not found");
-        }
-        ctx.Db.WebAuthnChallenge.Id.Delete(id);
-=======
         Log.Info($"[DeleteWebAuthnChallenge] Starting for challenge ID: {id}");
         var challenge = ctx.Db.WebAuthnChallenge.Id.Find(id);
         if (challenge == null)
@@ -776,65 +618,43 @@ public static partial class Module
         }
         ctx.Db.WebAuthnChallenge.Id.Delete(id);
         Log.Info($"[DeleteWebAuthnChallenge] Successfully deleted challenge: {id}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateWebAuthnCredentialCounter(ReducerContext ctx, uint id, uint counter)
     {
-<<<<<<< HEAD
-        var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
-        if (credential == null)
-        {
-=======
         Log.Info($"[UpdateWebAuthnCredentialCounter] Starting for credential ID: {id}, counter: {counter}");
         var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
         if (credential == null)
         {
             Log.Error($"[UpdateWebAuthnCredentialCounter] Credential not found: {id}");
->>>>>>> maintofix
             throw new Exception("WebAuthn credential not found");
         }
         credential.Counter = counter;
         ctx.Db.WebAuthnCredential.Id.Update(credential);
-<<<<<<< HEAD
-=======
         Log.Info($"[UpdateWebAuthnCredentialCounter] Successfully updated counter for credential: {id}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DeactivateTotpSecret(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[DeactivateTotpSecret] Starting for user: {userId}");
->>>>>>> maintofix
         var totpSecret = ctx.Db.TotpSecret.Iter()
             .FirstOrDefault(t => t.UserId == userId);
         if (totpSecret == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[DeactivateTotpSecret] TOTP secret not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("TOTP secret not found");
         }
         totpSecret.IsActive = false;
         ctx.Db.TotpSecret.Id.Update(totpSecret);
-<<<<<<< HEAD
-=======
         Log.Info($"[DeactivateTotpSecret] Successfully deactivated TOTP secret for user: {userId}");
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
     public static void DisableWebAuthn(ReducerContext ctx, Identity userId)
     {
-<<<<<<< HEAD
-=======
         Log.Info($"[DisableWebAuthn] Starting for user: {userId}");
->>>>>>> maintofix
         //should disable webauthn in usersettings and purge credentials at same time - so first modify user settings then delete stored webauthn creds
         /*so reverse of
 
@@ -851,10 +671,7 @@ public static partial class Module
             .FirstOrDefault(u => u.UserId == userId);
         if (userSettings == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[DisableWebAuthn] User settings not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("User settings not found");
         }
         userSettings.WebAuthnEnabled = false;
@@ -863,35 +680,23 @@ public static partial class Module
             .FirstOrDefault(w => w.UserId == userId);
         if (webAuthnCredential == null)
         {
-<<<<<<< HEAD
-=======
             Log.Error($"[DisableWebAuthn] WebAuthn credential not found for user: {userId}");
->>>>>>> maintofix
             throw new Exception("WebAuthn credential not found");
         }
         webAuthnCredential.IsActive = false;
         ctx.Db.WebAuthnCredential.Id.Update(webAuthnCredential);
-<<<<<<< HEAD
-=======
         Log.Info($"[DisableWebAuthn] Successfully disabled WebAuthn for user: {userId}");
->>>>>>> maintofix
 
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateTwoFactorToken(ReducerContext ctx, uint id, Identity userId, string token, bool isUsed, ulong expiresAt)
     {
-<<<<<<< HEAD
-        var twoFactorToken = ctx.Db.TwoFactorToken.Id.Find(id);
-        if (twoFactorToken == null)
-        {
-=======
         Log.Info($"[UpdateTwoFactorToken] Starting for token ID: {id}, user: {userId}");
         var twoFactorToken = ctx.Db.TwoFactorToken.Id.Find(id);
         if (twoFactorToken == null)
         {
             Log.Error($"[UpdateTwoFactorToken] Token not found: {id}");
->>>>>>> maintofix
             throw new Exception("Two-factor token not found");
         }
         twoFactorToken.UserId = userId;
@@ -899,10 +704,7 @@ public static partial class Module
         twoFactorToken.IsUsed = isUsed;
         twoFactorToken.ExpiresAt = expiresAt;
         ctx.Db.TwoFactorToken.Id.Update(twoFactorToken);
-<<<<<<< HEAD
-=======
         Log.Info($"[UpdateTwoFactorToken] Successfully updated token: {id}");
->>>>>>> maintofix
     }
 
     // --- Authorization Reducers ---

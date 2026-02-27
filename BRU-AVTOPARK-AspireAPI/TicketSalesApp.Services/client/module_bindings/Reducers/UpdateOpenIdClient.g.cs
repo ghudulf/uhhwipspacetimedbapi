@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateOpenIdClient(string clientId, string clientSecret, string displayName, System.Collections.Generic.List<string> redirectUris, System.Collections.Generic.List<string> postLogoutRedirectUris, System.Collections.Generic.List<string> allowedScopes, string consentType)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType), this.SetCallReducerFlags.UpdateOpenIdClientFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateOpenIdClient(clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateOpenIdClient(ReducerEventContext ctx, Reducer.UpdateOpenIdClient args)
         {
-<<<<<<< HEAD
-            if (OnUpdateOpenIdClient == null) return false;
-=======
             if (OnUpdateOpenIdClient == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateOpenIdClient(
                 ctx,
                 args.ClientId,
@@ -62,21 +54,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateOpenIdClient : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "clientId")]
-            public string ClientId;
-            [DataMember(Name = "clientSecret")]
-            public string ClientSecret;
-            [DataMember(Name = "displayName")]
-            public string DisplayName;
-            [DataMember(Name = "redirectUris")]
-            public System.Collections.Generic.List<string> RedirectUris;
-            [DataMember(Name = "postLogoutRedirectUris")]
-            public System.Collections.Generic.List<string> PostLogoutRedirectUris;
-            [DataMember(Name = "allowedScopes")]
-            public System.Collections.Generic.List<string> AllowedScopes;
-            [DataMember(Name = "consentType")]
-=======
             [DataMember(Name = "client_id")]
             public string ClientId;
             [DataMember(Name = "client_secret")]
@@ -90,7 +67,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "allowed_scopes")]
             public System.Collections.Generic.List<string> AllowedScopes;
             [DataMember(Name = "consent_type")]
->>>>>>> maintofix
             public string ConsentType;
 
             public UpdateOpenIdClient(
@@ -123,19 +99,7 @@ namespace SpacetimeDB.Types
                 this.ConsentType = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateOpenIdClient";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateOpenIdClientFlags;
-        public void UpdateOpenIdClient(CallReducerFlags flags) => UpdateOpenIdClientFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_open_id_client";
         }
     }
->>>>>>> maintofix
 }

@@ -39,36 +39,8 @@ public class AdminActionLogger : IAdminActionLogger
             var conn = _spacetimeService.GetConnection();
             var httpContext = _httpContextAccessor.HttpContext;
             
-<<<<<<< HEAD
-            // Get the next log ID
-            uint logId = 0;
-            var counter = conn.Db.LogIdCounter.Key.Find("logId");
-            if (counter == null)
-            {
-                // Create new counter
-                conn.Reducers.LogAdminAction(
-                    userId,
-                    "CreateCounter",
-                    "Created admin log counter",
-                    DateTimeOffset.UtcNow.ToString("o"),
-                    httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown",
-                    httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown",
-                    actingUser
-
-                );
-                logId = 1;
-            }
-            else
-            {
-                counter.NextId++;
-                logId = counter.NextId;
-            }
-            
-            // Create the log entry
-=======
             // Call the reducer to log the admin action
             // The server will handle ID generation internally
->>>>>>> maintofix
             conn.Reducers.LogAdminAction(
                 userId,
                 action,

@@ -22,10 +22,7 @@ namespace TicketSalesApp.Services.Implementations
         private Identity? _localIdentity; // Local identity for the connection
         private readonly ConcurrentQueue<(string Command, Dictionary<string, object> Args)> _inputQueue; // Thread-safe queue for commands
         private volatile bool _isConnecting = false; // Flag to track connection state
-<<<<<<< HEAD
-=======
         private volatile bool _subscriptionApplied = false; // Flag to track if subscription has been applied
->>>>>>> maintofix
 
         // Constructor to initialize configuration and logger
         public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger)
@@ -57,21 +54,12 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _isConnecting = true;
 
-<<<<<<< HEAD
-                // Retrieve host and module name from configuration
-                var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
-                var moduleName = _configuration["SpacetimeDB:ModuleName"] ?? "avtopark"; // Default module name
-
-                // Log the connection attempt
-                _logger.LogInformation("Connecting to SpacetimeDB at {Host} module {Module}", host, moduleName);
-=======
                 // Retrieve host and database name from configuration
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
                 var databaseName = _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark"; // Default database name
 
                 // Log the connection attempt
                 _logger.LogInformation("Connecting to SpacetimeDB at {Host} database {Database}", host, databaseName);
->>>>>>> maintofix
 
                 // Initialize authentication token storage
                 AuthToken.Init(".spacetime_csharp_avtopark");
@@ -81,14 +69,9 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogDebug("Building database connection with callbacks");
                 _connection = DbConnection.Builder()
                         .WithUri(host) // Set the URI for the connection
-<<<<<<< HEAD
-                        .WithModuleName(moduleName) // Set the module name
-                        .WithToken(AuthToken.Token) // Set the authentication token
-=======
                         .WithDatabaseName(databaseName) // Set the database name
                         .WithToken(AuthToken.Token) // Set the authentication token
                         .WithConfirmedReads(true) // Enable confirmed reads for durability (default: true). Set to false for low-latency scenarios where eventual consistency is acceptable.
->>>>>>> maintofix
                         .OnConnect(OnConnected) // Set the on-connect callback
                         .OnConnectError(OnConnectError) // Set the on-connect-error callback
                         .OnDisconnect(OnDisconnected) // Set the on-disconnect callback
@@ -132,15 +115,12 @@ namespace TicketSalesApp.Services.Implementations
             return _connection != null && _connection.IsActive;
         }
 
-<<<<<<< HEAD
-=======
         // Method to check if the subscription has been applied
         public bool IsSubscriptionReady()
         {
             return _subscriptionApplied;
         }
 
->>>>>>> maintofix
         // Method to disconnect from the database
         public void Disconnect()
         {
@@ -190,11 +170,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-<<<<<<< HEAD
-        // Method to subscribe to all tables
-=======
         // Method to subscribe to all tables (excludes event tables in SpacetimeDB 2.0)
->>>>>>> maintofix
         public void SubscribeToAllTables()
         {
             if (_connection == null)
@@ -203,19 +179,12 @@ namespace TicketSalesApp.Services.Implementations
                 throw new InvalidOperationException("SpacetimeDB connection not initialized or not yet established. Call Connect() first and wait for connection to complete.");
             }
 
-<<<<<<< HEAD
-            _logger.LogInformation("Subscribing to all tables");
-=======
             _logger.LogInformation("Subscribing to all regular tables (event tables excluded)");
->>>>>>> maintofix
             _connection.SubscriptionBuilder()
                 .OnApplied(OnSubscriptionApplied)
                 .OnError(OnSubscriptionError)
                 .SubscribeToAllTables();
 
-<<<<<<< HEAD
-            _logger.LogInformation("Subscribed to all tables successfully");
-=======
             _logger.LogInformation("Subscribed to all regular tables successfully");
         }
 
@@ -242,7 +211,6 @@ namespace TicketSalesApp.Services.Implementations
 
             _logger.LogInformation("Subscribed to event tables successfully");
             return subscriptionHandle;
->>>>>>> maintofix
         }
 
         // Method to subscribe to specific queries
@@ -1199,18 +1167,12 @@ namespace TicketSalesApp.Services.Implementations
                 _localIdentity = identity;
                 AuthToken.SaveToken(token);
 
-<<<<<<< HEAD
-                // Subscribe to all tables
-=======
                 // Subscribe to all regular tables (event tables are excluded)
->>>>>>> maintofix
                 conn.SubscriptionBuilder()
                     .OnApplied(OnSubscriptionApplied)
                     .OnError(OnSubscriptionError)
                     .SubscribeToAllTables();
 
-<<<<<<< HEAD
-=======
                 // Subscribe to event tables explicitly (they are excluded from SubscribeToAllTables)
                 _logger.LogInformation("Subscribing to event tables");
                 conn.SubscriptionBuilder()
@@ -1227,7 +1189,6 @@ namespace TicketSalesApp.Services.Implementations
                 // Register event table callbacks
                 RegisterEventTableCallbacks(conn);
 
->>>>>>> maintofix
                 _isConnecting = false;
             }
             catch (Exception ex)
@@ -1274,10 +1235,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the successful subscription application
                 _logger.LogInformation("SpacetimeDB subscription applied successfully");
                 _logger.LogDebug("Database tables are now available in the client cache");
-<<<<<<< HEAD
-=======
                 _subscriptionApplied = true; // Set the flag to indicate subscription is ready
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
@@ -1292,8 +1250,6 @@ namespace TicketSalesApp.Services.Implementations
         {
             _logger.LogError(ex, "Error in subscription: {ErrorMessage}", ex.Message);
         }
-<<<<<<< HEAD
-=======
 
         // ***** Event Table Callback Registration *****
         // Register callbacks for all event tables to handle cross-client notifications
@@ -1526,6 +1482,5 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogError(ex, "Error handling MaintenanceEvent: {ErrorMessage}", ex.Message);
             }
         }
->>>>>>> maintofix
     }
 }

@@ -62,11 +62,7 @@
                   Margin="0,0,0,10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" 
-<<<<<<< HEAD
-                                    Binding="{Binding EmpId}"
-=======
                                     Binding="{Binding EmployeeId}"
->>>>>>> maintofix
                                     Width="Auto"/>
                 <DataGridTextColumn Header="Фамилия" 
                                     Binding="{Binding Surname}"
@@ -78,17 +74,10 @@
                                     Binding="{Binding Patronym}"
                                     Width="*"/>
                 <DataGridTextColumn Header="Дата приема" 
-<<<<<<< HEAD
-                                    Binding="{Binding EmployedSince, StringFormat={}{0:dd.MM.yyyy}}"
-                                    Width="Auto"/>
-                <DataGridTextColumn Header="Должность" 
-                                    Binding="{Binding Job.JobTitle}"
-=======
                                     Binding="{Binding EmployedSinceDisplay}"
                                     Width="Auto"/>
                 <DataGridTextColumn Header="Должность" 
                                     Binding="{Binding JobTitle}"
->>>>>>> maintofix
                                     Width="*"/>
             </DataGrid.Columns>
         </DataGrid>

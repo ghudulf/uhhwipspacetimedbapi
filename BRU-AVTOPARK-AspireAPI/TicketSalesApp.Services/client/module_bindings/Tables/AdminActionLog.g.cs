@@ -36,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly AdminActionLogHandle AdminActionLog;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class AdminActionLogCols
     {
@@ -70,5 +68,4 @@ namespace SpacetimeDB.Types
             LogId = new global::SpacetimeDB.IxCol<AdminActionLog, uint>(tableName, "log_id");
         }
     }
->>>>>>> maintofix
 }

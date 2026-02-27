@@ -98,7 +98,7 @@
             },
             "SpacetimeDB.ClientSDK": {
               "target": "Package",
-              "version": "[1.0.1, )"
+              "version": "[2.0.1, )"
             }
           },
           "imports": [
@@ -193,7 +193,7 @@
             },
             "Avalonia.Labs.Controls": {
               "target": "Package",
-              "version": "[11.0.5, )"
+              "version": "[11.0.10, )"
             },
             "Avalonia.ReactiveUI": {
               "target": "Package",
@@ -297,6 +297,10 @@
               "target": "Package",
               "version": "[6.0.0, )"
             },
+            "SpacetimeDB.ClientSDK": {
+              "target": "Package",
+              "version": "[2.0.1, )"
+            },
             "SukiUI": {
               "target": "Package",
               "version": "[6.0.0, )"
@@ -308,6 +312,10 @@
             "System.Text.Json": {
               "target": "Package",
               "version": "[9.0.1, )"
+            },
+            "WebView.Avalonia": {
+              "target": "Package",
+              "version": "[11.0.0.1, )"
             }
           },
           "imports": [

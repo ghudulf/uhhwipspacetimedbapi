@@ -13,45 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Job
     {
-<<<<<<< HEAD
-        [DataMember(Name = "JobId")]
-        public uint JobId;
-        [DataMember(Name = "JobTitle")]
-        public string JobTitle;
-        [DataMember(Name = "Internship")]
-        public string? Internship;
-        [DataMember(Name = "BaseSalary")]
-        public double? BaseSalary;
-        [DataMember(Name = "Department")]
-        public string? Department;
-        [DataMember(Name = "JobDescription")]
-        public string? JobDescription;
-        [DataMember(Name = "RequiredExperience")]
-        public uint? RequiredExperience;
-        [DataMember(Name = "RequiredSkills")]
-        public System.Collections.Generic.List<string>? RequiredSkills;
-        [DataMember(Name = "RequiredCertifications")]
-        public System.Collections.Generic.List<string>? RequiredCertifications;
-        [DataMember(Name = "EducationRequirements")]
-        public string? EducationRequirements;
-        [DataMember(Name = "WorkSchedule")]
-        public string? WorkSchedule;
-        [DataMember(Name = "IsFullTime")]
-        public bool? IsFullTime;
-        [DataMember(Name = "IsPartTime")]
-        public bool? IsPartTime;
-        [DataMember(Name = "IsShiftWork")]
-        public bool? IsShiftWork;
-        [DataMember(Name = "Benefits")]
-        public System.Collections.Generic.List<string>? Benefits;
-        [DataMember(Name = "ReportingTo")]
-        public string? ReportingTo;
-        [DataMember(Name = "VacationDays")]
-        public uint? VacationDays;
-        [DataMember(Name = "SickDays")]
-        public uint? SickDays;
-        [DataMember(Name = "PerformanceMetrics")]
-=======
         [DataMember(Name = "job_id")]
         public uint JobId;
         [DataMember(Name = "job_title")]
@@ -89,7 +50,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "sick_days")]
         public uint? SickDays;
         [DataMember(Name = "performance_metrics")]
->>>>>>> maintofix
         public string? PerformanceMetrics;
 
         public Job(

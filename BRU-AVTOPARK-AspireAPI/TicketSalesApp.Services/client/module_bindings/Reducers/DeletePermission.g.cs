@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeletePermission(uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeletePermission(permissionId, actingUserId), this.SetCallReducerFlags.DeletePermissionFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeletePermission(permissionId, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeDeletePermission(ReducerEventContext ctx, Reducer.DeletePermission args)
         {
-<<<<<<< HEAD
-            if (OnDeletePermission == null) return false;
-=======
             if (OnDeletePermission == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeletePermission(
                 ctx,
                 args.PermissionId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeletePermission : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "permissionId")]
-            public uint PermissionId;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "permission_id")]
             public uint PermissionId;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public DeletePermission(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeletePermission";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeletePermissionFlags;
-        public void DeletePermission(CallReducerFlags flags) => DeletePermissionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_permission";
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreatePassenger(string name, string email, string phoneNumber)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreatePassenger(name, email, phoneNumber), this.SetCallReducerFlags.CreatePassengerFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreatePassenger(name, email, phoneNumber));
->>>>>>> maintofix
         }
 
         public bool InvokeCreatePassenger(ReducerEventContext ctx, Reducer.CreatePassenger args)
         {
-<<<<<<< HEAD
-            if (OnCreatePassenger == null) return false;
-=======
             if (OnCreatePassenger == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreatePassenger(
                 ctx,
                 args.Name,
@@ -62,11 +54,7 @@ namespace SpacetimeDB.Types
             public string Name;
             [DataMember(Name = "email")]
             public string Email;
-<<<<<<< HEAD
-            [DataMember(Name = "phoneNumber")]
-=======
             [DataMember(Name = "phone_number")]
->>>>>>> maintofix
             public string PhoneNumber;
 
             public CreatePassenger(
@@ -87,19 +75,7 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreatePassenger";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreatePassengerFlags;
-        public void CreatePassenger(CallReducerFlags flags) => CreatePassengerFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_passenger";
         }
     }
->>>>>>> maintofix
 }

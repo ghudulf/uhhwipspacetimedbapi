@@ -22,11 +22,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                     <TextBox Grid.Column="0" 
                              Text="{Binding SearchText}"
-<<<<<<< HEAD
-                             Watermark="Поиск по модели автобуса..."
-=======
                              Watermark="Поиск по модели, рег. номеру, VIN, номерному знаку..."
->>>>>>> maintofix
                              Margin="0,0,10,0"/>
                     <Button Grid.Column="1" 
                             Command="{Binding AddCommand}"
@@ -62,11 +58,7 @@
                   GridLinesVisibility="All"
                   BorderThickness="1"
                   BorderBrush="Gray"
-<<<<<<< HEAD
-                  Margin="0,0,0,15">
-=======
                   Margin="0,10,0,15">
->>>>>>> maintofix
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" 
                                     Binding="{Binding BusId}"
@@ -77,16 +69,6 @@
                 <DataGridTextColumn Header="Рег. номер" 
                                     Binding="{Binding RegistrationNumber}"
                                     Width="Auto"/>
-<<<<<<< HEAD
-                <DataGridTextColumn Header="Тип" 
-                                    Binding="{Binding Bus.BusType}"
-                                    Width="Auto"/>
-                 <DataGridTextColumn Header="Год" 
-                                    Binding="{Binding Bus.Year}"
-                                    Width="Auto"/>
-                <DataGridTextColumn Header="Вместимость" 
-                                    Binding="{Binding Bus.Capacity}"
-=======
                  <DataGridTextColumn Header="Номерной знак" 
                                     Binding="{Binding LicensePlate}"
                                     Width="Auto"/>
@@ -104,7 +86,6 @@
                                     Width="*"/>
                  <DataGridTextColumn Header="Статус" 
                                     Binding="{Binding CurrentStatus}"
->>>>>>> maintofix
                                     Width="Auto"/>
                  <DataGridCheckBoxColumn Header="Активен" 
                                     Binding="{Binding IsActive}"

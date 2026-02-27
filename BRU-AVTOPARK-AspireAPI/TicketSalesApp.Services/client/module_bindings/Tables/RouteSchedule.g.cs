@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class RouteScheduleHandle : RemoteTableHandle<EventContext, RouteSchedule>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "RouteSchedule";
-=======
             protected override string RemoteTableName => "route_schedule";
->>>>>>> maintofix
 
             public sealed class ScheduleIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly RouteScheduleHandle RouteSchedule;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class RouteScheduleCols
     {
@@ -128,5 +122,4 @@ namespace SpacetimeDB.Types
             ScheduleId = new global::SpacetimeDB.IxCol<RouteSchedule, uint>(tableName, "schedule_id");
         }
     }
->>>>>>> maintofix
 }

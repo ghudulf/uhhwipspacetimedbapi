@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateRouteSchedule(uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateRouteSchedule(routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes), this.SetCallReducerFlags.CreateRouteScheduleFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateRouteSchedule(routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateRouteSchedule(ReducerEventContext ctx, Reducer.CreateRouteSchedule args)
         {
-<<<<<<< HEAD
-            if (OnCreateRouteSchedule == null) return false;
-=======
             if (OnCreateRouteSchedule == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateRouteSchedule(
                 ctx,
                 args.RouteId,
@@ -69,33 +61,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateRouteSchedule : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "routeId")]
-            public uint RouteId;
-            [DataMember(Name = "departureTime")]
-            public ulong DepartureTime;
-            [DataMember(Name = "price")]
-            public double Price;
-            [DataMember(Name = "availableSeats")]
-            public uint AvailableSeats;
-            [DataMember(Name = "daysOfWeek")]
-            public System.Collections.Generic.List<string>? DaysOfWeek;
-            [DataMember(Name = "startPoint")]
-            public string? StartPoint;
-            [DataMember(Name = "endPoint")]
-            public string? EndPoint;
-            [DataMember(Name = "routeStops")]
-            public System.Collections.Generic.List<string>? RouteStops;
-            [DataMember(Name = "arrivalTime")]
-            public ulong? ArrivalTime;
-            [DataMember(Name = "stopDurationMinutes")]
-            public uint? StopDurationMinutes;
-            [DataMember(Name = "isRecurring")]
-            public bool? IsRecurring;
-            [DataMember(Name = "estimatedStopTimes")]
-            public System.Collections.Generic.List<string>? EstimatedStopTimes;
-            [DataMember(Name = "stopDistances")]
-=======
             [DataMember(Name = "route_id")]
             public uint RouteId;
             [DataMember(Name = "departure_time")]
@@ -121,7 +86,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "estimated_stop_times")]
             public System.Collections.Generic.List<string>? EstimatedStopTimes;
             [DataMember(Name = "stop_distances")]
->>>>>>> maintofix
             public System.Collections.Generic.List<double>? StopDistances;
             [DataMember(Name = "notes")]
             public string? Notes;
@@ -163,19 +127,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateRouteSchedule";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateRouteScheduleFlags;
-        public void CreateRouteSchedule(CallReducerFlags flags) => CreateRouteScheduleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_route_schedule";
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteWebAuthnChallenge(uint id)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteWebAuthnChallenge(id), this.SetCallReducerFlags.DeleteWebAuthnChallengeFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteWebAuthnChallenge(id));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteWebAuthnChallenge(ReducerEventContext ctx, Reducer.DeleteWebAuthnChallenge args)
         {
-<<<<<<< HEAD
-            if (OnDeleteWebAuthnChallenge == null) return false;
-=======
             if (OnDeleteWebAuthnChallenge == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteWebAuthnChallenge(
                 ctx,
                 args.Id
@@ -68,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteWebAuthnChallenge";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteWebAuthnChallengeFlags;
-        public void DeleteWebAuthnChallenge(CallReducerFlags flags) => DeleteWebAuthnChallengeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_web_authn_challenge";
         }
     }
->>>>>>> maintofix
 }

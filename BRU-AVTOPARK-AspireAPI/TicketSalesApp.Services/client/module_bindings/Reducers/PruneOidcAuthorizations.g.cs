@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void PruneOidcAuthorizations(ulong thresholdDate)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.PruneOidcAuthorizations(thresholdDate), this.SetCallReducerFlags.PruneOidcAuthorizationsFlags);
-=======
             conn.InternalCallReducer(new Reducer.PruneOidcAuthorizations(thresholdDate));
->>>>>>> maintofix
         }
 
         public bool InvokePruneOidcAuthorizations(ReducerEventContext ctx, Reducer.PruneOidcAuthorizations args)
         {
-<<<<<<< HEAD
-            if (OnPruneOidcAuthorizations == null) return false;
-=======
             if (OnPruneOidcAuthorizations == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnPruneOidcAuthorizations(
                 ctx,
                 args.ThresholdDate
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class PruneOidcAuthorizations : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "thresholdDate")]
-=======
             [DataMember(Name = "threshold_date")]
->>>>>>> maintofix
             public ulong ThresholdDate;
 
             public PruneOidcAuthorizations(ulong ThresholdDate)
@@ -72,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "PruneOidcAuthorizations";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags PruneOidcAuthorizationsFlags;
-        public void PruneOidcAuthorizations(CallReducerFlags flags) => PruneOidcAuthorizationsFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "prune_oidc_authorizations";
         }
     }
->>>>>>> maintofix
 }

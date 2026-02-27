@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void LogAdminAction(string userId, string action, string details, string timestamp, string ipAddress, string userAgent, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent, actingUser), this.SetCallReducerFlags.LogAdminActionFlags);
-=======
             conn.InternalCallReducer(new Reducer.LogAdminAction(userId, action, details, timestamp, ipAddress, userAgent, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeLogAdminAction(ReducerEventContext ctx, Reducer.LogAdminAction args)
         {
-<<<<<<< HEAD
-            if (OnLogAdminAction == null) return false;
-=======
             if (OnLogAdminAction == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnLogAdminAction(
                 ctx,
                 args.UserId,
@@ -62,11 +54,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class LogAdminAction : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-=======
             [DataMember(Name = "user_id")]
->>>>>>> maintofix
             public string UserId;
             [DataMember(Name = "action")]
             public string Action;
@@ -74,19 +62,11 @@ namespace SpacetimeDB.Types
             public string Details;
             [DataMember(Name = "timestamp")]
             public string Timestamp;
-<<<<<<< HEAD
-            [DataMember(Name = "ipAddress")]
-            public string IpAddress;
-            [DataMember(Name = "userAgent")]
-            public string UserAgent;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "ip_address")]
             public string IpAddress;
             [DataMember(Name = "user_agent")]
             public string UserAgent;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public LogAdminAction(
@@ -118,19 +98,7 @@ namespace SpacetimeDB.Types
                 this.UserAgent = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "LogAdminAction";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags LogAdminActionFlags;
-        public void LogAdminAction(CallReducerFlags flags) => LogAdminActionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "log_admin_action";
         }
     }
->>>>>>> maintofix
 }

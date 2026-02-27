@@ -13,31 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Discounts
     {
-<<<<<<< HEAD
-        [DataMember(Name = "DiscountId")]
-        public uint DiscountId;
-        [DataMember(Name = "DiscountType")]
-        public string DiscountType;
-        [DataMember(Name = "DiscountPercentage")]
-        public double DiscountPercentage;
-        [DataMember(Name = "StartDate")]
-        public ulong StartDate;
-        [DataMember(Name = "EndDate")]
-        public ulong EndDate;
-        [DataMember(Name = "IsActive")]
-        public bool IsActive;
-        [DataMember(Name = "Description")]
-        public string? Description;
-        [DataMember(Name = "RequiredDocuments")]
-        public string? RequiredDocuments;
-        [DataMember(Name = "CreatedBy")]
-        public string? CreatedBy;
-        [DataMember(Name = "CreatedAt")]
-        public ulong CreatedAt;
-        [DataMember(Name = "UpdatedBy")]
-        public string? UpdatedBy;
-        [DataMember(Name = "UpdatedAt")]
-=======
         [DataMember(Name = "discount_id")]
         public uint DiscountId;
         [DataMember(Name = "discount_type")]
@@ -61,7 +36,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "updated_by")]
         public string? UpdatedBy;
         [DataMember(Name = "updated_at")]
->>>>>>> maintofix
         public ulong? UpdatedAt;
 
         public Discounts(

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteUser(SpacetimeDB.Identity userId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteUser(userId, actingUser), this.SetCallReducerFlags.DeleteUserFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteUser(userId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteUser(ReducerEventContext ctx, Reducer.DeleteUser args)
         {
-<<<<<<< HEAD
-            if (OnDeleteUser == null) return false;
-=======
             if (OnDeleteUser == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteUser(
                 ctx,
                 args.UserId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteUser : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeleteUser(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteUser";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteUserFlags;
-        public void DeleteUser(CallReducerFlags flags) => DeleteUserFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_user";
         }
     }
->>>>>>> maintofix
 }

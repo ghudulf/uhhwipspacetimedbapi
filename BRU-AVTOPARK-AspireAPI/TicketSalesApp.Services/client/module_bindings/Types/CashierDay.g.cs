@@ -13,51 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class CashierDay
     {
-<<<<<<< HEAD
-        [DataMember(Name = "CashierDayId")]
-        public uint CashierDayId;
-        [DataMember(Name = "Revenue")]
-        public double Revenue;
-        [DataMember(Name = "TicketsSold")]
-        public uint TicketsSold;
-        [DataMember(Name = "FinesCollected")]
-        public uint FinesCollected;
-        [DataMember(Name = "FinesAmount")]
-        public double FinesAmount;
-        [DataMember(Name = "Date")]
-        public ulong Date;
-        [DataMember(Name = "EmployeeId")]
-        public uint EmployeeId;
-        [DataMember(Name = "RouteId")]
-        public uint RouteId;
-        [DataMember(Name = "Notes")]
-        public string? Notes;
-        [DataMember(Name = "Reconciled")]
-        public bool Reconciled;
-        [DataMember(Name = "ReconciledBy")]
-        public SpacetimeDB.Identity? ReconciledBy;
-        [DataMember(Name = "ReconciledAt")]
-        public ulong? ReconciledAt;
-        [DataMember(Name = "CashCollected")]
-        public double? CashCollected;
-        [DataMember(Name = "ElectronicPayments")]
-        public double? ElectronicPayments;
-        [DataMember(Name = "ElectronicTransactions")]
-        public uint? ElectronicTransactions;
-        [DataMember(Name = "CashTransactions")]
-        public uint? CashTransactions;
-        [DataMember(Name = "Discrepancy")]
-        public double? Discrepancy;
-        [DataMember(Name = "DiscrepancyReason")]
-        public string? DiscrepancyReason;
-        [DataMember(Name = "IsBalanced")]
-        public bool? IsBalanced;
-        [DataMember(Name = "ShiftType")]
-        public string? ShiftType;
-        [DataMember(Name = "PassengerCount")]
-        public uint? PassengerCount;
-        [DataMember(Name = "AverageTicketPrice")]
-=======
         [DataMember(Name = "cashier_day_id")]
         public uint CashierDayId;
         [DataMember(Name = "revenue")]
@@ -101,7 +56,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "passenger_count")]
         public uint? PassengerCount;
         [DataMember(Name = "average_ticket_price")]
->>>>>>> maintofix
         public double? AverageTicketPrice;
 
         public CashierDay(

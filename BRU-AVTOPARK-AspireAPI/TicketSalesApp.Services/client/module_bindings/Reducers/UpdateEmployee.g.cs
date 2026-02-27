@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateEmployee(uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId, actingUser), this.SetCallReducerFlags.UpdateEmployeeFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateEmployee(employeeId, employeeName, employeeSurname, employeePatronym, jobId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateEmployee(ReducerEventContext ctx, Reducer.UpdateEmployee args)
         {
-<<<<<<< HEAD
-            if (OnUpdateEmployee == null) return false;
-=======
             if (OnUpdateEmployee == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateEmployee(
                 ctx,
                 args.EmployeeId,
@@ -61,19 +53,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateEmployee : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "employeeId")]
-            public uint EmployeeId;
-            [DataMember(Name = "employeeName")]
-            public string? EmployeeName;
-            [DataMember(Name = "employeeSurname")]
-            public string? EmployeeSurname;
-            [DataMember(Name = "employeePatronym")]
-            public string? EmployeePatronym;
-            [DataMember(Name = "jobId")]
-            public uint? JobId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "employee_id")]
             public uint EmployeeId;
             [DataMember(Name = "employee_name")]
@@ -85,7 +64,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "job_id")]
             public uint? JobId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateEmployee(
@@ -109,19 +87,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateEmployee";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateEmployeeFlags;
-        public void UpdateEmployee(CallReducerFlags flags) => UpdateEmployeeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_employee";
         }
     }
->>>>>>> maintofix
 }

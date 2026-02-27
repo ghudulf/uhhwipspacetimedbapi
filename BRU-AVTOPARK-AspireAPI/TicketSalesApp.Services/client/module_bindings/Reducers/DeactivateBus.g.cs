@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeactivateBus(uint busId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeactivateBus(busId, actingUser), this.SetCallReducerFlags.DeactivateBusFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeactivateBus(busId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeDeactivateBus(ReducerEventContext ctx, Reducer.DeactivateBus args)
         {
-<<<<<<< HEAD
-            if (OnDeactivateBus == null) return false;
-=======
             if (OnDeactivateBus == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeactivateBus(
                 ctx,
                 args.BusId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateBus : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "busId")]
-            public uint BusId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "bus_id")]
             public uint BusId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeactivateBus(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeactivateBus";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeactivateBusFlags;
-        public void DeactivateBus(CallReducerFlags flags) => DeactivateBusFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "deactivate_bus";
         }
     }
->>>>>>> maintofix
 }

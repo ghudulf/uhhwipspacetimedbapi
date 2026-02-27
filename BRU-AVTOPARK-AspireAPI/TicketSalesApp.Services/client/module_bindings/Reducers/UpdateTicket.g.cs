@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateTicket(uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive, actingUser), this.SetCallReducerFlags.UpdateTicketFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateTicket(ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateTicket(ReducerEventContext ctx, Reducer.UpdateTicket args)
         {
-<<<<<<< HEAD
-            if (OnUpdateTicket == null) return false;
-=======
             if (OnUpdateTicket == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateTicket(
                 ctx,
                 args.TicketId,
@@ -62,21 +54,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateTicket : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "ticketId")]
-            public uint TicketId;
-            [DataMember(Name = "routeId")]
-            public uint? RouteId;
-            [DataMember(Name = "seatNumber")]
-            public uint? SeatNumber;
-            [DataMember(Name = "ticketPrice")]
-            public double? TicketPrice;
-            [DataMember(Name = "paymentMethod")]
-            public string? PaymentMethod;
-            [DataMember(Name = "isActive")]
-            public bool? IsActive;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "ticket_id")]
             public uint TicketId;
             [DataMember(Name = "route_id")]
@@ -90,7 +67,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "is_active")]
             public bool? IsActive;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateTicket(
@@ -116,19 +92,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateTicket";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateTicketFlags;
-        public void UpdateTicket(CallReducerFlags flags) => UpdateTicketFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_ticket";
         }
     }
->>>>>>> maintofix
 }

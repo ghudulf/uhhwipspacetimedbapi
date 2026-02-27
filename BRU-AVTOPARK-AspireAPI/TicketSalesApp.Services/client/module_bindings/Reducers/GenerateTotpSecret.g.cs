@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void GenerateTotpSecret(SpacetimeDB.Identity userId, string secret)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.GenerateTotpSecret(userId, secret), this.SetCallReducerFlags.GenerateTotpSecretFlags);
-=======
             conn.InternalCallReducer(new Reducer.GenerateTotpSecret(userId, secret));
->>>>>>> maintofix
         }
 
         public bool InvokeGenerateTotpSecret(ReducerEventContext ctx, Reducer.GenerateTotpSecret args)
         {
-<<<<<<< HEAD
-            if (OnGenerateTotpSecret == null) return false;
-=======
             if (OnGenerateTotpSecret == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnGenerateTotpSecret(
                 ctx,
                 args.UserId,
@@ -57,11 +49,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class GenerateTotpSecret : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-=======
             [DataMember(Name = "user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "secret")]
             public string Secret;
@@ -80,19 +68,7 @@ namespace SpacetimeDB.Types
                 this.Secret = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "GenerateTotpSecret";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags GenerateTotpSecretFlags;
-        public void GenerateTotpSecret(CallReducerFlags flags) => GenerateTotpSecretFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "generate_totp_secret";
         }
     }
->>>>>>> maintofix
 }

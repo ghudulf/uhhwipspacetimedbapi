@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class BusHandle : RemoteTableHandle<EventContext, Bus>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Bus";
-=======
             protected override string RemoteTableName => "bus";
->>>>>>> maintofix
 
             public sealed class BusIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly BusHandle Bus;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class BusCols
     {
@@ -106,5 +100,4 @@ namespace SpacetimeDB.Types
             BusId = new global::SpacetimeDB.IxCol<Bus, uint>(tableName, "bus_id");
         }
     }
->>>>>>> maintofix
 }

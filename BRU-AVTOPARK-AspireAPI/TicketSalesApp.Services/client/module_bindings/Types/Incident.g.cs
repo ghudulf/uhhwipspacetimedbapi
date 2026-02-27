@@ -13,43 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Incident
     {
-<<<<<<< HEAD
-        [DataMember(Name = "IncidentId")]
-        public uint IncidentId;
-        [DataMember(Name = "IncidentTime")]
-        public ulong IncidentTime;
-        [DataMember(Name = "BusId")]
-        public uint? BusId;
-        [DataMember(Name = "RouteId")]
-        public uint? RouteId;
-        [DataMember(Name = "EmployeeId")]
-        public uint? EmployeeId;
-        [DataMember(Name = "IncidentType")]
-        public string IncidentType;
-        [DataMember(Name = "Description")]
-        public string Description;
-        [DataMember(Name = "Severity")]
-        public string? Severity;
-        [DataMember(Name = "Status")]
-        public string? Status;
-        [DataMember(Name = "Resolution")]
-        public string? Resolution;
-        [DataMember(Name = "ResolutionTime")]
-        public ulong? ResolutionTime;
-        [DataMember(Name = "Location")]
-        public string? Location;
-        [DataMember(Name = "ReportedBy")]
-        public SpacetimeDB.Identity? ReportedBy;
-        [DataMember(Name = "Witnesses")]
-        public System.Collections.Generic.List<string>? Witnesses;
-        [DataMember(Name = "Attachments")]
-        public System.Collections.Generic.List<string>? Attachments;
-        [DataMember(Name = "RequiresFollowUp")]
-        public bool? RequiresFollowUp;
-        [DataMember(Name = "FollowUpNotes")]
-        public string? FollowUpNotes;
-        [DataMember(Name = "FollowUpDate")]
-=======
         [DataMember(Name = "incident_id")]
         public uint IncidentId;
         [DataMember(Name = "incident_time")]
@@ -85,7 +48,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "follow_up_notes")]
         public string? FollowUpNotes;
         [DataMember(Name = "follow_up_date")]
->>>>>>> maintofix
         public ulong? FollowUpDate;
 
         public Incident(

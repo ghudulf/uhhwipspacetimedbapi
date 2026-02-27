@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdatePassenger(uint passengerId, string? name, string? email, string? phoneNumber, bool? isActive)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdatePassenger(passengerId, name, email, phoneNumber, isActive), this.SetCallReducerFlags.UpdatePassengerFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdatePassenger(passengerId, name, email, phoneNumber, isActive));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdatePassenger(ReducerEventContext ctx, Reducer.UpdatePassenger args)
         {
-<<<<<<< HEAD
-            if (OnUpdatePassenger == null) return false;
-=======
             if (OnUpdatePassenger == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdatePassenger(
                 ctx,
                 args.PassengerId,
@@ -60,25 +52,15 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdatePassenger : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "passengerId")]
-=======
             [DataMember(Name = "passenger_id")]
->>>>>>> maintofix
             public uint PassengerId;
             [DataMember(Name = "name")]
             public string? Name;
             [DataMember(Name = "email")]
             public string? Email;
-<<<<<<< HEAD
-            [DataMember(Name = "phoneNumber")]
-            public string? PhoneNumber;
-            [DataMember(Name = "isActive")]
-=======
             [DataMember(Name = "phone_number")]
             public string? PhoneNumber;
             [DataMember(Name = "is_active")]
->>>>>>> maintofix
             public bool? IsActive;
 
             public UpdatePassenger(
@@ -100,19 +82,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdatePassenger";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdatePassengerFlags;
-        public void UpdatePassenger(CallReducerFlags flags) => UpdatePassengerFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_passenger";
         }
     }
->>>>>>> maintofix
 }

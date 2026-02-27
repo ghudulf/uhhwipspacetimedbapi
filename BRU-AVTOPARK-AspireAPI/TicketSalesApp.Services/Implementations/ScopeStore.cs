@@ -23,10 +23,7 @@ namespace TicketSalesApp.Services.Implementations
     {
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<ScopeStore> _logger;
-<<<<<<< HEAD
-=======
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _pendingScopeIds = new();
->>>>>>> maintofix
 
         public ScopeStore(ISpacetimeDBService spacetimeService, ILogger<ScopeStore> logger)
         {
@@ -64,12 +61,9 @@ namespace TicketSalesApp.Services.Implementations
 
             var oidcScopeId = Guid.NewGuid().ToString(); // Generate unique ID for OpenIddict
 
-<<<<<<< HEAD
-=======
             // Store in pending dictionary so GetIdAsync can retrieve it immediately
             _pendingScopeIds[descriptor.Name] = oidcScopeId;
 
->>>>>>> maintofix
             // Serialize complex properties
             string? descriptionsJson = SerializeJson(descriptor.Descriptions);
             string? displayNamesJson = SerializeJson(descriptor.DisplayNames);
@@ -89,22 +83,14 @@ namespace TicketSalesApp.Services.Implementations
                     propertiesJson,
                     resourcesJson
                 );
-<<<<<<< HEAD
-                // Note: We don't get the internal SpacetimeDB uint ID back here.
-                _logger.LogInformation("Reducer called to create scope: {ScopeName}", descriptor.Name);
-=======
                 
                 _logger.LogInformation("Reducer called to create scope: {ScopeName} with ID: {OidcScopeId}", descriptor.Name, oidcScopeId);
->>>>>>> maintofix
                 return default;
             }
             catch (Exception ex)
             {
-<<<<<<< HEAD
-=======
                 // Remove from pending on error
                 _pendingScopeIds.TryRemove(descriptor.Name, out _);
->>>>>>> maintofix
                 _logger.LogError(ex, "Error creating scope {ScopeName} via reducer.", descriptor.Name);
                 throw;
             }
@@ -160,14 +146,6 @@ namespace TicketSalesApp.Services.Implementations
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentException("Name cannot be null or empty.", nameof(name));
             cancellationToken.ThrowIfCancellationRequested();
-<<<<<<< HEAD
-            _logger.LogDebug("Finding scope by Name: {ScopeName}", name);
-
-            await Task.Yield();
-            var conn = GetConnection();
-            var entity = conn.Db.OpenIddictSpacetimeScope.Iter()
-                            .FirstOrDefault(scope => scope.Name == name);
-=======
             _logger.LogInformation("=== [ScopeStore.FindByNameAsync] Searching for scope: {ScopeName} ===", name);
 
             await Task.Yield();
@@ -196,7 +174,6 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogWarning("[ScopeStore] ✗ NOT FOUND: Scope {ScopeName} not in database", name);
             }
             
->>>>>>> maintofix
             return MapToDescriptor(entity);
         }
 
@@ -204,17 +181,6 @@ namespace TicketSalesApp.Services.Implementations
         {
             
             cancellationToken.ThrowIfCancellationRequested();
-<<<<<<< HEAD
-            _logger.LogDebug("Finding scopes by Names: {ScopeNames}", string.Join(", ", names));
-
-            var conn = GetConnection();
-            // Ensure names comparison is case-sensitive or as needed by OpenIddict
-            var results = conn.Db.OpenIddictSpacetimeScope.Iter()
-                            .Where(scope => names.Contains(scope.Name))
-                            .Select(MapToDescriptor)
-                            .Where(d => d != null)!; // Filter out potential nulls from mapping
-            return GetAsyncEnumerable(results!);
-=======
             _logger.LogInformation("=== [ScopeStore.FindByNamesAsync] Searching for scopes: {ScopeNames} ===", string.Join(", ", names));
 
             var conn = GetConnection();
@@ -249,7 +215,6 @@ namespace TicketSalesApp.Services.Implementations
                 allScopes.Count(), dbScopes.Count, pendingScopes.Count);
             
             return GetAsyncEnumerable(allScopes!);
->>>>>>> maintofix
         }
 
         public virtual IAsyncEnumerable<OpenIddictScopeDescriptor> FindByResourceAsync(string resource, CancellationToken cancellationToken)
@@ -308,12 +273,6 @@ namespace TicketSalesApp.Services.Implementations
         public virtual ValueTask<string?> GetIdAsync(OpenIddictScopeDescriptor descriptor, CancellationToken cancellationToken)
         {
             if (descriptor == null) throw new ArgumentNullException(nameof(descriptor));
-<<<<<<< HEAD
-            // Extract ID from the entity we've associated with this descriptor
-            var conn = GetConnection();
-            var entity = conn.Db.OpenIddictSpacetimeScope.Iter().FirstOrDefault(s => s.Name == descriptor.Name);
-            return new ValueTask<string?>(entity?.OpenIddictScopeId);
-=======
             
             // First check if this is a pending scope (just created, not yet synced)
             if (!string.IsNullOrEmpty(descriptor.Name) && _pendingScopeIds.TryGetValue(descriptor.Name, out var pendingId))
@@ -340,7 +299,6 @@ namespace TicketSalesApp.Services.Implementations
             
             _logger.LogWarning("Could not find scope ID for {ScopeName}", descriptor.Name);
             return new ValueTask<string?>((string?)null);
->>>>>>> maintofix
         }
 
         public virtual ValueTask<string?> GetNameAsync(OpenIddictScopeDescriptor descriptor, CancellationToken cancellationToken)

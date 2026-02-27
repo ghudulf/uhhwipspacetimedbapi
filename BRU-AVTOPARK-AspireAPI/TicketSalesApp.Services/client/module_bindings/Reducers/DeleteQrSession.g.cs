@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteQrSession(string sessionId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteQrSession(sessionId), this.SetCallReducerFlags.DeleteQrSessionFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteQrSession(sessionId));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteQrSession(ReducerEventContext ctx, Reducer.DeleteQrSession args)
         {
-<<<<<<< HEAD
-            if (OnDeleteQrSession == null) return false;
-=======
             if (OnDeleteQrSession == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteQrSession(
                 ctx,
                 args.SessionId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteQrSession : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "sessionId")]
-=======
             [DataMember(Name = "session_id")]
->>>>>>> maintofix
             public string SessionId;
 
             public DeleteQrSession(string SessionId)
@@ -73,19 +61,7 @@ namespace SpacetimeDB.Types
                 this.SessionId = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteQRSession";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteQrSessionFlags;
-        public void DeleteQrSession(CallReducerFlags flags) => DeleteQrSessionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_qr_session";
         }
     }
->>>>>>> maintofix
 }

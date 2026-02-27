@@ -28,15 +28,6 @@
                 <DataGridTextColumn Header="ID"
                                   Binding="{Binding TicketId}"/>
                 <DataGridTextColumn Header="Начальная точка"
-<<<<<<< HEAD
-                                  Binding="{Binding Marshut.StartPoint}"/>
-                <DataGridTextColumn Header="Конечная точка"
-                                  Binding="{Binding Marshut.EndPoint}"/>
-                <DataGridTextColumn Header="Время в пути"
-                                  Binding="{Binding Marshut.TravelTime}"/>
-                <DataGridTextColumn Header="Цена билета"
-                                  Binding="{Binding TicketPrice}"/>
-=======
                                   Binding="{Binding StartPoint}"/>
                 <DataGridTextColumn Header="Конечная точка"
                                   Binding="{Binding EndPoint}"/>
@@ -48,7 +39,6 @@
                                   Binding="{Binding SeatNumber}"/>
                 <DataGridCheckBoxColumn Header="Активен"
                                   Binding="{Binding IsActive}"/>
->>>>>>> maintofix
             </DataGrid.Columns>
         </DataGrid>
 

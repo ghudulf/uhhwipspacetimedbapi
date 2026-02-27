@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateBus(string model, string? registrationNumber, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateBus(model, registrationNumber, actingUser), this.SetCallReducerFlags.CreateBusFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateBus(model, registrationNumber, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateBus(ReducerEventContext ctx, Reducer.CreateBus args)
         {
-<<<<<<< HEAD
-            if (OnCreateBus == null) return false;
-=======
             if (OnCreateBus == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateBus(
                 ctx,
                 args.Model,
@@ -60,15 +52,9 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "model")]
             public string Model;
-<<<<<<< HEAD
-            [DataMember(Name = "registrationNumber")]
-            public string? RegistrationNumber;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "registration_number")]
             public string? RegistrationNumber;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public CreateBus(
@@ -87,19 +73,7 @@ namespace SpacetimeDB.Types
                 this.Model = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateBus";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateBusFlags;
-        public void CreateBus(CallReducerFlags flags) => CreateBusFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_bus";
         }
     }
->>>>>>> maintofix
 }

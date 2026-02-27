@@ -26,10 +26,7 @@ namespace TicketSalesApp.Services.Interfaces
         Task<(bool success, List<object>? applications, string? errorMessage)> GetAllClientApplicationsAsync();
         Task<(bool success, object? application, string? errorMessage)> GetClientApplicationAsync(string clientId);
         IEnumerable<string> GetDestinations(Claim claim);
-<<<<<<< HEAD
-=======
         IOpenIddictScopeManager GetScopeManager();
->>>>>>> maintofix
     }
 }
 

@@ -13,51 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class ConductorStatistics
     {
-<<<<<<< HEAD
-        [DataMember(Name = "StatId")]
-        public uint StatId;
-        [DataMember(Name = "EmployeeId")]
-        public uint EmployeeId;
-        [DataMember(Name = "PeriodStart")]
-        public ulong PeriodStart;
-        [DataMember(Name = "PeriodEnd")]
-        public ulong PeriodEnd;
-        [DataMember(Name = "TotalPassengersServed")]
-        public long TotalPassengersServed;
-        [DataMember(Name = "AverageFareEvasionRate")]
-        public double AverageFareEvasionRate;
-        [DataMember(Name = "TotalRevenueCollected")]
-        public double TotalRevenueCollected;
-        [DataMember(Name = "TotalFinesCollected")]
-        public double TotalFinesCollected;
-        [DataMember(Name = "TotalComplaintsReceived")]
-        public long TotalComplaintsReceived;
-        [DataMember(Name = "AverageRating")]
-        public double AverageRating;
-        [DataMember(Name = "TotalShiftsWorked")]
-        public long TotalShiftsWorked;
-        [DataMember(Name = "AveragePassengersPerShift")]
-        public double AveragePassengersPerShift;
-        [DataMember(Name = "EfficiencyScore")]
-        public double EfficiencyScore;
-        [DataMember(Name = "TotalTicketsSold")]
-        public long TotalTicketsSold;
-        [DataMember(Name = "AverageTicketsPerHour")]
-        public double AverageTicketsPerHour;
-        [DataMember(Name = "AverageRevenuePerShift")]
-        public double AverageRevenuePerShift;
-        [DataMember(Name = "TotalIncidentsReported")]
-        public long TotalIncidentsReported;
-        [DataMember(Name = "TotalSafetyViolationsReported")]
-        public long TotalSafetyViolationsReported;
-        [DataMember(Name = "TotalPassengerAssistance")]
-        public long TotalPassengerAssistance;
-        [DataMember(Name = "AveragePerformanceRating")]
-        public double AveragePerformanceRating;
-        [DataMember(Name = "TotalFirstAidProvided")]
-        public long TotalFirstAidProvided;
-        [DataMember(Name = "TotalEmergencyResponses")]
-=======
         [DataMember(Name = "stat_id")]
         public uint StatId;
         [DataMember(Name = "employee_id")]
@@ -101,7 +56,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "total_first_aid_provided")]
         public long TotalFirstAidProvided;
         [DataMember(Name = "total_emergency_responses")]
->>>>>>> maintofix
         public long TotalEmergencyResponses;
 
         public ConductorStatistics(

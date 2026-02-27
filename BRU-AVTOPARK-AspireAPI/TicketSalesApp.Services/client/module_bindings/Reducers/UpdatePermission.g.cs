@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdatePermission(uint permissionId, string? name, string? description, string? category, bool? isActive, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive, actingUserId), this.SetCallReducerFlags.UpdatePermissionFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdatePermission(permissionId, name, description, category, isActive, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdatePermission(ReducerEventContext ctx, Reducer.UpdatePermission args)
         {
-<<<<<<< HEAD
-            if (OnUpdatePermission == null) return false;
-=======
             if (OnUpdatePermission == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdatePermission(
                 ctx,
                 args.PermissionId,
@@ -61,11 +53,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdatePermission : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "permissionId")]
-=======
             [DataMember(Name = "permission_id")]
->>>>>>> maintofix
             public uint PermissionId;
             [DataMember(Name = "name")]
             public string? Name;
@@ -73,15 +61,9 @@ namespace SpacetimeDB.Types
             public string? Description;
             [DataMember(Name = "category")]
             public string? Category;
-<<<<<<< HEAD
-            [DataMember(Name = "isActive")]
-            public bool? IsActive;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "is_active")]
             public bool? IsActive;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public UpdatePermission(
@@ -105,19 +87,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdatePermission";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdatePermissionFlags;
-        public void UpdatePermission(CallReducerFlags flags) => UpdatePermissionFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_permission";
         }
     }
->>>>>>> maintofix
 }

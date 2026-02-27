@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeactivateWebAuthnCredential(uint id)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeactivateWebAuthnCredential(id), this.SetCallReducerFlags.DeactivateWebAuthnCredentialFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeactivateWebAuthnCredential(id));
->>>>>>> maintofix
         }
 
         public bool InvokeDeactivateWebAuthnCredential(ReducerEventContext ctx, Reducer.DeactivateWebAuthnCredential args)
         {
-<<<<<<< HEAD
-            if (OnDeactivateWebAuthnCredential == null) return false;
-=======
             if (OnDeactivateWebAuthnCredential == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeactivateWebAuthnCredential(
                 ctx,
                 args.Id
@@ -68,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeactivateWebAuthnCredential";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeactivateWebAuthnCredentialFlags;
-        public void DeactivateWebAuthnCredential(CallReducerFlags flags) => DeactivateWebAuthnCredentialFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "deactivate_web_authn_credential";
         }
     }
->>>>>>> maintofix
 }

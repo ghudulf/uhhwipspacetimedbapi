@@ -13,33 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class FuelRecord
     {
-<<<<<<< HEAD
-        [DataMember(Name = "FuelRecordId")]
-        public uint FuelRecordId;
-        [DataMember(Name = "BusId")]
-        public uint BusId;
-        [DataMember(Name = "Date")]
-        public ulong Date;
-        [DataMember(Name = "Amount")]
-        public double Amount;
-        [DataMember(Name = "Cost")]
-        public double Cost;
-        [DataMember(Name = "Odometer")]
-        public double Odometer;
-        [DataMember(Name = "FuelType")]
-        public string? FuelType;
-        [DataMember(Name = "FuelStation")]
-        public string? FuelStation;
-        [DataMember(Name = "EmployeeId")]
-        public uint? EmployeeId;
-        [DataMember(Name = "Notes")]
-        public string? Notes;
-        [DataMember(Name = "FuelEconomy")]
-        public double? FuelEconomy;
-        [DataMember(Name = "PreviousOdometer")]
-        public double? PreviousOdometer;
-        [DataMember(Name = "Distance")]
-=======
         [DataMember(Name = "fuel_record_id")]
         public uint FuelRecordId;
         [DataMember(Name = "bus_id")]
@@ -65,7 +38,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "previous_odometer")]
         public double? PreviousOdometer;
         [DataMember(Name = "distance")]
->>>>>>> maintofix
         public double? Distance;
 
         public FuelRecord(

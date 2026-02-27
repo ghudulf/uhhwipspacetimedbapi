@@ -13,23 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class WebAuthnCredential
     {
-<<<<<<< HEAD
-        [DataMember(Name = "Id")]
-        public uint Id;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "CredentialId")]
-        public System.Collections.Generic.List<byte> CredentialId;
-        [DataMember(Name = "PublicKey")]
-        public string PublicKey;
-        [DataMember(Name = "Counter")]
-        public uint Counter;
-        [DataMember(Name = "CreatedAt")]
-        public ulong CreatedAt;
-        [DataMember(Name = "IsActive")]
-        public bool IsActive;
-        [DataMember(Name = "DeviceName")]
-=======
         [DataMember(Name = "id")]
         public uint Id;
         [DataMember(Name = "user_id")]
@@ -45,7 +28,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "device_name")]
->>>>>>> maintofix
         public string? DeviceName;
 
         public WebAuthnCredential(

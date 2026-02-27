@@ -13,21 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class PassengerCount
     {
-<<<<<<< HEAD
-        [DataMember(Name = "PassengerCountId")]
-        public uint PassengerCountId;
-        [DataMember(Name = "Timestamp")]
-        public ulong Timestamp;
-        [DataMember(Name = "RouteId")]
-        public uint RouteId;
-        [DataMember(Name = "StopId")]
-        public uint StopId;
-        [DataMember(Name = "PassengerCountNumber")]
-        public uint PassengerCountNumber;
-        [DataMember(Name = "Notes")]
-        public string? Notes;
-        [DataMember(Name = "EmployeeId")]
-=======
         [DataMember(Name = "passenger_count_id")]
         public uint PassengerCountId;
         [DataMember(Name = "timestamp")]
@@ -41,7 +26,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "notes")]
         public string? Notes;
         [DataMember(Name = "employee_id")]
->>>>>>> maintofix
         public uint? EmployeeId;
 
         public PassengerCount(

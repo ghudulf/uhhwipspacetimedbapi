@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class MaintenanceHandle : RemoteTableHandle<EventContext, Maintenance>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Maintenance";
-=======
             protected override string RemoteTableName => "maintenance";
->>>>>>> maintofix
 
             public sealed class MaintenanceIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly MaintenanceHandle Maintenance;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class MaintenanceCols
     {
@@ -102,5 +96,4 @@ namespace SpacetimeDB.Types
             MaintenanceId = new global::SpacetimeDB.IxCol<Maintenance, uint>(tableName, "maintenance_id");
         }
     }
->>>>>>> maintofix
 }

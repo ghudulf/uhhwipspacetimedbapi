@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DisableTotp(SpacetimeDB.Identity userId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DisableTotp(userId), this.SetCallReducerFlags.DisableTotpFlags);
-=======
             conn.InternalCallReducer(new Reducer.DisableTotp(userId));
->>>>>>> maintofix
         }
 
         public bool InvokeDisableTotp(ReducerEventContext ctx, Reducer.DisableTotp args)
         {
-<<<<<<< HEAD
-            if (OnDisableTotp == null) return false;
-=======
             if (OnDisableTotp == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDisableTotp(
                 ctx,
                 args.UserId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DisableTotp : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-=======
             [DataMember(Name = "user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public DisableTotp(SpacetimeDB.Identity UserId)
@@ -72,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DisableTotp";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DisableTotpFlags;
-        public void DisableTotp(CallReducerFlags flags) => DisableTotpFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "disable_totp";
         }
     }
->>>>>>> maintofix
 }

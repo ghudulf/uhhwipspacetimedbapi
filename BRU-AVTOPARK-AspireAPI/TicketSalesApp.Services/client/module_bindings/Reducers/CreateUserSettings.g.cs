@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateUserSettings(SpacetimeDB.Identity userId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateUserSettings(userId), this.SetCallReducerFlags.CreateUserSettingsFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateUserSettings(userId));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateUserSettings(ReducerEventContext ctx, Reducer.CreateUserSettings args)
         {
-<<<<<<< HEAD
-            if (OnCreateUserSettings == null) return false;
-=======
             if (OnCreateUserSettings == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateUserSettings(
                 ctx,
                 args.UserId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateUserSettings : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-=======
             [DataMember(Name = "user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity UserId;
 
             public CreateUserSettings(SpacetimeDB.Identity UserId)
@@ -72,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateUserSettings";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateUserSettingsFlags;
-        public void CreateUserSettings(CallReducerFlags flags) => CreateUserSettingsFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_user_settings";
         }
     }
->>>>>>> maintofix
 }

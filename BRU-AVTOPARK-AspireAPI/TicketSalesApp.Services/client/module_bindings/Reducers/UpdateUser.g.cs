@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateUser(SpacetimeDB.Identity userId, string? login, string? passwordHash, int? role, string? phoneNumber, string? email, bool? isActive, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive, actingUser), this.SetCallReducerFlags.UpdateUserFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateUser(userId, login, passwordHash, role, phoneNumber, email, isActive, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateUser(ReducerEventContext ctx, Reducer.UpdateUser args)
         {
-<<<<<<< HEAD
-            if (OnUpdateUser == null) return false;
-=======
             if (OnUpdateUser == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateUser(
                 ctx,
                 args.UserId,
@@ -63,23 +55,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateUser : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "login")]
-            public string? Login;
-            [DataMember(Name = "passwordHash")]
-            public string? PasswordHash;
-            [DataMember(Name = "role")]
-            public int? Role;
-            [DataMember(Name = "phoneNumber")]
-            public string? PhoneNumber;
-            [DataMember(Name = "email")]
-            public string? Email;
-            [DataMember(Name = "isActive")]
-            public bool? IsActive;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "login")]
@@ -95,7 +70,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "is_active")]
             public bool? IsActive;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateUser(
@@ -123,19 +97,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateUser";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateUserFlags;
-        public void UpdateUser(CallReducerFlags flags) => UpdateUserFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_user";
         }
     }
->>>>>>> maintofix
 }

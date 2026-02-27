@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "MLb4kkee+NM=",
+  "dgSpecHash": "53/hxzMJFnk=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
   "expectedPackageFiles": [
@@ -85,6 +85,7 @@
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.1\\microsoft.extensions.dependencyinjection.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.1\\microsoft.extensions.dependencyinjection.abstractions.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.dependencymodel\\9.0.1\\microsoft.extensions.dependencymodel.9.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.fileproviders.abstractions\\7.0.0\\microsoft.extensions.fileproviders.abstractions.7.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.http\\6.0.0\\microsoft.extensions.http.6.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.logging\\9.0.1\\microsoft.extensions.logging.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\9.0.1\\microsoft.extensions.logging.abstractions.9.0.1.nupkg.sha512",
@@ -123,14 +124,15 @@
     "C:\\Users\\andrej\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.9\\skiasharp.nativeassets.macos.2.88.9.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\skiasharp.nativeassets.webassembly\\2.88.9\\skiasharp.nativeassets.webassembly.2.88.9.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.9\\skiasharp.nativeassets.win32.2.88.9.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.bsatn.runtime\\1.0.0\\spacetimedb.bsatn.runtime.1.0.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.clientsdk\\1.0.1\\spacetimedb.clientsdk.1.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.bsatn.runtime\\2.0.1\\spacetimedb.bsatn.runtime.2.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.clientsdk\\2.0.1\\spacetimedb.clientsdk.2.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\splat\\15.1.1\\splat.15.1.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.10\\sqlitepclraw.bundle_e_sqlite3.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.core\\2.1.10\\sqlitepclraw.core.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.10\\sqlitepclraw.lib.e_sqlite3.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.10\\sqlitepclraw.provider.e_sqlite3.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sukiui\\6.0.0\\sukiui.6.0.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.codedom\\6.0.0\\system.codedom.6.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.collections.immutable\\7.0.0\\system.collections.immutable.7.0.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.componentmodel.annotations\\5.0.0\\system.componentmodel.annotations.5.0.0.nupkg.sha512",
@@ -150,20 +152,8 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.encodings.web\\4.5.0\\system.text.encodings.web.4.5.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.threading.channels\\7.0.0\\system.threading.channels.7.0.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512"
+    "C:\\Users\\andrej\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\webview.avalonia\\11.0.0.1\\webview.avalonia.11.0.0.1.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
-      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
-      "warningLevel": 1,
-      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
-      "libraryId": "Avalonia.Labs.Controls",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  "logs": []
 }

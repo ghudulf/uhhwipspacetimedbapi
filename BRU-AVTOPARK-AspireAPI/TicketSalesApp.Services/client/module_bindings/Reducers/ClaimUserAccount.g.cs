@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ClaimUserAccount(string login, string password, string? newUserIdentity)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password, newUserIdentity), this.SetCallReducerFlags.ClaimUserAccountFlags);
-=======
             conn.InternalCallReducer(new Reducer.ClaimUserAccount(login, password, newUserIdentity));
->>>>>>> maintofix
         }
 
         public bool InvokeClaimUserAccount(ReducerEventContext ctx, Reducer.ClaimUserAccount args)
         {
-<<<<<<< HEAD
-            if (OnClaimUserAccount == null) return false;
-=======
             if (OnClaimUserAccount == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnClaimUserAccount(
                 ctx,
                 args.Login,
@@ -62,11 +54,7 @@ namespace SpacetimeDB.Types
             public string Login;
             [DataMember(Name = "password")]
             public string Password;
-<<<<<<< HEAD
-            [DataMember(Name = "newUserIdentity")]
-=======
             [DataMember(Name = "new_user_identity")]
->>>>>>> maintofix
             public string? NewUserIdentity;
 
             public ClaimUserAccount(
@@ -86,19 +74,7 @@ namespace SpacetimeDB.Types
                 this.Password = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ClaimUserAccount";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ClaimUserAccountFlags;
-        public void ClaimUserAccount(CallReducerFlags flags) => ClaimUserAccountFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "claim_user_account";
         }
     }
->>>>>>> maintofix
 }

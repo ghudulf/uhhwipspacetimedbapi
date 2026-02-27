@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateEmployee(string employeeName, string employeeSurname, string employeePatronym, uint jobId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId), this.SetCallReducerFlags.CreateEmployeeFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateEmployee(ReducerEventContext ctx, Reducer.CreateEmployee args)
         {
-<<<<<<< HEAD
-            if (OnCreateEmployee == null) return false;
-=======
             if (OnCreateEmployee == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateEmployee(
                 ctx,
                 args.EmployeeName,
@@ -59,15 +51,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateEmployee : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "employeeName")]
-            public string EmployeeName;
-            [DataMember(Name = "employeeSurname")]
-            public string EmployeeSurname;
-            [DataMember(Name = "employeePatronym")]
-            public string EmployeePatronym;
-            [DataMember(Name = "jobId")]
-=======
             [DataMember(Name = "employee_name")]
             public string EmployeeName;
             [DataMember(Name = "employee_surname")]
@@ -75,7 +58,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "employee_patronym")]
             public string EmployeePatronym;
             [DataMember(Name = "job_id")]
->>>>>>> maintofix
             public uint JobId;
 
             public CreateEmployee(
@@ -98,19 +80,7 @@ namespace SpacetimeDB.Types
                 this.EmployeePatronym = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateEmployee";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateEmployeeFlags;
-        public void CreateEmployee(CallReducerFlags flags) => CreateEmployeeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_employee";
         }
     }
->>>>>>> maintofix
 }

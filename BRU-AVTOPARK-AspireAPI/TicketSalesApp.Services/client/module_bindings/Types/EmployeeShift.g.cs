@@ -13,57 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class EmployeeShift
     {
-<<<<<<< HEAD
-        [DataMember(Name = "ShiftId")]
-        public uint ShiftId;
-        [DataMember(Name = "EmployeeId")]
-        public uint EmployeeId;
-        [DataMember(Name = "ShiftStartDate")]
-        public ulong ShiftStartDate;
-        [DataMember(Name = "ShiftEndDate")]
-        public ulong ShiftEndDate;
-        [DataMember(Name = "ShiftStartTime")]
-        public ulong ShiftStartTime;
-        [DataMember(Name = "ShiftEndTime")]
-        public ulong ShiftEndTime;
-        [DataMember(Name = "ShiftType")]
-        public string ShiftType;
-        [DataMember(Name = "ShiftStatus")]
-        public string ShiftStatus;
-        [DataMember(Name = "RouteId")]
-        public uint? RouteId;
-        [DataMember(Name = "Notes")]
-        public string? Notes;
-        [DataMember(Name = "AssignedBy")]
-        public SpacetimeDB.Identity? AssignedBy;
-        [DataMember(Name = "AssignedAt")]
-        public ulong AssignedAt;
-        [DataMember(Name = "ShiftForm")]
-        public string? ShiftForm;
-        [DataMember(Name = "ShiftDuration")]
-        public double ShiftDuration;
-        [DataMember(Name = "BreakStartTime")]
-        public ulong? BreakStartTime;
-        [DataMember(Name = "BreakEndTime")]
-        public ulong? BreakEndTime;
-        [DataMember(Name = "BreakDuration")]
-        public double? BreakDuration;
-        [DataMember(Name = "IsOvertime")]
-        public bool? IsOvertime;
-        [DataMember(Name = "OvertimeHours")]
-        public double? OvertimeHours;
-        [DataMember(Name = "ReplacementFor")]
-        public string? ReplacementFor;
-        [DataMember(Name = "IsTraining")]
-        public bool? IsTraining;
-        [DataMember(Name = "TrainerName")]
-        public string? TrainerName;
-        [DataMember(Name = "ShiftLocation")]
-        public string? ShiftLocation;
-        [DataMember(Name = "ShiftFeedback")]
-        public string? ShiftFeedback;
-        [DataMember(Name = "ComplianceWithRegulations")]
-=======
         [DataMember(Name = "shift_id")]
         public uint ShiftId;
         [DataMember(Name = "employee_id")]
@@ -113,7 +62,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "shift_feedback")]
         public string? ShiftFeedback;
         [DataMember(Name = "compliance_with_regulations")]
->>>>>>> maintofix
         public bool? ComplianceWithRegulations;
 
         public EmployeeShift(

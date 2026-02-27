@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ValidateQrCode(string sessionId, string validationCode)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ValidateQrCode(sessionId, validationCode), this.SetCallReducerFlags.ValidateQrCodeFlags);
-=======
             conn.InternalCallReducer(new Reducer.ValidateQrCode(sessionId, validationCode));
->>>>>>> maintofix
         }
 
         public bool InvokeValidateQrCode(ReducerEventContext ctx, Reducer.ValidateQrCode args)
         {
-<<<<<<< HEAD
-            if (OnValidateQrCode == null) return false;
-=======
             if (OnValidateQrCode == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnValidateQrCode(
                 ctx,
                 args.SessionId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ValidateQrCode : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "sessionId")]
-            public string SessionId;
-            [DataMember(Name = "validationCode")]
-=======
             [DataMember(Name = "session_id")]
             public string SessionId;
             [DataMember(Name = "validation_code")]
->>>>>>> maintofix
             public string ValidationCode;
 
             public ValidateQrCode(
@@ -83,19 +69,7 @@ namespace SpacetimeDB.Types
                 this.ValidationCode = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ValidateQRCode";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ValidateQrCodeFlags;
-        public void ValidateQrCode(CallReducerFlags flags) => ValidateQrCodeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "validate_qr_code";
         }
     }
->>>>>>> maintofix
 }

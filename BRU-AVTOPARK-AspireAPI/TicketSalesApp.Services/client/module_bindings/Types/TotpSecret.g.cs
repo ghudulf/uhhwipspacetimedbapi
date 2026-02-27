@@ -13,17 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class TotpSecret
     {
-<<<<<<< HEAD
-        [DataMember(Name = "Id")]
-        public uint Id;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "Secret")]
-        public string Secret;
-        [DataMember(Name = "CreatedAt")]
-        public ulong CreatedAt;
-        [DataMember(Name = "IsActive")]
-=======
         [DataMember(Name = "id")]
         public uint Id;
         [DataMember(Name = "user_id")]
@@ -33,7 +22,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "created_at")]
         public ulong CreatedAt;
         [DataMember(Name = "is_active")]
->>>>>>> maintofix
         public bool IsActive;
 
         public TotpSecret(

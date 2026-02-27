@@ -13,59 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Sale
     {
-<<<<<<< HEAD
-        [DataMember(Name = "SaleId")]
-        public uint SaleId;
-        [DataMember(Name = "SaleDate")]
-        public ulong SaleDate;
-        [DataMember(Name = "TicketId")]
-        public uint TicketId;
-        [DataMember(Name = "TicketSoldToUser")]
-        public string TicketSoldToUser;
-        [DataMember(Name = "TicketSoldToUserPhone")]
-        public string TicketSoldToUserPhone;
-        [DataMember(Name = "SellerId")]
-        public SpacetimeDB.Identity? SellerId;
-        [DataMember(Name = "SaleLocation")]
-        public string? SaleLocation;
-        [DataMember(Name = "SaleNotes")]
-        public string? SaleNotes;
-        [DataMember(Name = "PaymentMethod")]
-        public string? PaymentMethod;
-        [DataMember(Name = "PaymentStatus")]
-        public string? PaymentStatus;
-        [DataMember(Name = "TransactionId")]
-        public string? TransactionId;
-        [DataMember(Name = "TaxAmount")]
-        public double? TaxAmount;
-        [DataMember(Name = "InvoiceNumber")]
-        public string? InvoiceNumber;
-        [DataMember(Name = "IsSubscription")]
-        public bool? IsSubscription;
-        [DataMember(Name = "SubscriptionType")]
-        public string? SubscriptionType;
-        [DataMember(Name = "SubscriptionStartDate")]
-        public ulong? SubscriptionStartDate;
-        [DataMember(Name = "SubscriptionEndDate")]
-        public ulong? SubscriptionEndDate;
-        [DataMember(Name = "IsGift")]
-        public bool? IsGift;
-        [DataMember(Name = "GiftRecipient")]
-        public string? GiftRecipient;
-        [DataMember(Name = "PromotionCode")]
-        public string? PromotionCode;
-        [DataMember(Name = "DiscountAmount")]
-        public double? DiscountAmount;
-        [DataMember(Name = "TotalAmount")]
-        public double TotalAmount;
-        [DataMember(Name = "PaymentTransactionId")]
-        public string? PaymentTransactionId;
-        [DataMember(Name = "ChangeAmount")]
-        public double? ChangeAmount;
-        [DataMember(Name = "PaymentProvider")]
-        public string? PaymentProvider;
-        [DataMember(Name = "PaymentReference")]
-=======
         [DataMember(Name = "sale_id")]
         public uint SaleId;
         [DataMember(Name = "sale_date")]
@@ -117,7 +64,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "payment_provider")]
         public string? PaymentProvider;
         [DataMember(Name = "payment_reference")]
->>>>>>> maintofix
         public string? PaymentReference;
 
         public Sale(

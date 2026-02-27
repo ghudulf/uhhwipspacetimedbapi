@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class SeatConfigurationHandle : RemoteTableHandle<EventContext, SeatConfiguration>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "SeatConfiguration";
-=======
             protected override string RemoteTableName => "seat_configuration";
->>>>>>> maintofix
 
             public sealed class ConfigurationIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly SeatConfigurationHandle SeatConfiguration;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class SeatConfigurationCols
     {
@@ -88,5 +82,4 @@ namespace SpacetimeDB.Types
             ConfigurationId = new global::SpacetimeDB.IxCol<SeatConfiguration, uint>(tableName, "configuration_id");
         }
     }
->>>>>>> maintofix
 }

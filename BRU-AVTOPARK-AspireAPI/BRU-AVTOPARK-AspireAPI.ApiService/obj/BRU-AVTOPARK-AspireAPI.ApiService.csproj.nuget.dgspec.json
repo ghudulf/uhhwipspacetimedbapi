@@ -131,7 +131,7 @@
             },
             "SpacetimeDB.ClientSDK": {
               "target": "Package",
-              "version": "[2.0.0, )"
+              "version": "[2.0.1, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
@@ -365,7 +365,7 @@
             },
             "SpacetimeDB.ClientSDK": {
               "target": "Package",
-              "version": "[2.0.0, )"
+              "version": "[2.0.1, )"
             }
           },
           "imports": [

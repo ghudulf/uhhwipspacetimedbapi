@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateTicket(uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime, actingUser), this.SetCallReducerFlags.CreateTicketFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateTicket(routeId, price, seatNumber, paymentMethod, purchaseTime, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateTicket(ReducerEventContext ctx, Reducer.CreateTicket args)
         {
-<<<<<<< HEAD
-            if (OnCreateTicket == null) return false;
-=======
             if (OnCreateTicket == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateTicket(
                 ctx,
                 args.RouteId,
@@ -61,19 +53,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateTicket : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "routeId")]
-            public uint RouteId;
-            [DataMember(Name = "price")]
-            public double Price;
-            [DataMember(Name = "seatNumber")]
-            public uint SeatNumber;
-            [DataMember(Name = "paymentMethod")]
-            public string PaymentMethod;
-            [DataMember(Name = "purchaseTime")]
-            public ulong? PurchaseTime;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "route_id")]
             public uint RouteId;
             [DataMember(Name = "price")]
@@ -85,7 +64,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "purchase_time")]
             public ulong? PurchaseTime;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public CreateTicket(
@@ -110,19 +88,7 @@ namespace SpacetimeDB.Types
                 this.PaymentMethod = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateTicket";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateTicketFlags;
-        public void CreateTicket(CallReducerFlags flags) => CreateTicketFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_ticket";
         }
     }
->>>>>>> maintofix
 }

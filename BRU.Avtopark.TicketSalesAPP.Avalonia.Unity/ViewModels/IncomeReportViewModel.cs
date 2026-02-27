@@ -14,11 +14,8 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SpacetimeDB.Types;
-<<<<<<< HEAD
-=======
 using System.Globalization;
 using System.Text.Json.Nodes;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -45,10 +42,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-=======
         private List<MonthlyIncome> _allMonthlyIncomes = new();
->>>>>>> maintofix
         private ObservableCollection<MonthlyIncome> _monthlyIncomes = new();
         public ObservableCollection<MonthlyIncome> MonthlyIncomes
         {
@@ -56,10 +50,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _monthlyIncomes, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<RouteIncome> _allRouteIncomes = new();
->>>>>>> maintofix
         private ObservableCollection<RouteIncome> _routeIncomes = new();
         public ObservableCollection<RouteIncome> RouteIncomes
         {
@@ -166,25 +157,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-<<<<<<< HEAD
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-=======
                 // ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
->>>>>>> maintofix
             };
 
             // Initialize charts with default values
             InitializeCharts();
 
-<<<<<<< HEAD
-            ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
-            {
-=======
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
                 Log.Information("Auth token changed in IncomeReportViewModel. Recreating HttpClient and reloading data.");
                 _httpClient.Dispose();
->>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -246,76 +228,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private async Task LoadData()
         {
-<<<<<<< HEAD
-=======
             Log.Information("Starting LoadData for IncomeReportViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
-<<<<<<< HEAD
-
-                var salesResponse = await _httpClient.GetAsync(
-                    $"{_baseUrl}/TicketSales/search?startDate={StartDate.Date:yyyy-MM-dd}&endDate={EndDate.Date:yyyy-MM-dd}");
-
-                if (salesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await salesResponse.Content.ReadAsStringAsync();
-                    var sales = JsonSerializer.Deserialize<List<Sale>>(jsonString, _jsonOptions);
-
-                    if (sales != null && sales.Any())
-                    {
-                        // Fetch Tickets and Routes data separately for calculations
-                        var ticketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets");
-                        var routesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-                        
-                        List<Ticket> allTickets = new();
-                        List<Route> allRoutes = new();
-
-                        if (ticketsResponse.IsSuccessStatusCode)
-                            allTickets = await ticketsResponse.Content.ReadFromJsonAsync<List<Ticket>>(_jsonOptions) ?? new();
-                        if (routesResponse.IsSuccessStatusCode)
-                            allRoutes = await routesResponse.Content.ReadFromJsonAsync<List<Route>>(_jsonOptions) ?? new();
-
-                        // Calculate monthly incomes
-                        var monthlyData = sales
-                            .GroupBy(s => new { DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).Year, DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).Month })
-                            .Select(g => 
-                            {
-                                var groupTickets = g.Select(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)).Where(t => t != null);
-                                return new MonthlyIncome
-                                {
-                                    Year = g.Key.Year,
-                                    Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMMM"),
-                                    TotalIncome = (decimal)groupTickets.Sum(t => t!.TicketPrice),
-                                    TicketsSold = g.Count(),
-                                    AverageTicketPrice = g.Count() > 0 ? (decimal)groupTickets.Average(t => t!.TicketPrice) : 0
-                                };
-                            })
-                            .OrderByDescending(m => m.Year)
-                            .ThenByDescending(m => DateTime.ParseExact(m.Month, "MMMM", System.Globalization.CultureInfo.InvariantCulture).Month)
-                            .ToList();
-
-                        // Calculate route incomes
-                        var routeData = sales
-                            .GroupBy(s => 
-                            { 
-                                var ticket = allTickets.FirstOrDefault(t => t.TicketId == s.TicketId);
-                                var route = allRoutes.FirstOrDefault(r => r.RouteId == ticket?.RouteId);
-                                return route != null ? $"{route.StartPoint} - {route.EndPoint}" : "Unknown Route";
-                            })
-                            .Select(g => 
-                            { 
-                                var groupTickets = g.Select(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)).Where(t => t != null);
-                                return new RouteIncome
-                                {
-                                    RouteName = g.Key,
-                                    TotalIncome = (decimal)groupTickets.Sum(t => t!.TicketPrice),
-                                    TicketsSold = g.Count(),
-                                    AverageTicketPrice = g.Count() > 0 ? (decimal)groupTickets.Average(t => t!.TicketPrice) : 0
-=======
                 // Reset calculated values
                 TotalIncome = 0M;
                 TotalTicketsSold = 0;
@@ -527,27 +445,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                 TicketsSold = ticketsSold,
                                 TotalIncome = totalIncome,
                                 AverageTicketPrice = ticketsSold > 0 ? totalIncome / ticketsSold : 0
->>>>>>> maintofix
                                 };
                             })
                             .OrderByDescending(r => r.TotalIncome)
                             .ToList();
 
-<<<<<<< HEAD
-                        // Update collections
-                        MonthlyIncomes = new ObservableCollection<MonthlyIncome>(monthlyData);
-                        RouteIncomes = new ObservableCollection<RouteIncome>(routeData);
-
-                        // Update totals
-                        var soldTickets = sales.Select(s => allTickets.FirstOrDefault(t => t.TicketId == s.TicketId)).Where(t => t != null);
-                        TotalIncome = (decimal)soldTickets.Sum(t => t!.TicketPrice);
-                        TotalTicketsSold = sales.Count;
-                        AverageTicketPrice = sales.Count > 0 ? (decimal)soldTickets.Average(t => t!.TicketPrice) : 0;
-
-                        // Update charts
-                        UpdateChartsWithData(monthlyData, routeData);
-                    }
-=======
                      Log.Information("Calculated {Count} route income points.", routeData.Count);
                     _allRouteIncomes = routeData;
                     RouteIncomes = new ObservableCollection<RouteIncome>(_allRouteIncomes);
@@ -571,17 +473,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     _allRouteIncomes = new List<RouteIncome>();
                     RouteIncomes = new ObservableCollection<RouteIncome>();
                     InitializeCharts(); // Reset charts to default state
->>>>>>> maintofix
                 }
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading income report data");
-                InitializeCharts(); // Reset charts to default state on error
-=======
                 ErrorMessage = $"Критическая ошибка загрузки и обработки отчета о доходах: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in IncomeReportViewModel");
                 // Clear data and reset charts
@@ -593,15 +489,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  TotalTicketsSold = 0;
                  AverageTicketPrice = 0M;
                 InitializeCharts();
->>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-=======
                  Log.Information("LoadData finished for IncomeReportViewModel.");
->>>>>>> maintofix
             }
         }
 

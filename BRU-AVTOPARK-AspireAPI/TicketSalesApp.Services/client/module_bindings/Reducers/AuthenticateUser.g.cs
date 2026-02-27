@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void AuthenticateUser(string login, string password)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.AuthenticateUser(login, password), this.SetCallReducerFlags.AuthenticateUserFlags);
-=======
             conn.InternalCallReducer(new Reducer.AuthenticateUser(login, password));
->>>>>>> maintofix
         }
 
         public bool InvokeAuthenticateUser(ReducerEventContext ctx, Reducer.AuthenticateUser args)
         {
-<<<<<<< HEAD
-            if (OnAuthenticateUser == null) return false;
-=======
             if (OnAuthenticateUser == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnAuthenticateUser(
                 ctx,
                 args.Login,
@@ -77,19 +69,7 @@ namespace SpacetimeDB.Types
                 this.Password = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "AuthenticateUser";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags AuthenticateUserFlags;
-        public void AuthenticateUser(CallReducerFlags flags) => AuthenticateUserFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "authenticate_user";
         }
     }
->>>>>>> maintofix
 }

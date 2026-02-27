@@ -51,6 +51,7 @@
     <PackageReference Include="Classic.CommonControls.Avalonia" Version="11.2.0.7" />
 	<PackageReference Include="SukiUI" Version="6.0.0" />
     <PackageReference Include="FluentAvalonia.ProgressRing" Version="1.69.2" />
+ 
     <PackageReference Include="WebView.Avalonia" Version="11.0.0.1" />
   </ItemGroup>
   <ItemGroup>

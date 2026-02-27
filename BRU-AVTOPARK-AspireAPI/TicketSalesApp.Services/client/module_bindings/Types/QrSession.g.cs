@@ -13,19 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class QrSession
     {
-<<<<<<< HEAD
-        [DataMember(Name = "SessionId")]
-        public string SessionId;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "ValidationCode")]
-        public string ValidationCode;
-        [DataMember(Name = "ExpiryTime")]
-        public ulong ExpiryTime;
-        [DataMember(Name = "InitiatingDevice")]
-        public string InitiatingDevice;
-        [DataMember(Name = "IsUsed")]
-=======
         [DataMember(Name = "session_id")]
         public string SessionId;
         [DataMember(Name = "user_id")]
@@ -37,7 +24,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "initiating_device")]
         public string InitiatingDevice;
         [DataMember(Name = "is_used")]
->>>>>>> maintofix
         public bool IsUsed;
 
         public QrSession(

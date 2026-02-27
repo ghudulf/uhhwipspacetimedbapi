@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class TotpSecretHandle : RemoteTableHandle<EventContext, TotpSecret>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "TotpSecret";
-=======
             protected override string RemoteTableName => "totp_secret";
->>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly TotpSecretHandle TotpSecret;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class TotpSecretCols
     {
@@ -70,5 +64,4 @@ namespace SpacetimeDB.Types
             Id = new global::SpacetimeDB.IxCol<TotpSecret, uint>(tableName, "id");
         }
     }
->>>>>>> maintofix
 }

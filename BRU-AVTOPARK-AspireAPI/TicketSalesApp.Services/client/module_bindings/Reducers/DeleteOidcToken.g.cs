@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteOidcToken(uint internalId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteOidcToken(internalId), this.SetCallReducerFlags.DeleteOidcTokenFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteOidcToken(internalId));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteOidcToken(ReducerEventContext ctx, Reducer.DeleteOidcToken args)
         {
-<<<<<<< HEAD
-            if (OnDeleteOidcToken == null) return false;
-=======
             if (OnDeleteOidcToken == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteOidcToken(
                 ctx,
                 args.InternalId
@@ -56,11 +48,7 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteOidcToken : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "internalId")]
-=======
             [DataMember(Name = "internal_id")]
->>>>>>> maintofix
             public uint InternalId;
 
             public DeleteOidcToken(uint InternalId)
@@ -72,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteOidcToken";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteOidcTokenFlags;
-        public void DeleteOidcToken(CallReducerFlags flags) => DeleteOidcTokenFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_oidc_token";
         }
     }
->>>>>>> maintofix
 }

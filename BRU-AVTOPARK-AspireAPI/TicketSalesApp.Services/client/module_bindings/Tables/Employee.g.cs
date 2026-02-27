@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class EmployeeHandle : RemoteTableHandle<EventContext, Employee>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "Employee";
-=======
             protected override string RemoteTableName => "employee";
->>>>>>> maintofix
 
             public sealed class EmployeeIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly EmployeeHandle Employee;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class EmployeeCols
     {
@@ -126,5 +120,4 @@ namespace SpacetimeDB.Types
             EmployeeId = new global::SpacetimeDB.IxCol<Employee, uint>(tableName, "employee_id");
         }
     }
->>>>>>> maintofix
 }

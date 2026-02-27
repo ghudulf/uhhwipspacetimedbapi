@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class PassengerCountHandle : RemoteTableHandle<EventContext, PassengerCount>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "PassengerCount";
-=======
             protected override string RemoteTableName => "passenger_count";
->>>>>>> maintofix
 
             public sealed class PassengerCountIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly PassengerCountHandle PassengerCount;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class PassengerCountCols
     {
@@ -74,5 +68,4 @@ namespace SpacetimeDB.Types
             PassengerCountId = new global::SpacetimeDB.IxCol<PassengerCount, uint>(tableName, "passenger_count_id");
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateOidcScope(uint internalId, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateOidcScope(internalId, description, descriptionsJson, displayName, displayNamesJson, propertiesJson, resourcesJson), this.SetCallReducerFlags.UpdateOidcScopeFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateOidcScope(internalId, description, descriptionsJson, displayName, displayNamesJson, propertiesJson, resourcesJson));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateOidcScope(ReducerEventContext ctx, Reducer.UpdateOidcScope args)
         {
-<<<<<<< HEAD
-            if (OnUpdateOidcScope == null) return false;
-=======
             if (OnUpdateOidcScope == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateOidcScope(
                 ctx,
                 args.InternalId,
@@ -62,21 +54,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateOidcScope : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "internalId")]
-            public uint InternalId;
-            [DataMember(Name = "description")]
-            public string? Description;
-            [DataMember(Name = "descriptionsJson")]
-            public string? DescriptionsJson;
-            [DataMember(Name = "displayName")]
-            public string? DisplayName;
-            [DataMember(Name = "displayNamesJson")]
-            public string? DisplayNamesJson;
-            [DataMember(Name = "propertiesJson")]
-            public string? PropertiesJson;
-            [DataMember(Name = "resourcesJson")]
-=======
             [DataMember(Name = "internal_id")]
             public uint InternalId;
             [DataMember(Name = "description")]
@@ -90,7 +67,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "properties_json")]
             public string? PropertiesJson;
             [DataMember(Name = "resources_json")]
->>>>>>> maintofix
             public string? ResourcesJson;
 
             public UpdateOidcScope(
@@ -116,19 +92,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateOidcScope";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateOidcScopeFlags;
-        public void UpdateOidcScope(CallReducerFlags flags) => UpdateOidcScopeFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_oidc_scope";
         }
     }
->>>>>>> maintofix
 }

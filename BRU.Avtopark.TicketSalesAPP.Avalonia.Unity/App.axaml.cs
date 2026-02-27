@@ -11,10 +11,7 @@ using Serilog;
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-<<<<<<< HEAD
-=======
 using AvaloniaWebView;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 
@@ -27,8 +24,6 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-<<<<<<< HEAD
-=======
     public override void RegisterServices()
     {
         base.RegisterServices();
@@ -38,7 +33,6 @@ public partial class App : Application
         Log.Information("WebView.Avalonia initialized");
     }
 
->>>>>>> maintofix
 
     private async Task ShowSplashScreenAndInitialize(IClassicDesktopStyleApplicationLifetime desktop)
     {
@@ -75,36 +69,6 @@ public partial class App : Application
             // Short delay to ensure background window is displayed
             await Task.Delay(500);
 
-<<<<<<< HEAD
-            // Create and show auth window
-            var authWindow = new AuthWindow
-            {
-                DataContext = new AuthViewModel()
-            };
-
-            // Handle authentication result
-            authWindow.Closed += (s, e) =>
-            {
-                if (authWindow.DataContext is AuthViewModel vm && vm.IsAuthenticated)
-                {
-                    // Create main window
-                    _mainWindow = new MainWindow();
-                    var mainViewModel = new MainWindowViewModel();
-                    _mainWindow.DataContext = mainViewModel;
-
-                    desktop.MainWindow = _mainWindow;
-                    _mainWindow.Show();
-                }
-                else
-                {
-                    Log.Information("Authentication failed or cancelled. Shutting down...");
-                    desktop.Shutdown();
-                }
-            };
-
-            // Show auth window
-            authWindow.Show();
-=======
             // Show login method selector
             var loginMethodSelector = new LoginMethodSelectorWindow();
             var selectedMethod = await loginMethodSelector.ShowDialog<LoginMethod?>(backgroundWindow);
@@ -184,7 +148,6 @@ public partial class App : Application
                 Log.Information("Authentication failed or cancelled. Shutting down...");
                 desktop.Shutdown();
             }
->>>>>>> maintofix
         }
         catch (Exception ex)
         {

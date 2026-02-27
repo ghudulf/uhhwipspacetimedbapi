@@ -13,19 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class MagicLinkToken
     {
-<<<<<<< HEAD
-        [DataMember(Name = "Token")]
-        public string Token;
-        [DataMember(Name = "UserId")]
-        public SpacetimeDB.Identity UserId;
-        [DataMember(Name = "ExpiresAt")]
-        public ulong ExpiresAt;
-        [DataMember(Name = "IsUsed")]
-        public bool IsUsed;
-        [DataMember(Name = "DeviceInfo")]
-        public string? DeviceInfo;
-        [DataMember(Name = "IpAddress")]
-=======
         [DataMember(Name = "token")]
         public string Token;
         [DataMember(Name = "user_id")]
@@ -37,7 +24,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "device_info")]
         public string? DeviceInfo;
         [DataMember(Name = "ip_address")]
->>>>>>> maintofix
         public string? IpAddress;
 
         public MagicLinkToken(

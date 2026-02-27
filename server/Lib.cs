@@ -816,8 +816,6 @@ public static partial class Module
             }
             return counter.NextId;
         }
-<<<<<<< HEAD
-=======
         else if (counterKey == "oidcScopeId")
         {
             var counter = ctx.Db.OidcScopeIdCounter.Key.Find("oidcScopeId");
@@ -860,7 +858,6 @@ public static partial class Module
             }
             return counter.NextId;
         }
->>>>>>> maintofix
         else
         {
             Log.Error($"Unknown counter key: {counterKey}");
@@ -971,8 +968,6 @@ public static partial class Module
         // Check if a user with the same login already exists
         if (ctx.Db.UserProfile.Iter().Any(u => u.Login == login))
         {
-<<<<<<< HEAD
-=======
             // Publish failed registration event
             ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
             {
@@ -982,7 +977,6 @@ public static partial class Module
                 Details = "Login already exists",
                 IpAddress = null
             });
->>>>>>> maintofix
             // Throw exception if login is already taken
             throw new Exception("Login already exists.");
         }
@@ -1008,8 +1002,6 @@ public static partial class Module
             catch (Exception ex)
             {
                 Log.Error($"Failed to parse provided identity: {ex.Message}");
-<<<<<<< HEAD
-=======
                 // Publish failed registration event
                 ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
                 {
@@ -1019,7 +1011,6 @@ public static partial class Module
                     Details = "Invalid identity format provided",
                     IpAddress = null
                 });
->>>>>>> maintofix
                 throw new Exception("Invalid identity format provided. Identity should be in hex format, e.g., '0x123456789abcdef0'.");
             }
         }
@@ -1083,8 +1074,6 @@ public static partial class Module
                 Log.Error("Default 'User' role not found!");
             }
         }
-<<<<<<< HEAD
-=======
 
         // Publish successful registration event
         ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
@@ -1095,7 +1084,6 @@ public static partial class Module
             Details = $"User {login} registered successfully",
             IpAddress = null
         });
->>>>>>> maintofix
     }
 
     
@@ -1109,8 +1097,6 @@ public static partial class Module
         if (user == null || !user.IsActive)
         {
             Log.Info($"Authentication failed for user {login}");
-<<<<<<< HEAD
-=======
             // Publish failed authentication event
             ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
             {
@@ -1120,7 +1106,6 @@ public static partial class Module
                 Details = user == null ? "User not found" : "User is inactive",
                 IpAddress = null
             });
->>>>>>> maintofix
             return;
         }
 
@@ -1128,8 +1113,6 @@ public static partial class Module
         if (!VerifyPassword(password, user.PasswordHash))
         {
             Log.Info($"Authentication failed for user {login}: invalid password");
-<<<<<<< HEAD
-=======
             // Publish failed authentication event
             ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
             {
@@ -1139,7 +1122,6 @@ public static partial class Module
                 Details = "Invalid password",
                 IpAddress = null
             });
->>>>>>> maintofix
             return;
         }
 
@@ -1157,8 +1139,6 @@ public static partial class Module
 
         // Log the successful authentication
         Log.Info($"User {user.Login} authenticated successfully with roles: {string.Join(", ", roles)}");
-<<<<<<< HEAD
-=======
 
         // Publish successful authentication event
         ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
@@ -1169,7 +1149,6 @@ public static partial class Module
             Details = $"User {login} logged in successfully",
             IpAddress = null
         });
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -1372,8 +1351,6 @@ public static partial class Module
         };
         // Insert the new maintenance record into the database
         ctx.Db.Maintenance.Insert(maintenance);
-<<<<<<< HEAD
-=======
 
         // Publish maintenance event
         ctx.Db.MaintenanceEvent.Insert(new MaintenanceEvent
@@ -1384,7 +1361,6 @@ public static partial class Module
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             ChangedBy = effectiveUser
         });
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -1497,8 +1473,6 @@ public static partial class Module
         };
         // Insert the new schedule into the database
         ctx.Db.RouteSchedule.Insert(schedule);
-<<<<<<< HEAD
-=======
 
         // Publish route schedule event
         ctx.Db.RouteScheduleEvent.Insert(new RouteScheduleEvent
@@ -1509,7 +1483,6 @@ public static partial class Module
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             ChangedBy = ctx.Sender
         });
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -1719,12 +1692,6 @@ public static partial class Module
         }
         
         // Update the user with the caller's identity
-<<<<<<< HEAD
-        user.UserId = userIdentity;
-        user.IsActive = true;
-        user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        ctx.Db.UserProfile.Login.Update(user);
-=======
         // Since Login is a unique constraint but not a primary key, we need to delete and re-insert
         var oldLogin = user.Login;
         ctx.Db.UserProfile.Login.Delete(oldLogin);
@@ -1733,7 +1700,6 @@ public static partial class Module
         user.IsActive = true;
         user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ctx.Db.UserProfile.Insert(user);
->>>>>>> maintofix
 
         // Update user roles to reference the new identity
         var userRoles = ctx.Db.UserRole.Iter().Where(ur => ur.UserId == user.UserId).ToList();
@@ -2222,8 +2188,6 @@ public static partial class Module
 
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
         Log.Info($"Route schedule {scheduleId} updated");
-<<<<<<< HEAD
-=======
 
         // Publish route schedule event
         ctx.Db.RouteScheduleEvent.Insert(new RouteScheduleEvent
@@ -2234,7 +2198,6 @@ public static partial class Module
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             ChangedBy = effectiveUser
         });
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -2250,15 +2213,6 @@ public static partial class Module
             throw new Exception("Unauthorized: You do not have permission to delete schedules.");
         }
 
-<<<<<<< HEAD
-        // Check if the schedule exists
-        if (ctx.Db.RouteSchedule.ScheduleId.Find(scheduleId) == null)
-        {
-            throw new Exception("Route schedule not found.");
-        }
-        ctx.Db.RouteSchedule.ScheduleId.Delete(scheduleId);
-        Log.Info($"Route schedule {scheduleId} has been deleted.");
-=======
         // Get the schedule before deletion to extract route information
         var schedule = ctx.Db.RouteSchedule.ScheduleId.Find(scheduleId);
         if (schedule == null)
@@ -2280,7 +2234,6 @@ public static partial class Module
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             ChangedBy = effectiveUser
         });
->>>>>>> maintofix
     }
 
     [SpacetimeDB.Reducer]
@@ -2518,11 +2471,7 @@ public static partial class Module
             IpAddress = ipAddress,
             UserAgent = userAgent
         };
-<<<<<<< HEAD
-        ctx.Db.admin_action_log.Insert(logEntry);
-=======
         ctx.Db.AdminActionLog.Insert(logEntry);
->>>>>>> maintofix
         Log.Info($"Logged Action {logEntry.Action} for user {logEntry.UserId} at: {logEntry.Timestamp}");
 	}
 

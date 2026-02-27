@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class QrSessionHandle : RemoteTableHandle<EventContext, QrSession>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "QRSession";
-=======
             protected override string RemoteTableName => "qr_session";
->>>>>>> maintofix
 
             public sealed class SessionIdUniqueIndex : UniqueIndexBase<string>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly QrSessionHandle QrSession;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class QrSessionCols
     {
@@ -72,5 +66,4 @@ namespace SpacetimeDB.Types
             SessionId = new global::SpacetimeDB.IxCol<QrSession, string>(tableName, "session_id");
         }
     }
->>>>>>> maintofix
 }

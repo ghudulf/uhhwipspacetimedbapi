@@ -4,10 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System.Text.Json;
-<<<<<<< HEAD
-=======
 using System.Text.Json.Nodes;
->>>>>>> maintofix
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,11 +19,6 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
-<<<<<<< HEAD
-
-namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
-{
-=======
 using System.Globalization;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
@@ -60,31 +52,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public string? TravelTime => Route?.TravelTime;
     }
 
->>>>>>> maintofix
     public partial class TicketManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-<<<<<<< HEAD
-        private ObservableCollection<Ticket> _tickets = new();
-        public ObservableCollection<Ticket> Tickets
-=======
         // Change to use the display model
         private List<TicketDisplayModel> _allTickets = new();
         private ObservableCollection<TicketDisplayModel> _tickets = new();
         public ObservableCollection<TicketDisplayModel> Tickets
->>>>>>> maintofix
         {
             get => _tickets;
             set => this.RaiseAndSetIfChanged(ref _tickets, value);
         }
 
-<<<<<<< HEAD
-=======
         private List<Route> _allRoutes = new();
->>>>>>> maintofix
         private ObservableCollection<Route> _routes = new();
         public ObservableCollection<Route> Routes
         {
@@ -92,14 +75,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _routes, value);
         }
 
-<<<<<<< HEAD
-        private Ticket? _selectedTicket;
-        public Ticket? SelectedTicket
-=======
         // Change selected item type
         private TicketDisplayModel? _selectedTicket;
         public TicketDisplayModel? SelectedTicket
->>>>>>> maintofix
         {
             get => _selectedTicket;
             set => this.RaiseAndSetIfChanged(ref _selectedTicket, value);
@@ -144,20 +122,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-<<<<<<< HEAD
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-            };
-
-            ApiClientService.Instance.OnAuthTokenChanged += (_, token) =>
-            {
-=======
             };
 
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
             {
                 Log.Information("Auth token changed in TicketManagementViewModel. Recreating HttpClient and reloading data.");
                 _httpClient.Dispose();
->>>>>>> maintofix
                 _httpClient = ApiClientService.Instance.CreateClient();
                 LoadData().ConfigureAwait(false);
             };
@@ -165,43 +135,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             LoadData().ConfigureAwait(false);
         }
 
-<<<<<<< HEAD
-        [RelayCommand]
-        private async Task LoadData()
-        {
-=======
         private async Task LoadData()
         {
             Log.Information("Starting LoadData for TicketManagementViewModel");
->>>>>>> maintofix
             try
             {
                 IsBusy = true;
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                var ticketsResponse = await _httpClient.GetAsync($"{_baseUrl}/Tickets");
-                var routesResponse = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-
-                if (ticketsResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await ticketsResponse.Content.ReadAsStringAsync();
-                    var tickets = JsonSerializer.Deserialize<List<Ticket>>(jsonString, _jsonOptions);
-
-                    if (tickets != null)
-                        Tickets = new ObservableCollection<Ticket>(tickets);
-                }
-
-                if (routesResponse.IsSuccessStatusCode)
-                {
-                    var jsonString = await routesResponse.Content.ReadAsStringAsync();
-                    var routes = JsonSerializer.Deserialize<List<Route>>(jsonString, _jsonOptions);
-
-                    if (routes != null)
-                        Routes = new ObservableCollection<Route>(routes);
-                }
-=======
                 Log.Debug("Initiating API calls for Tickets and Routes");
                 Task<HttpResponseMessage> ticketsTask = _httpClient.GetAsync($"{_baseUrl}/Tickets");
                 Task<HttpResponseMessage> routesTask = _httpClient.GetAsync($"{_baseUrl}/Routes");
@@ -332,30 +274,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Tickets = new ObservableCollection<TicketDisplayModel>(_allTickets); // Update the displayed collection
 
                 Log.Information("Finished processing data. Displaying {TicketCount} tickets and {RouteCount} routes.", Tickets.Count, Routes.Count);
->>>>>>> maintofix
             }
             catch (Exception ex)
             {
                 HasError = true;
-<<<<<<< HEAD
-                ErrorMessage = $"Error loading data: {ex.Message}";
-                Log.Error(ex, "Error loading ticket data");
-=======
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in TicketManagementViewModel");
                 _allTickets = new List<TicketDisplayModel>();
                 Tickets = new ObservableCollection<TicketDisplayModel>();
                 _allRoutes = new List<Route>();
                 Routes = new ObservableCollection<Route>();
->>>>>>> maintofix
             }
             finally
             {
                 IsBusy = false;
-<<<<<<< HEAD
-=======
                 Log.Information("LoadData finished for TicketManagementViewModel.");
->>>>>>> maintofix
             }
         }
 
@@ -374,11 +307,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var grid = new Grid
                 {
-<<<<<<< HEAD
-                    RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
-=======
                     RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto"),
->>>>>>> maintofix
                     Margin = new Thickness(10)
                 };
 
@@ -386,12 +315,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     PlaceholderText = "Выберите маршрут",
                     ItemsSource = Routes,
-<<<<<<< HEAD
-                    DisplayMemberBinding = new global::Avalonia.Data.Binding("StartPoint")
-                };
-
-                var priceBox = new TextBox { Watermark = "Цена билета" };
-=======
                     DisplayMemberBinding = new global::Avalonia.Data.Binding(".") { Converter = RouteDisplayConverter.Instance },
                     Margin = new Thickness(0, 0, 0, 5)
                 };
@@ -413,7 +336,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Maximum = 100,
                     Margin = new Thickness(0, 0, 0, 5)
                 };
->>>>>>> maintofix
 
                 var addButton = new Button
                 {
@@ -426,15 +348,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Grid.SetRow(routeComboBox, 0);
                 grid.Children.Add(priceBox);
                 Grid.SetRow(priceBox, 1);
-<<<<<<< HEAD
-                grid.Children.Add(addButton);
-                Grid.SetRow(addButton, 2);
-=======
                 grid.Children.Add(seatBox);
                 Grid.SetRow(seatBox, 2);
                 grid.Children.Add(addButton);
                 Grid.SetRow(addButton, 3);
->>>>>>> maintofix
 
                 dialog.Content = grid;
 
@@ -446,13 +363,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
-<<<<<<< HEAD
-                    if (!double.TryParse(priceBox.Text, out double price))
-                    {
-                        ErrorMessage = "Пожалуйста, введите корректную цену";
-                        return;
-                    }
-=======
                     if (!priceBox.Value.HasValue || priceBox.Value.Value < 0)
                     {
                         ErrorMessage = "Пожалуйста, введите корректную цену (>= 0)";
@@ -468,27 +378,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
                     uint seat = (uint)seatBox.Value.Value;
->>>>>>> maintofix
 
                     var newTicket = new
                     {
                         RouteId = selectedRoute.RouteId,
-<<<<<<< HEAD
-                        TicketPrice = price,
-                        SeatNumber = (uint)1,
-=======
                         TicketPrice = (double)price,
                         SeatNumber = seat,
->>>>>>> maintofix
                         PaymentMethod = "Cash"
                     };
 
                     var content = new StringContent(
-<<<<<<< HEAD
-                        JsonSerializer.Serialize(newTicket),
-=======
                         JsonSerializer.Serialize(newTicket, _jsonOptions),
->>>>>>> maintofix
                         Encoding.UTF8,
                         "application/json");
 
@@ -501,12 +401,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                        ErrorMessage = $"Failed to add ticket: {error}";
-=======
                         ErrorMessage = $"Ошибка добавления билета: {response.StatusCode} - {error}";
                         HasError = true;
->>>>>>> maintofix
                     }
                 };
 
@@ -534,13 +430,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Edit()
         {
-<<<<<<< HEAD
-            if (SelectedTicket == null) return;
-=======
             if (SelectedTicket?.Ticket == null) return; // Check nested Ticket
             var ticketToEdit = SelectedTicket.Ticket; // Get the original Ticket object
             var routeToEdit = SelectedTicket.Route; // Get the associated Route object
->>>>>>> maintofix
 
             try
             {
@@ -554,11 +446,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var grid = new Grid
                 {
-<<<<<<< HEAD
-                    RowDefinitions = new RowDefinitions("Auto,Auto,Auto"),
-=======
                     RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto"),
->>>>>>> maintofix
                     Margin = new Thickness(10)
                 };
 
@@ -566,16 +454,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     PlaceholderText = "Выберите маршрут",
                     ItemsSource = Routes,
-<<<<<<< HEAD
-                    DisplayMemberBinding = new global::Avalonia.Data.Binding("StartPoint"),
-                    SelectedItem = Routes.FirstOrDefault(r => r.RouteId == SelectedTicket.RouteId)
-                };
-
-                var priceBox = new TextBox
-                {
-                    Text = SelectedTicket.TicketPrice.ToString(),
-                    Watermark = "Цена билета"
-=======
                     DisplayMemberBinding = new global::Avalonia.Data.Binding(".") { Converter = RouteDisplayConverter.Instance },
                     SelectedItem = Routes.FirstOrDefault(r => r.RouteId == ticketToEdit.RouteId),
                     Margin = new Thickness(0, 0, 0, 5)
@@ -599,7 +477,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Minimum = 1,
                     Maximum = 100,
                     Margin = new Thickness(0, 0, 0, 5)
->>>>>>> maintofix
                 };
 
                 var updateButton = new Button
@@ -613,15 +490,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Grid.SetRow(routeComboBox, 0);
                 grid.Children.Add(priceBox);
                 Grid.SetRow(priceBox, 1);
-<<<<<<< HEAD
-                grid.Children.Add(updateButton);
-                Grid.SetRow(updateButton, 2);
-=======
                 grid.Children.Add(seatBox);
                 Grid.SetRow(seatBox, 2);
                 grid.Children.Add(updateButton);
                 Grid.SetRow(updateButton, 3);
->>>>>>> maintofix
 
                 dialog.Content = grid;
 
@@ -633,13 +505,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
-<<<<<<< HEAD
-                    if (!double.TryParse(priceBox.Text, out double price))
-                    {
-                        ErrorMessage = "Пожалуйста, введите корректную цену";
-                        return;
-                    }
-=======
                     if (!priceBox.Value.HasValue || priceBox.Value.Value < 0)
                     {
                         ErrorMessage = "Пожалуйста, введите корректную цену (>= 0)";
@@ -655,21 +520,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
                     uint seat = (uint)seatBox.Value.Value;
->>>>>>> maintofix
 
                     var updatedTicket = new
                     {
                         RouteId = selectedRoute.RouteId,
-<<<<<<< HEAD
-                        TicketPrice = price,
-                        SeatNumber = SelectedTicket.SeatNumber,
-                        PaymentMethod = SelectedTicket.PaymentMethod,
-                        IsActive = SelectedTicket.IsActive
-                    };
-
-                    var content = new StringContent(
-                        JsonSerializer.Serialize(updatedTicket),
-=======
                         TicketPrice = (double)price,
                         SeatNumber = seat,
                         PaymentMethod = ticketToEdit.PaymentMethod,
@@ -678,16 +532,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                     var content = new StringContent(
                         JsonSerializer.Serialize(updatedTicket, _jsonOptions),
->>>>>>> maintofix
                         Encoding.UTF8,
                         "application/json");
 
                     var response = await _httpClient.PutAsync(
-<<<<<<< HEAD
-                        $"{_baseUrl}/Tickets/{SelectedTicket.TicketId}",
-=======
                         $"{_baseUrl}/Tickets/{ticketToEdit.TicketId}",
->>>>>>> maintofix
                         content);
 
                     if (response.IsSuccessStatusCode)
@@ -698,12 +547,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                        ErrorMessage = $"Failed to update ticket: {error}";
-=======
                         ErrorMessage = $"Ошибка обновления билета: {response.StatusCode} - {error}";
                         HasError = true;
->>>>>>> maintofix
                     }
                 };
 
@@ -731,22 +576,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Delete()
         {
-<<<<<<< HEAD
-            if (SelectedTicket == null) return;
-=======
             if (SelectedTicket?.Ticket == null) return;
             var ticketToDelete = SelectedTicket.Ticket; // Get original ticket
->>>>>>> maintofix
 
             try
             {
                 var dialog = new Window
                 {
-<<<<<<< HEAD
-                    Title = "Подтверждение удаления",
-=======
                     Title = $"Подтверждение удаления билета ID {ticketToDelete.TicketId}",
->>>>>>> maintofix
                     Width = 300,
                     Height = 150,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -787,30 +624,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 yesButton.Click += async (s, e) =>
                 {
-<<<<<<< HEAD
-                    var response = await _httpClient.DeleteAsync($"{_baseUrl}/Tickets/{SelectedTicket.TicketId}");
-                    if (response.IsSuccessStatusCode)
-                    {
-=======
                     Log.Information("User confirmed deletion for TicketId: {TicketId}", ticketToDelete.TicketId);
                     var response = await _httpClient.DeleteAsync($"{_baseUrl}/Tickets/{ticketToDelete.TicketId}");
                     if (response.IsSuccessStatusCode)
                     {
                         Log.Information("Successfully deleted TicketId: {TicketId}", ticketToDelete.TicketId);
->>>>>>> maintofix
                         await LoadData();
                         dialog.Close();
                     }
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
-<<<<<<< HEAD
-                        ErrorMessage = $"Failed to delete ticket: {error}";
-                    }
-                };
-
-                noButton.Click += (s, e) => dialog.Close();
-=======
                         Log.Error("Failed to delete ticket {TicketId}. Status: {StatusCode}, Error: {Error}", ticketToDelete.TicketId, response.StatusCode, error);
                         ErrorMessage = $"Ошибка удаления билета: {response.StatusCode} - {error}";
                         HasError = true;
@@ -821,7 +645,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Log.Information("User cancelled deletion for TicketId: {TicketId}", ticketToDelete.TicketId);
                     dialog.Close();
                 };
->>>>>>> maintofix
 
                 var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
                     ? desktop.MainWindow
@@ -846,27 +669,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private void OnSearchTextChanged(string value)
         {
-<<<<<<< HEAD
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                LoadData().ConfigureAwait(false);
-                return;
-            }
-
-            var filteredTickets = new List<Ticket>();
-            var filteredRoutes = Routes.Where(r =>
-                r.StartPoint.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-                r.EndPoint.Contains(value, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-
-            foreach (var route in filteredRoutes)
-            {
-                var tickets = Tickets.Where(t => t.RouteId == route.RouteId).ToList();
-                filteredTickets.AddRange(tickets);
-            }
-
-            Tickets = new ObservableCollection<Ticket>(filteredTickets);
-=======
             Log.Debug("Search text changed: '{SearchText}'", value);
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -908,7 +710,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 throw new NotSupportedException();
             }
->>>>>>> maintofix
         }
     }
 } 

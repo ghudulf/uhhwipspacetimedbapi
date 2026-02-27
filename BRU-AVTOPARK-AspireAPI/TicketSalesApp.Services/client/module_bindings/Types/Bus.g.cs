@@ -13,53 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Bus
     {
-<<<<<<< HEAD
-        [DataMember(Name = "BusId")]
-        public uint BusId;
-        [DataMember(Name = "Model")]
-        public string Model;
-        [DataMember(Name = "RegistrationNumber")]
-        public string? RegistrationNumber;
-        [DataMember(Name = "IsActive")]
-        public bool IsActive;
-        [DataMember(Name = "BusType")]
-        public string BusType;
-        [DataMember(Name = "Capacity")]
-        public uint Capacity;
-        [DataMember(Name = "SeatedCapacity")]
-        public uint? SeatedCapacity;
-        [DataMember(Name = "StandingCapacity")]
-        public uint? StandingCapacity;
-        [DataMember(Name = "Year")]
-        public uint Year;
-        [DataMember(Name = "VIN")]
-        public string? Vin;
-        [DataMember(Name = "LicensePlate")]
-        public string? LicensePlate;
-        [DataMember(Name = "CurrentStatus")]
-        public string? CurrentStatus;
-        [DataMember(Name = "CurrentLocation")]
-        public string? CurrentLocation;
-        [DataMember(Name = "LastLocationUpdate")]
-        public ulong? LastLocationUpdate;
-        [DataMember(Name = "FuelConsumption")]
-        public double? FuelConsumption;
-        [DataMember(Name = "CurrentFuelLevel")]
-        public double? CurrentFuelLevel;
-        [DataMember(Name = "FuelType")]
-        public string? FuelType;
-        [DataMember(Name = "MileageTotal")]
-        public uint? MileageTotal;
-        [DataMember(Name = "MileageSinceService")]
-        public uint? MileageSinceService;
-        [DataMember(Name = "HasAccessibility")]
-        public bool? HasAccessibility;
-        [DataMember(Name = "HasAirConditioning")]
-        public bool? HasAirConditioning;
-        [DataMember(Name = "HasWifi")]
-        public bool? HasWifi;
-        [DataMember(Name = "HasUSBCharging")]
-=======
         [DataMember(Name = "bus_id")]
         public uint BusId;
         [DataMember(Name = "model")]
@@ -105,7 +58,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "has_wifi")]
         public bool? HasWifi;
         [DataMember(Name = "has_usb_charging")]
->>>>>>> maintofix
         public bool? HasUsbCharging;
 
         public Bus(

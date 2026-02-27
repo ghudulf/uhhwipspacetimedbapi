@@ -23,10 +23,7 @@ using SpacetimeDB.Types;
 using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using Avalonia.Controls.Templates;
-<<<<<<< HEAD
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -65,10 +62,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public uint BusId => Route.BusId;
         [JsonIgnore]
         public uint DriverId => Route.DriverId;
-<<<<<<< HEAD
-        // ... add others if needed
-
-=======
         [JsonIgnore]
         public uint StopCount => Route.StopCount;
         [JsonIgnore]
@@ -82,7 +75,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         // Format RouteLength for display
         public string RouteLengthDisplay => $"{RouteLength:N1} км";
->>>>>>> maintofix
     }
 
     public partial class RouteManagementViewModel : ReactiveObject
@@ -203,144 +195,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var routesResponse = await routesTask;
                 Log.Information("Processing Routes response. Status: {StatusCode}", routesResponse.StatusCode);
-<<<<<<< HEAD
-                
-                // Log the raw response content
-                var routesJsonString = await routesResponse.Content.ReadAsStringAsync();
-                Log.Debug("Raw Routes response received: {RawResponse}", routesJsonString);
-                
-=======
 
                 // Log the raw response content
                 var routesJsonString = await routesResponse.Content.ReadAsStringAsync();
                 Log.Debug("Raw Routes response received: {RawResponse}", routesJsonString);
 
->>>>>>> maintofix
                 if (routesResponse.IsSuccessStatusCode)
                 {
                     Log.Debug("Raw Routes JSON received: {RawJson}", routesJsonString);
                     try
                     {
-<<<<<<< HEAD
-                        JsonNode? routesNode = JsonNode.Parse(routesJsonString);
-                        if (routesNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var routesValuesNode) && routesValuesNode is JsonArray routesArray)
-                        {
-                            Log.Information("Parsing {Count} route objects from JSON array.", routesArray.Count);
-                            foreach (var routeNode in routesArray)
-                            {
-                                if (routeNode is JsonObject routeObj)
-                                {
-                                    Log.Verbose("--- Parsing Route Object: {RouteJson} ---", routeObj.ToJsonString());
-
-                                    // Extract Primitive Route Properties
-                                    uint routeId = routeObj["routeId"]?.GetValue<uint>() ?? 0;
-                                    if (routeId == 0)
-                                    {
-                                        Log.Error("CRITICAL DATA ISSUE: Found route object with RouteId 0. Skipping. JSON: {RouteJson}", routeObj.ToJsonString());
-                                        continue; // Skip this invalid route
-                                    }
-
-                                    string routeNumber = routeObj["routeNumber"]?.GetValue<string>() ?? "N/A";
-                                    string startPoint = routeObj["startPoint"]?.GetValue<string>() ?? "N/A";
-                                    string endPoint = routeObj["endPoint"]?.GetValue<string>() ?? "N/A";
-                                    string? travelTime = routeObj["travelTime"]?.GetValue<string>();
-                                    bool isActive = routeObj["isActive"]?.GetValue<bool>() ?? false;
-                                    uint stopCount = routeObj["stopCount"]?.GetValue<uint>() ?? 0;
-                                    double routeLength = routeObj["routeLength"]?.GetValue<double>() ?? 0.0;
-                                    string? routeDesc = routeObj["routeDescription"]?.GetValue<string>();
-                                    string? routeType = routeObj["routeType"]?.GetValue<string>();
-
-
-                                    uint busIdFromRoute = routeObj["busId"]?.GetValue<uint>() ?? 0;
-                                    uint driverIdFromRoute = routeObj["driverId"]?.GetValue<uint>() ?? 0;
-                                    Log.Verbose("Extracted Route Primitives: Id={RouteId}, Num='{RouteNumber}', Start='{Start}', End='{End}', BusId={BusId}, DriverId={DriverId}, Active={IsActive}",
-                                        routeId, routeNumber, startPoint, endPoint, busIdFromRoute, driverIdFromRoute, isActive);
-
-                                    // Extract Nested Bus Info
-                                    string busModel = "Неизвестный автобус";
-                                    uint nestedBusId = 0;
-                                    if (routeObj["bus"] is JsonObject busObj)
-                                    {
-                                        nestedBusId = busObj["busId"]?.GetValue<uint>() ?? 0;
-                                        busModel = busObj["model"]?.GetValue<string>() ?? busModel;
-                                        string? regNum = busObj["registrationNumber"]?.GetValue<string>();
-                                        Log.Verbose("Nested Bus Info: Id={BusId}, Model='{Model}', Reg='{RegNum}'", nestedBusId, busModel, regNum);
-                                        if (nestedBusId == 0) Log.Warning("Nested Bus object has BusId 0 for RouteId {RouteId}", routeId);
-                                        if (nestedBusId != busIdFromRoute) Log.Warning("Mismatch between Route.BusId ({RouteBusId}) and nested Bus.BusId ({NestedBusId}) for RouteId {RouteId}", busIdFromRoute, nestedBusId, routeId);
-                                        // Add to lookup if valid and not already present
-                                         if (nestedBusId > 0 && !busLookup.ContainsKey(nestedBusId))
-                                         {
-                                              busLookup[nestedBusId] = busModel;
-                                         }
-                                    }
-                                    else { Log.Warning("No nested 'Bus' object found for RouteId {RouteId}", routeId); }
-
-
-                                    // Extract Nested Driver Info
-                                    string driverName = "Неизвестный водитель";
-                                     uint nestedDriverId = 0;
-                                    if (routeObj["driver"] is JsonObject driverObj)
-                                    {
-                                        nestedDriverId = driverObj["employeeId"]?.GetValue<uint>() ?? 0;
-                                        string? name = driverObj["name"]?.GetValue<string>();
-                                        string? surname = driverObj["surname"]?.GetValue<string>();
-                                        driverName = (!string.IsNullOrWhiteSpace(surname) || !string.IsNullOrWhiteSpace(name)) ? $"{surname} {name}".Trim() : driverName;
-                                        Log.Verbose("Nested Driver Info: Id={EmpId}, Name='{DriverName}'", nestedDriverId, driverName);
-                                        if (nestedDriverId == 0) Log.Warning("Nested Driver object has EmployeeId 0 for RouteId {RouteId}", routeId);
-                                        if (nestedDriverId != driverIdFromRoute) Log.Warning("Mismatch between Route.DriverId ({RouteDriverId}) and nested Driver.EmployeeId ({NestedDriverId}) for RouteId {RouteId}", driverIdFromRoute, nestedDriverId, routeId);
-                                         // Add to lookup if valid and not already present
-                                         if (nestedDriverId > 0 && !driverLookup.ContainsKey(nestedDriverId))
-                                         {
-                                              driverLookup[nestedDriverId] = driverName;
-                                         }
-                                    }
-                                     else { Log.Warning("No nested 'Driver' object found for RouteId {RouteId}", routeId); }
-
-                                    // Create SpacetimeDB Route object manually (no nested objects)
-                                    var spdRoute = new Route
-                                    {
-                                        RouteId = routeId,
-                                        RouteNumber = routeNumber,
-                                        StartPoint = startPoint,
-                                        EndPoint = endPoint,
-                                        DriverId = driverIdFromRoute, // Use ID from the route level
-                                        BusId = busIdFromRoute,       // Use ID from the route level
-                                        TravelTime = travelTime,
-                                        IsActive = isActive,
-                                        StopCount = stopCount,
-                                        RouteLength = routeLength,
-                                        RouteDescription = routeDesc,
-                                        RouteType = routeType,
-                                        // Initialize other properties as needed
-                                    };
-
-                                    // Create Display Model
-                                    var displayModel = new RouteDisplayModel(spdRoute)
-                                    {
-                                        // Assign extracted nested info
-                                        BusModel = busModel,
-                                        DriverName = driverName,
-                                        TicketCount = 0 // Will be updated later after tickets are processed
-                                    };
-                                    parsedRoutes.Add(displayModel);
-                                    Log.Verbose("Added RouteDisplayModel: Id={RouteId}, Bus='{BusModel}', Driver='{DriverName}'", displayModel.RouteId, displayModel.BusModel, displayModel.DriverName);
-                                }
-                                else { Log.Warning("Item in routes array was not a JSON object: {Node}", routeNode?.ToJsonString()); }
-                            }
-                            Log.Information("Successfully parsed {Count} valid route objects.", parsedRoutes.Count);
-                        }
-                        else { Log.Error("Routes JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", routesNode?.GetType().Name, routesJsonString); }
-                    }
-                    catch (JsonException jsonEx)
-                    {
-                        Log.Error(jsonEx, "Failed to parse Routes JSON: {RawJson}", routesJsonString);
-                        throw new Exception("Failed to parse route data.", jsonEx);
-                    }
-                     catch (Exception ex)
-                    {
-                        Log.Error(ex, "Unexpected error during manual route parsing.");
-                        throw; // Re-throw unexpected errors
-=======
                         var routesArray = JsonReferenceHelper.ParseArrayWithReferences(routesJsonString, "Route");
                         Log.Information("Parsing {Count} route objects from JSON array.", routesArray.Count);
                         
@@ -399,7 +263,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Log.Error(ex, "Failed to parse Routes JSON: {RawJson}", routesJsonString);
                         throw new Exception("Failed to parse route data.", ex);
->>>>>>> maintofix
                     }
                 }
                 else
@@ -410,74 +273,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
 
                 // 2. Process Buses Response (for AvailableBuses ComboBox)
-<<<<<<< HEAD
-                 List<Bus> loadedBuses = new();
-                var busesResponse = await busesTask;
-                 Log.Information("Processing Buses response. Status: {StatusCode}", busesResponse.StatusCode);
-                if (busesResponse.IsSuccessStatusCode)
-                {
-                    var busJsonString = await busesResponse.Content.ReadAsStringAsync();
-                     Log.Debug("Raw Buses JSON received (for ComboBox): {RawJson}", busJsonString);
-                     try
-                     {
-                          JsonNode? busesNode = JsonNode.Parse(busJsonString);
-                          if (busesNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var busesValuesNode) && busesValuesNode is JsonArray busesArray)
-                          {
-                               Log.Information("Parsing {Count} bus objects from JSON array (for ComboBox).", busesArray.Count);
-                               foreach(var busNode in busesArray)
-                               {
-                                    if (busNode is JsonObject busObj)
-                                    {
-                                         uint busId = busObj["busId"]?.GetValue<uint>() ?? 0;
-                                         if (busId == 0)
-                                         {
-                                              Log.Error("CRITICAL DATA ISSUE: Bus object (for ComboBox) has BusId 0. Filtering out. JSON: {BusJson}", busObj.ToJsonString());
-                                              continue; // Filter out
-                                         }
-                                         string model = busObj["model"]?.GetValue<string>() ?? "N/A";
-                                         string? regNum = busObj["registrationNumber"]?.GetValue<string>();
-                                         uint capacity = busObj["capacity"]?.GetValue<uint>() ?? 0;
-                                         bool busIsActive = busObj["isActive"]?.GetValue<bool>() ?? false;
-                                         string? busType = busObj["busType"]?.GetValue<string>();
-                                          Log.Verbose("Parsed Bus (for ComboBox): Id={BusId}, Model='{Model}', Reg='{RegNum}', Active={IsActive}", busId, model, regNum, busIsActive);
-
-                                          // Create Bus object
-                                          loadedBuses.Add(new Bus {
-                                                BusId = busId,
-                                                Model = model,
-                                                RegistrationNumber = regNum,
-                                                Capacity = capacity,
-                                                IsActive = busIsActive,
-                                                BusType = busType ?? string.Empty
-                                                // Map other properties as needed
-                                           });
-
-                                          // Update lookup if not already present from route data
-                                          if (!busLookup.ContainsKey(busId))
-                                          {
-                                               busLookup[busId] = model;
-                                               Log.Verbose("Added BusId {BusId} ('{Model}') to lookup from Bus list.", busId, model);
-                                          }
-                                    }
-                                     else { Log.Warning("Item in buses array was not a JSON object: {Node}", busNode?.ToJsonString()); }
-                               }
-                                Log.Information("Successfully parsed and filtered {Count} valid buses (for ComboBox).", loadedBuses.Count);
-                          }
-                           else { Log.Error("Buses JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", busesNode?.GetType().Name, busJsonString); }
-
-                         AvailableBuses = new ObservableCollection<Bus>(loadedBuses); // Populate ComboBox with FILTERED list
-                     }
-                     catch (JsonException jsonEx)
-                     {
-                           Log.Error(jsonEx, "Failed to parse Buses JSON: {RawJson}", busJsonString);
-                           AvailableBuses = new ObservableCollection<Bus>(); // Ensure empty on error
-                     }
-                     catch (Exception ex)
-                     {
-                          Log.Error(ex, "Unexpected error during manual bus parsing.");
-                          AvailableBuses = new ObservableCollection<Bus>(); // Ensure empty on error
-                     }
-=======
                 List<Bus> loadedBuses = new();
                 var busesResponse = await busesTask;
                 Log.Information("Processing Buses response. Status: {StatusCode}", busesResponse.StatusCode);
@@ -515,7 +310,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         Log.Error(ex, "Failed to parse Buses JSON: {RawJson}", busJsonString);
                         AvailableBuses = new ObservableCollection<Bus>();
                     }
->>>>>>> maintofix
                 }
                 else
                 {
@@ -532,65 +326,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     var driverJsonString = await driversResponse.Content.ReadAsStringAsync();
                     Log.Debug("Raw Drivers JSON received (for ComboBox): {RawJson}", driverJsonString);
-<<<<<<< HEAD
-                     try
-                     {
-                         JsonNode? driversNode = JsonNode.Parse(driverJsonString);
-                         if (driversNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var driversValuesNode) && driversValuesNode is JsonArray driversArray)
-                         {
-                              Log.Information("Parsing {Count} driver objects from JSON array (for ComboBox).", driversArray.Count);
-                              foreach(var driverNode in driversArray)
-                              {
-                                   if (driverNode is JsonObject driverObj)
-                                   {
-                                        uint empId = driverObj["employeeId"]?.GetValue<uint>() ?? 0;
-                                        if (empId == 0)
-                                        {
-                                            Log.Error("CRITICAL DATA ISSUE: Driver object (for ComboBox) has EmployeeId 0. Filtering out. JSON: {DriverJson}", driverObj.ToJsonString());
-                                            continue; // Filter out
-                                        }
-                                        string name = driverObj["name"]?.GetValue<string>() ?? "N/A";
-                                        string surname = driverObj["surname"]?.GetValue<string>() ?? "N/A";
-                                        string? patronym = driverObj["patronym"]?.GetValue<string>();
-                                        uint jobId = driverObj["jobId"]?.GetValue<uint>() ?? 0;
-                                         Log.Verbose("Parsed Driver (for ComboBox): Id={EmpId}, Name='{Name}', Surname='{Surname}', JobId={JobId}", empId, name, surname, jobId);
-
-                                        // Create Employee object
-                                        loadedDrivers.Add(new Employee {
-                                             EmployeeId = empId,
-                                             Name = name,
-                                             Surname = surname,
-                                             Patronym = patronym,
-                                             JobId = jobId
-                                             // Map other properties as needed
-                                        });
-
-                                         // Update lookup if not already present from route data
-                                         string fullName = $"{surname} {name}".Trim();
-                                         if (!driverLookup.ContainsKey(empId))
-                                         {
-                                              driverLookup[empId] = fullName;
-                                              Log.Verbose("Added EmployeeId {EmpId} ('{FullName}') to lookup from Driver list.", empId, fullName);
-                                         }
-                                   }
-                                    else { Log.Warning("Item in drivers array was not a JSON object: {Node}", driverNode?.ToJsonString()); }
-                              }
-                               Log.Information("Successfully parsed and filtered {Count} valid drivers (for ComboBox).", loadedDrivers.Count);
-                         }
-                          else { Log.Error("Drivers JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", driversNode?.GetType().Name, driverJsonString); }
-
-                         AvailableDrivers = new ObservableCollection<Employee>(loadedDrivers); // Populate ComboBox with FILTERED list
-                     }
-                     catch (JsonException jsonEx)
-                     {
-                          Log.Error(jsonEx, "Failed to parse Drivers JSON: {RawJson}", driverJsonString);
-                          AvailableDrivers = new ObservableCollection<Employee>(); // Ensure empty on error
-                     }
-                    catch (Exception ex)
-                    {
-                         Log.Error(ex, "Unexpected error during manual driver parsing.");
-                         AvailableDrivers = new ObservableCollection<Employee>(); // Ensure empty on error
-=======
                     try
                     {
                         var driversArray = JsonReferenceHelper.ParseArrayWithReferences(driverJsonString, "Employee");
@@ -622,18 +357,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Log.Error(ex, "Failed to parse Drivers JSON: {RawJson}", driverJsonString);
                         AvailableDrivers = new ObservableCollection<Employee>();
->>>>>>> maintofix
                     }
                 }
                 else
                 {
                     var error = await driversResponse.Content.ReadAsStringAsync();
                     Log.Error("Failed to load drivers. Status: {StatusCode}, Error: {Error}", driversResponse.StatusCode, error);
-<<<<<<< HEAD
-                    AvailableDrivers = new ObservableCollection<Employee>();
-=======
                     AvailableDrivers = new ObservableCollection<Employee>(); // Clear the collection on failure
->>>>>>> maintofix
                     ErrorMessage = $"Ошибка загрузки водителей: {driversResponse.ReasonPhrase}";
                     HasError = true; // Set error flag if drivers fail to load
                 }
@@ -647,40 +377,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     var ticketJsonString = await ticketsResponse.Content.ReadAsStringAsync();
                     Log.Debug("Raw Tickets JSON received (for counts): {RawJson}", ticketJsonString);
-<<<<<<< HEAD
-                     try
-                     {
-                         JsonNode? ticketsNode = JsonNode.Parse(ticketJsonString);
-                         if (ticketsNode is JsonObject rootObject && rootObject.TryGetPropertyValue("$values", out var ticketsValuesNode) && ticketsValuesNode is JsonArray ticketsArray)
-                         {
-                             Log.Information("Parsing {Count} ticket objects from JSON array (for counts).", ticketsArray.Count);
-                             foreach(var ticketNode in ticketsArray)
-                             {
-                                  if (ticketNode is JsonObject ticketObj)
-                                  {
-                                       uint routeId = ticketObj["routeId"]?.GetValue<uint>() ?? 0;
-                                       bool ticketIsActive = ticketObj["isActive"]?.GetValue<bool>() ?? false; // Assuming API sends isActive
-                                       if (routeId > 0 && ticketIsActive) // Count only active tickets for valid routes
-                                       {
-                                            ticketCounts[routeId] = ticketCounts.GetValueOrDefault(routeId, 0) + 1;
-                                       }
-                                        else { Log.Verbose("Skipping ticket count for RouteId {RouteId}, IsActive={IsActive}", routeId, ticketIsActive); }
-                                  }
-                                   else { Log.Warning("Item in tickets array was not a JSON object: {Node}", ticketNode?.ToJsonString()); }
-                             }
-                               Log.Information("Successfully calculated ticket counts for {Count} routes.", ticketCounts.Count);
-                         }
-                          else { Log.Error("Tickets JSON root was not an object with a '$values' array or the structure was unexpected. Root node type: {NodeType}, Raw JSON: {RawJson}", ticketsNode?.GetType().Name, ticketJsonString); }
-                     }
-                     catch (JsonException jsonEx)
-                     {
-                          Log.Error(jsonEx, "Failed to parse Tickets JSON: {RawJson}", ticketJsonString);
-                     }
-                     catch (Exception ex)
-                     {
-                          Log.Error(ex, "Unexpected error during manual ticket parsing.");
-                     }
-=======
                     try
                     {
                         var ticketsArray = JsonReferenceHelper.ParseArrayWithReferences(ticketJsonString, "Ticket");
@@ -705,7 +401,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Log.Error(ex, "Failed to parse Tickets JSON: {RawJson}", ticketJsonString);
                     }
->>>>>>> maintofix
                 }
                 else
                 {

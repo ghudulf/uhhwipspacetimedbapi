@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateBus(uint busId, string? model, string? registrationNumber, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber, actingUser), this.SetCallReducerFlags.UpdateBusFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateBus(busId, model, registrationNumber, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateBus(ReducerEventContext ctx, Reducer.UpdateBus args)
         {
-<<<<<<< HEAD
-            if (OnUpdateBus == null) return false;
-=======
             if (OnUpdateBus == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateBus(
                 ctx,
                 args.BusId,
@@ -59,15 +51,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateBus : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "busId")]
-            public uint BusId;
-            [DataMember(Name = "model")]
-            public string? Model;
-            [DataMember(Name = "registrationNumber")]
-            public string? RegistrationNumber;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "bus_id")]
             public uint BusId;
             [DataMember(Name = "model")]
@@ -75,7 +58,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "registration_number")]
             public string? RegistrationNumber;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateBus(
@@ -95,19 +77,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateBus";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateBusFlags;
-        public void UpdateBus(CallReducerFlags flags) => UpdateBusFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_bus";
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateOidcToken(string oidcTokenId, uint? authInternalId, string? appClientId, ulong? creationDate, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? referenceId, string? status, string? subject, string? type)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateOidcToken(oidcTokenId, authInternalId, appClientId, creationDate, expirationDate, payload, propertiesJson, redemptionDate, referenceId, status, subject, type), this.SetCallReducerFlags.CreateOidcTokenFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateOidcToken(oidcTokenId, authInternalId, appClientId, creationDate, expirationDate, payload, propertiesJson, redemptionDate, referenceId, status, subject, type));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateOidcToken(ReducerEventContext ctx, Reducer.CreateOidcToken args)
         {
-<<<<<<< HEAD
-            if (OnCreateOidcToken == null) return false;
-=======
             if (OnCreateOidcToken == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateOidcToken(
                 ctx,
                 args.OidcTokenId,
@@ -67,25 +59,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateOidcToken : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "oidcTokenId")]
-            public string OidcTokenId;
-            [DataMember(Name = "authInternalId")]
-            public uint? AuthInternalId;
-            [DataMember(Name = "appClientId")]
-            public string? AppClientId;
-            [DataMember(Name = "creationDate")]
-            public ulong? CreationDate;
-            [DataMember(Name = "expirationDate")]
-            public ulong? ExpirationDate;
-            [DataMember(Name = "payload")]
-            public string? Payload;
-            [DataMember(Name = "propertiesJson")]
-            public string? PropertiesJson;
-            [DataMember(Name = "redemptionDate")]
-            public ulong? RedemptionDate;
-            [DataMember(Name = "referenceId")]
-=======
             [DataMember(Name = "oidc_token_id")]
             public string OidcTokenId;
             [DataMember(Name = "auth_internal_id")]
@@ -103,7 +76,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "redemption_date")]
             public ulong? RedemptionDate;
             [DataMember(Name = "reference_id")]
->>>>>>> maintofix
             public string? ReferenceId;
             [DataMember(Name = "status")]
             public string? Status;
@@ -146,19 +118,7 @@ namespace SpacetimeDB.Types
                 this.OidcTokenId = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateOidcToken";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateOidcTokenFlags;
-        public void CreateOidcToken(CallReducerFlags flags) => CreateOidcTokenFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_oidc_token";
         }
     }
->>>>>>> maintofix
 }

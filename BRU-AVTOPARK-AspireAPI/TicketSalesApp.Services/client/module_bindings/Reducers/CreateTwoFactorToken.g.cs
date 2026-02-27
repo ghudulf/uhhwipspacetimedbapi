@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateTwoFactorToken(SpacetimeDB.Identity userId, string token, bool isUsed, ulong expiresAt, string? deviceInfo, string? ipAddress)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateTwoFactorToken(userId, token, isUsed, expiresAt, deviceInfo, ipAddress), this.SetCallReducerFlags.CreateTwoFactorTokenFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateTwoFactorToken(userId, token, isUsed, expiresAt, deviceInfo, ipAddress));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateTwoFactorToken(ReducerEventContext ctx, Reducer.CreateTwoFactorToken args)
         {
-<<<<<<< HEAD
-            if (OnCreateTwoFactorToken == null) return false;
-=======
             if (OnCreateTwoFactorToken == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateTwoFactorToken(
                 ctx,
                 args.UserId,
@@ -61,19 +53,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateTwoFactorToken : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "token")]
-            public string Token;
-            [DataMember(Name = "isUsed")]
-            public bool IsUsed;
-            [DataMember(Name = "expiresAt")]
-            public ulong ExpiresAt;
-            [DataMember(Name = "deviceInfo")]
-            public string? DeviceInfo;
-            [DataMember(Name = "ipAddress")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "token")]
@@ -85,7 +64,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "device_info")]
             public string? DeviceInfo;
             [DataMember(Name = "ip_address")]
->>>>>>> maintofix
             public string? IpAddress;
 
             public CreateTwoFactorToken(
@@ -110,19 +88,7 @@ namespace SpacetimeDB.Types
                 this.Token = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateTwoFactorToken";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateTwoFactorTokenFlags;
-        public void CreateTwoFactorToken(CallReducerFlags flags) => CreateTwoFactorTokenFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_two_factor_token";
         }
     }
->>>>>>> maintofix
 }

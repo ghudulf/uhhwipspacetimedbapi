@@ -4423,7 +4423,7 @@
       "OpenIddict.Server.AspNetCore >= 4.1.0",
       "OpenIddict.Validation.AspNetCore >= 4.1.0",
       "QRCoder >= 1.6.0",
-      "SpacetimeDB.ClientSDK >= 2.0.0"
+      "SpacetimeDB.ClientSDK >= 2.0.1"
     ]
   },
   "packageFolders": {
@@ -4525,7 +4525,7 @@
           },
           "SpacetimeDB.ClientSDK": {
             "target": "Package",
-            "version": "[2.0.0, )"
+            "version": "[2.0.1, )"
           }
         },
         "imports": [
@@ -4547,17 +4547,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "TicketSalesApp.Services зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
-      "libraryId": "SpacetimeDB.ClientSDK",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  }
 }

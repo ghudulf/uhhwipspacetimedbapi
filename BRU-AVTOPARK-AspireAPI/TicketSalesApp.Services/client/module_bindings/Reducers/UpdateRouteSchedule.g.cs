@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateRouteSchedule(uint scheduleId, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateRouteSchedule(scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actingUser), this.SetCallReducerFlags.UpdateRouteScheduleFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateRouteSchedule(scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateRouteSchedule(ReducerEventContext ctx, Reducer.UpdateRouteSchedule args)
         {
-<<<<<<< HEAD
-            if (OnUpdateRouteSchedule == null) return false;
-=======
             if (OnUpdateRouteSchedule == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateRouteSchedule(
                 ctx,
                 args.ScheduleId,
@@ -72,41 +64,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRouteSchedule : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "scheduleId")]
-            public uint ScheduleId;
-            [DataMember(Name = "routeId")]
-            public uint? RouteId;
-            [DataMember(Name = "startPoint")]
-            public string? StartPoint;
-            [DataMember(Name = "endPoint")]
-            public string? EndPoint;
-            [DataMember(Name = "routeStops")]
-            public System.Collections.Generic.List<string>? RouteStops;
-            [DataMember(Name = "departureTime")]
-            public ulong? DepartureTime;
-            [DataMember(Name = "arrivalTime")]
-            public ulong? ArrivalTime;
-            [DataMember(Name = "price")]
-            public double? Price;
-            [DataMember(Name = "availableSeats")]
-            public uint? AvailableSeats;
-            [DataMember(Name = "daysOfWeek")]
-            public System.Collections.Generic.List<string>? DaysOfWeek;
-            [DataMember(Name = "busTypes")]
-            public System.Collections.Generic.List<string>? BusTypes;
-            [DataMember(Name = "stopDurationMinutes")]
-            public uint? StopDurationMinutes;
-            [DataMember(Name = "isRecurring")]
-            public bool? IsRecurring;
-            [DataMember(Name = "estimatedStopTimes")]
-            public System.Collections.Generic.List<string>? EstimatedStopTimes;
-            [DataMember(Name = "stopDistances")]
-            public System.Collections.Generic.List<double>? StopDistances;
-            [DataMember(Name = "notes")]
-            public string? Notes;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "schedule_id")]
             public uint ScheduleId;
             [DataMember(Name = "route_id")]
@@ -140,7 +97,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "notes")]
             public string? Notes;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateRouteSchedule(
@@ -186,19 +142,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateRouteSchedule";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateRouteScheduleFlags;
-        public void UpdateRouteSchedule(CallReducerFlags flags) => UpdateRouteScheduleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_route_schedule";
         }
     }
->>>>>>> maintofix
 }

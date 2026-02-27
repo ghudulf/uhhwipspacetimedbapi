@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class CashierDayHandle : RemoteTableHandle<EventContext, CashierDay>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "CashierDay";
-=======
             protected override string RemoteTableName => "cashier_day";
->>>>>>> maintofix
 
             public sealed class CashierDayIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly CashierDayHandle CashierDay;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class CashierDayCols
     {
@@ -104,5 +98,4 @@ namespace SpacetimeDB.Types
             CashierDayId = new global::SpacetimeDB.IxCol<CashierDay, uint>(tableName, "cashier_day_id");
         }
     }
->>>>>>> maintofix
 }

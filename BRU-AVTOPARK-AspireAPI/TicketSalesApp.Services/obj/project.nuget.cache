@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "egrEl1LUjPU=",
+  "dgSpecHash": "HVn/3WMpSQ4=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
   "expectedPackageFiles": [
@@ -84,18 +84,5 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.threading.channels\\7.0.0\\system.threading.channels.7.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "TicketSalesApp.Services зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
-      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
-      "warningLevel": 1,
-      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
-      "libraryId": "SpacetimeDB.ClientSDK",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  "logs": []
 }

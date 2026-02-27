@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteRoleReducer(uint roleId, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteRoleReducer(roleId, actingUserId), this.SetCallReducerFlags.DeleteRoleReducerFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteRoleReducer(roleId, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteRoleReducer(ReducerEventContext ctx, Reducer.DeleteRoleReducer args)
         {
-<<<<<<< HEAD
-            if (OnDeleteRoleReducer == null) return false;
-=======
             if (OnDeleteRoleReducer == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteRoleReducer(
                 ctx,
                 args.RoleId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeleteRoleReducer : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "roleId")]
-            public uint RoleId;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "role_id")]
             public uint RoleId;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public DeleteRoleReducer(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteRoleReducer";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteRoleReducerFlags;
-        public void DeleteRoleReducer(CallReducerFlags flags) => DeleteRoleReducerFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_role_reducer";
         }
     }
->>>>>>> maintofix
 }

@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class UserProfileHandle : RemoteTableHandle<EventContext, UserProfile>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "UserProfile";
-=======
             protected override string RemoteTableName => "user_profile";
->>>>>>> maintofix
 
             public sealed class LegacyUserIdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -60,8 +56,6 @@ namespace SpacetimeDB.Types
 
         public readonly UserProfileHandle UserProfile;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class UserProfileCols
     {
@@ -108,5 +102,4 @@ namespace SpacetimeDB.Types
             Login = new global::SpacetimeDB.IxCol<UserProfile, string>(tableName, "login");
         }
     }
->>>>>>> maintofix
 }

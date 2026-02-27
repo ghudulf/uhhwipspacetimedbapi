@@ -13,49 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Maintenance
     {
-<<<<<<< HEAD
-        [DataMember(Name = "MaintenanceId")]
-        public uint MaintenanceId;
-        [DataMember(Name = "BusId")]
-        public uint BusId;
-        [DataMember(Name = "LastServiceDate")]
-        public ulong LastServiceDate;
-        [DataMember(Name = "MileageThreshold")]
-        public string? MileageThreshold;
-        [DataMember(Name = "MaintenanceType")]
-        public string? MaintenanceType;
-        [DataMember(Name = "ServiceEngineer")]
-        public string? ServiceEngineer;
-        [DataMember(Name = "FoundIssues")]
-        public string? FoundIssues;
-        [DataMember(Name = "NextServiceDate")]
-        public ulong NextServiceDate;
-        [DataMember(Name = "Roadworthiness")]
-        public string? Roadworthiness;
-        [DataMember(Name = "MaintenanceCost")]
-        public double MaintenanceCost;
-        [DataMember(Name = "PartsReplaced")]
-        public string? PartsReplaced;
-        [DataMember(Name = "MaintenanceDuration")]
-        public ulong MaintenanceDuration;
-        [DataMember(Name = "IsScheduled")]
-        public bool IsScheduled;
-        [DataMember(Name = "MaintenanceLocation")]
-        public string? MaintenanceLocation;
-        [DataMember(Name = "ScheduledByEmployeeId")]
-        public uint? ScheduledByEmployeeId;
-        [DataMember(Name = "CompletedByEmployeeId")]
-        public uint? CompletedByEmployeeId;
-        [DataMember(Name = "MaintenanceNotes")]
-        public string? MaintenanceNotes;
-        [DataMember(Name = "MaintenanceStatus")]
-        public string? MaintenanceStatus;
-        [DataMember(Name = "DiagnosticCodes")]
-        public System.Collections.Generic.List<string>? DiagnosticCodes;
-        [DataMember(Name = "LaborCost")]
-        public double? LaborCost;
-        [DataMember(Name = "PartsCost")]
-=======
         [DataMember(Name = "maintenance_id")]
         public uint MaintenanceId;
         [DataMember(Name = "bus_id")]
@@ -97,7 +54,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "labor_cost")]
         public double? LaborCost;
         [DataMember(Name = "parts_cost")]
->>>>>>> maintofix
         public double? PartsCost;
 
         public Maintenance(

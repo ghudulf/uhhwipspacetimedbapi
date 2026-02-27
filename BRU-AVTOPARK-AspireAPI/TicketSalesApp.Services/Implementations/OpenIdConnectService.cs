@@ -44,11 +44,7 @@ namespace TicketSalesApp.Services.Implementations
             return _serviceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
         }
 
-<<<<<<< HEAD
-        private IOpenIddictScopeManager GetScopeManager()
-=======
         public IOpenIddictScopeManager GetScopeManager()
->>>>>>> maintofix
         {
             return _serviceProvider.GetRequiredService<IOpenIddictScopeManager>();
         }
@@ -239,8 +235,6 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Registering client application: {ClientId}", clientId);
 
-<<<<<<< HEAD
-=======
                 // Validate input parameters
                 if (redirectUris == null || redirectUris.Length == 0)
                 {
@@ -259,7 +253,6 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "At least one scope is required");
                 }
 
->>>>>>> maintofix
                 // Check if application with the same client ID already exists
                 var applicationManager = GetApplicationManager();
                 var existingApp = await applicationManager.FindByClientIdAsync(clientId);
@@ -269,36 +262,14 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "An application with this client ID already exists");
                 }
                 
-<<<<<<< HEAD
-                var conn = _spacetimeService.GetConnection();
-                
-                // Register the client in SpacetimeDB
-                conn.Reducers.RegisterOpenIdClient(
-                    clientId,
-                    clientSecret,
-                    displayName,
-                    redirectUris.ToList(),
-                    postLogoutRedirectUris.ToList(),
-                    allowedScopes.ToList(),
-                    requireConsent ? "explicit" : "implicit",
-                    "public"
-                );
-                
-                // Create a new OpenIddict application
-                var application = await applicationManager.CreateAsync(new OpenIddictApplicationDescriptor
-=======
                 // Create a new OpenIddict application descriptor
                 // Note: ApplicationStore.CreateAsync will handle writing to SpacetimeDB via RegisterOpenIdClient reducer
                 var descriptor = new OpenIddictApplicationDescriptor
->>>>>>> maintofix
                 {
                     ClientId = clientId,
                     ClientSecret = clientSecret,
                     DisplayName = displayName,
-<<<<<<< HEAD
-=======
                     ConsentType = requireConsent ? ConsentTypes.Explicit : ConsentTypes.Implicit,
->>>>>>> maintofix
                     Permissions =
                     {
                         Permissions.Endpoints.Authorization,
@@ -314,26 +285,6 @@ namespace TicketSalesApp.Services.Implementations
                         Permissions.Scopes.Profile,
                         Permissions.Scopes.Roles
                     }
-<<<<<<< HEAD
-                });
-
-                // Add redirect URIs
-                foreach (var uri in redirectUris ?? Array.Empty<string>())
-                {
-                    ((OpenIddictApplicationDescriptor)application).RedirectUris.Add(new Uri(uri));
-                }
-
-                // Add post-logout redirect URIs
-                foreach (var uri in postLogoutRedirectUris)
-                {
-                    ((OpenIddictApplicationDescriptor)application).PostLogoutRedirectUris.Add(new Uri(uri));
-                }
-
-                // Set consent type
-                ((OpenIddictApplicationDescriptor)application).ConsentType = requireConsent ? 
-                    ConsentTypes.Explicit : 
-                    ConsentTypes.Implicit;
-=======
                 };
 
                 // Add custom scope permissions from allowedScopes parameter
@@ -361,7 +312,6 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Create the application with the complete descriptor
                 var application = await applicationManager.CreateAsync(descriptor);
->>>>>>> maintofix
 
                 _logger.LogInformation("Client application registered successfully: {ClientId}", clientId);
                 return (true, null);
@@ -390,47 +340,16 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "Application not found");
                 }
                 
-<<<<<<< HEAD
-                var conn = _spacetimeService.GetConnection();
-                
-                // Get the current client from SpacetimeDB
-                var client = conn.Db.OpenIdConnect.Iter()
-                    .FirstOrDefault(c => c.ClientId == clientId && c.IsActive);
-                
-                if (client == null)
-                {
-                    _logger.LogWarning("Client not found in SpacetimeDB with client ID: {ClientId}", clientId);
-                    return (false, "Client not found");
-                }
-                
-                // Update the client in SpacetimeDB
-                conn.Reducers.UpdateOpenIdClient(
-                    clientId,
-                    clientSecret ?? client.ClientSecret,
-                    displayName ?? client.DisplayName,
-                    (redirectUris ?? client.RedirectUris.ToArray()).ToList(),
-                    (postLogoutRedirectUris ?? client.PostLogoutRedirectUris.ToArray()).ToList(),
-                    (allowedScopes ?? client.AllowedScopes.ToArray()).ToList(),
-                    requireConsent.HasValue ? (requireConsent.Value ? "explicit" : "implicit") : client.ConsentType
-                );
-                
-                // Update the application in OpenIddict
-=======
                 // Get current values for optional parameters
                 // Note: ApplicationStore.UpdateAsync will handle writing to SpacetimeDB via UpdateOpenIdClient reducer
->>>>>>> maintofix
                 var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
                     DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application),
                     ConsentType = requireConsent.HasValue ? 
                         (requireConsent.Value ? ConsentTypes.Explicit : ConsentTypes.Implicit) : 
-<<<<<<< HEAD
-                        await applicationManager.GetConsentTypeAsync(application)
-=======
                         await applicationManager.GetConsentTypeAsync(application),
                     Type = await applicationManager.GetClientTypeAsync(application) ?? ClientTypes.Public
->>>>>>> maintofix
                 };
                 
                 // Update client secret if provided
@@ -473,12 +392,6 @@ namespace TicketSalesApp.Services.Implementations
                     }
                 }
                 
-<<<<<<< HEAD
-                // Copy existing permissions
-                foreach (var permission in await applicationManager.GetPermissionsAsync(application))
-                {
-                    descriptor.Permissions.Add(permission);
-=======
                 // Update permissions/scopes if provided
                 if (allowedScopes != null && allowedScopes.Length > 0)
                 {
@@ -512,7 +425,6 @@ namespace TicketSalesApp.Services.Implementations
                     {
                         descriptor.Permissions.Add(permission);
                     }
->>>>>>> maintofix
                 }
                 
                 // Update the application
@@ -545,19 +457,8 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, "Application not found");
                 }
                 
-<<<<<<< HEAD
-                var conn = _spacetimeService.GetConnection();
-                
-                // Revoke the client in SpacetimeDB
-                 conn.Reducers.RevokeOpenIdClient(clientId);
-
-                 //stupid ai made all the calls awaited - you  cant await a reducer
-                
-                // Delete the application in OpenIddict
-=======
                 // Delete the application in OpenIddict
                 // Note: ApplicationStore.DeleteAsync will handle writing to SpacetimeDB via RevokeOpenIdClient reducer
->>>>>>> maintofix
                 await applicationManager.DeleteAsync(application);
                 
                 _logger.LogInformation("Client application deleted successfully: {ClientId}", clientId);

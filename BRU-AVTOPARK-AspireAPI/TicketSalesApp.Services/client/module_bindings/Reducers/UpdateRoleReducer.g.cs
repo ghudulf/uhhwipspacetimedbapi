@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateRoleReducer(uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateRoleReducer(roleId, name, description, legacyRoleId, priority, actingUserId), this.SetCallReducerFlags.UpdateRoleReducerFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateRoleReducer(roleId, name, description, legacyRoleId, priority, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateRoleReducer(ReducerEventContext ctx, Reducer.UpdateRoleReducer args)
         {
-<<<<<<< HEAD
-            if (OnUpdateRoleReducer == null) return false;
-=======
             if (OnUpdateRoleReducer == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateRoleReducer(
                 ctx,
                 args.RoleId,
@@ -61,29 +53,17 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateRoleReducer : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "roleId")]
-=======
             [DataMember(Name = "role_id")]
->>>>>>> maintofix
             public uint RoleId;
             [DataMember(Name = "name")]
             public string? Name;
             [DataMember(Name = "description")]
             public string? Description;
-<<<<<<< HEAD
-            [DataMember(Name = "legacyRoleId")]
-            public int? LegacyRoleId;
-            [DataMember(Name = "priority")]
-            public uint? Priority;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "legacy_role_id")]
             public int? LegacyRoleId;
             [DataMember(Name = "priority")]
             public uint? Priority;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public UpdateRoleReducer(
@@ -107,19 +87,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateRoleReducer";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateRoleReducerFlags;
-        public void UpdateRoleReducer(CallReducerFlags flags) => UpdateRoleReducerFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_role_reducer";
         }
     }
->>>>>>> maintofix
 }

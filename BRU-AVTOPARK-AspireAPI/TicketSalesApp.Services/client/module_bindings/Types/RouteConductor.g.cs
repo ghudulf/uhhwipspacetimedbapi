@@ -13,75 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class RouteConductor
     {
-<<<<<<< HEAD
-        [DataMember(Name = "RouteConductorId")]
-        public uint RouteConductorId;
-        [DataMember(Name = "RouteId")]
-        public uint RouteId;
-        [DataMember(Name = "EmployeeId")]
-        public uint EmployeeId;
-        [DataMember(Name = "ShiftName")]
-        public string ShiftName;
-        [DataMember(Name = "ShiftType")]
-        public string ShiftType;
-        [DataMember(Name = "ShiftStart")]
-        public ulong ShiftStart;
-        [DataMember(Name = "ShiftEnd")]
-        public ulong ShiftEnd;
-        [DataMember(Name = "BreakStart")]
-        public ulong BreakStart;
-        [DataMember(Name = "BreakEnd")]
-        public ulong BreakEnd;
-        [DataMember(Name = "ShiftDuration")]
-        public ulong ShiftDuration;
-        [DataMember(Name = "SaleCountNumber")]
-        public long SaleCountNumber;
-        [DataMember(Name = "TotalSalesAmount")]
-        public double TotalSalesAmount;
-        [DataMember(Name = "EvictionCount")]
-        public long EvictionCount;
-        [DataMember(Name = "ApproximateNumberOfPassengers")]
-        public long ApproximateNumberOfPassengers;
-        [DataMember(Name = "Incidents")]
-        public long Incidents;
-        [DataMember(Name = "SafetyViolationsReported")]
-        public long SafetyViolationsReported;
-        [DataMember(Name = "PassengerAssistanceCount")]
-        public long PassengerAssistanceCount;
-        [DataMember(Name = "RouteInformationProvidedCount")]
-        public long RouteInformationProvidedCount;
-        [DataMember(Name = "PerformanceRating")]
-        public uint PerformanceRating;
-        [DataMember(Name = "FirstAidProvided")]
-        public bool FirstAidProvided;
-        [DataMember(Name = "EmergencyResponseRequired")]
-        public bool EmergencyResponseRequired;
-        [DataMember(Name = "FareEvasionPercentage")]
-        public double FareEvasionPercentage;
-        [DataMember(Name = "TotalFinesAmount")]
-        public double TotalFinesAmount;
-        [DataMember(Name = "ComplaintCount")]
-        public long ComplaintCount;
-        [DataMember(Name = "ElectronicValidationUsed")]
-        public bool ElectronicValidationUsed;
-        [DataMember(Name = "ElectronicPaymentsCount")]
-        public long ElectronicPaymentsCount;
-        [DataMember(Name = "CashPaymentsCount")]
-        public long CashPaymentsCount;
-        [DataMember(Name = "Timestamp")]
-        public ulong Timestamp;
-        [DataMember(Name = "Notes")]
-        public string? Notes;
-        [DataMember(Name = "ShiftHandoverCompleted")]
-        public bool ShiftHandoverCompleted;
-        [DataMember(Name = "CashCollected")]
-        public double CashCollected;
-        [DataMember(Name = "HandoverNotes")]
-        public string? HandoverNotes;
-        [DataMember(Name = "CurrentLocation")]
-        public string? CurrentLocation;
-        [DataMember(Name = "EmployeeStatus")]
-=======
         [DataMember(Name = "route_conductor_id")]
         public uint RouteConductorId;
         [DataMember(Name = "route_id")]
@@ -149,7 +80,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "current_location")]
         public string? CurrentLocation;
         [DataMember(Name = "employee_status")]
->>>>>>> maintofix
         public string? EmployeeStatus;
 
         public RouteConductor(

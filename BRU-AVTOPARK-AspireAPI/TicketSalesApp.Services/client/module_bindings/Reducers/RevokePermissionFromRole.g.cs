@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void RevokePermissionFromRole(uint roleId, uint permissionId, SpacetimeDB.Identity? actingUserId)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId, actingUserId), this.SetCallReducerFlags.RevokePermissionFromRoleFlags);
-=======
             conn.InternalCallReducer(new Reducer.RevokePermissionFromRole(roleId, permissionId, actingUserId));
->>>>>>> maintofix
         }
 
         public bool InvokeRevokePermissionFromRole(ReducerEventContext ctx, Reducer.RevokePermissionFromRole args)
         {
-<<<<<<< HEAD
-            if (OnRevokePermissionFromRole == null) return false;
-=======
             if (OnRevokePermissionFromRole == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnRevokePermissionFromRole(
                 ctx,
                 args.RoleId,
@@ -58,19 +50,11 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class RevokePermissionFromRole : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "roleId")]
-            public uint RoleId;
-            [DataMember(Name = "permissionId")]
-            public uint PermissionId;
-            [DataMember(Name = "actingUserId")]
-=======
             [DataMember(Name = "role_id")]
             public uint RoleId;
             [DataMember(Name = "permission_id")]
             public uint PermissionId;
             [DataMember(Name = "acting_user_id")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUserId;
 
             public RevokePermissionFromRole(
@@ -88,19 +72,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "RevokePermissionFromRole";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RevokePermissionFromRoleFlags;
-        public void RevokePermissionFromRole(CallReducerFlags flags) => RevokePermissionFromRoleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "revoke_permission_from_role";
         }
     }
->>>>>>> maintofix
 }

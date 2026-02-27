@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeactivateSchedule(uint scheduleId, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeactivateSchedule(scheduleId, actingUser), this.SetCallReducerFlags.DeactivateScheduleFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeactivateSchedule(scheduleId, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeDeactivateSchedule(ReducerEventContext ctx, Reducer.DeactivateSchedule args)
         {
-<<<<<<< HEAD
-            if (OnDeactivateSchedule == null) return false;
-=======
             if (OnDeactivateSchedule == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeactivateSchedule(
                 ctx,
                 args.ScheduleId,
@@ -57,15 +49,9 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class DeactivateSchedule : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "scheduleId")]
-            public uint ScheduleId;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "schedule_id")]
             public uint ScheduleId;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public DeactivateSchedule(
@@ -81,19 +67,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeactivateSchedule";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeactivateScheduleFlags;
-        public void DeactivateSchedule(CallReducerFlags flags) => DeactivateScheduleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "deactivate_schedule";
         }
     }
->>>>>>> maintofix
 }

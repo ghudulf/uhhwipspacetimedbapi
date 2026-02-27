@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class MagicLinkTokenHandle : RemoteTableHandle<EventContext, MagicLinkToken>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "MagicLinkToken";
-=======
             protected override string RemoteTableName => "magic_link_token";
->>>>>>> maintofix
 
             public sealed class TokenUniqueIndex : UniqueIndexBase<string>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly MagicLinkTokenHandle MagicLinkToken;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class MagicLinkTokenCols
     {
@@ -72,5 +66,4 @@ namespace SpacetimeDB.Types
             Token = new global::SpacetimeDB.IxCol<MagicLinkToken, string>(tableName, "token");
         }
     }
->>>>>>> maintofix
 }

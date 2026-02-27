@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class TwoFactorTokenHandle : RemoteTableHandle<EventContext, TwoFactorToken>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "TwoFactorToken";
-=======
             protected override string RemoteTableName => "two_factor_token";
->>>>>>> maintofix
 
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly TwoFactorTokenHandle TwoFactorToken;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class TwoFactorTokenCols
     {
@@ -74,5 +68,4 @@ namespace SpacetimeDB.Types
             Id = new global::SpacetimeDB.IxCol<TwoFactorToken, uint>(tableName, "id");
         }
     }
->>>>>>> maintofix
 }

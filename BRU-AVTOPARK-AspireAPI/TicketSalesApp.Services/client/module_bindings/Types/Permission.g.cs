@@ -13,19 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class Permission
     {
-<<<<<<< HEAD
-        [DataMember(Name = "PermissionId")]
-        public uint PermissionId;
-        [DataMember(Name = "Name")]
-        public string Name;
-        [DataMember(Name = "Description")]
-        public string Description;
-        [DataMember(Name = "Category")]
-        public string Category;
-        [DataMember(Name = "IsActive")]
-        public bool IsActive;
-        [DataMember(Name = "CreatedAt")]
-=======
         [DataMember(Name = "permission_id")]
         public uint PermissionId;
         [DataMember(Name = "name")]
@@ -37,7 +24,6 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "created_at")]
->>>>>>> maintofix
         public ulong CreatedAt;
 
         public Permission(

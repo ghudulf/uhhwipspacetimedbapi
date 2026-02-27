@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void UpdateSale(uint saleId, uint? ticketId, string? ticketSoldToUser, string? ticketSoldToUserPhone, string? saleLocation, string? saleNotes, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes, actingUser), this.SetCallReducerFlags.UpdateSaleFlags);
-=======
             conn.InternalCallReducer(new Reducer.UpdateSale(saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeUpdateSale(ReducerEventContext ctx, Reducer.UpdateSale args)
         {
-<<<<<<< HEAD
-            if (OnUpdateSale == null) return false;
-=======
             if (OnUpdateSale == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnUpdateSale(
                 ctx,
                 args.SaleId,
@@ -62,21 +54,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class UpdateSale : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "saleId")]
-            public uint SaleId;
-            [DataMember(Name = "ticketId")]
-            public uint? TicketId;
-            [DataMember(Name = "ticketSoldToUser")]
-            public string? TicketSoldToUser;
-            [DataMember(Name = "ticketSoldToUserPhone")]
-            public string? TicketSoldToUserPhone;
-            [DataMember(Name = "saleLocation")]
-            public string? SaleLocation;
-            [DataMember(Name = "saleNotes")]
-            public string? SaleNotes;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "sale_id")]
             public uint SaleId;
             [DataMember(Name = "ticket_id")]
@@ -90,7 +67,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "sale_notes")]
             public string? SaleNotes;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public UpdateSale(
@@ -116,19 +92,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "UpdateSale";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags UpdateSaleFlags;
-        public void UpdateSale(CallReducerFlags flags) => UpdateSaleFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "update_sale";
         }
     }
->>>>>>> maintofix
 }

@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void DeleteTwoFactorToken(uint id)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.DeleteTwoFactorToken(id), this.SetCallReducerFlags.DeleteTwoFactorTokenFlags);
-=======
             conn.InternalCallReducer(new Reducer.DeleteTwoFactorToken(id));
->>>>>>> maintofix
         }
 
         public bool InvokeDeleteTwoFactorToken(ReducerEventContext ctx, Reducer.DeleteTwoFactorToken args)
         {
-<<<<<<< HEAD
-            if (OnDeleteTwoFactorToken == null) return false;
-=======
             if (OnDeleteTwoFactorToken == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnDeleteTwoFactorToken(
                 ctx,
                 args.Id
@@ -68,19 +60,7 @@ namespace SpacetimeDB.Types
             {
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "DeleteTwoFactorToken";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags DeleteTwoFactorTokenFlags;
-        public void DeleteTwoFactorToken(CallReducerFlags flags) => DeleteTwoFactorTokenFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "delete_two_factor_token";
         }
     }
->>>>>>> maintofix
 }

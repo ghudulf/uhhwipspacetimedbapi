@@ -2,6 +2,18 @@
   "version": 3,
   "targets": {
     "net9.0": {
+      "AtkSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "GLibSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/AtkSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/AtkSharp.dll": {}
+        }
+      },
       "Avalonia/11.2.3": {
         "type": "package",
         "dependencies": {
@@ -521,6 +533,15 @@
           }
         }
       },
+      "CairoSharp/3.24.24.95": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/CairoSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/CairoSharp.dll": {}
+        }
+      },
       "Classic.Avalonia.Theme/11.2.0.7": {
         "type": "package",
         "dependencies": {
@@ -710,6 +731,62 @@
           "lib/net6.0/FluentAvalonia.dll": {
             "related": ".pdb;.xml"
           }
+        }
+      },
+      "GdkSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "CairoSharp": "3.24.24.95",
+          "GLibSharp": "3.24.24.95",
+          "GioSharp": "3.24.24.95",
+          "PangoSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/GdkSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/GdkSharp.dll": {}
+        }
+      },
+      "GioSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "GLibSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/GioSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/GioSharp.dll": {}
+        }
+      },
+      "GLibSharp/3.24.24.95": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/GLibSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/GLibSharp.dll": {}
+        }
+      },
+      "GtkSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "AtkSharp": "3.24.24.95",
+          "CairoSharp": "3.24.24.95",
+          "GLibSharp": "3.24.24.95",
+          "GdkSharp": "3.24.24.95",
+          "GioSharp": "3.24.24.95",
+          "PangoSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/GtkSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/GtkSharp.dll": {}
+        },
+        "build": {
+          "build/_._": {}
         }
       },
       "HarfBuzzSharp/7.3.0.3": {
@@ -1000,7 +1077,7 @@
       "Microsoft.Bcl.AsyncInterfaces/7.0.0": {
         "type": "package",
         "compile": {
-          "lib/netstandard2.1/_._": {
+          "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
             "related": ".xml"
           }
         },
@@ -1344,6 +1421,15 @@
           }
         }
       },
+      "Microsoft.CSharp/4.7.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
+        }
+      },
       "Microsoft.Data.Sqlite.Core/9.0.1": {
         "type": "package",
         "dependencies": {
@@ -1625,6 +1711,62 @@
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Abstractions/7.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "7.0.0"
+        },
+        "compile": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Physical/7.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.FileProviders.Abstractions": "7.0.0",
+          "Microsoft.Extensions.FileSystemGlobbing": "7.0.0",
+          "Microsoft.Extensions.Primitives": "7.0.0"
+        },
+        "compile": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Physical.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net7.0/Microsoft.Extensions.FileProviders.Physical.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "Microsoft.Extensions.FileSystemGlobbing/7.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net7.0/Microsoft.Extensions.FileSystemGlobbing.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net7.0/Microsoft.Extensions.FileSystemGlobbing.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
         }
       },
       "Microsoft.Extensions.Http/6.0.0": {
@@ -1938,6 +2080,19 @@
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
         ]
+      },
+      "PangoSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "CairoSharp": "3.24.24.95",
+          "GLibSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/PangoSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/PangoSharp.dll": {}
+        }
       },
       "PropertyChanged.SourceGenerator/1.1.0": {
         "type": "package"
@@ -2254,7 +2409,7 @@
           }
         }
       },
-      "SpacetimeDB.BSATN.Runtime/1.0.0": {
+      "SpacetimeDB.BSATN.Runtime/2.0.1": {
         "type": "package",
         "compile": {
           "lib/net8.0/SpacetimeDB.BSATN.Runtime.dll": {
@@ -2267,10 +2422,10 @@
           }
         }
       },
-      "SpacetimeDB.ClientSDK/1.0.1": {
+      "SpacetimeDB.ClientSDK/2.0.1": {
         "type": "package",
         "dependencies": {
-          "SpacetimeDB.BSATN.Runtime": "1.0.0"
+          "SpacetimeDB.BSATN.Runtime": "2.0.1"
         },
         "compile": {
           "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll": {}
@@ -2445,6 +2600,15 @@
           "lib/netstandard2.0/SukiUI.dll": {
             "related": ".xml"
           }
+        }
+      },
+      "System.Buffers/4.5.1": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
         }
       },
       "System.CodeDom/6.0.0": {
@@ -2648,13 +2812,22 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
-      "System.Memory/4.5.3": {
+      "System.Memory/4.5.5": {
         "type": "package",
         "compile": {
           "ref/netcoreapp2.1/_._": {}
         },
         "runtime": {
           "lib/netcoreapp2.1/_._": {}
+        }
+      },
+      "System.Numerics.Vectors/4.5.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
         }
       },
       "System.Reactive/6.0.1": {
@@ -2671,6 +2844,24 @@
         },
         "build": {
           "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "System.Reflection.Emit/4.7.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
+        }
+      },
+      "System.Reflection.Emit.Lightweight/4.7.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
         }
       },
       "System.Reflection.Metadata/7.0.0": {
@@ -2708,16 +2899,25 @@
           "buildTransitive/netcoreapp3.1/_._": {}
         }
       },
-      "System.Text.Encodings.Web/4.5.0": {
+      "System.Text.Encodings.Web/7.0.0": {
         "type": "package",
         "compile": {
-          "lib/netstandard2.0/System.Text.Encodings.Web.dll": {
+          "lib/net7.0/System.Text.Encodings.Web.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/netstandard2.0/System.Text.Encodings.Web.dll": {
+          "lib/net7.0/System.Text.Encodings.Web.dll": {
             "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/browser/lib/net7.0/System.Text.Encodings.Web.dll": {
+            "assetType": "runtime",
+            "rid": "browser"
           }
         }
       },
@@ -2765,6 +2965,149 @@
           "lib/net8.0/Tmds.DBus.Protocol.dll": {}
         }
       },
+      "WebkitGtkSharp/3.24.24.95": {
+        "type": "package",
+        "dependencies": {
+          "GtkSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/net6.0/WebkitGtkSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/WebkitGtkSharp.dll": {}
+        }
+      },
+      "WebView.Avalonia/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "Microsoft.Bcl.AsyncInterfaces": "7.0.0",
+          "Microsoft.Extensions.FileProviders.Abstractions": "7.0.0",
+          "System.Buffers": "4.5.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.dll": {},
+          "lib/netstandard2.0/AvaloniaWebView.Shared.dll": {},
+          "lib/netstandard2.0/DryIoc.Shared.dll": {},
+          "lib/netstandard2.0/WebView.Avalonia.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/WebView.Core.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.dll": {},
+          "lib/netstandard2.0/AvaloniaWebView.Shared.dll": {},
+          "lib/netstandard2.0/DryIoc.Shared.dll": {},
+          "lib/netstandard2.0/WebView.Avalonia.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/WebView.Core.dll": {}
+        }
+      },
+      "WebView.Avalonia.Desktop/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "WebView.Avalonia.Linux": "11.0.0.1",
+          "WebView.Avalonia.MacCatalyst": "11.0.0.1",
+          "WebView.Avalonia.Windows": "11.0.0.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.Desktop.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.Desktop.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "build": {
+          "build/WebView.Avalonia.Desktop.targets": {}
+        }
+      },
+      "WebView.Avalonia.Linux/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "GtkSharp": "3.24.24.95",
+          "Microsoft.Bcl.AsyncInterfaces": "7.0.0",
+          "Microsoft.Extensions.FileProviders.Physical": "7.0.0",
+          "WebkitGtkSharp": "3.24.24.95"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.Linux.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Linux.WebView.Core.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.Linux.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Linux.WebView.Core.dll": {}
+        }
+      },
+      "WebView.Avalonia.MacCatalyst/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "Microsoft.Bcl.AsyncInterfaces": "7.0.0",
+          "Microsoft.Extensions.FileProviders.Physical": "7.0.0",
+          "System.Memory": "4.5.5",
+          "System.Reflection.Emit": "4.7.0",
+          "System.Reflection.Emit.Lightweight": "4.7.0",
+          "System.Text.Encodings.Web": "7.0.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.MacCatalyst.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Xamarin.Mac.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.MacCatalyst.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Xamarin.Mac.dll": {}
+        }
+      },
+      "WebView.Avalonia.Windows/11.0.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0",
+          "Microsoft.Bcl.AsyncInterfaces": "7.0.0",
+          "Microsoft.CSharp": "4.7.0",
+          "Microsoft.Extensions.FileProviders.Physical": "7.0.0",
+          "System.Numerics.Vectors": "4.5.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Avalonia.WebView.Windows.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Microsoft.Web.WebView2.Core.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Avalonia.WebView.Windows.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/netstandard2.0/Microsoft.Web.WebView2.Core.dll": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-x64/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
+        }
+      },
       "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -2773,7 +3116,7 @@
           "Avalonia.Desktop": "11.2.3",
           "Avalonia.Diagnostics": "11.2.3",
           "Avalonia.Fonts.Inter": "11.2.3",
-          "Avalonia.Labs.Controls": "11.0.5",
+          "Avalonia.Labs.Controls": "11.0.10",
           "Avalonia.ReactiveUI": "11.2.3",
           "Avalonia.Themes.Fluent": "11.2.3",
           "Classic.Avalonia.Theme": "11.2.0.7",
@@ -2798,10 +3141,12 @@
           "Serilog.Sinks.Console": "6.0.0",
           "Serilog.Sinks.Debug": "3.0.0",
           "Serilog.Sinks.File": "6.0.0",
+          "SpacetimeDB.ClientSDK": "2.0.1",
           "SukiUI": "6.0.0",
           "System.IdentityModel.Tokens.Jwt": "7.4.0",
           "System.Text.Json": "9.0.1",
-          "TicketSalesApp.Services": "1.0.0"
+          "TicketSalesApp.Services": "1.0.0",
+          "WebView.Avalonia": "11.0.0.1"
         },
         "compile": {
           "bin/placeholder/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.dll": {}
@@ -2823,7 +3168,7 @@
           "OpenIddict.Server.AspNetCore": "4.1.0",
           "OpenIddict.Validation.AspNetCore": "4.1.0",
           "QRCoder": "1.6.0",
-          "SpacetimeDB.ClientSDK": "1.0.1"
+          "SpacetimeDB.ClientSDK": "2.0.1"
         },
         "compile": {
           "bin/placeholder/TicketSalesApp.Services.dll": {}
@@ -2835,6 +3180,19 @@
     }
   },
   "libraries": {
+    "AtkSharp/3.24.24.95": {
+      "sha512": "LnSfsc0y11gfzczZj5bnpwcFkXFZuVTSSd92ML/FcHIM7FU+cAfm1UkAonv5BdwTRhzDbNDE39vihao/k75sUA==",
+      "type": "package",
+      "path": "atksharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "atksharp.3.24.24.95.nupkg.sha512",
+        "atksharp.nuspec",
+        "lib/net6.0/AtkSharp.dll",
+        "lib/netstandard2.0/AtkSharp.dll"
+      ]
+    },
     "Avalonia/11.2.3": {
       "sha512": "pD6woFAUfGcyEvMmrpctntU4jv4fT8752pfx1J5iRORVX3Ob0oQi8PWo0TXVaAJZiSfH0cdKTeKx0w0DzD0/mg==",
       "type": "package",
@@ -3452,6 +3810,19 @@
         "lib/netstandard2.0/Avalonia.Xaml.Interactivity.xml"
       ]
     },
+    "CairoSharp/3.24.24.95": {
+      "sha512": "EZ9KT3pwVAol35XbZW0Uwdg2LqhDvPnWdhqIrsedhDx+Omnu56hLzxh8mZGqmQvEwJE8Opbda4w9CqDtXbX6Vw==",
+      "type": "package",
+      "path": "cairosharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "cairosharp.3.24.24.95.nupkg.sha512",
+        "cairosharp.nuspec",
+        "lib/net6.0/CairoSharp.dll",
+        "lib/netstandard2.0/CairoSharp.dll"
+      ]
+    },
     "Classic.Avalonia.Theme/11.2.0.7": {
       "sha512": "WGg47OvDOFo+2W6CDqXjOSkoGBO9cNXCkxdUNZX4o0ctV71HfJfDnon7wKt57IRPlYWBq+NHkGr2KLMXw4fo0Q==",
       "type": "package",
@@ -3696,6 +4067,59 @@
         "lib/netstandard2.1/FluentAvalonia.dll",
         "lib/netstandard2.1/FluentAvalonia.pdb",
         "lib/netstandard2.1/FluentAvalonia.xml"
+      ]
+    },
+    "GdkSharp/3.24.24.95": {
+      "sha512": "rABpIGkxr8lOdyhEmrKXzjih3z3932kjqUmm5qaQhWVSvu9YepEk3J1FApgnKCW/EWEzlerzxnJArsyOlgMsZQ==",
+      "type": "package",
+      "path": "gdksharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "gdksharp.3.24.24.95.nupkg.sha512",
+        "gdksharp.nuspec",
+        "lib/net6.0/GdkSharp.dll",
+        "lib/netstandard2.0/GdkSharp.dll"
+      ]
+    },
+    "GioSharp/3.24.24.95": {
+      "sha512": "avYEDFlYgbogb+Y7ZhIXQpyJfL83bnPpBKY642YEW9PQ+pRK3qf2k0opvd5oHccXfByj6kAQjmRUSIS0pj19Fg==",
+      "type": "package",
+      "path": "giosharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "giosharp.3.24.24.95.nupkg.sha512",
+        "giosharp.nuspec",
+        "lib/net6.0/GioSharp.dll",
+        "lib/netstandard2.0/GioSharp.dll"
+      ]
+    },
+    "GLibSharp/3.24.24.95": {
+      "sha512": "1viZRMVjddf2HUCW7WDXT47rHssteHkAOimXQ2/pI8oGrPGNFuuw5MbX8BOIy73hCWVqo7JEMONv3z32OrCoCQ==",
+      "type": "package",
+      "path": "glibsharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "glibsharp.3.24.24.95.nupkg.sha512",
+        "glibsharp.nuspec",
+        "lib/net6.0/GLibSharp.dll",
+        "lib/netstandard2.0/GLibSharp.dll"
+      ]
+    },
+    "GtkSharp/3.24.24.95": {
+      "sha512": "RRUY45hAa5gsMcadvVjcLUzMjVtmuHSYTcIwM6j8LNgKhzFFHk69qM1D5ULfGxaWmVjicqNWiFtOtk8WsvPqaQ==",
+      "type": "package",
+      "path": "gtksharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/GtkSharp.targets",
+        "gtksharp.3.24.24.95.nupkg.sha512",
+        "gtksharp.nuspec",
+        "lib/net6.0/GtkSharp.dll",
+        "lib/netstandard2.0/GtkSharp.dll"
       ]
     },
     "HarfBuzzSharp/7.3.0.3": {
@@ -5142,6 +5566,75 @@
         "microsoft.codeanalysis.workspaces.msbuild.nuspec"
       ]
     },
+    "Microsoft.CSharp/4.7.0": {
+      "sha512": "pTj+D3uJWyN3My70i2Hqo+OXixq3Os2D1nJ2x92FFo6sk8fYS1m1WLNTs0Dc1uPaViH0YvEEwvzddQ7y4rhXmA==",
+      "type": "package",
+      "path": "microsoft.csharp/4.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net45/_._",
+        "lib/netcore50/Microsoft.CSharp.dll",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.3/Microsoft.CSharp.dll",
+        "lib/netstandard2.0/Microsoft.CSharp.dll",
+        "lib/netstandard2.0/Microsoft.CSharp.xml",
+        "lib/portable-net45+win8+wp8+wpa81/_._",
+        "lib/uap10.0.16299/_._",
+        "lib/win8/_._",
+        "lib/wp80/_._",
+        "lib/wpa81/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "microsoft.csharp.4.7.0.nupkg.sha512",
+        "microsoft.csharp.nuspec",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/_._",
+        "ref/netcore50/Microsoft.CSharp.dll",
+        "ref/netcore50/Microsoft.CSharp.xml",
+        "ref/netcore50/de/Microsoft.CSharp.xml",
+        "ref/netcore50/es/Microsoft.CSharp.xml",
+        "ref/netcore50/fr/Microsoft.CSharp.xml",
+        "ref/netcore50/it/Microsoft.CSharp.xml",
+        "ref/netcore50/ja/Microsoft.CSharp.xml",
+        "ref/netcore50/ko/Microsoft.CSharp.xml",
+        "ref/netcore50/ru/Microsoft.CSharp.xml",
+        "ref/netcore50/zh-hans/Microsoft.CSharp.xml",
+        "ref/netcore50/zh-hant/Microsoft.CSharp.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.0/Microsoft.CSharp.dll",
+        "ref/netstandard1.0/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/de/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/es/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/fr/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/it/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ja/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ko/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ru/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/zh-hans/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/zh-hant/Microsoft.CSharp.xml",
+        "ref/netstandard2.0/Microsoft.CSharp.dll",
+        "ref/netstandard2.0/Microsoft.CSharp.xml",
+        "ref/portable-net45+win8+wp8+wpa81/_._",
+        "ref/uap10.0.16299/_._",
+        "ref/win8/_._",
+        "ref/wp80/_._",
+        "ref/wpa81/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
     "Microsoft.Data.Sqlite.Core/9.0.1": {
       "sha512": "useMNbAupB8gpEp/SjanW3LvvyFG9DWPMUcXFwVNjNuFWIxNcrs5zOu9BTmNJEyfDpLlrsSBmcBv7keYVG8UhA==",
       "type": "package",
@@ -5499,6 +5992,87 @@
         "lib/netstandard2.0/Microsoft.Extensions.DependencyModel.xml",
         "microsoft.extensions.dependencymodel.9.0.1.nupkg.sha512",
         "microsoft.extensions.dependencymodel.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Extensions.FileProviders.Abstractions/7.0.0": {
+      "sha512": "NyawiW9ZT/liQb34k9YqBSNPLuuPkrjMgQZ24Y/xXX1RoiBkLUdPMaQTmxhZ5TYu8ZKZ9qayzil75JX95vGQUg==",
+      "type": "package",
+      "path": "microsoft.extensions.fileproviders.abstractions/7.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.FileProviders.Abstractions.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.FileProviders.Abstractions.targets",
+        "lib/net462/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net462/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Abstractions.xml",
+        "microsoft.extensions.fileproviders.abstractions.7.0.0.nupkg.sha512",
+        "microsoft.extensions.fileproviders.abstractions.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Extensions.FileProviders.Physical/7.0.0": {
+      "sha512": "K8D2MTR+EtzkbZ8z80LrG7Ur64R7ZZdRLt1J5cgpc/pUWl0C6IkAUapPuK28oionHueCPELUqq0oYEvZfalNdg==",
+      "type": "package",
+      "path": "microsoft.extensions.fileproviders.physical/7.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.FileProviders.Physical.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.FileProviders.Physical.targets",
+        "lib/net462/Microsoft.Extensions.FileProviders.Physical.dll",
+        "lib/net462/Microsoft.Extensions.FileProviders.Physical.xml",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Physical.dll",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Physical.xml",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Physical.dll",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Physical.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Physical.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Physical.xml",
+        "microsoft.extensions.fileproviders.physical.7.0.0.nupkg.sha512",
+        "microsoft.extensions.fileproviders.physical.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Extensions.FileSystemGlobbing/7.0.0": {
+      "sha512": "2jONjKHiF+E92ynz2ZFcr9OvxIw+rTGMPEH+UZGeHTEComVav93jQUWGkso8yWwVBcEJGcNcZAaqY01FFJcj7w==",
+      "type": "package",
+      "path": "microsoft.extensions.filesystemglobbing/7.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.FileSystemGlobbing.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.FileSystemGlobbing.targets",
+        "lib/net462/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "lib/net462/Microsoft.Extensions.FileSystemGlobbing.xml",
+        "lib/net6.0/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "lib/net6.0/Microsoft.Extensions.FileSystemGlobbing.xml",
+        "lib/net7.0/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "lib/net7.0/Microsoft.Extensions.FileSystemGlobbing.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileSystemGlobbing.xml",
+        "microsoft.extensions.filesystemglobbing.7.0.0.nupkg.sha512",
+        "microsoft.extensions.filesystemglobbing.nuspec",
         "useSharedDesignerContext.txt"
       ]
     },
@@ -5981,6 +6555,19 @@
         "lib/netcoreapp3.1/OpenIddict.Validation.AspNetCore.xml",
         "openiddict.validation.aspnetcore.4.1.0.nupkg.sha512",
         "openiddict.validation.aspnetcore.nuspec"
+      ]
+    },
+    "PangoSharp/3.24.24.95": {
+      "sha512": "H7JeyEvLsgvsbamGpRgoNtdvzPiGwwsUuoeTobN1C/JRjw1J8Snw0yf2WBr7CKx5GLwbrwpQYOb7N/HD17ME8A==",
+      "type": "package",
+      "path": "pangosharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net6.0/PangoSharp.dll",
+        "lib/netstandard2.0/PangoSharp.dll",
+        "pangosharp.3.24.24.95.nupkg.sha512",
+        "pangosharp.nuspec"
       ]
     },
     "PropertyChanged.SourceGenerator/1.1.0": {
@@ -6485,10 +7072,10 @@
         "skiasharp.nativeassets.win32.nuspec"
       ]
     },
-    "SpacetimeDB.BSATN.Runtime/1.0.0": {
-      "sha512": "44h4TB3IO2It4H0ieuI2/3ZdhGsvuR195sLUa7IiGlpWi0hwePv/TiMcQlFI6+AicKyx5v8F5CqA1IztKdQahQ==",
+    "SpacetimeDB.BSATN.Runtime/2.0.1": {
+      "sha512": "dq+J9fG56/zoeOydfITCAvboPcBeW4zI87bPD3QQ5d6mlpaAlkVvuAOM/B7iHgOLu29pPhVnx2mQ92rhoBHu+w==",
       "type": "package",
-      "path": "spacetimedb.bsatn.runtime/1.0.0",
+      "path": "spacetimedb.bsatn.runtime/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -6500,21 +7087,21 @@
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.dll",
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.xml",
         "logo.png",
-        "spacetimedb.bsatn.runtime.1.0.0.nupkg.sha512",
+        "spacetimedb.bsatn.runtime.2.0.1.nupkg.sha512",
         "spacetimedb.bsatn.runtime.nuspec"
       ]
     },
-    "SpacetimeDB.ClientSDK/1.0.1": {
-      "sha512": "GqG5Wt/Onk0uOuYDfS7x94Ic7ZBfoFdhmdk1Ega9D8DS0oUT2dVq4bTwJ1zlPC+pn/+ZRC+jkeuzVIaTY5CHuQ==",
+    "SpacetimeDB.ClientSDK/2.0.1": {
+      "sha512": "Uw4lkwDVzrI3B9doHqXQWpEmoqcqiUF1wQUVJ7gDVOGQvqBu+3lfol5yz0KhSptBvrVrUgI4ObVdYrMyddP9ew==",
       "type": "package",
-      "path": "spacetimedb.clientsdk/1.0.1",
+      "path": "spacetimedb.clientsdk/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
         "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll",
         "logo.png",
-        "spacetimedb.clientsdk.1.0.1.nupkg.sha512",
+        "spacetimedb.clientsdk.2.0.1.nupkg.sha512",
         "spacetimedb.clientsdk.nuspec"
       ]
     },
@@ -6640,6 +7227,37 @@
         "lib/netstandard2.0/SukiUI.xml",
         "sukiui.6.0.0.nupkg.sha512",
         "sukiui.nuspec"
+      ]
+    },
+    "System.Buffers/4.5.1": {
+      "sha512": "Rw7ijyl1qqRS0YQD/WycNst8hUUMgrMH4FCn1nNm27M4VxchZ1js3fVjQaANHO5f3sN4isvP4a+Met9Y4YomAg==",
+      "type": "package",
+      "path": "system.buffers/4.5.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net461/System.Buffers.dll",
+        "lib/net461/System.Buffers.xml",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.1/System.Buffers.dll",
+        "lib/netstandard1.1/System.Buffers.xml",
+        "lib/netstandard2.0/System.Buffers.dll",
+        "lib/netstandard2.0/System.Buffers.xml",
+        "lib/uap10.0.16299/_._",
+        "ref/net45/System.Buffers.dll",
+        "ref/net45/System.Buffers.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.1/System.Buffers.dll",
+        "ref/netstandard1.1/System.Buffers.xml",
+        "ref/netstandard2.0/System.Buffers.dll",
+        "ref/netstandard2.0/System.Buffers.xml",
+        "ref/uap10.0.16299/_._",
+        "system.buffers.4.5.1.nupkg.sha512",
+        "system.buffers.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
       ]
     },
     "System.CodeDom/6.0.0": {
@@ -7011,23 +7629,72 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Memory/4.5.3": {
-      "sha512": "3oDzvc/zzetpTKWMShs1AADwZjQ/36HnsufHRPcOjyRAAMLDlu2iD33MBI2opxnezcVUtXyqDXXjoFMOU9c7SA==",
+    "System.Memory/4.5.5": {
+      "sha512": "XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
       "type": "package",
-      "path": "system.memory/4.5.3",
+      "path": "system.memory/4.5.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
+        "lib/net461/System.Memory.dll",
+        "lib/net461/System.Memory.xml",
         "lib/netcoreapp2.1/_._",
         "lib/netstandard1.1/System.Memory.dll",
         "lib/netstandard1.1/System.Memory.xml",
         "lib/netstandard2.0/System.Memory.dll",
         "lib/netstandard2.0/System.Memory.xml",
         "ref/netcoreapp2.1/_._",
-        "system.memory.4.5.3.nupkg.sha512",
+        "system.memory.4.5.5.nupkg.sha512",
         "system.memory.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
+    "System.Numerics.Vectors/4.5.0": {
+      "sha512": "QQTlPTl06J/iiDbJCiepZ4H//BVraReU4O4EoRw1U02H5TLUIT7xn3GnDp9AXPSlJUDyFs4uWjWafNX6WrAojQ==",
+      "type": "package",
+      "path": "system.numerics.vectors/4.5.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net46/System.Numerics.Vectors.dll",
+        "lib/net46/System.Numerics.Vectors.xml",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.0/System.Numerics.Vectors.dll",
+        "lib/netstandard1.0/System.Numerics.Vectors.xml",
+        "lib/netstandard2.0/System.Numerics.Vectors.dll",
+        "lib/netstandard2.0/System.Numerics.Vectors.xml",
+        "lib/portable-net45+win8+wp8+wpa81/System.Numerics.Vectors.dll",
+        "lib/portable-net45+win8+wp8+wpa81/System.Numerics.Vectors.xml",
+        "lib/uap10.0.16299/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/System.Numerics.Vectors.dll",
+        "ref/net45/System.Numerics.Vectors.xml",
+        "ref/net46/System.Numerics.Vectors.dll",
+        "ref/net46/System.Numerics.Vectors.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.0/System.Numerics.Vectors.dll",
+        "ref/netstandard1.0/System.Numerics.Vectors.xml",
+        "ref/netstandard2.0/System.Numerics.Vectors.dll",
+        "ref/netstandard2.0/System.Numerics.Vectors.xml",
+        "ref/uap10.0.16299/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "system.numerics.vectors.4.5.0.nupkg.sha512",
+        "system.numerics.vectors.nuspec",
         "useSharedDesignerContext.txt",
         "version.txt"
       ]
@@ -7058,6 +7725,118 @@
         "readme.md",
         "system.reactive.6.0.1.nupkg.sha512",
         "system.reactive.nuspec"
+      ]
+    },
+    "System.Reflection.Emit/4.7.0": {
+      "sha512": "VR4kk8XLKebQ4MZuKuIni/7oh+QGFmZW3qORd1GvBq/8026OpW501SzT/oypwiQl4TvT8ErnReh/NzY9u+C6wQ==",
+      "type": "package",
+      "path": "system.reflection.emit/4.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net45/_._",
+        "lib/netcore50/System.Reflection.Emit.dll",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.1/System.Reflection.Emit.dll",
+        "lib/netstandard1.1/System.Reflection.Emit.xml",
+        "lib/netstandard1.3/System.Reflection.Emit.dll",
+        "lib/netstandard2.0/System.Reflection.Emit.dll",
+        "lib/netstandard2.0/System.Reflection.Emit.xml",
+        "lib/netstandard2.1/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/_._",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.1/System.Reflection.Emit.dll",
+        "ref/netstandard1.1/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/de/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/es/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/fr/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/it/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/ja/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/ko/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/ru/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/zh-hans/System.Reflection.Emit.xml",
+        "ref/netstandard1.1/zh-hant/System.Reflection.Emit.xml",
+        "ref/netstandard2.0/System.Reflection.Emit.dll",
+        "ref/netstandard2.0/System.Reflection.Emit.xml",
+        "ref/netstandard2.1/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "runtimes/aot/lib/netcore50/System.Reflection.Emit.dll",
+        "runtimes/aot/lib/netcore50/System.Reflection.Emit.xml",
+        "system.reflection.emit.4.7.0.nupkg.sha512",
+        "system.reflection.emit.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
+    "System.Reflection.Emit.Lightweight/4.7.0": {
+      "sha512": "a4OLB4IITxAXJeV74MDx49Oq2+PsF6Sml54XAFv+2RyWwtDBcabzoxiiJRhdhx+gaohLh4hEGCLQyBozXoQPqA==",
+      "type": "package",
+      "path": "system.reflection.emit.lightweight/4.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net45/_._",
+        "lib/netcore50/System.Reflection.Emit.Lightweight.dll",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.0/System.Reflection.Emit.Lightweight.dll",
+        "lib/netstandard1.0/System.Reflection.Emit.Lightweight.xml",
+        "lib/netstandard1.3/System.Reflection.Emit.Lightweight.dll",
+        "lib/netstandard2.0/System.Reflection.Emit.Lightweight.dll",
+        "lib/netstandard2.0/System.Reflection.Emit.Lightweight.xml",
+        "lib/netstandard2.1/_._",
+        "lib/portable-net45+wp8/_._",
+        "lib/wp80/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/_._",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.0/System.Reflection.Emit.Lightweight.dll",
+        "ref/netstandard1.0/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/de/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/es/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/fr/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/it/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/ja/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/ko/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/ru/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/zh-hans/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard1.0/zh-hant/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard2.0/System.Reflection.Emit.Lightweight.dll",
+        "ref/netstandard2.0/System.Reflection.Emit.Lightweight.xml",
+        "ref/netstandard2.1/_._",
+        "ref/portable-net45+wp8/_._",
+        "ref/wp80/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "runtimes/aot/lib/netcore50/System.Reflection.Emit.Lightweight.dll",
+        "runtimes/aot/lib/netcore50/System.Reflection.Emit.Lightweight.xml",
+        "system.reflection.emit.lightweight.4.7.0.nupkg.sha512",
+        "system.reflection.emit.lightweight.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
       ]
     },
     "System.Reflection.Metadata/7.0.0": {
@@ -7113,23 +7892,35 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Text.Encodings.Web/4.5.0": {
-      "sha512": "Xg4G4Indi4dqP1iuAiMSwpiWS54ZghzR644OtsRCm/m/lBMG8dUBhLVN7hLm8NNrNTR+iGbshCPTwrvxZPlm4g==",
+    "System.Text.Encodings.Web/7.0.0": {
+      "sha512": "OP6umVGxc0Z0MvZQBVigj4/U31Pw72ITihDWP9WiWDm+q5aoe0GaJivsfYGq53o6dxH7DcXWiCTl7+0o2CGdmg==",
       "type": "package",
-      "path": "system.text.encodings.web/4.5.0",
+      "path": "system.text.encodings.web/7.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
+        "Icon.png",
         "LICENSE.TXT",
         "THIRD-PARTY-NOTICES.TXT",
-        "lib/netstandard1.0/System.Text.Encodings.Web.dll",
-        "lib/netstandard1.0/System.Text.Encodings.Web.xml",
+        "buildTransitive/net461/System.Text.Encodings.Web.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Text.Encodings.Web.targets",
+        "lib/net462/System.Text.Encodings.Web.dll",
+        "lib/net462/System.Text.Encodings.Web.xml",
+        "lib/net6.0/System.Text.Encodings.Web.dll",
+        "lib/net6.0/System.Text.Encodings.Web.xml",
+        "lib/net7.0/System.Text.Encodings.Web.dll",
+        "lib/net7.0/System.Text.Encodings.Web.xml",
         "lib/netstandard2.0/System.Text.Encodings.Web.dll",
         "lib/netstandard2.0/System.Text.Encodings.Web.xml",
-        "system.text.encodings.web.4.5.0.nupkg.sha512",
+        "runtimes/browser/lib/net6.0/System.Text.Encodings.Web.dll",
+        "runtimes/browser/lib/net6.0/System.Text.Encodings.Web.xml",
+        "runtimes/browser/lib/net7.0/System.Text.Encodings.Web.dll",
+        "runtimes/browser/lib/net7.0/System.Text.Encodings.Web.xml",
+        "system.text.encodings.web.7.0.0.nupkg.sha512",
         "system.text.encodings.web.nuspec",
-        "useSharedDesignerContext.txt",
-        "version.txt"
+        "useSharedDesignerContext.txt"
       ]
     },
     "System.Text.Json/9.0.1": {
@@ -7247,6 +8038,113 @@
         "tmds.dbus.protocol.nuspec"
       ]
     },
+    "WebkitGtkSharp/3.24.24.95": {
+      "sha512": "2BRyM5rRzNPi0naMlxFvAWiQd9Q+UE9ficpdBBv/uIojyazB4AgOdElo06Dy3Sni/4WGSbm2kKn6Tihu2vjglA==",
+      "type": "package",
+      "path": "webkitgtksharp/3.24.24.95",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net6.0/WebkitGtkSharp.dll",
+        "lib/netstandard2.0/WebkitGtkSharp.dll",
+        "webkitgtksharp.3.24.24.95.nupkg.sha512",
+        "webkitgtksharp.nuspec"
+      ]
+    },
+    "WebView.Avalonia/11.0.0.1": {
+      "sha512": "uKIc+XdPM8Q1pMi6F5WvK+2nssaceCetV9xvnWRDU4j8Hc8mVGlPzOvmqJW1OqrXxTKzY3NZsInVIQ5PYRs3zg==",
+      "type": "package",
+      "path": "webview.avalonia/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/Avalonia.WebView.dll",
+        "lib/netstandard2.0/AvaloniaWebView.Shared.dll",
+        "lib/netstandard2.0/DryIoc.Shared.dll",
+        "lib/netstandard2.0/WebView.Avalonia.dll",
+        "lib/netstandard2.0/WebView.Avalonia.pdb",
+        "lib/netstandard2.0/WebView.Avalonia.xml",
+        "lib/netstandard2.0/WebView.Core.dll",
+        "webview.avalonia.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
+    "WebView.Avalonia.Desktop/11.0.0.1": {
+      "sha512": "HVRhs41HDxnOmC4arucaRWnVegZjasE68FX6n3HLnGmGXZcRCgZx8bXeGglGbn5IM0FCOlqVjQn7hiNMGI91ZQ==",
+      "type": "package",
+      "path": "webview.avalonia.desktop/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "build/WebView.Avalonia.Desktop.targets",
+        "lib/netstandard2.0/Avalonia.WebView.Desktop.dll",
+        "lib/netstandard2.0/Avalonia.WebView.Desktop.pdb",
+        "lib/netstandard2.0/Avalonia.WebView.Desktop.xml",
+        "webview.avalonia.desktop.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.desktop.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
+    "WebView.Avalonia.Linux/11.0.0.1": {
+      "sha512": "Ni9kInIfWBsVISmA6fDg4O1y+ul71kbpheGFpAGvRCXi/8Acu96tW6+raWA6Jttk+btSmgB4MCNg7wW8T8Nulw==",
+      "type": "package",
+      "path": "webview.avalonia.linux/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/Avalonia.WebView.Linux.dll",
+        "lib/netstandard2.0/Avalonia.WebView.Linux.pdb",
+        "lib/netstandard2.0/Avalonia.WebView.Linux.xml",
+        "lib/netstandard2.0/Linux.WebView.Core.dll",
+        "webview.avalonia.linux.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.linux.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
+    "WebView.Avalonia.MacCatalyst/11.0.0.1": {
+      "sha512": "uWJ90/UNhNwtH293pgBYs6awHZSopIu0md8YyfP/khiXcYpJNHsaZW3uGPNu/CqJFqf/MPyhHiMptD/UQfR7qQ==",
+      "type": "package",
+      "path": "webview.avalonia.maccatalyst/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/Avalonia.WebView.MacCatalyst.dll",
+        "lib/netstandard2.0/Avalonia.WebView.MacCatalyst.pdb",
+        "lib/netstandard2.0/Avalonia.WebView.MacCatalyst.xml",
+        "lib/netstandard2.0/Xamarin.Mac.dll",
+        "webview.avalonia.maccatalyst.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.maccatalyst.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
+    "WebView.Avalonia.Windows/11.0.0.1": {
+      "sha512": "CfRONFaccfg85cAnqZWsd/S2yoWejXmNZmnhsX+Z0w3zCuqiLLUmYiyJkys2OnB2d4Kts7JMLlxkCdzYchgHaA==",
+      "type": "package",
+      "path": "webview.avalonia.windows/11.0.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/netstandard2.0/Avalonia.WebView.Windows.dll",
+        "lib/netstandard2.0/Avalonia.WebView.Windows.pdb",
+        "lib/netstandard2.0/Avalonia.WebView.Windows.xml",
+        "lib/netstandard2.0/Microsoft.Web.WebView2.Core.dll",
+        "lib/netstandard2.0/runtimes/win-arm64/native/WebView2Loader.dll",
+        "lib/netstandard2.0/runtimes/win-x64/native/WebView2Loader.dll",
+        "lib/netstandard2.0/runtimes/win-x86/native/WebView2Loader.dll",
+        "runtimes/win-arm64/native/WebView2Loader.dll",
+        "runtimes/win-x64/native/WebView2Loader.dll",
+        "runtimes/win-x86/native/WebView2Loader.dll",
+        "webview.avalonia.windows.11.0.0.1.nupkg.sha512",
+        "webview.avalonia.windows.nuspec",
+        "webview@avalonia-logo.png"
+      ]
+    },
     "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/1.0.0": {
       "type": "project",
       "path": "../BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj",
@@ -7264,7 +8162,7 @@
       "Avalonia.Desktop >= 11.2.3",
       "Avalonia.Diagnostics >= 11.2.3",
       "Avalonia.Fonts.Inter >= 11.2.3",
-      "Avalonia.Labs.Controls >= 11.0.5",
+      "Avalonia.Labs.Controls >= 11.0.10",
       "Avalonia.ReactiveUI >= 11.2.3",
       "Avalonia.Themes.Fluent >= 11.2.3",
       "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity >= 1.0.0",
@@ -7291,9 +8189,11 @@
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.Debug >= 3.0.0",
       "Serilog.Sinks.File >= 6.0.0",
+      "SpacetimeDB.ClientSDK >= 2.0.1",
       "SukiUI >= 6.0.0",
       "System.IdentityModel.Tokens.Jwt >= 7.4.0",
-      "System.Text.Json >= 9.0.1"
+      "System.Text.Json >= 9.0.1",
+      "WebView.Avalonia.Desktop >= 11.0.0.1"
     ]
   },
   "packageFolders": {
@@ -7373,7 +8273,7 @@
           },
           "Avalonia.Labs.Controls": {
             "target": "Package",
-            "version": "[11.0.5, )"
+            "version": "[11.0.10, )"
           },
           "Avalonia.ReactiveUI": {
             "target": "Package",
@@ -7477,6 +8377,10 @@
             "target": "Package",
             "version": "[6.0.0, )"
           },
+          "SpacetimeDB.ClientSDK": {
+            "target": "Package",
+            "version": "[2.0.1, )"
+          },
           "SukiUI": {
             "target": "Package",
             "version": "[6.0.0, )"
@@ -7488,6 +8392,10 @@
           "System.Text.Json": {
             "target": "Package",
             "version": "[9.0.1, )"
+          },
+          "WebView.Avalonia.Desktop": {
+            "target": "Package",
+            "version": "[11.0.0.1, )"
           }
         },
         "imports": [
@@ -7509,17 +8417,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop зависит от Avalonia.Labs.Controls (>= 11.0.5), но версия Avalonia.Labs.Controls 11.0.5 не найдена. Использовалась версия Avalonia.Labs.Controls 11.0.10.",
-      "libraryId": "Avalonia.Labs.Controls",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  }
 }

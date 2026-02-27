@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void RegisterUser(string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, SpacetimeDB.Identity? actingUser, string? newUserIdentity)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity), this.SetCallReducerFlags.RegisterUserFlags);
-=======
             conn.InternalCallReducer(new Reducer.RegisterUser(login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity));
->>>>>>> maintofix
         }
 
         public bool InvokeRegisterUser(ReducerEventContext ctx, Reducer.RegisterUser args)
         {
-<<<<<<< HEAD
-            if (OnRegisterUser == null) return false;
-=======
             if (OnRegisterUser == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnRegisterUser(
                 ctx,
                 args.Login,
@@ -69,17 +61,6 @@ namespace SpacetimeDB.Types
             public string Password;
             [DataMember(Name = "email")]
             public string Email;
-<<<<<<< HEAD
-            [DataMember(Name = "phoneNumber")]
-            public string PhoneNumber;
-            [DataMember(Name = "roleId")]
-            public uint? RoleId;
-            [DataMember(Name = "roleName")]
-            public string? RoleName;
-            [DataMember(Name = "actingUser")]
-            public SpacetimeDB.Identity? ActingUser;
-            [DataMember(Name = "newUserIdentity")]
-=======
             [DataMember(Name = "phone_number")]
             public string PhoneNumber;
             [DataMember(Name = "role_id")]
@@ -89,7 +70,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "acting_user")]
             public SpacetimeDB.Identity? ActingUser;
             [DataMember(Name = "new_user_identity")]
->>>>>>> maintofix
             public string? NewUserIdentity;
 
             public RegisterUser(
@@ -121,19 +101,7 @@ namespace SpacetimeDB.Types
                 this.PhoneNumber = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "RegisterUser";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags RegisterUserFlags;
-        public void RegisterUser(CallReducerFlags flags) => RegisterUserFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "register_user";
         }
     }
->>>>>>> maintofix
 }

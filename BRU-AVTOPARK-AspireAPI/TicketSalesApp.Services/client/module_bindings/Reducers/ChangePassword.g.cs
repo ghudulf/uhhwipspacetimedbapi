@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void ChangePassword(SpacetimeDB.Identity userId, string currentPassword, string newPassword, SpacetimeDB.Identity? actingUser)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser), this.SetCallReducerFlags.ChangePasswordFlags);
-=======
             conn.InternalCallReducer(new Reducer.ChangePassword(userId, currentPassword, newPassword, actingUser));
->>>>>>> maintofix
         }
 
         public bool InvokeChangePassword(ReducerEventContext ctx, Reducer.ChangePassword args)
         {
-<<<<<<< HEAD
-            if (OnChangePassword == null) return false;
-=======
             if (OnChangePassword == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnChangePassword(
                 ctx,
                 args.UserId,
@@ -59,15 +51,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class ChangePassword : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "userId")]
-            public SpacetimeDB.Identity UserId;
-            [DataMember(Name = "currentPassword")]
-            public string CurrentPassword;
-            [DataMember(Name = "newPassword")]
-            public string NewPassword;
-            [DataMember(Name = "actingUser")]
-=======
             [DataMember(Name = "user_id")]
             public SpacetimeDB.Identity UserId;
             [DataMember(Name = "current_password")]
@@ -75,7 +58,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "new_password")]
             public string NewPassword;
             [DataMember(Name = "acting_user")]
->>>>>>> maintofix
             public SpacetimeDB.Identity? ActingUser;
 
             public ChangePassword(
@@ -97,19 +79,7 @@ namespace SpacetimeDB.Types
                 this.NewPassword = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "ChangePassword";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags ChangePasswordFlags;
-        public void ChangePassword(CallReducerFlags flags) => ChangePasswordFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "change_password";
         }
     }
->>>>>>> maintofix
 }

@@ -15,11 +15,7 @@ namespace SpacetimeDB.Types
     {
         public sealed class OpenIdConnectGrantHandle : RemoteTableHandle<EventContext, OpenIdConnectGrant>
         {
-<<<<<<< HEAD
-            protected override string RemoteTableName => "OpenIdConnectGrant";
-=======
             protected override string RemoteTableName => "open_id_connect_grant";
->>>>>>> maintofix
 
             public sealed class GrantIdUniqueIndex : UniqueIndexBase<string>
             {
@@ -40,8 +36,6 @@ namespace SpacetimeDB.Types
 
         public readonly OpenIdConnectGrantHandle OpenIdConnectGrant;
     }
-<<<<<<< HEAD
-=======
 
     public sealed class OpenIdConnectGrantCols
     {
@@ -76,5 +70,4 @@ namespace SpacetimeDB.Types
             GrantId = new global::SpacetimeDB.IxCol<OpenIdConnectGrant, string>(tableName, "grant_id");
         }
     }
->>>>>>> maintofix
 }

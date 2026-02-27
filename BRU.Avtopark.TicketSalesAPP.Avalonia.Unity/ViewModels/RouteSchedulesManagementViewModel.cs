@@ -7,10 +7,7 @@ using ReactiveUI;
 using System.Linq;
 using Serilog;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
-<<<<<<< HEAD
-=======
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
->>>>>>> maintofix
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Controls;
@@ -21,10 +18,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
-<<<<<<< HEAD
-=======
 using System.Text.Json.Nodes;
->>>>>>> maintofix
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
@@ -130,23 +124,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                var response = await _httpClient.GetAsync($"{_baseUrl}/Routes");
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var routes = JsonSerializer.Deserialize<List<Route>>(jsonString, _jsonOptions);
-                    if (routes != null)
-                    {
-                        Routes = new ObservableCollection<Route>(routes);
-                        await LoadSchedules();
-                    }
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Failed to load routes: {error}");
-=======
                 Log.Information("Starting LoadData for RouteSchedulesManagementViewModel");
 
                 // First load routes
@@ -196,7 +173,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 if (SelectedRoute != null)
                 {
                     await LoadSchedules();
->>>>>>> maintofix
                 }
             }
             catch (Exception ex)
@@ -204,11 +180,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HasError = true;
                 ErrorMessage = $"Error loading data: {ex.Message}";
                 Log.Error(ex, "Error loading data");
-<<<<<<< HEAD
-=======
                 Routes.Clear();
                 Schedules.Clear();
->>>>>>> maintofix
             }
             finally
             {
@@ -230,21 +203,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-<<<<<<< HEAD
-                var response = await _httpClient.GetAsync(
-                    $"{_baseUrl}/RouteSchedules/search?routeId={SelectedRoute.RouteId}&date={SelectedDate.Date:yyyy-MM-dd}");
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var schedules = JsonSerializer.Deserialize<List<RouteSchedule>>(jsonString, _jsonOptions);
-                    if (schedules != null)
-                    {
-                        Schedules = new ObservableCollection<RouteSchedule>(
-                            schedules.OrderBy(s => s.DepartureTime));
-                        
-                        Log.Information("Successfully loaded {Count} schedules for route {RouteId} with stops", 
-=======
                 Log.Information("Loading schedules for route {RouteId} on date {Date}", 
                     SelectedRoute.RouteId, SelectedDate.Date.ToString("yyyy-MM-dd"));
 
@@ -282,21 +240,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                         Schedules = new ObservableCollection<RouteSchedule>(schedules.OrderBy(s => s.DepartureTime));
                         Log.Information("Successfully loaded {Count} schedules for route {RouteId}", 
->>>>>>> maintofix
                             schedules.Count, SelectedRoute.RouteId);
                     }
                     else
                     {
-<<<<<<< HEAD
-                        Schedules.Clear();
-                        Log.Warning("No schedules found for route {RouteId}", SelectedRoute.RouteId);
-                    }
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Failed to load schedules: {error}");
-=======
                         Log.Error("Schedules JSON could not be parsed as array");
                         throw new Exception("Invalid schedules data format");
                     }
@@ -305,7 +252,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 {
                     Log.Error(jsonEx, "Failed to parse Schedules JSON: {RawJson}", jsonString);
                     throw new Exception("Failed to parse schedule data", jsonEx);
->>>>>>> maintofix
                 }
             }
             catch (Exception ex)
@@ -313,10 +259,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HasError = true;
                 ErrorMessage = $"Error loading schedules: {ex.Message}";
                 Log.Error(ex, "Error loading schedules");
-<<<<<<< HEAD
-=======
                 Schedules.Clear();
->>>>>>> maintofix
             }
             finally
             {

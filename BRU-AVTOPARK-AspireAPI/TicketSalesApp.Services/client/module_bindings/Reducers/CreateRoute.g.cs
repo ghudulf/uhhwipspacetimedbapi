@@ -17,18 +17,11 @@ namespace SpacetimeDB.Types
 
         public void CreateRoute(string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive)
         {
-<<<<<<< HEAD
-            conn.InternalCallReducer(new Reducer.CreateRoute(startPoint, endPoint, driverId, busId, travelTime, isActive), this.SetCallReducerFlags.CreateRouteFlags);
-=======
             conn.InternalCallReducer(new Reducer.CreateRoute(startPoint, endPoint, driverId, busId, travelTime, isActive));
->>>>>>> maintofix
         }
 
         public bool InvokeCreateRoute(ReducerEventContext ctx, Reducer.CreateRoute args)
         {
-<<<<<<< HEAD
-            if (OnCreateRoute == null) return false;
-=======
             if (OnCreateRoute == null)
             {
                 if (InternalOnUnhandledReducerError != null)
@@ -41,7 +34,6 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
->>>>>>> maintofix
             OnCreateRoute(
                 ctx,
                 args.StartPoint,
@@ -61,19 +53,6 @@ namespace SpacetimeDB.Types
         [DataContract]
         public sealed partial class CreateRoute : Reducer, IReducerArgs
         {
-<<<<<<< HEAD
-            [DataMember(Name = "startPoint")]
-            public string StartPoint;
-            [DataMember(Name = "endPoint")]
-            public string EndPoint;
-            [DataMember(Name = "driverId")]
-            public uint DriverId;
-            [DataMember(Name = "busId")]
-            public uint BusId;
-            [DataMember(Name = "travelTime")]
-            public string? TravelTime;
-            [DataMember(Name = "isActive")]
-=======
             [DataMember(Name = "start_point")]
             public string StartPoint;
             [DataMember(Name = "end_point")]
@@ -85,7 +64,6 @@ namespace SpacetimeDB.Types
             [DataMember(Name = "travel_time")]
             public string? TravelTime;
             [DataMember(Name = "is_active")]
->>>>>>> maintofix
             public bool IsActive;
 
             public CreateRoute(
@@ -111,19 +89,7 @@ namespace SpacetimeDB.Types
                 this.EndPoint = "";
             }
 
-<<<<<<< HEAD
-            string IReducerArgs.ReducerName => "CreateRoute";
-        }
-    }
-
-    public sealed partial class SetReducerFlags
-    {
-        internal CallReducerFlags CreateRouteFlags;
-        public void CreateRoute(CallReducerFlags flags) => CreateRouteFlags = flags;
-    }
-=======
             string IReducerArgs.ReducerName => "create_route";
         }
     }
->>>>>>> maintofix
 }
