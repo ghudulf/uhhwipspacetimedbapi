@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using SpacetimeDB;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -18,12 +19,22 @@ namespace TicketSalesApp.Services.Implementations
     {
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<AuthorizationStore> _logger;
+        
+        // In-memory cache for authorization IDs to avoid database polling
+        // Maps OpenIddictAuthorizationId (string) -> Internal SpacetimeDB Id (uint)
+        private readonly ConcurrentDictionary<string, uint> _authorizationIdCache;
+        
+        // Cache for pending authorization creations to track async operations
+        // Maps OpenIddictAuthorizationId -> TaskCompletionSource for waiting threads
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<uint>> _pendingCreations;
 
         public AuthorizationStore(ISpacetimeDBService spacetimeService, ILogger<AuthorizationStore> logger)
         {
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _logger.LogInformation("SpacetimeDB AuthorizationStore initialized.");
+            _authorizationIdCache = new ConcurrentDictionary<string, uint>();
+            _pendingCreations = new ConcurrentDictionary<string, TaskCompletionSource<uint>>();
+            _logger.LogInformation("SpacetimeDB AuthorizationStore initialized with in-memory ID cache.");
         }
 
         private DbConnection GetConnection()
@@ -34,7 +45,7 @@ namespace TicketSalesApp.Services.Implementations
         }
 
         // --- Create ---
-        public virtual ValueTask CreateAsync(OpenIddictSpacetimeAuthorization authorization, CancellationToken cancellationToken)
+        public virtual async ValueTask CreateAsync(OpenIddictSpacetimeAuthorization authorization, CancellationToken cancellationToken)
         {
             if (authorization == null) throw new ArgumentNullException(nameof(authorization));
             cancellationToken.ThrowIfCancellationRequested();
@@ -42,22 +53,125 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 var conn = GetConnection();
-                var oidcAuthId = authorization.OpenIddictAuthorizationId ?? Guid.NewGuid().ToString();
-                authorization.OpenIddictAuthorizationId = oidcAuthId;
+                
+                // Validate that we have an OIDC ID - this should have been set in InstantiateAsync
+                if (string.IsNullOrEmpty(authorization.OpenIddictAuthorizationId))
+                {
+                    _logger.LogError("CRITICAL: OpenIddictAuthorizationId is null or empty in CreateAsync. This should never happen!");
+                    throw new InvalidOperationException("Authorization ID must be set before calling CreateAsync. This indicates a problem with InstantiateAsync or OpenIddict's authorization manager.");
+                }
+                
+                var oidcAuthId = authorization.OpenIddictAuthorizationId;
 
-                _logger.LogDebug("Calling CreateOidcAuthorization reducer for OIDC ID {OidcAuthId}", oidcAuthId);
-                conn.Reducers.CreateOidcAuthorization(
-                    oidcAuthId,
-                    authorization.ApplicationClientId,
-                    authorization.CreationDate,
-                    authorization.Properties,
-                    authorization.Scopes,
-                    authorization.Status,
-                    authorization.Subject,
-                    authorization.Type);
+                // Check if this authorization is already being created by another thread
+                var tcs = _pendingCreations.GetOrAdd(oidcAuthId, _ => new TaskCompletionSource<uint>());
+                
+                // If we just added it, we're responsible for creating it
+                if (_pendingCreations.TryGetValue(oidcAuthId, out var existingTcs) && existingTcs == tcs)
+                {
+                    try
+                    {
+                        _logger.LogDebug("Calling CreateOidcAuthorization reducer for OIDC ID {OidcAuthId}", oidcAuthId);
+                        _logger.LogDebug("Authorization details - Subject: {Subject}, ClientId: {ClientId}, Type: {Type}, Status: {Status}", 
+                            authorization.Subject, authorization.ApplicationClientId, authorization.Type, authorization.Status);
+                        
+                        conn.Reducers.CreateOidcAuthorization(
+                            oidcAuthId,
+                            authorization.ApplicationClientId,
+                            authorization.CreationDate,
+                            authorization.Properties,
+                            authorization.Scopes,
+                            authorization.Status,
+                            authorization.Subject,
+                            authorization.Type);
 
-                _logger.LogInformation("Reducer called to create authorization with OIDC ID: {OidcAuthId}", oidcAuthId);
-                return default;
+                        _logger.LogInformation("Reducer called to create authorization with OIDC ID: {OidcAuthId}", oidcAuthId);
+                        
+                        // Wait for the authorization to be created in the database
+                        // SpacetimeDB reducers are processed asynchronously, so we need to poll
+                        var maxAttempts = 50; // 5 seconds max (50 * 100ms)
+                        var attempt = 0;
+                        uint internalId = 0;
+                        
+                        while (attempt < maxAttempts)
+                        {
+                            await Task.Delay(100, cancellationToken); // Wait 100ms between checks
+                            
+                            var created = conn.Db.OpenIddictSpacetimeAuthorization.Iter()
+                                .FirstOrDefault(a => a.OpenIddictAuthorizationId == oidcAuthId);
+                            
+                            if (created != null)
+                            {
+                                internalId = created.Id;
+                                _logger.LogDebug("Authorization {OidcAuthId} confirmed in database after {Attempts} attempts with internal ID {InternalId}", 
+                                    oidcAuthId, attempt + 1, internalId);
+                                
+                                // Update the authorization object with the database values
+                                authorization.Id = created.Id;
+                                authorization.ApplicationClientId = created.ApplicationClientId;
+                                authorization.CreationDate = created.CreationDate;
+                                authorization.Properties = created.Properties;
+                                authorization.Scopes = created.Scopes;
+                                authorization.Status = created.Status;
+                                authorization.Subject = created.Subject;
+                                authorization.Type = created.Type;
+                                authorization.OpenIddictAuthorizationId = created.OpenIddictAuthorizationId;
+                                
+                                // Cache the ID mapping for future lookups
+                                _authorizationIdCache.TryAdd(oidcAuthId, internalId);
+                                _logger.LogDebug("Cached authorization ID mapping: {OidcAuthId} -> {InternalId}", oidcAuthId, internalId);
+                                
+                                // Signal any waiting threads that creation is complete
+                                tcs.TrySetResult(internalId);
+                                break;
+                            }
+                            
+                            attempt++;
+                        }
+                        
+                        if (internalId == 0)
+                        {
+                            _logger.LogError("Authorization {OidcAuthId} was not found in database after {MaxAttempts} attempts", oidcAuthId, maxAttempts);
+                            tcs.TrySetException(new InvalidOperationException($"Authorization {oidcAuthId} was not created in database within timeout period"));
+                            throw new InvalidOperationException($"Authorization {oidcAuthId} was not created in database within timeout period");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error creating authorization {OidcAuthId}", oidcAuthId);
+                        tcs.TrySetException(ex);
+                        throw;
+                    }
+                    finally
+                    {
+                        // Remove from pending creations
+                        _pendingCreations.TryRemove(oidcAuthId, out _);
+                    }
+                }
+                else
+                {
+                    // Another thread is creating this authorization, wait for it to complete
+                    _logger.LogDebug("Authorization {OidcAuthId} is already being created by another thread, waiting...", oidcAuthId);
+                    var internalId = await tcs.Task;
+                    
+                    // Retrieve the created authorization from database
+                    var created = conn.Db.OpenIddictSpacetimeAuthorization.Iter()
+                        .FirstOrDefault(a => a.OpenIddictAuthorizationId == oidcAuthId);
+                    
+                    if (created != null)
+                    {
+                        authorization.Id = created.Id;
+                        authorization.ApplicationClientId = created.ApplicationClientId;
+                        authorization.CreationDate = created.CreationDate;
+                        authorization.Properties = created.Properties;
+                        authorization.Scopes = created.Scopes;
+                        authorization.Status = created.Status;
+                        authorization.Subject = created.Subject;
+                        authorization.Type = created.Type;
+                        authorization.OpenIddictAuthorizationId = created.OpenIddictAuthorizationId;
+                        _logger.LogDebug("Retrieved authorization {OidcAuthId} created by another thread", oidcAuthId);
+                    }
+                }
             }
             catch (Exception ex) { HandleError(ex, "creating"); throw; }
         }
@@ -80,6 +194,10 @@ namespace TicketSalesApp.Services.Implementations
 
                 conn.Reducers.DeleteOidcAuthorization(entity.Id);
                 _logger.LogInformation("Reducer called to delete authorization with ID: {Id}", entity.Id);
+                
+                // Remove from cache
+                _authorizationIdCache.TryRemove(authorization.OpenIddictAuthorizationId, out _);
+                _logger.LogDebug("Removed authorization {OidcAuthId} from cache", authorization.OpenIddictAuthorizationId);
             }
             catch (Exception ex) { HandleError(ex, "deleting"); throw; }
         }
@@ -143,8 +261,37 @@ namespace TicketSalesApp.Services.Implementations
             try {
                 await Task.Yield();
                 var conn = GetConnection();
-                return conn.Db.OpenIddictSpacetimeAuthorization.Iter()
-                    .FirstOrDefault(auth => auth.OpenIddictAuthorizationId == identifier);
+                
+                // Try to use cache first for faster lookups
+                if (_authorizationIdCache.TryGetValue(identifier, out var cachedInternalId))
+                {
+                    _logger.LogDebug("Cache hit for authorization {OidcAuthId} -> internal ID {InternalId}", identifier, cachedInternalId);
+                    var cachedAuth = conn.Db.OpenIddictSpacetimeAuthorization.Id.Find(cachedInternalId);
+                    if (cachedAuth != null && cachedAuth.OpenIddictAuthorizationId == identifier)
+                    {
+                        return cachedAuth;
+                    }
+                    else
+                    {
+                        // Cache is stale, remove it
+                        _logger.LogWarning("Cache entry for {OidcAuthId} is stale, removing from cache", identifier);
+                        _authorizationIdCache.TryRemove(identifier, out _);
+                    }
+                }
+                
+                // Cache miss or stale, query database
+                _logger.LogDebug("Cache miss for authorization {OidcAuthId}, querying database", identifier);
+                var auth = conn.Db.OpenIddictSpacetimeAuthorization.Iter()
+                    .FirstOrDefault(a => a.OpenIddictAuthorizationId == identifier);
+                
+                // Update cache if found
+                if (auth != null)
+                {
+                    _authorizationIdCache.TryAdd(identifier, auth.Id);
+                    _logger.LogDebug("Cached authorization ID mapping: {OidcAuthId} -> {InternalId}", identifier, auth.Id);
+                }
+                
+                return auth;
             }
             catch (Exception ex) { HandleError(ex, $"finding authorization by OIDC ID {identifier}"); throw; }
         }
@@ -186,7 +333,14 @@ namespace TicketSalesApp.Services.Implementations
         public virtual ValueTask<OpenIddictSpacetimeAuthorization> InstantiateAsync(CancellationToken cancellationToken)
         {
             try {
-                return new ValueTask<OpenIddictSpacetimeAuthorization>(new OpenIddictSpacetimeAuthorization());
+                // Generate a new GUID for the authorization ID
+                // OpenIddict expects the store to provide the ID
+                var authorization = new OpenIddictSpacetimeAuthorization
+                {
+                    OpenIddictAuthorizationId = Guid.NewGuid().ToString()
+                };
+                _logger.LogDebug("Instantiated new authorization with OIDC ID: {OidcAuthId}", authorization.OpenIddictAuthorizationId);
+                return new ValueTask<OpenIddictSpacetimeAuthorization>(authorization);
             }
             catch (Exception exception) {
                 return new ValueTask<OpenIddictSpacetimeAuthorization>(Task.FromException<OpenIddictSpacetimeAuthorization>(exception));
@@ -281,6 +435,10 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogDebug("Calling UpdateOidcAuthorization reducer for ID {Id}", entity.Id);
                 conn.Reducers.UpdateOidcAuthorization(entity.Id, authorization.Properties, authorization.Scopes, authorization.Status);
                 _logger.LogInformation("Reducer called to update authorization with ID: {Id}", entity.Id);
+                
+                // Cache is still valid after update (ID doesn't change)
+                // But we could refresh it to ensure consistency
+                _authorizationIdCache.AddOrUpdate(authorization.OpenIddictAuthorizationId, entity.Id, (key, oldValue) => entity.Id);
             }
             catch (Exception ex) { HandleError(ex, "updating authorization"); throw; }
         }
@@ -342,6 +500,40 @@ namespace TicketSalesApp.Services.Implementations
         private void HandleError(Exception ex, string operation)
         {
             _logger.LogError(ex, "Error {Operation} in SpacetimeDB AuthorizationStore.", operation);
+        }
+
+        // --- Cache Management Methods ---
+        
+        /// <summary>
+        /// Clears the in-memory authorization ID cache.
+        /// Useful for maintenance or when cache becomes stale.
+        /// </summary>
+        public void ClearCache()
+        {
+            var count = _authorizationIdCache.Count;
+            _authorizationIdCache.Clear();
+            _logger.LogInformation("Cleared authorization ID cache ({Count} entries removed)", count);
+        }
+        
+        /// <summary>
+        /// Gets the current size of the authorization ID cache.
+        /// </summary>
+        public int GetCacheSize()
+        {
+            return _authorizationIdCache.Count;
+        }
+        
+        /// <summary>
+        /// Removes a specific authorization from the cache.
+        /// </summary>
+        public bool RemoveFromCache(string oidcAuthId)
+        {
+            var removed = _authorizationIdCache.TryRemove(oidcAuthId, out var internalId);
+            if (removed)
+            {
+                _logger.LogDebug("Removed authorization {OidcAuthId} (internal ID: {InternalId}) from cache", oidcAuthId, internalId);
+            }
+            return removed;
         }
 
         // Required interface methods

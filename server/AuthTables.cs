@@ -26,6 +26,9 @@ public static partial class Module
         public string? LegacyGuid;        // Store as string instead of Guid
 
         public bool? EmailConfirmed; // email optional so this is just there to make it easier to check if email is confirmed
+        
+        [SpacetimeDB.Default(false)]
+        public bool? PhoneNumberConfirmed; // phone number confirmation status for OpenID Connect compliance
     }
 
 

@@ -1605,7 +1605,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 </div>
 
                 <div class=""login-card"">
-                    <form method=""POST"" action=""/api/auth/connect/authorize/callback"">
+                    <form method=""POST"" action=""/connect/authorize/callback"">
                         <input type=""hidden"" name=""requestId"" value=""{System.Web.HttpUtility.HtmlAttributeEncode(requestId)}"">
                         
                         <div class=""form-group"">
@@ -1632,7 +1632,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     </p>
                 </div>
             </div>
-        ");
+        ", "auth-page-body");
 
         // Add helper method to get icons for different scopes
         private string GetScopeIcon(string scope)
@@ -3693,6 +3693,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Nonce = oidcRequest.Nonce
                     }, TimeSpan.FromMinutes(10));
 
+                    // Store PKCE parameters if present
+                    if (!string.IsNullOrEmpty(oidcRequest.CodeChallenge))
+                    {
+                        _cache.Set($"code_challenge_{requestId}", oidcRequest.CodeChallenge, TimeSpan.FromMinutes(10));
+                        if (!string.IsNullOrEmpty(oidcRequest.CodeChallengeMethod))
+                        {
+                            _cache.Set($"code_challenge_method_{requestId}", oidcRequest.CodeChallengeMethod, TimeSpan.FromMinutes(10));
+                        }
+                    }
+
                     if (IsBrowserRequest())
                     {
                         var clientName = await GetDisplayNameAsync(clientResult.application) ?? oidcRequest.ClientId;
@@ -3827,6 +3837,254 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 _logger.LogError(ex, "Error processing OpenID Connect authorization request");
                 return StatusCode(500, "An error occurred while processing the authorization request");
+            }
+        }
+
+        [HttpPost("~/connect/authorize/callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> AuthorizeCallback([FromForm] AuthorizeCallbackRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("OIDC Authorize Callback: Processing login for RequestId: {RequestId}, Username: {Username}", 
+                    request.RequestId, request.Username);
+
+                // Get the original OpenIddict request from cache
+                var originalRequest = _cache.Get<OpenIdConnectRequest>($"oidc_request_{request.RequestId}");
+                if (originalRequest == null)
+                {
+                    _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
+                    if (IsBrowserRequest())
+                    {
+                        return Content(RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(), 
+                            "Invalid or expired request. Please try again."), "text/html");
+                    }
+                    return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
+                }
+
+                // Authenticate user against SpacetimeDB
+                var user = await _authService.AuthenticateAsync(request.Username, request.Password);
+                if (user == null)
+                {
+                    _logger.LogWarning("Authentication failed for user: {Username}", request.Username);
+                    
+                    // Get client info for re-rendering the form
+                    var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
+                    var clientName = clientResult.success && clientResult.application != null 
+                        ? await GetDisplayNameAsync(clientResult.application) ?? originalRequest.ClientId
+                        : originalRequest.ClientId;
+                    var scopes = originalRequest.Scope?.Split(' ') ?? Array.Empty<string>();
+                    
+                    if (IsBrowserRequest())
+                    {
+                        return Content(RenderOAuthLoginForm(request.RequestId, clientName, scopes, 
+                            "Invalid username or password. Please try again."), "text/html");
+                    }
+                    return Unauthorized(new { error = "invalid_credentials", error_description = "Invalid username or password" });
+                }
+
+                _logger.LogInformation("User authenticated successfully: {Username}, UserId: {UserId}", user.Login, user.UserId);
+
+                // Get the application for authorization
+                var appResult = await _openIdConnectService.GetApplicationByClientIdAsync(originalRequest.ClientId);
+                if (!appResult.success || appResult.application == null)
+                {
+                    _logger.LogError("Failed to get application: {ClientId}, Error: {Error}", 
+                        originalRequest.ClientId, appResult.errorMessage);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = appResult.errorMessage ?? "Invalid client application."
+                        }));
+                }
+
+                // Create claims identity for OpenIddict tokens
+                var identity = new ClaimsIdentity(
+                    authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                    nameType: Claims.Name,
+                    roleType: Claims.Role);
+
+                // Add standard OpenID Connect claims
+                identity.AddClaim(new Claim(Claims.Subject, user.UserId.ToString()));
+                identity.AddClaim(new Claim(Claims.Name, user.Login));
+                
+                if (!string.IsNullOrEmpty(user.Email))
+                {
+                    identity.AddClaim(new Claim(Claims.Email, user.Email));
+                    identity.AddClaim(new Claim(Claims.EmailVerified, user.EmailConfirmed?.ToString().ToLower() ?? "false"));
+                }
+                
+                if (!string.IsNullOrEmpty(user.PhoneNumber))
+                {
+                    identity.AddClaim(new Claim(Claims.PhoneNumber, user.PhoneNumber));
+                    identity.AddClaim(new Claim(Claims.PhoneNumberVerified, user.PhoneNumberConfirmed?.ToString().ToLower() ?? "false"));
+                }
+
+                // Add user roles from SpacetimeDB
+                var conn = _spacetimeService.GetConnection();
+                var roles = conn.Db.UserRole.Iter()
+                    .Where(ur => ur.UserId.Equals(user.UserId))
+                    .Join(conn.Db.Role.Iter(), 
+                          ur => ur.RoleId, 
+                          r => r.RoleId, 
+                          (ur, r) => r.Name)
+                    .ToList();
+                
+                foreach (var role in roles)
+                {
+                    identity.AddClaim(new Claim(Claims.Role, role));
+                }
+
+                _logger.LogInformation("Added {RoleCount} roles to user {Username}", roles.Count, user.Login);
+
+                // Set requested scopes
+                var requestedScopes = originalRequest.Scope?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                identity.SetScopes(requestedScopes);
+
+                _logger.LogInformation("Setting scopes: {Scopes}", string.Join(", ", requestedScopes));
+
+                // Create or get authorization
+                var authorizationsResult = await _openIdConnectService.GetAuthorizationsAsync(
+                    user.UserId.ToString(),
+                    appResult.application,
+                    Statuses.Valid,
+                    AuthorizationTypes.Permanent,
+                    requestedScopes);
+
+                object? authorization = null;
+                if (authorizationsResult.success && authorizationsResult.authorizations != null)
+                {
+                    authorization = authorizationsResult.authorizations.LastOrDefault();
+                    if (authorization == null)
+                    {
+                        _logger.LogInformation("Creating new authorization for user {Username} and client {ClientId}", 
+                            user.Login, originalRequest.ClientId);
+                        
+                        // Create new authorization
+                        var createAuthResult = await _openIdConnectService.CreateAuthorizationAsync(
+                            identity,
+                            user.UserId.ToString(),
+                            appResult.application,
+                            AuthorizationTypes.Permanent,
+                            requestedScopes);
+
+                        if (createAuthResult.success && createAuthResult.authorization != null)
+                        {
+                            authorization = createAuthResult.authorization;
+                            var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
+                            if (authIdResult.success && authIdResult.id != null)
+                            {
+                                identity.SetAuthorizationId(authIdResult.id);
+                                _logger.LogInformation("Authorization created with ID: {AuthId}", authIdResult.id);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to create authorization: {Error}", createAuthResult.errorMessage);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Using existing authorization for user {Username}", user.Login);
+                        var authIdResult = await _openIdConnectService.GetAuthorizationIdAsync(authorization);
+                        if (authIdResult.success && authIdResult.id != null)
+                        {
+                            identity.SetAuthorizationId(authIdResult.id);
+                        }
+                    }
+                }
+
+                // Get resources for the requested scopes
+                var resourcesResult = await _openIdConnectService.GetResourcesAsync(requestedScopes);
+                if (resourcesResult.success && resourcesResult.resources != null)
+                {
+                    identity.SetResources(resourcesResult.resources);
+                    _logger.LogInformation("Set resources: {Resources}", string.Join(", ", resourcesResult.resources));
+                }
+
+                // Set claim destinations (important for OpenIddict to know which claims go where)
+                foreach (var claim in identity.Claims)
+                {
+                    claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
+                }
+
+                // Create authentication cookie for the user session (for future requests)
+                var cookieIdentity = new ClaimsIdentity(
+                    new[]
+                    {
+                        new Claim(ClaimTypes.Name, user.Login),
+                        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                        new Claim(Claims.Subject, user.UserId.ToString())
+                    },
+                    CookieAuthenticationDefaults.AuthenticationScheme);
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(cookieIdentity),
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+
+                _logger.LogInformation("Cookie authentication successful for user: {Username}", user.Login);
+
+                // Remove the cached request as it's been processed
+                _cache.Remove($"oidc_request_{request.RequestId}");
+                _cache.Remove($"code_challenge_{request.RequestId}");
+                _cache.Remove($"code_challenge_method_{request.RequestId}");
+
+                _logger.LogInformation("Completing OpenIddict authorization flow for user {Username}", user.Login);
+
+                var authUrl = $"/connect/authorize?client_id={Uri.EscapeDataString(originalRequest.ClientId)}" +
+                             $"&response_type={Uri.EscapeDataString(originalRequest.ResponseType ?? "code")}" +
+                             $"&redirect_uri={Uri.EscapeDataString(originalRequest.RedirectUri ?? "")}" +
+                             $"&scope={Uri.EscapeDataString(originalRequest.Scope ?? "")}" +
+                             $"&state={Uri.EscapeDataString(originalRequest.State ?? "")}";
+
+                if (!string.IsNullOrEmpty(originalRequest.Nonce))
+                {
+                    authUrl += $"&nonce={Uri.EscapeDataString(originalRequest.Nonce)}";
+                }
+
+                // Add code challenge if present (PKCE) - critical for security
+                var codeChallenge = _cache.Get<string>($"code_challenge_{request.RequestId}");
+                var codeChallengeMethod = _cache.Get<string>($"code_challenge_method_{request.RequestId}");
+                
+                if (!string.IsNullOrEmpty(codeChallenge))
+                {
+                    authUrl += $"&code_challenge={Uri.EscapeDataString(codeChallenge)}";
+                    if (!string.IsNullOrEmpty(codeChallengeMethod))
+                    {
+                        authUrl += $"&code_challenge_method={Uri.EscapeDataString(codeChallengeMethod)}";
+                    }
+                    _cache.Remove($"code_challenge_{request.RequestId}");
+                    _cache.Remove($"code_challenge_method_{request.RequestId}");
+                }
+
+                _logger.LogInformation("Redirecting to authorization endpoint: {AuthUrl}", authUrl);
+                
+                // Redirect back to the authorize endpoint
+                // The authorize endpoint will:
+                // 1. See the authenticated cookie
+                // 2. Retrieve the OpenIddict request from the URL parameters
+                // 3. Create the claims principal with authorization
+                // 4. Call SignIn with OpenIddict scheme
+                // 5. OpenIddict generates authorization code and redirects to client
+                return Redirect(authUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing authorization callback for RequestId: {RequestId}", request.RequestId);
+                if (IsBrowserRequest())
+                {
+                    return Content(RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
+                        "An error occurred while processing your request. Please try again."), "text/html");
+                }
+                return StatusCode(500, new { error = "server_error", 
+                    error_description = "An error occurred while processing the authorization callback" });
             }
         }
 

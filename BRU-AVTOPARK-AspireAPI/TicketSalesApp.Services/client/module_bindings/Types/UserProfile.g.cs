@@ -37,6 +37,8 @@ namespace SpacetimeDB.Types
         public string? LegacyGuid;
         [DataMember(Name = "email_confirmed")]
         public bool? EmailConfirmed;
+        [DataMember(Name = "phone_number_confirmed")]
+        public bool? PhoneNumberConfirmed;
 
         public UserProfile(
             SpacetimeDB.Identity UserId,
@@ -50,7 +52,8 @@ namespace SpacetimeDB.Types
             ulong CreatedAt,
             ulong? LastLoginAt,
             string? LegacyGuid,
-            bool? EmailConfirmed
+            bool? EmailConfirmed,
+            bool? PhoneNumberConfirmed
         )
         {
             this.UserId = UserId;
@@ -65,6 +68,7 @@ namespace SpacetimeDB.Types
             this.LastLoginAt = LastLoginAt;
             this.LegacyGuid = LegacyGuid;
             this.EmailConfirmed = EmailConfirmed;
+            this.PhoneNumberConfirmed = PhoneNumberConfirmed;
         }
 
         public UserProfile()

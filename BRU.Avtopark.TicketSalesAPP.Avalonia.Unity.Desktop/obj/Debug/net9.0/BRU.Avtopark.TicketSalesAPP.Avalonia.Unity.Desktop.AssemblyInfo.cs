@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+97e8aede904007b8ba8ced6d4fbd569a0929af18")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+eb136253cf854bff710c8bf8b5bfab68f8878f13")]
 [assembly: System.Reflection.AssemblyProductAttribute("BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -95,6 +95,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     Log.Error("Token exchange failed with status {StatusCode}: {Response}", response.StatusCode, responseContent);
+                    
+                    // Check if this is an authorization-related error
+                    if (responseContent.Contains("authorization") || 
+                        responseContent.Contains("invalid_grant") ||
+                        responseContent.Contains("authorization_pending") ||
+                        response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                    {
+                        Log.Warning("Authorization error detected, clearing stored authorization data to allow retry");
+                        // Clear any stored authorization state that might be causing issues
+                        await _tokenStorage.ClearTokensAsync();
+                        
+                        // Throw a specific exception that the caller can catch and retry
+                        throw new OAuthAuthorizationException($"Authorization failed: {responseContent}. Stored data cleared, please retry the authorization flow.");
+                    }
+                    
                     throw new Exception($"Token exchange failed: {responseContent}");
                 }
 
@@ -121,6 +136,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
                 return tokenResponse ?? throw new Exception("Failed to deserialize token response");
             }
+            catch (OAuthAuthorizationException)
+            {
+                // Re-throw authorization exceptions without wrapping
+                throw;
+            }
             catch (HttpRequestException ex)
             {
                 Log.Error(ex, "HTTP request error during token exchange: {Message}", ex.Message);
@@ -135,6 +155,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         public async Task<OAuthTokenResponse?> RefreshTokenAsync(string refreshToken)
         {
+            Log.Information("Attempting to refresh access token");
+            
             var requestData = new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
@@ -144,26 +166,48 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             };
 
             var content = new FormUrlEncodedContent(requestData);
-            var response = await _httpClient.PostAsync(_tokenEndpoint, content);
             
-            if (!response.IsSuccessStatusCode)
+            try
             {
+                var response = await _httpClient.PostAsync(_tokenEndpoint, content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    
+                    // If refresh token is invalid or expired, clear stored tokens
+                    if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || 
+                        response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        Log.Warning("Refresh token is invalid or expired, clearing stored tokens");
+                        await _tokenStorage.ClearTokensAsync();
+                    }
+                    
+                    return null;
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var tokenResponse = JsonSerializer.Deserialize<OAuthTokenResponse>(responseContent, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (tokenResponse != null)
+                {
+                    tokenResponse.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+                    // Update stored tokens
+                    await _tokenStorage.SaveTokensAsync(tokenResponse);
+                    Log.Information("Token refreshed successfully");
+                }
+
+                return tokenResponse;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error refreshing token: {Message}", ex.Message);
                 return null;
             }
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonSerializer.Deserialize<OAuthTokenResponse>(responseContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (tokenResponse != null)
-            {
-                // Update stored tokens
-                await _tokenStorage.SaveTokensAsync(tokenResponse);
-            }
-
-            return tokenResponse;
         }
 
         public async Task<string?> GetValidAccessTokenAsync()
@@ -232,5 +276,19 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public string? IdToken { get; set; }
         public string? Scope { get; set; }
         public DateTime ExpiresAt { get; set; }
+    }
+
+    /// <summary>
+    /// Exception thrown when OAuth authorization fails and stored data needs to be cleared for retry
+    /// </summary>
+    public class OAuthAuthorizationException : Exception
+    {
+        public OAuthAuthorizationException(string message) : base(message)
+        {
+        }
+
+        public OAuthAuthorizationException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }

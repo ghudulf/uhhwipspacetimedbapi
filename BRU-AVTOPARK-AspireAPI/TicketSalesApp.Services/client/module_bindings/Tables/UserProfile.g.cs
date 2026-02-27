@@ -71,6 +71,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.NullableCol<UserProfile, ulong> LastLoginAt { get; }
         public global::SpacetimeDB.NullableCol<UserProfile, string> LegacyGuid { get; }
         public global::SpacetimeDB.NullableCol<UserProfile, bool> EmailConfirmed { get; }
+        public global::SpacetimeDB.NullableCol<UserProfile, bool> PhoneNumberConfirmed { get; }
 
         public UserProfileCols(string tableName)
         {
@@ -86,6 +87,7 @@ namespace SpacetimeDB.Types
             LastLoginAt = new global::SpacetimeDB.NullableCol<UserProfile, ulong>(tableName, "last_login_at");
             LegacyGuid = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "legacy_guid");
             EmailConfirmed = new global::SpacetimeDB.NullableCol<UserProfile, bool>(tableName, "email_confirmed");
+            PhoneNumberConfirmed = new global::SpacetimeDB.NullableCol<UserProfile, bool>(tableName, "phone_number_confirmed");
         }
     }
 
