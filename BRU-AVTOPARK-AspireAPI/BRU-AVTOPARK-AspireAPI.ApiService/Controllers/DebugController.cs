@@ -278,9 +278,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             // Cast items to IEnumerable to iterate
             var enumerableItems = items as System.Collections.IEnumerable;
-            if (enumerableItems == null) return "<p>Error: Could not cast items to IEnumerable.</p>";
+            if (enumerableItems == null) 
+            {
+                _logger.LogError("Could not cast items to IEnumerable for table {TableName}", tableInfo.TableDbName);
+                return "<p>Error: Could not cast items to IEnumerable.</p>";
+            }
 
             int count = 0;
+            bool hasLoggedStructure = false;
+            
             foreach (var item in enumerableItems)
             {
                 count++;
@@ -289,9 +295,33 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 // Check if itemType matches the expected EntityType
                 if (itemType != tableInfo.EntityType && !itemType.IsSubclassOf(tableInfo.EntityType)) {
+                    _logger.LogError("Item type mismatch for {TableName}. Expected {ExpectedType}, got {ActualType}", 
+                        tableInfo.TableDbName, tableInfo.EntityType.Name, itemType.Name);
                     rowsHtml.Append($"<td colspan='{headers.Count}'>Error: Item type mismatch. Expected {tableInfo.EntityType.Name}, got {itemType.Name}</td>");
                     rowsHtml.Append("</tr>");
                     continue; // Skip this item
+                }
+
+                // Log all available properties/fields for debugging (only once per table)
+                if (!hasLoggedStructure)
+                {
+                    hasLoggedStructure = true;
+                    _logger.LogInformation("=== Table Structure for {TableName} ===", tableInfo.TableDbName);
+                    _logger.LogInformation("Item Type: {ItemType}", itemType.Name);
+                    _logger.LogInformation("Expected Type: {ExpectedType}", tableInfo.EntityType.Name);
+                    
+                    var properties = itemType.GetProperties();
+                    _logger.LogInformation("Available Properties ({Count}): {Properties}", 
+                        properties.Length,
+                        string.Join(", ", properties.Select(p => $"{p.Name} ({p.PropertyType.Name})")));
+                    
+                    var fields = itemType.GetFields();
+                    _logger.LogInformation("Available Fields ({Count}): {Fields}", 
+                        fields.Length,
+                        string.Join(", ", fields.Select(f => $"{f.Name} ({f.FieldType.Name})")));
+                    
+                    _logger.LogInformation("Requested Properties to Display: {RequestedProps}", 
+                        string.Join(", ", headers));
                 }
 
                 foreach (var propName in headers)
@@ -299,38 +329,79 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     string displayValue = "N/A";
                     try
                     {
-                        var propInfo = tableInfo.EntityType.GetProperty(propName); // Use stored EntityType
-                        if (propInfo != null)
+                        // Try field first (SpacetimeDB generates fields, not properties)
+                        var fieldInfo = itemType.GetField(propName);
+                        if (fieldInfo != null)
                         {
-                            object? value = propInfo.GetValue(item);
-                            displayValue = FormatValue(value);
-                        } 
-                        else 
-                        {
-                            // Try to access as a field if property not found
-                            var fieldInfo = tableInfo.EntityType.GetField(propName);
-                            if (fieldInfo != null)
+                            object? value = fieldInfo.GetValue(item);
+                            
+                            // Log first 3 items for each field to see actual data
+                            if (count <= 3)
                             {
-                                object? value = fieldInfo.GetValue(item);
+                                _logger.LogInformation("[{TableName}] Row {RowNum} - Field {FieldName}: Value={Value}, Type={Type}", 
+                                    tableInfo.TableDbName, count, propName, 
+                                    value ?? "null", value?.GetType().Name ?? "null");
+                            }
+                            
+                            displayValue = FormatValue(value);
+                        }
+                        else
+                        {
+                            // Fallback to property if field not found
+                            var propInfo = itemType.GetProperty(propName);
+                            if (propInfo != null)
+                            {
+                                object? value = propInfo.GetValue(item);
+                                
+                                // Log first 3 items for each property to see actual data
+                                if (count <= 3)
+                                {
+                                    _logger.LogInformation("[{TableName}] Row {RowNum} - Property {PropName}: Value={Value}, Type={Type}", 
+                                        tableInfo.TableDbName, count, propName, 
+                                        value ?? "null", value?.GetType().Name ?? "null");
+                                }
+                                
                                 displayValue = FormatValue(value);
                             }
                             else
                             {
-                                _logger.LogWarning("Neither property nor field {PropertyName} found on type {TypeName}", propName, tableInfo.EntityType.Name);
+                                if (count == 1) // Only log missing members once
+                                {
+                                    _logger.LogWarning("[{TableName}] Neither property nor field '{PropertyName}' found on type {TypeName}", 
+                                        tableInfo.TableDbName, propName, tableInfo.EntityType.Name);
+                                    
+                                    // Try to find similar names (case-insensitive)
+                                    var allMembers = itemType.GetProperties().Select(p => p.Name)
+                                        .Concat(itemType.GetFields().Select(f => f.Name))
+                                        .ToList();
+                                    var similar = allMembers.FirstOrDefault(m => m.Equals(propName, StringComparison.OrdinalIgnoreCase));
+                                    if (similar != null)
+                                    {
+                                        _logger.LogWarning("[{TableName}] Found similar member with different casing: '{SimilarName}' (requested: '{RequestedName}')", 
+                                            tableInfo.TableDbName, similar, propName);
+                                    }
+                                }
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error accessing property or field {PropertyName} on type {TypeName}", propName, tableInfo.EntityType.Name);
+                        _logger.LogError(ex, "[{TableName}] Error accessing property or field '{PropertyName}' on type {TypeName}", 
+                            tableInfo.TableDbName, propName, itemType.Name);
                         displayValue = $"<span style='color:var(--error-color);'>Error</span>";
                     }
                     rowsHtml.Append($"<td style='padding: 8px; vertical-align: top; max-width: 250px; overflow-wrap: break-word;'>{displayValue}</td>");
                 }
                 rowsHtml.Append("</tr>");
             }
+            
             if (count == 0) {
+                _logger.LogInformation("[{TableName}] No data found in table", tableInfo.TableDbName);
                 rowsHtml.Append($"<tr><td colspan='{headers.Count}' style='padding: 16px; text-align: center; color: var(--text-muted);'>No data found for this table.</td></tr>");
+            }
+            else
+            {
+                _logger.LogInformation("[{TableName}] Rendered {Count} rows successfully", tableInfo.TableDbName, count);
             }
 
             // Pagination Controls

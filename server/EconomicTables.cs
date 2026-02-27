@@ -80,7 +80,27 @@ public static partial class Module
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000, // Set creation time
             UpdatedAt = null,            // No updates yet
             UpdatedBy = null,            // No updates yet
-            PurchaseTime = purchaseTime ?? (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000 // Set purchase time
+            PurchaseTime = purchaseTime ?? (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000, // Set purchase time
+            TicketType = "Regular",      // Default to regular ticket
+            TicketStatus = "Valid",      // Default to valid status
+            ValidationMethod = null,     // Not validated yet
+            ValidationTime = null,       // Not validated yet
+            ValidationLocation = null,   // Not validated yet
+            ValidatedByEmployeeId = null, // Not validated yet
+            IsReturn = null,             // Not a return ticket by default
+            ReturnTicketId = null,       // No return ticket
+            DiscountType = null,         // No discount by default
+            DiscountAmount = null,       // No discount amount
+            DiscountReason = null,       // No discount reason
+            RefundStatus = null,         // Not refunded
+            RefundAmount = null,         // No refund amount
+            RefundTime = null,           // No refund time
+            RefundReason = null,         // No refund reason
+            DiscountId = null,           // No discount ID
+            SeatType = "Standard",       // Default seat type
+            IsReserved = false,          // Not reserved by default
+            ReservationStatus = null,    // No reservation status
+            ReservationExpiry = null     // No reservation expiry
         };
         // Insert the new ticket into the database
         ctx.Db.Ticket.Insert(ticket);

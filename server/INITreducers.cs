@@ -2174,25 +2174,107 @@ public static partial class Module
         // Current timestamp in milliseconds
         ulong now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        // Create tickets for each route with realistic prices
+        // Ticket types and statuses for variety
+        var ticketTypes = new[] { "Regular", "Student", "Senior", "Disabled", "Child" };
+        var ticketStatuses = new[] { "Valid", "Used", "Expired", "Cancelled" };
+        var seatTypes = new[] { "Standard", "Window", "Aisle", "Premium" };
+        var validationMethods = new[] { "QR", "NFC", "Manual" };
+
+        // Create tickets for each route with realistic variety
+        int ticketIndex = 0;
         foreach (var route in routes)
         {
-            uint ticketId = GetNextId(ctx, "ticketId");
-
-            var ticket = new Ticket
+            // Create 2-3 tickets per route for variety
+            int ticketsPerRoute = 2 + (int)(route.RouteId % 2);
+            
+            for (int i = 0; i < ticketsPerRoute; i++)
             {
-                TicketId = ticketId,
-                RouteId = route.RouteId,
-                TicketPrice = 0.75 + (route.RouteId % 3) * 0.10, // Prices between 0.75 and 0.95
-                SeatNumber = 1, // Default seat number
-                PaymentMethod = "cash", // Default payment method
-                IsActive = true, // Set ticket as active
-                CreatedAt = now,
-                UpdatedAt = null,
-                UpdatedBy = null,
-                PurchaseTime = now // Set purchase time to current time
-            };
-            ctx.Db.Ticket.Insert(ticket);
+                uint ticketId = GetNextId(ctx, "ticketId");
+                ticketIndex++;
+
+                // Vary ticket types and statuses
+                string ticketType = ticketTypes[ticketIndex % ticketTypes.Length];
+                string ticketStatus = ticketStatuses[ticketIndex % ticketStatuses.Length];
+                string seatType = seatTypes[ticketIndex % seatTypes.Length];
+                
+                // Base price varies by route
+                double basePrice = 0.75 + (route.RouteId % 3) * 0.10;
+                
+                // Apply discounts for student/senior/disabled
+                double? discountAmount = null;
+                string? discountType = null;
+                string? discountReason = null;
+                
+                if (ticketType == "Student")
+                {
+                    discountAmount = basePrice * 0.25; // 25% discount
+                    discountType = "Student Discount";
+                    discountReason = "Valid student ID";
+                    basePrice -= discountAmount.Value;
+                }
+                else if (ticketType == "Senior")
+                {
+                    discountAmount = basePrice * 0.30; // 30% discount
+                    discountType = "Senior Discount";
+                    discountReason = "Age 65+";
+                    basePrice -= discountAmount.Value;
+                }
+                else if (ticketType == "Disabled")
+                {
+                    discountAmount = basePrice * 0.50; // 50% discount
+                    discountType = "Disability Discount";
+                    discountReason = "Disability card";
+                    basePrice -= discountAmount.Value;
+                }
+                else if (ticketType == "Child")
+                {
+                    discountAmount = basePrice * 0.40; // 40% discount
+                    discountType = "Child Discount";
+                    discountReason = "Age under 12";
+                    basePrice -= discountAmount.Value;
+                }
+
+                // Some tickets are validated (used), some are not
+                bool isValidated = ticketStatus == "Used";
+                string? validationMethod = isValidated ? validationMethods[ticketIndex % validationMethods.Length] : null;
+                ulong? validationTime = isValidated ? now - (ulong)(ticketIndex * 3600000) : null; // Validated at different times
+                string? validationLocation = isValidated ? $"Stop {(ticketIndex % 5) + 1}" : null;
+
+                var ticket = new Ticket
+                {
+                    TicketId = ticketId,
+                    RouteId = route.RouteId,
+                    TicketPrice = Math.Round(basePrice, 2),
+                    SeatNumber = (uint)(i + 1), // Different seat numbers
+                    PaymentMethod = (ticketIndex % 3 == 0) ? "card" : "cash",
+                    IsActive = ticketStatus != "Cancelled",
+                    CreatedAt = now - (ulong)(ticketIndex * 86400000), // Created at different times
+                    UpdatedAt = isValidated ? validationTime : null,
+                    UpdatedBy = null,
+                    PurchaseTime = now - (ulong)(ticketIndex * 86400000),
+                    TicketType = ticketType,
+                    TicketStatus = ticketStatus,
+                    ValidationMethod = validationMethod,
+                    ValidationTime = validationTime,
+                    ValidationLocation = validationLocation,
+                    ValidatedByEmployeeId = isValidated ? (uint?)(1 + (ticketIndex % 3)) : null,
+                    IsReturn = (ticketIndex % 7 == 0) ? true : null, // Some return tickets
+                    ReturnTicketId = null,
+                    DiscountType = discountType,
+                    DiscountAmount = discountAmount,
+                    DiscountReason = discountReason,
+                    RefundStatus = ticketStatus == "Cancelled" ? "Refunded" : null,
+                    RefundAmount = ticketStatus == "Cancelled" ? basePrice : null,
+                    RefundTime = ticketStatus == "Cancelled" ? now - (ulong)(ticketIndex * 3600000) : null,
+                    RefundReason = ticketStatus == "Cancelled" ? "Customer request" : null,
+                    DiscountId = discountAmount.HasValue ? (uint?)(ticketIndex % 5 + 1) : null,
+                    SeatType = seatType,
+                    IsReserved = (ticketIndex % 5 == 0), // Some reserved tickets
+                    ReservationStatus = (ticketIndex % 5 == 0) ? "Confirmed" : null,
+                    ReservationExpiry = (ticketIndex % 5 == 0) ? now + 86400000 : null // 24 hours from now
+                };
+                ctx.Db.Ticket.Insert(ticket);
+            }
         }
 
         Log.Info("Tickets initialized successfully");
@@ -2277,6 +2359,37 @@ public static partial class Module
             // Convert to Unix timestamps
             ulong lastServiceDate = (ulong)lastServiceDateOffset.ToUnixTimeMilliseconds();
             ulong nextServiceDate = (ulong)nextServiceDateOffset.ToUnixTimeMilliseconds();
+            
+            // Generate varied maintenance data
+            var isScheduled = (i % 3 != 0); // Most are scheduled, some are emergency
+            var maintenanceStatus = (daysAgo < 10) ? "Completed" : (daysAgo < 30) ? "Completed" : "Completed";
+            var maintenanceDuration = (ulong)(4 + (i % 8)); // 4-11 hours
+            
+            // Calculate costs
+            var partsCost = 150.0 + (i % 10) * 50.0; // 150-600 BYN
+            var laborCost = maintenanceDuration * 25.0; // 25 BYN per hour
+            var maintenanceCost = partsCost + laborCost;
+            
+            // Parts replaced based on maintenance type
+            var partsReplaced = maintenanceType.Contains("масла") ? "Масло, масляный фильтр, воздушный фильтр" :
+                               maintenanceType.Contains("тормоз") ? "Тормозные колодки, тормозная жидкость" :
+                               maintenanceType.Contains("аккумулятор") ? "Аккумуляторная батарея" :
+                               maintenanceType.Contains("ремень") ? "Ремень ГРМ, натяжитель" :
+                               maintenanceType.Contains("токоприемник") ? "Графитовые вставки токоприемника" :
+                               maintenanceType.Contains("батарей") ? "Модуль управления батареями" :
+                               "Расходные материалы";
+            
+            // Diagnostic codes for some maintenance types
+            string[]? diagnosticCodes = null;
+            if (maintenanceType.Contains("Диагностика"))
+            {
+                diagnosticCodes = new[] { $"P{i:D4}", $"B{(i+1):D4}" };
+            }
+            
+            // Get employees for scheduling/completion
+            var employees = ctx.Db.Employee.Iter().ToList();
+            uint? scheduledBy = (employees.Count > 0 && isScheduled) ? employees[i % employees.Count].EmployeeId : null;
+            uint? completedBy = (employees.Count > 1) ? employees[(i + 1) % employees.Count].EmployeeId : null;
 
             var maintenance = new Maintenance
             {
@@ -2288,7 +2401,19 @@ public static partial class Module
                 FoundIssues = foundIssues,
                 Roadworthiness = roadworthiness,
                 MaintenanceType = maintenanceType,
-                MileageThreshold = "100000 km"
+                MileageThreshold = "100000 km",
+                MaintenanceCost = maintenanceCost,
+                PartsReplaced = partsReplaced,
+                MaintenanceDuration = maintenanceDuration,
+                IsScheduled = isScheduled,
+                MaintenanceLocation = isScheduled ? "Автопарк, ул. Первомайская 15" : "Аварийный выезд",
+                ScheduledByEmployeeId = scheduledBy,
+                CompletedByEmployeeId = completedBy,
+                MaintenanceNotes = isScheduled ? "Плановое техническое обслуживание" : "Экстренный ремонт",
+                MaintenanceStatus = maintenanceStatus,
+                DiagnosticCodes = diagnosticCodes,
+                LaborCost = laborCost,
+                PartsCost = partsCost
             };
             ctx.Db.Maintenance.Insert(maintenance);
         }
@@ -2358,6 +2483,18 @@ public static partial class Module
                     DateTimeOffset saleDateOffset = new DateTimeOffset(saleDateDateTime, localZone.GetUtcOffset(saleDateDateTime));
                     // Convert to Unix timestamp
                     ulong saleDate = (ulong)saleDateOffset.ToUnixTimeMilliseconds();
+                    // Determine payment method and status
+                    var paymentMethods = new[] { "Cash", "Card", "Mobile Payment" };
+                    var paymentMethod = paymentMethods[(month + day + i) % paymentMethods.Length];
+                    var paymentStatus = (month == 0 && day == 1) ? "Pending" : "Completed"; // Some recent sales pending
+                    
+                    // Calculate amounts
+                    var ticketPrice = tickets[ticketIndex].TicketPrice;
+                    var discountAmount = (i % 4 == 0) ? ticketPrice * 0.10 : 0.0; // 10% discount on some sales
+                    var taxAmount = ticketPrice * 0.18; // 18% tax
+                    var totalAmount = ticketPrice - discountAmount + taxAmount;
+                    var changeAmount = (paymentMethod == "Cash") ? Math.Round((totalAmount * 1.15) - totalAmount, 2) : 0.0;
+                    
                     var sale = new Sale
                     {
                         SaleId = saleId,
@@ -2367,7 +2504,25 @@ public static partial class Module
                         TicketSoldToUserPhone = "", // No phone number for physical sales
                         SellerId = (month < 1 && i % 2 == 0) ? adminUser?.UserId : null, // Recent sales by admin
                         SaleLocation = "В автобусе", // Sale made inside the bus
-                        SaleNotes = "Продажа билета физически"
+                        SaleNotes = "Продажа билета физически",
+                        PaymentMethod = paymentMethod,
+                        PaymentStatus = paymentStatus,
+                        TransactionId = (paymentMethod != "Cash") ? $"TXN-{saleId}-{month}{day}{i}" : null,
+                        TaxAmount = taxAmount,
+                        InvoiceNumber = $"INV-2025-{saleId:D6}",
+                        IsSubscription = false,
+                        SubscriptionType = null,
+                        SubscriptionStartDate = null,
+                        SubscriptionEndDate = null,
+                        IsGift = (i % 7 == 0), // Some sales are gifts
+                        GiftRecipient = (i % 7 == 0) ? "Подарок" : null,
+                        PromotionCode = (i % 4 == 0) ? "DISCOUNT10" : null,
+                        DiscountAmount = discountAmount,
+                        TotalAmount = totalAmount,
+                        PaymentTransactionId = (paymentMethod != "Cash") ? $"PAY-{saleId}-{Guid.NewGuid().ToString().Substring(0, 8)}" : null,
+                        ChangeAmount = changeAmount,
+                        PaymentProvider = (paymentMethod == "Card") ? "Visa" : (paymentMethod == "Mobile Payment") ? "Apple Pay" : null,
+                        PaymentReference = (paymentMethod != "Cash") ? $"REF-{saleId}" : null
                     };
                     ctx.Db.Sale.Insert(sale);
                 }
@@ -2384,17 +2539,44 @@ public static partial class Module
 
                 // Calculate sale date (X days ago)
                 ulong saleDate = now - ((ulong)day * daysInMs);
+                
+                // Determine payment details for online sales
+                var isAdmin = day % 2 == 0;
+                var paymentMethod = day % 3 == 0 ? "Card" : "Mobile Payment";
+                var ticketPrice = tickets[ticketIndex].TicketPrice;
+                var isSubscription = (day == 3); // One subscription sale
+                var discountAmount = isSubscription ? ticketPrice * 0.20 : 0.0; // 20% discount for subscription
+                var taxAmount = ticketPrice * 0.18; // 18% tax
+                var totalAmount = ticketPrice - discountAmount + taxAmount;
 
                 var sale = new Sale
                 {
                     SaleId = saleId,
                     TicketId = tickets[ticketIndex].TicketId,
                     SaleDate = saleDate,
-                    TicketSoldToUser = day % 2 == 0 ? "admin" : "guest",
+                    TicketSoldToUser = isAdmin ? "admin" : "guest",
                     TicketSoldToUserPhone = "+375291234567",
-                    SellerId = day % 2 == 0 ? adminUser.UserId : guestUser.UserId,
+                    SellerId = isAdmin ? adminUser.UserId : guestUser.UserId,
                     SaleLocation = "Онлайн", // Online sale
-                    SaleNotes = "Продажа билета онлайн"
+                    SaleNotes = "Продажа билета онлайн",
+                    PaymentMethod = paymentMethod,
+                    PaymentStatus = "Completed",
+                    TransactionId = $"TXN-ONLINE-{saleId}-{day}",
+                    TaxAmount = taxAmount,
+                    InvoiceNumber = $"INV-ONLINE-2025-{saleId:D6}",
+                    IsSubscription = isSubscription,
+                    SubscriptionType = isSubscription ? "Monthly Pass" : null,
+                    SubscriptionStartDate = isSubscription ? saleDate : null,
+                    SubscriptionEndDate = isSubscription ? (saleDate + (30 * daysInMs)) : null,
+                    IsGift = (day == 4), // One gift purchase
+                    GiftRecipient = (day == 4) ? "Друг" : null,
+                    PromotionCode = isSubscription ? "MONTHLY20" : null,
+                    DiscountAmount = discountAmount,
+                    TotalAmount = totalAmount,
+                    PaymentTransactionId = $"PAY-ONLINE-{saleId}-{Guid.NewGuid().ToString().Substring(0, 8)}",
+                    ChangeAmount = 0.0, // No change for online payments
+                    PaymentProvider = (paymentMethod == "Card") ? "Mastercard" : "Google Pay",
+                    PaymentReference = $"REF-ONLINE-{saleId}"
                 };
                 ctx.Db.Sale.Insert(sale);
             }
