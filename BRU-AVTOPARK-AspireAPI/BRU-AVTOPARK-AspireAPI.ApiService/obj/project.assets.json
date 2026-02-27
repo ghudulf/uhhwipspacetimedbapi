@@ -1993,7 +1993,7 @@
           }
         }
       },
-      "SpacetimeDB.BSATN.Runtime/1.0.0": {
+      "SpacetimeDB.BSATN.Runtime/2.0.1": {
         "type": "package",
         "compile": {
           "lib/net8.0/SpacetimeDB.BSATN.Runtime.dll": {
@@ -2006,10 +2006,10 @@
           }
         }
       },
-      "SpacetimeDB.ClientSDK/1.0.1": {
+      "SpacetimeDB.ClientSDK/2.0.1": {
         "type": "package",
         "dependencies": {
-          "SpacetimeDB.BSATN.Runtime": "1.0.0"
+          "SpacetimeDB.BSATN.Runtime": "2.0.1"
         },
         "compile": {
           "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll": {}
@@ -2421,7 +2421,7 @@
           "OpenIddict.Server.AspNetCore": "4.1.0",
           "OpenIddict.Validation.AspNetCore": "4.1.0",
           "QRCoder": "1.6.0",
-          "SpacetimeDB.ClientSDK": "1.0.1"
+          "SpacetimeDB.ClientSDK": "2.0.0"
         },
         "compile": {
           "bin/placeholder/TicketSalesApp.Services.dll": {}
@@ -5186,10 +5186,10 @@
         "serilog.sinks.file.nuspec"
       ]
     },
-    "SpacetimeDB.BSATN.Runtime/1.0.0": {
-      "sha512": "44h4TB3IO2It4H0ieuI2/3ZdhGsvuR195sLUa7IiGlpWi0hwePv/TiMcQlFI6+AicKyx5v8F5CqA1IztKdQahQ==",
+    "SpacetimeDB.BSATN.Runtime/2.0.1": {
+      "sha512": "dq+J9fG56/zoeOydfITCAvboPcBeW4zI87bPD3QQ5d6mlpaAlkVvuAOM/B7iHgOLu29pPhVnx2mQ92rhoBHu+w==",
       "type": "package",
-      "path": "spacetimedb.bsatn.runtime/1.0.0",
+      "path": "spacetimedb.bsatn.runtime/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -5201,21 +5201,21 @@
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.dll",
         "lib/netstandard2.1/SpacetimeDB.BSATN.Runtime.xml",
         "logo.png",
-        "spacetimedb.bsatn.runtime.1.0.0.nupkg.sha512",
+        "spacetimedb.bsatn.runtime.2.0.1.nupkg.sha512",
         "spacetimedb.bsatn.runtime.nuspec"
       ]
     },
-    "SpacetimeDB.ClientSDK/1.0.1": {
-      "sha512": "GqG5Wt/Onk0uOuYDfS7x94Ic7ZBfoFdhmdk1Ega9D8DS0oUT2dVq4bTwJ1zlPC+pn/+ZRC+jkeuzVIaTY5CHuQ==",
+    "SpacetimeDB.ClientSDK/2.0.1": {
+      "sha512": "Uw4lkwDVzrI3B9doHqXQWpEmoqcqiUF1wQUVJ7gDVOGQvqBu+3lfol5yz0KhSptBvrVrUgI4ObVdYrMyddP9ew==",
       "type": "package",
-      "path": "spacetimedb.clientsdk/1.0.1",
+      "path": "spacetimedb.clientsdk/2.0.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "README.md",
         "lib/netstandard2.1/SpacetimeDB.ClientSDK.dll",
         "logo.png",
-        "spacetimedb.clientsdk.1.0.1.nupkg.sha512",
+        "spacetimedb.clientsdk.2.0.1.nupkg.sha512",
         "spacetimedb.clientsdk.nuspec"
       ]
     },
@@ -5810,6 +5810,7 @@
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.Debug >= 3.0.0",
       "Serilog.Sinks.File >= 6.0.0",
+      "SpacetimeDB.ClientSDK >= 2.0.0",
       "Swashbuckle.AspNetCore >= 6.5.0",
       "System.IdentityModel.Tokens.Jwt >= 8.0.1",
       "TicketSalesApp.Services >= 1.0.0",
@@ -5946,6 +5947,10 @@
             "target": "Package",
             "version": "[6.0.0, )"
           },
+          "SpacetimeDB.ClientSDK": {
+            "target": "Package",
+            "version": "[2.0.0, )"
+          },
           "Swashbuckle.AspNetCore": {
             "target": "Package",
             "version": "[6.5.0, )"
@@ -5981,5 +5986,17 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "BRU-AVTOPARK-AspireAPI.ApiService зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

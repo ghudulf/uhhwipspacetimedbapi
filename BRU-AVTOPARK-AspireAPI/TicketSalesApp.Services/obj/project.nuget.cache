@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2IjiXSkURWE=",
+  "dgSpecHash": "egrEl1LUjPU=",
   "success": true,
   "projectFilePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
   "expectedPackageFiles": [
@@ -57,8 +57,8 @@
     "C:\\Users\\andrej\\.nuget\\packages\\openiddict.validation\\4.1.0\\openiddict.validation.4.1.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\openiddict.validation.aspnetcore\\4.1.0\\openiddict.validation.aspnetcore.4.1.0.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\qrcoder\\1.6.0\\qrcoder.1.6.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.bsatn.runtime\\1.0.0\\spacetimedb.bsatn.runtime.1.0.0.nupkg.sha512",
-    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.clientsdk\\1.0.1\\spacetimedb.clientsdk.1.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.bsatn.runtime\\2.0.1\\spacetimedb.bsatn.runtime.2.0.1.nupkg.sha512",
+    "C:\\Users\\andrej\\.nuget\\packages\\spacetimedb.clientsdk\\2.0.1\\spacetimedb.clientsdk.2.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.10\\sqlitepclraw.bundle_e_sqlite3.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.core\\2.1.10\\sqlitepclraw.core.2.1.10.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.10\\sqlitepclraw.lib.e_sqlite3.2.1.10.nupkg.sha512",
@@ -84,5 +84,18 @@
     "C:\\Users\\andrej\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
     "C:\\Users\\andrej\\.nuget\\packages\\system.threading.channels\\7.0.0\\system.threading.channels.7.0.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "TicketSalesApp.Services зависит от SpacetimeDB.ClientSDK (>= 2.0.0), но версия SpacetimeDB.ClientSDK 2.0.0 не найдена. Использовалась версия SpacetimeDB.ClientSDK 2.0.1.",
+      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
+      "warningLevel": 1,
+      "filePath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
+      "libraryId": "SpacetimeDB.ClientSDK",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

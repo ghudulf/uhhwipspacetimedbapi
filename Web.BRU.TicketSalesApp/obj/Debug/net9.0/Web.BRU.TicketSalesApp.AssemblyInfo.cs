@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Web.BRU.TicketSalesApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0e9b780d02d6b8831d92d0ac3fd177882118b831")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fe929dcbcbb0acb5c4eeef6c54a950136df1d4c6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Web.BRU.TicketSalesApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Web.BRU.TicketSalesApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
