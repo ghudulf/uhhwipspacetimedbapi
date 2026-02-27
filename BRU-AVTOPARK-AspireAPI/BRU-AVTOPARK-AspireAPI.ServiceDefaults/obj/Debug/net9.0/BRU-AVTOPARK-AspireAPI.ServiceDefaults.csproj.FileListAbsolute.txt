@@ -10,3 +10,4 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BR
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\obj\Debug\net9.0\refint\BRU-AVTOPARK-AspireAPI.ServiceDefaults.dll
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.ServiceDefaults.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\obj\Debug\net9.0\ref\BRU-AVTOPARK-AspireAPI.ServiceDefaults.dll
+G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ServiceDefaults\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.ServiceDefaults.sourcelink.json
