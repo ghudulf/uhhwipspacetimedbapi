@@ -36,6 +36,7 @@
                                 </TextBlock>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
+                       
                     </ComboBox>
                     
                     <CalendarDatePicker Grid.Column="1"
@@ -106,7 +107,7 @@
                 <ScrollViewer Grid.Row="1" 
                             VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <ItemsControl ItemsSource="{Binding SelectedSchedule.Schedule.RouteStops}">
+                    <ItemsControl ItemsSource="{Binding SelectedSchedule.RouteStops}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="10"/>

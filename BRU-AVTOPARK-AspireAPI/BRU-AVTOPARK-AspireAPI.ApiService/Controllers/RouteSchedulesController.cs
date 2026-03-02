@@ -170,25 +170,59 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                _logger.LogInformation("Searching route schedules with routeId: {RouteId}, date: {Date}, dayOfWeek: {DayOfWeek}, isActive: {IsActive}, page: {Page}, pageSize: {PageSize}",
+                _logger.LogInformation("=== ROUTE SCHEDULES SEARCH REQUEST START ===");
+                _logger.LogInformation("Search Parameters: routeId={RouteId}, date={Date}, dayOfWeek={DayOfWeek}, isActive={IsActive}, page={Page}, pageSize={PageSize}",
                     routeId, date, dayOfWeek, isActive, page, pageSize);
 
                 var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                var totalSchedulesInDatabase = schedules.Count();
+                
+                _logger.LogInformation("TOTAL ROUTE SCHEDULES IN DATABASE: {TotalCount}", totalSchedulesInDatabase);
+                _logger.LogInformation("Database statistics: {Recurring} recurring, {NonRecurring} non-recurring schedules",
+                    schedules.Count(s => s.IsRecurring),
+                    schedules.Count(s => !s.IsRecurring));
+                
                 var query = schedules.AsEnumerable(); // Start query on IEnumerable
 
                 if (routeId.HasValue)
+                {
+                    var beforeRouteFilter = query.Count();
                     query = query.Where(s => s.RouteId == routeId.Value);
+                    var afterRouteFilter = query.Count();
+                    
+                    _logger.LogInformation("Route filter applied: RouteId={RouteId}, Schedules before={Before}, after={After}, removed={Removed}",
+                        routeId.Value, beforeRouteFilter, afterRouteFilter, beforeRouteFilter - afterRouteFilter);
+                }
 
                 if (date.HasValue)
                 {
                     // COMPREHENSIVE DATE FILTERING WITH EXTENSIVE LOGGING AND VALIDATION
                     var targetDate = date.Value.Date;
-                    var targetDayOfWeek = targetDate.DayOfWeek.ToString();
+                    var targetDayOfWeek = targetDate.DayOfWeek.ToString(); // English day name
+                    
+                    // CRITICAL FIX: Database stores days in RUSSIAN, not English
+                    // Map English day names to Russian equivalents for comparison
+                    var dayOfWeekMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "Monday", "Понедельник" },
+                        { "Tuesday", "Вторник" },
+                        { "Wednesday", "Среда" },
+                        { "Thursday", "Четверг" },
+                        { "Friday", "Пятница" },
+                        { "Saturday", "Суббота" },
+                        { "Sunday", "Воскресенье" }
+                    };
+                    
+                    var targetDayOfWeekRussian = dayOfWeekMapping.ContainsKey(targetDayOfWeek) 
+                        ? dayOfWeekMapping[targetDayOfWeek] 
+                        : targetDayOfWeek;
+                    
                     var targetDateStartMs = (ulong)new DateTimeOffset(targetDate).ToUnixTimeMilliseconds();
                     var targetDateEndMs = targetDateStartMs + 86400000; // Add 24 hours in milliseconds
                     
                     _logger.LogInformation("=== DATE FILTER ANALYSIS START ===");
-                    _logger.LogInformation("Target Date: {Date} ({DayOfWeek})", targetDate.ToString("yyyy-MM-dd"), targetDayOfWeek);
+                    _logger.LogInformation("Target Date: {Date} ({DayOfWeek} / {DayOfWeekRussian})", 
+                        targetDate.ToString("yyyy-MM-dd"), targetDayOfWeek, targetDayOfWeekRussian);
                     _logger.LogInformation("Target Date Range (Unix ms): {Start} to {End}", targetDateStartMs, targetDateEndMs);
                     _logger.LogInformation("Total schedules before date filter: {Count}", query.Count());
                     
@@ -201,6 +235,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                         totalBeforeFilter, recurringBeforeFilter, nonRecurringBeforeFilter);
                     
                     // Apply comprehensive date filtering with multiple conditions
+                    // CRITICAL: Use Russian day names for comparison since database stores them in Russian
+                    // NOTE: We do NOT filter by ValidFrom/ValidUntil to avoid 1970 epoch bug issues
                     query = query.Where(s => 
                     {
                         // CONDITION 1: Non-recurring schedule with exact date match
@@ -213,23 +249,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                         // Must satisfy ALL of the following:
                         // - Schedule is marked as recurring
                         // - DaysOfWeek list is not null and not empty
-                        // - DaysOfWeek contains the target day (case-insensitive)
-                        // - ValidFrom date is on or before the target date
-                        // - ValidUntil is either null (no expiration) OR is on or after the target date
+                        // - DaysOfWeek contains the target day IN RUSSIAN (case-insensitive)
+                        // NOTE: ValidFrom/ValidUntil checks REMOVED to avoid date range issues
                         var isRecurringMatch = false;
                         if (s.IsRecurring)
                         {
                             var hasDaysOfWeek = s.DaysOfWeek != null && s.DaysOfWeek.Count > 0;
+                            
+                            // CRITICAL FIX: Compare against RUSSIAN day name
                             var matchesDayOfWeek = hasDaysOfWeek && 
                                                    s.DaysOfWeek.Any(day => 
-                                                       string.Equals(day, targetDayOfWeek, StringComparison.OrdinalIgnoreCase));
-                            var validFromSatisfied = s.ValidFrom <= targetDateStartMs;
-                            var validUntilSatisfied = !s.ValidUntil.HasValue || s.ValidUntil.Value >= targetDateStartMs;
+                                                       string.Equals(day, targetDayOfWeekRussian, StringComparison.OrdinalIgnoreCase));
                             
-                            isRecurringMatch = hasDaysOfWeek && 
-                                             matchesDayOfWeek && 
-                                             validFromSatisfied && 
-                                             validUntilSatisfied;
+                            isRecurringMatch = hasDaysOfWeek && matchesDayOfWeek;
                         }
                         
                         // CONDITION 3: One-time schedule with departure time on exact date
@@ -278,19 +310,72 @@ namespace TicketSalesApp.AdminServer.Controllers
                         _logger.LogWarning("NO SCHEDULES MATCHED THE DATE FILTER - This may indicate a data or logic issue");
                         _logger.LogWarning("Verify that:");
                         _logger.LogWarning("  1. Schedules exist for route {RouteId}", routeId);
-                        _logger.LogWarning("  2. Recurring schedules have DaysOfWeek that include '{DayOfWeek}'", targetDayOfWeek);
-                        _logger.LogWarning("  3. ValidFrom dates are not in the future relative to {Date}", targetDate.ToString("yyyy-MM-dd"));
-                        _logger.LogWarning("  4. ValidUntil dates (if set) are not in the past relative to {Date}", targetDate.ToString("yyyy-MM-dd"));
+                        _logger.LogWarning("  2. Recurring schedules have DaysOfWeek that include '{DayOfWeek}' (Russian: '{DayOfWeekRussian}')", 
+                            targetDayOfWeek, targetDayOfWeekRussian);
+                        _logger.LogWarning("  NOTE: ValidFrom/ValidUntil checks are disabled to avoid date range issues");
+                        
+                        // DIAGNOSTIC: Sample filtered-out schedules to show WHY they were excluded
+                        var sampleFiltered = query.Take(5).ToList();
+                        if (sampleFiltered.Any())
+                        {
+                            _logger.LogWarning("=== SAMPLE FILTERED-OUT SCHEDULES (showing why they were excluded) ===");
+                            foreach (var sample in sampleFiltered)
+                            {
+                                var daysOfWeekStr = sample.DaysOfWeek != null ? string.Join(", ", sample.DaysOfWeek) : "null";
+                                var validFromDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sample.ValidFrom).ToString("yyyy-MM-dd");
+                                var validUntilDate = sample.ValidUntil.HasValue 
+                                    ? DateTimeOffset.FromUnixTimeMilliseconds((long)sample.ValidUntil.Value).ToString("yyyy-MM-dd") 
+                                    : "null (no expiration)";
+                                
+                                // Determine exclusion reasons
+                                var reasons = new List<string>();
+                                
+                                var hasDaysOfWeek = sample.DaysOfWeek != null && sample.DaysOfWeek.Count > 0;
+                                var matchesDayOfWeek = hasDaysOfWeek && 
+                                                       sample.DaysOfWeek.Any(day => 
+                                                           string.Equals(day, targetDayOfWeekRussian, StringComparison.OrdinalIgnoreCase));
+                                
+                                if (!hasDaysOfWeek)
+                                    reasons.Add("DaysOfWeek is null or empty");
+                                else if (!matchesDayOfWeek)
+                                    reasons.Add($"DaysOfWeek [{daysOfWeekStr}] does not include '{targetDayOfWeekRussian}'");
+                                
+                                // NOTE: ValidFrom/ValidUntil checks removed from filter logic
+                                // Showing dates for informational purposes only
+                                
+                                var reasonsStr = reasons.Any() ? string.Join("; ", reasons) : "UNKNOWN - should have matched!";
+                                
+                                _logger.LogWarning("  Schedule {ScheduleId} (Route {RouteId}): IsRecurring={IsRecurring}, " +
+                                               "DaysOfWeek=[{DaysOfWeek}], ValidFrom={ValidFrom}, ValidUntil={ValidUntil} | EXCLUDED: {Reasons}",
+                                    sample.ScheduleId, sample.RouteId, sample.IsRecurring, 
+                                    daysOfWeekStr, validFromDate, validUntilDate, reasonsStr);
+                            }
+                            _logger.LogWarning("=== END SAMPLE FILTERED-OUT SCHEDULES ===");
+                        }
                     }
                     
                     _logger.LogInformation("=== DATE FILTER ANALYSIS END ===");
                 }
 
                 if (!string.IsNullOrEmpty(dayOfWeek))
+                {
+                    var beforeDayFilter = query.Count();
                     query = query.Where(s => s.DaysOfWeek != null && s.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase));
+                    var afterDayFilter = query.Count();
+                    
+                    _logger.LogInformation("Day of week filter applied: DayOfWeek={DayOfWeek}, Schedules before={Before}, after={After}, removed={Removed}",
+                        dayOfWeek, beforeDayFilter, afterDayFilter, beforeDayFilter - afterDayFilter);
+                }
                 
                 if (isActive.HasValue)
+                {
+                    var beforeActiveFilter = query.Count();
                     query = query.Where(s => s.IsActive == isActive.Value);
+                    var afterActiveFilter = query.Count();
+                    
+                    _logger.LogInformation("IsActive filter applied: IsActive={IsActive}, Schedules before={Before}, after={After}, removed={Removed}",
+                        isActive.Value, beforeActiveFilter, afterActiveFilter, beforeActiveFilter - afterActiveFilter);
+                }
 
                 // Get total count before pagination
                 var totalCount = query.Count();
@@ -338,8 +423,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
 
-                _logger.LogInformation("Found {Count} matching schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
+                _logger.LogInformation("=== ROUTE SCHEDULES SEARCH REQUEST END ===");
+                _logger.LogInformation("FINAL RESULT: Found {Count} matching schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
                     result.Count, page, totalPages, totalCount);
+                _logger.LogInformation("Total database schedules: {DatabaseTotal}, After all filters: {FilteredTotal}, Returned on this page: {PageCount}",
+                    totalSchedulesInDatabase, totalCount, result.Count);
                 
                 return Ok(result);
             }

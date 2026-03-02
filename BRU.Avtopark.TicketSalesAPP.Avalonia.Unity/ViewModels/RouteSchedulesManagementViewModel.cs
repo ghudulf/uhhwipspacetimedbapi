@@ -64,7 +64,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
-        public List<string>? RouteStops => Schedule.RouteStops;
+        public List<string>? RouteStops
+        {
+            get
+            {
+                var stops = Schedule.RouteStops;
+                Log.Debug("RouteScheduleDisplayModel.RouteStops accessed for schedule {ScheduleId}: {StopsCount} stops, Stops={Stops}",
+                    Schedule.ScheduleId,
+                    stops?.Count ?? 0,
+                    stops != null ? string.Join(", ", stops) : "null");
+                return stops;
+            }
+        }
         public string? EndPoint => Schedule.EndPoint;
         public double Price => Schedule.Price;
         public uint AvailableSeats => Schedule.AvailableSeats;
@@ -234,7 +245,23 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public RouteScheduleDisplayModel? SelectedSchedule
         {
             get => _selectedSchedule;
-            set => this.RaiseAndSetIfChanged(ref _selectedSchedule, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedSchedule, value);
+                if (value != null)
+                {
+                    Log.Information("Schedule selected: ScheduleId={ScheduleId}, Route={Start}-{End}, RouteStops count={StopsCount}",
+                        value.ScheduleId, value.StartPoint, value.EndPoint, value.RouteStops?.Count ?? 0);
+                    if (value.RouteStops != null && value.RouteStops.Count > 0)
+                    {
+                        Log.Debug("RouteStops for selected schedule: {Stops}", string.Join(", ", value.RouteStops));
+                    }
+                    else
+                    {
+                        Log.Warning("Selected schedule {ScheduleId} has null or empty RouteStops", value.ScheduleId);
+                    }
+                }
+            }
         }
 
         private bool _isBusy;
