@@ -25,9 +25,18 @@
                     <ComboBox Grid.Column="0" 
                              ItemsSource="{Binding Routes}"
                              SelectedItem="{Binding SelectedRoute}"
-                             DisplayMemberBinding="{Binding StartPoint}"
                              PlaceholderText="Выберите маршрут"
-                             Margin="0,0,10,0"/>
+                             Margin="0,0,10,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Run Text="{Binding StartPoint}"/>
+                                    <Run Text=" → "/>
+                                    <Run Text="{Binding EndPoint}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     
                     <CalendarDatePicker Grid.Column="1"
                                       SelectedDate="{Binding SelectedDate.Date}"
@@ -68,10 +77,10 @@
                                     Binding="{Binding EndPoint}"
                                     Width="*"/>
                     <DataGridTextColumn Header="Отправление" 
-                                    Binding="{Binding DepartureTime, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                    Binding="{Binding DepartureTimeDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Прибытие" 
-                                    Binding="{Binding ArrivalTime, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                    Binding="{Binding ArrivalTimeDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Цена" 
                                     Binding="{Binding Price, StringFormat={}{0:C}}"
@@ -97,7 +106,7 @@
                 <ScrollViewer Grid.Row="1" 
                             VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <ItemsControl ItemsSource="{Binding SelectedSchedule.RouteStops}">
+                    <ItemsControl ItemsSource="{Binding SelectedSchedule.Schedule.RouteStops}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="10"/>
@@ -135,21 +144,45 @@
             </Grid>
         </Grid>
 
-        <!-- Action Buttons -->
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Right" 
-                    Margin="0,10,0,0" 
-                    Spacing="10">
-            <Button Command="{Binding EditCommand}"
-                    CommandParameter="{Binding SelectedSchedule}"
-                    Content="Редактировать"
-                    IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-            <Button Command="{Binding DeleteCommand}"
-                    CommandParameter="{Binding SelectedSchedule}"
-                    Content="Удалить"
-                    IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-        </StackPanel>
+        <!-- Action Buttons and Pagination -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+            <!-- Pagination Controls -->
+            <StackPanel Grid.Column="0" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Left" 
+                        Spacing="10">
+                <Button Command="{Binding FirstPageCommand}"
+                        Content="⏮ First"
+                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <Button Command="{Binding PreviousPageCommand}"
+                        Content="◀ Previous"
+                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <TextBlock Text="{Binding PageInfo}"
+                          VerticalAlignment="Center"
+                          Margin="10,0"/>
+                <Button Command="{Binding NextPageCommand}"
+                        Content="Next ▶"
+                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <Button Command="{Binding LastPageCommand}"
+                        Content="Last ⏭"
+                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+            
+            <!-- Action Buttons -->
+            <StackPanel Grid.Column="1" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right" 
+                        Spacing="10">
+                <Button Command="{Binding EditCommand}"
+                        CommandParameter="{Binding SelectedSchedule}"
+                        Content="Редактировать"
+                        IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <Button Command="{Binding DeleteCommand}"
+                        CommandParameter="{Binding SelectedSchedule}"
+                        Content="Удалить"
+                        IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+        </Grid>
 
         <!-- Loading Overlay -->
         <Grid Grid.RowSpan="3" 

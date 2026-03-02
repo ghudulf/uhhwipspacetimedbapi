@@ -39,11 +39,28 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync");
                 var jobs = await _employeeService.GetAllJobsAsync();
                 
-                // Map to anonymous type
+                // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
+                // Include ALL fields that the client needs
                 var result = jobs.Select(j => new {
                     j.JobId,
                     j.JobTitle,
-                    j.Internship
+                    j.Internship,
+                    j.BaseSalary,
+                    j.Department,
+                    j.JobDescription,
+                    j.RequiredExperience,
+                    j.RequiredSkills,
+                    j.RequiredCertifications,
+                    j.EducationRequirements,
+                    j.WorkSchedule,
+                    j.IsFullTime,
+                    j.IsPartTime,
+                    j.IsShiftWork,
+                    j.Benefits,
+                    j.ReportingTo,
+                    j.VacationDays,
+                    j.SickDays,
+                    j.PerformanceMetrics
                 }).ToList();
 
                 _logger.LogInformation("DATABASE RESULT: Retrieved {JobCount} jobs", result.Count);
@@ -51,12 +68,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 foreach (var job in result)
                 {
-                    _logger.LogDebug("Job ID: {JobId}, Title: {JobTitle}, Internship: {Internship}", 
-                        job.JobId, job.JobTitle, job.Internship);
+                    _logger.LogDebug("Job ID: {JobId}, Title: {JobTitle}, Internship: {Internship}, Department: {Department}", 
+                        job.JobId, job.JobTitle, job.Internship, job.Department);
                 }
                 
                 _logger.LogInformation("RESPONSE SENT: Returning {JobCount} jobs to client", result.Count);
-                return Ok(result); // Return mapped result
+                return Ok(result);
             }
             catch (Exception ex)
             {

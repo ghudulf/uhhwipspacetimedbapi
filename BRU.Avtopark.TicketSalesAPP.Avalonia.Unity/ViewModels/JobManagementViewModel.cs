@@ -25,22 +25,109 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
+    public partial class JobDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private Job _job;
+
+        public JobDisplayModel(Job job)
+        {
+            _job = job;
+            Log.Debug("JobDisplayModel created for job: JobId={JobId}, Title={Title}", job.JobId, job.JobTitle);
+        }
+
+        // Expose all Job properties for binding and conversion
+        public uint JobId
+        {
+            get
+            {
+                Log.Verbose("JobDisplayModel.JobId accessed: {Value}", Job.JobId);
+                return Job.JobId;
+            }
+        }
+
+        public string JobTitle
+        {
+            get
+            {
+                Log.Verbose("JobDisplayModel.JobTitle accessed: {Value}", Job.JobTitle);
+                return Job.JobTitle;
+            }
+        }
+
+        public string? Internship => Job.Internship;
+        public double? BaseSalary => Job.BaseSalary;
+        public string? Department => Job.Department;
+        public string? JobDescription => Job.JobDescription;
+        public uint? RequiredExperience => Job.RequiredExperience;
+        public List<string>? RequiredSkills => Job.RequiredSkills;
+        public List<string>? RequiredCertifications => Job.RequiredCertifications;
+        public string? EducationRequirements => Job.EducationRequirements;
+        public string? WorkSchedule => Job.WorkSchedule;
+        public bool? IsFullTime => Job.IsFullTime;
+        public bool? IsPartTime => Job.IsPartTime;
+        public bool? IsShiftWork => Job.IsShiftWork;
+        public List<string>? Benefits => Job.Benefits;
+        public string? ReportingTo => Job.ReportingTo;
+        public uint? VacationDays => Job.VacationDays;
+        public uint? SickDays => Job.SickDays;
+        public string? PerformanceMetrics => Job.PerformanceMetrics;
+
+        // Method to create a complete Job from this DisplayModel
+        public Job ToJob()
+        {
+            Log.Debug("JobDisplayModel.ToJob called for job: {Title}", Job.JobTitle);
+            return new Job
+            {
+                JobId = Job.JobId,
+                JobTitle = Job.JobTitle,
+                Internship = Job.Internship,
+                BaseSalary = Job.BaseSalary,
+                Department = Job.Department,
+                JobDescription = Job.JobDescription,
+                RequiredExperience = Job.RequiredExperience,
+                RequiredSkills = Job.RequiredSkills,
+                RequiredCertifications = Job.RequiredCertifications,
+                EducationRequirements = Job.EducationRequirements,
+                WorkSchedule = Job.WorkSchedule,
+                IsFullTime = Job.IsFullTime,
+                IsPartTime = Job.IsPartTime,
+                IsShiftWork = Job.IsShiftWork,
+                Benefits = Job.Benefits,
+                ReportingTo = Job.ReportingTo,
+                VacationDays = Job.VacationDays,
+                SickDays = Job.SickDays,
+                PerformanceMetrics = Job.PerformanceMetrics
+            };
+        }
+
+        // Method to update the underlying Job with new values
+        public void UpdateJob(string jobTitle, string? internship)
+        {
+            Log.Debug("JobDisplayModel.UpdateJob called: Title={Title}, Internship={Internship}", jobTitle, internship);
+            Job.JobTitle = jobTitle;
+            Job.Internship = internship;
+            OnPropertyChanged(nameof(JobTitle));
+            OnPropertyChanged(nameof(Internship));
+        }
+    }
+
     public partial class JobManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        private List<Job> _allJobs = new();
-        private ObservableCollection<Job> _jobs = new();
-        public ObservableCollection<Job> Jobs
+        private List<JobDisplayModel> _allJobs = new();
+        private ObservableCollection<JobDisplayModel> _jobs = new();
+        public ObservableCollection<JobDisplayModel> Jobs
         {
             get => _jobs;
             set => this.RaiseAndSetIfChanged(ref _jobs, value);
         }
 
-        private Job? _selectedJob;
-        public Job? SelectedJob
+        private JobDisplayModel? _selectedJob;
+        public JobDisplayModel? SelectedJob
         {
             get => _selectedJob;
             set => this.RaiseAndSetIfChanged(ref _selectedJob, value);
@@ -130,7 +217,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var jobsJsonString = await jobsResponse.Content.ReadAsStringAsync();
                 Log.Verbose("Raw Jobs response received: {RawResponse}", jobsJsonString);
 
-                List<Job> loadedJobs = new();
+                List<JobDisplayModel> loadedJobs = new();
 
                 if (jobsResponse.IsSuccessStatusCode)
                 {
@@ -146,7 +233,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                 var job = jobObj.ParseJob();
                                 if (job != null)
                                 {
-                                    loadedJobs.Add(job);
+                                    loadedJobs.Add(new JobDisplayModel(job));
                                 }
                             }
                         }
@@ -167,7 +254,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // Update the collections
                 _allJobs = loadedJobs; // Update backing field
-                Jobs = new ObservableCollection<Job>(_allJobs); // Update displayed collection
+                Jobs = new ObservableCollection<JobDisplayModel>(_allJobs); // Update displayed collection
 
                 Log.Information("Finished processing data. Displaying {JobCount} jobs.", Jobs.Count);
             }
@@ -177,8 +264,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in JobManagementViewModel");
                 // Clear collections on fatal error
-                _allJobs = new List<Job>();
-                Jobs = new ObservableCollection<Job>();
+                _allJobs = new List<JobDisplayModel>();
+                Jobs = new ObservableCollection<JobDisplayModel>();
             }
             finally
             {
@@ -374,25 +461,27 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
-                    var updatedJob = new Job
-                    {
-                        JobId = SelectedJob.JobId,
-                        JobTitle = jobTitleBox.Text,
-                        Internship = internshipBox.Text // API expects JobInternship
-                    };
+                    // Convert DisplayModel to Job, preserving all fields
+                    var updatedJob = SelectedJob.ToJob();
+                    updatedJob.JobTitle = jobTitleBox.Text;
+                    updatedJob.Internship = internshipBox.Text;
 
-                    var json = JsonSerializer.Serialize(updatedJob, _jsonOptions); // Use options
+                    var json = JsonSerializer.Serialize(updatedJob, _jsonOptions);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+                    Log.Information("Updating job {JobId} with data: {Json}", SelectedJob.JobId, json);
                     var response = await _httpClient.PutAsync($"{_baseUrl}/Jobs/{SelectedJob.JobId}", content);
                     if (response.IsSuccessStatusCode)
                     {
+                        Log.Information("Successfully updated job {JobId}", SelectedJob.JobId);
                         await LoadData();
                         dialog.Close();
                     }
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync();
+                        Log.Error("Failed to update job {JobId}. Status: {StatusCode}, Error: {Error}", 
+                            SelectedJob.JobId, response.StatusCode, error);
                         var errorDialog = MessageBoxManager
                             .GetMessageBoxStandard(
                                 "Ошибка",
@@ -493,7 +582,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             if (string.IsNullOrWhiteSpace(value))
             {
                  Log.Debug("Search text is empty, resetting filter.");
-                Jobs = new ObservableCollection<Job>(_allJobs);
+                Jobs = new ObservableCollection<JobDisplayModel>(_allJobs);
                 return;
             }
 
@@ -506,7 +595,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             ).ToList();
 
              Log.Information("Filtering complete. Found {Count} jobs matching '{SearchText}'", filteredJobs.Count, value);
-            Jobs = new ObservableCollection<Job>(filteredJobs);
+            Jobs = new ObservableCollection<JobDisplayModel>(filteredJobs);
         }
     }
 } 

@@ -35,38 +35,376 @@ using System.Globalization;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
+    public partial class UserDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private UserProfile _user;
+
+        public UserDisplayModel(UserProfile user)
+        {
+            _user = user;
+            Log.Debug("UserDisplayModel created for user: LegacyId={LegacyId}, Login={Login}", user.LegacyUserId, user.Login);
+        }
+
+        public uint LegacyUserId
+        {
+            get
+            {
+                Log.Verbose("UserDisplayModel.LegacyUserId accessed: {Value}", User.LegacyUserId);
+                return User.LegacyUserId;
+            }
+        }
+
+        public string Login
+        {
+            get
+            {
+                Log.Verbose("UserDisplayModel.Login accessed: {Value}", User.Login);
+                return User.Login;
+            }
+        }
+
+        public string? Email
+        {
+            get
+            {
+                Log.Verbose("UserDisplayModel.Email accessed: {Value}", User.Email);
+                return User.Email;
+            }
+        }
+
+        public string? PhoneNumber
+        {
+            get
+            {
+                Log.Verbose("UserDisplayModel.PhoneNumber accessed: {Value}", User.PhoneNumber);
+                return User.PhoneNumber;
+            }
+        }
+
+        public bool IsActive
+        {
+            get
+            {
+                Log.Verbose("UserDisplayModel.IsActive accessed: {Value}", User.IsActive);
+                return User.IsActive;
+            }
+        }
+
+        public string CreatedAtDisplay
+        {
+            get
+            {
+                if (User.CreatedAt == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)User.CreatedAt);
+                    var formatted = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+                    Log.Verbose("UserDisplayModel.CreatedAtDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format CreatedAt timestamp {Timestamp}", User.CreatedAt);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        public string LastLoginAtDisplay
+        {
+            get
+            {
+                if (!User.LastLoginAt.HasValue || User.LastLoginAt.Value == 0) return "Никогда";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)User.LastLoginAt.Value);
+                    var formatted = date.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+                    Log.Verbose("UserDisplayModel.LastLoginAtDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format LastLoginAt timestamp {Timestamp}", User.LastLoginAt);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        // Method to create UserProfile from this DisplayModel
+        public UserProfile ToUserProfile()
+        {
+            Log.Debug("UserDisplayModel.ToUserProfile called for user: {Login}", User.Login);
+            return User;
+        }
+    }
+
+    public partial class RoleDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private Role _role;
+
+        public RoleDisplayModel(Role role)
+        {
+            _role = role;
+            Log.Debug("RoleDisplayModel created for role: RoleId={RoleId}, Name={Name}", role.RoleId, role.Name);
+        }
+
+        public uint RoleId
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.RoleId accessed: {Value}", Role.RoleId);
+                return Role.RoleId;
+            }
+        }
+
+        public int LegacyRoleId
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.LegacyRoleId accessed: {Value}", Role.LegacyRoleId);
+                return Role.LegacyRoleId;
+            }
+        }
+
+        public string Name
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.Name accessed: {Value}", Role.Name);
+                return Role.Name;
+            }
+        }
+
+        public string Description
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.Description accessed: {Value}", Role.Description);
+                return Role.Description;
+            }
+        }
+
+        public bool IsSystem
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.IsSystem accessed: {Value}", Role.IsSystem);
+                return Role.IsSystem;
+            }
+        }
+
+        public uint Priority
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.Priority accessed: {Value}", Role.Priority);
+                return Role.Priority;
+            }
+        }
+
+        public bool IsActive
+        {
+            get
+            {
+                Log.Verbose("RoleDisplayModel.IsActive accessed: {Value}", Role.IsActive);
+                return Role.IsActive;
+            }
+        }
+
+        public ulong CreatedAt => Role.CreatedAt;
+        public ulong UpdatedAt => Role.UpdatedAt;
+        public string? CreatedBy => Role.CreatedBy;
+        public string? UpdatedBy => Role.UpdatedBy;
+        public string? NormalizedName => Role.NormalizedName;
+
+        public string CreatedAtDisplay
+        {
+            get
+            {
+                if (Role.CreatedAt == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)Role.CreatedAt);
+                    var formatted = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+                    Log.Verbose("RoleDisplayModel.CreatedAtDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format CreatedAt timestamp {Timestamp}", Role.CreatedAt);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        public string UpdatedAtDisplay
+        {
+            get
+            {
+                if (Role.UpdatedAt == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)Role.UpdatedAt);
+                    var formatted = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+                    Log.Verbose("RoleDisplayModel.UpdatedAtDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format UpdatedAt timestamp {Timestamp}", Role.UpdatedAt);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        public Role ToRole()
+        {
+            Log.Debug("RoleDisplayModel.ToRole called for role: {Name}", Role.Name);
+            return new Role
+            {
+                RoleId = Role.RoleId,
+                LegacyRoleId = Role.LegacyRoleId,
+                Name = Role.Name,
+                Description = Role.Description,
+                IsSystem = Role.IsSystem,
+                Priority = Role.Priority,
+                IsActive = Role.IsActive,
+                CreatedAt = Role.CreatedAt,
+                UpdatedAt = Role.UpdatedAt,
+                CreatedBy = Role.CreatedBy,
+                UpdatedBy = Role.UpdatedBy,
+                NormalizedName = Role.NormalizedName
+            };
+        }
+    }
+
+    public partial class PermissionDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private Permission _permission;
+
+        public PermissionDisplayModel(Permission permission)
+        {
+            _permission = permission;
+            Log.Debug("PermissionDisplayModel created for permission: PermissionId={PermissionId}, Name={Name}", permission.PermissionId, permission.Name);
+        }
+
+        public uint PermissionId
+        {
+            get
+            {
+                Log.Verbose("PermissionDisplayModel.PermissionId accessed: {Value}", Permission.PermissionId);
+                return Permission.PermissionId;
+            }
+        }
+
+        public string Name
+        {
+            get
+            {
+                Log.Verbose("PermissionDisplayModel.Name accessed: {Value}", Permission.Name);
+                return Permission.Name;
+            }
+        }
+
+        public string Description
+        {
+            get
+            {
+                Log.Verbose("PermissionDisplayModel.Description accessed: {Value}", Permission.Description);
+                return Permission.Description;
+            }
+        }
+
+        public string Category
+        {
+            get
+            {
+                Log.Verbose("PermissionDisplayModel.Category accessed: {Value}", Permission.Category);
+                return Permission.Category;
+            }
+        }
+
+        public bool IsActive
+        {
+            get
+            {
+                Log.Verbose("PermissionDisplayModel.IsActive accessed: {Value}", Permission.IsActive);
+                return Permission.IsActive;
+            }
+        }
+
+        public ulong CreatedAt => Permission.CreatedAt;
+
+        public string CreatedAtDisplay
+        {
+            get
+            {
+                if (Permission.CreatedAt == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)Permission.CreatedAt);
+                    var formatted = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+                    Log.Verbose("PermissionDisplayModel.CreatedAtDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format CreatedAt timestamp {Timestamp}", Permission.CreatedAt);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        public Permission ToPermission()
+        {
+            Log.Debug("PermissionDisplayModel.ToPermission called for permission: {Name}", Permission.Name);
+            return new Permission
+            {
+                PermissionId = Permission.PermissionId,
+                Name = Permission.Name,
+                Description = Permission.Description,
+                Category = Permission.Category,
+                IsActive = Permission.IsActive,
+                CreatedAt = Permission.CreatedAt
+            };
+        }
+    }
+
     public partial class UserManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        private List<UserProfile> _allUsers = new();
-        private ObservableCollection<UserProfile> _users = new();
-        public ObservableCollection<UserProfile> Users
+        private List<UserDisplayModel> _allUsers = new();
+        private ObservableCollection<UserDisplayModel> _users = new();
+        public ObservableCollection<UserDisplayModel> Users
         {
             get => _users;
             set => this.RaiseAndSetIfChanged(ref _users, value);
         }
 
-        private List<Role> _allRoles = new();
-        private ObservableCollection<Role> _roles = new();
-        public ObservableCollection<Role> Roles
+        private List<RoleDisplayModel> _allRoles = new();
+        private ObservableCollection<RoleDisplayModel> _roles = new();
+        public ObservableCollection<RoleDisplayModel> Roles
         {
             get => _roles;
             set => this.RaiseAndSetIfChanged(ref _roles, value);
         }
 
-        private List<Permission> _allPermissions = new();
-        private ObservableCollection<Permission> _permissions = new();
-        public ObservableCollection<Permission> Permissions
+        private List<PermissionDisplayModel> _allPermissions = new();
+        private ObservableCollection<PermissionDisplayModel> _permissions = new();
+        public ObservableCollection<PermissionDisplayModel> Permissions
         {
             get => _permissions;
             set => this.RaiseAndSetIfChanged(ref _permissions, value);
         }
 
-        private UserProfile? _selectedUser;
-        public UserProfile? SelectedUser
+        private UserDisplayModel? _selectedUser;
+        public UserDisplayModel? SelectedUser
         {
             get => _selectedUser;
             set
@@ -76,8 +414,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
-        private Role? _selectedRole;
-        public Role? SelectedRole
+        private RoleDisplayModel? _selectedRole;
+        public RoleDisplayModel? SelectedRole
         {
             get => _selectedRole;
             set
@@ -87,15 +425,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
-        private ObservableCollection<Permission> _selectedUserPermissions = new();
-        public ObservableCollection<Permission> SelectedUserPermissions
+        private ObservableCollection<PermissionDisplayModel> _selectedUserPermissions = new();
+        public ObservableCollection<PermissionDisplayModel> SelectedUserPermissions
         {
             get => _selectedUserPermissions;
             set => this.RaiseAndSetIfChanged(ref _selectedUserPermissions, value);
         }
 
-        private ObservableCollection<Permission> _selectedRolePermissions = new();
-        public ObservableCollection<Permission> SelectedRolePermissions
+        private ObservableCollection<PermissionDisplayModel> _selectedRolePermissions = new();
+        public ObservableCollection<PermissionDisplayModel> SelectedRolePermissions
         {
             get => _selectedRolePermissions;
             set => this.RaiseAndSetIfChanged(ref _selectedRolePermissions, value);
@@ -181,7 +519,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Debug("All API calls completed for UserManagementViewModel.");
 
                 // --- 1. Process Users Response ---
-                List<UserProfile> loadedUsers = new();
+                List<UserDisplayModel> loadedUsers = new();
                 var usersResponse = await usersTask;
                 Log.Information("Processing Users response. Status: {StatusCode}", usersResponse.StatusCode);
                 var usersJsonString = await usersResponse.Content.ReadAsStringAsync();
@@ -208,7 +546,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                         continue;
                                     }
 
-                                    loadedUsers.Add(user);
+                                    loadedUsers.Add(new UserDisplayModel(user));
                                     Log.Verbose("Parsed User: LegacyId={LegacyId}, Login='{Login}', Active={IsActive}",
                                         user.LegacyUserId, user.Login, user.IsActive);
                                 }
@@ -247,7 +585,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Processing Roles response. Status: {StatusCode}", rolesResponse.StatusCode);
                 var rolesJsonString = await rolesResponse.Content.ReadAsStringAsync();
                 Log.Verbose("Raw Roles response received: {RawResponse}", rolesJsonString);
-                List<Role> loadedRoles = new();
+                List<RoleDisplayModel> loadedRoles = new();
                 if (rolesResponse.IsSuccessStatusCode)
                 {
                     try
@@ -269,7 +607,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                         continue;
                                     }
 
-                                    loadedRoles.Add(role);
+                                    loadedRoles.Add(new RoleDisplayModel(role));
                                     Log.Verbose("Parsed Role: Id={RoleId}, Name='{Name}', LegacyId={LegacyId}, IsActive={IsActive}",
                                         role.RoleId, role.Name, role.LegacyRoleId, role.IsActive);
                                 }
@@ -311,7 +649,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Processing Permissions response. Status: {StatusCode}", permissionsResponse.StatusCode);
                 var permissionsJsonString = await permissionsResponse.Content.ReadAsStringAsync();
                 Log.Verbose("Raw Permissions response received: {RawResponse}", permissionsJsonString);
-                List<Permission> loadedPermissions = new();
+                List<PermissionDisplayModel> loadedPermissions = new();
                 if (permissionsResponse.IsSuccessStatusCode)
                 {
                     try
@@ -333,7 +671,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                         continue;
                                     }
 
-                                    loadedPermissions.Add(permission);
+                                    loadedPermissions.Add(new PermissionDisplayModel(permission));
                                     Log.Verbose("Parsed Permission: Id={PermId}, Name='{Name}', Category='{Category}', IsActive={IsActive}",
                                         permission.PermissionId, permission.Name, permission.Category, permission.IsActive);
                                 }
@@ -372,11 +710,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // Update ObservableCollections
                 _allUsers = loadedUsers;
-                Users = new ObservableCollection<UserProfile>(_allUsers);
+                Users = new ObservableCollection<UserDisplayModel>(_allUsers);
                 _allRoles = loadedRoles;
-                Roles = new ObservableCollection<Role>(_allRoles);
+                Roles = new ObservableCollection<RoleDisplayModel>(_allRoles);
                 _allPermissions = loadedPermissions;
-                Permissions = new ObservableCollection<Permission>(_allPermissions);
+                Permissions = new ObservableCollection<PermissionDisplayModel>(_allPermissions);
 
                 Log.Information("Finished processing data. Displaying {UserCount} users, {RoleCount} roles, {PermissionCount} permissions.", Users.Count, Roles.Count, Permissions.Count);
             }
@@ -386,14 +724,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in UserManagementViewModel");
                 // Clear collections on fatal error
-                _allUsers = new List<UserProfile>();
-                Users = new ObservableCollection<UserProfile>();
-                _allRoles = new List<Role>();
-                Roles = new ObservableCollection<Role>();
-                _allPermissions = new List<Permission>();
-                Permissions = new ObservableCollection<Permission>();
-                SelectedUserPermissions = new ObservableCollection<Permission>();
-                SelectedRolePermissions = new ObservableCollection<Permission>();
+                _allUsers = new List<UserDisplayModel>();
+                Users = new ObservableCollection<UserDisplayModel>();
+                _allRoles = new List<RoleDisplayModel>();
+                Roles = new ObservableCollection<RoleDisplayModel>();
+                _allPermissions = new List<PermissionDisplayModel>();
+                Permissions = new ObservableCollection<PermissionDisplayModel>();
+                SelectedUserPermissions = new ObservableCollection<PermissionDisplayModel>();
+                SelectedRolePermissions = new ObservableCollection<PermissionDisplayModel>();
             }
             finally
             {
@@ -407,23 +745,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             if (SelectedUser == null)
             {
                  Log.Debug("SelectedUser is null, clearing user-specific roles/permissions.");
-                 // Clear user-specific selections if no user is selected
-                 SelectedUserPermissions = new ObservableCollection<Permission>();
-                 // Optionally reset Roles check state if needed, though LoadData should handle the full refresh
-                 // ResetRoleChecks();
+                 SelectedUserPermissions = new ObservableCollection<PermissionDisplayModel>();
                 return;
             }
 
              Log.Information("Loading roles and permissions for selected user: {UserId} ({Login})", SelectedUser.LegacyUserId, SelectedUser.Login);
-            IsBusy = true; // Indicate activity
+            IsBusy = true;
 
             try
             {
                  Log.Debug("Initiating API calls for user roles and permissions for User {UserId}", SelectedUser.LegacyUserId);
-                // Load user permissions first
-                 Task<HttpResponseMessage> userPermissionsTask = _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/permissions");
-                 // Load user roles
-                 Task<HttpResponseMessage> userRolesTask = _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/roles");
+                Task<HttpResponseMessage> userPermissionsTask = _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/permissions");
+                Task<HttpResponseMessage> userRolesTask = _httpClient.GetAsync($"{_baseUrl}/Users/{SelectedUser.LegacyUserId}/roles");
 
                  await Task.WhenAll(userPermissionsTask, userRolesTask);
                  Log.Debug("User roles and permissions API calls completed for User {UserId}", SelectedUser.LegacyUserId);
@@ -431,7 +764,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  // Process User Permissions
                  var permissionsResponse = await userPermissionsTask;
                  Log.Information("Processing User Permissions response for User {UserId}. Status: {StatusCode}", SelectedUser.LegacyUserId, permissionsResponse.StatusCode);
-                 List<Permission> loadedUserPermissions = new();
+                 List<PermissionDisplayModel> loadedUserPermissions = new();
                 if (permissionsResponse.IsSuccessStatusCode)
                 {
                      var permissionsJsonString = await permissionsResponse.Content.ReadAsStringAsync();
@@ -449,7 +782,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                      uint permissionId = permObj["permissionId"]?.GetValue<uint>() ?? 0;
                                      if (permissionId > 0)
                                      {
-                                          // Find the full Permission object from the main list
                                           var fullPermission = _allPermissions.FirstOrDefault(p => p.PermissionId == permissionId);
                                           if (fullPermission != null)
                     {
@@ -478,13 +810,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                      Log.Warning("Failed to load permissions for user {UserId}. Status: {StatusCode}, Error: {Error}",
                          SelectedUser.LegacyUserId, permissionsResponse.StatusCode, error);
                 }
-                 SelectedUserPermissions = new ObservableCollection<Permission>(loadedUserPermissions);
+                 SelectedUserPermissions = new ObservableCollection<PermissionDisplayModel>(loadedUserPermissions);
                  Log.Debug("Set SelectedUserPermissions count: {Count}", SelectedUserPermissions.Count);
 
                 // Process User Roles
                  var rolesResponse = await userRolesTask;
                  Log.Information("Processing User Roles response for User {UserId}. Status: {StatusCode}", SelectedUser.LegacyUserId, rolesResponse.StatusCode);
-                 List<uint> userRoleIds = new(); // Store IDs of roles assigned to the user
+                 List<uint> userRoleIds = new();
                 if (rolesResponse.IsSuccessStatusCode)
                 {
                      var rolesJsonString = await rolesResponse.Content.ReadAsStringAsync();
@@ -527,16 +859,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
 
                  // Update the Roles collection IsActive state based on userRoleIds
-                 // Assuming Role is a class and we can modify IsActive directly.
-                 // This will update the checkboxes in the view if bound correctly.
-                 foreach (var role in _allRoles)
+                 foreach (var roleDisplay in _allRoles)
                  {
-                      role.IsActive = userRoleIds.Contains(role.RoleId);
+                      roleDisplay.Role.IsActive = userRoleIds.Contains(roleDisplay.RoleId);
                  }
-                 // Force a refresh of the Roles collection binding if the above doesn't work automatically
-                 // This is less efficient but guarantees UI update.
-                 var currentRoles = Roles.ToList(); // Get current state
-                 Roles = new ObservableCollection<Role>(currentRoles); // Re-assign to trigger update
+                 var currentRoles = Roles.ToList();
+                 Roles = new ObservableCollection<RoleDisplayModel>(currentRoles);
 
                  Log.Information("Finished loading roles and permissions for User {UserId}. Assigned Roles Count: {RoleCount}, Permissions Count: {PermCount}", SelectedUser.LegacyUserId, userRoleIds.Count, SelectedUserPermissions.Count);
             }
@@ -545,9 +873,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Error(ex, "Error loading user roles and permissions for user {UserId}", SelectedUser.LegacyUserId);
                 HasError = true;
                 ErrorMessage = $"Ошибка загрузки ролей/разрешений пользователя: {ex.Message}";
-                SelectedUserPermissions = new ObservableCollection<Permission>(); // Clear on error
-                 // Optionally reset Roles check state
-                 // ResetRoleChecks();
+                SelectedUserPermissions = new ObservableCollection<PermissionDisplayModel>();
             }
             finally
             {
@@ -561,7 +887,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             if (SelectedRole == null)
             {
                  Log.Debug("SelectedRole is null, clearing role-specific permissions.");
-                 SelectedRolePermissions = new ObservableCollection<Permission>();
+                 SelectedRolePermissions = new ObservableCollection<PermissionDisplayModel>();
                 return;
             }
 
@@ -572,7 +898,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 var response = await _httpClient.GetAsync($"{_baseUrl}/Roles/{SelectedRole.RoleId}/permissions");
                 Log.Information("Processing Role Permissions response for Role {RoleId}. Status: {StatusCode}", SelectedRole.RoleId, response.StatusCode);
-                List<Permission> loadedRolePermissions = new();
+                List<PermissionDisplayModel> loadedRolePermissions = new();
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync();
@@ -618,7 +944,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Log.Warning("Failed to load permissions for role {RoleId}. Status: {StatusCode}, Error: {Error}",
                         SelectedRole.RoleId, response.StatusCode, error);
                 }
-                SelectedRolePermissions = new ObservableCollection<Permission>(loadedRolePermissions);
+                SelectedRolePermissions = new ObservableCollection<PermissionDisplayModel>(loadedRolePermissions);
                  Log.Debug("Set SelectedRolePermissions count: {Count}", SelectedRolePermissions.Count);
 
             }
@@ -627,7 +953,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Error(ex, "Error loading role permissions for role {RoleId}", SelectedRole.RoleId);
                 HasError = true;
                 ErrorMessage = $"Ошибка загрузки разрешений роли: {ex.Message}";
-                 SelectedRolePermissions = new ObservableCollection<Permission>(); // Clear on error
+                 SelectedRolePermissions = new ObservableCollection<PermissionDisplayModel>();
             }
              finally
              {
@@ -637,9 +963,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         [RelayCommand]
-        private async Task AssignRole(Role role)
+        private async Task AssignRole(RoleDisplayModel roleDisplay)
         {
-            if (SelectedUser == null || role == null) return;
+            if (SelectedUser == null || roleDisplay == null) return;
+
+            var role = roleDisplay.Role;
 
             try
             {
@@ -692,9 +1020,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         [RelayCommand]
-        private async Task RemoveRole(Role role)
+        private async Task RemoveRole(RoleDisplayModel roleDisplay)
         {
-            if (SelectedUser == null || role == null) return;
+            if (SelectedUser == null || roleDisplay == null) return;
+
+            var role = roleDisplay.Role;
 
             try
             {
@@ -1225,7 +1555,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             if (string.IsNullOrWhiteSpace(value))
             {
                  Log.Debug("Search text is empty, resetting filter.");
-                Users = new ObservableCollection<UserProfile>(_allUsers);
+                Users = new ObservableCollection<UserDisplayModel>(_allUsers);
                 return;
             }
 
@@ -1238,7 +1568,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             ).ToList();
 
              Log.Information("Filtering complete. Found {Count} users matching '{SearchText}'", filteredUsers.Count, value);
-            Users = new ObservableCollection<UserProfile>(filteredUsers);
+            Users = new ObservableCollection<UserDisplayModel>(filteredUsers);
         }
     }
 }

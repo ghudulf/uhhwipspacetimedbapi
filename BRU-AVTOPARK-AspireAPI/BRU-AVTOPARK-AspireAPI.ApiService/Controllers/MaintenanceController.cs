@@ -36,32 +36,39 @@ namespace TicketSalesApp.AdminServer.Controllers
         
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords() // Changed return type
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords()
         {
             Log.Information("Fetching all maintenance records");
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var conn = _spacetimeService.GetConnection();
             
-            // Map to anonymous type with Bus details
-            var result = records.Select(m => {
-                var bus = conn.Db.Bus.BusId.Find(m.BusId);
-                return new {
-                    m.MaintenanceId,
-                    m.BusId,
-                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
-                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.LastServiceDate).DateTime,
-                    m.ServiceEngineer,
-                    m.FoundIssues,
-                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)m.NextServiceDate).DateTime,
-                    m.Roadworthiness,
-                    m.MaintenanceType,
-                    m.MileageThreshold
-                };
+            // Map to anonymous type with ALL fields - CRITICAL for client deserialization
+            var result = records.Select(m => new {
+                m.MaintenanceId,
+                m.BusId,
+                m.LastServiceDate,
+                m.MileageThreshold,
+                m.MaintenanceType,
+                m.ServiceEngineer,
+                m.FoundIssues,
+                m.NextServiceDate,
+                m.Roadworthiness,
+                m.MaintenanceCost,
+                m.PartsReplaced,
+                m.MaintenanceDuration,
+                m.IsScheduled,
+                m.MaintenanceLocation,
+                m.ScheduledByEmployeeId,
+                m.CompletedByEmployeeId,
+                m.MaintenanceNotes,
+                m.MaintenanceStatus,
+                m.DiagnosticCodes,
+                m.LaborCost,
+                m.PartsCost
             }).ToList();
 
             Log.Debug("Retrieved {RecordCount} maintenance records", result.Count);
-            _logger.LogInformation("FULL MAINTENANCE DATA: {MaintenanceData}", JsonSerializer.Serialize(result)); // Added JSON logging
-            return Ok(result); // Return mapped result
+            _logger.LogInformation("FULL MAINTENANCE DATA: {MaintenanceData}", JsonSerializer.Serialize(result));
+            return Ok(result);
         }
 
         [HttpGet("{id}")]

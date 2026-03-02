@@ -19,9 +19,167 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using SpacetimeDB.Types;
 using System.Text.Json.Nodes;
+using System.Globalization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 {
+    public partial class RouteScheduleDisplayModel : ObservableObject
+    {
+        [ObservableProperty]
+        private RouteSchedule _schedule;
+
+        public RouteScheduleDisplayModel(RouteSchedule schedule)
+        {
+            _schedule = schedule;
+            Log.Debug("RouteScheduleDisplayModel created for schedule: ScheduleId={ScheduleId}, Route={Start}-{End}", 
+                schedule.ScheduleId, schedule.StartPoint, schedule.EndPoint);
+        }
+
+        // Expose all RouteSchedule properties for binding
+        public uint ScheduleId
+        {
+            get
+            {
+                Log.Verbose("RouteScheduleDisplayModel.ScheduleId accessed: {Value}", Schedule.ScheduleId);
+                return Schedule.ScheduleId;
+            }
+        }
+
+        public uint RouteId
+        {
+            get
+            {
+                Log.Verbose("RouteScheduleDisplayModel.RouteId accessed: {Value}", Schedule.RouteId);
+                return Schedule.RouteId;
+            }
+        }
+
+        public string? StartPoint
+        {
+            get
+            {
+                Log.Verbose("RouteScheduleDisplayModel.StartPoint accessed: {Value}", Schedule.StartPoint);
+                return Schedule.StartPoint;
+            }
+        }
+
+        public List<string>? RouteStops => Schedule.RouteStops;
+        public string? EndPoint => Schedule.EndPoint;
+        public double Price => Schedule.Price;
+        public uint AvailableSeats => Schedule.AvailableSeats;
+        public bool IsActive => Schedule.IsActive;
+        public ulong DepartureTime => Schedule.DepartureTime;
+        public ulong ArrivalTime => Schedule.ArrivalTime;
+        public uint? SeatedCapacity => Schedule.SeatedCapacity;
+        public uint? StandingCapacity => Schedule.StandingCapacity;
+        public List<string>? DaysOfWeek => Schedule.DaysOfWeek;
+        public List<string>? BusTypes => Schedule.BusTypes;
+        public ulong ValidFrom => Schedule.ValidFrom;
+        public ulong? ValidUntil => Schedule.ValidUntil;
+        public uint? StopDurationMinutes => Schedule.StopDurationMinutes;
+        public bool IsRecurring => Schedule.IsRecurring;
+        public List<string>? EstimatedStopTimes => Schedule.EstimatedStopTimes;
+        public List<double>? StopDistances => Schedule.StopDistances;
+        public string? Notes => Schedule.Notes;
+        public ulong CreatedAt => Schedule.CreatedAt;
+        public ulong? UpdatedAt => Schedule.UpdatedAt;
+        public string? UpdatedBy => Schedule.UpdatedBy;
+        public double? PeakHourLoad => Schedule.PeakHourLoad;
+        public double? OffPeakHourLoad => Schedule.OffPeakHourLoad;
+        public bool? IsSpecialEvent => Schedule.IsSpecialEvent;
+        public string? SpecialEventName => Schedule.SpecialEventName;
+        public bool? IsHoliday => Schedule.IsHoliday;
+        public string? HolidayName => Schedule.HolidayName;
+        public bool? IsWeekend => Schedule.IsWeekend;
+        public uint? SeatConfigurationId => Schedule.SeatConfigurationId;
+        public bool? RequiresSeatReservation => Schedule.RequiresSeatReservation;
+        public string? RouteType => Schedule.RouteType;
+
+        public string DepartureTimeDisplay
+        {
+            get
+            {
+                if (Schedule.DepartureTime == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)Schedule.DepartureTime);
+                    var formatted = date.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+                    Log.Verbose("RouteScheduleDisplayModel.DepartureTimeDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format DepartureTime timestamp {Timestamp}", Schedule.DepartureTime);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        public string ArrivalTimeDisplay
+        {
+            get
+            {
+                if (Schedule.ArrivalTime == 0) return "Не указано";
+                try
+                {
+                    var date = DateTimeOffset.FromUnixTimeMilliseconds((long)Schedule.ArrivalTime);
+                    var formatted = date.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+                    Log.Verbose("RouteScheduleDisplayModel.ArrivalTimeDisplay accessed: {Value}", formatted);
+                    return formatted;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to format ArrivalTime timestamp {Timestamp}", Schedule.ArrivalTime);
+                    return "Ошибка даты";
+                }
+            }
+        }
+
+        // Method to create a complete RouteSchedule from this DisplayModel
+        public RouteSchedule ToRouteSchedule()
+        {
+            Log.Debug("RouteScheduleDisplayModel.ToRouteSchedule called for schedule: {ScheduleId}", Schedule.ScheduleId);
+            return new RouteSchedule
+            {
+                ScheduleId = Schedule.ScheduleId,
+                RouteId = Schedule.RouteId,
+                StartPoint = Schedule.StartPoint,
+                RouteStops = Schedule.RouteStops,
+                EndPoint = Schedule.EndPoint,
+                DepartureTime = Schedule.DepartureTime,
+                ArrivalTime = Schedule.ArrivalTime,
+                Price = Schedule.Price,
+                AvailableSeats = Schedule.AvailableSeats,
+                SeatedCapacity = Schedule.SeatedCapacity,
+                StandingCapacity = Schedule.StandingCapacity,
+                DaysOfWeek = Schedule.DaysOfWeek,
+                BusTypes = Schedule.BusTypes,
+                IsActive = Schedule.IsActive,
+                ValidFrom = Schedule.ValidFrom,
+                ValidUntil = Schedule.ValidUntil,
+                StopDurationMinutes = Schedule.StopDurationMinutes,
+                IsRecurring = Schedule.IsRecurring,
+                EstimatedStopTimes = Schedule.EstimatedStopTimes,
+                StopDistances = Schedule.StopDistances,
+                Notes = Schedule.Notes,
+                CreatedAt = Schedule.CreatedAt,
+                UpdatedAt = Schedule.UpdatedAt,
+                UpdatedBy = Schedule.UpdatedBy,
+                PeakHourLoad = Schedule.PeakHourLoad,
+                OffPeakHourLoad = Schedule.OffPeakHourLoad,
+                IsSpecialEvent = Schedule.IsSpecialEvent,
+                SpecialEventName = Schedule.SpecialEventName,
+                IsHoliday = Schedule.IsHoliday,
+                HolidayName = Schedule.HolidayName,
+                IsWeekend = Schedule.IsWeekend,
+                SeatConfigurationId = Schedule.SeatConfigurationId,
+                RequiresSeatReservation = Schedule.RequiresSeatReservation,
+                RouteType = Schedule.RouteType
+            };
+        }
+    }
+
     public partial class RouteSchedulesManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
@@ -43,7 +201,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 this.RaiseAndSetIfChanged(ref _selectedRoute, value);
                 if (value != null)
+                {
+                    CurrentPage = 1; // Reset to first page when route changes
                     LoadSchedules().ConfigureAwait(false);
+                }
             }
         }
 
@@ -55,19 +216,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 this.RaiseAndSetIfChanged(ref _selectedDate, value);
                 if (SelectedRoute != null)
+                {
+                    CurrentPage = 1; // Reset to first page when date changes
                     LoadSchedules().ConfigureAwait(false);
+                }
             }
         }
 
-        private ObservableCollection<RouteSchedule> _schedules = new();
-        public ObservableCollection<RouteSchedule> Schedules
+        private ObservableCollection<RouteScheduleDisplayModel> _schedules = new();
+        public ObservableCollection<RouteScheduleDisplayModel> Schedules
         {
             get => _schedules;
             set => this.RaiseAndSetIfChanged(ref _schedules, value);
         }
 
-        private RouteSchedule? _selectedSchedule;
-        public RouteSchedule? SelectedSchedule
+        private RouteScheduleDisplayModel? _selectedSchedule;
+        public RouteScheduleDisplayModel? SelectedSchedule
         {
             get => _selectedSchedule;
             set => this.RaiseAndSetIfChanged(ref _selectedSchedule, value);
@@ -198,11 +362,28 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
+        private int _currentPage = 1;
+        private const int PageSize = 50;
+        private int _totalSchedules = 0;
+
+        public int CurrentPage
+        {
+            get => _currentPage;
+            set => this.RaiseAndSetIfChanged(ref _currentPage, value);
+        }
+
+        public int TotalPages => (_totalSchedules + PageSize - 1) / PageSize;
+
+        public string PageInfo => $"Page {CurrentPage} of {TotalPages} ({_totalSchedules} total)";
+
         private async Task LoadSchedules()
         {
             if (SelectedRoute == null)
             {
                 Schedules.Clear();
+                _totalSchedules = 0;
+                this.RaisePropertyChanged(nameof(PageInfo));
+                this.RaisePropertyChanged(nameof(TotalPages));
                 return;
             }
 
@@ -212,11 +393,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HasError = false;
                 ErrorMessage = string.Empty;
 
-                Log.Information("Loading schedules for route {RouteId} on date {Date}", 
-                    SelectedRoute.RouteId, SelectedDate.Date.ToString("yyyy-MM-dd"));
+                Log.Information("Loading schedules for route {RouteId} on date {Date}, page {Page}", 
+                    SelectedRoute.RouteId, SelectedDate.Date.ToString("yyyy-MM-dd"), CurrentPage);
 
+                // Use pagination to avoid loading all schedules at once
                 var response = await _httpClient.GetAsync(
-                    $"{_baseUrl}/RouteSchedules/search?routeId={SelectedRoute.RouteId}&date={SelectedDate.Date:yyyy-MM-dd}");
+                    $"{_baseUrl}/RouteSchedules/search?routeId={SelectedRoute.RouteId}&date={SelectedDate.Date:yyyy-MM-dd}&page={CurrentPage}&pageSize={PageSize}");
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -224,8 +406,28 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     throw new Exception($"Failed to load schedules: {error}");
                 }
 
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                Log.Debug("Raw Schedules response received: {RawResponse}", jsonString);
+                // Read pagination metadata from headers
+                if (response.Headers.TryGetValues("X-Pagination", out var paginationValues))
+                {
+                    var paginationJson = paginationValues.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(paginationJson))
+                    {
+                        try
+                        {
+                            var paginationData = JsonSerializer.Deserialize<JsonElement>(paginationJson);
+                            _totalSchedules = paginationData.GetProperty("TotalCount").GetInt32();
+                            Log.Debug("Pagination metadata: TotalCount={TotalCount}, CurrentPage={CurrentPage}, TotalPages={TotalPages}",
+                                _totalSchedules, CurrentPage, TotalPages);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Failed to parse pagination metadata");
+                        }
+                    }
+                }
+
+                var jsonString = await response.Content.ReadAsStringAsync();
+                Log.Debug("Raw Schedules response received (page {Page}): {RawResponse}", CurrentPage, jsonString.Substring(0, Math.Min(500, jsonString.Length)));
 
                 try
                 {
@@ -247,9 +449,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                             }
                         }
 
-                        Schedules = new ObservableCollection<RouteSchedule>(schedules.OrderBy(s => s.DepartureTime));
-                        Log.Information("Successfully loaded {Count} schedules for route {RouteId}", 
-                            schedules.Count, SelectedRoute.RouteId);
+                        Schedules = new ObservableCollection<RouteScheduleDisplayModel>(
+                            schedules.OrderBy(s => s.DepartureTime).Select(s => new RouteScheduleDisplayModel(s)));
+                        
+                        this.RaisePropertyChanged(nameof(PageInfo));
+                        this.RaisePropertyChanged(nameof(TotalPages));
+                        
+                        Log.Information("Successfully loaded {Count} schedules for route {RouteId} (page {Page} of {TotalPages})", 
+                            schedules.Count, SelectedRoute.RouteId, CurrentPage, TotalPages);
                     }
                     else
                     {
@@ -259,7 +466,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
                 catch (JsonException jsonEx)
                 {
-                    Log.Error(jsonEx, "Failed to parse Schedules JSON: {RawJson}", jsonString);
+                    Log.Error(jsonEx, "Failed to parse Schedules JSON: {RawJson}", jsonString.Substring(0, Math.Min(1000, jsonString.Length)));
                     throw new Exception("Failed to parse schedule data", jsonEx);
                 }
             }
@@ -269,11 +476,189 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 ErrorMessage = $"Error loading schedules: {ex.Message}";
                 Log.Error(ex, "Error loading schedules");
                 Schedules.Clear();
+                _totalSchedules = 0;
+                this.RaisePropertyChanged(nameof(PageInfo));
+                this.RaisePropertyChanged(nameof(TotalPages));
             }
             finally
             {
                 IsBusy = false;
             }
+        }
+
+        [RelayCommand]
+        private async Task NextPage()
+        {
+            if (CurrentPage < TotalPages)
+            {
+                CurrentPage++;
+                await LoadSchedules();
+            }
+        }
+
+        [RelayCommand]
+        private async Task PreviousPage()
+        {
+            if (CurrentPage > 1)
+            {
+                CurrentPage--;
+                await LoadSchedules();
+            }
+        }
+
+        [RelayCommand]
+        private async Task FirstPage()
+        {
+            if (CurrentPage != 1)
+            {
+                CurrentPage = 1;
+                await LoadSchedules();
+            }
+        }
+
+        [RelayCommand]
+        private async Task LastPage()
+        {
+            if (CurrentPage != TotalPages && TotalPages > 0)
+            {
+                CurrentPage = TotalPages;
+                await LoadSchedules();
+            }
+        }
+
+        /// <summary>
+        /// Failsafe method to get route stops configuration when server data is incomplete or missing.
+        /// Returns predefined route configurations based on start/end points.
+        /// Matches the actual routes defined in the database InitializeRoutes reducer.
+        /// </summary>
+        private (string start, string end, string[] stops)? GetRouteConfiguration(Route route)
+        {
+            // Define route configurations as failsafe when server data doesn't provide proper stops
+            // These match the actual routes in server/INITreducers.cs InitializeRoutes method
+            var routeConfigs = new Dictionary<(string start, string end), string[]>
+            {
+                // Additional city and suburban routes (from DB init)
+                {("Вейнянка", "Фатина"), new[] {"Вейнянка", "Площадь Орджоникидзе", "Областная больница", "Фатина"}},
+                {("Мал. Боровка", "Солтановка"), new[] {"Мал. Боровка", "Машековка", "Центр", "Солтановка"}},
+                {("Вокзал", "Спутник"), new[] {"Вокзал", "Площадь Ленина", "Универмаг", "Спутник"}},
+                {("Мясокомбинат", "Заводская"), new[] {"Мясокомбинат", "Димитрова", "Юбилейный", "Заводская"}},
+                {("Броды", "Казимировка"), new[] {"Броды", "Центр", "Площадь Славы", "Казимировка"}},
+                {("Гребеневский рынок", "Холмы"), new[] {"Гребеневский рынок", "Площадь Орджоникидзе", "Мир", "Холмы"}},
+                {("Автовокзал", "Полыковичи"), new[] {"Автовокзал", "Площадь Ленина", "Димитрова", "Полыковичи"}},
+                {("Центр", "Сидоровичи"), new[] {"Центр", "Площадь Славы", "Заднепровье", "Сидоровичи"}},
+                {("Площадь Славы", "Буйничи"), new[] {"Площадь Славы", "Областная больница", "Зоосад", "Буйничи"}},
+                {("Заднепровье", "Химволокно"), new[] {"Заднепровье", "Центр", "Юбилейный", "Химволокно"}},
+                {("Вокзал", "Соломинка"), new[] {"Вокзал", "Центр", "Димитрова", "Соломинка"}},
+                {("Площадь Ленина", "Чаусы"), new[] {"Площадь Ленина", "Центр", "Заднепровье", "Чаусы"}},
+                {("Могилев-2", "Дашковка"), new[] {"Могилев-2", "Центр", "Юбилейный", "Дашковка"}},
+                {("Кожзавод", "Сухари"), new[] {"Кожзавод", "Центр", "Площадь Славы", "Сухари"}},
+                {("Гребеневский рынок", "Любуж"), new[] {"Гребеневский рынок", "Центр", "Заднепровье", "Любуж"}},
+                
+                // Main city routes (from DB init - internal city routes)
+                {("ул. Фатина", "завод «Могилевтрансмаш»"), new[] {"ул. Фатина", "Центр", "пл. Ленина", "завод «Могилевтрансмаш»"}},
+                {("Могилевская больница №1", "пос. Броды-1"), new[] {"Могилевская больница №1", "Центр", "пос. Броды-1"}},
+                {("Автовокзал", "Могилевоблнефтепродут"), new[] {"Автовокзал", "Центр", "Могилевоблнефтепродут"}},
+                {("м-н Казимировка", "ул. Златоустовского"), new[] {"м-н Казимировка", "Центр", "ул. Златоустовского"}},
+                {("Областная больница", "пл. Ленина"), new[] {"Областная больница", "Центр", "пл. Ленина"}},
+                {("Любужский лесопарк", "Железнодорожный вокзал"), new[] {"Любужский лесопарк", "Центр", "Железнодорожный вокзал"}},
+                {("ул. Симонова", "завод «Могилевтрансмаш»"), new[] {"ул. Симонова", "Центр", "завод «Могилевтрансмаш»"}},
+                {("Средняя школа №13", "железнодорожный вокзал"), new[] {"Средняя школа №13", "Центр", "железнодорожный вокзал"}},
+                {("Поселок Пашково", "ул. 30 лет Победы"), new[] {"Поселок Пашково", "Центр", "ул. 30 лет Победы"}},
+                {("пл. Космонавтов", "завод «Могилевлифтмаш»"), new[] {"пл. Космонавтов", "Центр", "завод «Могилевлифтмаш»"}},
+                {("бул. Днепровский", "поселок Гребенево"), new[] {"бул. Днепровский", "Центр", "поселок Гребенево"}},
+                {("м-н Юбилейный", "Областная больница"), new[] {"м-н Юбилейный", "Центр", "Областная больница"}},
+                {("ж/д вокзал", "Больница мед. реабилитации"), new[] {"ж/д вокзал", "Центр", "Больница мед. реабилитации"}},
+                {("пл. Орджоникидзе", "Любужский лесопарк"), new[] {"пл. Орджоникидзе", "Центр", "Любужский лесопарк"}},
+                {("Могилевоблнефтепродукт", "Могилевская больница №1"), new[] {"Могилевоблнефтепродукт", "Центр", "Могилевская больница №1"}},
+                {("пер. Ватутина (Переезд)", "м-н Казимировка"), new[] {"пер. Ватутина (Переезд)", "Центр", "м-н Казимировка"}},
+                {("Городская ветеринарная станция", "м-н Казимировка"), new[] {"Городская ветеринарная станция", "Центр", "м-н Казимировка"}},
+                {("ОАО «Техноприбор»", "ОАО «Техноприбор»"), new[] {"ОАО «Техноприбор»", "Центр", "пл. Ленина", "Центр", "ОАО «Техноприбор»"}},
+                {("ул. 30 лет Победы", "ул. Фатина"), new[] {"ул. 30 лет Победы", "Центр", "ул. Фатина"}},
+                {("Поселок Броды-1", "Могилевская больница №1"), new[] {"Поселок Броды-1", "Центр", "Могилевская больница №1"}},
+                {("ул. Пионерская", "завод «Вентзаготовок»"), new[] {"ул. Пионерская", "Центр", "завод «Вентзаготовок»"}},
+                {("Автовокзал", "деревня Новоселки"), new[] {"Автовокзал", "Центр", "деревня Новоселки"}},
+                {("м-н Казимировка", "поселок Ямницкий"), new[] {"м-н Казимировка", "Центр", "поселок Ямницкий"}},
+                {("Средняя школа №13", "м-н Соломинка"), new[] {"Средняя школа №13", "Центр", "м-н Соломинка"}},
+                {("Поселок Любуж", "железнодорожный вокзал"), new[] {"Поселок Любуж", "Центр", "железнодорожный вокзал"}},
+                {("ул. Маневича (поселок Малая Боровка)", "железнодорожный вокзал"), new[] {"ул. Маневича (поселок Малая Боровка)", "Центр", "железнодорожный вокзал"}},
+                {("Областная больница", "Облтипо"), new[] {"Областная больница", "Центр", "Облтипо"}},
+                {("м-н Юбилейный", "железнодорожный вокзал"), new[] {"м-н Юбилейный", "Центр", "железнодорожный вокзал"}},
+                {("м-н Казимировка", "железнодорожный вокзал"), new[] {"м-н Казимировка", "Центр", "железнодорожный вокзал"}},
+                {("м-н Заря", "железнодорожный вокзал"), new[] {"м-н Заря", "Центр", "железнодорожный вокзал"}},
+                
+                // Trolleybus routes (from DB init)
+                {("м-н Казимировка", "Автовокзал"), new[] {"м-н Казимировка", "Центр", "Автовокзал"}},
+                {("м-н Казимировка", "Железнодорожный вокзал"), new[] {"м-н Казимировка", "Центр", "Железнодорожный вокзал"}},
+                {("м-н Казимировка", "ул. Фатина"), new[] {"м-н Казимировка", "Центр", "ул. Фатина"}},
+                {("м-н Казимировка", "ул. Крупской"), new[] {"м-н Казимировка", "Центр", "ул. Крупской"}},
+                {("м-н Казимировка", "ул. Габровская"), new[] {"м-н Казимировка", "Центр", "ул. Габровская"}},
+                {("м-н Казимировка", "м-н Юбилейный"), new[] {"м-н Казимировка", "Центр", "м-н Юбилейный"}},
+                
+                // Intercity routes (from DB init)
+                {("Могилев", "Минск"), new[] {"Могилев", "Буйничи", "Минск"}},
+                {("Могилев", "Гомель"), new[] {"Могилев", "Быхов", "Гомель"}},
+                {("Могилев", "Москва"), new[] {"Могилев", "Минск", "Смоленск", "Москва"}},
+                {("Могилев", "Смоленск"), new[] {"Могилев", "Мстиславль", "Смоленск"}},
+                {("Могилев", "Бобруйск"), new[] {"Могилев", "Осиповичи", "Бобруйск"}},
+                {("Могилев", "Горки"), new[] {"Могилев", "Горки"}},
+                {("Могилев", "Витебск"), new[] {"Могилев", "Орша", "Витебск"}},
+                {("Могилев", "Славгород"), new[] {"Могилев", "Славгород"}},
+                {("Могилев", "Мстиславль"), new[] {"Могилев", "Мстиславль"}},
+                
+                // Suburban routes (from DB init)
+                {("Могилев", "Шклов"), new[] {"Могилев", "Шклов"}},
+                {("Могилев", "Быхов"), new[] {"Могилев", "Быхов"}},
+                {("Могилев", "Круглое"), new[] {"Могилев", "Круглое"}}
+            };
+
+            var key = routeConfigs.Keys.FirstOrDefault(k => k.start == route.StartPoint && k.end == route.EndPoint);
+            if (key != default)
+            {
+                Log.Debug("Using predefined route configuration for {Start} - {End}", key.start, key.end);
+                return (key.start, key.end, routeConfigs[key]);
+            }
+
+            Log.Debug("No predefined route configuration found for {Start} - {End}", route.StartPoint, route.EndPoint);
+            return null;
+        }
+
+        /// <summary>
+        /// Gets route stops with failsafe fallback. Tries multiple sources in order:
+        /// 1. Predefined route configuration (most reliable)
+        /// 2. Parse from route StartPoint/EndPoint (fallback)
+        /// 3. Default stops (last resort)
+        /// </summary>
+        private string[] GetRouteStopsWithFailsafe(Route route)
+        {
+            // Try predefined configuration first (most reliable)
+            var routeConfig = GetRouteConfiguration(route);
+            if (routeConfig != null)
+            {
+                Log.Information("Using predefined stops for route {RouteId}: {Stops}", 
+                    route.RouteId, string.Join(", ", routeConfig.Value.stops));
+                return routeConfig.Value.stops;
+            }
+
+            // Fallback: try to parse from StartPoint/EndPoint
+            var parsedStops = route.StartPoint?.Split(',')
+                .Concat(route.EndPoint?.Split(',') ?? Array.Empty<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct()
+                .ToArray();
+
+            if (parsedStops != null && parsedStops.Length >= 2)
+            {
+                Log.Warning("Using parsed stops for route {RouteId} (no predefined config): {Stops}", 
+                    route.RouteId, string.Join(", ", parsedStops));
+                return parsedStops;
+            }
+
+            // Last resort: use start and end points only
+            var defaultStops = new[] { route.StartPoint ?? "Начало", route.EndPoint ?? "Конец" };
+            Log.Error("Using default stops for route {RouteId} (parsing failed): {Stops}", 
+                route.RouteId, string.Join(", ", defaultStops));
+            return defaultStops;
         }
 
         [RelayCommand]
@@ -325,11 +710,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Margin = new Thickness(0, 0, 0, 10)
                 };
 
-                // Get route configuration from SelectedRoute properties
-                var routeStops = SelectedRoute.StartPoint.Split(',')
-                        .Concat(SelectedRoute.EndPoint.Split(','))
-                        .Distinct()
-                        .ToArray();
+                // Get route stops with failsafe fallback
+                var routeStops = GetRouteStopsWithFailsafe(SelectedRoute);
 
                 var routeStopsListBox = new ListBox
                 {
@@ -513,9 +895,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         [RelayCommand]
-        private async Task Edit(RouteSchedule? schedule)
+        private async Task Edit(RouteScheduleDisplayModel? scheduleDisplay)
         {
-            if (schedule == null || SelectedRoute == null) return;
+            if (scheduleDisplay == null || SelectedRoute == null) return;
+            
+            var schedule = scheduleDisplay.Schedule;
 
             try
             {
@@ -586,17 +970,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Margin = new Thickness(0, 0, 0, 10)
                 };
 
-                // Get route configuration from SelectedRoute
-                var allPossibleStops = SelectedRoute.StartPoint.Split(',')
-                        .Concat(SelectedRoute.EndPoint.Split(','))
-                        .Distinct()
-                        .ToArray();
+                // Get route stops with failsafe fallback
+                var allPossibleStops = GetRouteStopsWithFailsafe(SelectedRoute);
 
                 var routeStopsListBox = new ListBox
                 {
                     ItemsSource = allPossibleStops,
                     SelectionMode = SelectionMode.Multiple,
-                    SelectedItems = new ObservableCollection<string>(schedule.RouteStops),
+                    SelectedItems = new ObservableCollection<string>(schedule.RouteStops ?? new List<string>()),
                     Margin = new Thickness(0, 0, 0, 10)
                 };
 
@@ -691,37 +1072,31 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     var departureOffset = new DateTimeOffset(departureDateTime);
                     var arrivalOffset = new DateTimeOffset(arrivalDateTime);
                     
-                    // Match UpdateRouteScheduleModel from API
-                    var updatedSchedule = new
-                    {
-                        RouteId = SelectedRoute.RouteId,
-                        StartPoint = selectedStops.First(),
-                        EndPoint = selectedStops.Last(),
-                        RouteStops = selectedStops,
-                        DepartureTime = (ulong)departureOffset.ToUnixTimeMilliseconds(),
-                        ArrivalTime = (ulong)arrivalOffset.ToUnixTimeMilliseconds(),
-                        Price = (double)priceBox.Value,
-                        AvailableSeats = (uint)seatsBox.Value,
-                        IsActive = isActiveCheckBox.IsChecked ?? true,
-                        IsRecurring = isRecurringCheckBox.IsChecked ?? true,
-                        DaysOfWeek = new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" },
-                        BusTypes = new[] { "МАЗ-103", "МАЗ-107" },
-                        StopDurationMinutes = schedule.StopDurationMinutes,
-                        EstimatedStopTimes = schedule.EstimatedStopTimes,
-                        StopDistances = schedule.StopDistances,
-                        Notes = schedule.Notes
-                    };
+                    // Convert DisplayModel to RouteSchedule and update fields
+                    var updatedSchedule = scheduleDisplay.ToRouteSchedule();
+                    updatedSchedule.RouteId = SelectedRoute.RouteId;
+                    updatedSchedule.StartPoint = selectedStops.First();
+                    updatedSchedule.EndPoint = selectedStops.Last();
+                    updatedSchedule.RouteStops = selectedStops.ToList();
+                    updatedSchedule.DepartureTime = (ulong)departureOffset.ToUnixTimeMilliseconds();
+                    updatedSchedule.ArrivalTime = (ulong)arrivalOffset.ToUnixTimeMilliseconds();
+                    updatedSchedule.Price = (double)priceBox.Value;
+                    updatedSchedule.AvailableSeats = (uint)seatsBox.Value;
+                    updatedSchedule.IsActive = isActiveCheckBox.IsChecked ?? true;
+                    updatedSchedule.IsRecurring = isRecurringCheckBox.IsChecked ?? true;
 
                     try
                     {
                         var json = JsonSerializer.Serialize(updatedSchedule, _jsonOptions);
                         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+                        Log.Information("Updating schedule {ScheduleId} with data: {Json}", schedule.ScheduleId, json);
                         var response = await _httpClient.PutAsync(
                             $"{_baseUrl}/RouteSchedules/{schedule.ScheduleId}", content);
                         
                         if (response.IsSuccessStatusCode)
                         {
+                            Log.Information("Successfully updated schedule {ScheduleId}", schedule.ScheduleId);
                             await LoadSchedules();
                             dialog.Close();
                         }
@@ -730,13 +1105,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                             var error = await response.Content.ReadAsStringAsync();
                             ErrorMessage = $"Failed to update schedule: {error}";
                             HasError = true;
+                            Log.Error("Failed to update schedule {ScheduleId}. Status: {StatusCode}, Error: {Error}", 
+                                schedule.ScheduleId, response.StatusCode, error);
                         }
                     }
                     catch (Exception ex)
                     {
                         ErrorMessage = $"Error updating schedule: {ex.Message}";
                         HasError = true;
-                        Log.Error(ex, "Error updating schedule");
+                        Log.Error(ex, "Error updating schedule {ScheduleId}", schedule.ScheduleId);
                     }
                 };
 
@@ -758,9 +1135,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         [RelayCommand]
-        private async Task Delete(RouteSchedule? schedule)
+        private async Task Delete(RouteScheduleDisplayModel? scheduleDisplay)
         {
-            if (schedule == null) return;
+            if (scheduleDisplay == null) return;
+            
+            var schedule = scheduleDisplay.Schedule;
 
             try
             {

@@ -385,6 +385,85 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
         }
 
         /// <summary>
+        /// Safely gets a JsonArray from a JsonObject, handling $values wrappers and references.
+        /// Returns the raw JsonArray for further processing.
+        /// Handles both camelCase and PascalCase property names.
+        /// </summary>
+        public static JsonArray? GetJsonArray(this JsonObject obj, string propertyName)
+        {
+            try
+            {
+                JsonNode? arrayNode = null;
+                
+                // Try exact match first
+                if (obj.TryGetPropertyValue(propertyName, out var node))
+                {
+                    arrayNode = node;
+                }
+                else
+                {
+                    // Try case-insensitive match
+                    var key = obj.FirstOrDefault(kvp => 
+                        string.Equals(kvp.Key, propertyName, StringComparison.OrdinalIgnoreCase)).Key;
+                    
+                    if (key != null && obj.TryGetPropertyValue(key, out var caseInsensitiveNode))
+                    {
+                        arrayNode = caseInsensitiveNode;
+                    }
+                }
+
+                if (arrayNode == null)
+                {
+                    return null;
+                }
+
+                // Check if it's wrapped in a reference-preserved object with $values
+                if (arrayNode is JsonObject arrayObj && arrayObj.TryGetPropertyValue("$values", out var valuesNode))
+                {
+                    arrayNode = valuesNode;
+                }
+
+                return arrayNode as JsonArray;
+            }
+            catch (Exception ex)
+            {
+                Log.Verbose(ex, "Failed to get JsonArray for property {Property}", propertyName);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Safely gets a double array from a JsonObject, handling $values wrappers.
+        /// Handles both camelCase and PascalCase property names.
+        /// </summary>
+        public static double[]? GetDoubleArray(this JsonObject obj, string propertyName)
+        {
+            try
+            {
+                var jsonArray = obj.GetJsonArray(propertyName);
+                if (jsonArray == null) return null;
+
+                var result = new List<double>();
+                foreach (var item in jsonArray)
+                {
+                    if (item != null && item is JsonValue jsonValue)
+                    {
+                        if (jsonValue.TryGetValue<double>(out var doubleValue))
+                        {
+                            result.Add(doubleValue);
+                        }
+                    }
+                }
+                return result.Count > 0 ? result.ToArray() : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Verbose(ex, "Failed to get double array for property {Property}", propertyName);
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Creates a JsonSerializerOptions instance configured to handle reference preservation.
         /// </summary>
         public static JsonSerializerOptions CreateOptionsWithReferenceHandling()

@@ -136,9 +136,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
                 
-                // CRITICAL FIX: Check if it's an encrypted token (JWE) by looking at the header
-                // JWE tokens start with a header that contains "alg" for key encryption
-                if (token.StartsWith("eyJhbGciOiJBMjU2S1ci") || token.StartsWith("eyJhbGciOiJSU0EtT0FFUC0yNTYi"))
+                // CRITICAL FIX: Check if it's an encrypted token (JWE) by examining the structure
+                if (IsJweToken(token))
                 {
                     // It's an encrypted JWE token from OpenIddict, validate via tokeninfo endpoint
                     Log.Debug("IsAdmin check - Token is encrypted (JWE), validating via tokeninfo endpoint");
@@ -398,6 +397,92 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length);
                 
+                // CRITICAL: Check if it's a JWE token FIRST before trying to parse as JWT
+                // JwtSecurityTokenHandler.CanReadToken() returns true for JWE tokens but can't read encrypted payload
+                if (IsJweToken(token))
+                {
+                    // It's an encrypted token, call tokeninfo endpoint to validate and get claims
+                    Log.Information("ValidateOAuthTokenAsync - Token is JWE (encrypted), calling tokeninfo endpoint");
+                    
+                    using var httpClient = new System.Net.Http.HttpClient();
+                    httpClient.DefaultRequestHeaders.Authorization = 
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                    
+                    // Use the same base URL as the current request
+                    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                    var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
+                    
+                    Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
+                    
+                    var response = await httpClient.GetAsync(tokeninfoUrl);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}", 
+                            response.StatusCode, errorContent);
+                        return null;
+                    }
+                    
+                    var content = await response.Content.ReadAsStringAsync();
+                    Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
+                    
+                    var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                    
+                    if (tokenInfo.TryGetProperty("claims", out var claimsElement))
+                    {
+                        var claims = new Dictionary<string, object>();
+                        
+                        foreach (var claim in claimsElement.EnumerateObject())
+                        {
+                            // Handle different JSON value types
+                            if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                // Direct array
+                                var values = new List<string>();
+                                foreach (var item in claim.Value.EnumerateArray())
+                                {
+                                    values.Add(item.GetString() ?? "");
+                                }
+                                claims[claim.Name] = values;
+                            }
+                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
+                            {
+                                // Check if it's a JSON.NET reference object with $values array
+                                if (claim.Value.TryGetProperty("$values", out var valuesArray))
+                                {
+                                    var values = new List<string>();
+                                    foreach (var item in valuesArray.EnumerateArray())
+                                    {
+                                        values.Add(item.GetString() ?? "");
+                                    }
+                                    claims[claim.Name] = values;
+                                }
+                                else
+                                {
+                                    // It's a regular object, convert to string
+                                    claims[claim.Name] = claim.Value.ToString();
+                                }
+                            }
+                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                            {
+                                claims[claim.Name] = claim.Value.GetString() ?? "";
+                            }
+                            else
+                            {
+                                // For numbers, booleans, etc., convert to string
+                                claims[claim.Name] = claim.Value.ToString();
+                            }
+                        }
+                        
+                        Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
+                        return claims;
+                    }
+                    
+                    Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response");
+                    return null;
+                }
+                
                 // Check if it's a JWT we can parse directly
                 var tokenHandler = new JwtSecurityTokenHandler();
                 if (tokenHandler.CanReadToken(token))
@@ -431,66 +516,51 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return claims;
                 }
                 
-                // It's an encrypted token, call tokeninfo endpoint to validate and get claims
-                Log.Information("ValidateOAuthTokenAsync - Token is encrypted, calling tokeninfo endpoint");
-                
-                using var httpClient = new System.Net.Http.HttpClient();
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                
-                // Use the same base URL as the current request
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
-                
-                Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
-                
-                var response = await httpClient.GetAsync(tokeninfoUrl);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}", 
-                        response.StatusCode, errorContent);
-                    return null;
-                }
-                
-                var content = await response.Content.ReadAsStringAsync();
-                Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
-                
-                var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
-                
-                if (tokenInfo.TryGetProperty("claims", out var claimsElement))
-                {
-                    var claims = new Dictionary<string, object>();
-                    
-                    foreach (var claim in claimsElement.EnumerateObject())
-                    {
-                        if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
-                        {
-                            var values = new List<string>();
-                            foreach (var item in claim.Value.EnumerateArray())
-                            {
-                                values.Add(item.GetString() ?? "");
-                            }
-                            claims[claim.Name] = values;
-                        }
-                        else
-                        {
-                            claims[claim.Name] = claim.Value.GetString() ?? "";
-                        }
-                    }
-                    
-                    Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
-                    return claims;
-                }
-                
-                Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response");
+                // Unknown token format
+                Log.Warning("ValidateOAuthTokenAsync - Unknown token format");
                 return null;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "ValidateOAuthTokenAsync - Error validating OAuth token: {Message}", ex.Message);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a token is a JWE (encrypted) token by examining its structure
+        /// </summary>
+        private bool IsJweToken(string token)
+        {
+            try
+            {
+                // JWE tokens have 5 parts separated by dots: header.encrypted_key.iv.ciphertext.tag
+                // JWT tokens have 3 parts: header.payload.signature
+                var parts = token.Split('.');
+                
+                if (parts.Length == 5)
+                {
+                    // Definitely a JWE (5 parts)
+                    return true;
+                }
+                
+                if (parts.Length != 3)
+                {
+                    // Invalid format
+                    return false;
+                }
+                
+                // Decode the header to check for JWE-specific fields
+                var headerBytes = Convert.FromBase64String(parts[0].Replace('-', '+').Replace('_', '/').PadRight(parts[0].Length + (4 - parts[0].Length % 4) % 4, '='));
+                var headerJson = System.Text.Encoding.UTF8.GetString(headerBytes);
+                
+                // JWE headers contain "enc" (encryption algorithm) field
+                // JWT headers only have "alg" and "typ"
+                return headerJson.Contains("\"enc\"");
+            }
+            catch
+            {
+                return false;
             }
         }
 

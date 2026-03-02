@@ -649,7 +649,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 ulong? validUntil = schedObj.GetNullableValue<ulong>("validUntil");
                 uint? stopDurationMinutes = schedObj.GetNullableValue<uint>("stopDurationMinutes");
                 List<string>? estimatedStopTimes = schedObj.GetStringArray("estimatedStopTimes")?.ToList();
-                List<double>? stopDistances = schedObj.GetValue<double[]>("stopDistances", null)?.ToList();
+                List<double>? stopDistances = schedObj.GetDoubleArray("stopDistances")?.ToList();
                 string? notes = schedObj.GetStringValue("notes");
                 ulong? updatedAt = schedObj.GetNullableValue<ulong>("updatedAt");
                 string? updatedBy = schedObj.GetStringValue("updatedBy");
@@ -782,33 +782,52 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
             try
             {
                 // UserProfile uses Identity as primary key, which is a special type
-                // We need to handle it carefully
-                string? userIdStr = userObj.GetStringValue("userId");
+                // Server sends it as hex string in "UserId" field (uppercase U)
+                string? userIdStr = userObj.GetStringValue("UserId");
                 if (string.IsNullOrEmpty(userIdStr))
                 {
-                    Log.Warning("UserProfile object has null/empty UserId, skipping");
+                    Log.Warning("UserProfile object has null/empty UserId, skipping. JSON: {Json}", userObj.ToJsonString());
                     return null;
                 }
 
-                uint legacyUserId = userObj.GetValue<uint>("legacyUserId", 0);
-                string login = userObj.GetStringValue("login") ?? string.Empty;
-                bool isActive = userObj.GetValue<bool>("isActive", false);
-                ulong createdAt = userObj.GetValue<ulong>("createdAt", 0);
+                // Parse Identity from hex string
+                SpacetimeDB.Identity userId;
+                try
+                {
+                    // Convert hex string to byte array
+                    byte[] bytes = Convert.FromHexString(userIdStr);
+                    userId = new SpacetimeDB.Identity(bytes);
+                    Log.Verbose("Parsed UserId from hex string: {UserIdHex}", userIdStr);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to parse UserId hex string '{UserIdHex}' for user", userIdStr);
+                    return null;
+                }
 
-                // Optional fields - only set if they exist in the UserProfile type
-                string? passwordHash = userObj.GetStringValue("passwordHash");
-                string? email = userObj.GetStringValue("email");
-                string? phoneNumber = userObj.GetStringValue("phoneNumber");
-                ulong? lastLoginAt = userObj.GetNullableValue<ulong>("lastLoginAt");
-                string? legacyGuid = userObj.GetStringValue("legacyGuid");
-                bool? emailConfirmed = userObj.GetNullableValue<bool>("emailConfirmed");
+                uint legacyUserId = userObj.GetValue<uint>("LegacyUserId", 0);
+                string login = userObj.GetStringValue("Login") ?? string.Empty;
+                bool isActive = userObj.GetValue<bool>("IsActive", false);
+                ulong createdAt = userObj.GetValue<ulong>("CreatedAt", 0);
 
-                // Note: Identity type needs special handling - this is a simplified version
-                // In production, you'd need to properly parse the Identity from the JSON
+                // Optional fields - match server's PascalCase naming
+                string? passwordHash = userObj.GetStringValue("PasswordHash");
+                string? email = userObj.GetStringValue("Email");
+                string? phoneNumber = userObj.GetStringValue("PhoneNumber");
+                ulong? lastLoginAt = userObj.GetNullableValue<ulong>("LastLoginAt");
+                string? legacyGuid = userObj.GetStringValue("LegacyGuid");
+                bool? emailConfirmed = userObj.GetNullableValue<bool>("EmailConfirmed");
+                double? xuid = userObj.GetNullableValue<double>("Xuid");
+                bool? phoneNumberConfirmed = userObj.GetNullableValue<bool>("PhoneNumberConfirmed");
+
+                Log.Verbose("Parsed UserProfile: UserId={UserId}, LegacyUserId={LegacyUserId}, Login='{Login}', Email='{Email}', Active={Active}",
+                    userIdStr, legacyUserId, login, email, isActive);
+
                 return new UserProfile
                 {
-                    // UserId = Identity parsing would go here
+                    UserId = userId,
                     LegacyUserId = legacyUserId,
+                    Xuid = xuid,
                     Login = login,
                     PasswordHash = passwordHash,
                     Email = email,
@@ -817,7 +836,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     CreatedAt = createdAt,
                     LastLoginAt = lastLoginAt,
                     LegacyGuid = legacyGuid,
-                    EmailConfirmed = emailConfirmed
+                    EmailConfirmed = emailConfirmed,
+                    PhoneNumberConfirmed = phoneNumberConfirmed
                 };
             }
             catch (Exception ex)

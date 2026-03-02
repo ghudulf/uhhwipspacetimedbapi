@@ -48,30 +48,24 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
             Log.Information("Fetching all users");
             var users = await _userService.GetAllUsersAsync();
-            var conn = _spacetimeService.GetConnection();
 
-            // Map to anonymous type including Roles
-            var result = users.Select(u => {
-                var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(u.UserId)).ToList();
-                var roles = userRoles.Select(ur => {
-                    var role = conn.Db.Role.RoleId.Find(ur.RoleId);
-                    return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
-                }).Where(r => r != null).ToList();
-                
-                return new {
-                    u.LegacyUserId, // Keep legacy ID if used externally
-                    u.UserId,
-                    u.Login,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.IsActive,
-                    CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)u.CreatedAt).DateTime,
-                    LastLoginAt = u.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)u.LastLoginAt.Value).DateTime : (DateTime?)null,
-                    Roles = roles
-                };
+            // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
+            // Include ALL fields that the client needs
+            var result = users.Select(u => new {
+                u.LegacyUserId,
+                UserId = u.UserId.ToString(), // Convert Identity to string for JSON
+                u.Login,
+                u.PasswordHash,
+                u.Email,
+                u.PhoneNumber,
+                u.IsActive,
+                u.CreatedAt,
+                u.LastLoginAt,
+                u.LegacyGuid,
+                u.EmailConfirmed
             }).ToList();
 
-            Log.Debug("Retrieved {UserCount} users", result.Count());
+            Log.Debug("Retrieved {UserCount} users", result.Count);
             Log.Information("FULL USERS DATA: {UsersData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }

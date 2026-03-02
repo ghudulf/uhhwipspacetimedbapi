@@ -4594,8 +4594,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var canRead = tokenHandler.CanReadToken(token);
                 _logger.LogInformation("TokenTest - CanReadToken: {CanRead}", canRead);
                 
-                // Check if it's a JWE (encrypted) token
-                var isJwe = token.StartsWith("eyJhbGciOiJBMjU2S1ci") || token.StartsWith("eyJhbGciOiJSU0EtT0FFUC0yNTYi");
+                // Check if it's a JWE (encrypted) token by examining the header
+                bool isJwe = IsJweToken(token);
                 _logger.LogInformation("TokenTest - Is JWE (encrypted): {IsJwe}", isJwe);
                 
                 if (canRead && !isJwe)
@@ -4657,6 +4657,43 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 _logger.LogError(ex, "TokenTest error");
                 return Ok(new { error = ex.Message, stack = ex.StackTrace });
+            }
+        }
+
+        /// <summary>
+        /// Checks if a token is a JWE (encrypted) token by examining its header
+        /// </summary>
+        private bool IsJweToken(string token)
+        {
+            try
+            {
+                // JWE tokens have 5 parts separated by dots: header.encrypted_key.iv.ciphertext.tag
+                // JWT tokens have 3 parts: header.payload.signature
+                var parts = token.Split('.');
+                
+                if (parts.Length == 5)
+                {
+                    // Definitely a JWE (5 parts)
+                    return true;
+                }
+                
+                if (parts.Length != 3)
+                {
+                    // Invalid format
+                    return false;
+                }
+                
+                // Decode the header to check for JWE-specific fields
+                var headerBytes = Convert.FromBase64String(parts[0].Replace('-', '+').Replace('_', '/').PadRight(parts[0].Length + (4 - parts[0].Length % 4) % 4, '='));
+                var headerJson = System.Text.Encoding.UTF8.GetString(headerBytes);
+                
+                // JWE headers contain "enc" (encryption algorithm) field
+                // JWT headers only have "alg" and "typ"
+                return headerJson.Contains("\"enc\"");
+            }
+            catch
+            {
+                return false;
             }
         }
 

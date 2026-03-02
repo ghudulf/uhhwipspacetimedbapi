@@ -31,35 +31,81 @@ namespace TicketSalesApp.AdminServer.Controllers
        
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules()
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100,
+            [FromQuery] bool? isActive = null)
         {
             try
             {
-                _logger.LogInformation("Fetching all route schedules");
+                _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
+                    page, pageSize, isActive);
+                
                 var schedules = await _routeScheduleService.GetAllSchedulesAsync();
                 
-                // Map to anonymous type
-                var result = schedules.Select(s => new {
+                _logger.LogInformation("Retrieved {TotalCount} total schedules from database", schedules.Count());
+                
+                // Filter by IsActive if specified
+                var filtered = schedules.AsEnumerable();
+                if (isActive.HasValue)
+                {
+                    filtered = filtered.Where(s => s.IsActive == isActive.Value);
+                    _logger.LogDebug("Filtered to {Count} schedules with IsActive={IsActive}", filtered.Count(), isActive.Value);
+                }
+                
+                // Apply pagination
+                var totalCount = filtered.Count();
+                var paged = filtered
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize);
+                
+                // Map to anonymous type with ALL fields - CRITICAL for client deserialization
+                var result = paged.Select(s => new {
                     s.ScheduleId,
                     s.RouteId,
                     s.StartPoint,
-                    s.EndPoint,
                     s.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    s.EndPoint,
+                    s.DepartureTime,
+                    s.ArrivalTime,
                     s.Price,
                     s.AvailableSeats,
+                    s.SeatedCapacity,
+                    s.StandingCapacity,
                     s.DaysOfWeek,
                     s.BusTypes,
+                    s.IsActive,
+                    s.ValidFrom,
+                    s.ValidUntil,
                     s.StopDurationMinutes,
                     s.IsRecurring,
                     s.EstimatedStopTimes,
                     s.StopDistances,
-                    s.Notes
+                    s.Notes,
+                    s.CreatedAt,
+                    s.UpdatedAt,
+                    s.UpdatedBy,
+                    s.PeakHourLoad,
+                    s.OffPeakHourLoad,
+                    s.IsSpecialEvent,
+                    s.SpecialEventName,
+                    s.IsHoliday,
+                    s.HolidayName,
+                    s.IsWeekend,
+                    s.SeatConfigurationId,
+                    s.RequiresSeatReservation,
+                    s.RouteType
                 }).ToList();
 
-                _logger.LogDebug("Retrieved {Count} schedules", result.Count);
-                _logger.LogInformation("FULL SCHEDULE DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
+                    result.Count, page, (int)Math.Ceiling(totalCount / (double)pageSize), totalCount);
+                
+                // Add pagination metadata to response headers
+                Response.Headers.Add("X-Total-Count", totalCount.ToString());
+                Response.Headers.Add("X-Page", page.ToString());
+                Response.Headers.Add("X-Page-Size", pageSize.ToString());
+                Response.Headers.Add("X-Total-Pages", ((int)Math.Ceiling(totalCount / (double)pageSize)).ToString());
+                
                 return Ok(result);
             }
             catch (Exception ex)
@@ -104,7 +150,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 };
 
                 _logger.LogInformation("Successfully retrieved schedule {ScheduleId}", id);
-                _logger.LogInformation("FULL SCHEDULE DATA: {ScheduleData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
             catch (Exception ex)
@@ -119,12 +164,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             [FromQuery] uint? routeId = null,
             [FromQuery] DateTime? date = null,
             [FromQuery] string? dayOfWeek = null,
-            [FromQuery] bool? isActive = null)
+            [FromQuery] bool? isActive = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
         {
             try
             {
-                _logger.LogInformation("Searching route schedules with routeId: {RouteId}, date: {Date}, dayOfWeek: {DayOfWeek}, isActive: {IsActive}",
-                    routeId, date, dayOfWeek, isActive);
+                _logger.LogInformation("Searching route schedules with routeId: {RouteId}, date: {Date}, dayOfWeek: {DayOfWeek}, isActive: {IsActive}, page: {Page}, pageSize: {PageSize}",
+                    routeId, date, dayOfWeek, isActive, page, pageSize);
 
                 var schedules = await _routeScheduleService.GetAllSchedulesAsync();
                 var query = schedules.AsEnumerable(); // Start query on IEnumerable
@@ -134,22 +181,127 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 if (date.HasValue)
                 {
-                    // Convert the target date to start and end timestamps for the entire day (UTC)
-                    var startOfDay = new DateTimeOffset(date.Value.Date).ToUnixTimeMilliseconds();
-                    var endOfDay = startOfDay + 86400000; // Add 24 hours in milliseconds
-                    _logger.LogDebug("Filtering by date: Start={StartTimestamp}, End={EndTimestamp}", startOfDay, endOfDay);
-                    query = query.Where(s => s.DepartureTime >= (ulong)startOfDay && s.DepartureTime < (ulong)endOfDay);
+                    // COMPREHENSIVE DATE FILTERING WITH EXTENSIVE LOGGING AND VALIDATION
+                    var targetDate = date.Value.Date;
+                    var targetDayOfWeek = targetDate.DayOfWeek.ToString();
+                    var targetDateStartMs = (ulong)new DateTimeOffset(targetDate).ToUnixTimeMilliseconds();
+                    var targetDateEndMs = targetDateStartMs + 86400000; // Add 24 hours in milliseconds
+                    
+                    _logger.LogInformation("=== DATE FILTER ANALYSIS START ===");
+                    _logger.LogInformation("Target Date: {Date} ({DayOfWeek})", targetDate.ToString("yyyy-MM-dd"), targetDayOfWeek);
+                    _logger.LogInformation("Target Date Range (Unix ms): {Start} to {End}", targetDateStartMs, targetDateEndMs);
+                    _logger.LogInformation("Total schedules before date filter: {Count}", query.Count());
+                    
+                    // Count schedules by type before filtering for diagnostic purposes
+                    var totalBeforeFilter = query.Count();
+                    var recurringBeforeFilter = query.Count(s => s.IsRecurring);
+                    var nonRecurringBeforeFilter = totalBeforeFilter - recurringBeforeFilter;
+                    
+                    _logger.LogInformation("Schedules breakdown: {Total} total ({Recurring} recurring, {NonRecurring} non-recurring)", 
+                        totalBeforeFilter, recurringBeforeFilter, nonRecurringBeforeFilter);
+                    
+                    // Apply comprehensive date filtering with multiple conditions
+                    query = query.Where(s => 
+                    {
+                        // CONDITION 1: Non-recurring schedule with exact date match
+                        // Check if the departure time falls within the target date (00:00:00 to 23:59:59)
+                        var isExactDateMatch = !s.IsRecurring && 
+                                               s.DepartureTime >= targetDateStartMs && 
+                                               s.DepartureTime < targetDateEndMs;
+                        
+                        // CONDITION 2: Recurring schedule that runs on this day of week
+                        // Must satisfy ALL of the following:
+                        // - Schedule is marked as recurring
+                        // - DaysOfWeek list is not null and not empty
+                        // - DaysOfWeek contains the target day (case-insensitive)
+                        // - ValidFrom date is on or before the target date
+                        // - ValidUntil is either null (no expiration) OR is on or after the target date
+                        var isRecurringMatch = false;
+                        if (s.IsRecurring)
+                        {
+                            var hasDaysOfWeek = s.DaysOfWeek != null && s.DaysOfWeek.Count > 0;
+                            var matchesDayOfWeek = hasDaysOfWeek && 
+                                                   s.DaysOfWeek.Any(day => 
+                                                       string.Equals(day, targetDayOfWeek, StringComparison.OrdinalIgnoreCase));
+                            var validFromSatisfied = s.ValidFrom <= targetDateStartMs;
+                            var validUntilSatisfied = !s.ValidUntil.HasValue || s.ValidUntil.Value >= targetDateStartMs;
+                            
+                            isRecurringMatch = hasDaysOfWeek && 
+                                             matchesDayOfWeek && 
+                                             validFromSatisfied && 
+                                             validUntilSatisfied;
+                        }
+                        
+                        // CONDITION 3: One-time schedule with departure time on exact date
+                        // This handles schedules that are not recurring but have a specific departure date
+                        var isOneTimeScheduleMatch = !s.IsRecurring && 
+                                                     s.DepartureTime >= targetDateStartMs && 
+                                                     s.DepartureTime < targetDateEndMs;
+                        
+                        // Return true if ANY of the conditions are met
+                        return isExactDateMatch || isRecurringMatch || isOneTimeScheduleMatch;
+                    });
+                    
+                    // Post-filter analysis and logging
+                    var totalAfterFilter = query.Count();
+                    var recurringAfterFilter = query.Count(s => s.IsRecurring);
+                    var nonRecurringAfterFilter = totalAfterFilter - recurringAfterFilter;
+                    
+                    _logger.LogInformation("Schedules after date filter: {Total} total ({Recurring} recurring, {NonRecurring} non-recurring)", 
+                        totalAfterFilter, recurringAfterFilter, nonRecurringAfterFilter);
+                    _logger.LogInformation("Filter removed {Removed} schedules ({RemovedRecurring} recurring, {RemovedNonRecurring} non-recurring)",
+                        totalBeforeFilter - totalAfterFilter,
+                        recurringBeforeFilter - recurringAfterFilter,
+                        nonRecurringBeforeFilter - nonRecurringAfterFilter);
+                    
+                    // Sample logging: show first few matching schedules for verification
+                    var sampleSchedules = query.Take(3).ToList();
+                    if (sampleSchedules.Any())
+                    {
+                        _logger.LogDebug("Sample matching schedules:");
+                        foreach (var sample in sampleSchedules)
+                        {
+                            var daysOfWeekStr = sample.DaysOfWeek != null ? string.Join(", ", sample.DaysOfWeek) : "null";
+                            var validFromDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sample.ValidFrom).ToString("yyyy-MM-dd");
+                            var validUntilDate = sample.ValidUntil.HasValue 
+                                ? DateTimeOffset.FromUnixTimeMilliseconds((long)sample.ValidUntil.Value).ToString("yyyy-MM-dd") 
+                                : "null (no expiration)";
+                            
+                            _logger.LogDebug("  Schedule {ScheduleId}: Route {RouteId}, IsRecurring={IsRecurring}, " +
+                                           "DaysOfWeek=[{DaysOfWeek}], ValidFrom={ValidFrom}, ValidUntil={ValidUntil}",
+                                sample.ScheduleId, sample.RouteId, sample.IsRecurring, 
+                                daysOfWeekStr, validFromDate, validUntilDate);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("NO SCHEDULES MATCHED THE DATE FILTER - This may indicate a data or logic issue");
+                        _logger.LogWarning("Verify that:");
+                        _logger.LogWarning("  1. Schedules exist for route {RouteId}", routeId);
+                        _logger.LogWarning("  2. Recurring schedules have DaysOfWeek that include '{DayOfWeek}'", targetDayOfWeek);
+                        _logger.LogWarning("  3. ValidFrom dates are not in the future relative to {Date}", targetDate.ToString("yyyy-MM-dd"));
+                        _logger.LogWarning("  4. ValidUntil dates (if set) are not in the past relative to {Date}", targetDate.ToString("yyyy-MM-dd"));
+                    }
+                    
+                    _logger.LogInformation("=== DATE FILTER ANALYSIS END ===");
                 }
 
                 if (!string.IsNullOrEmpty(dayOfWeek))
-                    query = query.Where(s => s.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase)); // Use StringComparer
+                    query = query.Where(s => s.DaysOfWeek != null && s.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase));
                 
-                // isActive filter needs to be added if RouteSchedule entity has an IsActive property
-                // if (isActive.HasValue)
-                //     query = query.Where(s => s.IsActive == isActive.Value);
+                if (isActive.HasValue)
+                    query = query.Where(s => s.IsActive == isActive.Value);
+
+                // Get total count before pagination
+                var totalCount = query.Count();
+                
+                // Apply pagination
+                var paged = query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize);
 
                 // Map to anonymous type after filtering
-                var result = query.Select(s => new {
+                var result = paged.Select(s => new {
                     s.ScheduleId,
                     s.RouteId,
                     s.StartPoint,
@@ -168,8 +320,27 @@ namespace TicketSalesApp.AdminServer.Controllers
                     s.Notes
                 }).ToList();
 
-                _logger.LogDebug("Found {Count} matching schedules", result.Count);
-                _logger.LogInformation("FULL SEARCH RESULTS DATA: {SchedulesData}", JsonSerializer.Serialize(result));
+                // Add pagination metadata to response headers
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+                var metadata = new
+                {
+                    TotalCount = totalCount,
+                    PageSize = pageSize,
+                    CurrentPage = page,
+                    TotalPages = totalPages,
+                    HasNext = page < totalPages,
+                    HasPrevious = page > 1,
+                    NextPage = page < totalPages ? page + 1 : page,
+                    PreviousPage = page > 1 ? page - 1 : 1,
+                    FirstPage = 1,
+                    LastPage = totalPages
+                };
+
+                Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
+
+                _logger.LogInformation("Found {Count} matching schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
+                    result.Count, page, totalPages, totalCount);
+                
                 return Ok(result);
             }
             catch (Exception ex)

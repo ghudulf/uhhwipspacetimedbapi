@@ -253,14 +253,17 @@ builder.Services.AddOpenIddict()
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
 
+        options.AddEncryptionKey(symmetricKey); // << Important
+
         // Configure the token validation parameters to accept our custom JWT tokens
         options.Configure(validationOptions =>
         {
             validationOptions.TokenValidationParameters.IssuerSigningKey = symmetricKey;
-            validationOptions.TokenValidationParameters.ValidIssuer = "https://localhost:5001";
-            validationOptions.TokenValidationParameters.ValidAudience = "https://localhost:5001";
+            // CRITICAL FIX: Use the same issuer as the server (http://localhost:5000/)
+            validationOptions.TokenValidationParameters.ValidIssuer = "http://localhost:5000/";
+            validationOptions.TokenValidationParameters.ValidAudience = "http://localhost:5000/";
             validationOptions.TokenValidationParameters.ValidateIssuer = true;
-            validationOptions.TokenValidationParameters.ValidateAudience = true;
+            validationOptions.TokenValidationParameters.ValidateAudience = false; // OpenIddict handles audience validation
             validationOptions.TokenValidationParameters.ValidateLifetime = true;
             validationOptions.TokenValidationParameters.ClockSkew = TimeSpan.Zero;
             validationOptions.TokenValidationParameters.RoleClaimType = "role";

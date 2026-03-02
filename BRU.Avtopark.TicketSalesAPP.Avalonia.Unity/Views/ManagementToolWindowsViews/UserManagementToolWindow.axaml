@@ -13,7 +13,7 @@
         <converters:RoleConverter x:Key="RoleConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto,*" Margin="10">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,*" Margin="10">
         <!-- Search and Add Button -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0" 
@@ -67,10 +67,10 @@
                                               Binding="{Binding IsActive}"
                                               Width="Auto"/>
                         <DataGridTextColumn Header="Создан" 
-                                          Binding="{Binding CreatedAt, StringFormat=\{0:dd.MM.yyyy\}}"
+                                          Binding="{Binding CreatedAtDisplay}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Последний вход" 
-                                          Binding="{Binding LastLoginAt, StringFormat=\{0:dd.MM.yyyy HH:mm\}}"
+                                          Binding="{Binding LastLoginAtDisplay}"
                                           Width="Auto"/>
                     </DataGrid.Columns>
                 </DataGrid>
