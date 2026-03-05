@@ -1,0 +1,61 @@
+@* QR Login View - Extracted from AuthController RenderQrLogin *@
+@model dynamic
+
+@{
+    var qrCode = Model?.QrCode ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Login - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body class="auth-page-body">
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="login-container fade-in">
+        <div class="auth-card">
+            <div class="card-body">
+                <div class="yandex-id-header">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;"></div>
+                        <span style="color: white; font-weight: 500; font-size: 1.5rem;">BRU ID</span>
+                    </div>
+                </div>
+                
+                <h2 style="text-align: center; margin-bottom: 1.5rem; color: white;">Login with QR Code</h2>
+                
+                <div class="info-box" style="background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;">
+                    <p>Scan this QR code with your mobile device to log in instantly without entering your password.</p>
+                </div>
+                
+                <div class="qr-code qr-login-container">
+                    <img src="data:image/png;base64,@qrCode" alt="Login QR Code">
+                </div>
+                
+                <div id="status" class="text-center my-4" style="color: #b3b3b3;">
+                    <p>Waiting for you to scan the QR code...</p>
+                    <div class="loader" style="margin-top: 1rem;"></div>
+                </div>
+                
+                <div class="secondary-option" onclick="window.location.href='/api/auth/login'">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 9.58301C12.1047 9.58301 13.8095 7.87818 13.8095 5.77348C13.8095 3.66877 12.1047 1.96394 10 1.96394C7.8953 1.96394 6.19047 3.66877 6.19047 5.77348C6.19047 7.87818 7.8953 9.58301 10 9.58301Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17.1432 18.0357C17.1432 14.9167 13.9384 12.3809 10.0003 12.3809C6.06211 12.3809 2.85742 14.9167 2.85742 18.0357" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Back to Login</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script src="~/Experimental/js/auth/qr-login.js"></script>
+</body>
+</html>

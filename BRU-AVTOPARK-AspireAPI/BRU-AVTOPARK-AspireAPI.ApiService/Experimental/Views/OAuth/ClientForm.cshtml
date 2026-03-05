@@ -1,0 +1,115 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model OidcClientFormViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = (Model.IsEdit ? "Edit Client" : "New Client");
+    ViewData["BodyClass"] = "";
+}
+
+<div class="container fade-in">
+    <div class="card">
+        <div class="card-header">
+            <h2>@(Model.IsEdit ? "Edit Client" : "Create New Client")</h2>
+        </div>
+        <div class="card-body">
+            <div class="info-box">
+                <p>@(Model.IsEdit ? "Edit OpenID Connect client application settings. Be careful when modifying redirect URIs and permissions." : "Register a new OpenID Connect client application. The client ID and secret will be used by your application to authenticate with the authorization server.")</p>
+            </div>
+            
+            <form method="POST" 
+                  action="@(Model.IsEdit ? $"/api/auth/connect/update-client/{Uri.EscapeDataString(Model.ClientId!)}" : "/api/auth/connect/register-client")" 
+                  id="clientForm">
+                
+                @if (!string.IsNullOrEmpty(Model.Token))
+                {
+                    <input type="hidden" name="token" value="@Model.Token" />
+                }
+                
+                <div class="form-group">
+                    <label for="clientId">Client ID *</label>
+                    <input type="text" 
+                           id="clientId" 
+                           name="clientId" 
+                           value="@(Model.ClientId ?? "")" 
+                           @(Model.IsEdit ? "readonly" : "required") 
+                           placeholder="e.g., my-app" />
+                    @if (Model.IsEdit)
+                    {
+                        <input type="hidden" name="clientId" value="@Model.ClientId" />
+                    }
+                </div>
+                
+                <div class="form-group">
+                    <label for="displayName">Display Name *</label>
+                    <input type="text" 
+                           id="displayName" 
+                           name="displayName" 
+                           value="@(Model.DisplayName ?? "")" 
+                           required 
+                           placeholder="e.g., My Application" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientSecret">Client Secret @(Model.IsEdit ? "(optional)" : "*")</label>
+                    <input type="text" 
+                           id="clientSecret" 
+                           name="clientSecret" 
+                           @(!Model.IsEdit ? "required" : "") 
+                           placeholder="@(Model.IsEdit ? "Leave blank to keep current secret" : "Enter a secure secret")" />
+                    @if (Model.IsEdit)
+                    {
+                        <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">Leave blank to keep the current secret</p>
+                    }
+                </div>
+                
+                <div class="form-group">
+                    <label for="redirectUris">Redirect URIs * (one per line)</label>
+                    <textarea id="redirectUris" 
+                              name="redirectUris" 
+                              rows="3" 
+                              required 
+                              placeholder="https://myapp.com/callback&#10;https://localhost:5000/callback">@Model.RedirectUris</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">URIs where users will be redirected after authentication</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="postLogoutRedirectUris">Post-Logout Redirect URIs (one per line)</label>
+                    <textarea id="postLogoutRedirectUris" 
+                              name="postLogoutRedirectUris" 
+                              rows="3" 
+                              placeholder="https://myapp.com&#10;https://localhost:5000">@Model.PostLogoutRedirectUris</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">URIs where users will be redirected after logout</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="allowedScopes">Allowed Scopes * (one per line)</label>
+                    <textarea id="allowedScopes" 
+                              name="allowedScopes" 
+                              rows="3" 
+                              required 
+                              placeholder="openid&#10;profile&#10;email">@(string.IsNullOrEmpty(Model.AllowedScopes) ? "openid\nprofile\nemail" : Model.AllowedScopes)</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">Scopes that this client is allowed to request</p>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" 
+                               id="requireConsent" 
+                               name="requireConsent" 
+                               @(Model.RequireConsent ? "checked" : "") 
+                               style="width: auto; margin-right: 0.5rem;" />
+                        <span>Require User Consent</span>
+                    </label>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">If checked, users will be prompted to approve the requested scopes</p>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn" style="flex: 1;">@(Model.IsEdit ? "Update Client" : "Create Client")</button>
+                    <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
+                       class="btn btn-secondary" 
+                       style="flex: 1; text-align: center; line-height: 2.5;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

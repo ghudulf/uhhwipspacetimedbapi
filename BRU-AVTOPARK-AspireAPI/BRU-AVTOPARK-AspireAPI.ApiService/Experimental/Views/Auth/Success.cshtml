@@ -1,0 +1,63 @@
+@* Success Page View - Extracted from AuthController RenderSuccessPage *@
+@model dynamic
+
+@{
+    var token = Model?.Token ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Successful - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="card fade-in">
+            <div class="card-body text-center">
+                <div style="margin-bottom: 1.5rem; animation: scaleIn 0.5s ease-out;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
+                        <circle cx="12" cy="12" r="10" stroke="var(--success-color)" stroke-width="2" fill="rgba(16, 185, 129, 0.1)"/>
+                        <path d="M8 12L11 15L16 9" stroke="var(--success-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2 style="color: var(--success-color); margin-bottom: 1rem;">Login Successful!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">You have been successfully authenticated. Redirecting to your profile...</p>
+                <div class="loader"></div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @@keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script>
+        // Store the token securely
+        const token = '@Html.Raw(token.Replace("'", "\\'"))';
+        if (token && token !== 'null') {
+            localStorage.setItem('auth_token', token);
+            // Redirect to profile after a short delay
+            setTimeout(() => {
+                window.location.href = `/api/auth/profile?token=${encodeURIComponent(token)}`;
+            }, 2000);
+        } else {
+            // No token provided, redirect to login
+            setTimeout(() => {
+                window.location.href = '/api/auth/login';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

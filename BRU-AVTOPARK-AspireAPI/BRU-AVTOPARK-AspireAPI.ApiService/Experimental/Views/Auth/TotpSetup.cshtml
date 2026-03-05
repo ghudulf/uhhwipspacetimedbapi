@@ -1,0 +1,60 @@
+@* TOTP Setup View - Extracted from AuthController RenderTotpSetup *@
+@model dynamic
+
+@{
+    var qrCodeUri = Model?.QrCodeUri ?? "";
+    var secretKey = Model?.SecretKey ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOTP Setup - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container fade-in">
+        <div class="card">
+            <div class="card-header">
+                <h1>Two-Factor Authentication Setup</h1>
+            </div>
+            <div class="card-body">
+                <div class="info-box">
+                    <p>Set up two-factor authentication to increase your account security. Scan the QR code with your authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
+                </div>
+                
+                <div class="qr-code">
+                    <img src="@qrCodeUri" alt="TOTP QR Code">
+                </div>
+                
+                <div class="text-center my-4">
+                    <p>Can't scan the QR code? Manually enter this code in your app:</p>
+                    <div class="code-display text-center">@secretKey</div>
+                </div>
+                
+                <form method="POST" action="/api/auth/totp/verify">
+                    <div class="form-group">
+                        <label for="code">Enter the 6-digit code from your app</label>
+                        <input type="text" id="code" name="code" pattern="[0-9]{6}" placeholder="Enter 6-digit code" autocomplete="one-time-code" required>
+                    </div>
+                    <input type="hidden" name="secretKey" value="@secretKey">
+                    <button type="submit" class="btn btn-block">Verify and Enable</button>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <a href="/api/auth/profile" class="link">Back to Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/js/theme-toggle.js"></script>
+</body>
+</html>

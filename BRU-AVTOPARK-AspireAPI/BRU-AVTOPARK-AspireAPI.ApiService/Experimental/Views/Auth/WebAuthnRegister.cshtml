@@ -1,0 +1,58 @@
+@* WebAuthn Registration View - Extracted from AuthController RenderWebAuthnRegistration *@
+@model dynamic
+
+@{
+    var options = Model?.Options ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Security Key - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container fade-in">
+        <div class="card">
+            <div class="card-header">
+                <h1>Register Security Key</h1>
+            </div>
+            <div class="card-body">
+                <div class="info-box">
+                    <p>Register your security key or biometric authentication (fingerprint, face ID) for passwordless login.</p>
+                </div>
+                
+                <div id="options" data-options="@options" class="hidden"></div>
+                
+                <div class="flex flex-col items-center gap-4 my-4">
+                    <div id="status" class="text-center">
+                        <p>Click the button below to register your security key.</p>
+                    </div>
+                    <button onclick="registerWebAuthn()" id="registerButton" class="btn">Register Security Key</button>
+                    <div id="loader" class="loader hidden"></div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/api/auth/profile" class="link">Back to Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script src="~/Experimental/js/auth/webauthn-register.js"></script>
+</body>
+</html>

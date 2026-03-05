@@ -1,0 +1,202 @@
+@* OAuth Clients List View - Extracted from AuthController RenderOidcClientsList *@
+@model dynamic
+
+@{
+    var clients = Model?.Clients ?? new List<dynamic>();
+    var token = Model?.Token;
+    var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={System.Web.HttpUtility.UrlEncode(token)}" : "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Clients - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+    <style>
+        .clients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .client-card {
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .client-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+        .client-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .client-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+        .client-info {
+            flex: 1;
+            margin-left: 1rem;
+            min-width: 0;
+        }
+        .client-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0 0 0.25rem 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .client-id {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .client-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .client-action-btn {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        .client-action-view {
+            background: var(--primary-color);
+            color: white;
+        }
+        .client-action-view:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        .client-action-edit {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+        .client-action-edit:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin: 0;
+        }
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0.5rem 0 0 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">OAuth 2.0 / OpenID Connect Clients</h1>
+                <p class="page-subtitle">Manage your OAuth 2.0 and OpenID Connect client applications</p>
+            </div>
+            <a href="/api/auth/connect/clients/new@tokenParam" class="btn" style="width: auto;">
+                <span style="font-size: 1.25rem; margin-right: 0.5rem;">+</span> New Client
+            </a>
+        </div>
+
+        @if (clients.Count > 0)
+        {
+            <div class="clients-grid">
+                @foreach (var client in clients)
+                {
+                    var displayName = client.DisplayName ?? client.ClientId;
+                    var firstLetter = displayName.Substring(0, 1).ToUpper();
+                    
+                    <div class="client-card fade-in">
+                        <div class="client-card-header">
+                            <div class="client-icon">@firstLetter</div>
+                            <div class="client-info">
+                                <h3 class="client-name" title="@displayName">@displayName</h3>
+                                <div class="client-id" title="@client.ClientId">@client.ClientId</div>
+                            </div>
+                        </div>
+                        <div class="client-actions">
+                            <a href="/api/auth/connect/clients/@System.Web.HttpUtility.UrlEncode(client.ClientId)@tokenParam" class="client-action-btn client-action-view">View Details</a>
+                            <a href="/api/auth/connect/clients/@System.Web.HttpUtility.UrlEncode(client.ClientId)/edit@tokenParam" class="client-action-btn client-action-edit">Edit</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card fade-in">
+                <div class="card-body empty-state">
+                    <div class="empty-state-icon">🔐</div>
+                    <h3 style="margin-bottom: 1rem; color: var(--text-color);">No OAuth Clients Yet</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Get started by creating your first OAuth 2.0 / OpenID Connect client application.</p>
+                    <a href="/api/auth/connect/clients/new@tokenParam" class="btn" style="width: auto;">Create Your First Client</a>
+                </div>
+            </div>
+        }
+        
+        <div class="mt-4 text-center">
+            <a href="/api/auth/profile@tokenParam" class="link">← Back to Profile</a>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+</body>
+</html>

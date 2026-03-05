@@ -1,0 +1,90 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model RegisterViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Register";
+    ViewData["BodyClass"] = "";
+}
+
+<div class="login-container fade-in" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <div class="card card--dark card--wide">
+        <div class="card__body">
+            <partial name="_BruIdHeader" />
+
+            <h2 class="auth-title">Create Account</h2>
+
+            <partial name="_StatusMessages"
+                     model="new StatusViewModel(Model.Error, Model.Message)" />
+
+            <div class="register-layout">
+                @* Left panel - admin status *@
+                <div class="register-layout__sidebar">
+                    <div class="info-box info-box--dark">
+                        <strong>Note:</strong> Only administrators can register new users. Admin login is required.
+                    </div>
+
+                    <div id="admin-check-status"
+                         class="status-message status-message--success"
+                         style="display: @(Model.IsAdmin ? "block" : "none");">
+                        <strong>Logged in as administrator.</strong>
+                    </div>
+
+                    <div id="admin-check-pending"
+                         class="status-message status-message--warning"
+                         style="display: @(!Model.IsAdmin && Model.AdminCheckAttempt.HasValue ? "block" : "none");">
+                        <strong>Checking admin permissions... (Attempt @(Model.AdminCheckAttempt ?? 0)/3)</strong>
+                        <p>If verification fails, <a href="/api/auth/login?returnUrl=/api/auth/register" class="link link--blue">log in again</a>.</p>
+                    </div>
+
+                    <div id="register-status"></div>
+                </div>
+
+                @* Right panel - registration form *@
+                <div class="register-layout__form">
+                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");">
+                        <div class="form-row">
+                            <partial name="_FormField"
+                                     model="new FormFieldViewModel("username", "Username", Required: true)" />
+                            <partial name="_FormField"
+                                     model="new FormFieldViewModel("password", "Password",
+                                         Type: "password", Required: true)" />
+                        </div>
+
+                        <div class="form-row">
+                            <partial name="_FormField"
+                                     model="new FormFieldViewModel("email", "Email (optional)",
+                                         Type: "email", Placeholder: "example@example.com")" />
+                            <partial name="_FormField"
+                                     model="new FormFieldViewModel("phoneNumber", "Phone (optional)",
+                                         Type: "tel", Placeholder: "+375 XX XXX-XX-XX")" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="role">Role</label>
+                            <select id="role" name="role" class="select select--dark">
+                                <option value="0">User</option>
+                                <option value="1">Administrator</option>
+                                <option value="2">Manager</option>
+                                <option value="3">Driver</option>
+                                <option value="4">Conductor</option>
+                                <option value="5">Dispatcher</option>
+                            </select>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn--primary" style="min-width: 200px;">Register</button>
+                        </div>
+
+                        <div class="text-center" style="margin-top: 1.5rem;">
+                            <a href="/api/auth/profile" class="link link--blue">Back to Profile</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/auth/register.js" defer></script>
+}

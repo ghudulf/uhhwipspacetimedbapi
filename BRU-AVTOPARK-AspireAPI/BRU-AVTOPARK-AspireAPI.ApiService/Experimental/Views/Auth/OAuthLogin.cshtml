@@ -1,0 +1,100 @@
+@* OAuth Login View - Extracted from AuthController RenderOAuthLoginForm *@
+@model dynamic
+
+@{
+    var requestId = Model?.RequestId ?? "";
+    var clientName = Model?.ClientName ?? "Unknown Application";
+    var scopes = Model?.Scopes ?? new string[] { };
+    var error = Model?.Error;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorize Application - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body class="auth-page-body">
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="login-container fade-in">
+        <div class="auth-card">
+            <div class="card-body">
+                <div class="yandex-id-header">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;"></div>
+                        <span style="color: white; font-weight: 500; font-size: 1.5rem;">BRU ID</span>
+                    </div>
+                </div>
+                
+                <h2 style="text-align: center; margin-bottom: 1rem; color: white;">Authorize Application</h2>
+                <p style="text-align: center; color: #b3b3b3; margin-bottom: 1.5rem;">@clientName wants to access your account</p>
+                
+                @if (error != null)
+                {
+                    <div class="error-message">@error</div>
+                }
+                
+                @if (scopes != null && scopes.Length > 0)
+                {
+                    <div class="info-box" style="background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;">
+                        <p style="margin-bottom: 0.5rem; font-weight: 500;">This application will be able to:</p>
+                        <ul style="margin: 0; padding-left: 1.5rem;">
+                            @foreach (var scope in scopes)
+                            {
+                                <li style="margin: 0.25rem 0;">@GetScopeDescription(scope)</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                
+                <form method="POST" action="/connect/authorize/callback">
+                    <input type="hidden" name="requestId" value="@requestId">
+                    
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                    
+                    <button type="submit">Authorize</button>
+                </form>
+                
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="secondary-option" onclick="window.location.href='/api/auth/login'">
+                    <span>Cancel and return to login</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+</body>
+</html>
+
+@functions {
+    string GetScopeDescription(string scope)
+    {
+        return scope switch
+        {
+            "openid" => "Verify your identity",
+            "profile" => "Access your profile information",
+            "email" => "Access your email address",
+            "roles" => "Access your roles and permissions",
+            "offline_access" => "Access your data when you're not using the app",
+            _ => scope
+        };
+    }
+}

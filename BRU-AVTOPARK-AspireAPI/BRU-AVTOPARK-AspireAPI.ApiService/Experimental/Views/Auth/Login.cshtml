@@ -1,0 +1,86 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model LoginViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Login";
+    ViewData["BodyClass"] = "auth-page-body";
+}
+
+<div class="login-container fade-in">
+    <div class="card card--dark">
+        <div class="card__body">
+            <partial name="_BruIdHeader" />
+
+            <h2 class="auth-title">Войдите с BRU ID</h2>
+
+            <partial name="_StatusMessages"
+                     model="new StatusViewModel(Model.Error, Model.Message)" />
+
+            <form method="POST" action="/api/auth/login" id="loginForm">
+                <partial name="_FormField"
+                         model="new FormFieldViewModel("username", "Username",
+                             Placeholder: "Enter your username", Required: true)" />
+
+                <partial name="_FormField"
+                         model="new FormFieldViewModel("password", "Password",
+                             Type: "password",
+                             Placeholder: "Enter your password", Required: true)" />
+
+                <button type="button" class="btn btn--auth-primary" id="loginButton">
+                    Log in
+                </button>
+
+                @* Secondary authentication options *@
+                <div class="secondary-option" data-href="/api/auth/webauthn/login">
+                    <svg class="secondary-option__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 12.75C8.83 12.75 6.25 10.17 6.25 7C6.25 3.83 8.83 1.25 12 1.25C15.17 1.25 17.75 3.83 17.75 7C17.75 10.17 15.17 12.75 12 12.75Z" fill="white"/>
+                    </svg>
+                    <span>Login with Security Key</span>
+                </div>
+
+                <div class="secondary-option" data-href="/api/auth/qr/login">
+                    <svg class="secondary-option__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M3 3H9V9H3V3Z" stroke="white" stroke-width="2"/>
+                        <path d="M15 3H21V9H15V3Z" stroke="white" stroke-width="2"/>
+                        <path d="M3 15H9V21H3V15Z" stroke="white" stroke-width="2"/>
+                    </svg>
+                    <span>Login with QR Code</span>
+                </div>
+            </form>
+
+            <div id="statusDiv" class="mt-4"></div>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+
+            <div class="social-buttons">
+                <button class="social-button" aria-label="Login with phone">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                </button>
+                <button class="social-button" aria-label="Login with Google">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <partial name="_AuthFooterLinks" />
+</div>
+
+@* Auto-login overlay for returning users with cached tokens *@
+<div id="autoLoginOverlay" class="auto-login-overlay" style="display:none;">
+    <div class="auto-login-overlay__content">
+        <div class="loader"></div>
+        <h3 class="auto-login-overlay__title">Welcome back!</h3>
+        <p class="auto-login-overlay__subtitle">Redirecting to your profile...</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/auth/login.js" defer></script>
+}

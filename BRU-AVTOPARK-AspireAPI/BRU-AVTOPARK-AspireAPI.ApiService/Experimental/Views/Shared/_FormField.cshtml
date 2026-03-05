@@ -1,0 +1,12 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model FormFieldViewModel
+
+<div class="form-group">
+    <label for="@Model.Id">@Model.Label</label>
+    <input type="@Model.Type"
+           id="@Model.Id"
+           name="@Model.Id"
+           placeholder="@Model.Placeholder"
+           value="@Model.Value"
+           @(Model.Required ? "required" : "") />
+</div>

@@ -1,0 +1,91 @@
+@* Claim Account View - Extracted from AuthController RenderClaimAccountForm *@
+@model dynamic
+
+@{
+    var error = Model?.Error;
+    var message = Model?.Message;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Account - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body class="auth-page-body">
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="login-container fade-in">
+        <div class="auth-card">
+            <div class="card-body">
+                <div class="yandex-id-header">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;"></div>
+                        <span style="color: white; font-weight: 500; font-size: 1.5rem;">BRU ID</span>
+                    </div>
+                </div>
+                
+                <h2 style="text-align: center; margin-bottom: 1.5rem; color: white;">Claim Your Account</h2>
+                
+                @if (error != null)
+                {
+                    <div class="error-message">@error</div>
+                }
+                @if (message != null)
+                {
+                    <div class="success-message">@message</div>
+                }
+                
+                <div class="info-box" style="background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;">
+                    <p>Claim an existing account by providing your username and setting a new password. This will link your identity to the account.</p>
+                </div>
+                
+                <form method="POST" action="/api/auth/claim-account">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">New Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter a new password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" name="generateNewIdentity" value="true">
+                            <span>Generate New Identity (recommended for security)</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit">Claim Account</button>
+                </form>
+                
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="secondary-option" onclick="window.location.href='/api/auth/login'">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 9.58301C12.1047 9.58301 13.8095 7.87818 13.8095 5.77348C13.8095 3.66877 12.1047 1.96394 10 1.96394C7.8953 1.96394 6.19047 3.66877 6.19047 5.77348C6.19047 7.87818 7.8953 9.58301 10 9.58301Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17.1432 18.0357C17.1432 14.9167 13.9384 12.3809 10.0003 12.3809C6.06211 12.3809 2.85742 14.9167 2.85742 18.0357" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Back to Login</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+@* Section wrapper - replaces Section_root__zl60G / Section_inner__N7MeR pattern *@
+@* Usage: <partial name="_SectionWrapper" model="("Section Title", (RenderFragment)@<text>...content...</text>)" /> *@
+@{
+    var title = ViewData["SectionTitle"]?.ToString();
+}
+
+<section class="section">
+    <div class="section__inner">
+        @if (!string.IsNullOrEmpty(title))
+        {
+            <div class="section__heading">
+                <h2 class="text text--heading-m">@title</h2>
+            </div>
+        }
+        @RenderBody()
+    </div>
+</section>

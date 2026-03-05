@@ -1,0 +1,204 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model ProfileViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Your Profile";
+}
+
+@* ── Profile Card ──────────────────────────────────────────────── *@
+<section class="section">
+    <div class="section__inner">
+        <div class="profile-card" data-testid="profile-card">
+            <div class="profile-card__avatar">
+                <div class="user-avatar user-avatar--large">
+                    <img src="@Model.User.AvatarUrl"
+                         alt="User avatar"
+                         class="user-avatar__image" />
+                </div>
+            </div>
+            <span class="text text--heading-l profile-card__name">
+                @Html.Encode(Model.User.Login)
+            </span>
+            <span class="text text--m profile-card__description">
+                @if (!string.IsNullOrEmpty(Model.User.PhoneNumber))
+                {
+                    <span class="bulleted-item">@Html.Encode(Model.User.PhoneNumber)</span>
+                }
+                @if (!string.IsNullOrEmpty(Model.User.Email))
+                {
+                    <span class="bulleted-item">@Html.Encode(Model.User.Email)</span>
+                }
+                @if (string.IsNullOrEmpty(Model.User.PhoneNumber) && string.IsNullOrEmpty(Model.User.Email))
+                {
+                    <span class="bulleted-item">No contact information provided</span>
+                }
+            </span>
+        </div>
+    </div>
+</section>
+
+@* ── Security Section ──────────────────────────────────────────── *@
+<section class="section">
+    <div class="section__inner">
+        <div class="section__heading">
+            <h2 class="text text--heading-m">Security</h2>
+        </div>
+
+        <div class="list-plain">
+            @* TOTP *@
+            <div class="list-item">
+                <div class="list-item__content">
+                    <span class="text text--m">Two-Factor Authentication</span>
+                    <span class="text text--s text--secondary">
+                        @(Model.TotpEnabled ? "Enabled - App-based code" : "Disabled")
+                    </span>
+                </div>
+                <div class="list-item__action">
+                    @if (Model.TotpEnabled)
+                    {
+                        <form method="POST" action="/api/auth/totp/disable">
+                            <button type="submit" class="btn btn--text">Disable</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a href="/api/auth/totp/setup" class="btn btn--text">Enable</a>
+                    }
+                </div>
+            </div>
+            <hr class="list-divider" />
+
+            @* WebAuthn *@
+            <div class="list-item">
+                <div class="list-item__content">
+                    <span class="text text--m">Security Keys & Biometrics</span>
+                    <span class="text text--s text--secondary">
+                        @(Model.WebAuthnCredentials.Count > 0
+                            ? $"{Model.WebAuthnCredentials.Count} key(s) registered"
+                            : "No keys registered")
+                    </span>
+                </div>
+                <div class="list-item__action">
+                    <a href="/api/auth/webauthn/register/options" class="btn btn--text">
+                        @(Model.WebAuthnCredentials.Count > 0 ? "Manage" : "Add")
+                    </a>
+                </div>
+            </div>
+
+            @* Individual WebAuthn keys *@
+            @foreach (var credential in Model.WebAuthnCredentials)
+            {
+                <div class="list-item">
+                    <div class="list-item__content">
+                        <span class="text text--m">Security Key</span>
+                        <span class="text text--s text--secondary">Added: @credential.CreatedAt.ToString("dd.MM.yyyy")</span>
+                        <span class="text text--xs text--tertiary">ID: @credential.Id[..Math.Min(12, credential.Id.Length)]...</span>
+                    </div>
+                    <div class="list-item__action">
+                        <form method="POST"
+                              action="/api/auth/webauthn/credentials/@Uri.EscapeDataString(credential.Id)"
+                              onsubmit="return confirm('Remove this security key?');">
+                            <input type="hidden" name="_method" value="DELETE" />
+                            <button type="submit" class="btn btn--text btn--danger">Remove</button>
+                        </form>
+                    </div>
+                </div>
+                <hr class="list-divider" />
+            }
+        </div>
+    </div>
+</section>
+
+@* ── Roles & Permissions Section ───────────────────────────────── *@
+<section class="section">
+    <div class="section__inner">
+        <div class="section__heading">
+            <h2 class="text text--heading-m">Roles & Permissions</h2>
+        </div>
+
+        <div class="list-plain">
+            <div class="list-item">
+                <div class="list-item__content">
+                    <span class="text text--m">Roles</span>
+                    <span class="text text--s text--secondary">
+                        @(Model.Roles.Any()
+                            ? string.Join(", ", Model.Roles.Select(r => r.Name))
+                            : "No roles assigned")
+                    </span>
+                </div>
+            </div>
+            <hr class="list-divider" />
+            <div class="list-item">
+                <div class="list-item__content list-item__content--top">
+                    <span class="text text--m">Permissions</span>
+                    @if (Model.Permissions.Any())
+                    {
+                        <div class="badge-list">
+                            @foreach (var perm in Model.Permissions)
+                            {
+                                <span class="badge">@Html.Encode(perm.Name)</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text text--s text--secondary">No special permissions</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ── Admin Section (conditional) ───────────────────────────────── *@
+@if (Model.IsAdmin)
+{
+    <section class="section">
+        <div class="section__inner">
+            <div class="section__heading">
+                <h2 class="text text--heading-m">Administration</h2>
+            </div>
+
+            <div class="admin-cards">
+                <a href="/api/auth/register" class="admin-card">
+                    <div class="admin-card__icon">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM6 8a6 6 0 1 1 12 0A6 6 0 0 1 6 8zm2 10a3 3 0 0 0-3 3 1 1 0 1 1-2 0 5 5 0 0 1 5-5h8a5 5 0 0 1 5 5 1 1 0 1 1-2 0 3 3 0 0 0-3-3H8z" />
+                        </svg>
+                    </div>
+                    <span class="admin-card__title">Register User</span>
+                    <span class="admin-card__subtitle">Create new accounts</span>
+                </a>
+
+                <a href="/api/auth/connect/clients" class="admin-card oidc-clients-link">
+                    <div class="admin-card__icon">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272a1 1 0 0 1-.582 0c-2.865-.872-5.224-2.568-6.846-5.271C3.255 14.006 2.413 10.413 2.413 5.805a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0z" />
+                        </svg>
+                    </div>
+                    <span class="admin-card__title">OIDC Client Management</span>
+                    <span class="admin-card__subtitle">Configure OAuth clients</span>
+                </a>
+            </div>
+        </div>
+    </section>
+}
+
+@* ── Logout ──────────────────────────────────────────────────────── *@
+<div class="text-center" style="margin-top: 2rem; margin-bottom: 2rem;">
+    <a href="/api/auth/logout" class="btn btn--primary btn--lg">Logout</a>
+</div>
+
+@section Scripts {
+    <script>
+        // Pass token to OIDC clients link for admin navigation
+        document.addEventListener('DOMContentLoaded', function () {
+            const token = localStorage.getItem('auth_token')
+                || new URLSearchParams(window.location.search).get('token');
+            if (token) {
+                const link = document.querySelector('.oidc-clients-link');
+                if (link) link.href += '?token=' + encodeURIComponent(token);
+            }
+        });
+    </script>
+}

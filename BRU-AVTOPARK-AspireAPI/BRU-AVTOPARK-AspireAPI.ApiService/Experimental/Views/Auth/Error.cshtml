@@ -1,0 +1,40 @@
+@* Error Page View - Extracted from AuthController RenderErrorPage *@
+@model dynamic
+
+@{
+    var errorMessage = Model?.ErrorMessage ?? "An error occurred";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="card fade-in">
+            <div class="card-body text-center">
+                <div style="margin-bottom: 1.5rem;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
+                        <circle cx="12" cy="12" r="10" stroke="var(--error-color)" stroke-width="2" fill="rgba(239, 68, 68, 0.1)"/>
+                        <path d="M12 8V12M12 16H12.01" stroke="var(--error-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2 style="color: var(--error-color); margin-bottom: 1rem;">Authentication Error</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">@errorMessage</p>
+                <a href="/api/auth/login" class="btn" style="width: auto;">Back to Login</a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+</body>
+</html>

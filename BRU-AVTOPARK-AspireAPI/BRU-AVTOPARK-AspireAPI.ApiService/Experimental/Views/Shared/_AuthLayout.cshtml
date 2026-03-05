@@ -1,0 +1,24 @@
+@using BRU_AVTOPARK.Models.ViewModels
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css" asp-append-version="true" />
+</head>
+<body class="@ViewData["BodyClass"]">
+    <nav class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+            <span class="theme-icon-light">&#9788;</span>
+            <span class="theme-icon-dark">&#9789;</span>
+        </button>
+    </nav>
+
+    @RenderBody()
+
+    <script src="~/js/theme-toggle.js" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

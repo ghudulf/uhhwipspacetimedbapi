@@ -1,0 +1,135 @@
+@using BRU_AVTOPARK.Models.ViewModels
+@model OidcScopesListViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "OAuth Scopes";
+    ViewData["BodyClass"] = "";
+}
+
+<style>
+    .clients-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .client-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .client-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        border-color: var(--primary-color);
+    }
+    .client-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .client-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: white;
+        flex-shrink: 0;
+    }
+    .client-info {
+        flex: 1;
+    }
+    .client-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .detail-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .detail-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .detail-value {
+        color: var(--text-color);
+        word-break: break-all;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-color);
+        margin: 0 0 0.5rem 0;
+    }
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0;
+    }
+</style>
+
+<div class="container fade-in">
+    <div class="page-header">
+        <h1>OAuth Scopes</h1>
+        <p>Manage OAuth 2.0 scopes for your applications</p>
+    </div>
+    
+    @if (Model.Scopes.Count > 0)
+    {
+        <div class="clients-grid">
+            @foreach (var scope in Model.Scopes)
+            {
+                <div class="client-card">
+                    <div class="client-card-header">
+                        <div class="client-icon">@scope.Name.Substring(0, Math.Min(2, scope.Name.Length)).ToUpper()</div>
+                        <div class="client-info" style="flex: 1; margin-left: 1rem;">
+                            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-color);">@scope.Name</h3>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">@(scope.DisplayName ?? "No display name")</p>
+                        </div>
+                    </div>
+                    <div class="client-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Description:</span>
+                            <span class="detail-value">@(scope.Description ?? "No description")</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">OIDC ID:</span>
+                            <span class="detail-value" style="font-family: monospace; font-size: 0.85rem;">@scope.OidcId</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <h3>No scopes found</h3>
+            <p>There are no OAuth scopes registered in the system.</p>
+        </div>
+    }
+
+    <div class="text-center mt-4">
+        <a href="/api/auth/profile@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="link">← Back to Profile</a>
+    </div>
+</div>

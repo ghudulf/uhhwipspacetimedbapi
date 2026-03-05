@@ -1,0 +1,31 @@
+@* Sidebar navigation - shared across all authenticated admin pages *@
+<nav class="sidebar-nav" aria-label="Main navigation">
+    <ul class="sidebar-nav__list">
+        <li class="sidebar-nav__item">
+            <a href="/api/auth/profile"
+               class="sidebar-nav__link @(ViewContext.RouteData.Values["action"]?.ToString() == "ProfilePage" ? "sidebar-nav__link--active" : "")">
+                <svg class="sidebar-nav__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM6 8a6 6 0 1 1 12 0A6 6 0 0 1 6 8zm2 10a3 3 0 0 0-3 3 1 1 0 1 1-2 0 5 5 0 0 1 5-5h8a5 5 0 0 1 5 5 1 1 0 1 1-2 0 3 3 0 0 0-3-3H8z" />
+                </svg>
+                <span>Profile</span>
+            </a>
+        </li>
+        <li class="sidebar-nav__item">
+            <a href="/api/auth/totp/setup" class="sidebar-nav__link">
+                <svg class="sidebar-nav__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zm1 15h-2v-6h2v6zm0-8h-2V6h2v2z" />
+                </svg>
+                <span>Security</span>
+            </a>
+        </li>
+        <li class="sidebar-nav__item">
+            <a href="/api/auth/logout"
+               class="sidebar-nav__link sidebar-nav__link--danger">
+                <svg class="sidebar-nav__icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M5 5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h7v-2H5V5zm16 7l-4-4v3H9v2h8v3l4-4z" />
+                </svg>
+                <span>Logout</span>
+            </a>
+        </li>
+    </ul>
+</nav>
