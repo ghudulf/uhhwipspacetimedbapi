@@ -217,3 +217,27 @@ For each created view, verify:
 - All code self-contained within Experimental
 - Original AuthController completely untouched
 - Ready for incremental testing and migration
+
+
+## ✅ COMPLETED - Request/Response Models (9 files)
+
+All request and response models from AuthController have been migrated to the Experimental folder:
+
+1. **AuthRequests.cs** ✅ CREATED - Login, Register, Claim, TOTP, Magic Link, OAuth callback requests
+2. **WebAuthnRequests.cs** ✅ CREATED - WebAuthn registration, login, and validation requests
+3. **QrLoginRequests.cs** ✅ CREATED - QR login and magic link validation requests
+4. **OAuthRequests.cs** ✅ CREATED - OAuth token request
+5. **LegacyRequests.cs** ✅ CREATED - Legacy Avalonia UI requests
+6. **AuthResponses.cs** ✅ EXISTS - Core authentication responses
+7. **WebAuthnResponses.cs** ✅ CREATED - WebAuthn registration, login, and credential management responses
+8. **QrLoginResponses.cs** ✅ CREATED - QR login and magic link responses
+9. **TotpResponses.cs** ✅ CREATED - TOTP verification and validation responses
+10. **OAuthResponses.cs** ✅ CREATED - OAuth token and client management responses
+11. **OAuthHelpers.cs** ✅ CREATED - OpenIdConnectRequest and AuthorizationCodeData helper classes
+
+### Model Coverage: 100%
+- Request Models: 21/21 (100%)
+- Response Models: 35/35 (100%)
+- Helper Classes: 2/2 (100%)
+- **Total: 58/58 (100%)**
+
