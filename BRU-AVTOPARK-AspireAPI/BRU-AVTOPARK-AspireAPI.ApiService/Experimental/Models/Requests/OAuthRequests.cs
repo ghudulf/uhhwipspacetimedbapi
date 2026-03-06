@@ -5,7 +5,7 @@ namespace BRU_AVTOPARK.Models.Requests;
 /// <summary>
 /// OAuth 2.0 token request - supports authorization_code and refresh_token grant types.
 /// </summary>
-public sealed record TokenRequest
+public record TokenRequest
 {
     [Required]
     public required string GrantType { get; init; }

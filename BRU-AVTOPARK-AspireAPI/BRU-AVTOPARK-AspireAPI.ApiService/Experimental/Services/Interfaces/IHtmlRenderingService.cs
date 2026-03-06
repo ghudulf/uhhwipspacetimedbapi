@@ -1,4 +1,4 @@
-using TicketSalesApp.Services.client.module_bindings;
+using BRU_AVTOPARK.Models.Responses;
 
 namespace BRU_AVTOPARK.Services.Interfaces;
 
@@ -40,11 +40,11 @@ public interface IHtmlRenderingService
 
     /// <summary>Render the user profile page with security settings and roles.</summary>
     string RenderProfilePage(
-        UserProfile user,
+        SpacetimeDB.Types.UserProfile user,
         bool totpEnabled,
         List<WebAuthnCredentialDto> webAuthnCredentials,
-        List<Role> roles,
-        List<Permission> permissions);
+        List<SpacetimeDB.Types.Role> roles,
+        List<SpacetimeDB.Types.Permission> permissions);
 
     /// <summary>Render the OIDC clients list page (admin).</summary>
     string RenderOidcClientsList(List<ClientDto> clients, string? token = null);
@@ -57,15 +57,5 @@ public interface IHtmlRenderingService
 
     /// <summary>Render the OIDC client create/edit form (admin).</summary>
     string RenderOidcClientForm(string? clientId = null, GetClientResponse? client = null, string? token = null);
-}
-
-/// <summary>
-/// WebAuthn credential DTO for display purposes.
-/// </summary>
-public sealed record WebAuthnCredentialDto
-{
-    public string Id { get; init; } = string.Empty;
-    public DateTime CreatedAt { get; init; }
-    public bool IsActive { get; init; }
 }
 

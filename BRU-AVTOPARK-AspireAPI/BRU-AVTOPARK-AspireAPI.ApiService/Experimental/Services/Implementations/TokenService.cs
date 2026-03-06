@@ -13,7 +13,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// across the AuthController (GenerateJwtToken, IsAdmin, HasPermission, etc.).
 /// Injected as a singleton; the signing key is loaded once from configuration.
 /// </summary>
-public sealed class TokenService : ITokenService
+public class TokenService : ITokenService
 {
     private readonly SymmetricSecurityKey _signingKey;
     private readonly string _issuer;

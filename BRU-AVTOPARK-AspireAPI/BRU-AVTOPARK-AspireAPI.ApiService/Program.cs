@@ -134,6 +134,8 @@ builder.Services.AddScoped<TicketSalesApp.Services.Interfaces.IOpenIdConnectServ
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IAuthenticationService, TicketSalesApp.Services.Implementations.AuthenticationService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IUserService, TicketSalesApp.Services.Implementations.UserService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ITotpService, TicketSalesApp.Services.Implementations.TotpService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ITwoFactorService, TicketSalesApp.Services.Implementations.TwoFactorService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISettingsService, TicketSalesApp.Services.Implementations.SettingsService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IWebAuthnService, TicketSalesApp.Services.Implementations.WebAuthnService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMagicLinkService, TicketSalesApp.Services.Implementations.MagicLinkService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQRAuthenticationService, TicketSalesApp.Services.Implementations.QRAuthenticationService>();

@@ -5,7 +5,7 @@ namespace BRU_AVTOPARK.Models.Requests;
 /// <summary>
 /// QR login request - authenticates a user via QR code scan.
 /// </summary>
-public sealed record QrLoginRequest
+public record QrLoginRequest
 {
     [Required]
     public required string Username { get; init; }
@@ -17,7 +17,7 @@ public sealed record QrLoginRequest
 /// <summary>
 /// Direct QR login request - used for desktop/mobile QR code authentication flows.
 /// </summary>
-public sealed record DirectQrLoginRequest
+public record DirectQrLoginRequest
 {
     [Required]
     public required string Token { get; init; }
@@ -31,7 +31,7 @@ public sealed record DirectQrLoginRequest
 /// <summary>
 /// Magic link validation request - validates a magic link token sent via email.
 /// </summary>
-public sealed record ValidateMagicLinkRequest
+public record ValidateMagicLinkRequest
 {
     [Required]
     public required string Token { get; init; }

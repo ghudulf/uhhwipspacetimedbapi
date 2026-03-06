@@ -7,7 +7,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// Detects whether the current HTTP request expects HTML (browser) or JSON (API client).
 /// Extracted from the original AuthController.IsBrowserRequest() method.
 /// </summary>
-public sealed class RequestDetector : IRequestDetector
+public class RequestDetector : IRequestDetector
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 

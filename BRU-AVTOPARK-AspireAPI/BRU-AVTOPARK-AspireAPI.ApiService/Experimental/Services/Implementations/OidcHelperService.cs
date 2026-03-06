@@ -7,7 +7,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// Helper methods for working with OpenIddict application objects and OAuth-related utilities.
 /// Extracted from AuthController helper methods.
 /// </summary>
-public sealed class OidcHelperService : IOidcHelperService
+public class OidcHelperService : IOidcHelperService
 {
     private readonly ILogger<OidcHelperService> _logger;
 

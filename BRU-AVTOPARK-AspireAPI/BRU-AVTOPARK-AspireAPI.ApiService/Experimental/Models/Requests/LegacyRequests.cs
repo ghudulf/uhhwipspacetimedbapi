@@ -5,7 +5,7 @@ namespace BRU_AVTOPARK.Models.Requests;
 /// <summary>
 /// Legacy login request for Avalonia UI client - uses "Login" instead of "Username".
 /// </summary>
-public sealed record LegacyLoginRequest
+public record LegacyLoginRequest
 {
     [Required]
     public string Login { get; init; } = string.Empty;
@@ -17,7 +17,7 @@ public sealed record LegacyLoginRequest
 /// <summary>
 /// Legacy registration request for Avalonia UI client - uses "Login" instead of "Username".
 /// </summary>
-public sealed record LegacyRegisterRequest
+public record LegacyRegisterRequest
 {
     [Required]
     public string Login { get; init; } = string.Empty;

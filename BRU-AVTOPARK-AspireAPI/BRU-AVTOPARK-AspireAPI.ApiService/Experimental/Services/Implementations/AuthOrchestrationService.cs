@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using SpacetimeDB;
 using SpacetimeDB.Types;
+using TicketSalesApp.Services.Interfaces;
 
 namespace BRU_AVTOPARK.Services.Implementations;
 
@@ -14,16 +15,16 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// the original AuthController action methods now lives here, making it
 /// independently testable and reusable across controllers.
 /// </summary>
-public sealed class AuthOrchestrationService : IAuthOrchestrationService
+public class AuthOrchestrationService : IAuthOrchestrationService
 {
-    private readonly TicketSalesApp.Services.Interfaces.IAuthenticationService _authService;
+    private readonly IAuthenticationService _authService;
     private readonly IUserService _userService;
     private readonly ISpacetimeDBService _spacetimeService;
     private readonly ITokenService _tokenService;
     private readonly ILogger<AuthOrchestrationService> _logger;
 
     public AuthOrchestrationService(
-        TicketSalesApp.Services.Interfaces.IAuthenticationService authService,
+        IAuthenticationService authService,
         IUserService userService,
         ISpacetimeDBService spacetimeService,
         ITokenService tokenService,

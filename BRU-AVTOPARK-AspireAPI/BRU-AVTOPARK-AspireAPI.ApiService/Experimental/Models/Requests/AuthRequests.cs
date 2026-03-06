@@ -5,7 +5,7 @@ namespace BRU_AVTOPARK.Models.Requests;
 /// <summary>
 /// Standard login request supporting both JSON API and form-based browser submissions.
 /// </summary>
-public sealed record LoginRequest
+public record LoginRequest
 {
     [Required(ErrorMessage = "Username is required")]
     [StringLength(100, MinimumLength = 2)]
@@ -22,7 +22,7 @@ public sealed record LoginRequest
 /// <summary>
 /// Admin-only user registration request. Role defaults to standard user (0).
 /// </summary>
-public sealed record RegisterRequest
+public record RegisterRequest
 {
     [Required(ErrorMessage = "Username is required")]
     [StringLength(100, MinimumLength = 2)]
@@ -46,7 +46,7 @@ public sealed record RegisterRequest
 /// <summary>
 /// Account claim request for reactivating dormant or guest accounts.
 /// </summary>
-public sealed record ClaimAccountRequest
+public record ClaimAccountRequest
 {
     [Required]
     public required string Username { get; init; }
@@ -62,7 +62,7 @@ public sealed record ClaimAccountRequest
 /// <summary>
 /// Magic link request - only requires an email address.
 /// </summary>
-public sealed record MagicLinkRequest
+public record MagicLinkRequest
 {
     [Required]
     [EmailAddress]
@@ -72,7 +72,7 @@ public sealed record MagicLinkRequest
 /// <summary>
 /// TOTP verification during initial setup (proves the user scanned the QR correctly).
 /// </summary>
-public sealed record VerifyTotpRequest
+public record VerifyTotpRequest
 {
     [Required]
     [StringLength(6, MinimumLength = 6)]
@@ -85,7 +85,7 @@ public sealed record VerifyTotpRequest
 /// <summary>
 /// TOTP validation during login 2FA step (uses temporary token from initial authentication).
 /// </summary>
-public sealed record ValidateTotpRequest
+public record ValidateTotpRequest
 {
     [Required]
     public required string TempToken { get; init; }
@@ -98,7 +98,7 @@ public sealed record ValidateTotpRequest
 /// <summary>
 /// OAuth authorization callback - submitted when user logs in during an OIDC authorization flow.
 /// </summary>
-public sealed record AuthorizeCallbackRequest
+public record AuthorizeCallbackRequest
 {
     [Required]
     public required string RequestId { get; init; }
@@ -113,7 +113,7 @@ public sealed record AuthorizeCallbackRequest
 /// <summary>
 /// OIDC client registration (admin API).
 /// </summary>
-public sealed record RegisterClientRequest
+public record RegisterClientRequest
 {
     [Required]
     public required string ClientId { get; init; }
@@ -133,7 +133,7 @@ public sealed record RegisterClientRequest
 /// <summary>
 /// OIDC client update (admin API). All fields optional for partial updates.
 /// </summary>
-public sealed record UpdateClientRequest
+public record UpdateClientRequest
 {
     public string? ClientSecret { get; init; }
     public string? DisplayName { get; init; }
@@ -146,7 +146,7 @@ public sealed record UpdateClientRequest
 /// <summary>
 /// Form-based client registration (browser submissions use string fields for URIs/scopes).
 /// </summary>
-public sealed record RegisterClientFormRequest
+public record RegisterClientFormRequest
 {
     [Required] public required string ClientId { get; init; }
     [Required] public required string ClientSecret { get; init; }
@@ -163,7 +163,7 @@ public sealed record RegisterClientFormRequest
 /// <summary>
 /// Form-based client update request (browser submissions).
 /// </summary>
-public sealed record UpdateClientFormRequest
+public record UpdateClientFormRequest
 {
     public string? Token { get; init; }
     [Required] public required string DisplayName { get; init; }

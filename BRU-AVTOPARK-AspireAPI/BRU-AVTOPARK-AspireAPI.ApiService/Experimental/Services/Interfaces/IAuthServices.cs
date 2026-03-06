@@ -26,7 +26,7 @@ public interface ITokenService
 }
 
 /// <summary>Lightweight payload carried inside JWTs.</summary>
-public sealed record UserTokenPayload
+public record UserTokenPayload
 {
     public required string UserId { get; init; }
     public required string Username { get; init; }
@@ -65,7 +65,7 @@ public interface IAuthOrchestrationService
     bool HasPermission(ClaimsPrincipal? user, string? bearerToken, string permissionName);
 }
 
-public sealed record AuthenticationResult
+public record AuthenticationResult
 {
     public required string UserId { get; init; }
     public required string Username { get; init; }
@@ -79,8 +79,8 @@ public sealed record AuthenticationResult
     public List<string> Roles { get; init; } = [];
 }
 
-public sealed record RegisterResult(bool Success, string? ErrorMessage = null, UserDto? User = null);
-public sealed record ClaimResult(bool Success, string? ErrorMessage = null);
+public record RegisterResult(bool Success, string? ErrorMessage = null, UserDto? User = null);
+public record ClaimResult(bool Success, string? ErrorMessage = null);
 
 // ─── Profile Service ─────────────────────────────────────────────────────────
 
@@ -106,63 +106,5 @@ public interface IRequestDetector
     bool IsBrowserRequest();
 }
 
-// ─── View Models ─────────────────────────────────────────────────────────────
-
-/// <summary>
-/// Complete profile view model aggregating user data, security settings, roles, and permissions.
-/// </summary>
-public sealed record ProfileViewModel
-{
-    public required UserProfile User { get; init; }
-    public bool TotpEnabled { get; init; }
-    public bool WebAuthnEnabled { get; init; }
-    public List<WebAuthnCredentialDto> WebAuthnCredentials { get; init; } = [];
-    public List<Role> Roles { get; init; } = [];
-    public List<Permission> Permissions { get; init; } = [];
-}
-
-/// <summary>
-/// WebAuthn credential DTO for profile display.
-/// </summary>
-public sealed record WebAuthnCredentialDto
-{
-    public string Id { get; init; } = string.Empty;
-    public DateTime CreatedAt { get; init; }
-    public bool IsActive { get; init; }
-}
-
-/// <summary>
-/// Role entity from SpacetimeDB.
-/// </summary>
-public sealed record Role
-{
-    public int LegacyRoleId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public int Priority { get; init; }
-    public bool IsActive { get; init; }
-}
-
-/// <summary>
-/// Permission entity from SpacetimeDB.
-/// </summary>
-public sealed record Permission
-{
-    public string Name { get; init; } = string.Empty;
-    public bool IsActive { get; init; }
-}
-
-/// <summary>
-/// UserProfile entity from SpacetimeDB.
-/// </summary>
-public sealed record UserProfile
-{
-    public string UserId { get; init; } = string.Empty;
-    public uint LegacyUserId { get; init; }
-    public string Login { get; init; } = string.Empty;
-    public string? Email { get; init; }
-    public string? PhoneNumber { get; init; }
-    public bool? EmailConfirmed { get; init; }
-    public bool? PhoneNumberConfirmed { get; init; }
-    public bool IsActive { get; init; }
-    public string? Xuid { get; init; }
-}
+// Note: UserProfile, Role, Permission, and WebAuthnCredentialDto are defined in BRU_AVTOPARK.Models.Responses
+// ProfileViewModel is defined in BRU_AVTOPARK.Models.ViewModels

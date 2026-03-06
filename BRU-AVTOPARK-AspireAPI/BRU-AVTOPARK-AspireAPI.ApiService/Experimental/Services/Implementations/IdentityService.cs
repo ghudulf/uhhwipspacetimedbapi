@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using SpacetimeDB.Types;
-using TicketSalesApp.Services.client.module_bindings;
 using TicketSalesApp.Services.Interfaces;
 
 namespace BRU_AVTOPARK.Services.Implementations;
@@ -16,7 +15,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// Handles SpacetimeDB identity generation and retrieval.
 /// Extracted from AuthController helper methods.
 /// </summary>
-public sealed class IdentityService : IIdentityService
+public class IdentityService : IIdentityService
 {
     private readonly ISpacetimeDBService _spacetimeService;
     private readonly IConfiguration _configuration;
@@ -143,7 +142,7 @@ public sealed class IdentityService : IIdentityService
     }
 
     /// <inheritdoc />
-    public Identity? GetUserIdentity(ClaimsPrincipal user)
+    public SpacetimeDB.Identity? GetUserIdentity(ClaimsPrincipal user)
     {
         var identityString = user.FindFirst("identity")?.Value;
         if (string.IsNullOrEmpty(identityString))
@@ -164,7 +163,7 @@ public sealed class IdentityService : IIdentityService
     }
 
     /// <inheritdoc />
-    public async Task<UserProfile?> GetUserByIdentityAsync(Identity? userId)
+    public async Task<SpacetimeDB.Types.UserProfile?> GetUserByIdentityAsync(SpacetimeDB.Identity? userId)
     {
         if (userId == null)
             return null;

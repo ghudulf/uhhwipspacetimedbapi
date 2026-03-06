@@ -1,3 +1,4 @@
+using BRU_AVTOPARK.Models.ViewModels;
 using BRU_AVTOPARK.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using TicketSalesApp.Services.Interfaces;
@@ -8,7 +9,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// Aggregates profile data from multiple SpacetimeDB tables.
 /// Replaces profile-building logic from the original AuthController.
 /// </summary>
-public sealed class ProfileService : IProfileService
+public class ProfileService : IProfileService
 {
     private readonly ISpacetimeDBService _spacetimeService;
     private readonly ILogger<ProfileService> _logger;
@@ -45,9 +46,9 @@ public sealed class ProfileService : IProfileService
             // Get WebAuthn credentials
             var webAuthnCreds = conn.Db.WebAuthnCredential.Iter()
                 .Where(c => c.UserId.Equals(user.UserId))
-                .Select(c => new WebAuthnCredentialDto
+                .Select(c => new WebAuthnCredentialViewModel
                 {
-                    Id = c.CredentialId,
+                    Id = Convert.ToBase64String(c.CredentialId.ToArray()),
                     CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime,
                     IsActive = c.IsActive
                 })
@@ -61,11 +62,11 @@ public sealed class ProfileService : IProfileService
 
             var roles = conn.Db.Role.Iter()
                 .Where(r => userRoleIds.Contains(r.RoleId) && r.IsActive)
-                .Select(r => new Role
+                .Select(r => new RoleViewModel
                 {
-                    LegacyRoleId = r.LegacyRoleId,
+                    LegacyRoleId = (int)r.LegacyRoleId,
                     Name = r.Name,
-                    Priority = r.Priority,
+                    Priority = (int)r.Priority,
                     IsActive = r.IsActive
                 })
                 .ToList();
@@ -79,7 +80,7 @@ public sealed class ProfileService : IProfileService
 
             var permissions = conn.Db.Permission.Iter()
                 .Where(p => permissionIds.Contains(p.PermissionId) && p.IsActive)
-                .Select(p => new Permission
+                .Select(p => new PermissionViewModel
                 {
                     Name = p.Name,
                     IsActive = p.IsActive
@@ -88,7 +89,7 @@ public sealed class ProfileService : IProfileService
 
             return new ProfileViewModel
             {
-                User = new UserProfile
+                User = new UserProfileViewModel
                 {
                     UserId = user.UserId.ToString(),
                     LegacyUserId = user.LegacyUserId,

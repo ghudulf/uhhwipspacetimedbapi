@@ -3,7 +3,7 @@ namespace BRU_AVTOPARK.Models.ViewModels;
 /// <summary>
 /// View model for the login page.
 /// </summary>
-public sealed record LoginViewModel
+public record LoginViewModel
 {
     public string? Error { get; init; }
     public string? Message { get; init; }
@@ -12,7 +12,7 @@ public sealed record LoginViewModel
 /// <summary>
 /// View model for the registration page.
 /// </summary>
-public sealed record RegisterViewModel
+public record RegisterViewModel
 {
     public string? Error { get; init; }
     public string? Message { get; init; }
@@ -23,7 +23,7 @@ public sealed record RegisterViewModel
 /// <summary>
 /// View model for the profile page.
 /// </summary>
-public sealed record ProfileViewModel
+public record ProfileViewModel
 {
     public required UserProfileViewModel User { get; init; }
     public bool TotpEnabled { get; init; }
@@ -37,7 +37,7 @@ public sealed record ProfileViewModel
 /// <summary>
 /// User profile information for display.
 /// </summary>
-public sealed record UserProfileViewModel
+public record UserProfileViewModel
 {
     public string UserId { get; init; } = string.Empty;
     public uint LegacyUserId { get; init; }
@@ -54,7 +54,7 @@ public sealed record UserProfileViewModel
 /// <summary>
 /// WebAuthn credential for display.
 /// </summary>
-public sealed record WebAuthnCredentialViewModel
+public record WebAuthnCredentialViewModel
 {
     public string Id { get; init; } = string.Empty;
     public DateTime CreatedAt { get; init; }
@@ -64,7 +64,7 @@ public sealed record WebAuthnCredentialViewModel
 /// <summary>
 /// Role information for display.
 /// </summary>
-public sealed record RoleViewModel
+public record RoleViewModel
 {
     public int LegacyRoleId { get; init; }
     public string Name { get; init; } = string.Empty;
@@ -75,7 +75,7 @@ public sealed record RoleViewModel
 /// <summary>
 /// Permission information for display.
 /// </summary>
-public sealed record PermissionViewModel
+public record PermissionViewModel
 {
     public string Name { get; init; } = string.Empty;
     public bool IsActive { get; init; }
@@ -84,12 +84,12 @@ public sealed record PermissionViewModel
 /// <summary>
 /// View model for status messages (errors/success).
 /// </summary>
-public sealed record StatusViewModel(string? Error, string? Message);
+public record StatusViewModel(string? Error, string? Message);
 
 /// <summary>
 /// View model for form fields (reusable partial).
 /// </summary>
-public sealed record FormFieldViewModel(
+public record FormFieldViewModel(
     string Id,
     string Label,
     string Type = "text",
@@ -100,7 +100,7 @@ public sealed record FormFieldViewModel(
 /// <summary>
 /// View model for TOTP setup page.
 /// </summary>
-public sealed record TotpSetupViewModel
+public record TotpSetupViewModel
 {
     public string QrCodeUri { get; init; } = string.Empty;
     public string SecretKey { get; init; } = string.Empty;
@@ -109,7 +109,7 @@ public sealed record TotpSetupViewModel
 /// <summary>
 /// View model for WebAuthn registration page.
 /// </summary>
-public sealed record WebAuthnRegistrationViewModel
+public record WebAuthnRegistrationViewModel
 {
     public string OptionsJson { get; init; } = string.Empty;
 }
@@ -117,7 +117,7 @@ public sealed record WebAuthnRegistrationViewModel
 /// <summary>
 /// View model for magic link request page.
 /// </summary>
-public sealed record MagicLinkViewModel
+public record MagicLinkViewModel
 {
     public string? Error { get; init; }
     public string? Message { get; init; }
@@ -126,7 +126,7 @@ public sealed record MagicLinkViewModel
 /// <summary>
 /// View model for QR login page.
 /// </summary>
-public sealed record QrLoginViewModel
+public record QrLoginViewModel
 {
     public string QrCodeBase64 { get; init; } = string.Empty;
     public string DeviceId { get; init; } = string.Empty;
@@ -135,7 +135,7 @@ public sealed record QrLoginViewModel
 /// <summary>
 /// View model for OAuth login page during authorization flow.
 /// </summary>
-public sealed record OAuthLoginViewModel
+public record OAuthLoginViewModel
 {
     public string RequestId { get; init; } = string.Empty;
     public string ClientName { get; init; } = string.Empty;
@@ -146,7 +146,7 @@ public sealed record OAuthLoginViewModel
 /// <summary>
 /// View model for success page.
 /// </summary>
-public sealed record SuccessViewModel
+public record SuccessViewModel
 {
     public string Token { get; init; } = string.Empty;
     public string Message { get; init; } = "Login successful!";
@@ -155,7 +155,7 @@ public sealed record SuccessViewModel
 /// <summary>
 /// View model for error page.
 /// </summary>
-public sealed record ErrorViewModel
+public record ErrorViewModel
 {
     public string Error { get; init; } = string.Empty;
 }
@@ -163,7 +163,7 @@ public sealed record ErrorViewModel
 /// <summary>
 /// View model for account claim page.
 /// </summary>
-public sealed record ClaimAccountViewModel
+public record ClaimAccountViewModel
 {
     public string? Error { get; init; }
     public string? Message { get; init; }
@@ -172,7 +172,7 @@ public sealed record ClaimAccountViewModel
 /// <summary>
 /// View model for OIDC clients list page.
 /// </summary>
-public sealed record OidcClientsListViewModel
+public record OidcClientsListViewModel
 {
     public List<ClientViewModel> Clients { get; init; } = [];
     public string? Token { get; init; }
@@ -181,7 +181,7 @@ public sealed record OidcClientsListViewModel
 /// <summary>
 /// Client information for display in lists.
 /// </summary>
-public sealed record ClientViewModel
+public record ClientViewModel
 {
     public string ClientId { get; init; } = string.Empty;
     public string? DisplayName { get; init; }
@@ -190,7 +190,7 @@ public sealed record ClientViewModel
 /// <summary>
 /// View model for OIDC scopes list page.
 /// </summary>
-public sealed record OidcScopesListViewModel
+public record OidcScopesListViewModel
 {
     public List<ScopeViewModel> Scopes { get; init; } = [];
     public string? Token { get; init; }
@@ -199,7 +199,7 @@ public sealed record OidcScopesListViewModel
 /// <summary>
 /// Scope information for display.
 /// </summary>
-public sealed record ScopeViewModel
+public record ScopeViewModel
 {
     public string Name { get; init; } = string.Empty;
     public string? DisplayName { get; init; }
@@ -210,7 +210,7 @@ public sealed record ScopeViewModel
 /// <summary>
 /// View model for OIDC client details page.
 /// </summary>
-public sealed record OidcClientDetailsViewModel
+public record OidcClientDetailsViewModel
 {
     public string ClientId { get; init; } = string.Empty;
     public string? DisplayName { get; init; }
@@ -224,7 +224,7 @@ public sealed record OidcClientDetailsViewModel
 /// <summary>
 /// View model for OIDC client form (create/edit).
 /// </summary>
-public sealed record OidcClientFormViewModel
+public record OidcClientFormViewModel
 {
     public string? ClientId { get; init; }
     public string? DisplayName { get; init; }

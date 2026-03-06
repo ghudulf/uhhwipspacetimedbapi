@@ -6,13 +6,14 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
+using BRU_AVTOPARK.Services.Interfaces;
 
 namespace BRU_AVTOPARK.Experimental.Services.Implementations;
 
 /// <summary>
 /// Service for rendering Razor views to HTML strings.
 /// </summary>
-public sealed class HtmlRenderingService : IHtmlRenderingService
+public class HtmlRenderingService : IHtmlRenderingService
 {
     private readonly IRazorViewEngine _razorViewEngine;
     private readonly ITempDataProvider _tempDataProvider;
@@ -129,4 +130,55 @@ public sealed class HtmlRenderingService : IHtmlRenderingService
         // Fall back to standard view search
         return _razorViewEngine.FindView(actionContext, viewName, true);
     }
+
+    // Stub implementations for interface methods - to be implemented in Phase 2
+    public string RenderLoginForm(string? error = null, string? message = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderTotpSetup(string qrCodeUri, string secretKey) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderWebAuthnRegistration(string options) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderMagicLinkForm(string? error = null, string? message = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderQrLogin(string qrCode) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderSuccessPage(string token) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderErrorPage(string error) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderClaimAccountForm(string? error = null, string? message = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderProfilePage(
+        SpacetimeDB.Types.UserProfile user,
+        bool totpEnabled,
+        List<BRU_AVTOPARK.Models.Responses.WebAuthnCredentialDto> webAuthnCredentials,
+        List<SpacetimeDB.Types.Role> roles,
+        List<SpacetimeDB.Types.Permission> permissions) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderOidcClientsList(List<BRU_AVTOPARK.Models.Responses.ClientDto> clients, string? token = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderOidcScopesList(List<BRU_AVTOPARK.Models.Responses.ScopeDto> scopes, string? token = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderOidcClientDetails(BRU_AVTOPARK.Models.Responses.GetClientResponse client, string? token = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
+
+    public string RenderOidcClientForm(string? clientId = null, BRU_AVTOPARK.Models.Responses.GetClientResponse? client = null, string? token = null) => 
+        throw new NotImplementedException("To be implemented in Phase 2");
 }

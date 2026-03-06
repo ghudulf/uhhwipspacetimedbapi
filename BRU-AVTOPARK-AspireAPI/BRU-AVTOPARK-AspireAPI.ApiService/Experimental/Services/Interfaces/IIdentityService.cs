@@ -1,5 +1,4 @@
 using SpacetimeDB.Types;
-using TicketSalesApp.Services.client.module_bindings;
 
 namespace BRU_AVTOPARK.Services.Interfaces;
 
@@ -19,12 +18,12 @@ public interface IIdentityService
     /// Extract the user's identity from the current claims principal.
     /// Returns null if not authenticated or identity claim is missing.
     /// </summary>
-    Identity? GetUserIdentity(System.Security.Claims.ClaimsPrincipal user);
+    SpacetimeDB.Identity? GetUserIdentity(System.Security.Claims.ClaimsPrincipal user);
 
     /// <summary>
     /// Retrieve a user profile by their SpacetimeDB identity.
     /// </summary>
-    Task<UserProfile?> GetUserByIdentityAsync(Identity? userId);
+    Task<SpacetimeDB.Types.UserProfile?> GetUserByIdentityAsync(SpacetimeDB.Identity? userId);
 
     /// <summary>
     /// Generate a temporary JWT token for SpacetimeDB identity generation.

@@ -382,6 +382,197 @@ Now you have:
 
 ---
 
+## Future Vision: Frontend-Agnostic Auth Service 🚀
+
+**The Dream**: Make the auth service modular enough that the HTML rendering layer can be swapped out entirely.
+
+### The Goal
+
+Currently, the auth service mixes:
+- **API endpoints** (JSON responses for programmatic access)
+- **HTML endpoints** (Razor/CSHTML views for browser access)
+
+**Ideal architecture**:
+```
+┌─────────────────────────────────────────┐
+│  C# Backend (Auth API)                  │
+│  - Pure JSON API endpoints              │
+│  - No HTML rendering                    │
+│  - OAuth/OIDC provider                  │
+└─────────────────────────────────────────┘
+                    ↑
+                    │ JSON API
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+┌───────▼────────┐    ┌────────▼─────────┐
+│  Next.js UI    │    │  Avalonia Client │
+│  (Web)         │    │  (Desktop)       │
+└────────────────┘    └──────────────────┘
+```
+
+### Why This Makes Sense
+
+1. **Separation of Concerns**
+   - Backend focuses on auth logic, token management, OAuth flow
+   - Frontend focuses on UX, styling, interactivity
+   - Each can evolve independently
+
+2. **Framework Flexibility**
+   - Swap CSHTML for Next.js pages
+   - Or use React, Vue, Svelte, etc.
+   - Or use Blazor WASM
+   - Backend stays the same!
+
+3. **Better Developer Experience**
+   - Modern frontend tooling (Vite, hot reload, TypeScript)
+   - Component libraries (shadcn/ui, Radix, etc.)
+   - Better state management
+   - Better testing tools
+
+4. **API-First Design**
+   - Forces clean API design
+   - Makes it easier to add mobile apps
+   - Makes it easier to add third-party integrations
+   - Already have Avalonia client consuming the API!
+
+### How to Get There
+
+**Phase 1: Separate Concerns** (Current refactoring)
+- Move all business logic to services ✅
+- Create orchestration layer ✅
+- Make controllers thin (just HTTP handling)
+
+**Phase 2: API-First Endpoints**
+- Ensure all auth flows have JSON API endpoints
+- Add content negotiation (Accept: application/json vs text/html)
+- Keep HTML endpoints for backward compatibility
+
+**Phase 3: Extract Rendering**
+- Move all HTML rendering to separate service
+- Create `IViewRenderingService` interface
+- Implement `RazorViewRenderingService` (current)
+- Could implement `NextJsProxyService` (future)
+
+**Phase 4: Frontend Decoupling**
+- Build Next.js frontend that calls C# API
+- Run side-by-side with CSHTML views
+- Gradually migrate users
+- Deprecate CSHTML views
+
+### Example Architecture
+
+```csharp
+// Controller becomes thin HTTP handler
+[HttpGet("login")]
+public async Task<IActionResult> Login()
+{
+    // Detect if browser or API client
+    if (Request.AcceptsJson())
+    {
+        // Return JSON for API clients
+        return Ok(new { loginUrl = "/api/auth/login" });
+    }
+    else
+    {
+        // Render HTML for browsers
+        var viewModel = await _authOrchestrationService.GetLoginViewModelAsync();
+        return await _viewRenderingService.RenderAsync("Login", viewModel);
+    }
+}
+
+// View rendering service can be swapped
+public interface IViewRenderingService
+{
+    Task<IActionResult> RenderAsync(string viewName, object model);
+}
+
+// Current implementation
+public class RazorViewRenderingService : IViewRenderingService
+{
+    public Task<IActionResult> RenderAsync(string viewName, object model)
+    {
+        return Task.FromResult<IActionResult>(new ViewResult 
+        { 
+            ViewName = viewName, 
+            ViewData = new ViewDataDictionary { Model = model } 
+        });
+    }
+}
+
+// Future implementation
+public class NextJsProxyService : IViewRenderingService
+{
+    public async Task<IActionResult> RenderAsync(string viewName, object model)
+    {
+        // Proxy to Next.js server
+        // Or return redirect to Next.js page with data
+        return Redirect($"https://frontend.example.com/auth/{viewName}?data={SerializeModel(model)}");
+    }
+}
+```
+
+### Benefits
+
+1. **Modern Frontend**
+   - Use React Server Components
+   - Use Tailwind CSS
+   - Use modern build tools
+   - Better performance
+
+2. **Easier Maintenance**
+   - Frontend devs work in Next.js
+   - Backend devs work in C#
+   - Clear boundaries
+
+3. **Better Testing**
+   - Test API endpoints independently
+   - Test frontend components independently
+   - E2E tests across both
+
+4. **Scalability**
+   - Frontend can be CDN-hosted
+   - Backend can scale independently
+   - Can add multiple frontends (web, mobile, desktop)
+
+### Challenges
+
+1. **OAuth Flow Complexity**
+   - OAuth requires server-side redirects
+   - Need to handle callback URLs carefully
+   - Session management across frontend/backend
+
+2. **SEO Considerations**
+   - Server-side rendering needed for login pages
+   - Next.js handles this well
+
+3. **Deployment Complexity**
+   - Now have two services to deploy
+   - Need to coordinate releases
+   - Need to handle CORS
+
+### Is This Possible?
+
+**YES!** This is actually a common pattern:
+
+- **Auth0** does this (API + hosted UI)
+- **Keycloak** does this (API + themeable UI)
+- **Supabase** does this (API + React components)
+
+Your architecture is already moving in this direction:
+- ✅ You have API endpoints (used by Avalonia client)
+- ✅ You have HTML endpoints (used by browsers)
+- ✅ You're separating business logic into services
+- ✅ You're creating orchestration layer
+
+**Next step**: Just need to add content negotiation and extract rendering!
+
+---
+
+**Conclusion**: This is NOT a dumb idea - it's the future of web architecture! API-first, frontend-agnostic, modular. You're already 70% of the way there with the current refactoring. The dream is achievable! 🎯
+
+---
+
 **Document Status**: ✅ COMPLETE  
 **Last Updated**: March 6, 2026  
 **Purpose**: Provide historical context for architecture decisions
