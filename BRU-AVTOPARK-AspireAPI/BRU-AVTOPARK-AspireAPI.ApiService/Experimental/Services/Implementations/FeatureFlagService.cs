@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SpacetimeDB;
+using SpacetimeDB.Types;
 using TicketSalesApp.AdminServer.Configuration;
 using TicketSalesApp.AdminServer.Experimental.Services.Interfaces;
 using TicketSalesApp.Services.Interfaces;
@@ -49,7 +50,7 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
         {
             try
             {
-                var conn = await _spacetimeService.GetConnection();
+                var conn = _spacetimeService.GetConnection();
                 var overrides = conn.Db.FeatureFlagOverride.Iter().ToList();
 
                 foreach (var @override in overrides)
@@ -129,7 +130,7 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
 
             try
             {
-                var conn = await _spacetimeService.GetConnection();
+                var conn = _spacetimeService.GetConnection();
 
                 // Update in database for persistence
                 conn.Reducers.UpdateFeatureFlag(flagName, enabled, updatedBy);
@@ -189,7 +190,7 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
         {
             try
             {
-                var conn = await _spacetimeService.GetConnection();
+                var conn = _spacetimeService.GetConnection();
 
                 // Clear all runtime overrides from database
                 conn.Reducers.ClearFeatureFlagOverrides(actingUserId);
@@ -210,7 +211,7 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
         {
             try
             {
-                var conn = await _spacetimeService.GetConnection();
+                var conn = _spacetimeService.GetConnection();
 
                 var auditLogs = conn.Db.FeatureFlagOverride.Iter()
                     .OrderByDescending(f => f.UpdatedAt)
@@ -237,14 +238,14 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
         /// <summary>
         /// Helper method to get username for an identity (for audit log display).
         /// </summary>
-        private string GetUsernameForIdentity(SpacetimeDB.ClientApi.IDbConnection conn, Identity identity)
+        private string GetUsernameForIdentity(DbConnection conn, Identity identity)
         {
             try
             {
                 var user = conn.Db.UserProfile.Iter()
                     .FirstOrDefault(u => u.UserId.Equals(identity));
 
-                return user?.Username ?? identity.ToString();
+                return user?.Login ?? identity.ToString();
             }
             catch
             {

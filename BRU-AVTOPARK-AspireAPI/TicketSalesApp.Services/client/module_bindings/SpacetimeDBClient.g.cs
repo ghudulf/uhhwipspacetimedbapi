@@ -38,6 +38,7 @@ namespace SpacetimeDB.Types
             AddTable(Discounts = new(conn));
             AddTable(Employee = new(conn));
             AddTable(EmployeeShift = new(conn));
+            AddTable(FeatureFlagOverride = new(conn));
             AddTable(FuelRecord = new(conn));
             AddTable(Incident = new(conn));
             AddTable(Job = new(conn));
@@ -562,6 +563,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Discounts().ToSql(),
             new QueryBuilder().From.Employee().ToSql(),
             new QueryBuilder().From.EmployeeShift().ToSql(),
+            new QueryBuilder().From.FeatureFlagOverride().ToSql(),
             new QueryBuilder().From.FuelRecord().ToSql(),
             new QueryBuilder().From.Incident().ToSql(),
             new QueryBuilder().From.Job().ToSql(),
@@ -610,6 +612,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Discounts, DiscountsCols, DiscountsIxCols> Discounts() => new("discounts", new DiscountsCols("discounts"), new DiscountsIxCols("discounts"));
         public global::SpacetimeDB.Table<Employee, EmployeeCols, EmployeeIxCols> Employee() => new("employee", new EmployeeCols("employee"), new EmployeeIxCols("employee"));
         public global::SpacetimeDB.Table<EmployeeShift, EmployeeShiftCols, EmployeeShiftIxCols> EmployeeShift() => new("employee_shift", new EmployeeShiftCols("employee_shift"), new EmployeeShiftIxCols("employee_shift"));
+        public global::SpacetimeDB.Table<FeatureFlagOverride, FeatureFlagOverrideCols, FeatureFlagOverrideIxCols> FeatureFlagOverride() => new("feature_flag_override", new FeatureFlagOverrideCols("feature_flag_override"), new FeatureFlagOverrideIxCols("feature_flag_override"));
         public global::SpacetimeDB.Table<FuelRecord, FuelRecordCols, FuelRecordIxCols> FuelRecord() => new("fuel_record", new FuelRecordCols("fuel_record"), new FuelRecordIxCols("fuel_record"));
         public global::SpacetimeDB.Table<Incident, IncidentCols, IncidentIxCols> Incident() => new("incident", new IncidentCols("incident"), new IncidentIxCols("incident"));
         public global::SpacetimeDB.Table<Job, JobCols, JobIxCols> Job() => new("job", new JobCols("job"), new JobIxCols("job"));
@@ -733,6 +736,7 @@ namespace SpacetimeDB.Types
                 Reducer.CancelTicket args => Reducers.InvokeCancelTicket(eventContext, args),
                 Reducer.ChangePassword args => Reducers.InvokeChangePassword(eventContext, args),
                 Reducer.ClaimUserAccount args => Reducers.InvokeClaimUserAccount(eventContext, args),
+                Reducer.ClearFeatureFlagOverrides args => Reducers.InvokeClearFeatureFlagOverrides(eventContext, args),
                 Reducer.CreateBus args => Reducers.InvokeCreateBus(eventContext, args),
                 Reducer.CreateEmployee args => Reducers.InvokeCreateEmployee(eventContext, args),
                 Reducer.CreateJob args => Reducers.InvokeCreateJob(eventContext, args),
@@ -760,6 +764,7 @@ namespace SpacetimeDB.Types
                 Reducer.DebugVerifyPassword args => Reducers.InvokeDebugVerifyPassword(eventContext, args),
                 Reducer.DeleteBus args => Reducers.InvokeDeleteBus(eventContext, args),
                 Reducer.DeleteEmployee args => Reducers.InvokeDeleteEmployee(eventContext, args),
+                Reducer.DeleteFeatureFlagOverride args => Reducers.InvokeDeleteFeatureFlagOverride(eventContext, args),
                 Reducer.DeleteJob args => Reducers.InvokeDeleteJob(eventContext, args),
                 Reducer.DeleteMaintenance args => Reducers.InvokeDeleteMaintenance(eventContext, args),
                 Reducer.DeleteOidcAuthorization args => Reducers.InvokeDeleteOidcAuthorization(eventContext, args),
@@ -799,6 +804,7 @@ namespace SpacetimeDB.Types
                 Reducer.StoreWebAuthnChallenge args => Reducers.InvokeStoreWebAuthnChallenge(eventContext, args),
                 Reducer.UpdateBus args => Reducers.InvokeUpdateBus(eventContext, args),
                 Reducer.UpdateEmployee args => Reducers.InvokeUpdateEmployee(eventContext, args),
+                Reducer.UpdateFeatureFlag args => Reducers.InvokeUpdateFeatureFlag(eventContext, args),
                 Reducer.UpdateJob args => Reducers.InvokeUpdateJob(eventContext, args),
                 Reducer.UpdateMaintenance args => Reducers.InvokeUpdateMaintenance(eventContext, args),
                 Reducer.UpdateOidcAuthorization args => Reducers.InvokeUpdateOidcAuthorization(eventContext, args),

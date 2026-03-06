@@ -17,7 +17,7 @@ namespace TicketSalesApp.AdminServer.Controllers
     [ApiController]
     [Route("api/admin")]
     [Authorize(Roles = "Admin")]
-    public class AdminController : BaseController
+    public class AdminController : Controller
     {
         private readonly IFeatureFlagService _featureFlagService;
         private readonly ILogger<AdminController> _logger;
@@ -346,6 +346,46 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
+        /// Helper method to check if the current user has administrator role.
+        /// </summary>
+        private bool IsAdmin()
+        {
+            try
+            {
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    // Check primary role first
+                    var primaryRole = User.FindFirst("primary_role");
+                    if (primaryRole?.Value == "1")
+                    {
+                        return true;
+                    }
+
+                    // Check role claims
+                    var roleClaims = User.FindAll("role");
+                    if (roleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
+                    {
+                        return true;
+                    }
+
+                    // Check standard role claims
+                    var standardRoleClaims = User.FindAll(System.Security.Claims.ClaimTypes.Role);
+                    if (standardRoleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking admin status");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Helper method to get the current user's SpacetimeDB Identity.
         /// </summary>
         private Identity? GetCurrentUserIdentity()
@@ -356,14 +396,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var identityClaim = User.FindFirst("identity");
                 if (identityClaim != null && !string.IsNullOrEmpty(identityClaim.Value))
                 {
-                    return Identity.From(identityClaim.Value);
+                    return Identity.FromHexString(identityClaim.Value);
                 }
 
                 // Try to get from sub claim
                 var subClaim = User.FindFirst("sub");
                 if (subClaim != null && !string.IsNullOrEmpty(subClaim.Value))
                 {
-                    return Identity.From(subClaim.Value);
+                    return Identity.FromHexString(subClaim.Value);
                 }
 
                 return null;
