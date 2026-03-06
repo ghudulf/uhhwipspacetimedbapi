@@ -34,9 +34,14 @@ namespace TicketSalesApp.Services.Implementations
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private IOpenIddictApplicationManager GetApplicationManager()
+        private IOpenIddictApplicationManager GetApplicationManagerInternal()
         {
             return _serviceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        }
+
+        public IOpenIddictApplicationManager GetApplicationManager()
+        {
+            return GetApplicationManagerInternal();
         }
 
         private IOpenIddictAuthorizationManager GetAuthorizationManager()
@@ -58,7 +63,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting application by client ID: {ClientId}", clientId);
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
@@ -83,7 +88,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Getting authorizations for subject: {Subject}", subject);
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var authorizationManager = GetAuthorizationManager();
                 
                 var applicationId = await applicationManager.GetIdAsync(application);
@@ -164,7 +169,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Creating authorization for subject: {Subject}", subject);
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var authorizationManager = GetAuthorizationManager();
                 
                 var applicationId = await applicationManager.GetIdAsync(application);
@@ -254,7 +259,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Check if application with the same client ID already exists
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var existingApp = await applicationManager.FindByClientIdAsync(clientId);
                 if (existingApp != null)
                 {
@@ -327,7 +332,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Updating client application: {ClientId}", clientId);
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
@@ -444,7 +449,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Deleting client application: {ClientId}", clientId);
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
@@ -475,7 +480,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting all client applications");
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var applications = new List<object>();
                 await foreach (var application in applicationManager.ListAsync())
                 {
@@ -500,7 +505,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting client application: {ClientId}", clientId);
 
-                var applicationManager = GetApplicationManager();
+                var applicationManager = GetApplicationManagerInternal();
                 var application = await applicationManager.FindByClientIdAsync(clientId);
                 if (application == null)
                 {
