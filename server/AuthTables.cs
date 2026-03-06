@@ -120,4 +120,17 @@ public static partial class Module
         public ulong ExpiryTime;         // Unix timestamp for expiration
         public string InitiatingDevice;  // "desktop" or "mobile"
         public bool IsUsed;              // Flag to prevent reuse
-    } }
+    }
+
+    // Feature Flag Management
+    [SpacetimeDB.Table(Public = true)]
+    public partial class FeatureFlagOverride
+    {
+        [PrimaryKey]
+        public string FlagName;          // Name of the feature flag (e.g., "EnableLoginRefactoring")
+
+        public bool Enabled;             // Current enabled state
+        public Identity UpdatedBy;       // Identity of the user who last updated this flag
+        public ulong UpdatedAt;          // Unix timestamp (milliseconds) of last update
+    }
+}

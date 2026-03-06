@@ -1,0 +1,581 @@
+@* Feature Flags Admin UI - Task 9.6 *@
+@model dynamic
+
+@{
+    var flags = Model?.Flags ?? new Dictionary<string, bool>();
+    var auditLog = Model?.AuditLog ?? new List<dynamic>();
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Flags - BRU AVTOPARK Admin</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin: 0;
+        }
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0.5rem 0 0 0;
+        }
+        .bulk-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .bulk-action-btn {
+            padding: 0.625rem 1.25rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .bulk-action-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        .bulk-action-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        .bulk-action-secondary {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+        .bulk-action-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+        .bulk-action-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .bulk-action-danger:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        .flags-section {
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .flags-category {
+            margin-bottom: 2rem;
+        }
+        .flags-category:last-child {
+            margin-bottom: 0;
+        }
+        .category-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .flag-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .flag-item:last-child {
+            border-bottom: none;
+        }
+        .flag-info {
+            flex: 1;
+        }
+        .flag-name {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: var(--text-color);
+            font-family: 'Courier New', monospace;
+        }
+        .flag-description {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        .audit-log-section {
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        .audit-log-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+        .audit-log-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .audit-log-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: var(--background-color);
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-color);
+        }
+        .audit-log-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+            color: var(--text-color);
+        }
+        .audit-log-table tr:last-child td {
+            border-bottom: none;
+        }
+        .audit-log-table tr:hover {
+            background: var(--background-color);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: var(--card-color);
+            margin: 15% auto;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .modal-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+        .modal-body {
+            color: var(--text-color);
+            margin-bottom: 1.5rem;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Feature Flags Management</h1>
+                <p class="page-subtitle">Control gradual rollout of refactored authentication endpoints</p>
+            </div>
+            <div class="bulk-actions">
+                <button class="bulk-action-btn bulk-action-secondary" onclick="enableCategory('Login')">Enable Login</button>
+                <button class="bulk-action-btn bulk-action-secondary" onclick="enableCategory('Totp')">Enable TOTP</button>
+                <button class="bulk-action-btn bulk-action-secondary" onclick="enableCategory('WebAuthn')">Enable WebAuthn</button>
+                <button class="bulk-action-btn bulk-action-secondary" onclick="enableCategory('OAuth')">Enable OAuth</button>
+                <button class="bulk-action-btn bulk-action-danger" onclick="confirmReset()">Reset All</button>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="flags-section fade-in">
+            <div id="flagsContainer">
+                <p style="text-align: center; color: var(--text-muted);">Loading feature flags...</p>
+            </div>
+        </div>
+
+        <div class="audit-log-section fade-in">
+            <div class="audit-log-header">Recent Changes</div>
+            <div id="auditLogContainer">
+                <p style="text-align: center; color: var(--text-muted);">Loading audit log...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">Confirm Action</div>
+            <div class="modal-body" id="modalBody">Are you sure?</div>
+            <div class="modal-actions">
+                <button class="bulk-action-btn bulk-action-secondary" onclick="closeModal()">Cancel</button>
+                <button class="bulk-action-btn bulk-action-primary" id="modalConfirmBtn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script>
+        let pendingAction = null;
+        let allFlags = {};
+
+        // Load feature flags on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFeatureFlags();
+            loadAuditLog();
+        });
+
+        async function loadFeatureFlags() {
+            try {
+                const response = await fetch('/api/admin/feature-flags', {
+                    headers: {
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load feature flags');
+                }
+
+                const data = await response.json();
+                allFlags = data.flags;
+                renderFlags(allFlags);
+            } catch (error) {
+                console.error('Error loading feature flags:', error);
+                showAlert('Failed to load feature flags: ' + error.message, 'error');
+            }
+        }
+
+        function renderFlags(flags) {
+            const categories = {
+                'Authentication': ['EnableLoginRefactoring', 'EnableRegisterRefactoring'],
+                'TOTP': ['EnableTotpSetupRefactoring', 'EnableTotpValidateRefactoring', 'EnableTotpEnableRefactoring', 'EnableTotpDisableRefactoring'],
+                'WebAuthn': ['EnableWebAuthnRegisterRefactoring', 'EnableWebAuthnValidateRefactoring', 'EnableWebAuthnCredentialsRefactoring', 'EnableWebAuthnRemoveRefactoring'],
+                'OAuth': ['EnableOAuthAuthorizeRefactoring', 'EnableOAuthTokenRefactoring', 'EnableOAuthUserInfoRefactoring', 'EnableOAuthClientRegisterRefactoring', 'EnableOAuthClientUpdateRefactoring', 'EnableOAuthClientDeleteRefactoring', 'EnableOAuthClientsListRefactoring', 'EnableOAuthScopesRefactoring'],
+                'Magic Link': ['EnableMagicLinkSendRefactoring', 'EnableMagicLinkValidateRefactoring'],
+                'QR Authentication': ['EnableQRGenerateRefactoring', 'EnableQRValidateRefactoring'],
+                'Profile': ['EnableProfileGetRefactoring', 'EnableProfileUpdateRefactoring'],
+                'User Management': ['EnableUserGetRefactoring', 'EnableUsersListRefactoring']
+            };
+
+            let html = '';
+            for (const [category, flagNames] of Object.entries(categories)) {
+                html += `<div class="flags-category">`;
+                html += `<div class="category-header">${category}</div>`;
+                
+                for (const flagName of flagNames) {
+                    if (flags.hasOwnProperty(flagName)) {
+                        const enabled = flags[flagName];
+                        const checked = enabled ? 'checked' : '';
+                        html += `
+                            <div class="flag-item">
+                                <div class="flag-info">
+                                    <div class="flag-name">${flagName}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" ${checked} onchange="toggleFlag('${flagName}', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div>`;
+            }
+
+            document.getElementById('flagsContainer').innerHTML = html;
+        }
+
+        async function toggleFlag(flagName, enabled) {
+            try {
+                const response = await fetch(`/api/admin/feature-flags/${flagName}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update feature flag');
+                }
+
+                allFlags[flagName] = enabled;
+                showAlert(`Feature flag ${flagName} ${enabled ? 'enabled' : 'disabled'} successfully`, 'success');
+                loadAuditLog();
+            } catch (error) {
+                console.error('Error updating feature flag:', error);
+                showAlert('Failed to update feature flag: ' + error.message, 'error');
+                // Revert toggle
+                loadFeatureFlags();
+            }
+        }
+
+        async function enableCategory(category) {
+            const categoryFlags = {
+                'Login': ['EnableLoginRefactoring', 'EnableRegisterRefactoring'],
+                'Totp': ['EnableTotpSetupRefactoring', 'EnableTotpValidateRefactoring', 'EnableTotpEnableRefactoring', 'EnableTotpDisableRefactoring'],
+                'WebAuthn': ['EnableWebAuthnRegisterRefactoring', 'EnableWebAuthnValidateRefactoring', 'EnableWebAuthnCredentialsRefactoring', 'EnableWebAuthnRemoveRefactoring'],
+                'OAuth': ['EnableOAuthAuthorizeRefactoring', 'EnableOAuthTokenRefactoring', 'EnableOAuthUserInfoRefactoring', 'EnableOAuthClientRegisterRefactoring', 'EnableOAuthClientUpdateRefactoring', 'EnableOAuthClientDeleteRefactoring', 'EnableOAuthClientsListRefactoring', 'EnableOAuthScopesRefactoring']
+            };
+
+            const flags = categoryFlags[category];
+            if (!flags) return;
+
+            const flagsToUpdate = {};
+            flags.forEach(flag => {
+                flagsToUpdate[flag] = true;
+            });
+
+            try {
+                const response = await fetch('/api/admin/feature-flags/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    },
+                    body: JSON.stringify({ flags: flagsToUpdate })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to enable category');
+                }
+
+                showAlert(`All ${category} endpoints enabled successfully`, 'success');
+                loadFeatureFlags();
+                loadAuditLog();
+            } catch (error) {
+                console.error('Error enabling category:', error);
+                showAlert('Failed to enable category: ' + error.message, 'error');
+            }
+        }
+
+        function confirmReset() {
+            pendingAction = resetAllFlags;
+            document.getElementById('modalTitle').textContent = 'Reset All Feature Flags';
+            document.getElementById('modalBody').textContent = 'This will reset all feature flags to their default values from appsettings.json. All runtime overrides will be cleared. Are you sure?';
+            document.getElementById('confirmModal').style.display = 'block';
+        }
+
+        async function resetAllFlags() {
+            try {
+                const response = await fetch('/api/admin/feature-flags/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to reset feature flags');
+                }
+
+                showAlert('All feature flags reset to defaults successfully', 'success');
+                loadFeatureFlags();
+                loadAuditLog();
+            } catch (error) {
+                console.error('Error resetting feature flags:', error);
+                showAlert('Failed to reset feature flags: ' + error.message, 'error');
+            }
+        }
+
+        async function loadAuditLog() {
+            try {
+                const response = await fetch('/api/admin/feature-flags/audit-log?limit=20', {
+                    headers: {
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load audit log');
+                }
+
+                const data = await response.json();
+                renderAuditLog(data.auditLog);
+            } catch (error) {
+                console.error('Error loading audit log:', error);
+                document.getElementById('auditLogContainer').innerHTML = '<p style="text-align: center; color: var(--text-muted);">Failed to load audit log</p>';
+            }
+        }
+
+        function renderAuditLog(auditLog) {
+            if (!auditLog || auditLog.length === 0) {
+                document.getElementById('auditLogContainer').innerHTML = '<p style="text-align: center; color: var(--text-muted);">No changes recorded yet</p>';
+                return;
+            }
+
+            let html = `
+                <table class="audit-log-table">
+                    <thead>
+                        <tr>
+                            <th>Flag Name</th>
+                            <th>Status</th>
+                            <th>Changed By</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            auditLog.forEach(entry => {
+                const statusClass = entry.enabled ? 'status-enabled' : 'status-disabled';
+                const statusText = entry.enabled ? 'Enabled' : 'Disabled';
+                const date = new Date(entry.updatedAt).toLocaleString();
+                
+                html += `
+                    <tr>
+                        <td style="font-family: 'Courier New', monospace;">${entry.flagName}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${entry.updatedByUsername}</td>
+                        <td>${date}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('auditLogContainer').innerHTML = html;
+        }
+
+        function confirmAction() {
+            if (pendingAction) {
+                pendingAction();
+                pendingAction = null;
+            }
+            closeModal();
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            pendingAction = null;
+        }
+
+        function showAlert(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const alertHtml = `<div class="alert ${alertClass}">${message}</div>`;
+            
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = alertHtml;
+            container.firstElementChild.style.display = 'block';
+
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function getAuthToken() {
+            // Try to get token from localStorage or cookie
+            return localStorage.getItem('authToken') || '';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

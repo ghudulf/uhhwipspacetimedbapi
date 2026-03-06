@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BRU-AVTOPARK-AspireAPI.ServiceDefaults")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+50309bae705b8ba55b0e591fea397cc1515211fa")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6e0075879993eae37595e0fc91c9db7935edfb14")]
 [assembly: System.Reflection.AssemblyProductAttribute("BRU-AVTOPARK-AspireAPI.ServiceDefaults")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BRU-AVTOPARK-AspireAPI.ServiceDefaults")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

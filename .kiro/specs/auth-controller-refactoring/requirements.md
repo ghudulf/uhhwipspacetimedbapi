@@ -437,6 +437,38 @@ The refactoring follows a **build-first, test-later** approach due to the non-de
 4. THE System SHALL support enabling Feature_Flag for a percentage of users
 5. THE System SHALL provide monitoring for error rates per Feature_Flag
 
+### Requirement 6.1: Feature Flag Runtime Configuration
+
+**User Story:** As a DevOps engineer, I want to configure feature flags at runtime without rebuilding or restarting the application, so that I can quickly enable/disable features in production.
+
+#### Acceptance Criteria
+
+1. THE System SHALL support TWO configuration modes for feature flags: file-based (appsettings.json) and runtime (web UI + API)
+2. WHEN feature flags are configured via appsettings.json, THE System SHALL load them at startup and support hot reload without application restart
+3. WHEN feature flags are configured via web UI or API, THE System SHALL apply changes IMMEDIATELY without application restart (hot reload)
+4. THE System SHALL provide admin-only web UI at `/admin/feature-flags` with toggle switches for each feature flag
+5. THE System SHALL provide admin-only API endpoints for programmatic feature flag management:
+   - `GET /api/admin/feature-flags` - List all flags and their current state
+   - `PUT /api/admin/feature-flags/{flagName}` - Update a specific flag
+   - `POST /api/admin/feature-flags/bulk` - Update multiple flags at once
+6. WHEN a feature flag is changed via web UI or API, THE System SHALL persist the change to the database (SpacetimeDB)
+7. WHEN a feature flag is changed, THE System SHALL update in-memory cache for immediate effect across all application instances
+8. THE System SHALL support resetting runtime overrides to appsettings.json defaults via admin UI
+9. THE System SHALL log all feature flag changes with audit information (who, what, when)
+10. WHEN feature flag management endpoints are accessed, THE System SHALL require Admin role authorization
+
+**Technical Context - Configuration Priority**:
+- Runtime overrides (database) take precedence over appsettings.json
+- If no runtime override exists, fall back to appsettings.json configuration
+- If neither exists, default to `false` (disabled)
+
+**Use Cases**:
+- **Development**: Use appsettings.json for static configuration per environment
+- **Staging**: Use web UI to test flag toggling before production
+- **Production**: Use web UI or API for gradual rollout without deployment
+- **Emergency Rollback**: Use web UI to instantly disable problematic flags
+- **A/B Testing**: Use API to programmatically enable flags for specific user segments
+
 **Migration Strategy Context**:
 - **Phase 1 (Weeks 1-7)**: Build new modular architecture in Experimental folder WITHOUT touching AuthController
 - **Phase 2 (Week 8)**: Add feature flag system to orchestration layer

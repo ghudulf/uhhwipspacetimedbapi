@@ -960,6 +960,11 @@ public class LoginPerformanceBenchmark
 
 **Feature Flag Library**: Custom implementation using configuration-based flags (can be replaced with LaunchDarkly or Unleash later)
 
+**Configuration Modes**: The system supports TWO configuration modes for maximum flexibility:
+
+1. **File-Based Configuration** (appsettings.json) - For static configuration, no rebuild required
+2. **Runtime Configuration** (Web UI + API) - For dynamic configuration with hot reload, no rebuild or restart required
+
 **Flag Structure**:
 ```csharp
 public class FeatureFlagOptions
@@ -988,6 +993,8 @@ public class FeatureFlagOptions
 }
 ```
 
+### Configuration Mode 1: File-Based (appsettings.json)
+
 **Configuration** (appsettings.json):
 ```json
 {
@@ -998,6 +1005,122 @@ public class FeatureFlagOptions
   }
 }
 ```
+
+**Characteristics**:
+- Static configuration loaded at application startup
+- Changes require application restart (or file watcher with hot reload)
+- Suitable for environment-specific configuration (dev, staging, production)
+- No database dependency
+- Simple and reliable
+
+### Configuration Mode 2: Runtime Configuration (Web UI + API)
+
+**API Endpoints** (Admin-only):
+```csharp
+// GET /api/admin/feature-flags - List all feature flags and their current state
+[HttpGet("api/admin/feature-flags")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetFeatureFlags()
+{
+    var flags = await _featureFlagService.GetAllFlagsAsync();
+    return Ok(flags);
+}
+
+// PUT /api/admin/feature-flags/{flagName} - Update a specific feature flag
+[HttpPut("api/admin/feature-flags/{flagName}")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> UpdateFeatureFlag(string flagName, [FromBody] bool enabled)
+{
+    await _featureFlagService.UpdateFlagAsync(flagName, enabled);
+    return Ok(new { message = "Feature flag updated successfully", flagName, enabled });
+}
+
+// POST /api/admin/feature-flags/bulk - Update multiple feature flags at once
+[HttpPost("api/admin/feature-flags/bulk")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> BulkUpdateFeatureFlags([FromBody] Dictionary<string, bool> flags)
+{
+    await _featureFlagService.BulkUpdateFlagsAsync(flags);
+    return Ok(new { message = "Feature flags updated successfully", count = flags.Count });
+}
+```
+
+**Web UI** (Admin Dashboard):
+- HTML page at `/admin/feature-flags` with toggle switches for each flag
+- Real-time status display (enabled/disabled)
+- Bulk enable/disable buttons (e.g., "Enable All TOTP Endpoints")
+- Audit log showing who changed what and when
+- Confirmation dialogs for critical flags (e.g., OAuth endpoints)
+
+**Implementation**:
+```csharp
+public interface IFeatureFlagService
+{
+    Task<Dictionary<string, bool>> GetAllFlagsAsync();
+    Task<bool> GetFlagAsync(string flagName);
+    Task UpdateFlagAsync(string flagName, bool enabled);
+    Task BulkUpdateFlagsAsync(Dictionary<string, bool> flags);
+}
+
+public class FeatureFlagService : IFeatureFlagService
+{
+    private readonly IOptionsMonitor<FeatureFlagOptions> _options;
+    private readonly ISpacetimeDBService _spacetimeService;
+    private readonly ILogger<FeatureFlagService> _logger;
+    
+    // Store runtime overrides in SpacetimeDB
+    public async Task UpdateFlagAsync(string flagName, bool enabled)
+    {
+        var conn = await _spacetimeService.GetConnection();
+        
+        // Store in database for persistence
+        conn.Reducers.UpdateFeatureFlag(flagName, enabled);
+        
+        // Update in-memory cache for immediate effect (hot reload)
+        FeatureFlagCache.Set(flagName, enabled);
+        
+        _logger.LogInformation("Feature flag {FlagName} set to {Enabled}", flagName, enabled);
+    }
+    
+    public async Task<bool> GetFlagAsync(string flagName)
+    {
+        // Check runtime override first (database)
+        if (FeatureFlagCache.TryGet(flagName, out bool cachedValue))
+            return cachedValue;
+        
+        // Fall back to appsettings.json configuration
+        var property = typeof(FeatureFlagOptions).GetProperty(flagName);
+        if (property != null)
+            return (bool)property.GetValue(_options.CurrentValue);
+        
+        return false; // Default to disabled
+    }
+}
+```
+
+**Hot Reload Mechanism**:
+- Feature flag changes take effect IMMEDIATELY without application restart
+- Uses in-memory cache + database persistence
+- Cache invalidation on update ensures all instances see the change
+- Distributed cache (Redis) for multi-instance deployments
+
+**Persistence**:
+- Runtime configuration stored in SpacetimeDB `FeatureFlagOverride` table
+- Survives application restarts
+- Can be reset to appsettings.json defaults via admin UI
+
+**Security**:
+- Feature flag management endpoints require Admin role
+- Audit logging for all flag changes (who, what, when)
+- Rate limiting to prevent abuse
+- CSRF protection for web UI
+
+**Characteristics**:
+- Dynamic configuration without application restart (hot reload)
+- Immediate effect across all application instances
+- Suitable for gradual rollout and A/B testing
+- Requires database for persistence
+- Admin-only access via web UI or API
 
 **Controller Integration**:
 ```csharp

@@ -155,6 +155,13 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmployeeServic
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMaintenanceService, TicketSalesApp.Services.Implementations.MaintenanceService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmailService, TicketSalesApp.Services.Implementations.EmailService>();
 
+// Add Experimental services (for refactoring)
+builder.Services.AddSingleton<TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService, TicketSalesApp.AdminServer.Experimental.Services.Implementations.FeatureFlagService>();
+
+// Configure FeatureFlagOptions from appsettings.json
+builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
+    builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
+
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
 

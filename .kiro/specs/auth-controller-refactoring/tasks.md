@@ -249,26 +249,69 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
 
 ### Phase 3: Feature Flag Integration (Week 8) - Zero Risk
 
-- [ ] 9. Create feature flag infrastructure
-  - [ ] 9.1 Create FeatureFlagOptions configuration class
+- [x] 9. Create feature flag infrastructure
+  - [x] 9.1 Create FeatureFlagOptions configuration class
     - Define boolean flags for all 56 endpoints (default: false)
     - Include flags for Login, Register, TOTP, WebAuthn, OAuth, etc.
     - Location: `BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Options/FeatureFlagOptions.cs`
-    - _Requirements: 6.1, 6.2, 6.3, 15.1, 15.2, 15.3_
+    - _Requirements: 6.1, 6.2, 6.3, 6.1.1, 15.1, 15.2, 15.3_
   
-  - [ ] 9.2 Configure feature flags in appsettings.json
+  - [x] 9.2 Configure feature flags in appsettings.json
     - Add FeatureFlags section with all flags disabled by default
-    - _Requirements: 6.1, 6.2, 6.3_
+    - Support hot reload without application restart
+    - _Requirements: 6.1, 6.2, 6.3, 6.1.2_
   
-  - [ ] 9.3 Register FeatureFlagOptions in DI container
+  - [x] 9.3 Create FeatureFlagService for runtime configuration
+    - Implement IFeatureFlagService interface with methods:
+      - GetAllFlagsAsync() - List all flags and their current state
+      - GetFlagAsync(string flagName) - Get a specific flag value
+      - UpdateFlagAsync(string flagName, bool enabled) - Update a flag
+      - BulkUpdateFlagsAsync(Dictionary<string, bool> flags) - Update multiple flags
+    - Implement priority: runtime overrides (database) > appsettings.json > default (false)
+    - Implement in-memory cache for hot reload (immediate effect)
+    - Persist runtime overrides to SpacetimeDB FeatureFlagOverride table
+    - Location: `BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Experimental/Services/Implementations/FeatureFlagService.cs`
+    - _Requirements: 6.1.3, 6.1.4, 6.1.6, 6.1.7, 6.1.8_
+  
+  - [x] 9.4 Create FeatureFlagOverride table in SpacetimeDB
+    - Add table schema: FlagName (string), Enabled (bool), UpdatedBy (Identity), UpdatedAt (DateTime)
+    - Add reducer: UpdateFeatureFlag(string flagName, bool enabled)
+    - Location: `server/` (SpacetimeDB module)
+    - _Requirements: 6.1.6_
+  
+  - [x] 9.5 Create admin API endpoints for feature flag management
+    - GET /api/admin/feature-flags - List all flags (Admin-only)
+    - PUT /api/admin/feature-flags/{flagName} - Update a flag (Admin-only)
+    - POST /api/admin/feature-flags/bulk - Update multiple flags (Admin-only)
+    - Add [Authorize(Roles = "Admin")] attribute to all endpoints
+    - Add audit logging for all flag changes
+    - Location: `BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Controllers/AdminController.cs` (new file)
+    - _Requirements: 6.1.5, 6.1.9, 6.1.10_
+  
+  - [x] 9.6 Create admin web UI for feature flag management
+    - Create HTML page at /admin/feature-flags with toggle switches
+    - Display real-time status (enabled/disabled) for each flag
+    - Add bulk enable/disable buttons (e.g., "Enable All TOTP Endpoints")
+    - Add confirmation dialogs for critical flags (OAuth endpoints)
+    - Add audit log display (who changed what and when)
+    - Add "Reset to Defaults" button to clear runtime overrides
+    - Location: `BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Experimental/Views/Admin/FeatureFlags.cshtml`
+    - _Requirements: 6.1.4, 6.1.8, 6.1.9_
+  
+  - [x] 9.7 Register FeatureFlagService in DI container
     - Add configuration binding in Program.cs
+    - Register IFeatureFlagService with FeatureFlagService implementation
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ]* 9.4 Write unit tests for feature flag configuration
-    - Test flags load correctly from configuration
+  - [x] 9.8 Write unit tests for feature flag configuration
+    - Test flags load correctly from appsettings.json
     - Test default values are false
-    - Test flags can be toggled at runtime
-    - _Requirements: 5.1, 5.2, 5.3_
+    - Test runtime overrides take precedence over appsettings.json
+    - Test flags can be toggled at runtime via API
+    - Test hot reload works without application restart
+    - Test admin authorization is enforced
+    - Test audit logging captures all changes
+    - _Requirements: 5.1, 5.2, 5.3, 6.1.3, 6.1.7, 6.1.10_
 
 - [ ] 10. Checkpoint - Verify feature flag infrastructure
   - Ensure all tests pass, ask the user if questions arise.

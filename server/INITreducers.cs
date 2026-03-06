@@ -361,6 +361,11 @@ public static partial class Module
             ("magiclink.list", "List Magic Links", "Magic Link Management"),
             ("magiclink.refresh", "Refresh Magic Links", "Magic Link Management"),
 
+            // Feature Flag Management
+            ("feature_flags.update", "Update feature flags", "Feature Flag Management"),
+            ("feature_flags.clear", "Clear all feature flag overrides", "Feature Flag Management"),
+            ("feature_flags.delete", "Delete specific feature flag overrides", "Feature Flag Management"),
+
             // we have magic link permissions  above, so no need to duplicate them
 
             // other permissions will go below this for categories we might add later 
