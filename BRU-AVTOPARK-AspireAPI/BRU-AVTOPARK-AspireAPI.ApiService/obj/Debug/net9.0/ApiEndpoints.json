@@ -16,6 +16,89 @@
     ]
   },
   {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "GetFeatureFlags",
+    "RelativePath": "api/admin/feature-flags",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "FeatureFlagsUI",
+    "RelativePath": "api/admin/feature-flags-ui",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "UpdateFeatureFlag",
+    "RelativePath": "api/admin/feature-flags/{flagName}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "flagName",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "TicketSalesApp.AdminServer.Controllers.UpdateFeatureFlagRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "GetFeatureFlagAuditLog",
+    "RelativePath": "api/admin/feature-flags/audit-log",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "limit",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "BulkUpdateFeatureFlags",
+    "RelativePath": "api/admin/feature-flags/bulk",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "TicketSalesApp.AdminServer.Controllers.BulkUpdateFeatureFlagsRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TicketSalesApp.AdminServer.Controllers.AdminController",
+    "Method": "ResetFeatureFlags",
+    "RelativePath": "api/admin/feature-flags/reset",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController",
     "Method": "ClaimAccountPage",
     "RelativePath": "api/Auth/claim-account",
