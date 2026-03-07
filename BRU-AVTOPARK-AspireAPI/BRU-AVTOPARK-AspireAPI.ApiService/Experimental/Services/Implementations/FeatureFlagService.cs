@@ -222,7 +222,7 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
                         Enabled = f.Enabled,
                         UpdatedBy = f.UpdatedBy,
                         UpdatedByUsername = GetUsernameForIdentity(conn, f.UpdatedBy),
-                        UpdatedAt = f.UpdatedAt
+                        UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)f.UpdatedAt).DateTime
                     })
                     .ToList();
 
