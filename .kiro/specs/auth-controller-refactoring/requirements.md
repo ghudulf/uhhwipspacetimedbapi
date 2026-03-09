@@ -6,7 +6,8 @@ This document specifies the requirements for refactoring the AuthController in t
 
 ## Glossary
 
-- **AuthController**: The main authentication controller containing 56 endpoints and 8,293 lines of code (currently UNTOUCHED - will remain operational during refactoring)
+- **AuthController**: The main authentication controller containing 56 endpoints and 8,293 lines of code (LEGACY - will remain operational with minimal modifications during refactoring)
+- **AuthControllerRefactored**: The new clean authentication controller using orchestration service pattern (created in Phase 4)
 - **Service_Layer**: The business logic layer containing services like AuthenticationService, TotpService, WebAuthnService, etc.
 - **Orchestration_Service**: A coordination layer that manages interactions between multiple business logic services
 - **Direct_DB_Access**: Controller code that queries the database directly without using services
@@ -21,6 +22,11 @@ This document specifies the requirements for refactoring the AuthController in t
 - **Experimental_Folder**: The location where new modular architecture code is being built (BRU-AVTOPARK-AspireAPI.ApiService/Experimental/)
 - **Side_By_Side_Deployment**: Running both legacy AuthController and new modular code simultaneously during migration
 - **Legacy_Code**: The current AuthController implementation that will be preserved until new architecture is fully validated
+- **Dual_Controller_Architecture**: Architecture pattern where two controllers (AuthController and AuthControllerRefactored) coexist with dynamic routing based on feature flags
+- **FeatureFlagActionConstraint**: Custom ASP.NET Core action constraint that selects between legacy and refactored controller actions based on feature flag state
+- **RefactoredAction**: Attribute marking an action as the refactored version (selected when feature flag is ENABLED)
+- **LegacyAction**: Attribute marking an action as the legacy version (selected when feature flag is DISABLED)
+- **Dynamic_Routing**: ASP.NET Core routing mechanism that selects controller actions at runtime based on constraints
 
 ## Background & Context
 
@@ -432,10 +438,81 @@ The refactoring follows a **build-first, test-later** approach due to the non-de
 #### Acceptance Criteria
 
 1. THE System SHALL provide Feature_Flag support for controlling endpoint behavior
-2. WHEN a Feature_Flag is enabled, THE System SHALL route requests to refactored code
-3. WHEN a Feature_Flag is disabled, THE System SHALL route requests to legacy code
-4. THE System SHALL support enabling Feature_Flag for a percentage of users
-5. THE System SHALL provide monitoring for error rates per Feature_Flag
+2. WHEN a Feature_Flag is enabled, THE System SHALL route requests to AuthControllerRefactored using Dynamic_Routing
+3. WHEN a Feature_Flag is disabled, THE System SHALL route requests to legacy AuthController using Dynamic_Routing
+4. THE System SHALL use FeatureFlagActionConstraint to select between RefactoredAction and LegacyAction at runtime
+5. THE System SHALL support enabling Feature_Flag for a percentage of users
+6. THE System SHALL provide monitoring for error rates per Feature_Flag
+
+**Technical Context - Dual Controller Architecture**:
+
+The system implements a **dual-controller architecture** with dynamic routing instead of inline feature flag checks:
+
+**Architecture Components**:
+1. **AuthController.cs** (Legacy): Original 8,293-line controller with minimal modifications
+   - Each endpoint marked with `[LegacyAction(nameof(FeatureFlagOptions.EnableXxxRefactoring))]`
+   - Logic remains completely UNTOUCHED
+   - Selected when feature flag is DISABLED
+
+2. **AuthControllerRefactored.cs** (New): Clean controller using orchestration service pattern
+   - Each endpoint marked with `[RefactoredAction(nameof(FeatureFlagOptions.EnableXxxRefactoring))]`
+   - Clean implementation with no legacy code
+   - Selected when feature flag is ENABLED
+
+3. **FeatureFlagActionConstraint.cs**: Custom `IActionConstraint` for dynamic routing
+   - `RefactoredActionAttribute`: Selects action when feature flag is ENABLED
+   - `LegacyActionAttribute`: Selects action when feature flag is DISABLED
+   - Uses reflection to check feature flag values at runtime
+
+**Routing Flow**:
+```
+HTTP Request → ASP.NET Core Routing Engine
+                    ↓
+            FeatureFlagActionConstraint
+                    ↓
+    ┌───────────────┴───────────────┐
+    ↓                               ↓
+Flag ENABLED                   Flag DISABLED
+    ↓                               ↓
+AuthControllerRefactored       AuthController
+(Clean, orchestration)         (Legacy, untouched)
+```
+
+**Benefits Over Inline Feature Flag Checks**:
+- **Zero Risk**: Legacy controller logic never modified
+- **Clean Separation**: Refactored code in separate file
+- **Easy Rollback**: Just disable feature flags - no code deployment needed
+- **Easy Cleanup**: After validation, just delete AuthController.cs
+- **Testable**: Can test both controllers independently
+- **Gradual Rollout**: Enable flags per-endpoint for fine-grained control
+
+**Implementation Example**:
+```csharp
+// AuthController.cs (LEGACY - UNTOUCHED)
+[HttpPost("login")]
+[AllowAnonymous]
+[LegacyAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    // ... existing 200+ lines (UNCHANGED) ...
+}
+
+// AuthControllerRefactored.cs (NEW - CLEAN)
+[HttpPost("login")]
+[AllowAnonymous]
+[RefactoredAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    var result = await _authOrchestrationService.LoginAsync(request.Username, request.Password);
+    // ... clean orchestration-based logic ...
+}
+```
+
+**Why This Is Superior**:
+- Alternative approach (inline feature flag checks) would pollute the 8,293-line legacy controller
+- Dual-controller approach keeps legacy code pristine (only adds attributes)
+- Easier to test, maintain, and eventually remove legacy code
+- This is production-grade refactoring done right
 
 ### Requirement 6.1: Feature Flag Runtime Configuration
 
@@ -636,6 +713,148 @@ The refactoring follows a strict **copy-first, modify-later** approach to ensure
 3. THE Orchestration_Service SHALL handle transaction management across service calls
 4. THE Orchestration_Service SHALL provide consistent error handling and logging
 5. WHEN orchestration is complete, THE System SHALL have 100% endpoint coverage (currently 9%)
+
+### Requirement 16: OAuth/OIDC Controller Requirements
+
+**User Story:** As a developer, I want clear guidance on what OAuth/OIDC operations must stay in the controller vs what can be delegated to services, so that I implement OpenIddict integration correctly.
+
+#### Acceptance Criteria
+
+1. THE System SHALL keep OpenIddict-specific operations in the controller (HttpContext.GetOpenIddictServerRequest, HttpContext.AuthenticateAsync, SignIn, Forbid)
+2. THE System SHALL delegate validation logic to orchestration services (client validation, user validation, scope validation)
+3. THE System SHALL delegate claims building to orchestration services (BuildOAuthClaimsIdentityAsync, BuildTokenClaimsIdentityAsync)
+4. WHEN implementing OAuth endpoints, THE developer SHALL NOT attempt to delegate SignIn or Forbid operations to services
+5. THE System SHALL provide helper methods in AuthOrchestrationService for OAuth validation and claims building
+
+**Technical Context - OpenIddict Controller Requirements**:
+
+OpenIddict is an ASP.NET Core OAuth/OIDC server framework that requires specific controller operations that CANNOT be delegated to a service layer:
+
+**Operations That MUST Stay in Controller**:
+- `HttpContext.GetOpenIddictServerRequest()` - Retrieves OAuth request from HTTP context (contains client_id, redirect_uri, scope, PKCE parameters)
+- `HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)` - Validates authorization codes and refresh tokens
+- `SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)` - Generates OAuth tokens (authorization code, access token, refresh token, id_token)
+- `Forbid(authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)` - Returns OAuth error responses
+- `HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, ...)` - Cookie authentication for browser-based OAuth flows
+
+**Operations That CAN Be Delegated to Services**:
+- Client validation (`GetApplicationByClientIdAsync`, validate redirect URIs, check client permissions)
+- User validation (`GetUserByLoginAsync`, `AuthenticateAsync`, verify user exists and is active)
+- Claims building (query roles, query permissions, build ClaimsIdentity with user claims, set claim destinations)
+- Authorization management (`GetAuthorizationsAsync`, `CreateAuthorizationAsync`)
+- Scope/resource management (`GetResourcesAsync`, validate requested scopes, map scopes to resources)
+
+**Correct Pattern for OAuth Authorize Endpoint**:
+```csharp
+[HttpGet("~/connect/authorize")]
+[HttpPost("~/connect/authorize")]
+public async Task<IActionResult> Authorize()
+{
+    // 1. GET OPENIDDICT REQUEST (MUST BE IN CONTROLLER)
+    var request = HttpContext.GetOpenIddictServerRequest();
+    
+    // 2. DELEGATE VALIDATION TO SERVICE
+    var validationResult = await _authOrchestrationService
+        .ValidateOAuthRequestAsync(request.ClientId, request.RedirectUri, request.Scope);
+    
+    if (!validationResult.Success)
+    {
+        // 3. RETURN OAUTH ERROR (MUST BE IN CONTROLLER)
+        return Forbid(
+            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+            properties: new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = validationResult.ErrorMessage
+            }));
+    }
+    
+    // 4. CHECK AUTHENTICATION (MUST BE IN CONTROLLER)
+    var authenticateResult = await HttpContext.AuthenticateAsync(
+        CookieAuthenticationDefaults.AuthenticationScheme);
+    
+    if (!authenticateResult.Succeeded)
+    {
+        // User not logged in - show login page or redirect
+        return Challenge();
+    }
+    
+    // 5. DELEGATE CLAIMS BUILDING TO SERVICE
+    var claimsResult = await _authOrchestrationService
+        .BuildOAuthClaimsIdentityAsync(
+            authenticateResult.Principal.Identity.Name,
+            request.GetScopes().ToArray());
+    
+    if (!claimsResult.Success)
+    {
+        return Forbid(...);
+    }
+    
+    // 6. SIGN IN WITH OPENIDDICT (MUST BE IN CONTROLLER)
+    return SignIn(
+        new ClaimsPrincipal(claimsResult.Identity),
+        OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+}
+```
+
+**Correct Pattern for OAuth Token Endpoint**:
+```csharp
+[HttpPost("~/connect/token")]
+public async Task<IActionResult> Exchange()
+{
+    // 1. GET OPENIDDICT REQUEST (MUST BE IN CONTROLLER)
+    var request = HttpContext.GetOpenIddictServerRequest();
+    
+    if (request.IsAuthorizationCodeGrantType())
+    {
+        // 2. AUTHENTICATE AUTHORIZATION CODE (MUST BE IN CONTROLLER)
+        var authenticateResult = await HttpContext.AuthenticateAsync(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        
+        if (!authenticateResult.Succeeded)
+        {
+            return Forbid(...);
+        }
+        
+        var principal = authenticateResult.Principal;
+        var userId = principal.FindFirst(Claims.Subject)?.Value;
+        
+        // 3. DELEGATE USER VALIDATION TO SERVICE
+        var userResult = await _authOrchestrationService
+            .ValidateUserForTokenExchangeAsync(userId);
+        
+        if (!userResult.Success)
+        {
+            return Forbid(...);
+        }
+        
+        // 4. DELEGATE CLAIMS BUILDING TO SERVICE
+        var claimsResult = await _authOrchestrationService
+            .BuildTokenClaimsIdentityAsync(
+                userResult.User,
+                principal.GetScopes().ToArray(),
+                principal.GetResources().ToArray());
+        
+        // 5. SIGN IN WITH OPENIDDICT (MUST BE IN CONTROLLER)
+        return SignIn(
+            new ClaimsPrincipal(claimsResult.Identity),
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+    
+    // Handle other grant types...
+}
+```
+
+**Why This Matters**:
+- OpenIddict operations require HttpContext and ASP.NET Core authentication middleware
+- Attempting to delegate SignIn/Forbid to services will fail at runtime
+- Service layer should provide helper methods for validation and claims building
+- Controller orchestrates OpenIddict operations and calls service helpers
+
+**Current Issue in AuthControllerRefactored.cs**:
+- OAuth authorize and token endpoints incorrectly delegate SignIn operations to AuthOrchestrationService
+- This will NOT work - OpenIddict requires SignIn to be called in the controller
+- Need to rewrite these endpoints to keep OpenIddict operations in controller and only delegate validation/claims building to services
 
 **Technical Context - Current Orchestration Coverage**:
 

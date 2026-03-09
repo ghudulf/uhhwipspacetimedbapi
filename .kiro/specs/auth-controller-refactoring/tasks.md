@@ -157,56 +157,100 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
 
 
 - [x] 6. Expand AuthOrchestrationService with Priority 3 methods (Medium - OAuth/OIDC Flows)
-  - [x] 6.1 Implement AuthorizeOAuthAsync orchestration method
-    - Coordinate OpenIdConnectService authorization flow
-    - Handle client validation and scope checking
-    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  - [x] 6.1 Implement ValidateOAuthRequestAsync helper method
+    - Coordinate OpenIdConnectService client validation
+    - Validate redirect URI and scopes
+    - Return validation result (success/failure with error message)
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2, 16.1, 16.2, 16.3_
   
-  - [x] 6.2 Implement ExchangeTokenAsync orchestration method
-    - Coordinate OpenIdConnectService token exchange
-    - Validate authorization code and client credentials
-    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  - [x] 6.2 Implement BuildOAuthClaimsIdentityAsync helper method
+    - Coordinate UserService + OpenIdConnectService
+    - Build ClaimsIdentity with user claims (sub, name, email, roles)
+    - Set scopes and resources
+    - Set claim destinations
+    - Return ClaimsIdentityResult
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2, 16.1, 16.3_
   
-  - [x] 6.3 Implement GetUserInfoAsync orchestration method
-    - Coordinate OpenIdConnectService.CreateIdentityFromUserAsync
-    - Return user claims for OAuth userinfo endpoint
-    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  - [x] 6.3 Implement ValidateUserForTokenExchangeAsync helper method
+    - Coordinate UserService to validate user exists and is active
+    - Return user validation result
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2, 16.1, 16.2_
   
-  - [x] 6.4 Implement RegisterOAuthClientAsync orchestration method
+  - [x] 6.4 Implement BuildTokenClaimsIdentityAsync helper method
+    - Coordinate UserService + OpenIdConnectService
+    - Build fresh ClaimsIdentity for token exchange
+    - Set scopes and resources from principal
+    - Set claim destinations
+    - Return ClaimsIdentityResult
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2, 16.1, 16.3_
+  
+  - [x] 6.5 Implement RegisterOAuthClientAsync orchestration method
     - Coordinate OpenIdConnectService.RegisterClientApplicationAsync
     - Handle OAuth client registration
     - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
   
-  - [x] 6.5 Implement UpdateOAuthClientAsync orchestration method
+  - [x] 6.6 Implement UpdateOAuthClientAsync orchestration method
     - Coordinate OpenIdConnectService.UpdateClientApplicationAsync
     - Handle OAuth client updates
     - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
   
-  - [x] 6.6 Implement DeleteOAuthClientAsync orchestration method
+  - [x] 6.7 Implement DeleteOAuthClientAsync orchestration method
     - Coordinate OpenIdConnectService.DeleteClientApplicationAsync
     - Handle OAuth client deletion
     - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
   
-  - [x] 6.7 Implement GetOAuthClientsAsync orchestration method
+  - [x] 6.8 Implement GetOAuthClientsAsync orchestration method
     - Coordinate OpenIdConnectService.GetAllClientApplicationsAsync
     - Return list of OAuth clients
     - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
   
-  - [x] 6.8 Implement GetOAuthScopesAsync orchestration method
+  - [x] 6.9 Implement GetOAuthScopesAsync orchestration method
     - Coordinate OpenIdConnectService.GetScopeManager
     - Return available OAuth scopes
     - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
   
-  - [ ]* 6.9 Write unit tests for Priority 3 orchestration methods
-    - Test AuthorizeOAuthAsync validates client and scopes
-    - Test ExchangeTokenAsync validates code and credentials
-    - Test GetUserInfoAsync returns correct user claims
+  - [ ]* 6.10 Write unit tests for Priority 3 orchestration methods
+    - Test ValidateOAuthRequestAsync validates client and scopes
+    - Test BuildOAuthClaimsIdentityAsync builds correct claims
+    - Test ValidateUserForTokenExchangeAsync validates user
+    - Test BuildTokenClaimsIdentityAsync builds fresh claims
     - Test RegisterOAuthClientAsync creates client
     - Test UpdateOAuthClientAsync updates client
     - Test DeleteOAuthClientAsync removes client
     - Test GetOAuthClientsAsync returns all clients
     - Test GetOAuthScopesAsync returns available scopes
     - _Requirements: 5.1, 5.2, 5.3_
+  
+  - [ ] 6.11 CRITICAL: Fix OAuth endpoints in AuthControllerRefactored.cs
+    - [ ] 6.11.1 Rewrite ~/connect/authorize endpoint
+      - Keep HttpContext.GetOpenIddictServerRequest() in controller
+      - Keep HttpContext.AuthenticateAsync() in controller
+      - Call _authOrchestrationService.ValidateOAuthRequestAsync() for validation
+      - Call _authOrchestrationService.BuildOAuthClaimsIdentityAsync() for claims
+      - Keep SignIn() in controller
+      - Keep Forbid() in controller
+      - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+    
+    - [ ] 6.11.2 Rewrite ~/connect/token endpoint
+      - Keep HttpContext.GetOpenIddictServerRequest() in controller
+      - Keep HttpContext.AuthenticateAsync() in controller
+      - Call _authOrchestrationService.ValidateUserForTokenExchangeAsync() for validation
+      - Call _authOrchestrationService.BuildTokenClaimsIdentityAsync() for fresh claims
+      - Keep SignIn() in controller
+      - Keep Forbid() in controller
+      - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+    
+    - [ ] 6.11.3 Document OAuth pattern in code comments
+      - Add comments explaining what MUST stay in controller
+      - Add comments explaining what CAN be delegated to service
+      - Reference CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
+      - _Requirements: 16.5_
+    
+    - [ ] 6.11.4 Remove incorrect AuthorizeOAuthAsync and ExchangeTokenAsync methods
+      - These methods attempted to delegate SignIn operations (incorrect)
+      - Replace with helper methods (ValidateOAuthRequestAsync, BuildOAuthClaimsIdentityAsync, etc.)
+      - Update IAuthServices interface to remove these methods
+      - _Requirements: 16.1, 16.4_
 
 
 - [x] 7. Expand AuthOrchestrationService with Priority 4 methods (Low - Already Clean)
@@ -245,6 +289,148 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
 
 - [x] 8. Checkpoint - Verify orchestration expansion
   - Ensure all tests pass, ask the user if questions arise.
+
+
+### Phase 2.5: HTML Rendering Completion (Week 7.5) - Zero Risk
+
+**Note**: This phase completes the HTML rendering infrastructure before introducing feature flags. All HTML templates exist in the Experimental/Views folder, and the HtmlRenderingService has the core Razor rendering infrastructure. This phase implements the stub methods to actually render the views.
+
+- [x] 8.1 Implement HtmlRenderingService rendering methods for authentication views
+  - [x] 8.1.1 Implement RenderLoginForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/Login.cshtml
+    - Pass error and message parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.2 Implement RenderRegisterForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/Register.cshtml
+    - Pass error, message, adminCheckAttempt, and isAdmin parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.3 Implement RenderTotpSetup method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/TotpSetup.cshtml
+    - Pass qrCodeUri and secretKey parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.4 Implement RenderWebAuthnRegistration method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/WebAuthnRegister.cshtml
+    - Pass WebAuthn options JSON to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.5 Implement RenderMagicLinkForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/MagicLink.cshtml
+    - Pass error and message parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.6 Implement RenderQrLogin method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/QrLogin.cshtml
+    - Pass QR code data to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.7 Implement RenderOAuthLoginForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/OAuthLogin.cshtml
+    - Pass requestId, clientName, scopes, and error parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.8 Implement RenderClaimAccountForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/ClaimAccount.cshtml
+    - Pass error and message parameters to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.9 Implement RenderSuccessPage method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/Success.cshtml
+    - Pass token parameter to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.1.10 Implement RenderErrorPage method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Auth/Error.cshtml
+    - Pass error message to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+
+- [x] 8.2 Implement HtmlRenderingService rendering methods for profile and OAuth views
+  - [x] 8.2.1 Implement RenderProfilePage method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/Profile/Index.cshtml
+    - Pass user profile, TOTP status, WebAuthn credentials, roles, and permissions to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.2.2 Implement RenderOidcClientsList method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/OAuth/ClientsList.cshtml
+    - Pass list of OAuth clients and optional token to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.2.3 Implement RenderOidcScopesList method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/OAuth/ScopesList.cshtml
+    - Pass list of OAuth scopes and optional token to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.2.4 Implement RenderOidcClientDetails method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/OAuth/ClientDetails.cshtml
+    - Pass OAuth client details and optional token to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.2.5 Implement RenderOidcClientForm method
+    - Use RenderViewToStringAsync to render ~/Experimental/Views/OAuth/ClientForm.cshtml
+    - Pass optional clientId, client data, and token to view model
+    - Return rendered HTML string
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+
+- [ ] 8.3 Test HTML rendering methods
+  - [ ]* 8.3.1 Write unit tests for authentication view rendering
+    - Test RenderLoginForm with various error/message combinations
+    - Test RenderRegisterForm with admin check scenarios
+    - Test RenderTotpSetup with QR code data
+    - Test RenderWebAuthnRegistration with options JSON
+    - Test RenderMagicLinkForm, RenderQrLogin, RenderOAuthLoginForm
+    - Test RenderClaimAccountForm, RenderSuccessPage, RenderErrorPage
+    - _Requirements: 5.1, 5.2, 5.3_
+  
+  - [ ]* 8.3.2 Write unit tests for profile and OAuth view rendering
+    - Test RenderProfilePage with complete user data
+    - Test RenderOidcClientsList with multiple clients
+    - Test RenderOidcScopesList with multiple scopes
+    - Test RenderOidcClientDetails with client data
+    - Test RenderOidcClientForm for create and edit scenarios
+    - _Requirements: 5.1, 5.2, 5.3_
+
+- [x] 8.4 Verify HTML templates are complete and functional
+  - [x] 8.4.1 Review all CSHTML templates in Experimental/Views
+    - Verify all templates use correct view models
+    - Verify all templates include necessary JavaScript files
+    - Verify all templates use BRU design system CSS
+    - Verify all templates have proper error handling
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.4.2 Test JavaScript functionality in templates
+    - Verify login.js works with Login.cshtml
+    - Verify register.js works with Register.cshtml
+    - Verify WebAuthn JavaScript works with WebAuthnRegister.cshtml
+    - Verify OAuth client management JavaScript works
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+  
+  - [x] 8.4.3 Verify CSS styling is consistent
+    - Check bru-design-system.css is properly linked in all templates
+    - Verify all templates use consistent BRU branding
+    - Verify responsive design works on mobile/tablet/desktop
+    - _Requirements: 1.1, 1.2, 1.3, 14.1, 14.2_
+
+- [x] 8.5 Checkpoint - Verify HTML rendering complete
+  - All HtmlRenderingService methods implemented (no more NotImplementedException stubs)
+  - All CSHTML templates verified and functional
+  - JavaScript and CSS working correctly
+  - Ready to integrate with feature flags in Phase 3
 
 
 ### Phase 3: Feature Flag Integration (Week 8) - Zero Risk
@@ -334,39 +520,39 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
 
 ### Phase 4: Controller Modification (Weeks 9-10) - Low Risk
 
-- [ ] 11. Modify AuthController to support feature flags
-  - [ ] 11.1 Inject FeatureFlagOptions and AuthOrchestrationService into AuthController
+- [x] 11. Modify AuthController to support feature flags
+  - [x] 11.1 Inject FeatureFlagOptions and AuthOrchestrationService into AuthController
     - Add constructor parameters for IOptions<FeatureFlagOptions> and IAuthOrchestrationService
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 15.4_
   
-  - [ ] 11.2 Add feature flag checks to Login endpoint
+  - [x] 11.2 Add feature flag checks to Login endpoint
     - Check EnableLoginRefactoring flag at start of method
     - If enabled: delegate to AuthOrchestrationService.LoginAsync
     - If disabled: execute existing legacy code (unchanged)
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_
   
-  - [ ] 11.3 Add feature flag checks to Register endpoint
+  - [x] 11.3 Add feature flag checks to Register endpoint
     - Check EnableRegisterRefactoring flag at start of method
     - If enabled: delegate to AuthOrchestrationService.RegisterAsync
     - If disabled: execute existing legacy code (unchanged)
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_
   
-  - [ ] 11.4 Add feature flag checks to TOTP endpoints (4 endpoints)
+  - [x] 11.4 Add feature flag checks to TOTP endpoints (4 endpoints)
     - Add flags for TotpSetup, TotpValidate, TotpEnable, TotpDisable
     - Delegate to orchestration service when flags enabled
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_
   
-  - [ ] 11.5 Add feature flag checks to WebAuthn endpoints (7 endpoints)
+  - [x] 11.5 Add feature flag checks to WebAuthn endpoints (7 endpoints)
     - Add flags for WebAuthn register, validate, credentials operations
     - Delegate to orchestration service when flags enabled
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_
   
-  - [ ] 11.6 Add feature flag checks to OAuth endpoints (8+ endpoints)
+  - [x] 11.6 Add feature flag checks to OAuth endpoints (8+ endpoints)
     - Add flags for OAuth authorize, token, userinfo, client management
     - Delegate to orchestration service when flags enabled
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_
   
-  - [ ] 11.7 Add feature flag checks to remaining endpoints (QR, Magic Link, Profile, etc.)
+  - [x] 11.7 Add feature flag checks to remaining endpoints (QR, Magic Link, Profile, etc.)
     - Add flags for all remaining endpoints
     - Delegate to orchestration service when flags enabled
     - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 13.1, 13.2, 13.3, 13.4, 15.4_

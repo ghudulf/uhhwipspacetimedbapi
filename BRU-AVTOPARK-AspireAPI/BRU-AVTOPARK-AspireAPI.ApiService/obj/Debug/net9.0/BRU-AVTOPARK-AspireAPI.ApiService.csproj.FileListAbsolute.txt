@@ -185,4 +185,3 @@ G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BR
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.ApiService.pdb
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\BRU-AVTOPARK-AspireAPI.ApiService.genruntimeconfig.cache
 G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\ref\BRU-AVTOPARK-AspireAPI.ApiService.dll
-G:\codesecondfolder\SpacetimeDB-BRU-AVTOPARK-avtobusov\BRU-AVTOPARK-AspireAPI\BRU-AVTOPARK-AspireAPI.ApiService\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

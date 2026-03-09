@@ -28,6 +28,9 @@ using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore;
+using Microsoft.Extensions.Options;
+using TicketSalesApp.AdminServer.Configuration;
+using BRU_AVTOPARK.Services.Interfaces;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -47,6 +50,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly IMemoryCache _cache;
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly SymmetricSecurityKey _signingKey;
+        private readonly IOptions<FeatureFlagOptions> _featureFlags;
+        private readonly IAuthOrchestrationService _authOrchestrationService;
 
         public AuthController(
             TicketSalesApp.Services.Interfaces.IAuthenticationService authService, 
@@ -60,7 +65,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             ILogger<AuthController> logger,
             IMemoryCache cache,
             ISpacetimeDBService spacetimeService,
-            SymmetricSecurityKey signingKey)
+            SymmetricSecurityKey signingKey,
+            IOptions<FeatureFlagOptions> featureFlags,
+            IAuthOrchestrationService authOrchestrationService)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _qrAuthService = qrAuthService ?? throw new ArgumentNullException(nameof(qrAuthService));
@@ -74,6 +81,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
             _signingKey = signingKey ?? throw new ArgumentNullException(nameof(signingKey));
+            _featureFlags = featureFlags ?? throw new ArgumentNullException(nameof(featureFlags));
+            _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
         }
 
         #region HTML Templates
