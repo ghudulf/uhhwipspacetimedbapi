@@ -1,3 +1,6 @@
+using Fido2NetLib;
+using Fido2NetLib.Objects;
+
 namespace BRU_AVTOPARK.Models.Responses;
 
 /// <summary>
@@ -48,8 +51,8 @@ public record RegisterResponse
 public record TwoFactorResponse
 {
     public bool RequiresTwoFactor { get; init; }
-    public string TwoFactorType { get; init; } = string.Empty;
-    public string TempToken { get; init; } = string.Empty;
+    public string? TwoFactorType { get; init; }
+    public string? TempToken { get; init; }
 }
 
 /// <summary>TOTP setup success with QR code URI and secret key for manual entry.</summary>
@@ -111,4 +114,62 @@ public record UserInfoResponse
     public string? PhoneNumber { get; init; }
     public bool PhoneNumberVerified { get; init; }
     public List<string> Roles { get; init; } = [];
+}
+
+/// <summary>QR login response with token and QR code data.</summary>
+public record QRLoginResponse
+{
+    public string Token { get; init; } = string.Empty;
+    public string QrCodeData { get; init; } = string.Empty;
+    public DateTime ExpiresAt { get; init; }
+    public Dictionary<string, object>? Claims { get; init; }
+}
+
+/// <summary>QR login status response.</summary>
+public record QRLoginStatusResponse
+{
+    public string Status { get; init; } = string.Empty;
+    public string? Token { get; init; }
+    public UserDto? User { get; init; }
+}
+
+/// <summary>Refresh token response.</summary>
+public record RefreshTokenResponse
+{
+    public string Token { get; init; } = string.Empty;
+    public string RefreshToken { get; init; } = string.Empty;
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>User settings DTO.</summary>
+public record UserSettingsDto
+{
+    public bool TotpEnabled { get; init; }
+    public bool WebAuthnEnabled { get; init; }
+    public bool EmailNotifications { get; init; }
+    public bool SmsNotifications { get; init; }
+}
+
+/// <summary>Auth status response.</summary>
+public record AuthStatusResponse
+{
+    public bool IsAuthenticated { get; init; }
+    public UserDto? User { get; init; }
+    public string? Username { get; init; }
+    public DateTime? ExpiresAt { get; init; }
+}
+
+/// <summary>OAuth scope DTO for scope management views.</summary>
+public record OAuthScopeDto
+{
+    public string Name { get; init; } = string.Empty;
+    public string? DisplayName { get; init; }
+    public string? Description { get; init; }
+}
+
+/// <summary>OAuth client secret response.</summary>
+public record OAuthClientSecretDto
+{
+    public string ClientId { get; init; } = string.Empty;
+    public string ClientSecret { get; init; } = string.Empty;
 }

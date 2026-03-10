@@ -173,3 +173,108 @@ public record UpdateClientFormRequest
     public string AllowedScopes { get; init; } = "";
     public bool RequireConsent { get; init; }
 }
+
+/// <summary>
+/// Magic link validation request - validates a magic link token.
+/// </summary>
+public record MagicLinkValidateRequest
+{
+    [Required]
+    public required string Token { get; init; }
+}
+
+/// <summary>
+/// QR login validation request - validates a QR login token.
+/// </summary>
+public record QRLoginValidateRequest
+{
+    [Required]
+    public required string Token { get; init; }
+}
+
+/// <summary>
+/// Direct QR login request - authenticates using a QR code token directly.
+/// </summary>
+public record QRLoginDirectRequest
+{
+    [Required]
+    public required string Token { get; init; }
+
+    [Required]
+    public required string Username { get; init; }
+
+    [Required]
+    public required string DeviceType { get; init; }
+}
+
+/// <summary>
+/// QR login cancellation request - cancels an active QR login session.
+/// </summary>
+public record QRLoginCancelRequest
+{
+    [Required]
+    public required string SessionId { get; init; }
+
+    [Required]
+    public required string Token { get; init; }
+}
+
+/// <summary>
+/// QR login notification request - notifies about QR login status changes.
+/// </summary>
+public record QRLoginNotifyRequest
+{
+    [Required]
+    public required string SessionId { get; init; }
+
+    [Required]
+    public required string Status { get; init; }
+
+    [Required]
+    public required string DeviceId { get; init; }
+
+    [Required]
+    public required string Token { get; init; }
+}
+
+/// <summary>
+/// Profile update request - updates user profile information.
+/// </summary>
+public record UpdateProfileRequest
+{
+    public string? Email { get; init; }
+    public string? PhoneNumber { get; init; }
+    public string? DisplayName { get; init; }
+}
+
+/// <summary>
+/// Password change request - changes user password.
+/// </summary>
+public record ChangePasswordRequest
+{
+    [Required]
+    public required string CurrentPassword { get; init; }
+
+    [Required]
+    [StringLength(256, MinimumLength = 8)]
+    public required string NewPassword { get; init; }
+}
+
+/// <summary>
+/// Token refresh request - refreshes an expired JWT token.
+/// </summary>
+public record RefreshTokenRequest
+{
+    [Required]
+    public required string RefreshToken { get; init; }
+}
+
+/// <summary>
+/// Settings update request - updates user authentication settings.
+/// </summary>
+public record UpdateSettingsRequest
+{
+    public bool? TotpEnabled { get; init; }
+    public bool? WebAuthnEnabled { get; init; }
+    public bool? EmailNotifications { get; init; }
+}

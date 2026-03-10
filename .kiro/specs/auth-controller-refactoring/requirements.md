@@ -374,6 +374,112 @@ The system uses a **two-layer service architecture**:
 3. THE System SHALL maintain identical authentication token formats
 4. WHEN the refactored code is deployed, THE Avalonia client SHALL continue functioning without changes
 5. THE System SHALL maintain identical database schema
+6. THE System SHALL NOT simplify, optimize, or modify the business logic behavior during refactoring
+7. WHEN validating refactored endpoints, THE System SHALL produce identical outputs to the legacy AuthController for identical inputs
+
+**Technical Context - No Simplification Rule**:
+
+**CRITICAL: The refactoring is PURELY architectural - business logic behavior MUST remain identical.**
+
+**What This Means**:
+- If legacy code has 10 database queries, refactored code must have 10 database queries (same queries, just delegated to services)
+- If legacy code has specific error messages, refactored code must have identical error messages
+- If legacy code has specific validation logic, refactored code must have identical validation logic
+- If legacy code has specific response formats, refactored code must have identical response formats
+- If legacy code has quirks or inefficiencies, refactored code must preserve them (fix later, not during refactoring)
+
+**What Is NOT Allowed**:
+- ❌ Optimizing database queries (e.g., reducing N+1 queries)
+- ❌ Improving error messages
+- ❌ Adding new validation rules
+- ❌ Changing response formats
+- ❌ Fixing bugs in business logic
+- ❌ Improving performance
+- ❌ Adding new features
+
+**Why This Rule Exists**:
+- Refactoring and behavior changes are separate concerns
+- Mixing them makes it impossible to validate correctness
+- If behavior changes, we can't tell if differences are due to refactoring bugs or intentional improvements
+- Behavioral changes should be done AFTER refactoring is complete and validated
+
+**Validation Strategy**:
+- Compare refactored endpoint behavior against legacy AuthController behavior
+- Use identical inputs for both implementations
+- Verify outputs are byte-for-byte identical (or functionally equivalent)
+- Any differences must be investigated and explained
+- If difference is due to refactoring bug, fix it
+- If difference is due to intentional change, REJECT the change and restore legacy behavior
+
+**Example - Correct Refactoring**:
+```csharp
+// Legacy AuthController (200 lines, 5 database queries, specific error messages)
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    var user = await _authService.AuthenticateAsync(request.Username, request.Password);
+    if (user == null)
+        return Unauthorized(new { error = "Invalid credentials" }); // Specific error message
+    
+    var settings = conn.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId.Equals(user.UserId)); // Query 1
+    var credentials = conn.Db.WebAuthnCredential.Iter().Where(c => c.UserId.Equals(user.UserId)); // Query 2
+    var totpSecret = conn.Db.TotpSecret.Iter().FirstOrDefault(t => t.UserId.Equals(user.UserId)); // Query 3
+    // ... more queries and logic
+    
+    return Ok(new { token = jwtToken, user = user });
+}
+
+// Refactored AuthControllerRefactored (clean, but IDENTICAL behavior)
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    var result = await _authOrchestrationService.LoginAsync(request.Username, request.Password);
+    
+    if (!result.Success)
+        return Unauthorized(new { error = "Invalid credentials" }); // SAME error message
+    
+    return Ok(new { token = result.Token, user = result.User }); // SAME response format
+}
+
+// AuthOrchestrationService.LoginAsync (delegates to services, but SAME queries)
+public async Task<LoginResult> LoginAsync(string username, string password)
+{
+    var user = await _authService.AuthenticateAsync(username, password);
+    if (user == null)
+        return LoginResult.Failed("Invalid credentials");
+    
+    var settings = await _settingsService.GetUserSettingsAsync(user.UserId); // Query 1 (delegated)
+    var credentials = await _webAuthnService.GetUserCredentialsAsync(user.UserId); // Query 2 (delegated)
+    var totpSecret = await _totpService.GetTotpSecretAsync(user.UserId); // Query 3 (delegated)
+    // ... same logic, just delegated to services
+    
+    return LoginResult.Success(jwtToken, user);
+}
+```
+
+**Example - INCORRECT Refactoring (DO NOT DO THIS)**:
+```csharp
+// ❌ WRONG: Optimized database queries (reduced from 5 to 2)
+public async Task<LoginResult> LoginAsync(string username, string password)
+{
+    var user = await _authService.AuthenticateAsync(username, password);
+    if (user == null)
+        return LoginResult.Failed("Authentication failed"); // ❌ WRONG: Changed error message
+    
+    // ❌ WRONG: Combined queries into single call (optimization)
+    var userContext = await _userService.GetUserContextAsync(user.UserId); // Single query instead of 5
+    
+    return LoginResult.Success(jwtToken, user);
+}
+```
+
+**Post-Refactoring Improvements**:
+After refactoring is complete and validated, improvements can be made:
+1. Optimize database queries
+2. Improve error messages
+3. Add better validation
+4. Fix bugs
+5. Improve performance
+
+But these are SEPARATE tasks, done AFTER refactoring is validated.
 
 ### Requirement 5: Testability
 

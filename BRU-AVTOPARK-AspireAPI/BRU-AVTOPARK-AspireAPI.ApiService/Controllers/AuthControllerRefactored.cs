@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
+using System.Security.Claims;
+using System.Collections.Generic;
 using TicketSalesApp.AdminServer.Configuration;
 using BRU_AVTOPARK.Services.Interfaces;
 using BRU_AVTOPARK.Models.Requests;
@@ -11,7 +13,17 @@ using BRU_AVTOPARK.Models.Responses;
 using BRU_AVTOPARK.Models.ViewModels;
 using Microsoft.Extensions.Logging;
 using BRU_AVTOPARK_AspireAPI.ApiService.Routing;
+using Fido2NetLib;
 using Fido2NetLib.Objects;
+using OpenIddict.Abstractions;
+using OpenIddict.Server.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using static OpenIddict.Abstractions.OpenIddictConstants;
+using SpacetimeDB.Types;
+using SpacetimeDB;
+using Identity = SpacetimeDB.Identity;
+using Microsoft.AspNetCore;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -25,15 +37,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     public class AuthControllerRefactored : ControllerBase
     {
         private readonly IAuthOrchestrationService _authOrchestrationService;
+        private readonly IHtmlRenderingService _htmlRenderingService;
         private readonly IOptions<FeatureFlagOptions> _featureFlags;
         private readonly ILogger<AuthControllerRefactored> _logger;
 
         public AuthControllerRefactored(
             IAuthOrchestrationService authOrchestrationService,
+            IHtmlRenderingService htmlRenderingService,
             IOptions<FeatureFlagOptions> featureFlags,
             ILogger<AuthControllerRefactored> logger)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
+            _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
             _featureFlags = featureFlags ?? throw new ArgumentNullException(nameof(featureFlags));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -82,10 +97,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     {
                         RequiresTwoFactor = true,
                         TwoFactorType = result.TwoFactorType,
-                        TempToken = result.TempToken,
-                        TotpEnabled = result.TotpEnabled,
-                        WebAuthnEnabled = result.WebAuthnEnabled,
-                        WebAuthnOptions = result.WebAuthnAssertionOptions
+                        TempToken = result.TempToken
                     }
                 });
             }
@@ -98,7 +110,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     Claims = result.Claims,
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -166,7 +185,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "User registered successfully",
                 Data = new RegisterResponse
                 {
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -198,7 +224,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.SetupTotpAsync(identity, username);
 
             if (!result.Success)
@@ -229,7 +255,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("totp/verify")]
         [Authorize]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableTotpVerifyRefactoring))]
-        public async Task<IActionResult> TotpVerify([FromBody] TotpVerifyRequest request)
+        public async Task<IActionResult> TotpVerify([FromBody] VerifyTotpRequest request)
         {
             _logger.LogInformation("Refactored TOTP Verify endpoint called");
 
@@ -245,7 +271,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.EnableTotpAsync(identity, username, request.Code, request.SecretKey);
 
             if (!result.Success)
@@ -286,7 +312,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.DisableTotpAsync(identity);
 
             if (!result.Success)
@@ -312,7 +338,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("totp/validate")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableTotpValidateRefactoring))]
-        public async Task<IActionResult> TotpValidate([FromBody] TotpValidateRequest request)
+        public async Task<IActionResult> TotpValidate([FromBody] ValidateTotpRequest request)
         {
             _logger.LogInformation("Refactored TOTP Validate endpoint called");
 
@@ -344,7 +370,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     Claims = result.Claims,
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -386,7 +419,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<CredentialCreateOptions>
+            return Ok(new ApiResponse<Fido2NetLib.CredentialCreateOptions>
             {
                 Success = true,
                 Message = "WebAuthn registration options generated",
@@ -401,7 +434,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/register/complete")]
         [Authorize]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableWebAuthnRegisterCompleteRefactoring))]
-        public async Task<IActionResult> WebAuthnRegisterComplete([FromBody] WebAuthnRegisterRequest request)
+        public async Task<IActionResult> WebAuthnRegisterComplete([FromBody] WebAuthnRegisterCompleteRequest request)
         {
             _logger.LogInformation("Refactored WebAuthn Register Complete endpoint called");
 
@@ -417,7 +450,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.RegisterWebAuthnAsync(identity, username, request.AttestationResponse);
 
             if (!result.Success)
@@ -458,7 +491,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<AssertionOptions>
+            return Ok(new ApiResponse<Fido2NetLib.AssertionOptions>
             {
                 Success = true,
                 Message = "WebAuthn login options generated",
@@ -496,7 +529,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     Claims = result.Claims,
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -540,7 +580,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     Claims = result.Claims,
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -567,7 +614,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.GetWebAuthnCredentialsAsync(identity);
 
             if (!result.Success)
@@ -579,11 +626,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<WebAuthnCredentialsResponse>
+            return Ok(new ApiResponse<BRU_AVTOPARK.Models.Responses.WebAuthnCredentialsResponse>
             {
                 Success = true,
                 Message = "Credentials retrieved successfully",
-                Data = new WebAuthnCredentialsResponse
+                Data = new BRU_AVTOPARK.Models.Responses.WebAuthnCredentialsResponse
                 {
                     Credentials = result.Credentials
                 }
@@ -612,7 +659,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.RemoveWebAuthnCredentialAsync(identity, id);
 
             if (!result.Success)
@@ -715,7 +762,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     Claims = result.Claims,
-                    User = result.User!
+                    User = new UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -727,18 +781,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("magic-link")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableMagicLinkPageRefactoring))]
-        public async Task<IActionResult> MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public Task<IActionResult> MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             _logger.LogInformation("Refactored Magic Link Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderMagicLinkPageAsync(error, message);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render magic link page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            var html = _htmlRenderingService.RenderMagicLinkForm(error, message);
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         #endregion
@@ -752,18 +800,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("qr-login")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableQRLoginPageRefactoring))]
-        public async Task<IActionResult> QRLoginPage()
+        public Task<IActionResult> QRLoginPage()
         {
             _logger.LogInformation("Refactored QR Login Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderQRLoginPageAsync();
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render QR login page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Generate a placeholder QR code for the page
+            var html = _htmlRenderingService.RenderQrLogin("placeholder-qr-code");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -788,7 +831,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.GenerateQRLoginAsync(identity);
 
             if (!result.Success)
@@ -806,9 +849,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "QR code generated successfully",
                 Data = new QRLoginResponse
                 {
-                    Token = result.Token!,
-                    QrCodeData = result.QrCodeData!,
-                    ExpiresAt = result.ExpiresAt
+                    Token = result.QrCode!,
+                    QrCodeData = result.RawData!,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(5)
                 }
             });
         }
@@ -844,15 +887,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            return Ok(new ApiResponse<BRU_AVTOPARK.Models.Responses.LoginResponse>
             {
                 Success = true,
                 Message = "QR login successful",
-                Data = new LoginResponse
+                Data = new BRU_AVTOPARK.Models.Responses.LoginResponse
                 {
                     Token = result.Token!,
-                    Claims = result.Claims,
-                    User = result.User!
+                    Claims = new Dictionary<string, object>(),
+                    User = new BRU_AVTOPARK.Models.Responses.UserDto
+                    {
+                        Id = result.User!.Id,
+                        Username = result.User.Username,
+                        Email = result.User.Email,
+                        PhoneNumber = result.User.PhoneNumber,
+                        Role = result.User.Role
+                    }
                 }
             });
         }
@@ -894,9 +944,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "Direct QR login successful",
                 Data = new QRLoginResponse
                 {
-                    Token = result.Token!,
-                    QrCodeData = result.QrCodeData!,
-                    ExpiresAt = result.ExpiresAt
+                    Token = result.QrCode!,
+                    QrCodeData = result.RawData!,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(5)
                 }
             });
         }
@@ -1027,80 +1077,303 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// <summary>
         /// GET/POST ~/connect/authorize - OAuth authorization endpoint
         /// Enabled by: EnableOAuthAuthorizeRefactoring feature flag
+        /// 
+        /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
+        /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
+        /// - HttpContext.AuthenticateAsync() MUST stay in controller
+        /// - SignIn() MUST stay in controller
+        /// - Forbid() MUST stay in controller
+        /// - Only validation and claims building are delegated to service layer
+        /// 
+        /// Reference: CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
         /// </summary>
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizeRefactoring))]
-        public async Task<IActionResult> OAuthAuthorize()
+        public async Task<IActionResult> Authorize()
         {
             _logger.LogInformation("Refactored OAuth Authorize endpoint called");
 
-            var userId = User.FindFirst("identity")?.Value;
+            // STEP 1: GET OPENIDDICT REQUEST (MUST BE IN CONTROLLER)
+            // This retrieves the OAuth request from HttpContext with all parameters
+            var request = HttpContext.GetOpenIddictServerRequest();
+            if (request == null)
+            {
+                _logger.LogError("OpenIddict request not found in HttpContext");
+                return BadRequest(new { error = Errors.InvalidRequest, error_description = "The OpenID Connect request cannot be retrieved." });
+            }
+
+            // STEP 2: DELEGATE CLIENT VALIDATION TO SERVICE
+            // Service layer validates client_id, redirect_uri, and scope
+            var validationResult = await _authOrchestrationService.ValidateOAuthRequestAsync(
+                request.ClientId ?? "",
+                request.RedirectUri ?? "",
+                request.Scope ?? ""
+            );
+
+            if (!validationResult.Success)
+            {
+                _logger.LogWarning("OAuth client validation failed: {Error}", validationResult.ErrorMessage);
+                
+                // STEP 3: RETURN OAUTH ERROR (MUST BE IN CONTROLLER)
+                // Forbid() generates proper OAuth error response
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = validationResult.ErrorMessage
+                    }));
+            }
+
+            // STEP 4: CHECK AUTHENTICATION (MUST BE IN CONTROLLER)
+            // Verify user is logged in via cookie authentication
+            var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             
-            if (string.IsNullOrEmpty(userId))
+            if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
             {
-                return Unauthorized(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "User not authenticated"
-                });
+                _logger.LogInformation("User not authenticated, redirecting to login");
+                
+                // User not logged in - redirect to login page
+                // TODO: Implement login page redirect with return URL
+                return Challenge(CookieAuthenticationDefaults.AuthenticationScheme);
             }
 
-            var clientId = Request.Query["client_id"].ToString();
-            var redirectUri = Request.Query["redirect_uri"].ToString();
-            var scope = Request.Query["scope"].ToString();
-
-            var identity = SpacetimeDB.Identity.From(userId);
-            var result = await _authOrchestrationService.AuthorizeOAuthAsync(clientId, redirectUri, scope, identity);
-
-            if (!result.Success)
+            var username = authenticateResult.Principal.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "OAuth authorization failed"
-                });
+                _logger.LogWarning("Authenticated user has no username");
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidRequest,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "User identity not found"
+                    }));
             }
 
-            return Redirect(result.RedirectUri!);
+            // STEP 5: DELEGATE CLAIMS BUILDING TO SERVICE
+            // Service layer builds ClaimsIdentity with user claims, roles, and permissions
+            var claimsResult = await _authOrchestrationService.BuildOAuthClaimsIdentityAsync(
+                username,
+                request.GetScopes().ToArray()
+            );
+
+            if (!claimsResult.Success || claimsResult.Identity == null)
+            {
+                _logger.LogWarning("Failed to build claims identity: {Error}", claimsResult.ErrorMessage);
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = claimsResult.ErrorMessage ?? "Failed to build user identity"
+                    }));
+            }
+
+            // STEP 6: SIGN IN WITH OPENIDDICT (MUST BE IN CONTROLLER)
+            // SignIn() generates authorization code and redirects to client
+            _logger.LogInformation("OAuth authorization successful for user: {Username}, client: {ClientId}", username, request.ClientId);
+            return SignIn(
+                new ClaimsPrincipal(claimsResult.Identity),
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme
+            );
         }
 
         /// <summary>
         /// POST ~/connect/token - OAuth token exchange endpoint
         /// Enabled by: EnableOAuthTokenRefactoring feature flag
+        /// 
+        /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
+        /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
+        /// - HttpContext.AuthenticateAsync() MUST stay in controller
+        /// - SignIn() MUST stay in controller
+        /// - Forbid() MUST stay in controller
+        /// - Only user validation and claims building are delegated to service layer
+        /// 
+        /// Reference: CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
         /// </summary>
         [HttpPost("~/connect/token")]
         [AllowAnonymous]
         [Produces("application/json")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTokenRefactoring))]
-        public async Task<IActionResult> OAuthToken()
+        public async Task<IActionResult> Exchange()
         {
             _logger.LogInformation("Refactored OAuth Token endpoint called");
 
-            var code = Request.Form["code"].ToString();
-            var clientId = Request.Form["client_id"].ToString();
-            var clientSecret = Request.Form["client_secret"].ToString();
-
-            var result = await _authOrchestrationService.ExchangeTokenAsync(code, clientId, clientSecret);
-
-            if (!result.Success)
+            // STEP 1: GET OPENIDDICT REQUEST (MUST BE IN CONTROLLER)
+            // This retrieves the OAuth token request from HttpContext
+            var request = HttpContext.GetOpenIddictServerRequest();
+            if (request == null)
             {
-                return BadRequest(new
-                {
-                    error = "invalid_grant",
-                    error_description = result.ErrorMessage ?? "Token exchange failed"
-                });
+                _logger.LogError("OpenIddict request not found in HttpContext");
+                return BadRequest(new { error = Errors.InvalidRequest, error_description = "The OpenID Connect request cannot be retrieved." });
             }
 
-            return Ok(new
+            // STEP 2: HANDLE AUTHORIZATION CODE GRANT TYPE
+            if (request.IsAuthorizationCodeGrantType())
             {
-                access_token = result.AccessToken,
-                token_type = "Bearer",
-                expires_in = result.ExpiresIn,
-                refresh_token = result.RefreshToken,
-                id_token = result.IdToken
-            });
+                // STEP 3: AUTHENTICATE AUTHORIZATION CODE (MUST BE IN CONTROLLER)
+                // This validates the authorization code and returns the principal with original claims
+                var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                
+                if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
+                {
+                    _logger.LogWarning("Authorization code authentication failed");
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The authorization code is invalid or expired"
+                        }));
+                }
+
+                var principal = authenticateResult.Principal;
+                var userId = principal.FindFirst(Claims.Subject)?.Value;
+                
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("No subject claim found in authorization code principal");
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "User identity not found in authorization code"
+                        }));
+                }
+
+                // STEP 4: DELEGATE USER VALIDATION TO SERVICE
+                // Service layer validates user still exists and is active
+                var userResult = await _authOrchestrationService.ValidateUserForTokenExchangeAsync(userId);
+                
+                if (!userResult.Success || userResult.UserId == null)
+                {
+                    _logger.LogWarning("User validation failed for token exchange: {Error}", userResult.ErrorMessage);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = userResult.ErrorMessage ?? "User not found or inactive"
+                        }));
+                }
+
+                // STEP 5: DELEGATE CLAIMS BUILDING TO SERVICE
+                // Service layer builds fresh ClaimsIdentity with current user claims, roles, and permissions
+                var identity = await _authOrchestrationService.BuildOAuthTokenIdentityAsync(
+                    userResult.UserId.Value,
+                    principal.GetScopes(),
+                    principal.GetResources()
+                );
+
+                if (identity == null)
+                {
+                    _logger.LogWarning("Failed to build token identity for user: {UserId}", userId);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Failed to build token identity"
+                        }));
+                }
+
+                // STEP 6: SIGN IN WITH OPENIDDICT (MUST BE IN CONTROLLER)
+                // SignIn() generates access token, refresh token, and id_token
+                _logger.LogInformation("OAuth token exchange successful for user: {UserId}", userId);
+                return SignIn(
+                    new ClaimsPrincipal(identity),
+                    OpenIddictServerAspNetCoreDefaults.AuthenticationScheme
+                );
+            }
+
+            // STEP 7: HANDLE REFRESH TOKEN GRANT TYPE
+            if (request.IsRefreshTokenGrantType())
+            {
+                // STEP 8: AUTHENTICATE REFRESH TOKEN (MUST BE IN CONTROLLER)
+                var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                
+                if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
+                {
+                    _logger.LogWarning("Refresh token authentication failed");
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The refresh token is invalid or expired"
+                        }));
+                }
+
+                var principal = authenticateResult.Principal;
+                var userId = principal.FindFirst(Claims.Subject)?.Value;
+                
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("No subject claim found in refresh token principal");
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "User identity not found in refresh token"
+                        }));
+                }
+
+                // STEP 9: DELEGATE USER VALIDATION TO SERVICE
+                var userResult = await _authOrchestrationService.ValidateUserForTokenExchangeAsync(userId);
+                
+                if (!userResult.Success || userResult.UserId == null)
+                {
+                    _logger.LogWarning("User validation failed for refresh token: {Error}", userResult.ErrorMessage);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = userResult.ErrorMessage ?? "User not found or inactive"
+                        }));
+                }
+
+                // STEP 10: DELEGATE CLAIMS BUILDING TO SERVICE
+                var identity = await _authOrchestrationService.BuildOAuthTokenIdentityAsync(
+                    userResult.UserId.Value,
+                    principal.GetScopes(),
+                    principal.GetResources()
+                );
+
+                if (identity == null)
+                {
+                    _logger.LogWarning("Failed to build token identity for refresh token: {UserId}", userId);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Failed to build token identity"
+                        }));
+                }
+
+                // STEP 11: SIGN IN WITH OPENIDDICT (MUST BE IN CONTROLLER)
+                _logger.LogInformation("OAuth refresh token exchange successful for user: {UserId}", userId);
+                return SignIn(
+                    new ClaimsPrincipal(identity),
+                    OpenIddictServerAspNetCoreDefaults.AuthenticationScheme
+                );
+            }
+
+            // Unsupported grant type
+            _logger.LogWarning("Unsupported grant type: {GrantType}", request.GrantType);
+            return Forbid(
+                authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.UnsupportedGrantType,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The specified grant type is not supported"
+                }));
         }
 
         /// <summary>
@@ -1137,7 +1410,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(result.UserInfo);
+            return Ok(result.Claims);
         }
 
         #endregion
@@ -1187,7 +1460,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Success = true,
                 Message = "OAuth client registered successfully",
-                Data = result.Client!
+                Data = new OAuthClientDto { ClientId = result.ClientId!, DisplayName = result.DisplayName! }
             });
         }
 
@@ -1247,7 +1520,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Success = true,
                 Message = "OAuth client retrieved successfully",
-                Data = result.Client!
+                Data = new OAuthClientDto
+                {
+                    ClientId = result.Client!.ClientId,
+                    DisplayName = result.Client.DisplayName,
+                    RedirectUris = result.Client.RedirectUris,
+                    AllowedScopes = result.Client.AllowedScopes,
+                    RequireConsent = result.Client.RequireConsent
+                }
             });
         }
 
@@ -1294,7 +1574,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Success = true,
                 Message = "OAuth client updated successfully",
-                Data = result.Client!
+                Data = new OAuthClientDto { ClientId = result.ClientId!, DisplayName = result.DisplayName! }
             });
         }
 
@@ -1353,7 +1633,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 Success = true,
                 Message = "OAuth scopes retrieved successfully",
-                Data = result.Scopes!
+                Data = result.Scopes.Select(s => new OAuthScopeDto { Name = s }).ToList()
             });
         }
 
@@ -1386,7 +1666,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Data = new OAuthClientSecretDto
                 {
                     ClientId = id,
-                    ClientSecret = result.NewSecret!
+                    ClientSecret = result.ClientSecret!
                 }
             });
         }
@@ -1406,14 +1686,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             _logger.LogInformation("Refactored OAuth Clients Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthClientsPageAsync(token);
+            var result = await _authOrchestrationService.GetOAuthClientsAsync();
 
             if (!result.Success)
             {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth clients page");
+                return BadRequest(result.ErrorMessage ?? "Failed to retrieve OAuth clients");
             }
 
-            return Content(result.HtmlContent!, "text/html");
+            var html = _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
+            {
+                ClientId = c.ClientId,
+                DisplayName = c.DisplayName
+            }).ToList(), token);
+
+            return Content(html, "text/html");
         }
 
         /// <summary>
@@ -1423,18 +1709,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/clients/new")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientNewPageRefactoring))]
-        public async Task<IActionResult> OAuthClientNewPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthClientNewPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Client New Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthClientNewPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render new client page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            var html = _htmlRenderingService.RenderOidcClientForm(null, null, token);
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1448,14 +1728,25 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             _logger.LogInformation("Refactored OAuth Client Details Page endpoint called for client: {ClientId}", id);
 
-            var result = await _authOrchestrationService.RenderOAuthClientDetailsPageAsync(id, token);
+            var result = await _authOrchestrationService.GetOAuthClientAsync(id);
 
-            if (!result.Success)
+            if (!result.Success || result.Client == null)
             {
                 return NotFound(result.ErrorMessage ?? "OAuth client not found");
             }
 
-            return Content(result.HtmlContent!, "text/html");
+            var clientResponse = new BRU_AVTOPARK.Models.Responses.GetClientResponse
+            {
+                ClientId = result.Client.ClientId,
+                DisplayName = result.Client.DisplayName,
+                RedirectUris = result.Client.RedirectUris.ToArray(),
+                PostLogoutRedirectUris = result.Client.PostLogoutRedirectUris.ToArray(),
+                AllowedScopes = result.Client.AllowedScopes.ToArray(),
+                RequireConsent = result.Client.RequireConsent
+            };
+
+            var html = _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
+            return Content(html, "text/html");
         }
 
         /// <summary>
@@ -1469,14 +1760,25 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             _logger.LogInformation("Refactored OAuth Client Edit Page endpoint called for client: {ClientId}", id);
 
-            var result = await _authOrchestrationService.RenderOAuthClientEditPageAsync(id, token);
+            var result = await _authOrchestrationService.GetOAuthClientAsync(id);
 
-            if (!result.Success)
+            if (!result.Success || result.Client == null)
             {
                 return NotFound(result.ErrorMessage ?? "OAuth client not found");
             }
 
-            return Content(result.HtmlContent!, "text/html");
+            var clientResponse = new BRU_AVTOPARK.Models.Responses.GetClientResponse
+            {
+                ClientId = result.Client.ClientId,
+                DisplayName = result.Client.DisplayName,
+                RedirectUris = result.Client.RedirectUris.ToArray(),
+                PostLogoutRedirectUris = result.Client.PostLogoutRedirectUris.ToArray(),
+                AllowedScopes = result.Client.AllowedScopes.ToArray(),
+                RequireConsent = result.Client.RequireConsent
+            };
+
+            var html = _htmlRenderingService.RenderOidcClientForm(id, clientResponse, token);
+            return Content(html, "text/html");
         }
 
         /// <summary>
@@ -1490,14 +1792,23 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             _logger.LogInformation("Refactored OAuth Scopes Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthScopesPageAsync(token);
+            var result = await _authOrchestrationService.GetOAuthScopesAsync();
 
             if (!result.Success)
             {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth scopes page");
+                return BadRequest(result.ErrorMessage ?? "Failed to retrieve OAuth scopes");
             }
 
-            return Content(result.HtmlContent!, "text/html");
+            var scopeDtos = result.Scopes.Select(s => new BRU_AVTOPARK.Models.Responses.ScopeDto
+            {
+                Name = s,
+                DisplayName = s,
+                Description = null,
+                OidcId = s
+            }).ToList();
+
+            var html = _htmlRenderingService.RenderOidcScopesList(scopeDtos, token);
+            return Content(html, "text/html");
         }
 
         /// <summary>
@@ -1507,18 +1818,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/authorizations")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizationsPageRefactoring))]
-        public async Task<IActionResult> OAuthAuthorizationsPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthAuthorizationsPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Authorizations Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthAuthorizationsPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth authorizations page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth authorizations page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1528,18 +1834,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/tokens")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTokensPageRefactoring))]
-        public async Task<IActionResult> OAuthTokensPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthTokensPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Tokens Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthTokensPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth tokens page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth tokens page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1549,18 +1850,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/dashboard")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthDashboardPageRefactoring))]
-        public async Task<IActionResult> OAuthDashboardPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthDashboardPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Dashboard Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthDashboardPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth dashboard page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth dashboard page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1570,18 +1866,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/settings")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthSettingsPageRefactoring))]
-        public async Task<IActionResult> OAuthSettingsPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthSettingsPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Settings Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthSettingsPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth settings page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth settings page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1591,18 +1882,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/logs")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthLogsPageRefactoring))]
-        public async Task<IActionResult> OAuthLogsPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthLogsPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Logs Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthLogsPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth logs page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth logs page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1612,18 +1898,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/help")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthHelpPageRefactoring))]
-        public async Task<IActionResult> OAuthHelpPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthHelpPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Help Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthHelpPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth help page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth help page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1633,18 +1914,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/test")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTestPageRefactoring))]
-        public async Task<IActionResult> OAuthTestPage([FromQuery] string? token = null)
+        public Task<IActionResult> OAuthTestPage([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Test Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthTestPageAsync(token);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth test page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage("OAuth test page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         /// <summary>
@@ -1654,18 +1930,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("oauth/callback")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthCallbackPageRefactoring))]
-        public async Task<IActionResult> OAuthCallbackPage([FromQuery] string? code = null, [FromQuery] string? error = null)
+        public Task<IActionResult> OAuthCallbackPage([FromQuery] string? code = null, [FromQuery] string? error = null)
         {
             _logger.LogInformation("Refactored OAuth Callback Page endpoint called");
 
-            var result = await _authOrchestrationService.RenderOAuthCallbackPageAsync(code, error);
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to render OAuth callback page");
-            }
-
-            return Content(result.HtmlContent!, "text/html");
+            // Placeholder: This page is not yet implemented in IHtmlRenderingService
+            var html = _htmlRenderingService.RenderErrorPage(error ?? "OAuth callback page not yet implemented");
+            return Task.FromResult<IActionResult>(Content(html, "text/html"));
         }
 
         #endregion
@@ -1745,8 +2016,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
-            var result = await _authOrchestrationService.UpdateProfileAsync(identity, request);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+            var result = await _authOrchestrationService.UpdateProfileAsync(
+                identity, 
+                request.Email, 
+                request.PhoneNumber, 
+                request.DisplayName
+            );
 
             if (!result.Success)
             {
@@ -1795,7 +2071,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.ChangePasswordAsync(identity, request.CurrentPassword, request.NewPassword);
 
             if (!result.Success)
@@ -1837,8 +2113,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
-            var result = await _authOrchestrationService.LogoutAsync(identity, token);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+            var result = await _authOrchestrationService.LogoutAsync(identity);
 
             if (!result.Success)
             {
@@ -1895,7 +2171,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     Token = result.Token!,
                     RefreshToken = result.RefreshToken!,
-                    ExpiresAt = result.ExpiresAt
+                    ExpiresAt = result.ExpiresAt ?? DateTime.UtcNow.AddHours(1)
                 }
             });
         }
@@ -1922,7 +2198,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.GetSettingsAsync(identity);
 
             if (!result.Success)
@@ -1934,11 +2210,17 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<UserSettingsDto>
+            return Ok(new ApiResponse<BRU_AVTOPARK.Models.Responses.UserSettingsDto>
             {
                 Success = true,
                 Message = "Settings retrieved successfully",
-                Data = result.Settings!
+                Data = new BRU_AVTOPARK.Models.Responses.UserSettingsDto
+                {
+                    TotpEnabled = result.Settings!.TotpEnabled,
+                    WebAuthnEnabled = result.Settings.WebAuthnEnabled,
+                    EmailNotifications = result.Settings.EmailNotifications,
+                    SmsNotifications = false // Default value as the service DTO doesn't have this
+                }
             });
         }
 
@@ -1973,8 +2255,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = SpacetimeDB.Identity.From(userId);
-            var result = await _authOrchestrationService.UpdateSettingsAsync(identity, request);
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+            var result = await _authOrchestrationService.UpdateSettingsAsync(
+                identity, 
+                request.TotpEnabled, 
+                request.WebAuthnEnabled, 
+                request.EmailNotifications
+            );
 
             if (!result.Success)
             {

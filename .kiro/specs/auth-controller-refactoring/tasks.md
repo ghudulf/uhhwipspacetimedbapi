@@ -221,8 +221,8 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
     - Test GetOAuthScopesAsync returns available scopes
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [ ] 6.11 CRITICAL: Fix OAuth endpoints in AuthControllerRefactored.cs
-    - [ ] 6.11.1 Rewrite ~/connect/authorize endpoint
+  - [x] 6.11 CRITICAL: Fix OAuth endpoints in AuthControllerRefactored.cs
+    - [x] 6.11.1 Rewrite ~/connect/authorize endpoint
       - Keep HttpContext.GetOpenIddictServerRequest() in controller
       - Keep HttpContext.AuthenticateAsync() in controller
       - Call _authOrchestrationService.ValidateOAuthRequestAsync() for validation
@@ -231,7 +231,7 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
       - Keep Forbid() in controller
       - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
     
-    - [ ] 6.11.2 Rewrite ~/connect/token endpoint
+    - [x] 6.11.2 Rewrite ~/connect/token endpoint
       - Keep HttpContext.GetOpenIddictServerRequest() in controller
       - Keep HttpContext.AuthenticateAsync() in controller
       - Call _authOrchestrationService.ValidateUserForTokenExchangeAsync() for validation
@@ -240,13 +240,13 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
       - Keep Forbid() in controller
       - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
     
-    - [ ] 6.11.3 Document OAuth pattern in code comments
+    - [x] 6.11.3 Document OAuth pattern in code comments
       - Add comments explaining what MUST stay in controller
       - Add comments explaining what CAN be delegated to service
       - Reference CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
       - _Requirements: 16.5_
     
-    - [ ] 6.11.4 Remove incorrect AuthorizeOAuthAsync and ExchangeTokenAsync methods
+    - [x] 6.11.4 Remove incorrect AuthorizeOAuthAsync and ExchangeTokenAsync methods
       - These methods attempted to delegate SignIn operations (incorrect)
       - Replace with helper methods (ValidateOAuthRequestAsync, BuildOAuthClaimsIdentityAsync, etc.)
       - Update IAuthServices interface to remove these methods
@@ -592,7 +592,7 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
     - Verify database query count unchanged
     - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 13. Checkpoint - Verify controller modification
+- [x] 13. Checkpoint - Verify controller modification
   - Ensure all tests pass, ask the user if questions arise.
 
 

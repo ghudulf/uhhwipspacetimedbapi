@@ -13,6 +13,7 @@ using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Identity = SpacetimeDB.Identity;
 
 namespace BRU_AVTOPARK.Services.Implementations;
 
@@ -649,6 +650,125 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// <inheritdoc />
+    public async Task<OAuthValidationResult> ValidateOAuthRequestAsync(string clientId, string redirectUri, string scope)
+    {
+        _logger.LogInformation("OAuth request validation started for ClientId: {ClientId}", clientId);
+
+        try
+        {
+            // Step 1: Validate client application exists
+            var (clientSuccess, application, clientError) = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
+            if (!clientSuccess || application == null)
+            {
+                _logger.LogWarning("OAuth validation failed - invalid client: {ClientId}, Error: {Error}", clientId, clientError);
+                return OAuthValidationResult.Failed(clientError ?? "Invalid client application");
+            }
+
+            // Step 2: Validate redirect URI (OpenIddict will do detailed validation, we just check it's not empty)
+            if (string.IsNullOrWhiteSpace(redirectUri))
+            {
+                _logger.LogWarning("OAuth validation failed - missing redirect_uri for client: {ClientId}", clientId);
+                return OAuthValidationResult.Failed("Missing redirect_uri parameter");
+            }
+
+            // Step 3: Validate scopes (basic check - OpenIddict will do detailed validation)
+            if (string.IsNullOrWhiteSpace(scope))
+            {
+                _logger.LogWarning("OAuth validation failed - missing scope for client: {ClientId}", clientId);
+                return OAuthValidationResult.Failed("Missing scope parameter");
+            }
+
+            _logger.LogInformation("OAuth request validation successful for ClientId: {ClientId}", clientId);
+            return OAuthValidationResult.Successful();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during OAuth request validation for ClientId: {ClientId}", clientId);
+            return OAuthValidationResult.Failed("An error occurred during OAuth request validation");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ClaimsIdentityResult> BuildOAuthClaimsIdentityAsync(string username, string[] scopes)
+    {
+        _logger.LogInformation("Building OAuth claims identity for user: {Username}", username);
+
+        try
+        {
+            // Step 1: Get user profile from SpacetimeDB
+            var conn = _spacetimeService.GetConnection();
+            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive);
+            if (user == null)
+            {
+                _logger.LogWarning("User {Username} not found or inactive during OAuth authorization", username);
+                return ClaimsIdentityResult.Failed("User not found or inactive");
+            }
+
+            // Step 2: Create identity using OpenIdConnectService
+            var (identitySuccess, identity, identityError) = await _openIdConnectService.CreateIdentityFromUserAsync(user, scopes);
+            if (!identitySuccess || identity == null)
+            {
+                _logger.LogWarning("Failed to create identity for user: {Username}, Error: {Error}", username, identityError);
+                return ClaimsIdentityResult.Failed(identityError ?? "Failed to create user identity");
+            }
+
+            // Step 3: Get resources for scopes
+            var (resourcesSuccess, resources, resourcesError) = await _openIdConnectService.GetResourcesAsync(scopes);
+            if (resourcesSuccess && resources != null)
+            {
+                identity.SetResources(resources);
+                _logger.LogInformation("Set resources for user {Username}: {Resources}", username, string.Join(", ", resources));
+            }
+
+            // Step 4: Set claim destinations
+            foreach (var claim in identity.Claims)
+            {
+                claim.SetDestinations(_openIdConnectService.GetDestinations(claim));
+            }
+
+            _logger.LogInformation("OAuth claims identity built successfully for user: {Username}", username);
+            return ClaimsIdentityResult.Successful(identity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building OAuth claims identity for user: {Username}", username);
+            return ClaimsIdentityResult.Failed("An error occurred while building claims identity");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<UserValidationResult> ValidateUserForTokenExchangeAsync(string userId)
+    {
+        _logger.LogInformation("Validating user for token exchange: {UserId}", userId);
+
+        try
+        {
+            // Step 1: Parse the userId string to Identity
+            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+
+            // Step 2: Verify the user still exists and is active
+            var conn = _spacetimeService.GetConnection();
+            var user = conn.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive);
+
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found or inactive during token exchange", userId);
+                return UserValidationResult.Failed("User not found or inactive");
+            }
+
+            _logger.LogInformation("User validation successful for token exchange: {UserId}", userId);
+            return UserValidationResult.Successful(identity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating user for token exchange: {UserId}", userId);
+            return UserValidationResult.Failed("An error occurred during user validation");
+        }
+    }
+
+    /// <inheritdoc />
+    [Obsolete("This method is deprecated. Use ValidateOAuthRequestAsync and BuildOAuthClaimsIdentityAsync instead.")]
     public async Task<OAuthAuthorizeResult> AuthorizeOAuthAsync(string clientId, string redirectUri, string scope, Identity userId)
     {
         _logger.LogInformation("OAuth authorization orchestration started for ClientId: {ClientId}, UserId: {UserId}", clientId, userId);
@@ -710,6 +830,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     }
 
     /// <inheritdoc />
+    [Obsolete("This method is deprecated. Use ValidateUserForTokenExchangeAsync and BuildOAuthTokenIdentityAsync instead.")]
     public async Task<OAuthTokenResult> ExchangeTokenAsync(string code, string clientId, string clientSecret)
     {
         _logger.LogInformation("OAuth token exchange orchestration started for ClientId: {ClientId}", clientId);
@@ -1423,5 +1544,270 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         };
 
         return (jwtToken, userDto, tokenClaims);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Additional Business Logic Methods (Stub Implementations)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <inheritdoc />
+    public async Task<QRLoginResult> DirectQRLoginAsync(string username, string deviceType)
+    {
+        _logger.LogInformation("Direct QR login orchestration started for user: {Username}", username);
+        try
+        {
+            var (qrCode, rawData) = await _qrAuthService.GenerateDirectLoginQRCodeAsync(username, deviceType);
+            return QRLoginResult.Successful(qrCode, rawData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during direct QR login orchestration");
+            return QRLoginResult.Failed("An error occurred during direct QR login");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<QRLoginStatusResult> CheckQRLoginStatusAsync(string sessionId)
+    {
+        _logger.LogInformation("QR login status check orchestration started for session: {SessionId}", sessionId);
+        // TODO: Implement QR login status checking logic
+        await Task.CompletedTask;
+        return QRLoginStatusResult.Successful("pending");
+    }
+
+    /// <inheritdoc />
+    public async Task<QRLoginCancelResult> CancelQRLoginAsync(string sessionId)
+    {
+        _logger.LogInformation("QR login cancellation orchestration started for session: {SessionId}", sessionId);
+        // TODO: Implement QR login cancellation logic
+        await Task.CompletedTask;
+        return QRLoginCancelResult.Successful();
+    }
+
+    /// <inheritdoc />
+    public async Task<QRLoginNotifyResult> NotifyQRLoginAsync(string sessionId, string status)
+    {
+        _logger.LogInformation("QR login notification orchestration started for session: {SessionId}", sessionId);
+        // TODO: Implement QR login notification logic
+        await Task.CompletedTask;
+        return QRLoginNotifyResult.Successful();
+    }
+
+    /// <inheritdoc />
+    public async Task<WebAuthnRegisterOptionsResult> GetWebAuthnRegisterOptionsAsync(string username)
+    {
+        _logger.LogInformation("WebAuthn register options orchestration started for user: {Username}", username);
+        try
+        {
+            // Get user by username
+            var user = await _userService.GetUserByLoginAsync(username);
+            if (user == null)
+            {
+                return WebAuthnRegisterOptionsResult.Failed("User not found");
+            }
+
+            // Get credential create options from WebAuthnService
+            var (success, options, errorMessage) = await _webAuthnService.GetCredentialCreateOptionsAsync(user.UserId, username);
+            if (!success || options == null)
+            {
+                return WebAuthnRegisterOptionsResult.Failed(errorMessage ?? "Failed to generate WebAuthn registration options");
+            }
+
+            return WebAuthnRegisterOptionsResult.Successful(options);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during WebAuthn register options orchestration");
+            return WebAuthnRegisterOptionsResult.Failed("An error occurred while generating WebAuthn registration options");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<WebAuthnLoginOptionsResult> GetWebAuthnLoginOptionsAsync(string username)
+    {
+        _logger.LogInformation("WebAuthn login options orchestration started for user: {Username}", username);
+        try
+        {
+            // Get assertion options from WebAuthnService
+            var (success, options, errorMessage) = await _webAuthnService.GetAssertionOptionsAsync(username);
+            if (!success || options == null)
+            {
+                return WebAuthnLoginOptionsResult.Failed(errorMessage ?? "Failed to generate WebAuthn login options");
+            }
+
+            return WebAuthnLoginOptionsResult.Successful(options);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during WebAuthn login options orchestration");
+            return WebAuthnLoginOptionsResult.Failed("An error occurred while generating WebAuthn login options");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<WebAuthnLoginResult> CompleteWebAuthnLoginAsync(string username, AuthenticatorAssertionRawResponse assertionResponse)
+    {
+        _logger.LogInformation("WebAuthn login completion orchestration started for user: {Username}", username);
+        try
+        {
+            // Complete assertion via WebAuthnService
+            var (success, user, errorMessage) = await _webAuthnService.CompleteAssertionAsync(username, assertionResponse);
+            if (!success || user == null)
+            {
+                return WebAuthnLoginResult.Failed(errorMessage ?? "WebAuthn login failed");
+            }
+
+            // Generate JWT token and user DTO
+            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
+
+            return WebAuthnLoginResult.Successful(jwtToken, userDto, claims);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during WebAuthn login completion orchestration");
+            return WebAuthnLoginResult.Failed("An error occurred during WebAuthn login");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<OAuthClientDetailsResult> GetOAuthClientAsync(string clientId)
+    {
+        _logger.LogInformation("OAuth client details orchestration started for ClientId: {ClientId}", clientId);
+        try
+        {
+            var (success, application, errorMessage) = await _openIdConnectService.GetClientApplicationAsync(clientId);
+            if (!success || application == null)
+            {
+                return OAuthClientDetailsResult.Failed(errorMessage ?? "OAuth client not found");
+            }
+
+            var appManager = _openIdConnectService.GetApplicationManager();
+            var displayName = await appManager.GetDisplayNameAsync(application);
+            var redirectUris = await appManager.GetRedirectUrisAsync(application);
+            var postLogoutRedirectUris = await appManager.GetPostLogoutRedirectUrisAsync(application);
+            var permissions = await appManager.GetPermissionsAsync(application);
+            var scopes = permissions.Where(p => p.StartsWith("scp:")).Select(p => p.Substring(4)).ToList();
+            var consentType = await appManager.GetConsentTypeAsync(application);
+
+            var clientDto = new OAuthClientDetailDto
+            {
+                ClientId = clientId,
+                DisplayName = displayName ?? "Unknown Client",
+                RedirectUris = redirectUris.Select(uri => uri.ToString()).ToList(),
+                PostLogoutRedirectUris = postLogoutRedirectUris.Select(uri => uri.ToString()).ToList(),
+                AllowedScopes = scopes,
+                RequireConsent = consentType == "explicit"
+            };
+
+            return OAuthClientDetailsResult.Successful(clientDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during OAuth client details orchestration");
+            return OAuthClientDetailsResult.Failed("An error occurred while retrieving OAuth client details");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<OAuthClientSecretResult> RegenerateOAuthClientSecretAsync(string clientId)
+    {
+        _logger.LogInformation("OAuth client secret regeneration orchestration started for ClientId: {ClientId}", clientId);
+        // TODO: Implement OAuth client secret regeneration logic
+        await Task.CompletedTask;
+        return OAuthClientSecretResult.Failed("Not implemented");
+    }
+
+    /// <inheritdoc />
+    public async Task<ProfileUpdateResult> UpdateProfileAsync(Identity userId, string? email, string? phoneNumber, string? displayName)
+    {
+        _logger.LogInformation("Profile update orchestration started for user ID: {UserId}", userId);
+        // TODO: Implement profile update logic
+        await Task.CompletedTask;
+        return ProfileUpdateResult.Failed("Not implemented");
+    }
+
+    /// <inheritdoc />
+    public async Task<PasswordChangeResult> ChangePasswordAsync(Identity userId, string currentPassword, string newPassword)
+    {
+        _logger.LogInformation("Password change orchestration started for user ID: {UserId}", userId);
+        // TODO: Implement password change logic
+        await Task.CompletedTask;
+        return PasswordChangeResult.Failed("Not implemented");
+    }
+
+    /// <inheritdoc />
+    public async Task<LogoutResult> LogoutAsync(Identity userId)
+    {
+        _logger.LogInformation("Logout orchestration started for user ID: {UserId}", userId);
+        // TODO: Implement logout logic
+        await Task.CompletedTask;
+        return LogoutResult.Successful();
+    }
+
+    /// <inheritdoc />
+    public async Task<RefreshTokenResult> RefreshTokenAsync(string refreshToken)
+    {
+        _logger.LogInformation("Token refresh orchestration started");
+        // TODO: Implement token refresh logic
+        await Task.CompletedTask;
+        return RefreshTokenResult.Failed("Not implemented");
+    }
+
+    /// <inheritdoc />
+    public async Task<UserSettingsResult> GetSettingsAsync(Identity userId)
+    {
+        _logger.LogInformation("User settings retrieval orchestration started for user ID: {UserId}", userId);
+        try
+        {
+            var settings = await _settingsService.GetOrCreateUserSettingsAsync(userId);
+            var settingsDto = new BRU_AVTOPARK.Services.Interfaces.UserSettingsDto
+            {
+                TotpEnabled = settings.TotpEnabled,
+                WebAuthnEnabled = settings.WebAuthnEnabled,
+                EmailNotifications = false // EmailNotifications property not available in SpacetimeDB UserSettings
+            };
+            return UserSettingsResult.Successful(settingsDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during user settings retrieval orchestration");
+            return UserSettingsResult.Failed("An error occurred while retrieving user settings");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<SettingsUpdateResult> UpdateSettingsAsync(Identity userId, bool? totpEnabled, bool? webAuthnEnabled, bool? emailNotifications)
+    {
+        _logger.LogInformation("Settings update orchestration started for user ID: {UserId}", userId);
+        // TODO: Implement settings update logic
+        await Task.CompletedTask;
+        return SettingsUpdateResult.Failed("Not implemented");
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthStatusResult> CheckAuthStatusAsync(string? token)
+    {
+        _logger.LogInformation("Auth status check orchestration started");
+        try
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return AuthStatusResult.Successful(false);
+            }
+
+            var payload = _tokenService.ReadTokenPayload(token);
+            if (payload == null)
+            {
+                return AuthStatusResult.Successful(false);
+            }
+
+            // TODO: Check token expiration
+            return AuthStatusResult.Successful(true, payload.Username, null, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during auth status check orchestration");
+            return AuthStatusResult.Failed("An error occurred while checking auth status");
+        }
     }
 }

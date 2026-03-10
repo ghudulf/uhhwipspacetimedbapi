@@ -145,24 +145,37 @@ public interface IAuthOrchestrationService
     // ─── Priority 3 Orchestration Methods (Medium - OAuth/OIDC Flows) ────────
 
     /// <summary>
-    /// Orchestrates OAuth authorization flow.
-    /// NOTE: This is a placeholder - actual OAuth flow is handled by OpenIddict middleware.
-    /// Controllers should NOT call this method directly - use OpenIddict's built-in flow.
-    /// Coordinates OpenIdConnectService authorization flow.
+    /// Validates OAuth request parameters (client_id, redirect_uri, scope).
+    /// This is a HELPER method that CAN be delegated to service layer.
+    /// Coordinates OpenIdConnectService client validation.
     /// </summary>
-    Task<OAuthAuthorizeResult> AuthorizeOAuthAsync(string clientId, string redirectUri, string scope, SpacetimeDB.Identity userId);
+    /// <param name="clientId">The OAuth client ID</param>
+    /// <param name="redirectUri">The redirect URI</param>
+    /// <param name="scope">The requested scopes</param>
+    /// <returns>Validation result with success/failure and error message</returns>
+    Task<OAuthValidationResult> ValidateOAuthRequestAsync(string clientId, string redirectUri, string scope);
 
     /// <summary>
-    /// Orchestrates OAuth token exchange.
-    /// NOTE: This validates the client but does NOT perform the actual token exchange.
-    /// The token exchange MUST be handled by OpenIddict middleware in the controller.
-    /// Coordinates OpenIdConnectService token exchange.
+    /// Builds ClaimsIdentity for OAuth authorization with user claims, roles, and permissions.
+    /// This is a HELPER method that CAN be delegated to service layer.
+    /// The controller will call SignIn() with this identity.
     /// </summary>
-    Task<OAuthTokenResult> ExchangeTokenAsync(string code, string clientId, string clientSecret);
+    /// <param name="username">The username</param>
+    /// <param name="scopes">The requested OAuth scopes</param>
+    /// <returns>ClaimsIdentity result ready for OpenIddict SignIn</returns>
+    Task<ClaimsIdentityResult> BuildOAuthClaimsIdentityAsync(string username, string[] scopes);
+
+    /// <summary>
+    /// Validates that a user exists and is active for token exchange.
+    /// This is a HELPER method that CAN be delegated to service layer.
+    /// </summary>
+    /// <param name="userId">The user's SpacetimeDB Identity as string</param>
+    /// <returns>User validation result</returns>
+    Task<UserValidationResult> ValidateUserForTokenExchangeAsync(string userId);
 
     /// <summary>
     /// Builds a fresh ClaimsIdentity for OAuth token exchange with all user claims, roles, and permissions.
-    /// This method contains the business logic from AuthController.Exchange() for building the token identity.
+    /// This is a HELPER method that CAN be delegated to service layer.
     /// The controller should call this after validating the authorization code via OpenIddict.
     /// </summary>
     /// <param name="userId">The user's SpacetimeDB Identity</param>
@@ -241,6 +254,56 @@ public interface IAuthOrchestrationService
     /// Coordinates UserService.GetAllUsersAsync.
     /// </summary>
     Task<UsersResult> GetAllUsersAsync();
+
+    // ─── Additional Business Logic Methods (Non-HTML) ─────────────────────────
+
+    /// <summary>Performs direct QR login authentication.</summary>
+    Task<QRLoginResult> DirectQRLoginAsync(string username, string deviceType);
+
+    /// <summary>Checks QR login status for a session.</summary>
+    Task<QRLoginStatusResult> CheckQRLoginStatusAsync(string sessionId);
+
+    /// <summary>Cancels an active QR login session.</summary>
+    Task<QRLoginCancelResult> CancelQRLoginAsync(string sessionId);
+
+    /// <summary>Notifies about QR login status changes.</summary>
+    Task<QRLoginNotifyResult> NotifyQRLoginAsync(string sessionId, string status);
+
+    /// <summary>Gets WebAuthn registration options.</summary>
+    Task<WebAuthnRegisterOptionsResult> GetWebAuthnRegisterOptionsAsync(string username);
+
+    /// <summary>Gets WebAuthn login options.</summary>
+    Task<WebAuthnLoginOptionsResult> GetWebAuthnLoginOptionsAsync(string username);
+
+    /// <summary>Completes WebAuthn login flow.</summary>
+    Task<WebAuthnLoginResult> CompleteWebAuthnLoginAsync(string username, AuthenticatorAssertionRawResponse assertionResponse);
+
+    /// <summary>Gets OAuth client by ID.</summary>
+    Task<OAuthClientDetailsResult> GetOAuthClientAsync(string clientId);
+
+    /// <summary>Regenerates OAuth client secret.</summary>
+    Task<OAuthClientSecretResult> RegenerateOAuthClientSecretAsync(string clientId);
+
+    /// <summary>Updates user profile.</summary>
+    Task<ProfileUpdateResult> UpdateProfileAsync(SpacetimeDB.Identity userId, string? email, string? phoneNumber, string? displayName);
+
+    /// <summary>Changes user password.</summary>
+    Task<PasswordChangeResult> ChangePasswordAsync(SpacetimeDB.Identity userId, string currentPassword, string newPassword);
+
+    /// <summary>Logs out user.</summary>
+    Task<LogoutResult> LogoutAsync(SpacetimeDB.Identity userId);
+
+    /// <summary>Refreshes JWT token.</summary>
+    Task<RefreshTokenResult> RefreshTokenAsync(string refreshToken);
+
+    /// <summary>Gets user settings.</summary>
+    Task<UserSettingsResult> GetSettingsAsync(SpacetimeDB.Identity userId);
+
+    /// <summary>Updates user settings.</summary>
+    Task<SettingsUpdateResult> UpdateSettingsAsync(SpacetimeDB.Identity userId, bool? totpEnabled, bool? webAuthnEnabled, bool? emailNotifications);
+
+    /// <summary>Checks authentication status.</summary>
+    Task<AuthStatusResult> CheckAuthStatusAsync(string? token);
 }
 
 public record AuthenticationResult
@@ -429,7 +492,49 @@ public record WebAuthnRemoveResult
 
 // ─── Priority 3 Orchestration Result Types (OAuth/OIDC) ──────────────────────
 
+/// <summary>Result of OAuth request validation (helper method).</summary>
+public record OAuthValidationResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static OAuthValidationResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static OAuthValidationResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of ClaimsIdentity building for OAuth (helper method).</summary>
+public record ClaimsIdentityResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public System.Security.Claims.ClaimsIdentity? Identity { get; init; }
+
+    public static ClaimsIdentityResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static ClaimsIdentityResult Successful(System.Security.Claims.ClaimsIdentity identity) =>
+        new() { Success = true, Identity = identity };
+}
+
+/// <summary>Result of user validation for token exchange (helper method).</summary>
+public record UserValidationResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public SpacetimeDB.Identity? UserId { get; init; }
+
+    public static UserValidationResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static UserValidationResult Successful(SpacetimeDB.Identity userId) =>
+        new() { Success = true, UserId = userId };
+}
+
 /// <summary>Result of OAuth authorization orchestration.</summary>
+[Obsolete("This method is deprecated. Use ValidateOAuthRequestAsync and BuildOAuthClaimsIdentityAsync instead.")]
 public record OAuthAuthorizeResult
 {
     public bool Success { get; init; }
@@ -445,6 +550,7 @@ public record OAuthAuthorizeResult
 }
 
 /// <summary>Result of OAuth token exchange orchestration.</summary>
+[Obsolete("This method is deprecated. Use ValidateUserForTokenExchangeAsync and BuildOAuthTokenIdentityAsync instead.")]
 public record OAuthTokenResult
 {
     public bool Success { get; init; }
@@ -627,6 +733,240 @@ public record RoleDto
     public required string Name { get; init; }
     public string? Description { get; init; }
     public bool IsSystem { get; init; }
+}
+
+// ─── Additional Business Logic Result Types ──────────────────────────────────
+
+/// <summary>Result of QR login status check.</summary>
+public record QRLoginStatusResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public string? Status { get; init; }
+    public string? Token { get; init; }
+    public UserDto? User { get; init; }
+
+    public static QRLoginStatusResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static QRLoginStatusResult Successful(string status, string? token = null, UserDto? user = null) =>
+        new() { Success = true, Status = status, Token = token, User = user };
+}
+
+/// <summary>Result of QR login cancellation.</summary>
+public record QRLoginCancelResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static QRLoginCancelResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static QRLoginCancelResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of QR login notification.</summary>
+public record QRLoginNotifyResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static QRLoginNotifyResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static QRLoginNotifyResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of WebAuthn registration options generation.</summary>
+public record WebAuthnRegisterOptionsResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public Fido2NetLib.CredentialCreateOptions? Options { get; init; }
+
+    public static WebAuthnRegisterOptionsResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static WebAuthnRegisterOptionsResult Successful(Fido2NetLib.CredentialCreateOptions options) =>
+        new() { Success = true, Options = options };
+}
+
+/// <summary>Result of WebAuthn login options generation.</summary>
+public record WebAuthnLoginOptionsResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public Fido2NetLib.AssertionOptions? Options { get; init; }
+
+    public static WebAuthnLoginOptionsResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static WebAuthnLoginOptionsResult Successful(Fido2NetLib.AssertionOptions options) =>
+        new() { Success = true, Options = options };
+}
+
+/// <summary>Result of WebAuthn login completion.</summary>
+public record WebAuthnLoginResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public string? Token { get; init; }
+    public Dictionary<string, object>? Claims { get; init; }
+    public UserDto? User { get; init; }
+
+    public static WebAuthnLoginResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static WebAuthnLoginResult Successful(string token, UserDto user, Dictionary<string, object>? claims = null) =>
+        new() { Success = true, Token = token, User = user, Claims = claims };
+}
+
+/// <summary>Result of OAuth client details retrieval.</summary>
+public record OAuthClientDetailsResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public OAuthClientDetailDto? Client { get; init; }
+
+    public static OAuthClientDetailsResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static OAuthClientDetailsResult Successful(OAuthClientDetailDto client) =>
+        new() { Success = true, Client = client };
+}
+
+/// <summary>Detailed OAuth client DTO.</summary>
+public record OAuthClientDetailDto
+{
+    public required string ClientId { get; init; }
+    public required string DisplayName { get; init; }
+    public List<string> RedirectUris { get; init; } = [];
+    public List<string> PostLogoutRedirectUris { get; init; } = [];
+    public List<string> AllowedScopes { get; init; } = [];
+    public bool RequireConsent { get; init; }
+}
+
+/// <summary>Result of OAuth client secret regeneration.</summary>
+public record OAuthClientSecretResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public string? ClientSecret { get; init; }
+
+    public static OAuthClientSecretResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static OAuthClientSecretResult Successful(string clientSecret) =>
+        new() { Success = true, ClientSecret = clientSecret };
+}
+
+/// <summary>Result of profile update.</summary>
+public record ProfileUpdateResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static ProfileUpdateResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static ProfileUpdateResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of password change.</summary>
+public record PasswordChangeResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static PasswordChangeResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static PasswordChangeResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of logout.</summary>
+public record LogoutResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static LogoutResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static LogoutResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of token refresh.</summary>
+public record RefreshTokenResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public string? Token { get; init; }
+    public string? RefreshToken { get; init; }
+    public DateTime? ExpiresAt { get; init; }
+
+    public static RefreshTokenResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static RefreshTokenResult Successful(string token, string refreshToken, DateTime expiresAt) =>
+        new() { Success = true, Token = token, RefreshToken = refreshToken, ExpiresAt = expiresAt };
+}
+
+/// <summary>Result of user settings retrieval.</summary>
+public record UserSettingsResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public UserSettingsDto? Settings { get; init; }
+
+    public static UserSettingsResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static UserSettingsResult Successful(UserSettingsDto settings) =>
+        new() { Success = true, Settings = settings };
+}
+
+/// <summary>User settings DTO for result.</summary>
+public record UserSettingsDto
+{
+    public bool TotpEnabled { get; init; }
+    public bool WebAuthnEnabled { get; init; }
+    public bool EmailNotifications { get; init; }
+}
+
+/// <summary>Result of settings update.</summary>
+public record SettingsUpdateResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static SettingsUpdateResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static SettingsUpdateResult Successful() =>
+        new() { Success = true };
+}
+
+/// <summary>Result of auth status check.</summary>
+public record AuthStatusResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public bool IsAuthenticated { get; init; }
+    public string? Username { get; init; }
+    public DateTime? ExpiresAt { get; init; }
+    public UserDto? User { get; init; }
+
+    public static AuthStatusResult Failed(string errorMessage) =>
+        new() { Success = false, ErrorMessage = errorMessage };
+
+    public static AuthStatusResult Successful(bool isAuthenticated, string? username = null, DateTime? expiresAt = null, UserDto? user = null) =>
+        new() { Success = true, IsAuthenticated = isAuthenticated, Username = username, ExpiresAt = expiresAt, User = user };
 }
 
 // ─── Profile Service ─────────────────────────────────────────────────────────
