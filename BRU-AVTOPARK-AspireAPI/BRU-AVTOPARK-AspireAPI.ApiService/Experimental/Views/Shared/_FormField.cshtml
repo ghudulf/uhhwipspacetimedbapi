@@ -8,5 +8,7 @@
            name="@Model.Id"
            placeholder="@Model.Placeholder"
            value="@Model.Value"
-           @(Model.Required ? "required" : "") />
+           autocomplete="@(Model.Type == "password" ? "current-password" : Model.Type == "email" ? "email" : "off")"
+           @(Model.Required ? "required" : "")
+           aria-required="@(Model.Required ? "true" : "false")" />
 </div>

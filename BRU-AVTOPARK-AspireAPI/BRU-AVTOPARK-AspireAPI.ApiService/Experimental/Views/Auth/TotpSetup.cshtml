@@ -1,4 +1,4 @@
-@* TOTP Setup View - Extracted from AuthController RenderTotpSetup *@
+@* TOTP Setup View - Modern glass design *@
 @model dynamic
 
 @{
@@ -11,50 +11,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0066ff">
     <title>TOTP Setup - BRU AVTOPARK</title>
     <link rel="stylesheet" href="~/css/bru-design-system.css">
 </head>
 <body>
-    <div class="navbar">
+    <nav class="navbar" role="navigation">
         <a href="/" class="logo">BRU AVTOPARK</a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
-    </div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" type="button">
+            <span class="theme-icon-light" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                </svg>
+            </span>
+            <span class="theme-icon-dark" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </span>
+        </button>
+    </nav>
     
     <div class="container fade-in">
         <div class="card">
             <div class="card-header">
-                <h1>Two-Factor Authentication Setup</h1>
+                <h1 style="display: flex; align-items: center; gap: 12px; margin: 0;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Two-Factor Authentication
+                </h1>
             </div>
             <div class="card-body">
                 <div class="info-box">
-                    <p>Set up two-factor authentication to increase your account security. Scan the QR code with your authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
+                    <p style="margin: 0; display: flex; align-items: flex-start; gap: 12px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        <span>Set up two-factor authentication to increase your account security. Scan the QR code with your authenticator app (Google Authenticator, Authy, or Microsoft Authenticator).</span>
+                    </p>
                 </div>
                 
                 <div class="qr-code">
-                    <img src="@qrCodeUri" alt="TOTP QR Code">
+                    <img src="@qrCodeUri" alt="TOTP QR Code for authenticator app">
                 </div>
                 
                 <div class="text-center my-4">
-                    <p>Can't scan the QR code? Manually enter this code in your app:</p>
-                    <div class="code-display text-center">@secretKey</div>
+                    <p style="color: var(--text-muted); font-size: 0.9375rem;">Can't scan the QR code? Manually enter this code:</p>
+                    <div class="code-display text-center" style="font-size: 1rem; letter-spacing: 0.1em;">@secretKey</div>
                 </div>
                 
-                <form method="POST" action="/api/auth/totp/verify">
+                <form method="POST" action="/api/auth/totp/verify" novalidate>
                     <div class="form-group">
-                        <label for="code">Enter the 6-digit code from your app</label>
-                        <input type="text" id="code" name="code" pattern="[0-9]{6}" placeholder="Enter 6-digit code" autocomplete="one-time-code" required>
+                        <label for="code">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Enter the 6-digit code from your app
+                        </label>
+                        <input type="text" 
+                               id="code" 
+                               name="code" 
+                               pattern="[0-9]{6}" 
+                               maxlength="6"
+                               placeholder="000000" 
+                               autocomplete="one-time-code" 
+                               inputmode="numeric"
+                               required
+                               style="text-align: center; font-size: 1.5rem; letter-spacing: 0.3em; font-family: var(--font-mono);"
+                               aria-describedby="code-help">
+                        <span id="code-help" class="text--xs text--secondary" style="display: block; margin-top: 4px; text-align: center;">Enter the 6-digit code displayed in your authenticator app</span>
                     </div>
                     <input type="hidden" name="secretKey" value="@secretKey">
-                    <button type="submit" class="btn btn-block">Verify and Enable</button>
+                    <button type="submit" class="btn btn--primary btn-block">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span>Verify and Enable</span>
+                    </button>
                 </form>
                 
                 <div class="text-center mt-4">
-                    <a href="/api/auth/profile" class="link">Back to Profile</a>
+                    <a href="/api/auth/profile" class="link">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;" aria-hidden="true">
+                            <line x1="19" y1="12" x2="5" y2="12"/>
+                            <polyline points="12 19 5 12 12 5"/>
+                        </svg>
+                        Back to Profile
+                    </a>
                 </div>
             </div>
         </div>
     </div>
     
-    <script src="~/js/theme-toggle.js"></script>
+    <script src="~/js/theme-toggle.js" defer></script>
 </body>
 </html>

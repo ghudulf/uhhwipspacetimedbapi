@@ -12,14 +12,14 @@
             <div class="profile-card__avatar">
                 <div class="user-avatar user-avatar--large">
                     <img src="@Model.User.AvatarUrl"
-                         alt="User avatar"
+                         alt="Profile picture for @Html.Encode(Model.User.Login)"
                          class="user-avatar__image" />
                 </div>
             </div>
-            <span class="text text--heading-l profile-card__name">
+            <h1 class="text text--heading-l profile-card__name">
                 @Html.Encode(Model.User.Login)
-            </span>
-            <span class="text text--m profile-card__description">
+            </h1>
+            <div class="text text--m profile-card__description">
                 @if (!string.IsNullOrEmpty(Model.User.PhoneNumber))
                 {
                     <span class="bulleted-item">@Html.Encode(Model.User.PhoneNumber)</span>
@@ -32,7 +32,7 @@
                 {
                     <span class="bulleted-item">No contact information provided</span>
                 }
-            </span>
+            </div>
         </div>
     </div>
 </section>
@@ -41,7 +41,13 @@
 <section class="section">
     <div class="section__inner">
         <div class="section__heading">
-            <h2 class="text text--heading-m">Security</h2>
+            <h2 class="text text--heading-m" style="display: flex; align-items: center; gap: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Security
+            </h2>
         </div>
 
         <div class="list-plain">
@@ -50,14 +56,34 @@
                 <div class="list-item__content">
                     <span class="text text--m">Two-Factor Authentication</span>
                     <span class="text text--s text--secondary">
-                        @(Model.TotpEnabled ? "Enabled - App-based code" : "Disabled")
+                        @if (Model.TotpEnabled)
+                        {
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                Enabled - App-based code
+                            </span>
+                        }
+                        else
+                        {
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="15" y1="9" x2="9" y2="15"/>
+                                    <line x1="9" y1="9" x2="15" y2="15"/>
+                                </svg>
+                                Disabled
+                            </span>
+                        }
                     </span>
                 </div>
                 <div class="list-item__action">
                     @if (Model.TotpEnabled)
                     {
                         <form method="POST" action="/api/auth/totp/disable">
-                            <button type="submit" class="btn btn--text">Disable</button>
+                            <button type="submit" class="btn btn--text btn--danger">Disable</button>
                         </form>
                     }
                     else
@@ -73,9 +99,20 @@
                 <div class="list-item__content">
                     <span class="text text--m">Security Keys & Biometrics</span>
                     <span class="text text--s text--secondary">
-                        @(Model.WebAuthnCredentials.Count > 0
-                            ? $"{Model.WebAuthnCredentials.Count} key(s) registered"
-                            : "No keys registered")
+                        @if (Model.WebAuthnCredentials.Count > 0)
+                        {
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                @Model.WebAuthnCredentials.Count key(s) registered
+                            </span>
+                        }
+                        else
+                        {
+                            <span>No keys registered</span>
+                        }
                     </span>
                 </div>
                 <div class="list-item__action">
@@ -88,11 +125,17 @@
             @* Individual WebAuthn keys *@
             @foreach (var credential in Model.WebAuthnCredentials)
             {
+                <hr class="list-divider" />
                 <div class="list-item">
                     <div class="list-item__content">
-                        <span class="text text--m">Security Key</span>
+                        <span class="text text--m" style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            Security Key
+                        </span>
                         <span class="text text--s text--secondary">Added: @credential.CreatedAt.ToString("dd.MM.yyyy")</span>
-                        <span class="text text--xs text--tertiary">ID: @credential.Id[..Math.Min(12, credential.Id.Length)]...</span>
+                        <span class="text text--xs text--tertiary" style="font-family: var(--font-mono);">ID: @credential.Id[..Math.Min(12, credential.Id.Length)]...</span>
                     </div>
                     <div class="list-item__action">
                         <form method="POST"
@@ -103,7 +146,6 @@
                         </form>
                     </div>
                 </div>
-                <hr class="list-divider" />
             }
         </div>
     </div>
@@ -113,7 +155,12 @@
 <section class="section">
     <div class="section__inner">
         <div class="section__heading">
-            <h2 class="text text--heading-m">Roles & Permissions</h2>
+            <h2 class="text text--heading-m" style="display: flex; align-items: center; gap: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Roles & Permissions
+            </h2>
         </div>
 
         <div class="list-plain">
@@ -121,9 +168,14 @@
                 <div class="list-item__content">
                     <span class="text text--m">Roles</span>
                     <span class="text text--s text--secondary">
-                        @(Model.Roles.Any()
-                            ? string.Join(", ", Model.Roles.Select(r => r.Name))
-                            : "No roles assigned")
+                        @if (Model.Roles.Any())
+                        {
+                            @string.Join(", ", Model.Roles.Select(r => r.Name))
+                        }
+                        else
+                        {
+                            <span>No roles assigned</span>
+                        }
                     </span>
                 </div>
             </div>
@@ -156,14 +208,23 @@
     <section class="section">
         <div class="section__inner">
             <div class="section__heading">
-                <h2 class="text text--heading-m">Administration</h2>
+                <h2 class="text text--heading-m" style="display: flex; align-items: center; gap: 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Administration
+                </h2>
             </div>
 
             <div class="admin-cards">
                 <a href="/api/auth/register" class="admin-card">
                     <div class="admin-card__icon">
-                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM6 8a6 6 0 1 1 12 0A6 6 0 0 1 6 8zm2 10a3 3 0 0 0-3 3 1 1 0 1 1-2 0 5 5 0 0 1 5-5h8a5 5 0 0 1 5 5 1 1 0 1 1-2 0 3 3 0 0 0-3-3H8z" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
                         </svg>
                     </div>
                     <span class="admin-card__title">Register User</span>
@@ -172,8 +233,8 @@
 
                 <a href="/api/auth/connect/clients" class="admin-card oidc-clients-link">
                     <div class="admin-card__icon">
-                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12.476 1.748c.237.11 1.304.602 2.737 1.183 1.645.668 3.74 1.441 5.614 1.904a1 1 0 0 1 .76.97c0 4.608-.842 8.201-2.45 10.88-1.623 2.704-3.981 4.4-6.846 5.272a1 1 0 0 1-.582 0c-2.865-.872-5.224-2.568-6.846-5.271C3.255 14.006 2.413 10.413 2.413 5.805a1 1 0 0 1 .76-.97c1.874-.464 3.969-1.237 5.615-1.905a63 63 0 0 0 2.736-1.183c.312-.146.638-.147.952 0z" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         </svg>
                     </div>
                     <span class="admin-card__title">OIDC Client Management</span>
@@ -186,7 +247,14 @@
 
 @* ── Logout ──────────────────────────────────────────────────────── *@
 <div class="text-center" style="margin-top: 2rem; margin-bottom: 2rem;">
-    <a href="/api/auth/logout" class="btn btn--primary btn--lg">Logout</a>
+    <a href="/api/auth/logout" class="btn btn--danger btn--lg" style="width: auto; min-width: 180px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Logout</span>
+    </a>
 </div>
 
 @section Scripts {
