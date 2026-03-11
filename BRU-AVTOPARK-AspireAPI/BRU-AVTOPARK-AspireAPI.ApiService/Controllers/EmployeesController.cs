@@ -22,6 +22,8 @@ namespace TicketSalesApp.AdminServer.Controllers
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class EmployeesController : BaseController
     {
+        private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
         private readonly IEmployeeService _employeeService;
         private readonly ILogger<EmployeesController> _logger;
         private readonly IAdminActionLogger _adminLogger;
@@ -147,7 +149,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new UnauthorizedAccessException("Not authorized for employees.create");
             }
 
-            var model = request.Payload?.Deserialize<CreateEmployeeModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            var model = request.Payload?.Deserialize<CreateEmployeeModel>(CaseInsensitiveJsonOptions)
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var newEmployee = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId);
@@ -230,7 +232,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
-            var model = request.Payload?.Deserialize<UpdateEmployeeModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            var model = request.Payload?.Deserialize<UpdateEmployeeModel>(CaseInsensitiveJsonOptions)
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId);
