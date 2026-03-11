@@ -51,6 +51,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!IsAdmin() && !HasPermission("employees.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 _realtimeEventBus.SubscribeAsync("employees", cancellationToken),

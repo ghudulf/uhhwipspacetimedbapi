@@ -104,6 +104,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
             var created = await _roleService.CreateRoleAsync(model.Name, model.Description, model.LegacyRoleId, model.Priority, model.PermissionIds);
             var snapshot = await _roleService.GetAllRolesAsync();
+
+            if (created is not null)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.create",
+                        $"Created role: {created.Name}, RoleId: {created.RoleId}"
+                    );
+                }
+            }
+
             return new { operation = "create", success = created is not null, entity = created, snapshot };
         }
 
@@ -123,6 +137,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
             var entity = await _roleService.GetRoleByIdAsync(id);
             var snapshot = await _roleService.GetAllRolesAsync();
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.update",
+                        $"Updated role: {entity.Name}, RoleId: {id}"
+                    );
+                }
+            }
+
             return new { operation = "update", success, entity, snapshot };
         }
 
@@ -139,6 +167,24 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _roleService.DeleteRoleAsync(id);
             var snapshot = await _roleService.GetAllRolesAsync();
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    var details = existingRole != null
+                        ? $"Deleted role: {existingRole.Name}, RoleId: {id}"
+                        : $"Deleted role with RoleId: {id}";
+
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.delete",
+                        details
+                    );
+                }
+            }
+
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
