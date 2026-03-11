@@ -99,6 +99,14 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
+                // NOTE: Correlation token flow would require modifying the SpacetimeDB reducer signature
+                // to accept a correlationToken parameter and the Employee table schema to include a
+                // CorrelationToken field. This would allow matching by token instead of field combination.
+                // For now, we use the existing approach of matching by unique field combination.
+                // TODO: Update when reducer and schema support correlation tokens:
+                // var correlationToken = Guid.NewGuid().ToString();
+                // connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId, correlationToken);
+
                 // Use a TaskCompletionSource to wait for the employee insert event
                 var tcs = new TaskCompletionSource<Employee>();
                 var timeout = TimeSpan.FromSeconds(5);
@@ -108,6 +116,7 @@ namespace TicketSalesApp.Services.Implementations
                 insertHandler = (sender, employee) =>
                 {
                     // Match the employee by the unique combination of fields we're creating
+                    // TODO: When correlation token support is added, match by: employee.CorrelationToken == correlationToken
                     if (employee.Name == employeeName &&
                         employee.Surname == employeeSurname &&
                         employee.Patronym == employeePatronym &&
@@ -137,7 +146,6 @@ namespace TicketSalesApp.Services.Implementations
                 catch (TaskCanceledException)
                 {
                     _logger.LogWarning("Timeout waiting for employee creation event. Attempting fallback retrieval.");
-                    connection.Db.Employee.OnInsert -= insertHandler;
 
                     // Fallback: try to find the employee by unique fields
                     var employee = connection.Db.Employee.Iter()
@@ -158,6 +166,11 @@ namespace TicketSalesApp.Services.Implementations
                     }
 
                     return employee;
+                }
+                finally
+                {
+                    // Always unsubscribe to prevent memory leaks
+                    connection.Db.Employee.OnInsert -= insertHandler;
                 }
             }
             catch (Exception ex)

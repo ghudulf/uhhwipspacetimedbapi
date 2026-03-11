@@ -238,7 +238,7 @@ builder.Services.AddMemoryCache();
 builder.Services.Configure<RealtimeEventOptions>(builder.Configuration.GetSection(RealtimeEventOptions.SectionName));
 builder.Services.AddSignalR(options =>
 {
-    options.EnableDetailedErrors = false;
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
     options.MaximumReceiveMessageSize = 64 * 1024;
     options.StreamBufferCapacity = 50;
     options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
@@ -254,6 +254,11 @@ builder.Services.AddScoped<ApiMutationEventFilter>();
 builder.Services.AddHttpContextAccessor();
 
 // Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
+// IMPORTANT: Clearing KnownNetworks/KnownProxies and setting ForwardLimit = 1 trusts only the immediate upstream proxy.
+// This is suitable for single-proxy setups (e.g., Nginx/Caddy directly in front of the app).
+// For production multi-proxy environments (e.g., CDN -> Load Balancer -> App):
+// - Set ForwardLimit = null (trust all proxies) or a specific count
+// - Add known proxy IP ranges to KnownProxies/KnownNetworks for security
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
@@ -427,7 +432,7 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             var path = context.HttpContext.Request.Path;
-            if ((path.StartsWithSegments("/hubs/system-events") || path.StartsWithSegments("/api") && path.Value.Contains("/realtime/ws")) &&
+            if ((path.StartsWithSegments("/hubs/system-events") || (path.StartsWithSegments("/api") && path.Value.Contains("/realtime/ws"))) &&
                 context.Request.Query.TryGetValue("access_token", out var accessToken) &&
                 !string.IsNullOrWhiteSpace(accessToken))
             {

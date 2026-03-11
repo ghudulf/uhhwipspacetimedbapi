@@ -141,7 +141,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                     SourceIp: GetClientIp(),
                     Metadata: metadata
                 );
-                await _realtimeEventBus.PublishAsync(domainEvent);
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(domainEvent);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for employee.created, but write succeeded");
+                }
 
                 // Fire-and-forget: enrich with snapshot and log action
                 var userId = GetUserId();
@@ -186,6 +193,27 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (success)
             {
                 // Publish domain event for websocket-originated changes
+                var metadata = new Dictionary<string, string>
+                {
+                    ["employeeId"] = id.ToString()
+                };
+                if (model.Name != null)
+                {
+                    metadata["name"] = model.Name;
+                }
+                if (model.Surname != null)
+                {
+                    metadata["surname"] = model.Surname;
+                }
+                if (model.Patronym != null)
+                {
+                    metadata["patronym"] = model.Patronym;
+                }
+                if (model.JobId.HasValue)
+                {
+                    metadata["jobId"] = model.JobId.Value.ToString();
+                }
+
                 var domainEvent = new ApiDomainEvent(
                     EventName: "employee.updated",
                     Resource: "employees",
@@ -197,15 +225,16 @@ namespace TicketSalesApp.AdminServer.Controllers
                     UserName: GetUserName(),
                     Tenant: null,
                     SourceIp: GetClientIp(),
-                    Metadata: new Dictionary<string, string>
-                    {
-                        ["employeeId"] = id.ToString(),
-                        ["name"] = model.Name ?? "",
-                        ["surname"] = model.Surname ?? "",
-                        ["jobId"] = model.JobId?.ToString() ?? ""
-                    }
+                    Metadata: metadata
                 );
-                await _realtimeEventBus.PublishAsync(domainEvent);
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(domainEvent);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for employee.updated, but write succeeded");
+                }
 
                 // Fire-and-forget: enrich with entity/snapshot and log action
                 var userId = GetUserId();
@@ -272,7 +301,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                     SourceIp: GetClientIp(),
                     Metadata: metadata
                 );
-                await _realtimeEventBus.PublishAsync(domainEvent);
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(domainEvent);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for employee.deleted, but write succeeded");
+                }
 
                 // Fire-and-forget: enrich with snapshot and log action
                 var userId = GetUserId();

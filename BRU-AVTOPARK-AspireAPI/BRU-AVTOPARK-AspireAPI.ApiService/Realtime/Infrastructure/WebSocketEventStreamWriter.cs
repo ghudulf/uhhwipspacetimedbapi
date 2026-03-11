@@ -147,7 +147,7 @@ public static class WebSocketEventStreamWriter
                     await webSocket.CloseOutputAsync(
                         result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
                         result.CloseStatusDescription ?? "Client requested close",
-                        cancellationToken);
+                        CancellationToken.None);
                 }
                 return null;
             }
@@ -158,7 +158,7 @@ public static class WebSocketEventStreamWriter
                 await webSocket.CloseAsync(
                     WebSocketCloseStatus.InvalidMessageType,
                     "Only text frames are supported",
-                    cancellationToken);
+                    CancellationToken.None);
                 return null;
             }
 
@@ -171,7 +171,7 @@ public static class WebSocketEventStreamWriter
                     await webSocket.CloseAsync(
                         WebSocketCloseStatus.MessageTooBig,
                         $"Message exceeds maximum size of {MaxIncomingMessageSize} bytes",
-                        cancellationToken);
+                        CancellationToken.None);
                     return null;
                 }
             }
@@ -194,7 +194,7 @@ public static class WebSocketEventStreamWriter
             await webSocket.CloseAsync(
                 WebSocketCloseStatus.InvalidPayloadData,
                 $"Invalid JSON: {ex.Message}",
-                cancellationToken);
+                CancellationToken.None);
             return null;
         }
     }

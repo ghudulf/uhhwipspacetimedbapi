@@ -73,7 +73,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Checks if the current user has administrator role.
         /// Supports both ASP.NET Core auth and custom JWT.
         /// </summary>
-        protected bool IsAdmin()
+        protected async Task<bool> IsAdminAsync()
         {
             try
             {
@@ -84,11 +84,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                     var allClaims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
                     var claimsStr = string.Join(", ", allClaims);
                     Log.Debug("IsAdmin check - User authenticated. Claims: {Claims}", claimsStr);
-                    
+
                     // Check primary role first
                     var primaryRole = User.FindFirst("primary_role");
                     Log.Debug("IsAdmin check - primary_role claim: {Value}", primaryRole?.Value ?? "NOT FOUND");
-                    
+
                     if (primaryRole?.Value == "1")
                     {
                         Log.Information("IsAdmin check - User is admin (primary_role=1)");
@@ -102,7 +102,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     {
                         Log.Debug("IsAdmin check - role claim value: {Value}", claim.Value);
                     }
-                    
+
                     if (roleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
                     {
                         Log.Information("IsAdmin check - User is admin (role claim)");
@@ -117,7 +117,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Log.Information("IsAdmin check - User is admin (standard role claim)");
                         return true;
                     }
-                    
+
                     Log.Warning("IsAdmin check - User authenticated but not admin");
                 }
                 else
@@ -135,13 +135,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 var token = authHeader.Substring("Bearer ".Length);
                 var tokenHandler = new JwtSecurityTokenHandler();
-                
+
                 // CRITICAL FIX: Check if it's an encrypted token (JWE) by examining the structure
                 if (IsJweToken(token))
                 {
                     // It's an encrypted JWE token from OpenIddict, validate via tokeninfo endpoint
                     Log.Debug("IsAdmin check - Token is encrypted (JWE), validating via tokeninfo endpoint");
-                    var claims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+                    var claims = await ValidateOAuthTokenAsync();
                     
                     if (claims == null)
                     {
@@ -607,7 +607,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Gets the username from claims.
         /// Supports both ASP.NET Core auth and custom JWT.
         /// </summary>
-        protected string? GetUserName()
+        protected async Task<string?> GetUserNameAsync()
         {
             try
             {
@@ -623,7 +623,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // For tokens that aren't already authenticated, validate via OAuth
                 // This handles encrypted JWE tokens that can't be parsed directly
-                var claims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+                var claims = await ValidateOAuthTokenAsync();
                 if (claims != null)
                 {
                     // Try to extract username from validated claims
@@ -649,6 +649,18 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
+
+        /// <summary>
+        /// Synchronous wrapper for GetUserNameAsync - for backward compatibility.
+        /// Prefer using GetUserNameAsync when possible.
+        /// </summary>
+        protected string? GetUserName() => GetUserNameAsync().GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Synchronous wrapper for IsAdminAsync - for backward compatibility.
+        /// Prefer using IsAdminAsync when possible.
+        /// </summary>
+        protected bool IsAdmin() => IsAdminAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Gets the client IP address from the request.
