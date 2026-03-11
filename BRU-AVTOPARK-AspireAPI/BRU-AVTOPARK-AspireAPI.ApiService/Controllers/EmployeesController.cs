@@ -107,6 +107,24 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId);
             var snapshot = await _employeeService.GetAllEmployeesAsync();
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    var newEmployee = snapshot.LastOrDefault();
+                    if (newEmployee != null)
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "employees.create",
+                            $"Created employee: {model.Name} {model.Surname}, JobId: {model.JobId}, EmployeeId: {newEmployee.EmployeeId}"
+                        );
+                    }
+                }
+            }
+
             return new { operation = "create", success, snapshot };
         }
 
@@ -124,6 +142,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId);
             var entity = await _employeeService.GetEmployeeByIdAsync(id);
             var snapshot = await _employeeService.GetAllEmployeesAsync();
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "employees.update",
+                        $"Updated employee: {entity.Name} {entity.Surname}, JobId: {entity.JobId}, EmployeeId: {id}"
+                    );
+                }
+            }
+
             return new { operation = "update", success, entity, snapshot };
         }
 
@@ -135,8 +167,27 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var employeeBeforeDelete = await _employeeService.GetEmployeeByIdAsync(id);
             var success = await _employeeService.DeleteEmployeeAsync(id);
             var snapshot = await _employeeService.GetAllEmployeesAsync();
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    var details = employeeBeforeDelete != null
+                        ? $"Deleted employee: {employeeBeforeDelete.Name} {employeeBeforeDelete.Surname}, JobId: {employeeBeforeDelete.JobId}, EmployeeId: {id}"
+                        : $"Deleted employee with EmployeeId: {id}";
+
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "employees.delete",
+                        details
+                    );
+                }
+            }
+
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 

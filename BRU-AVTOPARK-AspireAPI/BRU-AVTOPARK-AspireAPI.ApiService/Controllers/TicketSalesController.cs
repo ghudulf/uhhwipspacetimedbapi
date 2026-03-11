@@ -152,6 +152,7 @@
                     throw new UnauthorizedAccessException("Identity claim missing");
                 }
 
+                // Validate authenticated user exists in UserProfile (used for validation only)
                 var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == identityClaim || u.Login == identityClaim);
                 if (seller == null)
                 {

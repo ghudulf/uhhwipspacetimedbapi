@@ -81,12 +81,18 @@ public static class WebSocketEventStreamWriter
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "WebSocket CRUD command failed: {Command}", request.Command);
+
+                    // Determine client-facing error message (sanitize sensitive information)
+                    var clientErrorMessage = ex is UnauthorizedAccessException or InvalidOperationException or ArgumentException
+                        ? ex.Message
+                        : "Internal server error";
+
                     await SendJsonAsync(webSocket, new
                     {
                         type = "result",
                         requestId = request.RequestId,
                         ok = false,
-                        error = ex.Message
+                        error = clientErrorMessage
                     }, sendLock, linkedCts.Token);
                 }
             }
