@@ -40,8 +40,14 @@
         </div>
 
         <!-- Form -->
+        @{
+            var tokenParam = !string.IsNullOrEmpty(Model.Token) ? $"?token={Uri.EscapeDataString(Model.Token)}" : "";
+            var formAction = Model.IsEdit 
+                ? $"/api/auth/connect/update-client/{Uri.EscapeDataString(Model.ClientId!)}{tokenParam}"
+                : $"/api/auth/connect/register-client{tokenParam}";
+        }
         <form method="POST" 
-              action="@(Model.IsEdit ? $"/api/auth/connect/update-client/{Uri.EscapeDataString(Model.ClientId!)}" : "/api/auth/connect/register-client")" 
+              action="@formAction" 
               id="clientForm"
               class="client-form">
             
@@ -190,7 +196,7 @@
                     </svg>
                     <span>@(Model.IsEdit ? "Update Client" : "Create Client")</span>
                 </button>
-                <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
+                <a href="/api/auth/connect/clients@(tokenParam)" 
                    class="btn btn-secondary btn-lg">
                     <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -203,11 +209,20 @@
 </div>
 
 <style>
+    .page-container {
+        padding: var(--space-2xl);
+        animation: fadeInUp 0.4s ease-out;
+    }
     .form-card {
         max-width: 720px;
         margin: 0 auto;
         padding: 2.5rem;
         border-radius: var(--radius-xl);
+        background: var(--glass-background);
+        backdrop-filter: var(--glass-blur) var(--glass-saturate);
+        -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--glass-shadow);
     }
     .form-header {
         display: flex;
@@ -218,12 +233,13 @@
     .form-icon-wrapper {
         width: 56px;
         height: 56px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        background: var(--primary-gradient);
         border-radius: var(--radius-lg);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(255, 87, 34, 0.25);
     }
     .form-icon-wrapper svg {
         width: 28px;
@@ -237,12 +253,35 @@
         margin: 0 0 0.25rem 0;
         font-size: 1.5rem;
         font-weight: 700;
-        color: var(--text-primary);
+        color: var(--text-color);
     }
     .form-subtitle {
         margin: 0;
         font-size: 0.9375rem;
         color: var(--text-secondary);
+    }
+    .info-box {
+        background: rgba(255, 87, 34, 0.06);
+        border: 1px solid rgba(255, 87, 34, 0.12);
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-lg);
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
+    .info-icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: var(--primary-color);
+        margin-top: 2px;
+    }
+    .info-box p {
+        margin: 0;
+        line-height: 1.5;
     }
     .client-form {
         display: flex;
@@ -259,9 +298,50 @@
         flex-direction: column;
         gap: 0.5rem;
     }
+    .form-label {
+        display: block;
+        margin-bottom: var(--space-sm);
+        font-weight: 500;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+    }
     .required-mark {
-        color: var(--danger);
+        color: var(--error-color);
         margin-left: 0.25rem;
+    }
+    .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        width: 18px;
+        height: 18px;
+        color: var(--text-muted);
+        pointer-events: none;
+        z-index: 1;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.8125rem 1rem 0.8125rem 2.75rem;
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 0.9375rem;
+        font-family: inherit;
+        background: var(--card-solid);
+        color: var(--text-color);
+        transition: all var(--transition-base);
+        outline: none;
+    }
+    .form-input:hover {
+        border-color: var(--text-muted);
+    }
+    .form-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--border-focus);
     }
     .textarea-wrapper {
         position: relative;
@@ -273,15 +353,29 @@
         font-family: var(--font-mono);
         font-size: 0.875rem;
         resize: vertical;
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--card-solid);
+        color: var(--text-color);
+        transition: all var(--transition-base);
+        outline: none;
+    }
+    .form-textarea:hover {
+        border-color: var(--text-muted);
+    }
+    .form-textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--border-focus);
     }
     .form-hint {
         margin: 0;
         font-size: 0.8125rem;
-        color: var(--text-tertiary);
+        color: var(--text-muted);
     }
     .input-readonly {
         opacity: 0.7;
         cursor: not-allowed;
+        background: var(--surface-overlay);
     }
     .checkbox-label {
         display: flex;
@@ -291,9 +385,20 @@
         padding: 1rem;
         border-radius: var(--radius-lg);
         transition: background var(--transition-fast);
+        border: 1px solid var(--border-color);
     }
     .checkbox-label:hover {
-        background: var(--surface-elevated);
+        background: var(--surface-overlay);
+    }
+    .checkbox-label input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .checkbox-custom {
+        display: none;
     }
     .checkbox-content {
         display: flex;
@@ -302,20 +407,84 @@
     }
     .checkbox-title {
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--text-color);
     }
     .checkbox-description {
         font-size: 0.8125rem;
-        color: var(--text-tertiary);
+        color: var(--text-muted);
     }
     .form-actions {
         display: flex;
         gap: 1rem;
         margin-top: 1rem;
         padding-top: 1.5rem;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--border-color);
     }
     .form-actions .btn {
         flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-sm);
+        padding: 0.8125rem 1.5rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        border: none;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        text-decoration: none;
+        transition: all var(--transition-base);
+    }
+    .btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 14px rgba(255, 87, 34, 0.3);
+    }
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(255, 87, 34, 0.4);
+    }
+    .btn-secondary {
+        background: transparent;
+        color: var(--primary-color);
+        border: 1.5px solid var(--primary-color);
+        box-shadow: none;
+    }
+    .btn-secondary:hover {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 4px 14px rgba(255, 87, 34, 0.25);
+    }
+    .btn-lg {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+    }
+    .btn-icon-left {
+        width: 20px;
+        height: 20px;
+    }
+    .ripple-effect {
+        position: relative;
+        overflow: hidden;
+    }
+    .pulse-glow {
+        animation: pulse 2.5s ease-in-out infinite;
+    }
+    .slide-up {
+        animation: fadeInUp 0.4s ease-out;
+    }
+    .glass-card {
+        background: var(--glass-background);
+        backdrop-filter: var(--glass-blur) var(--glass-saturate);
+        -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--glass-shadow);
+    }
+    .glass-surface {
+        background: var(--surface-overlay);
+        backdrop-filter: blur(8px);
+    }
+    .glass-input {
+        background: var(--card-solid);
     }
 </style>

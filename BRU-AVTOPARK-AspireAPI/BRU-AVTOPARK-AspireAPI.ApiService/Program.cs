@@ -160,6 +160,56 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmailService, 
 builder.Services.AddSingleton<TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService, TicketSalesApp.AdminServer.Experimental.Services.Implementations.FeatureFlagService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthOrchestrationService, BRU_AVTOPARK.Services.Implementations.AuthOrchestrationService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IHtmlRenderingService, BRU_AVTOPARK.Experimental.Services.Implementations.HtmlRenderingService>();
+
+// CRITICAL ROUTING CONFIGURATION: Feature flag-based endpoint resolution
+// This prevents AmbiguousMatchException when multiple controllers have identical routes
+// 
+// APPROACH: Use IEndpointSelectorPolicy (works with default selector)
+// FAILSAFE: Custom EndpointSelector available if policy approach fails
+//
+// The policy runs AFTER action constraints but BEFORE the endpoint selector,
+// allowing it to resolve ambiguity without replacing ASP.NET Core's default behavior
+
+try
+{
+    // PRIMARY APPROACH: Policy-based resolution (preferred, non-invasive)
+    // This works alongside the default EndpointSelector
+    builder.Services.AddSingleton<Microsoft.AspNetCore.Routing.Matching.IEndpointSelectorPolicy, 
+        BRU_AVTOPARK_AspireAPI.ApiService.Routing.FeatureFlagEndpointSelectorPolicy>();
+    
+    Log.Information("✓ Registered FeatureFlagEndpointSelectorPolicy for ambiguity resolution");
+    Log.Information("  Policy Order: 1000 (runs after constraints, before selector)");
+    Log.Information("  Policy will resolve ambiguity between legacy and refactored controllers");
+    
+    // NUCLEAR FAILSAFE: Custom EndpointSelector (COMMENTED OUT - only enable if policy fails)
+    // Uncommenting this line will REPLACE the default selector entirely
+    // WARNING: This is a last resort and may cause 404s if not properly implemented
+    // builder.Services.AddSingleton<Microsoft.AspNetCore.Routing.Matching.EndpointSelector, 
+    //     BRU_AVTOPARK_AspireAPI.ApiService.Routing.FeatureFlagEndpointSelector>();
+    // Log.Warning("⚠ Using custom EndpointSelector - this replaces ASP.NET Core's default selector!");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "CRITICAL ERROR: Failed to register FeatureFlagEndpointSelectorPolicy");
+    Log.Warning("Application will continue but may encounter AmbiguousMatchException errors");
+    Log.Warning("Attempting to register custom EndpointSelector as failsafe...");
+    
+    // If policy registration fails, try the nuclear option as last resort
+    try
+    {
+        builder.Services.AddSingleton<Microsoft.AspNetCore.Routing.Matching.EndpointSelector, 
+            BRU_AVTOPARK_AspireAPI.ApiService.Routing.FeatureFlagEndpointSelector>();
+        Log.Warning("⚠ FAILSAFE ACTIVATED: Registered custom EndpointSelector as fallback");
+        Log.Warning("  This replaces ASP.NET Core's default selector - may cause routing issues");
+    }
+    catch (Exception fallbackEx)
+    {
+        Log.Fatal(fallbackEx, "FATAL: Could not register any routing failsafes!");
+        Log.Fatal("  AmbiguousMatchException WILL occur for duplicate routes!");
+        Log.Fatal("  Application startup will continue but routing is BROKEN!");
+        // Don't throw - let the app start so we can see the error in logs
+    }
+}
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.ITokenService, BRU_AVTOPARK.Services.Implementations.TokenService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IProfileService, BRU_AVTOPARK.Services.Implementations.ProfileService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IRequestDetector, BRU_AVTOPARK.Services.Implementations.RequestDetector>();
@@ -415,6 +465,11 @@ builder.Services.AddControllersWithViews(options =>
                 logger.LogInformation("  EnableRegisterRefactoring: {Value}", featureFlagOptions?.EnableRegisterRefactoring ?? false);
                 logger.LogInformation("  EnableProfileRefactoring: {Value}", featureFlagOptions?.EnableProfileRefactoring ?? false);
             })
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                // Suppress ambiguous match exceptions - let action constraints handle routing
+                options.SuppressMapClientErrors = true;
+            })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
@@ -473,8 +528,43 @@ builder.Services.AddControllersWithViews(options =>
             });
 
 
-var app = builder.Build();
-app.UseRouting();
+// BUILD APPLICATION WITH ERROR HANDLING
+WebApplication app;
+try
+{
+    app = builder.Build();
+    Log.Information("✓ Application built successfully");
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "FATAL ERROR: Failed to build application");
+    throw;
+}
+
+// CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
+try
+{
+    // CRITICAL: Feature flag routing middleware MUST run BEFORE UseRouting()
+    // This middleware intercepts requests and stores routing decisions in HttpContext.Items
+    // to prevent ambiguous match exceptions when multiple controllers have the same routes
+    app.UseFeatureFlagRouting();
+    Log.Information("✓ Feature flag routing middleware registered");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "ERROR: Failed to register feature flag routing middleware - continuing without it");
+}
+
+try
+{
+    app.UseRouting();
+    Log.Information("✓ Routing middleware registered");
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "FATAL ERROR: Failed to register routing middleware");
+    throw;
+}
 
 // CRITICAL: Serve static files from Experimental folder (CSS, JS)
 // This allows the browser to load /css/bru-design-system.css and /js/*.js files

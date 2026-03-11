@@ -28,7 +28,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Routing
             _requireEnabled = requireEnabled;
         }
 
-        public int Order => 0;
+        public int Order => 100; // Higher order ensures this constraint is evaluated before ambiguity detection
 
         public bool Accept(ActionConstraintContext context)
         {

@@ -803,6 +803,10 @@ button:active, .btn:active {
     box-shadow: var(--shadow-sm);
 }
 
+.social-button svg {
+    color: var(--text-color);
+}
+
 .social-button:hover {
     background: var(--surface-elevated);
     border-color: var(--primary-color);
@@ -814,10 +818,30 @@ button:active, .btn:active {
     transform: translateY(0) scale(0.98);
 }
 
+/* Light mode specific styling for social buttons */
+[data-theme="light"] .social-button {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.02);
+    color: var(--text-color);
+}
+
+[data-theme="light"] .social-button svg {
+    color: var(--text-color);
+}
+
+[data-theme="light"] .social-button:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: var(--primary-color);
+}
+
 /* Dark mode specific styling for social buttons */
 [data-theme="dark"] .social-button {
     border-color: rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.06);
+    color: white;
+}
+
+[data-theme="dark"] .social-button svg {
     color: white;
 }
 

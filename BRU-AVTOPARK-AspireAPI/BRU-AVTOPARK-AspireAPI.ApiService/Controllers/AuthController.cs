@@ -1724,6 +1724,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("login")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
         public IActionResult LoginPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (IsBrowserRequest())
@@ -2480,6 +2481,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("totp/setup")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableTotpSetupRefactoring))]
         public async Task<IActionResult> TotpSetup()
         {
             try
@@ -2543,6 +2545,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("magic-link")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableMagicLinkPageRefactoring))]
         public IActionResult MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (IsBrowserRequest())
@@ -2554,6 +2557,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("magic-link/send")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableMagicLinkSendRefactoring))]
         public async Task<IActionResult> SendMagicLink([FromBody] MagicLinkRequest jsonRequest, [FromForm] MagicLinkRequest? formRequest)
         {
             try
@@ -2613,6 +2617,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("qr/login")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginPageRefactoring))]
         public async Task<IActionResult> QrLoginPage()
         {
             try
@@ -2694,6 +2699,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("success")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableSuccessPageRefactoring))]
         public IActionResult SuccessPage([FromQuery] string? token = null)
         {
             if (IsBrowserRequest())
@@ -2761,6 +2767,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("error")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableErrorPageRefactoring))]
         public IActionResult ErrorPage([FromQuery] string message)
         {
             if (IsBrowserRequest())
@@ -2772,6 +2779,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("totp/verify")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableTotpVerifyRefactoring))]
         public async Task<ActionResult<VerifyTotpResponse>> VerifyTotp([FromBody] VerifyTotpRequest request)
         {
             try
@@ -2822,6 +2830,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("totp/disable")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableTotpDisableRefactoring))]
         public async Task<ActionResult<DisableTotpResponse>> DisableTotp()
         {
             try
@@ -2996,6 +3005,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("webauthn/register/options")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnRegisterOptionsRefactoring))]
         public async Task<ActionResult<WebAuthnRegisterOptionsResponse>> GetWebAuthnRegisterOptions()
         {
             try
@@ -3057,6 +3067,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("webauthn/register/complete")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnRegisterCompleteRefactoring))]
         public async Task<ActionResult<WebAuthnRegisterCompleteResponse>> CompleteWebAuthnRegistration([FromBody] WebAuthnRegisterCompleteRequest request)
         {
             try
@@ -3117,6 +3128,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("webauthn/login/options")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnLoginOptionsRefactoring))]
         public async Task<ActionResult<WebAuthnLoginOptionsResponse>> GetWebAuthnLoginOptions([FromBody] WebAuthnLoginOptionsRequest request)
         {
             try
@@ -3155,6 +3167,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("webauthn/login/complete")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnLoginCompleteRefactoring))]
         public async Task<ActionResult<WebAuthnLoginCompleteResponse>> CompleteWebAuthnLogin([FromBody] WebAuthnLoginCompleteRequest request)
         {
             try
@@ -3296,6 +3309,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("webauthn/credentials")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnCredentialsRefactoring))]
         public async Task<ActionResult<WebAuthnCredentialsResponse>> GetWebAuthnCredentials()
         {
             try
@@ -3395,6 +3409,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("validate-magic-link")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableMagicLinkValidateRefactoring))]
         public async Task<ActionResult> ValidateMagicLink([FromQuery] string token)
         {
             try
@@ -3425,6 +3440,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("validate-magic-link")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableMagicLinkValidateRefactoring))]
         public async Task<ActionResult<ValidateMagicLinkResponse>> ValidateMagicLinkApi([FromBody] ValidateMagicLinkRequest request)
         {
             try
@@ -3481,6 +3497,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("qr/generate")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginGenerateRefactoring))]
         public async Task<ActionResult<QrCodeResponse>> GenerateQRCode()
         {
             try
@@ -3532,6 +3549,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("qr/login")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginValidateRefactoring))]
         public async Task<ActionResult<QrLoginResponse>> QRLogin([FromBody] QrLoginRequest request)
         {
             try
@@ -3581,6 +3599,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("qr/direct/generate")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginDirectRefactoring))]
         public async Task<ActionResult<DirectQrCodeResponse>> GenerateDirectLoginQRCode([FromQuery] string username, [FromQuery] string deviceType)
         {
             try
@@ -3623,6 +3642,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("qr/direct/login")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginDirectRefactoring))]
         public async Task<ActionResult<DirectQrLoginResponse>> DirectQRLogin([FromBody] DirectQrLoginRequest request)
         {
             try
@@ -3690,6 +3710,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("qr/direct/check")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableQRLoginStatusRefactoring))]
         public async Task<ActionResult<CheckQrLoginResponse>> CheckDirectLoginStatus([FromQuery] string deviceId)
         {
             try
@@ -3738,6 +3759,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizeRefactoring))]
         public async Task<IActionResult> Authorize()
         {
             try
@@ -4080,6 +4102,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("~/connect/token")]
         [Produces("application/json")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthTokenRefactoring))]
         public async Task<IActionResult> Exchange()
         {
             try
@@ -4439,6 +4462,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("~/connect/userinfo")]
         [Produces("application/json")]
         [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthUserInfoRefactoring))]
         public async Task<IActionResult> Userinfo()
         {
             try
@@ -4713,6 +4737,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("connect/registerclient")]
         [Authorize(Policy = "RequireAdministrator")]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring))]
         public async Task<ActionResult<RegisterClientResponse>> RegisterClient([FromBody] RegisterClientRequest request)
         {
             try// NO NEED FOR TRANSACTION GARBO
@@ -4761,6 +4786,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPut("connect/update-client/{clientId}")]
         [Authorize(Roles = "Administrator")]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring))]
         public async Task<ActionResult<UpdateClientResponse>> UpdateClient(string clientId, [FromBody] UpdateClientRequest request)
         {
             try
@@ -4809,6 +4835,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpDelete("connect/delete-client/{clientId}")]
         [Authorize(Roles = "Administrator")]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring))]
         public async Task<ActionResult<DeleteClientResponse>> DeleteClient(string clientId)
         {
             try
@@ -4849,6 +4876,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("connect/client/{clientId}")]
         [Authorize(Roles = "Administrator")]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientDetailsRefactoring))]
         public async Task<ActionResult<GetClientResponse>> GetClient(string clientId)
         {
             try
@@ -5760,6 +5788,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("logout")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
         public IActionResult Logout()
         {
             if (IsBrowserRequest())
@@ -5788,6 +5817,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         // Also add a method to handle WebAuthn credential deletion via browser form
         [HttpPost("webauthn/credentials/{id}")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnCredentialDeleteRefactoring))]
         public async Task<IActionResult> RemoveWebAuthnCredentialForm(string id, [FromForm] string _method)
         {
             if (_method != "DELETE")
@@ -5859,6 +5889,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         // Add a separate endpoint for the OAuth login page
         [HttpGet("oauth/login")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizeRefactoring))]
         public async Task<IActionResult> OAuthLoginPage([FromQuery] string request_id, [FromQuery] string? error = null)
         {
             if (string.IsNullOrEmpty(request_id))
@@ -5904,6 +5935,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("connect/scopes")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthScopesPageRefactoring))]
         public async Task<IActionResult> ScopesListPage([FromQuery] string? token = null)
         {
             // Validate JWT token from query parameter
@@ -6647,6 +6679,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         // Add these endpoint handlers for the OIDC admin pages
         [HttpGet("connect/clients")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientsPageRefactoring))]
         public async Task<IActionResult> ClientsListPage([FromQuery] string? token = null)
         {
             // Validate JWT token from query parameter
@@ -6772,6 +6805,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("connect/clients/{clientId}")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientDetailsPageRefactoring))]
         public async Task<IActionResult> ClientDetailsPage(string clientId, [FromQuery] string? token = null)
         {
             // Validate JWT token from query parameter
@@ -6883,6 +6917,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("connect/clients/new")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientNewPageRefactoring))]
         public IActionResult NewClientPage([FromQuery] string? token = null)
         {
             // Validate JWT token from query parameter
@@ -6930,6 +6965,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("connect/clients/{clientId}/edit")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientEditPageRefactoring))]
         public async Task<IActionResult> EditClientPage(string clientId, [FromQuery] string? token = null)
         {
             // Validate JWT token from query parameter
@@ -7036,6 +7072,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("connect/register-client")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring))]
         public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
         {
             // Validate JWT token from form
@@ -7158,6 +7195,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("connect/update-client/{clientId}")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring))]
         public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
         {
             // Validate JWT token from form
@@ -7287,6 +7325,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("connect/clients/{clientId}/delete")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring))]
         public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token = null)
         {
             // Validate JWT token from form
@@ -7547,6 +7586,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("register")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableRegisterRefactoring))]
         public async Task<IActionResult> RegisterPage([FromQuery] string? error = null, [FromQuery] string? message = null, [FromQuery] int? attempt = null)
         {
             if (!IsBrowserRequest())
@@ -7658,6 +7698,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("claim-account")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableClaimAccountPageRefactoring))]
         public IActionResult ClaimAccountPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (IsBrowserRequest())
@@ -7674,6 +7715,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         
         [HttpPost("claim-account")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableClaimAccountPageRefactoring))]
         public async Task<IActionResult> ClaimAccount([FromForm] ClaimAccountRequest request)
         {
             try

@@ -315,5 +315,29 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// GET /api/auth/status - Check authentication status
         /// </summary>
         public bool EnableStatusRefactoring { get; set; } = false;
+
+        // ============================================
+        // Utility Pages (4 endpoints)
+        // ============================================
+        
+        /// <summary>
+        /// GET /api/auth/success - Success page after authentication
+        /// </summary>
+        public bool EnableSuccessPageRefactoring { get; set; } = false;
+        
+        /// <summary>
+        /// GET /api/auth/error - Error page
+        /// </summary>
+        public bool EnableErrorPageRefactoring { get; set; } = false;
+        
+        /// <summary>
+        /// GET /api/auth/claim-account - Claim account page
+        /// </summary>
+        public bool EnableClaimAccountPageRefactoring { get; set; } = false;
+        
+        /// <summary>
+        /// GET /api/auth/webauthn/register - WebAuthn registration page
+        /// </summary>
+        public bool EnableWebAuthnRegisterPageRefactoring { get; set; } = false;
     }
 }

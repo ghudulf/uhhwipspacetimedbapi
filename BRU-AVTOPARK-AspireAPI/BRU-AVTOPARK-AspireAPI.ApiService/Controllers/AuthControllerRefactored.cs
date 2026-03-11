@@ -1620,7 +1620,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// POST /api/oauth/clients - Register new OAuth client
         /// Enabled by: EnableOAuthClientRegisterRefactoring feature flag
         /// </summary>
-        [HttpPost("oauth/clients")]
+        [HttpPost("connect/clients")]
         [Authorize(Roles = "Administrator")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring))]
         public async Task<IActionResult> OAuthClientRegister([FromBody] RegisterClientRequest request)
@@ -1664,13 +1664,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
-        /// GET /api/oauth/clients - List all OAuth clients
-        /// Enabled by: EnableOAuthClientListRefactoring feature flag
+        /// GET /connect/clients - List all OAuth clients (API) or OAuth clients list page (Browser)
+        /// Enabled by: EnableOAuthClientListRefactoring OR EnableOAuthClientsPageRefactoring feature flags
+        /// Returns JSON for API requests, HTML for browser requests
         /// </summary>
-        [HttpGet("oauth/clients")]
-        [Authorize(Roles = "Administrator")]
+        [HttpGet("connect/clients")]
+        [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientListRefactoring))]
-        public async Task<IActionResult> OAuthClientList()
+        public async Task<IActionResult> OAuthClientList([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Client List endpoint called");
 
@@ -1678,6 +1679,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (!result.Success)
             {
+                // Check if browser request
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return BadRequest(result.ErrorMessage ?? "Failed to retrieve OAuth clients");
+                }
+                
                 return BadRequest(new ApiResponse<object>
                 {
                     Success = false,
@@ -1685,6 +1692,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
+            // Check if browser request - return HTML
+            if (_requestDetector.IsBrowserRequest())
+            {
+                var html = _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
+                {
+                    ClientId = c.ClientId,
+                    DisplayName = c.DisplayName
+                }).ToList(), token);
+
+                return Content(html, "text/html");
+            }
+
+            // API request - return JSON
             return Ok(new ApiResponse<List<OAuthClientDto>>
             {
                 Success = true,
@@ -1694,20 +1714,27 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
-        /// GET /api/oauth/clients/{id} - Get OAuth client details
-        /// Enabled by: EnableOAuthClientDetailsRefactoring feature flag
+        /// GET /connect/clients/{id} - Get OAuth client details (API) or OAuth client details page (Browser)
+        /// Enabled by: EnableOAuthClientDetailsRefactoring OR EnableOAuthClientDetailsPageRefactoring feature flags
+        /// Returns JSON for API requests, HTML for browser requests
         /// </summary>
-        [HttpGet("oauth/clients/{id}")]
-        [Authorize(Roles = "Administrator")]
+        [HttpGet("connect/clients/{id}")]
+        [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientDetailsRefactoring))]
-        public async Task<IActionResult> OAuthClientDetails(string id)
+        public async Task<IActionResult> OAuthClientDetails(string id, [FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored OAuth Client Details endpoint called for client: {ClientId}", id);
 
             var result = await _authOrchestrationService.GetOAuthClientAsync(id);
 
-            if (!result.Success)
+            if (!result.Success || result.Client == null)
             {
+                // Check if browser request
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return NotFound(result.ErrorMessage ?? "OAuth client not found");
+                }
+                
                 return NotFound(new ApiResponse<object>
                 {
                     Success = false,
@@ -1715,6 +1742,24 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
+            // Check if browser request - return HTML
+            if (_requestDetector.IsBrowserRequest())
+            {
+                var clientResponse = new BRU_AVTOPARK.Models.Responses.GetClientResponse
+                {
+                    ClientId = result.Client.ClientId,
+                    DisplayName = result.Client.DisplayName,
+                    RedirectUris = result.Client.RedirectUris.ToArray(),
+                    PostLogoutRedirectUris = result.Client.PostLogoutRedirectUris.ToArray(),
+                    AllowedScopes = result.Client.AllowedScopes.ToArray(),
+                    RequireConsent = result.Client.RequireConsent
+                };
+
+                var html = _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
+                return Content(html, "text/html");
+            }
+
+            // API request - return JSON
             return Ok(new ApiResponse<OAuthClientDto>
             {
                 Success = true,
@@ -1722,19 +1767,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Data = new OAuthClientDto
                 {
                     ClientId = result.Client!.ClientId,
-                    DisplayName = result.Client.DisplayName,
-                    RedirectUris = result.Client.RedirectUris,
-                    AllowedScopes = result.Client.AllowedScopes,
-                    RequireConsent = result.Client.RequireConsent
+                    DisplayName = result.Client!.DisplayName,
+                    RedirectUris = result.Client!.RedirectUris,
+                    AllowedScopes = result.Client!.AllowedScopes,
+                    RequireConsent = result.Client!.RequireConsent
                 }
             });
         }
+               
 
         /// <summary>
         /// PUT /api/oauth/clients/{id} - Update OAuth client
         /// Enabled by: EnableOAuthClientUpdateRefactoring feature flag
         /// </summary>
-        [HttpPut("oauth/clients/{id}")]
+        [HttpPut("connect/clients/{id}")]
         [Authorize(Roles = "Administrator")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring))]
         public async Task<IActionResult> OAuthClientUpdate(string id, [FromBody] UpdateClientRequest request)
@@ -1781,7 +1827,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// DELETE /api/oauth/clients/{id} - Delete OAuth client
         /// Enabled by: EnableOAuthClientDeleteRefactoring feature flag
         /// </summary>
-        [HttpDelete("oauth/clients/{id}")]
+        [HttpDelete("connect/clients/{id}")]
         [Authorize(Roles = "Administrator")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring))]
         public async Task<IActionResult> OAuthClientDelete(string id)
@@ -1807,10 +1853,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
-        /// GET /api/oauth/scopes - List available OAuth scopes
+        /// GET /api/connect/scopes - List available OAuth scopes
         /// Enabled by: EnableOAuthScopesRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/scopes")]
+        [HttpGet("connect/scopes")]
         [Authorize(Roles = "Administrator")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthScopesRefactoring))]
         public async Task<IActionResult> OAuthScopes()
@@ -1840,7 +1886,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// POST /api/oauth/clients/{id}/regenerate-secret - Regenerate client secret
         /// Enabled by: EnableOAuthClientRegenerateSecretRefactoring feature flag
         /// </summary>
-        [HttpPost("oauth/clients/{id}/regenerate-secret")]
+        [HttpPost("connect/clients/{id}/regenerate-secret")]
         [Authorize(Roles = "Administrator")]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientRegenerateSecretRefactoring))]
         public async Task<IActionResult> OAuthClientRegenerateSecret(string id)
@@ -1875,37 +1921,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         #region OAuth Admin HTML Pages Endpoints (13 endpoints)
 
         /// <summary>
-        /// GET /oauth/clients - OAuth clients list page
-        /// Enabled by: EnableOAuthClientsPageRefactoring feature flag
-        /// </summary>
-        [HttpGet("oauth/clients")]
-        [AllowAnonymous]
-        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientsPageRefactoring))]
-        public async Task<IActionResult> OAuthClientsPage([FromQuery] string? token = null)
-        {
-            _logger.LogInformation("Refactored OAuth Clients Page endpoint called");
-
-            var result = await _authOrchestrationService.GetOAuthClientsAsync();
-
-            if (!result.Success)
-            {
-                return BadRequest(result.ErrorMessage ?? "Failed to retrieve OAuth clients");
-            }
-
-            var html = _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
-            {
-                ClientId = c.ClientId,
-                DisplayName = c.DisplayName
-            }).ToList(), token);
-
-            return Content(html, "text/html");
-        }
-
-        /// <summary>
         /// GET /oauth/clients/new - New OAuth client form page
         /// Enabled by: EnableOAuthClientNewPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/clients/new")]
+        [HttpGet("connect/clients/new")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientNewPageRefactoring))]
         public Task<IActionResult> OAuthClientNewPage([FromQuery] string? token = null)
@@ -1917,42 +1936,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
-        /// GET /oauth/clients/{id} - OAuth client details page
-        /// Enabled by: EnableOAuthClientDetailsPageRefactoring feature flag
-        /// </summary>
-        [HttpGet("oauth/clients/{id}")]
-        [AllowAnonymous]
-        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientDetailsPageRefactoring))]
-        public async Task<IActionResult> OAuthClientDetailsPage(string id, [FromQuery] string? token = null)
-        {
-            _logger.LogInformation("Refactored OAuth Client Details Page endpoint called for client: {ClientId}", id);
-
-            var result = await _authOrchestrationService.GetOAuthClientAsync(id);
-
-            if (!result.Success || result.Client == null)
-            {
-                return NotFound(result.ErrorMessage ?? "OAuth client not found");
-            }
-
-            var clientResponse = new BRU_AVTOPARK.Models.Responses.GetClientResponse
-            {
-                ClientId = result.Client.ClientId,
-                DisplayName = result.Client.DisplayName,
-                RedirectUris = result.Client.RedirectUris.ToArray(),
-                PostLogoutRedirectUris = result.Client.PostLogoutRedirectUris.ToArray(),
-                AllowedScopes = result.Client.AllowedScopes.ToArray(),
-                RequireConsent = result.Client.RequireConsent
-            };
-
-            var html = _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
-            return Content(html, "text/html");
-        }
-
-        /// <summary>
         /// GET /oauth/clients/{id}/edit - Edit OAuth client form page
         /// Enabled by: EnableOAuthClientEditPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/clients/{id}/edit")]
+        [HttpGet("connect/clients/{id}/edit")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientEditPageRefactoring))]
         public async Task<IActionResult> OAuthClientEditPage(string id, [FromQuery] string? token = null)
@@ -1981,10 +1968,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
-        /// GET /oauth/scopes - OAuth scopes list page
+        /// GET /connect/scopes - OAuth scopes list page
         /// Enabled by: EnableOAuthScopesPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/scopes")]
+        [HttpGet("connect/scopes")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthScopesPageRefactoring))]
         public async Task<IActionResult> OAuthScopesPage([FromQuery] string? token = null)
@@ -2030,7 +2017,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/tokens - OAuth tokens list page
         /// Enabled by: EnableOAuthTokensPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/tokens")]
+        [HttpGet("connect/tokens")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTokensPageRefactoring))]
         public Task<IActionResult> OAuthTokensPage([FromQuery] string? token = null)
@@ -2062,7 +2049,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/settings - OAuth settings page
         /// Enabled by: EnableOAuthSettingsPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/settings")]
+        [HttpGet("connect/settings")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthSettingsPageRefactoring))]
         public Task<IActionResult> OAuthSettingsPage([FromQuery] string? token = null)
@@ -2078,7 +2065,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/logs - OAuth audit logs page
         /// Enabled by: EnableOAuthLogsPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/logs")]
+        [HttpGet("connect/logs")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthLogsPageRefactoring))]
         public Task<IActionResult> OAuthLogsPage([FromQuery] string? token = null)
@@ -2094,7 +2081,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/help - OAuth help/documentation page
         /// Enabled by: EnableOAuthHelpPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/help")]
+        [HttpGet("connect/help")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthHelpPageRefactoring))]
         public Task<IActionResult> OAuthHelpPage([FromQuery] string? token = null)
@@ -2110,7 +2097,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/test - OAuth test/playground page
         /// Enabled by: EnableOAuthTestPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/test")]
+        [HttpGet("connect/test")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTestPageRefactoring))]
         public Task<IActionResult> OAuthTestPage([FromQuery] string? token = null)
@@ -2126,7 +2113,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// GET /oauth/callback - OAuth callback page
         /// Enabled by: EnableOAuthCallbackPageRefactoring feature flag
         /// </summary>
-        [HttpGet("oauth/callback")]
+        [HttpGet("connect/callback")]
         [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthCallbackPageRefactoring))]
         public Task<IActionResult> OAuthCallbackPage([FromQuery] string? code = null, [FromQuery] string? error = null)
@@ -2365,6 +2352,29 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
+        /// GET /api/auth/logout - Show logout confirmation page
+        /// Enabled by: EnableLoginRefactoring feature flag (same as login)
+        /// </summary>
+        [HttpGet("logout")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
+        public IActionResult LogoutPage()
+        {
+            _logger.LogInformation("Refactored Logout page requested");
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                return Content(_htmlRenderingService.RenderLogoutPage(), "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Logged out successfully"
+            });
+        }
+
+        /// <summary>
         /// POST /api/auth/logout - Logout user
         /// Enabled by: EnableLogoutRefactoring feature flag
         /// </summary>
@@ -2591,6 +2601,124 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     Username = result.Username,
                     ExpiresAt = result.ExpiresAt
                 }
+            });
+        }
+
+        #endregion
+
+        #region UTILITY HTML PAGES (Feature Flag Controlled)
+
+        // ============================================
+        // UTILITY HTML PAGES (Feature Flag Controlled)
+        // ============================================
+
+        /// <summary>
+        /// GET /api/auth/success - Show success page after authentication
+        /// Enabled by: EnableSuccessPageRefactoring feature flag
+        /// </summary>
+        [HttpGet("success")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableSuccessPageRefactoring))]
+        public IActionResult SuccessPage([FromQuery] string? token = null)
+        {
+            _logger.LogInformation("Refactored Success page requested");
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                return Content(_htmlRenderingService.RenderSuccessPage(token ?? ""), "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Authentication successful",
+                Data = new { token }
+            });
+        }
+
+        /// <summary>
+        /// GET /api/auth/error - Show error page
+        /// Enabled by: EnableErrorPageRefactoring feature flag
+        /// </summary>
+        [HttpGet("error")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableErrorPageRefactoring))]
+        public IActionResult ErrorPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        {
+            _logger.LogInformation("Refactored Error page requested: {Error}", error);
+
+            var errorMessage = message ?? error ?? "An error occurred";
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                return Content(_htmlRenderingService.RenderErrorPage(errorMessage), "text/html");
+            }
+
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = errorMessage
+            });
+        }
+
+        /// <summary>
+        /// GET /api/auth/claim-account - Show claim account page
+        /// Enabled by: EnableClaimAccountPageRefactoring feature flag
+        /// </summary>
+        [HttpGet("claim-account")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableClaimAccountPageRefactoring))]
+        public IActionResult ClaimAccountPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        {
+            _logger.LogInformation("Refactored Claim account page requested");
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                return Content(_htmlRenderingService.RenderClaimAccountForm(error, message), "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Claim account page"
+            });
+        }
+
+        /// <summary>
+        /// GET /api/auth/webauthn/register - Show WebAuthn registration page
+        /// Enabled by: EnableWebAuthnRegisterPageRefactoring feature flag
+        /// </summary>
+        [HttpGet("webauthn/register")]
+        [Authorize]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableWebAuthnRegisterPageRefactoring))]
+        public async Task<IActionResult> WebAuthnRegisterPage()
+        {
+            _logger.LogInformation("Refactored WebAuthn register page requested");
+
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized();
+            }
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                // Get registration options to pass to the page
+                var result = await _authOrchestrationService.GetWebAuthnRegisterOptionsAsync(username);
+                
+                if (!result.Success)
+                {
+                    return Content(_htmlRenderingService.RenderErrorPage(result.ErrorMessage ?? "Failed to generate WebAuthn options"), "text/html");
+                }
+
+                var optionsJson = System.Text.Json.JsonSerializer.Serialize(result.Options);
+                return Content(_htmlRenderingService.RenderWebAuthnRegistration(optionsJson), "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "WebAuthn registration page"
             });
         }
 

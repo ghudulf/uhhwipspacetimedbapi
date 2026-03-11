@@ -32,6 +32,9 @@ public interface IHtmlRenderingService
     /// <summary>Render an error page with a message.</summary>
     string RenderErrorPage(string error);
 
+    /// <summary>Render the logout confirmation page.</summary>
+    string RenderLogoutPage();
+
     /// <summary>Render the user registration form (admin only).</summary>
     string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false);
 

@@ -404,6 +404,14 @@ public class HtmlRenderingService : IHtmlRenderingService
         return RenderViewToStringAsync("Auth/Error", viewModel, httpContext).GetAwaiter().GetResult();
     }
 
+    public string RenderLogoutPage()
+    {
+        var httpContext = _httpContextAccessor.HttpContext 
+            ?? throw new InvalidOperationException("HttpContext is not available");
+        
+        return RenderViewToStringAsync<object>("Auth/Logout", null, httpContext).GetAwaiter().GetResult();
+    }
+
     public string RenderProfilePage(
         SpacetimeDB.Types.UserProfile user,
         bool totpEnabled,
