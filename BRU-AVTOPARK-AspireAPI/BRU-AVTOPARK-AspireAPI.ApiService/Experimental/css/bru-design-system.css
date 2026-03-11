@@ -196,7 +196,8 @@ body::before {
 .auth-page-body {
     background: var(--background-gradient);
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .auth-page-body::after {
@@ -400,10 +401,12 @@ p {
 .login-container {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     min-height: calc(100vh - 80px);
     padding: var(--space-2xl);
+    padding-top: var(--space-3xl);
+    overflow-y: auto;
 }
 
 /* Profile Layout */
@@ -430,7 +433,7 @@ p {
     border-radius: var(--radius-xl);
     border: 1px solid var(--border-color);
     box-shadow: var(--glass-shadow);
-    overflow: hidden;
+    overflow: visible;
     transition: all var(--transition-base);
     position: relative;
     width: 100%;
@@ -1007,9 +1010,23 @@ button:active, .btn:active {
     text-align: center;
     font-size: 1.375rem;
     font-weight: 600;
-    margin-bottom: var(--space-xl);
-    color: white;
+    margin-bottom: var(--space-md);
+    color: var(--text-inverse);
     letter-spacing: -0.015em;
+}
+
+.auth-subtitle {
+    text-align: center;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    margin-bottom: var(--space-xl);
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.auth-subtitle strong {
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
 /* ============================================
@@ -2371,4 +2388,59 @@ button:active, .btn:active {
     body::before {
         animation: none;
     }
+}
+
+/* ============================================
+   OAUTH AUTHORIZATION SCOPES
+   ============================================ */
+.oauth-scopes {
+    margin: var(--space-lg) 0;
+    padding: var(--space-lg);
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.oauth-scopes__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-md) 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.oauth-scopes__list {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.oauth-scopes__item {
+    display: flex !important;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: 0 !important;
+    list-style: none !important;
+}
+
+.oauth-scopes__item::before {
+    display: none !important;
+}
+
+.oauth-scopes__icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--primary-color);
+    opacity: 0.9;
+}
+
+.oauth-scopes__item span {
+    font-size: 0.9375rem;
+    color: var(--text-color);
+    line-height: 1.5;
+    flex: 1;
 }

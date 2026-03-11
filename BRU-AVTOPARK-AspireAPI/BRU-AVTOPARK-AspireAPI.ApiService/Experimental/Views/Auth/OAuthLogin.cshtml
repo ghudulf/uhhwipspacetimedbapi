@@ -1,10 +1,9 @@
-@* OAuth Login View - Modern Liquid Glass Design *@
-@model dynamic
-
+@using BRU_AVTOPARK.Models.ViewModels
+@model OAuthLoginViewModel
 @{
     Layout = "_AuthLayout";
-    ViewData["Title"] = "Authorize Application - BRU ID";
-    ViewData["BodyClass"] = "auth-page";
+    ViewData["Title"] = "Authorize Application";
+    ViewData["BodyClass"] = "auth-page-body";
     var requestId = Model?.RequestId ?? "";
     var clientName = Model?.ClientName ?? "Unknown Application";
     var scopes = Model?.Scopes ?? new string[] { };
@@ -29,7 +28,7 @@
     {
         return scope switch
         {
-            "openid" => "M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z",
+            "openid" => "M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z",
             "profile" => "M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z",
             "email" => "M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z",
             "roles" => "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
@@ -39,154 +38,123 @@
     }
 }
 
-<div class="auth-container">
-    <div class="auth-card glass-card slide-up" style="max-width: 480px;">
-        <div class="auth-card-inner">
-            <!-- Header -->
-            <div class="auth-header">
-                <div class="auth-logo">
-                    <div class="logo-icon pulse-glow">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="32" height="32" rx="8" fill="url(#oauth-gradient)"/>
-                            <path d="M16 8L20 12L16 16L12 12L16 8Z" fill="white"/>
-                            <path d="M12 16L16 20L20 16" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M16 20V24" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                            <defs>
-                                <linearGradient id="oauth-gradient" x1="0" y1="0" x2="32" y2="32">
-                                    <stop offset="0%" stop-color="var(--primary)"/>
-                                    <stop offset="100%" stop-color="var(--secondary)"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                    <span class="logo-text">BRU ID</span>
-                </div>
-                <h1 class="auth-title">Authorize Application</h1>
-                <p class="auth-subtitle"><strong>@clientName</strong> wants to access your account</p>
-            </div>
+<div class="login-container fade-in">
+    <div class="card card--dark">
+        <div class="card__body">
+            <partial name="_BruIdHeader" />
 
-            <!-- Error Message -->
-            @if (error != null)
-            {
-                <div class="status-message status-error glass-surface slide-down">
-                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>@error</span>
-                </div>
-            }
+            <h1 class="auth-title">Authorize Application</h1>
+            <p class="auth-subtitle"><strong>@clientName</strong> wants to access your account</p>
 
-            <!-- Scopes -->
+            <partial name="_StatusMessages"
+                     model="new StatusViewModel(error, null)" />
+
             @if (scopes != null && scopes.Length > 0)
             {
-                <div class="scopes-container glass-surface">
-                    <h3 class="scopes-title">This application will be able to:</h3>
-                    <ul class="scopes-list">
+                <div class="oauth-scopes">
+                    <h3 class="oauth-scopes__title">This application will be able to:</h3>
+                    <ul class="oauth-scopes__list">
                         @foreach (var scope in scopes)
                         {
-                            <li class="scope-item">
-                                <div class="scope-icon-wrapper">
-                                    <svg class="scope-icon" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="@GetScopeIcon(scope)" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <span class="scope-text">@GetScopeDescription(scope)</span>
+                            <li class="oauth-scopes__item">
+                                <svg class="oauth-scopes__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="@GetScopeIcon(scope)" clip-rule="evenodd"/>
+                                </svg>
+                                <span>@GetScopeDescription(scope)</span>
                             </li>
                         }
                     </ul>
                 </div>
             }
 
-            <!-- Form -->
-            <form method="POST" action="/connect/authorize/callback" class="auth-form">
+            <form method="POST" action="/connect/authorize/callback" id="oauthLoginForm" novalidate>
                 <input type="hidden" name="requestId" value="@requestId">
 
-                <div class="form-group">
-                    <label for="username" class="form-label">Username</label>
-                    <div class="input-wrapper">
-                        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
-                        </svg>
-                        <input type="text" id="username" name="username" class="form-input glass-input" placeholder="Enter your username" required autocomplete="username">
-                    </div>
-                </div>
+                <partial name="_FormField"
+                         model='new FormFieldViewModel("username", "Username", Placeholder: "Enter your username", Required: true)' />
 
-                <div class="form-group">
-                    <label for="password" class="form-label">Password</label>
-                    <div class="input-wrapper">
-                        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                        </svg>
-                        <input type="password" id="password" name="password" class="form-input glass-input" placeholder="Enter your password" required autocomplete="current-password">
-                    </div>
-                </div>
+                <partial name="_FormField"
+                         model='new FormFieldViewModel("password", "Password", Type: "password", Placeholder: "Enter your password", Required: true)' />
 
-                <button type="submit" class="btn btn-primary btn-full ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
+                <button type="submit" class="btn btn--auth-primary">
                     <span>Authorize</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
                 </button>
             </form>
 
-            <!-- Divider -->
-            <div class="auth-divider">
+            <div class="divider">
                 <span>or</span>
             </div>
 
-            <!-- Cancel -->
-            <a href="/api/auth/login" class="btn btn-secondary btn-full">
-                <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            <a href="/api/auth/login" class="btn btn--secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
                 <span>Cancel and return to login</span>
             </a>
         </div>
     </div>
+
+    <partial name="_AuthFooterLinks" />
 </div>
 
 <style>
-    .scopes-container {
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        border-radius: var(--radius-lg);
+    /* Scoped OAuth permissions styling */
+    .oauth-scopes {
+        margin: 1.5rem 0;
+        padding: 1.5rem;
+        background: var(--surface-elevated);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
     }
-    .scopes-title {
-        font-size: 0.875rem;
+    
+    .oauth-scopes__title {
+        font-size: 0.8125rem;
         font-weight: 600;
         color: var(--text-secondary);
         margin: 0 0 1rem 0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
-    .scopes-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
+    
+    .oauth-scopes__list {
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 1rem;
     }
-    .scope-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+    
+    .oauth-scopes__item {
+        display: flex !important;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 0 !important;
+        list-style: none !important;
+        list-style-type: none !important;
     }
-    .scope-icon-wrapper {
-        width: 32px;
-        height: 32px;
-        border-radius: var(--radius-md);
-        background: var(--primary-alpha);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    
+    .oauth-scopes__item::before,
+    .oauth-scopes__item::marker {
+        display: none !important;
+        content: none !important;
+    }
+    
+    .oauth-scopes__icon {
         flex-shrink: 0;
+        margin-top: 2px;
+        color: var(--primary-color);
+        opacity: 0.9;
     }
-    .scope-icon {
-        width: 16px;
-        height: 16px;
-        color: var(--primary);
-    }
-    .scope-text {
+    
+    .oauth-scopes__item span {
         font-size: 0.9375rem;
-        color: var(--text-primary);
+        color: var(--text-color);
+        line-height: 1.5;
+        flex: 1;
     }
 </style>

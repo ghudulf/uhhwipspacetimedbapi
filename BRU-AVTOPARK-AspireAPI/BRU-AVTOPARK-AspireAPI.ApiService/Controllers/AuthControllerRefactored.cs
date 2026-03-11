@@ -18,6 +18,7 @@ using Fido2NetLib;
 using Fido2NetLib.Objects;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -25,6 +26,8 @@ using SpacetimeDB.Types;
 using SpacetimeDB;
 using Identity = SpacetimeDB.Identity;
 using Microsoft.AspNetCore;
+using Microsoft.Extensions.Caching.Memory;
+using TicketSalesApp.Services.Interfaces;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -43,19 +46,31 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly IRequestDetector _requestDetector;
         private readonly IOptions<FeatureFlagOptions> _featureFlags;
         private readonly ILogger<AuthControllerRefactored> _logger;
+        private readonly IMemoryCache _cache;
+        private readonly IOidcHelperService _oidcHelperService;
+        private readonly IOpenIdConnectService _openIdConnectService;
+        private readonly ISpacetimeDBService _spacetimeService;
 
         public AuthControllerRefactored(
             IAuthOrchestrationService authOrchestrationService,
             IHtmlRenderingService htmlRenderingService,
             IRequestDetector requestDetector,
             IOptions<FeatureFlagOptions> featureFlags,
-            ILogger<AuthControllerRefactored> logger)
+            ILogger<AuthControllerRefactored> logger,
+            IMemoryCache cache,
+            IOidcHelperService oidcHelperService,
+            IOpenIdConnectService openIdConnectService,
+            ISpacetimeDBService spacetimeService)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
             _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
             _requestDetector = requestDetector ?? throw new ArgumentNullException(nameof(requestDetector));
             _featureFlags = featureFlags ?? throw new ArgumentNullException(nameof(featureFlags));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _oidcHelperService = oidcHelperService ?? throw new ArgumentNullException(nameof(oidcHelperService));
+            _openIdConnectService = openIdConnectService ?? throw new ArgumentNullException(nameof(openIdConnectService));
+            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
         #region Traditional Authentication (2 endpoints)
@@ -1332,11 +1347,44 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             
             if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
             {
-                _logger.LogInformation("User not authenticated, redirecting to login");
+                _logger.LogInformation("User not authenticated, showing OIDC login form");
                 
-                // User not logged in - redirect to login page
-                // TODO: Implement login page redirect with return URL
-                return Challenge(CookieAuthenticationDefaults.AuthenticationScheme);
+                // Store request for later - CRITICAL: Store the ENTIRE OpenIddict request context
+                // This preserves ALL parameters including PKCE (code_challenge, code_challenge_method)
+                var requestId = Guid.NewGuid().ToString();
+                
+                // Store ALL request parameters to preserve OpenIddict context
+                var requestParams = new Dictionary<string, string>();
+                foreach (var param in request.GetParameters())
+                {
+                    // OpenIddictParameter is a struct that wraps the actual value
+                    // Convert to string, handling null values
+                    var stringValue = param.Value.Value?.ToString();
+                    if (!string.IsNullOrEmpty(stringValue))
+                    {
+                        requestParams[param.Key] = stringValue;
+                    }
+                }
+                
+                _cache.Set($"oidc_request_params_{requestId}", requestParams, TimeSpan.FromMinutes(10));
+                
+                _logger.LogInformation("Stored OIDC request with {Count} parameters including PKCE data", requestParams.Count);
+
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    // Get client display name
+                    var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(request.ClientId ?? "");
+                    var clientName = request.ClientId ?? "Unknown";
+                    if (clientResult.success && clientResult.application != null)
+                    {
+                        clientName = await _oidcHelperService.GetDisplayNameAsync(clientResult.application) ?? clientName;
+                    }
+                    
+                    var scopes = request.Scope?.Split(' ') ?? Array.Empty<string>();
+                    return Content(_htmlRenderingService.RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
+                }
+
+                return Ok(new { login_url = $"/api/auth/oauth/login?request_id={requestId}" });
             }
 
             var username = authenticateResult.Principal.Identity?.Name;
@@ -2813,7 +2861,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId, "Unknown", Array.Empty<string>(), 
+                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(), 
                             "Invalid or expired request. Please try again."), "text/html");
                     }
                     return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
@@ -2824,14 +2872,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var redirectUri = requestParams.GetValueOrDefault("redirect_uri", "");
                 var scope = requestParams.GetValueOrDefault("scope", "");
 
-                // Authenticate user
-                var authResult = await _authOrchestrationService.AuthenticateAsync(request.Username, request.Password);
-                if (authResult == null)
+                // Authenticate user using LoginAsync (not deprecated AuthenticateAsync)
+                var loginResult = await _authOrchestrationService.LoginAsync(request.Username, request.Password);
+                if (!loginResult.Success || loginResult.User == null)
                 {
                     _logger.LogWarning("Authentication failed for user: {Username}", request.Username);
                     
                     // Get client info for re-rendering the form
-                    var clientResult = await _oidcHelperService.GetApplicationByClientIdAsync(clientId);
+                    var clientResult = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
                     var clientName = clientResult.success && clientResult.application != null 
                         ? await _oidcHelperService.GetDisplayNameAsync(clientResult.application) ?? clientId
                         : clientId;
@@ -2839,16 +2887,32 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId, clientName, scopes, 
+                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, clientName, scopes, 
                             "Invalid username or password. Please try again."), "text/html");
                     }
                     return Unauthorized(new { error = "invalid_credentials", error_description = "Invalid username or password" });
                 }
 
-                _logger.LogInformation("User authenticated successfully: {Username}, UserId: {UserId}", authResult.Username, authResult.UserId);
+                // Get the actual SpacetimeDB Identity from the database
+                var conn = _spacetimeService.GetConnection();
+                var userProfile = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == request.Username);
+                if (userProfile == null)
+                {
+                    _logger.LogError("User profile not found for authenticated user: {Username}", request.Username);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "User profile not found."
+                        }));
+                }
+
+                var userId = userProfile.UserId;
+                _logger.LogInformation("User authenticated successfully: {Username}, UserId: {UserId}", request.Username, userId);
 
                 // Get the application for authorization
-                var appResult = await _oidcHelperService.GetApplicationByClientIdAsync(clientId);
+                var appResult = await _openIdConnectService.GetApplicationByClientIdAsync(clientId);
                 if (!appResult.success || appResult.application == null)
                 {
                     _logger.LogError("Failed to get application: {ClientId}, Error: {Error}", 
@@ -2864,7 +2928,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 // Build OAuth claims identity using service
                 var identityResult = await _authOrchestrationService.BuildOAuthTokenIdentityAsync(
-                    authResult.UserId, 
+                    userId, 
                     scope?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>(),
                     Array.Empty<string>());
 
@@ -2884,9 +2948,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 var cookieIdentity = new ClaimsIdentity(
                     new[]
                     {
-                        new Claim(ClaimTypes.Name, authResult.Username),
-                        new Claim(ClaimTypes.NameIdentifier, authResult.UserId.ToString()),
-                        new Claim(Claims.Subject, authResult.UserId.ToString())
+                        new Claim(ClaimTypes.Name, request.Username),
+                        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                        new Claim(OpenIddictConstants.Claims.Subject, userId.ToString())
                     },
                     CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -2899,7 +2963,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
                     });
 
-                _logger.LogInformation("Cookie authentication successful for user: {Username}", authResult.Username);
+                _logger.LogInformation("Cookie authentication successful for user: {Username}", request.Username);
 
                 // Reconstruct the authorization URL with ALL original parameters
                 var authUrl = "/connect/authorize?";
@@ -2924,7 +2988,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogError(ex, "Error processing authorization callback for RequestId: {RequestId}", request.RequestId);
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
+                    return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
                         "An error occurred while processing your request. Please try again."), "text/html");
                 }
                 return StatusCode(500, new { error = "server_error", 
@@ -2981,18 +3045,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        var clientData = new OAuthClientFormViewModel
+                        var clientData = new BRU_AVTOPARK.Models.Responses.GetClientResponse
                         {
                             ClientId = request.ClientId,
                             DisplayName = request.DisplayName,
                             RedirectUris = _oidcHelperService.SplitTextareaInput(request.RedirectUris),
                             PostLogoutRedirectUris = _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
-                            RequireConsent = request.RequireConsent,
-                            IsEdit = false,
-                            Token = request.Token
+                            RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOAuthClientForm(clientData), "text/html");
+                        return Content(_htmlRenderingService.RenderOidcClientForm(null, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -3110,18 +3172,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        var clientData = new OAuthClientFormViewModel
+                        var clientData = new BRU_AVTOPARK.Models.Responses.GetClientResponse
                         {
                             ClientId = clientId,
                             DisplayName = request.DisplayName,
                             RedirectUris = _oidcHelperService.SplitTextareaInput(request.RedirectUris),
                             PostLogoutRedirectUris = _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
-                            RequireConsent = request.RequireConsent,
-                            IsEdit = true,
-                            Token = request.Token
+                            RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOAuthClientForm(clientData), "text/html");
+                        return Content(_htmlRenderingService.RenderOidcClientForm(clientId, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>
