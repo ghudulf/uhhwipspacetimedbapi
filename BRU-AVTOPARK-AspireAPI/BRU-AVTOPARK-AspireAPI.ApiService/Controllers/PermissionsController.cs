@@ -9,6 +9,10 @@ using TicketSalesApp.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using SpacetimeDB.Types;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -20,17 +24,83 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<PermissionsController> _logger;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
         public PermissionsController(
             IPermissionService permissionService,
             IAdminActionLogger adminLogger,
-            ILogger<PermissionsController> logger)
+            ILogger<PermissionsController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
        
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("permissions", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => new { permissions = await _permissionService.GetAllPermissionsAsync() },
+                "read" => new { permission = await _permissionService.GetPermissionByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
+            var model = request.Payload?.Deserialize<CreatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
+            var snapshot = await _permissionService.GetAllPermissionsAsync();
+            return new { operation = "create", success = created is not null, entity = created, snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.edit")) throw new UnauthorizedAccessException("Not authorized for permissions.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
+            var entity = await _permissionService.GetPermissionByIdAsync(id);
+            var snapshot = await _permissionService.GetAllPermissionsAsync();
+            return new { operation = "update", success, entity, snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _permissionService.DeletePermissionAsync(id);
+            var snapshot = await _permissionService.GetAllPermissionsAsync();
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetPermissions()

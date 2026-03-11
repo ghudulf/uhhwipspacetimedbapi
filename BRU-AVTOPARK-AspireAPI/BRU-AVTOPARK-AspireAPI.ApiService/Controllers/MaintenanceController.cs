@@ -12,6 +12,10 @@ using SpacetimeDB.Types;
 using SpacetimeDB; // Added for direct DB access
 using TicketSalesApp.Services.Interfaces;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -23,17 +27,83 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<MaintenanceController> _logger;
         private readonly ISpacetimeDBService _spacetimeService; // Added SpacetimeDBService
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
         public MaintenanceController(
             IMaintenanceService maintenanceService,
             ILogger<MaintenanceController> logger,
-            ISpacetimeDBService spacetimeService) // Added SpacetimeDBService
+            ISpacetimeDBService spacetimeService, // Added SpacetimeDBService
+            IRealtimeEventBus realtimeEventBus)
         {
             _maintenanceService = maintenanceService ?? throw new ArgumentNullException(nameof(maintenanceService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService)); // Added SpacetimeDBService
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
         
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("maintenance", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => new { records = await _maintenanceService.GetAllMaintenanceRecordsAsync() },
+                "read" => new { record = await _maintenanceService.GetMaintenanceByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("maintenance.create")) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
+            var model = request.Payload?.Deserialize<CreateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var success = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, "General");
+            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+            return new { operation = "create", success, snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("maintenance.edit")) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
+            var entity = await _maintenanceService.GetMaintenanceByIdAsync(id);
+            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+            return new { operation = "update", success, entity, snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("maintenance.delete")) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _maintenanceService.DeleteMaintenanceAsync(id);
+            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords()

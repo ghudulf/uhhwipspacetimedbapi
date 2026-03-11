@@ -10,6 +10,10 @@ using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -20,15 +24,81 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
         public RouteSchedulesController(
             IRouteScheduleService routeScheduleService,
-            ILogger<RouteSchedulesController> logger)
+            ILogger<RouteSchedulesController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _routeScheduleService = routeScheduleService ?? throw new ArgumentNullException(nameof(routeScheduleService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
        
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => new { schedules = await _routeScheduleService.GetAllSchedulesAsync() },
+                "read" => new { schedule = await _routeScheduleService.GetScheduleByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("schedules.create")) throw new UnauthorizedAccessException("Not authorized for schedules.create");
+            var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var success = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), (ulong)new DateTimeOffset(m.DepartureTime).ToUnixTimeMilliseconds(), (ulong)new DateTimeOffset(m.ArrivalTime).ToUnixTimeMilliseconds(), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
+            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
+            return new { operation = "create", success, snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("schedules.edit")) throw new UnauthorizedAccessException("Not authorized for schedules.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
+            var entity = await _routeScheduleService.GetScheduleByIdAsync(id);
+            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
+            return new { operation = "update", success, entity, snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("schedules.delete")) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _routeScheduleService.DeleteScheduleAsync(id);
+            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules(

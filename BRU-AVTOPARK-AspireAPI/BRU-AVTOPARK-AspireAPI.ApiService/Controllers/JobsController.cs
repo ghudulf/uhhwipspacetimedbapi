@@ -10,6 +10,10 @@ using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -20,14 +24,80 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IEmployeeService _employeeService;
         private readonly ILogger<JobsController> _logger;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
         public JobsController(
             IEmployeeService employeeService,
-            ILogger<JobsController> logger)
+            ILogger<JobsController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _employeeService = employeeService ?? throw new ArgumentNullException(nameof(employeeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("jobs", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => new { jobs = await _employeeService.GetAllJobsAsync() },
+                "read" => new { job = await _employeeService.GetJobByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            var model = request.Payload?.Deserialize<CreateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
+            var snapshot = await _employeeService.GetAllJobsAsync();
+            return new { operation = "create", success, snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
+            var entity = await _employeeService.GetJobByIdAsync(id);
+            var snapshot = await _employeeService.GetAllJobsAsync();
+            return new { operation = "update", success, entity, snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _employeeService.DeleteJobAsync(id);
+            var snapshot = await _employeeService.GetAllJobsAsync();
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetJobs()

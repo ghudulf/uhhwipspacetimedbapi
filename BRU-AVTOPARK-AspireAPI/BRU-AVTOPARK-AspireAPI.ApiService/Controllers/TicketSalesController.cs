@@ -15,6 +15,10 @@
     using Log = Serilog.Log;
     using System.Text.Json;
 
+    using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+    using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
     namespace TicketSalesApp.AdminServer.Controllers
     {
         public static class DateTimeExtensions
@@ -33,15 +37,126 @@
             private readonly ISpacetimeDBService _spacetimeService;
             private readonly ITicketSalesService _ticketSalesService;
             private readonly IConfiguration _configuration;
+            private readonly IRealtimeEventBus _realtimeEventBus;
+            private readonly ILogger<TicketSalesController> _logger;
 
-            public TicketSalesController(ISpacetimeDBService spacetimeService, ITicketSalesService ticketSalesService, IConfiguration configuration)
+            public TicketSalesController(ISpacetimeDBService spacetimeService, ITicketSalesService ticketSalesService, IConfiguration configuration, IRealtimeEventBus realtimeEventBus, ILogger<TicketSalesController> logger)
             {
                 _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
                 _ticketSalesService = ticketSalesService ?? throw new ArgumentNullException(nameof(ticketSalesService));
                 _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+                _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             }
 
             
+
+            [HttpGet("realtime/ws")]
+            public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+            {
+                if (!IsAuthenticated())
+                {
+                    Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+
+                await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                    HttpContext,
+                    _realtimeEventBus.SubscribeAsync("ticket-sales", cancellationToken),
+                    HandleRealtimeCrudAsync,
+                    _logger,
+                    cancellationToken);
+            }
+
+            private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+            {
+                var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+
+                return command switch
+                {
+                    "read_all" => new { sales = BuildSalesSnapshot() },
+                    "read" => new { sale = BuildSaleById(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                    "create" => await HandleCreateCommandAsync(request),
+                    "update" => new { operation = "update", success = false, message = "Update operation is not implemented in SpacetimeDB module" },
+                    "delete" => new { operation = "delete", success = false, message = "Delete operation is not implemented in SpacetimeDB module" },
+                    _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+                };
+            }
+
+            private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+            {
+                if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+                var model = request.Payload?.Deserialize<CreateTicketSaleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    ?? throw new InvalidOperationException("payload is required for create");
+
+                var created = ExecuteCreateSale(model);
+                return new { operation = "create", success = created is not null, entity = created, snapshot = BuildSalesSnapshot() };
+            }
+
+            private object? BuildSaleById(uint saleId)
+            {
+                var conn = _spacetimeService.GetConnection();
+                var sale = conn.Db.Sale.SaleId.Find(saleId);
+                if (sale == null) return null;
+
+                var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
+                var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
+
+                return new
+                {
+                    SaleId = sale.SaleId,
+                    SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sale.SaleDate).DateTime,
+                    TicketId = sale.TicketId,
+                    TicketSoldToUser = sale.TicketSoldToUser,
+                    TicketSoldToUserPhone = sale.TicketSoldToUserPhone,
+                    SellerId = sale.SellerId?.ToString(),
+                    Ticket = ticket != null ? new
+                    {
+                        TicketId = ticket.TicketId,
+                        RouteId = ticket.RouteId,
+                        TicketPrice = ticket.TicketPrice,
+                        Route = route != null ? new { route.RouteId, route.StartPoint, route.EndPoint } : null
+                    } : null
+                };
+            }
+
+            private List<object> BuildSalesSnapshot()
+            {
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.Iter()
+                    .Select(s => BuildSaleById(s.SaleId))
+                    .Where(s => s != null)
+                    .Cast<object>()
+                    .ToList();
+            }
+
+            private object? ExecuteCreateSale(CreateTicketSaleModel model)
+            {
+                var conn = _spacetimeService.GetConnection();
+
+                var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
+                if (existingSales.Any())
+                {
+                    throw new InvalidOperationException($"Ticket {model.TicketId} already sold");
+                }
+
+                var identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+                if (string.IsNullOrWhiteSpace(identityClaim))
+                {
+                    throw new UnauthorizedAccessException("Identity claim missing");
+                }
+
+                var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == identityClaim || u.Login == identityClaim);
+                if (seller == null)
+                {
+                    throw new InvalidOperationException("Seller not found");
+                }
+
+                conn.Reducers.CreateSale((uint)model.TicketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? string.Empty, "POS", null);
+
+                var newSale = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).OrderByDescending(s => s.SaleId).FirstOrDefault();
+                return newSale == null ? null : BuildSaleById(newSale.SaleId);
+            }
 
             [HttpGet]
             public ActionResult<IEnumerable<dynamic>> GetTicketSales()

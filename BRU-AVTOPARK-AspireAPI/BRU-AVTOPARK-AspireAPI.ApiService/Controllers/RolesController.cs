@@ -12,6 +12,10 @@ using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -24,19 +28,85 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<RolesController> _logger;
         private readonly ISpacetimeDBService _spacetimeService;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
         public RolesController(
             IRoleService roleService,
             IAdminActionLogger adminLogger,
             ILogger<RolesController> logger,
-            ISpacetimeDBService spacetimeService)
+            ISpacetimeDBService spacetimeService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
        
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("roles", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => new { roles = await _roleService.GetAllRolesAsync() },
+                "read" => new { role = await _roleService.GetRoleByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.create")) throw new UnauthorizedAccessException("Not authorized for roles.create");
+            var model = request.Payload?.Deserialize<CreateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var created = await _roleService.CreateRoleAsync(model.Name, model.Description, model.LegacyRoleId, model.Priority, model.PermissionIds);
+            var snapshot = await _roleService.GetAllRolesAsync();
+            return new { operation = "create", success = created is not null, entity = created, snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.edit")) throw new UnauthorizedAccessException("Not authorized for roles.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
+            var entity = await _roleService.GetRoleByIdAsync(id);
+            var snapshot = await _roleService.GetAllRolesAsync();
+            return new { operation = "update", success, entity, snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.delete")) throw new UnauthorizedAccessException("Not authorized for roles.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _roleService.DeleteRoleAsync(id);
+            var snapshot = await _roleService.GetAllRolesAsync();
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRoles()
         {
