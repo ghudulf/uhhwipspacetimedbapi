@@ -890,22 +890,44 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
         try
         {
-            // Step 1: Parse the userId string to Identity
-            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
-
-            // Step 2: Verify the user still exists and is active
             var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter()
-                .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive);
+            UserProfile? user = null;
 
-            if (user == null)
+            // Step 1: Try to parse as hex string (SpacetimeDB.Identity)
+            try
             {
-                _logger.LogWarning("User {UserId} not found or inactive during token exchange", userId);
-                return UserValidationResult.Failed("User not found or inactive");
+                var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+                user = conn.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive);
+                
+                if (user != null)
+                {
+                    _logger.LogInformation("User validation successful (hex Identity) for token exchange: {UserId}", userId);
+                    return UserValidationResult.Successful(user.UserId);
+                }
+            }
+            catch (FormatException)
+            {
+                // Not a hex string, try LegacyUserId
+                _logger.LogDebug("UserId {UserId} is not a hex string, trying LegacyUserId lookup", userId);
             }
 
-            _logger.LogInformation("User validation successful for token exchange: {UserId}", userId);
-            return UserValidationResult.Successful(identity);
+            // Step 2: Try to parse as LegacyUserId (uint)
+            if (uint.TryParse(userId, out var legacyUserId))
+            {
+                user = conn.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId && u.IsActive);
+                
+                if (user != null)
+                {
+                    _logger.LogInformation("User validation successful (LegacyUserId) for token exchange: {UserId} -> {HexIdentity}", userId, user.UserId);
+                    return UserValidationResult.Successful(user.UserId);
+                }
+            }
+
+            // Step 3: User not found
+            _logger.LogWarning("User {UserId} not found or inactive during token exchange", userId);
+            return UserValidationResult.Failed("User not found or inactive");
         }
         catch (Exception ex)
         {
