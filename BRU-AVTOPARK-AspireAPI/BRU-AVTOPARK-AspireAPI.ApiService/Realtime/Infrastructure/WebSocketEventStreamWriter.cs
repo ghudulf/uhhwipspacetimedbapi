@@ -5,11 +5,23 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
+public sealed record RealtimeCrudRequest(
+    string Command,
+    string? RequestId,
+    uint? Id,
+    JsonElement? Payload);
+
 public static class WebSocketEventStreamWriter
 {
-    public static async Task StreamAsync(
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public static async Task StreamCrudSessionAsync(
         HttpContext context,
         IAsyncEnumerable<ApiDomainEvent> events,
+        Func<RealtimeCrudRequest, CancellationToken, Task<object>> requestHandler,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -21,24 +33,112 @@ public static class WebSocketEventStreamWriter
         }
 
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync("bru.events.v1");
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await foreach (var evt in events.WithCancellation(cancellationToken))
+        var eventPumpTask = Task.Run(async () =>
         {
-            if (webSocket.State != WebSocketState.Open)
+            await foreach (var evt in events.WithCancellation(linkedCts.Token))
+            {
+                if (webSocket.State != WebSocketState.Open)
+                {
+                    break;
+                }
+
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "event",
+                    eventName = evt.EventName,
+                    resource = evt.Resource,
+                    data = evt
+                }, linkedCts.Token);
+            }
+        }, linkedCts.Token);
+
+        try
+        {
+            while (webSocket.State == WebSocketState.Open && !linkedCts.Token.IsCancellationRequested)
+            {
+                var request = await ReceiveRequestAsync(webSocket, linkedCts.Token);
+                if (request is null)
+                {
+                    break;
+                }
+
+                try
+                {
+                    var data = await requestHandler(request, linkedCts.Token);
+                    await SendJsonAsync(webSocket, new
+                    {
+                        type = "result",
+                        requestId = request.RequestId,
+                        ok = true,
+                        data
+                    }, linkedCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "WebSocket CRUD command failed: {Command}", request.Command);
+                    await SendJsonAsync(webSocket, new
+                    {
+                        type = "result",
+                        requestId = request.RequestId,
+                        ok = false,
+                        error = ex.Message
+                    }, linkedCts.Token);
+                }
+            }
+        }
+        finally
+        {
+            linkedCts.Cancel();
+
+            try
+            {
+                await eventPumpTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+
+            if (webSocket.State == WebSocketState.Open)
+            {
+                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Session completed", CancellationToken.None);
+            }
+        }
+    }
+
+    private static async Task<RealtimeCrudRequest?> ReceiveRequestAsync(WebSocket webSocket, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[8 * 1024];
+        using var messageBuffer = new MemoryStream();
+
+        while (true)
+        {
+            var result = await webSocket.ReceiveAsync(buffer, cancellationToken);
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                return null;
+            }
+
+            if (result.Count > 0)
+            {
+                messageBuffer.Write(buffer, 0, result.Count);
+            }
+
+            if (result.EndOfMessage)
             {
                 break;
             }
-
-            var payload = JsonSerializer.Serialize(evt);
-            var buffer = Encoding.UTF8.GetBytes(payload);
-            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, cancellationToken);
         }
 
-        if (webSocket.State == WebSocketState.Open)
-        {
-            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stream completed", cancellationToken);
-        }
+        var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
+        return JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+    }
 
-        logger.LogDebug("WebSocket event stream completed for {Path}", context.Request.Path);
+    private static async Task SendJsonAsync(WebSocket socket, object payload, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(payload, JsonOptions);
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
     }
 }

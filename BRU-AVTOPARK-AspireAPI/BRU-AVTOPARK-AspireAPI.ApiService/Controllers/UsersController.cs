@@ -55,11 +55,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            await WebSocketEventStreamWriter.StreamAsync(
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 _realtimeEventBus.SubscribeAsync("users", cancellationToken),
+                HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
+        }
+
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+
+            return command switch
+            {
+                "read_all" => new { users = await _userService.GetAllUsersAsync() },
+                "read" => new { user = await _userService.GetUserByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            var model = request.Payload?.Deserialize<CreateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+
+            var actionResult = await CreateUser(model);
+            var snapshot = await _userService.GetAllUsersAsync();
+            return new { operation = "create", actionResult = ControllerActionResultMapper.Map(actionResult.Result ?? new OkObjectResult(actionResult.Value)), snapshot };
+        }
+
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+
+            var actionResult = await UpdateUser(id, model);
+            var snapshot = await _userService.GetAllUsersAsync();
+            return new { operation = "update", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+        }
+
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var actionResult = await DeleteUser(id);
+            var snapshot = await _userService.GetAllUsersAsync();
+            return new { operation = "delete", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
         }
 
         [HttpGet]
