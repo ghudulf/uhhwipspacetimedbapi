@@ -1,321 +1,115 @@
 @using BRU_AVTOPARK.Models.ViewModels
 @model OidcClientFormViewModel
 @{
-    Layout = "_AdminLayout";
+    Layout = "_AuthLayout";
     ViewData["Title"] = (Model.IsEdit ? "Edit Client" : "New Client");
     ViewData["BodyClass"] = "";
 }
 
-<div class="page-container slide-up">
-    <div class="form-card glass-card">
-        <!-- Header -->
-        <div class="form-header">
-            <div class="form-icon-wrapper pulse-glow">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    @if (Model.IsEdit)
-                    {
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    }
-                    else
-                    {
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="12" y1="8" x2="12" y2="16"/>
-                        <line x1="8" y1="12" x2="16" y2="12"/>
-                    }
-                </svg>
-            </div>
-            <div class="form-header-text">
-                <h1 class="form-title">@(Model.IsEdit ? "Edit Client" : "Create New Client")</h1>
-                <p class="form-subtitle">@(Model.IsEdit ? "Modify your OpenID Connect client application settings" : "Register a new OpenID Connect client application")</p>
-            </div>
+<div class="container fade-in">
+    <div class="card">
+        <div class="card-header">
+            <h2>@(Model.IsEdit ? "Edit Client" : "Create New Client")</h2>
         </div>
-
-        <!-- Info Box -->
-        <div class="info-box glass-surface">
-            <svg class="info-icon" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-            </svg>
-            <p>@(Model.IsEdit ? "Be careful when modifying redirect URIs and permissions - changes may affect active sessions." : "The client ID and secret will be used by your application to authenticate with the authorization server.")</p>
-        </div>
-
-        <!-- Form -->
-        <form method="POST" 
-              action="@(Model.IsEdit ? $"/api/auth/connect/update-client/{Uri.EscapeDataString(Model.ClientId!)}" : "/api/auth/connect/register-client")" 
-              id="clientForm"
-              class="client-form">
+        <div class="card-body">
+            <div class="info-box">
+                <p>@(Model.IsEdit ? "Edit OpenID Connect client application settings. Be careful when modifying redirect URIs and permissions." : "Register a new OpenID Connect client application. The client ID and secret will be used by your application to authenticate with the authorization server.")</p>
+            </div>
             
-            @if (!string.IsNullOrEmpty(Model.Token))
-            {
-                <input type="hidden" name="token" value="@Model.Token" />
-            }
-
-            <div class="form-grid">
+            <form method="POST" 
+                  action="@(Model.IsEdit ? $"/api/auth/connect/update-client/{Uri.EscapeDataString(Model.ClientId!)}" : "/api/auth/connect/register-client")" 
+                  id="clientForm">
+                
+                @if (!string.IsNullOrEmpty(Model.Token))
+                {
+                    <input type="hidden" name="token" value="@Model.Token" />
+                }
+                
                 <div class="form-group">
-                    <label for="clientId" class="form-label">
-                        Client ID
-                        <span class="required-mark">*</span>
-                    </label>
-                    <div class="input-wrapper">
-                        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <input type="text" 
-                               id="clientId" 
-                               name="clientId" 
-                               value="@(Model.ClientId ?? "")" 
-                               class="form-input glass-input @(Model.IsEdit ? "input-readonly" : "")"
-                               @(Model.IsEdit ? "readonly" : "required") 
-                               placeholder="e.g., my-app" />
-                    </div>
+                    <label for="clientId">Client ID *</label>
+                    <input type="text" 
+                           id="clientId" 
+                           name="clientId" 
+                           value="@(Model.ClientId ?? "")" 
+                           @(Model.IsEdit ? "readonly" : "required") 
+                           placeholder="e.g., my-app" />
                     @if (Model.IsEdit)
                     {
                         <input type="hidden" name="clientId" value="@Model.ClientId" />
                     }
                 </div>
-
+                
                 <div class="form-group">
-                    <label for="displayName" class="form-label">
-                        Display Name
-                        <span class="required-mark">*</span>
-                    </label>
-                    <div class="input-wrapper">
-                        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd"/>
-                        </svg>
-                        <input type="text" 
-                               id="displayName" 
-                               name="displayName" 
-                               value="@(Model.DisplayName ?? "")" 
-                               class="form-input glass-input"
-                               required 
-                               placeholder="e.g., My Application" />
-                    </div>
+                    <label for="displayName">Display Name *</label>
+                    <input type="text" 
+                           id="displayName" 
+                           name="displayName" 
+                           value="@(Model.DisplayName ?? "")" 
+                           required 
+                           placeholder="e.g., My Application" />
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="clientSecret" class="form-label">
-                    Client Secret
-                    @if (!Model.IsEdit) { <span class="required-mark">*</span> }
-                </label>
-                <div class="input-wrapper">
-                    <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                    </svg>
+                
+                <div class="form-group">
+                    <label for="clientSecret">Client Secret @(Model.IsEdit ? "(optional)" : "*")</label>
                     <input type="text" 
                            id="clientSecret" 
                            name="clientSecret" 
-                           class="form-input glass-input"
                            @(!Model.IsEdit ? "required" : "") 
                            placeholder="@(Model.IsEdit ? "Leave blank to keep current secret" : "Enter a secure secret")" />
+                    @if (Model.IsEdit)
+                    {
+                        <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">Leave blank to keep the current secret</p>
+                    }
                 </div>
-                @if (Model.IsEdit)
-                {
-                    <p class="form-hint">Leave blank to keep the current secret</p>
-                }
-            </div>
-
-            <div class="form-group">
-                <label for="redirectUris" class="form-label">
-                    Redirect URIs
-                    <span class="required-mark">*</span>
-                </label>
-                <div class="textarea-wrapper">
+                
+                <div class="form-group">
+                    <label for="redirectUris">Redirect URIs * (one per line)</label>
                     <textarea id="redirectUris" 
                               name="redirectUris" 
-                              class="form-textarea glass-input"
                               rows="3" 
                               required 
                               placeholder="https://myapp.com/callback&#10;https://localhost:5000/callback">@Model.RedirectUris</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">URIs where users will be redirected after authentication</p>
                 </div>
-                <p class="form-hint">One URI per line. Users will be redirected here after authentication.</p>
-            </div>
-
-            <div class="form-group">
-                <label for="postLogoutRedirectUris" class="form-label">
-                    Post-Logout Redirect URIs
-                </label>
-                <div class="textarea-wrapper">
+                
+                <div class="form-group">
+                    <label for="postLogoutRedirectUris">Post-Logout Redirect URIs (one per line)</label>
                     <textarea id="postLogoutRedirectUris" 
                               name="postLogoutRedirectUris" 
-                              class="form-textarea glass-input"
                               rows="3" 
                               placeholder="https://myapp.com&#10;https://localhost:5000">@Model.PostLogoutRedirectUris</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">URIs where users will be redirected after logout</p>
                 </div>
-                <p class="form-hint">One URI per line. Users will be redirected here after logout.</p>
-            </div>
-
-            <div class="form-group">
-                <label for="allowedScopes" class="form-label">
-                    Allowed Scopes
-                    <span class="required-mark">*</span>
-                </label>
-                <div class="textarea-wrapper">
+                
+                <div class="form-group">
+                    <label for="allowedScopes">Allowed Scopes * (one per line)</label>
                     <textarea id="allowedScopes" 
                               name="allowedScopes" 
-                              class="form-textarea glass-input"
                               rows="3" 
                               required 
                               placeholder="openid&#10;profile&#10;email">@(string.IsNullOrEmpty(Model.AllowedScopes) ? "openid\nprofile\nemail" : Model.AllowedScopes)</textarea>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">Scopes that this client is allowed to request</p>
                 </div>
-                <p class="form-hint">One scope per line. These are the scopes this client can request.</p>
-            </div>
-
-            <div class="form-group">
-                <label class="checkbox-label glass-checkbox">
-                    <input type="checkbox" 
-                           id="requireConsent" 
-                           name="requireConsent" 
-                           @(Model.RequireConsent ? "checked" : "") />
-                    <span class="checkbox-custom"></span>
-                    <div class="checkbox-content">
-                        <span class="checkbox-title">Require User Consent</span>
-                        <span class="checkbox-description">If enabled, users will be prompted to approve the requested scopes</span>
-                    </div>
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        @if (Model.IsEdit)
-                        {
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                        }
-                        else
-                        {
-                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                        }
-                    </svg>
-                    <span>@(Model.IsEdit ? "Update Client" : "Create Client")</span>
-                </button>
-                <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
-                   class="btn btn-secondary btn-lg">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Cancel</span>
-                </a>
-            </div>
-        </form>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" 
+                               id="requireConsent" 
+                               name="requireConsent" 
+                               @(Model.RequireConsent ? "checked" : "") 
+                               style="width: auto; margin-right: 0.5rem;" />
+                        <span>Require User Consent</span>
+                    </label>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">If checked, users will be prompted to approve the requested scopes</p>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn" style="flex: 1;">@(Model.IsEdit ? "Update Client" : "Create Client")</button>
+                    <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
+                       class="btn btn-secondary" 
+                       style="flex: 1; text-align: center; line-height: 2.5;">Cancel</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
-
-<style>
-    .form-card {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 2.5rem;
-        border-radius: var(--radius-xl);
-    }
-    .form-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 1.25rem;
-        margin-bottom: 2rem;
-    }
-    .form-icon-wrapper {
-        width: 56px;
-        height: 56px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .form-icon-wrapper svg {
-        width: 28px;
-        height: 28px;
-        color: white;
-    }
-    .form-header-text {
-        flex: 1;
-    }
-    .form-title {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-    .form-subtitle {
-        margin: 0;
-        font-size: 0.9375rem;
-        color: var(--text-secondary);
-    }
-    .client-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 1.5rem;
-    }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    .required-mark {
-        color: var(--danger);
-        margin-left: 0.25rem;
-    }
-    .textarea-wrapper {
-        position: relative;
-    }
-    .form-textarea {
-        width: 100%;
-        min-height: 100px;
-        padding: 0.875rem 1rem;
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        resize: vertical;
-    }
-    .form-hint {
-        margin: 0;
-        font-size: 0.8125rem;
-        color: var(--text-tertiary);
-    }
-    .input-readonly {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-    .checkbox-label {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        cursor: pointer;
-        padding: 1rem;
-        border-radius: var(--radius-lg);
-        transition: background var(--transition-fast);
-    }
-    .checkbox-label:hover {
-        background: var(--surface-elevated);
-    }
-    .checkbox-content {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .checkbox-title {
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-    .checkbox-description {
-        font-size: 0.8125rem;
-        color: var(--text-tertiary);
-    }
-    .form-actions {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--border);
-    }
-    .form-actions .btn {
-        flex: 1;
-    }
-</style>

@@ -1,100 +1,73 @@
-@* Magic Link View - Modern Liquid Glass Design *@
+@* Magic Link View - Extracted from AuthController RenderMagicLinkForm *@
 @model dynamic
 
 @{
-    Layout = "_AuthLayout";
-    ViewData["Title"] = "Magic Link - BRU ID";
-    ViewData["BodyClass"] = "auth-page";
     var error = Model?.Error;
     var message = Model?.Message;
 }
 
-<div class="auth-container">
-    <div class="auth-card glass-card slide-up">
-        <div class="auth-card-inner">
-            <!-- Header -->
-            <div class="auth-header">
-                <div class="auth-logo">
-                    <div class="logo-icon pulse-glow">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="32" height="32" rx="8" fill="url(#magic-gradient)"/>
-                            <path d="M16 6L18.5 13.5L26 16L18.5 18.5L16 26L13.5 18.5L6 16L13.5 13.5L16 6Z" fill="white"/>
-                            <defs>
-                                <linearGradient id="magic-gradient" x1="0" y1="0" x2="32" y2="32">
-                                    <stop offset="0%" stop-color="var(--primary)"/>
-                                    <stop offset="100%" stop-color="var(--accent)"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                    <span class="logo-text">BRU ID</span>
-                </div>
-                <h1 class="auth-title">Magic Link Login</h1>
-                <p class="auth-subtitle">Sign in without a password</p>
-            </div>
-
-            <!-- Status Messages -->
-            @if (error != null)
-            {
-                <div class="status-message status-error glass-surface slide-down">
-                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>@error</span>
-                </div>
-            }
-            @if (message != null)
-            {
-                <div class="status-message status-success glass-surface slide-down">
-                    <svg class="status-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>@message</span>
-                </div>
-            }
-
-            <!-- Info Box -->
-            <div class="info-box glass-surface">
-                <svg class="info-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-                </svg>
-                <p>Enter your email address to receive a secure login link. No password required - simply click the link in your email to sign in instantly.</p>
-            </div>
-
-            <!-- Form -->
-            <form method="POST" action="/api/auth/magic-link/send" class="auth-form">
-                <div class="form-group">
-                    <label for="email" class="form-label">Email Address</label>
-                    <div class="input-wrapper">
-                        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-                        </svg>
-                        <input type="email" id="email" name="email" class="form-input glass-input" placeholder="Enter your email address" required autocomplete="email">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Link - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body class="auth-page-body">
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="login-container fade-in">
+        <div class="auth-card">
+            <div class="card-body">
+                <div class="yandex-id-header">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;"></div>
+                        <span style="color: white; font-weight: 500; font-size: 1.5rem;">BRU ID</span>
                     </div>
                 </div>
-
-                <button type="submit" class="btn btn-primary btn-full ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                
+                <h2 style="text-align: center; margin-bottom: 1.5rem; color: white;">Login with Magic Link</h2>
+                
+                @if (error != null)
+                {
+                    <div class="error-message">@error</div>
+                }
+                @if (message != null)
+                {
+                    <div class="success-message">@message</div>
+                }
+                
+                <div class="info-box" style="background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;">
+                    <p>Enter your email address to receive a secure login link. No password required!</p>
+                </div>
+                
+                <form method="POST" action="/api/auth/magic-link/send">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+                    </div>
+                    <button type="submit">Send Magic Link</button>
+                </form>
+                
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="secondary-option" onclick="window.location.href='/api/auth/login'">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 9.58301C12.1047 9.58301 13.8095 7.87818 13.8095 5.77348C13.8095 3.66877 12.1047 1.96394 10 1.96394C7.8953 1.96394 6.19047 3.66877 6.19047 5.77348C6.19047 7.87818 7.8953 9.58301 10 9.58301Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17.1432 18.0357C17.1432 14.9167 13.9384 12.3809 10.0003 12.3809C6.06211 12.3809 2.85742 14.9167 2.85742 18.0357" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span>Send Magic Link</span>
-                </button>
-            </form>
-
-            <!-- Divider -->
-            <div class="auth-divider">
-                <span>or</span>
+                    <span>Back to Login</span>
+                </div>
             </div>
-
-            <!-- Back to Login -->
-            <a href="/api/auth/login" class="btn btn-secondary btn-full">
-                <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-                </svg>
-                <span>Back to Login</span>
-            </a>
         </div>
     </div>
-</div>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+</body>
+</html>

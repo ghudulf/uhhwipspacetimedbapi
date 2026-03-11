@@ -1,259 +1,135 @@
 @using BRU_AVTOPARK.Models.ViewModels
 @model OidcScopesListViewModel
 @{
-    Layout = "_AdminLayout";
+    Layout = "_AuthLayout";
     ViewData["Title"] = "OAuth Scopes";
     ViewData["BodyClass"] = "";
 }
 
-<div class="page-container slide-up">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="page-header-content">
-            <div class="page-header-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                </svg>
-            </div>
-            <div class="page-header-text">
-                <h1 class="page-title">OAuth Scopes</h1>
-                <p class="page-description">Manage OAuth 2.0 scopes for your applications</p>
-            </div>
-        </div>
-    </div>
+<style>
+    .clients-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .client-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .client-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        border-color: var(--primary-color);
+    }
+    .client-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .client-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: white;
+        flex-shrink: 0;
+    }
+    .client-info {
+        flex: 1;
+    }
+    .client-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .detail-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .detail-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .detail-value {
+        color: var(--text-color);
+        word-break: break-all;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-color);
+        margin: 0 0 0.5rem 0;
+    }
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0;
+    }
+</style>
 
+<div class="container fade-in">
+    <div class="page-header">
+        <h1>OAuth Scopes</h1>
+        <p>Manage OAuth 2.0 scopes for your applications</p>
+    </div>
+    
     @if (Model.Scopes.Count > 0)
     {
-        <div class="scopes-grid">
-            @{ var delay = 0.1; }
+        <div class="clients-grid">
             @foreach (var scope in Model.Scopes)
             {
-                <div class="scope-card glass-card slide-up" style="animation-delay: @(delay)s;">
-                    <div class="scope-card-header">
-                        <div class="scope-avatar">
-                            @scope.Name.Substring(0, Math.Min(2, scope.Name.Length)).ToUpper()
-                        </div>
-                        <div class="scope-info">
-                            <h3 class="scope-name">@scope.Name</h3>
-                            <p class="scope-display-name">@(scope.DisplayName ?? "No display name")</p>
+                <div class="client-card">
+                    <div class="client-card-header">
+                        <div class="client-icon">@scope.Name.Substring(0, Math.Min(2, scope.Name.Length)).ToUpper()</div>
+                        <div class="client-info" style="flex: 1; margin-left: 1rem;">
+                            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-color);">@scope.Name</h3>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">@(scope.DisplayName ?? "No display name")</p>
                         </div>
                     </div>
-                    <div class="scope-details">
-                        <div class="scope-detail-row">
-                            <span class="scope-detail-label">
-                                <svg viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                                </svg>
-                                Description
-                            </span>
-                            <span class="scope-detail-value">@(scope.Description ?? "No description")</span>
+                    <div class="client-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Description:</span>
+                            <span class="detail-value">@(scope.Description ?? "No description")</span>
                         </div>
-                        <div class="scope-detail-row">
-                            <span class="scope-detail-label">
-                                <svg viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                OIDC ID
-                            </span>
-                            <span class="scope-detail-value scope-id">@scope.OidcId</span>
+                        <div class="detail-row">
+                            <span class="detail-label">OIDC ID:</span>
+                            <span class="detail-value" style="font-family: monospace; font-size: 0.85rem;">@scope.OidcId</span>
                         </div>
                     </div>
                 </div>
-                delay += 0.05;
             }
         </div>
     }
     else
     {
-        <div class="empty-state glass-card">
-            <div class="empty-state-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                </svg>
-            </div>
-            <h3 class="empty-state-title">No scopes found</h3>
-            <p class="empty-state-description">There are no OAuth scopes registered in the system.</p>
+        <div class="empty-state">
+            <h3>No scopes found</h3>
+            <p>There are no OAuth scopes registered in the system.</p>
         </div>
     }
 
-    <!-- Back Link -->
-    <div class="back-link-container">
-        <a href="/api/auth/profile@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="back-link">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-            </svg>
-            <span>Back to Profile</span>
-        </a>
+    <div class="text-center mt-4">
+        <a href="/api/auth/profile@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="link">← Back to Profile</a>
     </div>
 </div>
-
-<style>
-    .page-header {
-        margin-bottom: 2rem;
-    }
-    .page-header-content {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-    }
-    .page-header-icon {
-        width: 56px;
-        height: 56px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .page-header-icon svg {
-        width: 28px;
-        height: 28px;
-        color: white;
-    }
-    .page-title {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-    .page-description {
-        margin: 0;
-        color: var(--text-secondary);
-    }
-    .scopes-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 1.5rem;
-    }
-    .scope-card {
-        padding: 1.5rem;
-        border-radius: var(--radius-xl);
-        transition: all var(--transition-normal);
-    }
-    .scope-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-lg);
-    }
-    .scope-card-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid var(--border);
-    }
-    .scope-avatar {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        font-weight: 700;
-        color: white;
-        flex-shrink: 0;
-    }
-    .scope-info {
-        flex: 1;
-        min-width: 0;
-    }
-    .scope-name {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-    .scope-display-name {
-        margin: 0;
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .scope-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    .scope-detail-row {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .scope-detail-label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: var(--text-tertiary);
-    }
-    .scope-detail-label svg {
-        width: 14px;
-        height: 14px;
-    }
-    .scope-detail-value {
-        font-size: 0.9375rem;
-        color: var(--text-primary);
-    }
-    .scope-id {
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-        word-break: break-all;
-    }
-    .empty-state {
-        padding: 4rem 2rem;
-        text-align: center;
-        border-radius: var(--radius-xl);
-    }
-    .empty-state-icon {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 1.5rem;
-        background: var(--surface-elevated);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .empty-state-icon svg {
-        width: 40px;
-        height: 40px;
-        color: var(--text-tertiary);
-    }
-    .empty-state-title {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-    .empty-state-description {
-        margin: 0;
-        color: var(--text-secondary);
-    }
-    .back-link-container {
-        text-align: center;
-        margin-top: 2rem;
-    }
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-        transition: all var(--transition-fast);
-    }
-    .back-link:hover {
-        gap: 0.75rem;
-    }
-    .back-link svg {
-        width: 20px;
-        height: 20px;
-    }
-</style>

@@ -3,43 +3,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0066ff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"] - BRU AVTOPARK</title>
     <link rel="stylesheet" href="~/css/bru-design-system.css" asp-append-version="true" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <style>
-        /* Critical CSS for instant paint */
-        html { background: #f0f4f8; }
-        [data-theme="dark"] html { background: #0f172a; }
-    </style>
 </head>
 <body class="@ViewData["BodyClass"]">
-    <nav class="navbar" role="navigation" aria-label="Main navigation">
-        <a href="/" class="logo" aria-label="BRU AVTOPARK Home">
-            BRU AVTOPARK
-        </a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" type="button">
-            <span class="theme-icon-light" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-            </span>
-            <span class="theme-icon-dark" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-            </span>
+    <nav class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+            <span class="theme-icon-light">&#9788;</span>
+            <span class="theme-icon-dark">&#9789;</span>
         </button>
     </nav>
 
-    <main id="main-content">
-        @RenderBody()
-    </main>
+    @RenderBody()
 
     <script src="~/js/theme-toggle.js" defer></script>
     @await RenderSectionAsync("Scripts", required: false)

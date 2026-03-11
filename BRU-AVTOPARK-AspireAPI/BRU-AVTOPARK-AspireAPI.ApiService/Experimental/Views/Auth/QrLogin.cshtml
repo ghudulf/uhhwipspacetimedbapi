@@ -1,187 +1,61 @@
-@* QR Login View - Modern Liquid Glass Design *@
+@* QR Login View - Extracted from AuthController RenderQrLogin *@
 @model dynamic
 
 @{
-    Layout = "_AuthLayout";
-    ViewData["Title"] = "QR Login - BRU ID";
-    ViewData["BodyClass"] = "auth-page";
     var qrCode = Model?.QrCode ?? "";
 }
 
-<div class="auth-container">
-    <div class="auth-card glass-card slide-up">
-        <div class="auth-card-inner">
-            <!-- Header -->
-            <div class="auth-header">
-                <div class="auth-logo">
-                    <div class="logo-icon pulse-glow">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="32" height="32" rx="8" fill="url(#qr-gradient)"/>
-                            <rect x="8" y="8" width="6" height="6" rx="1" fill="white"/>
-                            <rect x="18" y="8" width="6" height="6" rx="1" fill="white"/>
-                            <rect x="8" y="18" width="6" height="6" rx="1" fill="white"/>
-                            <rect x="18" y="18" width="3" height="3" fill="white"/>
-                            <rect x="21" y="21" width="3" height="3" fill="white"/>
-                            <defs>
-                                <linearGradient id="qr-gradient" x1="0" y1="0" x2="32" y2="32">
-                                    <stop offset="0%" stop-color="var(--primary)"/>
-                                    <stop offset="100%" stop-color="var(--secondary)"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Login - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body class="auth-page-body">
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="login-container fade-in">
+        <div class="auth-card">
+            <div class="card-body">
+                <div class="yandex-id-header">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 24px; height: 24px; background-color: var(--primary-color); border-radius: 4px; margin-right: 8px;"></div>
+                        <span style="color: white; font-weight: 500; font-size: 1.5rem;">BRU ID</span>
                     </div>
-                    <span class="logo-text">BRU ID</span>
                 </div>
-                <h1 class="auth-title">QR Code Login</h1>
-                <p class="auth-subtitle">Scan with your mobile device</p>
-            </div>
-
-            <!-- Info Box -->
-            <div class="info-box glass-surface">
-                <svg class="info-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 12a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM12 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1zM12 11a1 1 0 011 1v1h1a1 1 0 110 2h-2a1 1 0 01-1-1v-2a1 1 0 011-1zM16 11a1 1 0 011 1v1h.01a1 1 0 110 2H16a1 1 0 01-1-1v-2a1 1 0 011-1z" clip-rule="evenodd"/>
-                </svg>
-                <p>Scan this QR code with your mobile device to log in instantly without entering your password.</p>
-            </div>
-
-            <!-- QR Code Display -->
-            <div class="qr-display glass-surface">
-                <div class="qr-frame">
-                    <div class="qr-corner qr-corner-tl"></div>
-                    <div class="qr-corner qr-corner-tr"></div>
-                    <div class="qr-corner qr-corner-bl"></div>
-                    <div class="qr-corner qr-corner-br"></div>
-                    <img src="data:image/png;base64,@qrCode" alt="Login QR Code" class="qr-image">
+                
+                <h2 style="text-align: center; margin-bottom: 1.5rem; color: white;">Login with QR Code</h2>
+                
+                <div class="info-box" style="background-color: rgba(255, 255, 255, 0.1); color: #b3b3b3;">
+                    <p>Scan this QR code with your mobile device to log in instantly without entering your password.</p>
                 </div>
-                <div class="qr-scan-line"></div>
-            </div>
-
-            <!-- Status -->
-            <div id="status" class="qr-status glass-surface">
-                <div class="qr-status-content">
-                    <div class="qr-loader">
-                        <div class="qr-loader-ring"></div>
-                    </div>
-                    <p class="qr-status-text">Waiting for you to scan the QR code...</p>
+                
+                <div class="qr-code qr-login-container">
+                    <img src="data:image/png;base64,@qrCode" alt="Login QR Code">
+                </div>
+                
+                <div id="status" class="text-center my-4" style="color: #b3b3b3;">
+                    <p>Waiting for you to scan the QR code...</p>
+                    <div class="loader" style="margin-top: 1rem;"></div>
+                </div>
+                
+                <div class="secondary-option" onclick="window.location.href='/api/auth/login'">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 9.58301C12.1047 9.58301 13.8095 7.87818 13.8095 5.77348C13.8095 3.66877 12.1047 1.96394 10 1.96394C7.8953 1.96394 6.19047 3.66877 6.19047 5.77348C6.19047 7.87818 7.8953 9.58301 10 9.58301Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17.1432 18.0357C17.1432 14.9167 13.9384 12.3809 10.0003 12.3809C6.06211 12.3809 2.85742 14.9167 2.85742 18.0357" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Back to Login</span>
                 </div>
             </div>
-
-            <!-- Divider -->
-            <div class="auth-divider">
-                <span>or</span>
-            </div>
-
-            <!-- Back to Login -->
-            <a href="/api/auth/login" class="btn btn-secondary btn-full">
-                <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-                </svg>
-                <span>Back to Login</span>
-            </a>
         </div>
     </div>
-</div>
-
-<style>
-    .qr-display {
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        border-radius: var(--radius-xl);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        position: relative;
-        overflow: hidden;
-    }
-    .qr-frame {
-        position: relative;
-        padding: 1rem;
-        background: white;
-        border-radius: var(--radius-lg);
-    }
-    .qr-corner {
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        border: 3px solid var(--primary);
-    }
-    .qr-corner-tl {
-        top: -2px;
-        left: -2px;
-        border-right: none;
-        border-bottom: none;
-        border-radius: 8px 0 0 0;
-    }
-    .qr-corner-tr {
-        top: -2px;
-        right: -2px;
-        border-left: none;
-        border-bottom: none;
-        border-radius: 0 8px 0 0;
-    }
-    .qr-corner-bl {
-        bottom: -2px;
-        left: -2px;
-        border-right: none;
-        border-top: none;
-        border-radius: 0 0 0 8px;
-    }
-    .qr-corner-br {
-        bottom: -2px;
-        right: -2px;
-        border-left: none;
-        border-top: none;
-        border-radius: 0 0 8px 0;
-    }
-    .qr-image {
-        display: block;
-        width: 200px;
-        height: 200px;
-        object-fit: contain;
-    }
-    .qr-scan-line {
-        position: absolute;
-        width: 80%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--primary), transparent);
-        animation: scan 2s ease-in-out infinite;
-    }
-    @@keyframes scan {
-        0%, 100% { top: 10%; opacity: 0; }
-        50% { top: 70%; opacity: 1; }
-    }
-    .qr-status {
-        padding: 1rem;
-        border-radius: var(--radius-lg);
-        margin-bottom: 1.5rem;
-    }
-    .qr-status-content {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-    }
-    .qr-loader {
-        position: relative;
-        width: 24px;
-        height: 24px;
-    }
-    .qr-loader-ring {
-        position: absolute;
-        inset: 0;
-        border: 2px solid var(--border);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    .qr-status-text {
-        margin: 0;
-        font-size: 0.9375rem;
-        color: var(--text-secondary);
-    }
-</style>
-
-<script src="~/Experimental/js/auth/qr-login.js"></script>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script src="~/Experimental/js/auth/qr-login.js"></script>
+</body>
+</html>

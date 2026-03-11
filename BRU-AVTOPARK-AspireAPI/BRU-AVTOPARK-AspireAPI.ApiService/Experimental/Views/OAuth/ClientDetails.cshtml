@@ -1,106 +1,245 @@
 @using BRU_AVTOPARK.Models.ViewModels
 @model OidcClientDetailsViewModel
 @{
-    Layout = "_AdminLayout";
+    Layout = "_AuthLayout";
     ViewData["Title"] = Model.ClientId + " - Client Details";
     ViewData["BodyClass"] = "";
 }
 
-<div class="page-container slide-up">
-    <!-- Page Header with Gradient -->
-    <div class="page-header-gradient glass-card">
-        <div class="page-header-content">
-            <div class="page-header-left">
-                <div class="client-avatar pulse-glow">
-                    @Model.DisplayName?.Substring(0, 1).ToUpper()
-                </div>
-                <div class="client-info">
-                    <h1 class="page-title">@Model.DisplayName</h1>
-                    <p class="client-id-display">@Model.ClientId</p>
+<style>
+    .detail-page-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .detail-header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .detail-header-left {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .detail-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        backdrop-filter: blur(10px);
+    }
+    .detail-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+    }
+    .detail-subtitle {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        font-family: 'Courier New', monospace;
+        margin: 0;
+    }
+    .detail-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .action-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+        cursor: pointer;
+    }
+    .action-btn-primary {
+        background: white;
+        color: var(--primary-color);
+    }
+    .action-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+    .action-btn-danger {
+        background: rgba(220, 38, 38, 0.9);
+        color: white;
+    }
+    .action-btn-danger:hover {
+        background: rgba(220, 38, 38, 1);
+        transform: translateY(-2px);
+    }
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .detail-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .detail-card:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .detail-card-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .detail-card-icon {
+        font-size: 1.25rem;
+    }
+    .detail-value {
+        font-size: 1rem;
+        color: var(--text-color);
+        word-break: break-all;
+    }
+    .detail-value-code {
+        background: var(--input-bg);
+        padding: 0.75rem;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+        margin-top: 0.5rem;
+    }
+    .uri-list {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+    .uri-item {
+        background: var(--input-bg);
+        padding: 0.625rem 0.875rem;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .uri-item:before {
+        content: '🔗';
+        font-size: 1rem;
+    }
+    .scope-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .scope-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+    .status-badge-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: rgb(34, 197, 94);
+    }
+    .status-badge-warning {
+        background: rgba(251, 191, 36, 0.1);
+        color: rgb(251, 191, 36);
+    }
+    .empty-value {
+        color: var(--text-muted);
+        font-style: italic;
+    }
+</style>
+
+<div class="container fade-in">
+    <div class="detail-page-header">
+        <div class="detail-header-content">
+            <div class="detail-header-left">
+                <div class="detail-icon">@Model.DisplayName?.Substring(0, 1).ToUpper()</div>
+                <div>
+                    <h1 class="detail-title">@Model.DisplayName</h1>
+                    <p class="detail-subtitle">@Model.ClientId</p>
                 </div>
             </div>
-            <div class="page-header-actions">
+            <div class="detail-actions">
                 <a href="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/edit@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
-                   class="btn btn-primary ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                    </svg>
-                    <span>Edit Client</span>
+                   class="action-btn action-btn-primary">
+                    ✏️ Edit Client
                 </a>
-                <button onclick="if(confirm('Are you sure you want to delete this client? This action cannot be undone.')) { document.getElementById('deleteForm').submit(); }" 
-                        class="btn btn-danger ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Delete</span>
+                <button onclick="if(confirm('Are you sure you want to delete this client?')) { document.getElementById('deleteForm').submit(); }" 
+                        class="action-btn action-btn-danger">
+                    🗑️ Delete
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Details Grid -->
     <div class="details-grid">
-        <div class="detail-card glass-card slide-up" style="animation-delay: 0.1s;">
-            <div class="detail-card-header">
-                <div class="detail-icon-wrapper">
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <h3 class="detail-card-title">Client Identifier</h3>
-            </div>
-            <div class="detail-value-code glass-surface">@Model.ClientId</div>
+        <div class="detail-card" style="animation-delay: 0.1s;">
+            <h3 class="detail-card-title">
+                <span class="detail-card-icon">🔑</span>
+                Client Identifier
+            </h3>
+            <div class="detail-value-code">@Model.ClientId</div>
         </div>
 
-        <div class="detail-card glass-card slide-up" style="animation-delay: 0.15s;">
-            <div class="detail-card-header">
-                <div class="detail-icon-wrapper">
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <h3 class="detail-card-title">Consent Type</h3>
-            </div>
-            <div class="status-badge @(Model.RequireConsent ? "status-warning" : "status-success")">
-                @if (Model.RequireConsent)
-                {
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Explicit Consent Required</span>
-                }
-                else
-                {
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Implicit Consent</span>
-                }
+        <div class="detail-card" style="animation-delay: 0.15s;">
+            <h3 class="detail-card-title">
+                <span class="detail-card-icon">✅</span>
+                Consent Type
+            </h3>
+            <div class="status-badge @(Model.RequireConsent ? "status-badge-warning" : "status-badge-success")">
+                @(Model.RequireConsent ? "⚠️ Explicit Consent Required" : "✓ Implicit Consent")
             </div>
         </div>
     </div>
 
-    <!-- Redirect URIs -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.2s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <h3 class="detail-card-title">Redirect URIs</h3>
-        </div>
+    <div class="detail-card" style="animation-delay: 0.2s; margin-bottom: 1.5rem;">
+        <h3 class="detail-card-title">
+            <span class="detail-card-icon">🔄</span>
+            Redirect URIs
+        </h3>
         @if (Model.RedirectUris.Length > 0)
         {
             <ul class="uri-list">
                 @foreach (var uri in Model.RedirectUris)
                 {
-                    <li class="uri-item glass-surface">
-                        <svg class="uri-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>@uri</span>
-                    </li>
+                    <li class="uri-item">@uri</li>
                 }
             </ul>
         }
@@ -110,27 +249,17 @@
         }
     </div>
 
-    <!-- Post-Logout Redirect URIs -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.25s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <h3 class="detail-card-title">Post-Logout Redirect URIs</h3>
-        </div>
+    <div class="detail-card" style="animation-delay: 0.25s; margin-bottom: 1.5rem;">
+        <h3 class="detail-card-title">
+            <span class="detail-card-icon">🚪</span>
+            Post-Logout Redirect URIs
+        </h3>
         @if (Model.PostLogoutRedirectUris.Length > 0)
         {
             <ul class="uri-list">
                 @foreach (var uri in Model.PostLogoutRedirectUris)
                 {
-                    <li class="uri-item glass-surface">
-                        <svg class="uri-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>@uri</span>
-                    </li>
+                    <li class="uri-item">@uri</li>
                 }
             </ul>
         }
@@ -140,19 +269,14 @@
         }
     </div>
 
-    <!-- Allowed Scopes -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.3s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <h3 class="detail-card-title">Allowed Scopes</h3>
-        </div>
+    <div class="detail-card" style="animation-delay: 0.3s; margin-bottom: 1.5rem;">
+        <h3 class="detail-card-title">
+            <span class="detail-card-icon">🎯</span>
+            Allowed Scopes
+        </h3>
         @if (Model.AllowedScopes.Length > 0)
         {
-            <div class="scope-badges">
+            <div class="scope-list">
                 @foreach (var scope in Model.AllowedScopes)
                 {
                     <span class="scope-badge">@scope</span>
@@ -165,213 +289,11 @@
         }
     </div>
 
-    <!-- Hidden Delete Form -->
     <form id="deleteForm" method="POST" action="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/delete" style="display: none;">
         <input type="hidden" name="token" value="@(Model.Token ?? "")" />
     </form>
 
-    <!-- Back Link -->
-    <div class="back-link-container">
-        <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="back-link">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-            </svg>
-            <span>Back to All Clients</span>
-        </a>
+    <div class="text-center mt-4">
+        <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="link">← Back to All Clients</a>
     </div>
 </div>
-
-<style>
-    .page-header-gradient {
-        padding: 2rem;
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-xl);
-        color: white;
-    }
-    .page-header-content {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-    }
-    .page-header-left {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-    .client-avatar {
-        width: 64px;
-        height: 64px;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: white;
-    }
-    .client-info .page-title {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-    .client-id-display {
-        margin: 0;
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        opacity: 0.9;
-    }
-    .page-header-actions {
-        display: flex;
-        gap: 0.75rem;
-    }
-    .page-header-actions .btn {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-    }
-    .page-header-actions .btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-    .page-header-actions .btn-danger {
-        background: rgba(239, 68, 68, 0.8);
-    }
-    .page-header-actions .btn-danger:hover {
-        background: rgba(239, 68, 68, 1);
-    }
-    .details-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .detail-card {
-        padding: 1.5rem;
-        border-radius: var(--radius-xl);
-        margin-bottom: 1.5rem;
-    }
-    .details-grid .detail-card {
-        margin-bottom: 0;
-    }
-    .detail-card-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    .detail-icon-wrapper {
-        width: 40px;
-        height: 40px;
-        background: var(--primary-alpha);
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .detail-icon-wrapper svg {
-        width: 20px;
-        height: 20px;
-        color: var(--primary);
-    }
-    .detail-card-title {
-        margin: 0;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-    .detail-value-code {
-        padding: 0.875rem 1rem;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        word-break: break-all;
-    }
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.625rem 1rem;
-        border-radius: var(--radius-full);
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    .status-badge svg {
-        width: 16px;
-        height: 16px;
-    }
-    .status-success {
-        background: rgba(34, 197, 94, 0.1);
-        color: rgb(34, 197, 94);
-    }
-    .status-warning {
-        background: rgba(251, 191, 36, 0.1);
-        color: rgb(202, 138, 4);
-    }
-    .uri-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    .uri-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        word-break: break-all;
-    }
-    .uri-icon {
-        width: 16px;
-        height: 16px;
-        color: var(--primary);
-        flex-shrink: 0;
-    }
-    .scope-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .scope-badge {
-        background: var(--primary);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-full);
-        font-size: 0.8125rem;
-        font-weight: 500;
-    }
-    .empty-value {
-        color: var(--text-tertiary);
-        font-style: italic;
-        margin: 0;
-    }
-    .back-link-container {
-        text-align: center;
-        margin-top: 2rem;
-    }
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-        transition: all var(--transition-fast);
-    }
-    .back-link:hover {
-        gap: 0.75rem;
-    }
-    .back-link svg {
-        width: 20px;
-        height: 20px;
-    }
-</style>

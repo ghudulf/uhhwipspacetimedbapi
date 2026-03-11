@@ -1,145 +1,58 @@
-@* WebAuthn Registration View - Modern Liquid Glass Design *@
+@* WebAuthn Registration View - Extracted from AuthController RenderWebAuthnRegistration *@
 @model dynamic
 
 @{
-    Layout = "_AuthLayout";
-    ViewData["Title"] = "Register Security Key - BRU ID";
-    ViewData["BodyClass"] = "auth-page";
     var options = Model?.Options ?? "";
 }
 
-<div class="auth-container">
-    <div class="auth-card glass-card slide-up">
-        <div class="auth-card-inner">
-            <!-- Header -->
-            <div class="auth-header">
-                <div class="auth-logo">
-                    <div class="logo-icon pulse-glow">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="32" height="32" rx="8" fill="url(#key-gradient)"/>
-                            <path d="M20 14a4 4 0 11-8 0 4 4 0 018 0z" stroke="white" stroke-width="2"/>
-                            <path d="M16 18v6M13 21h6" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                            <defs>
-                                <linearGradient id="key-gradient" x1="0" y1="0" x2="32" y2="32">
-                                    <stop offset="0%" stop-color="var(--primary)"/>
-                                    <stop offset="100%" stop-color="var(--accent)"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Security Key - BRU AVTOPARK</title>
+    <link rel="stylesheet" href="~/css/bru-design-system.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" class="logo">BRU AVTOPARK</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    
+    <div class="container fade-in">
+        <div class="card">
+            <div class="card-header">
+                <h1>Register Security Key</h1>
+            </div>
+            <div class="card-body">
+                <div class="info-box">
+                    <p>Register your security key or biometric authentication (fingerprint, face ID) for passwordless login.</p>
+                </div>
+                
+                <div id="options" data-options="@options" class="hidden"></div>
+                
+                <div class="flex flex-col items-center gap-4 my-4">
+                    <div id="status" class="text-center">
+                        <p>Click the button below to register your security key.</p>
                     </div>
-                    <span class="logo-text">BRU ID</span>
+                    <button onclick="registerWebAuthn()" id="registerButton" class="btn">Register Security Key</button>
+                    <div id="loader" class="loader hidden"></div>
                 </div>
-                <h1 class="auth-title">Register Security Key</h1>
-                <p class="auth-subtitle">Set up passwordless authentication</p>
-            </div>
-
-            <!-- Info Box -->
-            <div class="info-box glass-surface">
-                <svg class="info-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-                <p>Register your security key or biometric authentication (fingerprint, Face ID) for secure passwordless login.</p>
-            </div>
-
-            <div id="options" data-options="@options" style="display: none;"></div>
-
-            <!-- Security Key Visual -->
-            <div class="webauthn-visual glass-surface">
-                <div class="webauthn-icon-container">
-                    <div class="webauthn-icon floating">
-                        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="32" cy="32" r="28" stroke="var(--primary)" stroke-width="2" stroke-dasharray="4 4"/>
-                            <rect x="20" y="24" width="24" height="16" rx="4" fill="var(--primary-alpha)" stroke="var(--primary)" stroke-width="2"/>
-                            <circle cx="28" cy="32" r="3" fill="var(--primary)"/>
-                            <path d="M34 29h6M34 32h4M34 35h6" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <div id="status" class="webauthn-status">
-                    <p class="status-text">Click the button below to register your security key.</p>
-                </div>
-
-                <button onclick="registerWebAuthn()" id="registerButton" class="btn btn-primary btn-full ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Register Security Key</span>
-                </button>
-
-                <div id="loader" class="webauthn-loader" style="display: none;">
-                    <div class="loader-ring"></div>
-                    <p>Waiting for your security key...</p>
+                
+                <div class="text-center mt-4">
+                    <a href="/api/auth/profile" class="link">Back to Profile</a>
                 </div>
             </div>
-
-            <!-- Divider -->
-            <div class="auth-divider">
-                <span>or</span>
-            </div>
-
-            <!-- Back to Profile -->
-            <a href="/api/auth/profile" class="btn btn-secondary btn-full">
-                <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-                </svg>
-                <span>Back to Profile</span>
-            </a>
         </div>
     </div>
-</div>
-
-<style>
-    .webauthn-visual {
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        border-radius: var(--radius-xl);
-        text-align: center;
-    }
-    .webauthn-icon-container {
-        margin-bottom: 1.5rem;
-    }
-    .webauthn-icon {
-        display: inline-block;
-    }
-    .floating {
-        animation: float 3s ease-in-out infinite;
-    }
-    @@keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-    .webauthn-status {
-        margin-bottom: 1.5rem;
-    }
-    .status-text {
-        margin: 0;
-        color: var(--text-secondary);
-        font-size: 0.9375rem;
-    }
-    .webauthn-loader {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-    }
-    .loader-ring {
-        width: 48px;
-        height: 48px;
-        border: 3px solid var(--border);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    .webauthn-loader p {
-        margin: 0;
-        color: var(--text-secondary);
-        font-size: 0.9375rem;
-    }
-</style>
-
-<script src="~/Experimental/js/auth/webauthn-register.js"></script>
+    
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+    
+    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script src="~/Experimental/js/auth/webauthn-register.js"></script>
+</body>
+</html>
