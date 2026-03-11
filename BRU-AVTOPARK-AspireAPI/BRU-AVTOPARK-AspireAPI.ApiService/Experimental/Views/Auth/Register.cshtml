@@ -3,15 +3,15 @@
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Register";
-    ViewData["BodyClass"] = "";
+    ViewData["BodyClass"] = "auth-page-body";
 }
 
-<div class="login-container fade-in" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+<div class="login-container fade-in" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
     <div class="card card--dark card--wide">
         <div class="card__body">
             <partial name="_BruIdHeader" />
 
-            <h2 class="auth-title">Create Account</h2>
+            <h1 class="auth-title">Create New Account</h1>
 
             <partial name="_StatusMessages"
                      model="new StatusViewModel(Model.Error, Model.Message)" />
@@ -20,28 +20,42 @@
                 @* Left panel - admin status *@
                 <div class="register-layout__sidebar">
                     <div class="info-box info-box--dark">
-                        <strong>Note:</strong> Only administrators can register new users. Admin login is required.
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        <span><strong>Note:</strong> Only administrators can register new users. Admin login is required.</span>
                     </div>
 
                     <div id="admin-check-status"
                          class="status-message status-message--success"
-                         style="display: @(Model.IsAdmin ? "block" : "none");">
-                        <strong>Logged in as administrator.</strong>
+                         style="display: @(Model.IsAdmin ? "flex" : "none");"
+                         role="status">
+                        <svg class="status-message__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span><strong>Logged in as administrator.</strong></span>
                     </div>
 
                     <div id="admin-check-pending"
                          class="status-message status-message--warning"
-                         style="display: @(!Model.IsAdmin && Model.AdminCheckAttempt.HasValue ? "block" : "none");">
-                        <strong>Checking admin permissions... (Attempt @(Model.AdminCheckAttempt ?? 0)/3)</strong>
-                        <p>If verification fails, <a href="/api/auth/login?returnUrl=/api/auth/register" class="link link--blue">log in again</a>.</p>
+                         style="display: @(!Model.IsAdmin && Model.AdminCheckAttempt.HasValue ? "flex" : "none");"
+                         role="status">
+                        <div class="loader" style="width: 18px; height: 18px; margin-right: 8px;" aria-hidden="true"></div>
+                        <div>
+                            <strong>Checking admin permissions... (Attempt @(Model.AdminCheckAttempt ?? 0)/3)</strong>
+                            <p style="margin: 8px 0 0 0; font-size: 0.875rem;">If verification fails, <a href="/api/auth/login?returnUrl=/api/auth/register" class="link link--blue">log in again</a>.</p>
+                        </div>
                     </div>
 
-                    <div id="register-status"></div>
+                    <div id="register-status" aria-live="polite"></div>
                 </div>
 
                 @* Right panel - registration form *@
                 <div class="register-layout__form">
-                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");">
+                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");" novalidate>
                         <div class="form-row">
                             <partial name="_FormField"
                                      model='new FormFieldViewModel("username", "Username", Required: true)' />
@@ -58,7 +72,7 @@
 
                         <div class="form-group">
                             <label for="role">Role</label>
-                            <select id="role" name="role" class="select select--dark">
+                            <select id="role" name="role" class="select--dark" aria-describedby="role-help">
                                 <option value="0">User</option>
                                 <option value="1">Administrator</option>
                                 <option value="2">Manager</option>
@@ -66,14 +80,29 @@
                                 <option value="4">Conductor</option>
                                 <option value="5">Dispatcher</option>
                             </select>
+                            <span id="role-help" class="text--xs text--secondary" style="display: block; margin-top: 4px;">Select the appropriate role for the new user</span>
                         </div>
 
-                        <div class="text-center">
-                            <button type="submit" class="btn btn--primary" style="min-width: 200px;">Register</button>
+                        <div class="text-center" style="margin-top: 2rem;">
+                            <button type="submit" class="btn btn--auth-primary" style="min-width: 220px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="8.5" cy="7" r="4"/>
+                                    <line x1="20" y1="8" x2="20" y2="14"/>
+                                    <line x1="23" y1="11" x2="17" y2="11"/>
+                                </svg>
+                                <span>Create Account</span>
+                            </button>
                         </div>
 
                         <div class="text-center" style="margin-top: 1.5rem;">
-                            <a href="/api/auth/profile" class="link link--blue">Back to Profile</a>
+                            <a href="/api/auth/profile" class="link link--blue">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;" aria-hidden="true">
+                                    <line x1="19" y1="12" x2="5" y2="12"/>
+                                    <polyline points="12 19 5 12 12 5"/>
+                                </svg>
+                                Back to Profile
+                            </a>
                         </div>
                     </form>
                 </div>

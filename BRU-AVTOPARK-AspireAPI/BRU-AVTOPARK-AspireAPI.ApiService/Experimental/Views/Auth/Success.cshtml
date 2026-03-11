@@ -1,4 +1,4 @@
-@* Success Page View - Extracted from AuthController RenderSuccessPage *@
+@* Success Page View - Modern glass design *@
 @model dynamic
 
 @{
@@ -10,39 +10,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0066ff">
     <title>Login Successful - BRU AVTOPARK</title>
     <link rel="stylesheet" href="~/css/bru-design-system.css">
 </head>
-<body>
-    <div class="navbar">
+<body class="auth-page-body">
+    <nav class="navbar" role="navigation">
         <a href="/" class="logo">BRU AVTOPARK</a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
-    </div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" type="button">
+            <span class="theme-icon-light" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                </svg>
+            </span>
+            <span class="theme-icon-dark" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </span>
+        </button>
+    </nav>
     
-    <div class="container">
+    <div class="login-container">
         <div class="card fade-in">
-            <div class="card-body text-center">
+            <div class="card__body text-center">
                 <div style="margin-bottom: 1.5rem; animation: scaleIn 0.5s ease-out;">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
-                        <circle cx="12" cy="12" r="10" stroke="var(--success-color)" stroke-width="2" fill="rgba(16, 185, 129, 0.1)"/>
-                        <path d="M8 12L11 15L16 9" stroke="var(--success-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <div style="width: 80px; height: 80px; margin: 0 auto; background: var(--success-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
                 </div>
-                <h2 style="color: var(--success-color); margin-bottom: 1rem;">Login Successful!</h2>
-                <p style="color: var(--text-muted); margin-bottom: 2rem;">You have been successfully authenticated. Redirecting to your profile...</p>
-                <div class="loader"></div>
+                <h1 style="color: var(--success-color); margin-bottom: 1rem; font-size: 1.5rem;">Login Successful!</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 320px; margin-left: auto; margin-right: auto;">
+                    You have been successfully authenticated. Redirecting to your profile...
+                </p>
+                <div class="loader" aria-label="Redirecting"></div>
             </div>
         </div>
     </div>
     
-    <style>
-        @@keyframes scaleIn {
-            from { transform: scale(0); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-    </style>
-    
-    <script src="~/Experimental/js/theme-toggle.js"></script>
+    <script src="~/js/theme-toggle.js" defer></script>
     <script>
         // Store the token securely
         const token = '@Html.Raw(token.Replace("'", "\\'"))';

@@ -1,14 +1,11 @@
-@* Auth Footer Links Partial - Extracted from AuthController RenderLoginForm *@
-
-<div class="auth-footer">
-    <div style="margin-top: 2rem; display: flex; justify-content: center;">
-        <a href="/api/auth/register" class="link" style="color: white; margin: 0 0.5rem;">Create account</a>
-        <span style="color: #555;">|</span>
-        <a href="/api/auth/magic-link" class="link" style="color: white; margin: 0 0.5rem;">Magic Link</a>
-        <span style="color: #555;">|</span>
-        <a href="/api/auth/claim-account" class="link" style="color: white; margin: 0 0.5rem;">Claim Account</a>
-    </div>
-    <div style="margin-top: 1rem; color: #555;">
-        BRU ID — ключ от всех сервисов
-    </div>
-</div>
+@* Auth Footer Links - Modern glass design *@
+<footer class="auth-footer">
+    <nav class="auth-footer__links" aria-label="Authentication options">
+        <a href="/api/auth/register" class="auth-footer__link">Create account</a>
+        <span class="auth-footer__divider" aria-hidden="true">|</span>
+        <a href="/api/auth/magic-link" class="auth-footer__link">Magic Link</a>
+        <span class="auth-footer__divider" aria-hidden="true">|</span>
+        <a href="/api/auth/claim-account" class="auth-footer__link">Claim Account</a>
+    </nav>
+    <p class="auth-footer__tagline">BRU ID - Access all services with one account</p>
+</footer>
