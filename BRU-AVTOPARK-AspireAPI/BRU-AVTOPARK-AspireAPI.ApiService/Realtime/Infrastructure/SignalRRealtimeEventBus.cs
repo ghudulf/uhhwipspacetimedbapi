@@ -82,6 +82,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     {
         await foreach (var domainEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
         {
+            DispatchToLocalSubscribers(domainEvent);
+
             using var timeoutCts = new CancellationTokenSource(Math.Max(25, _options.PublishTimeoutMs));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
 
@@ -90,8 +92,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
                 await _hubContext.Clients.Group($"resource:{domainEvent.Resource.ToLowerInvariant()}")
                     .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
-
-                DispatchToLocalSubscribers(domainEvent);
             }
             catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
             {

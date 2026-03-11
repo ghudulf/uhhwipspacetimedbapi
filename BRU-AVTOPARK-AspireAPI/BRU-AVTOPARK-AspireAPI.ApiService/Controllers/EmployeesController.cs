@@ -65,13 +65,34 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             return command switch
             {
-                "read_all" => new { employees = await _employeeService.GetAllEmployeesAsync() },
-                "read" => new { employee = await _employeeService.GetEmployeeByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("employees.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for employees.view");
+            }
+
+            return new { employees = await _employeeService.GetAllEmployeesAsync() };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("employees.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for employees.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { employee = await _employeeService.GetEmployeeByIdAsync(id) };
         }
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
@@ -91,9 +112,9 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("employees.edit"))
+            if (!IsAdmin() && !HasPermission("employees.update"))
             {
-                throw new UnauthorizedAccessException("Not authorized for employees.edit");
+                throw new UnauthorizedAccessException("Not authorized for employees.update");
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");

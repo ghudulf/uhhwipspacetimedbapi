@@ -415,7 +415,7 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             var path = context.HttpContext.Request.Path;
-            if (path.StartsWithSegments("/hubs/system-events") &&
+            if ((path.StartsWithSegments("/hubs/system-events") || path.StartsWithSegments("/api") && path.Value.Contains("/realtime/ws")) &&
                 context.Request.Query.TryGetValue("access_token", out var accessToken) &&
                 !string.IsNullOrWhiteSpace(accessToken))
             {

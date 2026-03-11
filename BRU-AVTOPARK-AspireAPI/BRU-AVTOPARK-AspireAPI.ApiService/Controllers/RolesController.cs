@@ -48,7 +48,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            var authResult = await HttpContext.AuthenticateAsync();
+            if (!authResult.Succeeded)
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
@@ -67,13 +68,34 @@ namespace TicketSalesApp.AdminServer.Controllers
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
-                "read_all" => new { roles = await _roleService.GetAllRolesAsync() },
-                "read" => new { role = await _roleService.GetRoleByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("roles.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for roles.view");
+            }
+
+            return new { roles = await _roleService.GetAllRolesAsync() };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for roles.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { role = await _roleService.GetRoleByIdAsync(id) };
         }
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
@@ -90,6 +112,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             if (!IsAdmin() && !HasPermission("roles.edit")) throw new UnauthorizedAccessException("Not authorized for roles.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+
+            var existingRole = await _roleService.GetRoleByIdAsync(id);
+            if (existingRole != null && existingRole.IsSystem)
+            {
+                throw new InvalidOperationException("System roles cannot be modified");
+            }
+
             var model = request.Payload?.Deserialize<UpdateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
@@ -102,6 +131,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             if (!IsAdmin() && !HasPermission("roles.delete")) throw new UnauthorizedAccessException("Not authorized for roles.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            var existingRole = await _roleService.GetRoleByIdAsync(id);
+            if (existingRole != null && existingRole.IsSystem)
+            {
+                throw new InvalidOperationException("System roles cannot be deleted");
+            }
+
             var success = await _roleService.DeleteRoleAsync(id);
             var snapshot = await _roleService.GetAllRolesAsync();
             return new { operation = "delete", success, deletedId = id, snapshot };

@@ -19,7 +19,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         "Auth",
         "AuthController",
         "AuthRefactored",
-        "AuthControllerRefactored"
+        "AuthControllerRefactored",
+        "Realtime",
+        "RealtimeController"
     };
 
     private readonly IRealtimeEventBus _eventBus;
@@ -61,7 +63,6 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         {
             ["action"] = context.ActionDescriptor.DisplayName ?? "unknown",
             ["path"] = request.Path.ToString(),
-            ["query"] = request.QueryString.HasValue ? request.QueryString.Value ?? string.Empty : string.Empty,
             ["userAgent"] = request.Headers.UserAgent.ToString(),
             ["traceId"] = context.HttpContext.TraceIdentifier
         };

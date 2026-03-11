@@ -13,6 +13,8 @@ public sealed record RealtimeCrudRequest(
 
 public static class WebSocketEventStreamWriter
 {
+    private const int MaxIncomingMessageSize = 1024 * 1024; // 1 MB
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -34,6 +36,7 @@ public static class WebSocketEventStreamWriter
 
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync("bru.events.v1");
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var sendLock = new SemaphoreSlim(1, 1);
 
         var eventPumpTask = Task.Run(async () =>
         {
@@ -50,7 +53,7 @@ public static class WebSocketEventStreamWriter
                     eventName = evt.EventName,
                     resource = evt.Resource,
                     data = evt
-                }, linkedCts.Token);
+                }, sendLock, linkedCts.Token);
             }
         }, linkedCts.Token);
 
@@ -73,7 +76,7 @@ public static class WebSocketEventStreamWriter
                         requestId = request.RequestId,
                         ok = true,
                         data
-                    }, linkedCts.Token);
+                    }, sendLock, linkedCts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -84,7 +87,7 @@ public static class WebSocketEventStreamWriter
                         requestId = request.RequestId,
                         ok = false,
                         error = ex.Message
-                    }, linkedCts.Token);
+                    }, sendLock, linkedCts.Token);
                 }
             }
         }
@@ -123,6 +126,15 @@ public static class WebSocketEventStreamWriter
             if (result.Count > 0)
             {
                 messageBuffer.Write(buffer, 0, result.Count);
+
+                if (messageBuffer.Length > MaxIncomingMessageSize)
+                {
+                    await webSocket.CloseAsync(
+                        WebSocketCloseStatus.MessageTooBig,
+                        $"Message exceeds maximum size of {MaxIncomingMessageSize} bytes",
+                        cancellationToken);
+                    return null;
+                }
             }
 
             if (result.EndOfMessage)
@@ -135,10 +147,19 @@ public static class WebSocketEventStreamWriter
         return JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
     }
 
-    private static async Task SendJsonAsync(WebSocket socket, object payload, CancellationToken cancellationToken)
+    private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+
+        await sendLock.WaitAsync(cancellationToken);
+        try
+        {
+            await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+        }
+        finally
+        {
+            sendLock.Release();
+        }
     }
 }

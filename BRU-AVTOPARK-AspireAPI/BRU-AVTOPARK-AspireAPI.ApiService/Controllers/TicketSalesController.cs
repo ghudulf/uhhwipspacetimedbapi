@@ -134,6 +134,12 @@
             {
                 var conn = _spacetimeService.GetConnection();
 
+                var ticket = conn.Db.Ticket.TicketId.Find((uint)model.TicketId);
+                if (ticket == null)
+                {
+                    throw new InvalidOperationException($"Ticket {model.TicketId} does not exist");
+                }
+
                 var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
                 if (existingSales.Any())
                 {

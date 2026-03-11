@@ -61,13 +61,34 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             return command switch
             {
-                "read_all" => new { buses = await _busService.GetAllBusesAsync() },
-                "read" => new { bus = await _busService.GetBusByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("buses.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.view");
+            }
+
+            return new { buses = await _busService.GetAllBusesAsync() };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("buses.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { bus = await _busService.GetBusByIdAsync(id) };
         }
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)

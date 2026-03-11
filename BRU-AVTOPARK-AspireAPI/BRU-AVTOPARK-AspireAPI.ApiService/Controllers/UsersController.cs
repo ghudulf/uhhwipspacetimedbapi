@@ -69,13 +69,84 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             return command switch
             {
-                "read_all" => new { users = await _userService.GetAllUsersAsync() },
-                "read" => new { user = await _userService.GetUserByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("users.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.view");
+            }
+
+            var users = await _userService.GetAllUsersAsync();
+            var result = users.Select(u => new {
+                u.LegacyUserId,
+                UserId = u.UserId.ToString(),
+                u.Login,
+                u.Email,
+                u.PhoneNumber,
+                u.IsActive,
+                u.CreatedAt,
+                u.LastLoginAt,
+                u.LegacyGuid,
+                u.EmailConfirmed
+            }).ToList();
+
+            return new { users = result };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("users.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User {id} not found");
+            }
+
+            var conn = _spacetimeService.GetConnection();
+            var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+            var roles = userRoles.Select(ur => {
+                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
+            }).Where(r => r != null).ToList();
+
+            var permissionIds = conn.Db.RolePermission.Iter()
+                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+                .Select(rp => rp.PermissionId)
+                .Distinct()
+                .ToList();
+            var permissions = permissionIds.Select(pid => {
+                var perm = conn.Db.Permission.PermissionId.Find(pid);
+                return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
+            }).Where(p => p != null).ToList();
+
+            var result = new {
+                user.LegacyUserId,
+                user.UserId,
+                user.Login,
+                user.Email,
+                user.PhoneNumber,
+                user.IsActive,
+                CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)user.CreatedAt).DateTime,
+                LastLoginAt = user.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)user.LastLoginAt.Value).DateTime : (DateTime?)null,
+                Roles = roles,
+                Permissions = permissions
+            };
+
+            return new { user = result };
         }
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
@@ -118,6 +189,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            var currentUserId = GetUserId();
+            if (currentUserId != null && id.ToString() == currentUserId)
+            {
+                throw new InvalidOperationException("You cannot delete your own account");
+            }
+
             var success = await _userService.DeleteUserAsync(id);
             var snapshot = await _userService.GetAllUsersAsync();
             return new { operation = "delete", success, deletedId = id, snapshot };

@@ -62,13 +62,34 @@ namespace TicketSalesApp.AdminServer.Controllers
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
-                "read_all" => new { permissions = await _permissionService.GetAllPermissionsAsync() },
-                "read" => new { permission = await _permissionService.GetPermissionByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("permissions.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for permissions.view");
+            }
+
+            return new { permissions = await _permissionService.GetAllPermissionsAsync() };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for permissions.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { permission = await _permissionService.GetPermissionByIdAsync(id) };
         }
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
@@ -97,6 +118,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            var isInUse = await _permissionService.IsPermissionInUseAsync(id);
+            if (isInUse)
+            {
+                throw new InvalidOperationException("Cannot delete permission as it is currently assigned to one or more roles");
+            }
+
             var success = await _permissionService.DeletePermissionAsync(id);
             var snapshot = await _permissionService.GetAllPermissionsAsync();
             return new { operation = "delete", success, deletedId = id, snapshot };
