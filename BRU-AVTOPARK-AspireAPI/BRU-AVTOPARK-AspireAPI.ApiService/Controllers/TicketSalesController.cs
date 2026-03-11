@@ -1,4 +1,4 @@
-    using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using System;
     using System.Collections.Generic;
@@ -40,6 +40,15 @@
             private readonly IRealtimeEventBus _realtimeEventBus;
             private readonly ILogger<TicketSalesController> _logger;
 
+            /// <summary>
+            /// Initializes a new instance of <see cref="TicketSalesController"/> with its required services and utilities.
+            /// </summary>
+            /// <param name="spacetimeService">Service for obtaining Spacetime DB connections and operations.</param>
+            /// <param name="ticketSalesService">Service providing ticket sales business logic and statistics.</param>
+            /// <param name="configuration">Application configuration settings.</param>
+            /// <param name="realtimeEventBus">Event bus used to subscribe and publish realtime ticket-sales events.</param>
+            /// <param name="logger">Logger for controller diagnostics and operational logging.</param>
+            /// <exception cref="ArgumentNullException">Thrown when any required dependency is <c>null</c>.</exception>
             public TicketSalesController(ISpacetimeDBService spacetimeService, ITicketSalesService ticketSalesService, IConfiguration configuration, IRealtimeEventBus realtimeEventBus, ILogger<TicketSalesController> logger)
             {
                 _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
@@ -51,6 +60,11 @@
 
             
 
+            /// <summary>
+            /// Opens a WebSocket session to stream realtime ticket-sales CRUD events to an authenticated client.
+            /// </summary>
+            /// <param name="cancellationToken">Token used to cancel the streaming session.</param>
+            /// <returns>A task representing the lifetime of the WebSocket CRUD streaming session.</returns>
             [HttpGet("realtime/ws")]
             public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
             {
@@ -68,6 +82,21 @@
                     cancellationToken);
             }
 
+            /// <summary>
+            /// Processes a realtime CRUD-style request and returns the corresponding result payload.
+            /// </summary>
+            /// <param name="request">The incoming realtime CRUD request; its <c>Command</c> determines the action and some commands require <c>Id</c> or a payload.</param>
+            /// <param name="cancellationToken">Cancellation token for the asynchronous operation.</param>
+            /// <returns>
+            /// An anonymous result object:
+            /// - For "read_all": { sales = List of sale snapshots }.
+            /// - For "read": { sale = single sale view }.
+            /// - For "create": result from the create handler (operation, success, entity, snapshot).
+            /// - For "update" / "delete": an operation result indicating not implemented.
+            /// </returns>
+            /// <exception cref="InvalidOperationException">
+            /// Thrown when the command is unsupported or when "read" is requested without an <c>Id</c>.
+            /// </exception>
             private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
             {
                 var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -83,6 +112,19 @@
                 };
             }
 
+            /// <summary>
+            /// Handles a realtime "create" CRUD command by creating a ticket sale and returning the result and updated snapshot.
+            /// </summary>
+            /// <param name="request">Realtime CRUD request whose Payload must deserialize to <see cref="CreateTicketSaleModel"/> (case-insensitive).</param>
+            /// <returns>
+            /// An object containing:
+            /// - `operation`: the string "create",
+            /// - `success`: `true` if creation succeeded, `false` otherwise,
+            /// - `entity`: the created sale view or `null`,
+            /// - `snapshot`: the current list of sales.
+            /// </returns>
+            /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+            /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateTicketSaleModel"/>.</exception>
             private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
             {
                 if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -93,6 +135,10 @@
                 return new { operation = "create", success = created is not null, entity = created, snapshot = BuildSalesSnapshot() };
             }
 
+            /// <summary>
+            /// Builds a detailed view of the ticket sale identified by the provided saleId, including nested ticket and route information when available.
+            /// </summary>
+            /// <returns>An anonymous object containing SaleId, SaleDate (DateTime), TicketId, TicketSoldToUser, TicketSoldToUserPhone, SellerId, and a nested Ticket object with TicketId, RouteId, TicketPrice and optional Route (RouteId, StartPoint, EndPoint); or null if the sale does not exist.</returns>
             private object? BuildSaleById(uint saleId)
             {
                 var conn = _spacetimeService.GetConnection();
@@ -120,6 +166,10 @@
                 };
             }
 
+            /// <summary>
+            /// Builds a snapshot list of all ticket sales with their detailed sale, ticket, and route information.
+            /// </summary>
+            /// <returns>A list of objects where each item represents a sale with related ticket and route details; sales that cannot be resolved are omitted.</returns>
             private List<object> BuildSalesSnapshot()
             {
                 var conn = _spacetimeService.GetConnection();
@@ -130,6 +180,13 @@
                     .ToList();
             }
 
+            /// <summary>
+            /// Creates a sale for the specified ticket after validation and returns the created sale representation.
+            /// </summary>
+            /// <param name="model">Model containing sale data (TicketId, SaleDate, TicketSoldToUser, TicketSoldToUserPhone).</param>
+            /// <returns>The created sale view object produced by BuildSaleById, or null if the newly created sale could not be retrieved.</returns>
+            /// <exception cref="InvalidOperationException">Thrown if the ticket does not exist, the ticket is already sold, or the seller profile cannot be found.</exception>
+            /// <exception cref="UnauthorizedAccessException">Thrown if the caller's identity claim is missing.</exception>
             private object? ExecuteCreateSale(CreateTicketSaleModel model)
             {
                 var conn = _spacetimeService.GetConnection();
@@ -165,6 +222,15 @@
                 return newSale == null ? null : BuildSaleById(newSale.SaleId);
             }
 
+            /// <summary>
+            /// Retrieves all ticket sales and their related ticket and route details.
+            /// </summary>
+            /// <returns>
+            /// An OK response containing a list of sales where each item includes:
+            /// SaleId, SaleDate, TicketId, TicketSoldToUser, TicketSoldToUserPhone, SellerId,
+            /// and an optional nested Ticket object (TicketId, RouteId, TicketPrice) with an optional Route (RouteId, StartPoint, EndPoint).
+            /// Returns a 500 status with an error message if an exception occurs.
+            /// </returns>
             [HttpGet]
             public ActionResult<IEnumerable<dynamic>> GetTicketSales()
             {

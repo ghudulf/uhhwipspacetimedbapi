@@ -1,4 +1,4 @@
-﻿// API/Controllers/UsersController.cs
+// API/Controllers/UsersController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -35,6 +35,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRealtimeEventBus _realtimeEventBus;
         private readonly ILogger<UsersController> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UsersController"/> with its required services and infrastructure.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown if <c>spacetimeService</c>, <c>realtimeEventBus</c>, or <c>logger</c> is null.</exception>
         public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus, ILogger<UsersController> logger)
         {
             _userService = userService;
@@ -46,6 +50,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Streams realtime user CRUD events over a WebSocket to the authenticated caller.
+        /// </summary>
+        /// <param name="cancellationToken">Token used to cancel the streaming session.</param>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -63,6 +71,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the corresponding handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command and optional payload.</param>
+        /// <param name="cancellationToken">Token to observe for cancellation.</param>
+        /// <returns>The handler's response object: for "read_all" or "read" commands an object containing user data; for "create", "update", and "delete" commands an operation result object indicating success and related data.</returns>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -78,6 +92,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Retrieves all users and returns a JSON-serializable snapshot containing a list of user summaries.
+        /// </summary>
+        /// <returns>An object with a `users` property containing an array of user summary objects (LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed).</returns>
+        /// <exception cref="System.UnauthorizedAccessException">Thrown when the caller is neither an administrator nor has the "users.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
             if (!IsAdmin() && !HasPermission("users.view"))
@@ -102,6 +121,16 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { users = result };
         }
 
+        /// <summary>
+        /// Retrieves a detailed user snapshot for the given realtime read request, including the user's roles and derived permissions.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose <c>Id</c> must contain the target user's identifier.</param>
+        /// <returns>
+        /// An object with a single property <c>user</c> that contains the user's fields:
+        /// LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, Roles, and Permissions.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "users.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when no user is found for the provided id.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("users.view"))
@@ -149,6 +178,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { user = result };
         }
 
+        /// <summary>
+        /// Processes a realtime "create" command by creating a new user from the request payload.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request whose payload must deserialize to <see cref="CreateUserModel"/>.</param>
+        /// <returns>
+        /// An object with the operation result:
+        /// - `operation`: the string "create".
+        /// - `success`: `true` if a user was created, `false` otherwise.
+        /// - `entity`: the created user object (or null if creation failed).
+        /// - `snapshot`: current list of all users after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights or the "users.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateUserModel"/>.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("users.create"))
@@ -164,6 +206,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success = created is not null, entity = created, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "update" CRUD request for a user.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the target Id and a payload deserializable as UpdateUserModel.</param>
+        /// <returns>An object with properties: `operation` (string, value "update"), `success` (bool indicating whether the update succeeded), `entity` (the updated user or null), and `snapshot` (the current list of all users).</returns>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("users.edit"))
@@ -181,6 +228,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for users.
+        /// </summary>
+        /// <param name="request">The realtime request which must include the target user's Id.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "delete"
+        /// - success: `true` if the delete succeeded, `false` otherwise
+        /// - deletedId: the id of the deleted user
+        /// - snapshot: the current collection of users after the operation
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "users.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not provide an id or when attempting to delete the current caller's own account.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("users.delete"))
@@ -201,6 +261,16 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves all users and maps their public data for JSON serialization.
+        /// </summary>
+        /// <remarks>
+        /// Requires the caller to be an administrator or to have the "users.view" permission.
+        /// The returned user objects include fields intended for client consumption and JSON transport.
+        /// </remarks>
+        /// <returns>
+        /// An Ok result containing a list of user objects with the following fields: LegacyUserId, UserId, Login, PasswordHash, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed; or a 403 Forbidden result when the caller is not authorized.
+        /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetUsers()
         {

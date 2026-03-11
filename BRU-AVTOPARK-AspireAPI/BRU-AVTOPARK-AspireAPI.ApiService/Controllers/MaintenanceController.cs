@@ -29,6 +29,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="MaintenanceController"/> with its required services.
+        /// </summary>
+        /// <param name="maintenanceService">Service that manages maintenance record operations.</param>
+        /// <param name="logger">Logger for controller diagnostics and informational events.</param>
+        /// <param name="spacetimeService">Database service used to query related Bus data.</param>
+        /// <param name="realtimeEventBus">Real-time event bus used to publish and subscribe maintenance CRUD events.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required dependency is <c>null</c>.</exception>
         public MaintenanceController(
             IMaintenanceService maintenanceService,
             ILogger<MaintenanceController> logger,
@@ -43,6 +51,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         
 
+        /// <summary>
+        /// Streams maintenance CRUD events over a WebSocket to an authenticated client.
+        /// If the caller is not authenticated, responds with HTTP 401 and does not start a stream.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token that cancels the WebSocket streaming session and related operations.</param>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -60,6 +73,18 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches a realtime CRUD request for maintenance records based on the request's Command and returns the corresponding result payload.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; its Command determines the action. Supported commands: "read_all" (returns all records), "read" (requires request.Id and returns a single record), "create" (creates a record), "update" (updates a record), and "delete" (deletes a record).</param>
+        /// <param name="cancellationToken">Token to observe while processing the request.</param>
+        /// <returns>
+        /// An object whose shape depends on the command:
+        /// - For "read_all": { records = IEnumerable&lt;MaintenanceRecord&gt; }
+        /// - For "read": { record = MaintenanceRecord }
+        /// - For "create"/"update"/"delete": a command-specific operation result (includes success status and related data/snapshot).
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown when "read" is requested without an Id or when the Command value is unsupported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -74,6 +99,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Handle a realtime "create" CRUD command and create a new maintenance record.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose payload must contain a CreateMaintenanceModel.</param>
+        /// <returns>An object with operation = "create", `success` set to `true` if the creation succeeded and `false` otherwise, and `snapshot` containing the full list of maintenance records.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "maintenance.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateMaintenanceModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("maintenance.create")) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
@@ -84,6 +116,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success, snapshot };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "update" command for a maintenance record and return the operation result with an updated entity snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target Id and a payload deserializable to <see cref="UpdateMaintenanceModel"/>.</param>
+        /// <returns>
+        /// An object with:
+        /// - `operation`: the operation name ("update"),
+        /// - `success`: `true` if the update succeeded, `false` otherwise,
+        /// - `entity`: the updated maintenance entity (or null if not found),
+        /// - `snapshot`: the current list of all maintenance records.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "maintenance.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("maintenance.edit")) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
@@ -96,6 +141,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command by deleting the specified maintenance record and returning an operation snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target record Id and optional payload metadata.</param>
+        /// <returns>
+        /// An object with properties:
+        /// - operation: the string "delete",
+        /// - success: `true` if the delete succeeded, `false` otherwise,
+        /// - deletedId: the Id of the deleted record,
+        /// - snapshot: the full list of maintenance records after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin role and the "maintenance.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id for the delete operation.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("maintenance.delete")) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
@@ -105,6 +163,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves all maintenance records projected to an anonymous shape containing all fields required by clients.
+        /// </summary>
+        /// <returns>A list of maintenance record objects with the complete field set used by clients for deserialization.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords()
         {

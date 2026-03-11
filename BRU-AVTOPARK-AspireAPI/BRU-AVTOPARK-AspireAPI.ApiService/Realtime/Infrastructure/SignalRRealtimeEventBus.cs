@@ -20,6 +20,12 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly ILogger<SignalRRealtimeEventBus> _logger;
     private readonly RealtimeEventOptions _options;
 
+    /// <summary>
+    /// Initializes a SignalRRealtimeEventBus with the provided SignalR hub context, configuration options, and logger.
+    /// </summary>
+    /// <param name="hubContext">SignalR hub context used to broadcast events to connected clients.</param>
+    /// <param name="options">Configuration options for buffering, recent-event limits, and publish timeouts.</param>
+    /// <param name="logger">Logger for diagnostic messages produced by the event bus.</param>
     public SignalRRealtimeEventBus(
         IHubContext<SystemEventsHub> hubContext,
         IOptions<RealtimeEventOptions> options,
@@ -38,18 +44,35 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         });
     }
 
+    /// <summary>
+    /// Publishes a domain event for local buffering and delivery to subscribers and SignalR clients.
+    /// </summary>
+    /// <param name="domainEvent">The domain event to publish and record in the recent-events history.</param>
+    /// <param name="cancellationToken">A token to cancel the publish operation while queuing the event.</param>
+    /// <returns>A ValueTask that completes when the event has been queued for dispatch.</returns>
     public ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
         EnqueueForHistory(domainEvent);
         return _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
     }
 
+    /// <summary>
+    /// Retrieves a snapshot of the most recent domain events, ordered from newest to oldest.
+    /// </summary>
+    /// <param name="maxCount">Maximum number of events to return; the value will be clamped to the service's configured recent-event limit.</param>
+    /// <returns>An array containing up to the requested number of most recent events in reverse chronological order.</returns>
     public IReadOnlyCollection<ApiDomainEvent> GetRecentEvents(int maxCount = 250)
     {
         var safeCount = Math.Clamp(maxCount, 1, Math.Max(1, _options.RecentEventLimit));
         return _recentEvents.Reverse().Take(safeCount).ToArray();
     }
 
+    /// <summary>
+    /// Streams domain events to the caller, filtered by the specified resource.
+    /// </summary>
+    /// <param name="resource">The resource name to subscribe to. If null, empty, or whitespace, the subscription receives events for all resources.</param>
+    /// <param name="cancellationToken">A token to cancel the subscription and stop the event stream.</param>
+    /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var normalizedResource = NormalizeResource(resource);
@@ -78,6 +101,12 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
     }
 
+    /// <summary>
+    /// Continuously processes inbound domain events by forwarding each event to local subscribers and broadcasting it to SignalR groups ("system-events" and "resource:&lt;resource&gt;") using the configured publish timeout.
+    /// </summary>
+    /// <remarks>
+    /// Processing stops when <paramref name="stoppingToken"/> is canceled; timeouts and failures during SignalR dispatch are logged.
+    /// </remarks>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await foreach (var domainEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
@@ -108,6 +137,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
     }
 
+    /// <summary>
+    /// Sends the given domain event to all local subscribers whose subscribed resource matches the event's resource or who are subscribed to "all".
+    /// </summary>
+    /// <param name="domainEvent">The domain event to dispatch to matching local subscribers.</param>
     private void DispatchToLocalSubscribers(ApiDomainEvent domainEvent)
     {
         var normalized = NormalizeResource(domainEvent.Resource);
@@ -123,6 +156,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
     }
 
+    /// <summary>
+    /// Adds a domain event to the in-memory recent-events history and ensures the history does not grow beyond the configured limit.
+    /// </summary>
+    /// <param name="domainEvent">The domain event to record in the recent-events buffer.</param>
     private void EnqueueForHistory(ApiDomainEvent domainEvent)
     {
         _recentEvents.Enqueue(domainEvent);
@@ -133,6 +170,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
     }
 
+    /// <summary>
+    /// Normalize a resource identifier to a canonical form used for subscription matching.
+    /// </summary>
+    /// <param name="resource">The resource identifier to normalize; may be null, empty, or whitespace.</param>
+    /// <returns>The trimmed, lowercase resource identifier, or the literal "all" if <paramref name="resource"/> is null, empty, or whitespace.</returns>
     private static string NormalizeResource(string resource)
     {
         return string.IsNullOrWhiteSpace(resource)

@@ -72,7 +72,16 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <summary>
         /// Checks if the current user has administrator role.
         /// Supports both ASP.NET Core auth and custom JWT.
+        /// <summary>
+        /// Determine whether the current request is associated with an administrator account.
         /// </summary>
+        /// <remarks>
+        /// Checks the ASP.NET Core authenticated principal's claims first. If not authenticated, inspects the Authorization Bearer token:
+        /// - parses regular JWTs for admin-related claims, or
+        /// - validates encrypted OpenIddict (JWE) tokens via the tokeninfo endpoint and inspects returned claims.
+        /// Returns false on missing/invalid tokens or on any validation error.
+        /// </remarks>
+        /// <returns>`true` if the principal or bearer token indicates administrator privileges (via `primary_role`, `role`, or standard role claims); `false` otherwise.</returns>
         protected async Task<bool> IsAdminAsync()
         {
             try
@@ -567,7 +576,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <summary>
         /// Gets the XUID from claims.
         /// Supports both ASP.NET Core auth and custom JWT.
+        /// <summary>
+        /// Retrieve the XUID claim for the current request's user from ASP.NET Core claims or from a bearer JWT in the Authorization header.
         /// </summary>
+        /// <returns>The XUID string if present; otherwise null.</returns>
         protected string? GetXuid()
         {
             try
@@ -606,7 +618,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <summary>
         /// Gets the username from claims.
         /// Supports both ASP.NET Core auth and custom JWT.
+        /// <summary>
+        /// Retrieve the current user's username from ASP.NET Core claims or from validated OAuth token claims.
         /// </summary>
+        /// <returns>The username if present in claims (`"name"`, `"preferred_username"`, or `ClaimTypes.Name`); otherwise <c>null</c>.</returns>
         protected async Task<string?> GetUserNameAsync()
         {
             try
@@ -653,19 +668,28 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <summary>
         /// Synchronous wrapper for GetUserNameAsync - for backward compatibility.
         /// Prefer using GetUserNameAsync when possible.
-        /// </summary>
+        /// <summary>
+/// Retrieve the current user's username from claims, or null if none is available.
+/// </summary>
+/// <returns>The username extracted from the user's claims (for example `name` or `preferred_username`), or `null` if not found.</returns>
         protected string? GetUserName() => GetUserNameAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Synchronous wrapper for IsAdminAsync - for backward compatibility.
         /// Prefer using IsAdminAsync when possible.
-        /// </summary>
+        /// <summary>
+/// Synchronously determines whether the current user has administrator privileges.
+/// </summary>
+/// <returns>`true` if the current user is an administrator, `false` otherwise.</returns>
         protected bool IsAdmin() => IsAdminAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Gets the client IP address from the request.
         /// Uses HttpContext.Connection.RemoteIpAddress which is populated by ForwardedHeadersMiddleware.
+        /// <summary>
+        /// Get the client's IP address from the current HTTP context.
         /// </summary>
+        /// <returns>The client's IP address as a string, or "unknown" if it cannot be determined.</returns>
         protected string GetClientIp()
         {
             try

@@ -29,6 +29,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="RoutesController"/> with its required services.
+        /// </summary>
+        /// <param name="routeService">Service for managing route data and operations.</param>
+        /// <param name="logger">Logger for controller diagnostics.</param>
+        /// <param name="spacetimeService">Service providing access to related Bus and Driver data.</param>
+        /// <param name="realtimeEventBus">Event bus used to subscribe to and publish realtime route events.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any constructor argument is null.</exception>
         public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus)
         {
             _routeService = routeService ?? throw new ArgumentNullException(nameof(routeService));
@@ -39,6 +47,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
       
 
+        /// <summary>
+        /// Opens a WebSocket endpoint that streams real-time CRUD events for routes to the caller.
+        /// </summary>
+        /// <param name="cancellationToken">Token that cancels and terminates the streaming session.</param>
+        /// <remarks>Responds with 401 Unauthorized if the caller is not authenticated.</remarks>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -56,6 +69,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Handle a real-time CRUD command and produce a command-specific result object.
+        /// </summary>
+        /// <param name="request">The incoming realtime CRUD request containing `Command`, optional `Id`, and optional `Payload`.</param>
+        /// <param name="cancellationToken">Token to observe while awaiting asynchronous operations.</param>
+        /// <returns>
+        /// An object whose shape depends on `request.Command`:
+        /// - "read_all": { routes = IEnumerable&lt;Route&gt; }
+        /// - "read": { route = Route }
+        /// - "create": operation result and snapshot (e.g. { operation = "create", success, snapshot })
+        /// - "update": operation result and snapshot (e.g. { operation = "update", success, entity, snapshot })
+        /// - "delete": operation result and snapshot (e.g. { operation = "delete", success, deletedId, snapshot })
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown when a required `Id` is missing for "read" or when `Command` is unsupported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -71,6 +98,18 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "create" CRUD command by creating a new route and returning the operation result plus a full snapshot of routes.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request whose Payload must contain a CreateRouteModel JSON object.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - `operation`: the string "create".
+        /// - `success`: a boolean indicating whether creation succeeded.
+        /// - `snapshot`: the current collection of all routes after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is null or cannot be deserialized into a CreateRouteModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -83,6 +122,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success, snapshot };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "update" command to modify an existing route and produce an operation result snapshot.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the target Id and a JSON payload deserializable to <see cref="UpdateRouteModel"/>.</param>
+        /// <returns>
+        /// An object with properties:
+        /// - `operation`: the string "update",
+        /// - `success`: a boolean indicating whether the update succeeded,
+        /// - `entity`: the updated route entity (or null if not found),
+        /// - `snapshot`: the full collection of routes after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when `request.Id` is null or when the request payload is missing or invalid.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -97,6 +149,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for routes, performing authorization and returning an operation result with a post-operation snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request that must contain the Id of the route to delete.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "delete".
+        /// - success: `true` if the delete succeeded, `false` otherwise.
+        /// - deletedId: the id of the deleted route.
+        /// - snapshot: the current list of all routes after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when `request.Id` is null.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -107,6 +172,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves all routes with their associated bus and driver information.
+        /// </summary>
+        /// <returns>An ActionResult containing a collection of route objects; each item includes RouteId, StartPoint, EndPoint, DriverId with a nested Driver object when available (EmployeeId, Name, Surname), BusId with a nested Bus object when available (BusId, Model, RegistrationNumber), TravelTime, and IsActive.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRoutes()
         {

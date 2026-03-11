@@ -20,6 +20,17 @@ public static class WebSocketEventStreamWriter
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// Manages a WebSocket session that streams domain events to the client and processes incoming CRUD-style requests.
+    /// </summary>
+    /// <remarks>
+    /// Upgrades the given HTTP context to a WebSocket session (expects subprotocol "bru.events.v1"), sends each <paramref name="events"/> item as an event message, invokes <paramref name="requestHandler"/> for incoming JSON requests, and sends structured result messages. The session ends when the socket closes, cancellation is requested, or a transport error occurs; the provided <paramref name="cancellationToken"/> is linked into the session lifetime.
+    /// </remarks>
+    /// <param name="context">HTTP context used to accept the WebSocket upgrade and perform the session handshake.</param>
+    /// <param name="events">Asynchronous sequence of domain events to stream to the connected client.</param>
+    /// <param name="requestHandler">Handler invoked for each received RealtimeCrudRequest; should process the request and return a serializable result object.</param>
+    /// <param name="logger">Logger used to record errors and unexpected conditions during the session.</param>
+    /// <param name="cancellationToken">Token that can be used to cancel the entire session from the caller side.</param>
     public static async Task StreamCrudSessionAsync(
         HttpContext context,
         IAsyncEnumerable<ApiDomainEvent> events,
@@ -132,6 +143,17 @@ public static class WebSocketEventStreamWriter
         }
     }
 
+    /// <summary>
+    /// Reads one text message from the provided WebSocket, parses the message as JSON, and returns a deserialized RealtimeCrudRequest.
+    /// </summary>
+    /// <param name="webSocket">The active WebSocket to receive the message from.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation of the receive operation.</param>
+    /// <returns>
+    /// A <see cref="RealtimeCrudRequest"/> parsed from the received JSON text message, or <c>null</c> if the connection was closed, the message was rejected (non-text, too large, or invalid JSON), or the close handshake completed.
+    /// </returns>
+    /// <remarks>
+    /// On protocol or payload errors this method will initiate a close using an appropriate WebSocket close status (for example InvalidMessageType, MessageTooBig, or InvalidPayloadData).
+    /// </remarks>
     private static async Task<RealtimeCrudRequest?> ReceiveRequestAsync(WebSocket webSocket, CancellationToken cancellationToken)
     {
         var buffer = new byte[8 * 1024];
@@ -200,6 +222,13 @@ public static class WebSocketEventStreamWriter
         }
     }
 
+    /// <summary>
+    /// Serialize an object to JSON and send it as a text WebSocket message while ensuring only one send occurs at a time.
+    /// </summary>
+    /// <param name="socket">The target WebSocket to send the JSON text frame to.</param>
+    /// <param name="payload">The object to serialize to JSON for transmission.</param>
+    /// <param name="sendLock">A semaphore used to enforce single-concurrent-send semantics.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation of wait or send operations.</param>
     private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(payload, JsonOptions);

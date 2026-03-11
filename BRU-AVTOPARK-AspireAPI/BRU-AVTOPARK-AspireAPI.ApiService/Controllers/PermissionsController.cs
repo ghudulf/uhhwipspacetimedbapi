@@ -26,6 +26,10 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="PermissionsController"/> with the required services.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when any of the required dependency arguments is null.</exception>
         public PermissionsController(
             IPermissionService permissionService,
             IAdminActionLogger adminLogger,
@@ -40,6 +44,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
        
 
+        /// <summary>
+        /// Streams real-time CRUD permission events to the caller over a WebSocket connection.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token used to terminate the streaming session.</param>
+        /// <remarks>
+        /// Requires an authenticated user with either the admin role or the "permissions.view" permission;
+        /// when not authorized the method sets the response status to 401 or 403 and ends the request.
+        /// </remarks>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -63,6 +75,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the appropriate handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command name and any associated Id or Payload.</param>
+        /// <param name="cancellationToken">A token to observe while processing the request.</param>
+        /// <returns>An object containing the command-specific response payload; the exact shape varies by command (read_all, read, create, update, delete).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request contains an unsupported command.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -77,6 +96,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Handle the realtime "read_all" command and provide a snapshot of all permissions.
+        /// </summary>
+        /// <returns>An object with a `permissions` property containing all permissions.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the `permissions.view` permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
             if (!IsAdmin() && !HasPermission("permissions.view"))
@@ -87,6 +111,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { permissions = await _permissionService.GetAllPermissionsAsync() };
         }
 
+        /// <summary>
+        /// Handle a realtime "read" CRUD request and retrieve a single permission by id.
+        /// </summary>
+        /// <param name="request">The realtime request; its <c>Id</c> must be provided to identify the permission to read.</param>
+        /// <returns>An object with a <c>permission</c> property containing the permission with the specified id, or <c>null</c> if not found.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "permissions.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is not provided.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("permissions.view"))
@@ -98,6 +129,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { permission = await _permissionService.GetPermissionByIdAsync(id) };
         }
 
+        /// <summary>
+        /// Handle a realtime "create" CRUD command to create a permission and return the result snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose Payload must deserialize to a CreatePermissionModel.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "create".
+        /// - success: `true` if a permission was created, `false` otherwise.
+        /// - entity: the created permission object or `null` when creation failed.
+        /// - snapshot: the current list of all permissions after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "permissions.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to CreatePermissionModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
@@ -108,6 +152,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success = created is not null, entity = created, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "update" CRUD command for a permission.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request expected to contain an Id and a Payload serializable to <see cref="UpdatePermissionModel"/>.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "update"
+        /// - success: `true` if the update succeeded, `false` otherwise
+        /// - entity: the updated permission entity (or `null` if not found)
+        /// - snapshot: the current list of all permissions
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "permissions.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("permissions.edit")) throw new UnauthorizedAccessException("Not authorized for permissions.edit");
@@ -120,6 +177,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for permissions.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request; must include the permission Id to delete in <c>request.Id</c>.</param>
+        /// <returns>
+        /// An anonymous object with:
+        /// - <c>operation</c>: the string "delete",
+        /// - <c>success</c>: a boolean indicating whether the deletion succeeded,
+        /// - <c>deletedId</c>: the Id of the deleted permission,
+        /// - <c>snapshot</c>: the current list of all permissions after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "permissions.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when the permission is currently assigned to one or more roles and cannot be deleted.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
@@ -136,6 +206,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieve all permissions and return a client-facing projection of each permission.
+        /// </summary>
+        /// <returns>An ActionResult containing a list of permission objects with fields: PermissionId, Name, Description, Category, and IsActive. Returns a Forbid result when the caller lacks view permission, or a 500 status result with an error message if an unexpected error occurs.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetPermissions()
         {

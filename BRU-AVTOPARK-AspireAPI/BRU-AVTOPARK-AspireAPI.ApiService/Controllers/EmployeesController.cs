@@ -28,6 +28,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="EmployeesController"/> with required service dependencies.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when any required dependency is null.</exception>
         public EmployeesController(
             IEmployeeService employeeService,
             ILogger<EmployeesController> logger,
@@ -42,6 +46,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
+        /// <summary>
+        /// Streams realtime employee CRUD events over a WebSocket connection.
+        /// </summary>
+        /// <param name="cancellationToken">Token used to cancel the streaming session.</param>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -65,6 +73,18 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the appropriate command handler based on the request's Command value.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the Command (e.g., "read_all", "read", "create", "update", "delete"), optional Id, and optional Payload.</param>
+        /// <param name="cancellationToken">Token to cancel the operation.</param>
+        /// <returns>
+        /// An object containing the command-specific result:
+        /// for "read_all": an object with an employees collection;
+        /// for "read": an object with an employee entry;
+        /// for "create", "update", "delete": an object with `operation` (string), `success` (bool) and the affected entity id or related metadata.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request.Command is not supported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -80,6 +100,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Authorize the caller and retrieve all employees.
+        /// </summary>
+        /// <returns>An object with an `employees` property containing the list of employees.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "employees.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
             if (!IsAdmin() && !HasPermission("employees.view"))
@@ -90,6 +115,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { employees = await _employeeService.GetAllEmployeesAsync() };
         }
 
+        /// <summary>
+        /// Handle a realtime "read" CRUD request and return the requested employee.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request; must contain the target employee Id in <c>request.Id</c>.</param>
+        /// <returns>An object with an <c>employee</c> property containing the employee entity (or null if not found).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "employees.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("employees.view"))
@@ -101,6 +133,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { employee = await _employeeService.GetEmployeeByIdAsync(id) };
         }
 
+        /// <summary>
+        /// Handles a realtime "create" CRUD request by creating a new employee from the request payload.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the create payload and request metadata.</param>
+        /// <returns>An object with keys: <c>operation</c> (\"create\"), <c>success</c> (`true` if creation succeeded, `false` otherwise), and <c>employeeId</c> (the created employee's ID or <c>null</c>).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the <c>employees.create</c> permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a create model.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("employees.create"))
@@ -176,6 +215,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success, employeeId = newEmployee?.EmployeeId };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "update" CRUD request for an employee and perform the update operation.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request. Must include <c>Id</c> and a JSON <c>Payload</c> deserializable to <c>UpdateEmployeeModel</c>; may include <c>RequestId</c>.</param>
+        /// <returns>An object containing the performed operation ("update"), a boolean <c>success</c> flag, and the <c>employeeId</c> that was updated.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "employees.update" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing from the request.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("employees.update"))
@@ -261,6 +307,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, employeeId = id };
         }
 
+        /// <summary>
+        /// Handles a realtime "delete" CRUD request for an employee: deletes the employee, publishes a domain event if deletion succeeds, and schedules admin-action logging.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request. Must contain <c>Id</c> of the employee to delete; <c>RequestId</c> may be used as correlation id.</param>
+        /// <exception cref="UnauthorizedAccessException">Thrown when caller is not an admin and lacks the "employees.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
+        /// <returns>An object with fields: <c>operation</c> ("delete"), <c>success</c> (deletion result), and <c>deletedId</c> (the employee id attempted).</returns>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("employees.delete"))
@@ -338,6 +391,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id };
         }
 
+        /// <summary>
+        /// Retrieves all employees and their associated job information, then returns the collection to the client.
+        /// </summary>
+        /// <returns>
+        /// An ActionResult containing a list of employee objects where each item includes EmployeeId, Name, Surname, Patronym, JobId and a nested Job object with JobId, JobTitle and Internship when available; returns 403 (Forbidden) if the caller lacks the required permission, or 500 (Internal Server Error) on failure.
+        /// </returns>
         [HttpGet]
         //all view operations are fine to not need admin - this applies to all get type
         public async Task<ActionResult<IEnumerable<dynamic>>> GetEmployees()
@@ -438,6 +497,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Creates a new employee with the provided information.
+        /// </summary>
+        /// <param name="model">The employee data to create.</param>
+        /// <returns>The newly created employee with HTTP 201 Created status; HTTP 400 if creation fails; HTTP 403 if not authorized.</returns>
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<Employee>> CreateEmployee([FromBody] CreateEmployeeModel model)
@@ -502,6 +566,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Updates the specified employee's properties using the values provided in the request model.
+        /// </summary>
+        /// <param name="id">The identifier of the employee to update.</param>
+        /// <param name="model">An object containing the fields to update for the employee.</param>
+        /// <returns>`NoContent` (204) when the update succeeds; `Forbid` (403) when the caller is not authorized; `NotFound` (404) when the employee does not exist; `StatusCode(500)` on unexpected server error. The method also records an administrative action asynchronously when the update succeeds.</returns>
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> UpdateEmployee(uint id, [FromBody] UpdateEmployeeModel model)
@@ -579,6 +649,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
+        /// <summary>
+        /// Deletes the employee with the specified identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the employee to delete.</param>
+        /// <returns>An IActionResult describing the outcome: 204 NoContent when deletion succeeds; 403 Forbidden when the caller lacks permission; 404 NotFound if the employee does not exist; 500 InternalServerError on unexpected failure.</returns>
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteEmployee(uint id)

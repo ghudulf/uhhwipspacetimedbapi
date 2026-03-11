@@ -51,6 +51,11 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Retrieves all employees assigned to the specified job ID.
+        /// </summary>
+        /// <param name="jobId">The identifier of the job used to filter employees.</param>
+        /// <returns>A list of employees whose JobId equals the provided jobId; an empty list if no matches are found.</returns>
         public async Task<List<Employee>> GetEmployeesByJobIdAsync(uint jobId)
         {
             try
@@ -84,6 +89,15 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Creates a new employee with the specified name, surname, patronym, and job association.
+        /// </summary>
+        /// <param name="employeeName">The first name of the employee.</param>
+        /// <param name="employeeSurname">The surname (last name) of the employee.</param>
+        /// <param name="employeePatronym">The patronym (middle name) of the employee.</param>
+        /// <param name="jobId">Identifier of the job to associate with the new employee.</param>
+        /// <param name="actingUser">Optional identity of the user performing the operation.</param>
+        /// <returns>The created <see cref="Employee"/> if the job exists and the new employee is confirmed or found; otherwise <c>null</c>.</returns>
         public async Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
         {
             try

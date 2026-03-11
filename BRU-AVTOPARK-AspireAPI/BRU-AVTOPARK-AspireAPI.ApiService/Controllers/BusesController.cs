@@ -25,6 +25,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<BusesController> _logger;
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="BusesController"/> with its required services.
+        /// </summary>
+        /// <param name="busService">Service for bus data access and operations.</param>
+        /// <param name="adminLogger">Service for recording administrative actions.</param>
+        /// <param name="logger">Logger for controller diagnostics.</param>
+        /// <param name="realtimeEventBus">Pub/sub bus for subscribing and publishing realtime events.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any provided dependency is null.</exception>
         public BusesController(
             IBusService busService,
             IAdminActionLogger adminLogger,
@@ -38,6 +46,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
 
+        /// <summary>
+        /// Streams real-time CRUD events for buses over a WebSocket connection.
+        /// </summary>
+        /// <remarks>
+        /// If the caller is not authenticated, the method sets the response status to 401 Unauthorized and returns without starting a stream.
+        /// </remarks>
+        /// <param name="cancellationToken">Token used to cancel the streaming session and associated subscriptions.</param>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeBusEvents(CancellationToken cancellationToken)
         {
@@ -55,6 +70,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the corresponding handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command, optional Id, and optional payload.</param>
+        /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
+        /// <returns>An object containing the command-specific response (e.g., snapshot, entity, operation result).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Command is not one of: "read_all", "read", "create", "update", or "delete".</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -70,6 +92,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Retrieve a snapshot of all buses for realtime "read_all" requests, enforcing admin or "buses.view" permission.
+        /// </summary>
+        /// <returns>An object with a `buses` property containing the collection of all buses.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "buses.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
             if (!IsAdmin() && !HasPermission("buses.view"))
@@ -80,6 +107,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { buses = await _busService.GetAllBusesAsync() };
         }
 
+        /// <summary>
+        /// Handle a realtime "read" CRUD request and return the bus matching the provided request Id.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; its <see cref="RealtimeCrudRequest.Id"/> must be provided.</param>
+        /// <returns>An object with a single property `bus` containing the requested bus entity (or `null` if not found).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights and the "buses.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("buses.view"))
@@ -91,6 +125,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { bus = await _busService.GetBusByIdAsync(id) };
         }
 
+        /// <summary>
+        /// Handles a realtime "create" CRUD request by creating a new bus from the request payload and returning the operation result with a full snapshot of buses.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request whose Payload must deserialize to a CreateBusModel.</param>
+        /// <returns>
+        /// An object containing:
+        /// - operation: the string "create",
+        /// - success: `true` if the bus was created, `false` otherwise,
+        /// - entity: the created bus entity (or null on failure),
+        /// - snapshot: the current list of all buses.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into CreateBusModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("buses.create"))
@@ -106,6 +153,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success = bus is not null, entity = bus, snapshot };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "update" CRUD request for buses.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target <c>Id</c> and a JSON <c>Payload</c> deserializable to <see cref="UpdateBusModel"/>.</param>
+        /// <returns>An object with keys: <c>operation</c> (string "update"), <c>success</c> (bool), <c>entity</c> (the updated bus or null), and <c>snapshot</c> (the current list of all buses).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing <c>Id</c> or <c>Payload</c>.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("buses.edit"))
@@ -123,6 +177,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD request for buses, performing authorization, deletion, and returning a post-operation snapshot.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request. Must contain an <c>Id</c> of the bus to delete.</param>
+        /// <returns>
+        /// An object with the result of the operation:
+        /// - <c>operation</c>: the string "delete";
+        /// - <c>success</c>: a boolean indicating whether deletion succeeded;
+        /// - <c>deletedId</c>: the id of the deleted entity;
+        /// - <c>snapshot</c>: the current collection of buses after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include a required <c>Id</c>.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("buses.delete"))
@@ -136,6 +203,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves all buses and returns them mapped to a client-facing JSON-friendly representation.
+        /// </summary>
+        /// <returns>
+        /// An ActionResult containing a list of bus representations (objects with fields such as BusId, Model, RegistrationNumber, Capacity, BusType, Year, Vin, LicensePlate, CurrentStatus, IsActive, SeatedCapacity, StandingCapacity, CurrentLocation, LastLocationUpdate, FuelConsumption, CurrentFuelLevel, FuelType, MileageTotal, MileageSinceService, HasAccessibility, HasAirConditioning, HasWifi, and HasUsbCharging).
+        /// Returns 200 OK with the list on success, 403 Forbidden if the caller lacks permission, or 500 Internal Server Error if an unexpected error occurs.
+        /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetBuses()
         {

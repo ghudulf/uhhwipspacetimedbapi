@@ -26,6 +26,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobsController"/> with required services.
+        /// </summary>
+        /// <param name="employeeService">Service for managing job and employee data.</param>
+        /// <param name="logger">Logger for recording controller activity and diagnostics.</param>
+        /// <param name="realtimeEventBus">Realtime event bus used to subscribe and publish job-related CRUD events.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any required dependency is null.</exception>
         public JobsController(
             IEmployeeService employeeService,
             ILogger<JobsController> logger,
@@ -37,6 +44,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
 
+        /// <summary>
+        /// Streams realtime CRUD events for jobs over a WebSocket to the authenticated caller.
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the streaming session and underlying subscription.</param>
+        /// <returns>A task that completes when the streaming session ends.</returns>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -54,6 +66,22 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Dispatches realtime CRUD commands for jobs and returns an operation-specific result object.
+        /// </summary>
+        /// <param name="request">The realtime request containing a Command (read_all, read, create, update, delete), optional Id, and optional Payload.</param>
+        /// <param name="cancellationToken">Token to observe for request cancellation.</param>
+        /// <returns>
+        /// An object representing the command result:
+        /// - For "read_all": an anonymous object with a `jobs` collection.
+        /// - For "read": an anonymous object with a `job` entity.
+        /// - For "create": an anonymous result produced by the create handler (operation, success, snapshot).
+        /// - For "update": an anonymous result produced by the update handler (operation, success, entity, snapshot).
+        /// - For "delete": an anonymous result produced by the delete handler (operation, success, deletedId, snapshot).
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a required Id is missing for "read", or when the Command is unsupported.
+        /// </exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -68,6 +96,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Handle the "create" realtime CRUD command by creating a new job and returning the operation result with a current snapshot of all jobs.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose Payload must contain a serialized CreateJobModel (case-insensitive).</param>
+        /// <returns>An anonymous object with `operation = "create"`, `success` indicating whether creation succeeded, and `snapshot` containing the list of all jobs.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller does not have admin privileges.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into a CreateJobModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -78,6 +113,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success, snapshot };
         }
 
+        /// <summary>
+        /// Handle an incoming realtime "update" CRUD command for jobs.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request. Must include <c>Id</c> and a <c>Payload</c> deserializable to <see cref="UpdateJobModel"/>.</param>
+        /// <returns>An anonymous object with properties: <c>operation</c> (string), <c>success</c> (bool), <c>entity</c> (the updated job), and <c>snapshot</c> (all jobs).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing or invalid for the update operation.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -90,6 +132,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handles a realtime "delete" command by removing the specified job and returning an operation snapshot.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; its <c>Id</c> must be provided to identify the job to delete.</param>
+        /// <returns>An object containing: <c>operation</c> ("delete"), <c>success</c> (whether deletion succeeded), <c>deletedId</c> (the id that was deleted), and <c>snapshot</c> (the current list of all jobs).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
@@ -99,6 +148,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves all jobs from the data store and returns them mapped to client-facing fields.
+        /// </summary>
+        /// <returns>An HTTP 200 response containing a list of job objects with fields: JobId, JobTitle, Internship, BaseSalary, Department, JobDescription, RequiredExperience, RequiredSkills, RequiredCertifications, EducationRequirements, WorkSchedule, IsFullTime, IsPartTime, IsShiftWork, Benefits, ReportingTo, VacationDays, SickDays, PerformanceMetrics; returns an HTTP 500 status with an error message if retrieval fails.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetJobs()
         {

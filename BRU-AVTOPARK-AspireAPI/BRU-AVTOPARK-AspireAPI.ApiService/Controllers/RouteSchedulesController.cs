@@ -26,6 +26,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="RouteSchedulesController"/> with its required services.
+        /// </summary>
+        /// <param name="routeScheduleService">Service for managing route schedules.</param>
+        /// <param name="logger">Logger for controller operations.</param>
+        /// <param name="realtimeEventBus">Event bus used to publish and subscribe realtime schedule events.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any of the provided dependencies is null.</exception>
         public RouteSchedulesController(
             IRouteScheduleService routeScheduleService,
             ILogger<RouteSchedulesController> logger,
@@ -38,6 +45,10 @@ namespace TicketSalesApp.AdminServer.Controllers
 
        
 
+        /// <summary>
+        /// Opens a WebSocket stream that serves realtime CRUD events for route schedules.
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the streaming session.</param>
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
@@ -55,6 +66,22 @@ namespace TicketSalesApp.AdminServer.Controllers
                 cancellationToken);
         }
 
+        /// <summary>
+        /// Handle a realtime CRUD request for route schedules by dispatching the request command to the corresponding operation.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command, optional id, and payload.</param>
+        /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+        /// <returns>
+        /// An object whose shape depends on the command:
+        /// - For "read_all": { schedules = IEnumerable of all schedules }.
+        /// - For "read": { schedule = the schedule with the specified id }.
+        /// - For "create": an operation result object containing operation, success flag and a snapshot of schedules after creation.
+        /// - For "update": an operation result object containing operation, success flag, the updated entity and a snapshot of schedules.
+        /// - For "delete": an operation result object containing operation, success flag, deletedId and a snapshot of schedules.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a required id is missing for "read" or when the command is unsupported.
+        /// </exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
@@ -69,6 +96,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
+        /// <summary>
+        /// Processes a realtime "create" CRUD request: authorizes the caller, deserializes the payload into a CreateRouteScheduleModel, creates the schedule, and returns an operation result with a fresh snapshot of all schedules.
+        /// </summary>
+        /// <returns>An object containing `operation` set to "create", `success` as a boolean indicating creation outcome, and `snapshot` containing the full list of schedules after the operation.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights and the "schedules.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateRouteScheduleModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("schedules.create")) throw new UnauthorizedAccessException("Not authorized for schedules.create");
@@ -79,6 +112,18 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "create", success, snapshot };
         }
 
+        /// <summary>
+        /// Processes a realtime "update" CRUD request, applies the schedule update, and returns the updated entity plus a full snapshot of schedules.
+        /// </summary>
+        /// <returns>
+        /// An object containing:
+        /// - `operation`: the string "update",
+        /// - `success`: a boolean indicating whether the update succeeded,
+        /// - `entity`: the updated schedule entity (or null if not found),
+        /// - `snapshot`: the current list of all schedules after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required `id` or `payload` for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("schedules.edit")) throw new UnauthorizedAccessException("Not authorized for schedules.edit");
@@ -91,6 +136,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "update", success, entity, snapshot };
         }
 
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for route schedules.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; must include the Id of the schedule to delete.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "delete"
+        /// - success: `true` if the schedule was deleted, `false` otherwise
+        /// - deletedId: the id of the schedule that was targeted for deletion
+        /// - snapshot: the current collection of all schedules after the operation
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
             if (!IsAdmin() && !HasPermission("schedules.delete")) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
@@ -100,6 +158,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
+        /// <summary>
+        /// Retrieves a paginated list of route schedules, optionally filtered by active status.
+        /// </summary>
+        /// <param name="page">1-based page number to return (default is 1).</param>
+        /// <param name="pageSize">Number of items per page (default is 100).</param>
+        /// <param name="isActive">If specified, limits results to schedules with the given active state; otherwise returns all schedules.</param>
+        /// <returns>A collection of schedule objects for the requested page. Pagination metadata is provided in response headers: X-Total-Count, X-Page, X-Page-Size, and X-Total-Pages.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules(
             [FromQuery] int page = 1,
