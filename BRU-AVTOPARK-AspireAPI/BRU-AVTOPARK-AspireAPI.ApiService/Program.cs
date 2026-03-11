@@ -253,6 +253,18 @@ builder.Services.AddScoped<ApiMutationEventFilter>();
 // Add HTTP context accessor for admin action logging
 builder.Services.AddHttpContextAccessor();
 
+// Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    // Clear default networks/proxies and configure based on your infrastructure
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    // For development, trust all proxies (in production, configure specific KnownProxies/KnownNetworks)
+    options.ForwardLimit = 1; // Only trust the first proxy
+});
+
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
@@ -579,6 +591,9 @@ catch (Exception ex)
 }
 
 // CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
+// Configure ForwardedHeaders middleware FIRST to process proxy headers
+app.UseForwardedHeaders();
+
 try
 {
     // CRITICAL: Feature flag routing middleware MUST run BEFORE UseRouting()

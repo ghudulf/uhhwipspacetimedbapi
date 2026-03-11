@@ -99,30 +99,66 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
-                // Get the count before insertion to help identify the new employee
-                var employeesBefore = connection.Db.Employee.Iter().ToList();
-                var maxIdBefore = employeesBefore.Any() ? employeesBefore.Max(e => e.EmployeeId) : 0u;
+                // Use a TaskCompletionSource to wait for the employee insert event
+                var tcs = new TaskCompletionSource<Employee>();
+                var timeout = TimeSpan.FromSeconds(5);
 
-                // Call the CreateEmployee reducer
-                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);// doesent need active user
-
-                // Retrieve the newly created employee
-                // The new employee should have an ID greater than maxIdBefore
-                var newEmployee = connection.Db.Employee.Iter()
-                    .Where(e => e.EmployeeId > maxIdBefore && e.Name == employeeName && e.Surname == employeeSurname && e.JobId == jobId)
-                    .OrderByDescending(e => e.EmployeeId)
-                    .FirstOrDefault();
-
-                if (newEmployee != null)
+                // Subscribe to Employee table insert events to capture the newly created employee
+                EventHandler<Employee>? insertHandler = null;
+                insertHandler = (sender, employee) =>
                 {
+                    // Match the employee by the unique combination of fields we're creating
+                    if (employee.Name == employeeName &&
+                        employee.Surname == employeeSurname &&
+                        employee.Patronym == employeePatronym &&
+                        employee.JobId == jobId)
+                    {
+                        _logger.LogInformation("Captured newly created employee with ID: {EmployeeId}", employee.EmployeeId);
+                        connection.Db.Employee.OnInsert -= insertHandler;
+                        tcs.TrySetResult(employee);
+                    }
+                };
+
+                connection.Db.Employee.OnInsert += insertHandler;
+
+                try
+                {
+                    // Call the CreateEmployee reducer
+                    connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);
+
+                    // Wait for the insert event with timeout
+                    using var cts = new CancellationTokenSource(timeout);
+                    cts.Token.Register(() => tcs.TrySetCanceled());
+
+                    var newEmployee = await tcs.Task;
                     _logger.LogInformation("Successfully created employee with ID: {EmployeeId}", newEmployee.EmployeeId);
+                    return newEmployee;
                 }
-                else
+                catch (TaskCanceledException)
                 {
-                    _logger.LogWarning("Employee reducer called but could not retrieve created employee");
-                }
+                    _logger.LogWarning("Timeout waiting for employee creation event. Attempting fallback retrieval.");
+                    connection.Db.Employee.OnInsert -= insertHandler;
 
-                return newEmployee;
+                    // Fallback: try to find the employee by unique fields
+                    var employee = connection.Db.Employee.Iter()
+                        .Where(e => e.Name == employeeName &&
+                                   e.Surname == employeeSurname &&
+                                   e.Patronym == employeePatronym &&
+                                   e.JobId == jobId)
+                        .OrderByDescending(e => e.EmployeeId)
+                        .FirstOrDefault();
+
+                    if (employee != null)
+                    {
+                        _logger.LogInformation("Found employee via fallback with ID: {EmployeeId}", employee.EmployeeId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Employee reducer called but could not retrieve created employee");
+                    }
+
+                    return employee;
+                }
             }
             catch (Exception ex)
             {

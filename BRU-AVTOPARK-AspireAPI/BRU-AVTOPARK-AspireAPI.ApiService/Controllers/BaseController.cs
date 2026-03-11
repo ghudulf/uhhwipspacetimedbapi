@@ -621,20 +621,24 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Fallback to custom JWT authentication
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                // For tokens that aren't already authenticated, validate via OAuth
+                // This handles encrypted JWE tokens that can't be parsed directly
+                var claims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+                if (claims != null)
                 {
-                    return null;
-                }
-
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-
-                if (tokenHandler.CanReadToken(token))
-                {
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "name" || c.Type == "preferred_username")?.Value;
+                    // Try to extract username from validated claims
+                    if (claims.TryGetValue("name", out var nameObj))
+                    {
+                        return nameObj?.ToString();
+                    }
+                    if (claims.TryGetValue("preferred_username", out var preferredUsernameObj))
+                    {
+                        return preferredUsernameObj?.ToString();
+                    }
+                    if (claims.TryGetValue(ClaimTypes.Name, out var claimTypesNameObj))
+                    {
+                        return claimTypesNameObj?.ToString();
+                    }
                 }
 
                 return null;
@@ -648,27 +652,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         /// <summary>
         /// Gets the client IP address from the request.
+        /// Uses HttpContext.Connection.RemoteIpAddress which is populated by ForwardedHeadersMiddleware.
         /// </summary>
         protected string GetClientIp()
         {
             try
             {
-                // Check for X-Forwarded-For header (proxy/load balancer scenario)
-                var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(forwardedFor))
-                {
-                    // X-Forwarded-For can contain multiple IPs, take the first one
-                    return forwardedFor.Split(',')[0].Trim();
-                }
-
-                // Check for X-Real-IP header
-                var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(realIp))
-                {
-                    return realIp;
-                }
-
-                // Fallback to direct connection IP
+                // Use RemoteIpAddress which is populated by ForwardedHeadersMiddleware
+                // after validation of X-Forwarded-For and X-Real-IP headers at the edge
                 return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             }
             catch (Exception ex)
