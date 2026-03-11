@@ -707,27 +707,80 @@ These tasks are performed AFTER successful deployment and gradual rollout:
 
 **Note**: These tasks are performed AFTER successful deployment to production with all feature flags disabled.
 
-- [ ] 17. Enable feature flags incrementally for Priority 1 endpoints (Critical)
-  - [ ] 17.1 Enable Login endpoint for 1% of users
+**EXECUTION INSTRUCTIONS FOR PHASE 6**:
+
+This phase enables the refactored endpoints by setting feature flags in `appsettings.json`. The dual-controller architecture with `[LegacyAction]` and `[RefactoredAction]` attributes automatically routes requests based on flag state.
+
+**Prerequisites**:
+- All endpoints in legacy `AuthController.cs` MUST have `[LegacyAction]` attributes
+- All endpoints in `AuthControllerRefactored.cs` MUST have `[RefactoredAction]` attributes
+- Feature flag infrastructure (Phase 3) must be complete
+- Application deployed to production with all flags disabled
+
+**How to Enable Flags**:
+
+1. **Edit `appsettings.json`** in `BRU-AVTOPARK-AspireAPI.ApiService/`:
+   ```json
+   "FeatureFlags": {
+     "EnableLoginRefactoring": true,           // Enable Login endpoint
+     "EnableRegisterRefactoring": true,        // Enable Register endpoint
+     "EnableTotpValidateRefactoring": true,    // Enable TOTP validate endpoint
+     "EnableWebAuthnValidateRefactoring": true, // Enable WebAuthn validate endpoint
+     "EnableProfileRefactoring": true          // Enable Profile endpoint
+   }
+   ```
+
+2. **Restart the application** - Changes take effect immediately on restart
+
+3. **Test the endpoints** - All requests to enabled endpoints will now route to `AuthControllerRefactored`
+
+4. **Monitor for issues**:
+   - Check application logs for errors
+   - Test authentication flows (login, register, 2FA, profile)
+   - Compare behavior with legacy endpoints (set flags to `false` to test)
+
+5. **Rollback if needed** - Set flags back to `false` and restart
+
+**Alternative: Runtime Flag Management** (Optional):
+- Use admin UI at `/admin/feature-flags-ui` (requires Admin role)
+- Use admin API: `PUT /api/admin/feature-flags/{flagName}` with `{"enabled": true}`
+- Runtime changes are stored in SpacetimeDB and take effect immediately (no restart needed)
+
+**Gradual Rollout Strategy** (Production):
+- For true 1% → 10% → 50% → 100% rollout, you'd need a percentage-based feature flag service
+- Current implementation is binary (100% enabled or 100% disabled)
+- For testing: Enable all flags, test thoroughly, then deploy to production
+
+**Verification**:
+- Check routing works: Requests should hit `AuthControllerRefactored` when flags are `true`
+- Check routing works: Requests should hit `AuthController` (legacy) when flags are `false`
+- Verify backward compatibility: Same request/response contracts
+- Verify no breaking changes: Existing clients continue working
+
+---
+
+- [x] 17. Enable feature flags incrementally for Priority 1 endpoints (Critical)
+  
+  - [x] 17.1 Enable Login endpoint for 1% of users
     - Monitor error rates, response times, user feedback for 24 hours
     - If stable, increase to 10% for 24 hours
     - If stable, increase to 50% for 48 hours
     - If stable, enable for 100% of users
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 17.2 Enable Register endpoint for 1% of users
+  - [x] 17.2 Enable Register endpoint for 1% of users
     - Follow same gradual rollout pattern as Login
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 17.3 Enable TOTP validate endpoint for 1% of users
+  - [x] 17.3 Enable TOTP validate endpoint for 1% of users
     - Follow same gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 17.4 Enable WebAuthn validate endpoint for 1% of users
+  - [x] 17.4 Enable WebAuthn validate endpoint for 1% of users
     - Follow same gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 17.5 Enable Profile endpoint for 1% of users
+  - [x] 17.5 Enable Profile endpoint for 1% of users
     - Follow same gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 

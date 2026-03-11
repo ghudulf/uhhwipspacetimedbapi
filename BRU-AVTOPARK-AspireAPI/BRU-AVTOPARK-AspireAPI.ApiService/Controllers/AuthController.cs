@@ -31,6 +31,7 @@ using Microsoft.AspNetCore;
 using Microsoft.Extensions.Options;
 using TicketSalesApp.AdminServer.Configuration;
 using BRU_AVTOPARK.Services.Interfaces;
+using BRU_AVTOPARK_AspireAPI.ApiService.Routing;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -1735,6 +1736,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Route("login")]
         [HttpPost]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
         public async Task<IActionResult> Login([FromBody] LoginRequest jsonRequest, [FromForm] LoginRequest? formRequest = null)
         {
             _logger.LogInformation("=== LOGIN ATTEMPT STARTED ===");
@@ -2197,6 +2199,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous] // Allow anonymous and check manually
+        [LegacyAction(nameof(FeatureFlagOptions.EnableRegisterRefactoring))]
         public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest request)
         {
             _logger.LogInformation("Starting registration process for user: {Username}", request.Username);
@@ -2870,6 +2873,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         
         [HttpPost("totp/validate")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableTotpValidateRefactoring))]
         public async Task<ActionResult<ValidateTotpResponse>> ValidateTotp([FromBody] ValidateTotpRequest request)
         {
             try
@@ -3200,6 +3204,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("webauthn/validate")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnValidateRefactoring))]
         public async Task<ActionResult<WebAuthnValidateResponse>> ValidateWebAuthn([FromBody] WebAuthnValidateRequest request)
         {
             try
@@ -5579,6 +5584,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         // Add this handler for the profile page
         [HttpGet("profile")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableProfileRefactoring))]
         public async Task<IActionResult> ProfilePage()
         {
             if (!IsBrowserRequest())

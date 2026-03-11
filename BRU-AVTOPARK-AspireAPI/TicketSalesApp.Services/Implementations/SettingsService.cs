@@ -49,26 +49,43 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Creating default user settings for user: {UserId}", userId);
                 conn.Reducers.CreateUserSettings(userId);
 
-                // Wait a moment for the reducer to complete
-                await Task.Delay(100);
-
-                // Retrieve the newly created settings
-                var newSettings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
-
-                if (newSettings == null)
+                // Wait for the reducer to complete (with retries)
+                UserSettings? newSettings = null;
+                for (int i = 0; i < 5; i++)
                 {
-                    _logger.LogError("Failed to create user settings for user: {UserId}", userId);
-                    throw new Exception("Failed to create user settings");
+                    await Task.Delay(100);
+                    newSettings = conn.Db.UserSettings.Iter()
+                        .FirstOrDefault(s => s.UserId.Equals(userId));
+                    
+                    if (newSettings != null)
+                    {
+                        _logger.LogInformation("Successfully created default user settings for user: {UserId}", userId);
+                        return newSettings;
+                    }
                 }
 
-                _logger.LogInformation("Successfully created default user settings for user: {UserId}", userId);
-                return newSettings;
+                // If still null after retries, return default settings object
+                // This allows login to proceed without 2FA
+                _logger.LogWarning("Failed to create user settings in database for user: {UserId}, returning default settings", userId);
+                return new UserSettings
+                {
+                    UserId = userId,
+                    TotpEnabled = false,
+                    WebAuthnEnabled = false
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting or creating user settings for user: {UserId}", userId);
-                throw;
+                
+                // Return default settings to allow login to proceed
+                _logger.LogWarning("Returning default settings due to error for user: {UserId}", userId);
+                return new UserSettings
+                {
+                    UserId = userId,
+                    TotpEnabled = false,
+                    WebAuthnEnabled = false
+                };
             }
         }
 

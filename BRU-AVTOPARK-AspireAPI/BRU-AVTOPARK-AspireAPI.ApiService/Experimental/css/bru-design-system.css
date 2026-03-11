@@ -732,6 +732,97 @@ button:active, .btn:active {
     margin-bottom: 4px;
 }
 
+/* Sidebar navigation styles */
+.sidebar-nav {
+    width: 240px;
+    background-color: var(--card-color);
+    border-right: 1px solid var(--border-color);
+    padding: 24px 0;
+    flex-shrink: 0;
+}
+
+.sidebar-nav__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav__item {
+    margin-bottom: 4px;
+}
+
+.sidebar-nav__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-color);
+    text-decoration: none;
+    border-radius: 8px;
+    margin: 0 8px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-nav__link:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .sidebar-nav__link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav__link--active {
+    background-color: rgba(252, 63, 29, 0.1);
+    color: var(--primary-color);
+}
+
+.sidebar-nav__link--danger {
+    color: var(--error-color);
+}
+
+.sidebar-nav__link--danger:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.sidebar-nav__icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+}
+
+.profile-main-content {
+    flex-grow: 1;
+    padding: 24px;
+    background-color: var(--background-color);
+    overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+    .sidebar-nav {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 0;
+    }
+    
+    .sidebar-nav__list {
+        display: flex;
+        overflow-x: auto;
+    }
+    
+    .sidebar-nav__item {
+        margin-bottom: 0;
+        margin-right: 4px;
+    }
+    
+    .sidebar-nav__link {
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
 .base-item_root__Z_6ST {
     display: flex;
     align-items: center;
@@ -913,3 +1004,239 @@ button:active, .btn:active {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
+
+
+/* ============================================
+   PROFILE PAGE STYLES
+   ============================================ */
+
+/* Section container */
+.section {
+    margin-bottom: 2rem;
+}
+
+.section__inner {
+    background: var(--card-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.section__heading {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Profile card */
+.profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.profile-card__avatar {
+    margin-bottom: 1.5rem;
+}
+
+.profile-card__name {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.profile-card__description {
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* User avatar */
+.user-avatar {
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--border-color);
+}
+
+.user-avatar--large {
+    width: 120px;
+    height: 120px;
+}
+
+.user-avatar__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Text styles */
+.text {
+    margin: 0;
+}
+
+.text--heading-l {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.text--heading-m {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.text--m {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.text--s {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.text--secondary {
+    color: var(--text-muted);
+}
+
+/* Bulleted items */
+.bulleted-item {
+    display: inline-block;
+}
+
+.bulleted-item:not(:last-child)::after {
+    content: " • ";
+    margin: 0 0.5rem;
+    color: var(--text-muted);
+}
+
+/* List styles */
+.list-plain {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.list-item__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.list-item__content--top {
+    align-items: flex-start;
+}
+
+.list-item__action {
+    margin-left: 1rem;
+}
+
+.list-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 0;
+}
+
+/* Badge list */
+.badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Admin cards */
+.admin-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.admin-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+}
+
+.admin-card__icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.admin-card__icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.admin-card__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.admin-card__subtitle {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* Button text variant */
+.btn--text {
+    background: transparent;
+    color: var(--primary-color);
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+.btn--text:hover {
+    background: rgba(252, 63, 29, 0.1);
+    text-decoration: none;
+}
+
+/* Button large variant */
+.btn--lg {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+}

@@ -18,13 +18,10 @@
 
             <form method="POST" action="/api/auth/login" id="loginForm">
                 <partial name="_FormField"
-                         model="new FormFieldViewModel("username", "Username",
-                             Placeholder: "Enter your username", Required: true)" />
+                         model='new FormFieldViewModel("username", "Username", Placeholder: "Enter your username", Required: true)' />
 
                 <partial name="_FormField"
-                         model="new FormFieldViewModel("password", "Password",
-                             Type: "password",
-                             Placeholder: "Enter your password", Required: true)" />
+                         model='new FormFieldViewModel("password", "Password", Type: "password", Placeholder: "Enter your password", Required: true)' />
 
                 <button type="button" class="btn btn--auth-primary" id="loginButton">
                     Log in

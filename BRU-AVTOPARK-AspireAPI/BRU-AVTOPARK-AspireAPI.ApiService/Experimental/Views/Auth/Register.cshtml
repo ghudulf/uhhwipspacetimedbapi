@@ -44,19 +44,16 @@
                     <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");">
                         <div class="form-row">
                             <partial name="_FormField"
-                                     model="new FormFieldViewModel("username", "Username", Required: true)" />
+                                     model='new FormFieldViewModel("username", "Username", Required: true)' />
                             <partial name="_FormField"
-                                     model="new FormFieldViewModel("password", "Password",
-                                         Type: "password", Required: true)" />
+                                     model='new FormFieldViewModel("password", "Password", Type: "password", Required: true)' />
                         </div>
 
                         <div class="form-row">
                             <partial name="_FormField"
-                                     model="new FormFieldViewModel("email", "Email (optional)",
-                                         Type: "email", Placeholder: "example@example.com")" />
+                                     model='new FormFieldViewModel("email", "Email (optional)", Type: "email", Placeholder: "example@example.com")' />
                             <partial name="_FormField"
-                                     model="new FormFieldViewModel("phoneNumber", "Phone (optional)",
-                                         Type: "tel", Placeholder: "+375 XX XXX-XX-XX")" />
+                                     model='new FormFieldViewModel("phoneNumber", "Phone (optional)", Type: "tel", Placeholder: "+375 XX XXX-XX-XX")' />
                         </div>
 
                         <div class="form-group">

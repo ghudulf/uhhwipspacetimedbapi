@@ -41,11 +41,39 @@ public class HtmlRenderingService : IHtmlRenderingService
         TModel model,
         HttpContext httpContext)
     {
+        // STEP 1: Create ActionContext with proper route data
+        // This is critical for Razor to understand the controller/action context
+        var routeData = httpContext.GetRouteData();
+        
+        // Extract controller and action from viewName (e.g., "Profile/Index" -> controller="Profile", action="Index")
+        var viewParts = viewName.Split('/');
+        if (viewParts.Length == 2)
+        {
+            routeData.Values["controller"] = viewParts[0];
+            routeData.Values["action"] = viewParts[1];
+        }
+        else
+        {
+            // Single part view name (e.g., "Index") - use default controller
+            routeData.Values["controller"] = "Auth";
+            routeData.Values["action"] = viewParts[0];
+        }
+
+        var actionDescriptor = new ActionDescriptor
+        {
+            RouteValues = new Dictionary<string, string?>
+            {
+                ["controller"] = routeData.Values["controller"]?.ToString(),
+                ["action"] = routeData.Values["action"]?.ToString()
+            }
+        };
+
         var actionContext = new ActionContext(
             httpContext,
-            httpContext.GetRouteData(),
-            new ActionDescriptor());
+            routeData,
+            actionDescriptor);
 
+        // STEP 2: Find the main view using our custom FindView method
         await using var sw = new StringWriter();
         var viewResult = FindView(actionContext, viewName);
 
@@ -57,6 +85,7 @@ public class HtmlRenderingService : IHtmlRenderingService
             throw new ArgumentNullException($"View {viewName} not found");
         }
 
+        // STEP 3: Create ViewDataDictionary with model
         var viewDictionary = new ViewDataDictionary<TModel>(
             new EmptyModelMetadataProvider(),
             new ModelStateDictionary())
@@ -64,6 +93,13 @@ public class HtmlRenderingService : IHtmlRenderingService
             Model = model
         };
 
+        // STEP 4: Create ViewContext with ExecutingFilePath set
+        // CRITICAL: ExecutingFilePath tells Razor where the current view is located
+        // This is used by the Razor engine to resolve relative partial paths
+        // When Razor sees <partial name="_Sidebar" />, it will:
+        // 1. Look in the same directory as ExecutingFilePath
+        // 2. Look in /Experimental/Views/Shared/ (configured in Program.cs ViewLocationFormats)
+        // 3. Look in /Views/Shared/ (fallback)
         var viewContext = new ViewContext(
             actionContext,
             viewResult.View,
@@ -72,9 +108,22 @@ public class HtmlRenderingService : IHtmlRenderingService
             sw,
             new HtmlHelperOptions());
 
+        // Set the executing file path to the actual view location
+        // This is the KEY to making partial views work correctly
+        viewContext.ExecutingFilePath = $"/Experimental/Views/{viewName}.cshtml";
+        
+        // STEP 5: Log the view context setup for debugging
+        _logger.LogDebug("Rendering view: {ViewName}", viewName);
+        _logger.LogDebug("ExecutingFilePath: {ExecutingFilePath}", viewContext.ExecutingFilePath);
+        _logger.LogDebug("Controller: {Controller}, Action: {Action}", 
+            routeData.Values["controller"], 
+            routeData.Values["action"]);
+
+        // STEP 6: Render the view
         await viewResult.View.RenderAsync(viewContext);
         return sw.ToString();
     }
+
 
     /// <inheritdoc />
     public async Task<string> RenderPartialViewToStringAsync<TModel>(
@@ -82,13 +131,43 @@ public class HtmlRenderingService : IHtmlRenderingService
         TModel model,
         HttpContext httpContext)
     {
+        // STEP 1: Create ActionContext
+        var routeData = httpContext.GetRouteData();
+        var actionDescriptor = new ActionDescriptor();
+        
         var actionContext = new ActionContext(
             httpContext,
-            httpContext.GetRouteData(),
-            new ActionDescriptor());
+            routeData,
+            actionDescriptor);
 
+        // STEP 2: Find the partial view
+        // Try multiple strategies to find the partial view
         await using var sw = new StringWriter();
-        var viewResult = _razorViewEngine.FindView(actionContext, partialViewName, false);
+        ViewEngineResult viewResult;
+
+        // Strategy 1: Try with full path
+        if (partialViewName.StartsWith("~/") || partialViewName.StartsWith("/"))
+        {
+            viewResult = _razorViewEngine.GetView(
+                executingFilePath: null,
+                viewPath: partialViewName,
+                isMainPage: false);
+        }
+        else
+        {
+            // Strategy 2: Try FindView (uses ViewLocationFormats)
+            viewResult = _razorViewEngine.FindView(actionContext, partialViewName, isMainPage: false);
+            
+            // Strategy 3: If not found, try explicit Experimental/Views/Shared path
+            if (!viewResult.Success)
+            {
+                var experimentalPath = $"~/Experimental/Views/Shared/{partialViewName}.cshtml";
+                viewResult = _razorViewEngine.GetView(
+                    executingFilePath: "~/Experimental/Views/",
+                    viewPath: experimentalPath,
+                    isMainPage: false);
+            }
+        }
 
         if (viewResult.View == null)
         {
@@ -98,6 +177,7 @@ public class HtmlRenderingService : IHtmlRenderingService
             throw new ArgumentNullException($"Partial view {partialViewName} not found");
         }
 
+        // STEP 3: Create ViewDataDictionary
         var viewDictionary = new ViewDataDictionary<TModel>(
             new EmptyModelMetadataProvider(),
             new ModelStateDictionary())
@@ -105,6 +185,7 @@ public class HtmlRenderingService : IHtmlRenderingService
             Model = model
         };
 
+        // STEP 4: Create ViewContext with ExecutingFilePath
         var viewContext = new ViewContext(
             actionContext,
             viewResult.View,
@@ -113,25 +194,81 @@ public class HtmlRenderingService : IHtmlRenderingService
             sw,
             new HtmlHelperOptions());
 
+        // Set executing file path for nested partial resolution
+        viewContext.ExecutingFilePath = $"/Experimental/Views/Shared/{partialViewName}.cshtml";
+
+        _logger.LogDebug("Rendering partial view: {PartialViewName}", partialViewName);
+        _logger.LogDebug("Partial ExecutingFilePath: {ExecutingFilePath}", viewContext.ExecutingFilePath);
+
+        // STEP 5: Render the partial view
         await viewResult.View.RenderAsync(viewContext);
         return sw.ToString();
     }
 
+    /// <summary>
+    /// Finds a view in the Experimental folder first, then falls back to standard locations.
+    /// This method implements a custom view resolution strategy that prioritizes the Experimental folder.
+    /// </summary>
+    /// <param name="actionContext">The action context containing route and HTTP context information</param>
+    /// <param name="viewName">The view name (e.g., "Profile/Index" or "Auth/Login")</param>
+    /// <returns>ViewEngineResult containing the found view or search locations</returns>
     private ViewEngineResult FindView(ActionContext actionContext, string viewName)
     {
-        // Try to find the view in the Experimental folder first
+        // STRATEGY 1: Try GetView with explicit path to Experimental folder
+        // GetView() is used when you know the exact path to the view
+        // This is the most direct way to find views in non-standard locations
+        var experimentalViewPath = $"~/Experimental/Views/{viewName}.cshtml";
         var experimentalViewResult = _razorViewEngine.GetView(
             executingFilePath: "~/Experimental/Views/",
-            viewPath: $"~/Experimental/Views/{viewName}.cshtml",
+            viewPath: experimentalViewPath,
             isMainPage: true);
 
         if (experimentalViewResult.Success)
         {
+            _logger.LogDebug("Found view using GetView: {ViewPath}", experimentalViewPath);
             return experimentalViewResult;
         }
 
-        // Fall back to standard view search
-        return _razorViewEngine.FindView(actionContext, viewName, true);
+        _logger.LogDebug("GetView failed for {ViewPath}. Searched: {SearchedLocations}",
+            experimentalViewPath,
+            string.Join(", ", experimentalViewResult.SearchedLocations ?? Array.Empty<string>()));
+
+        // STRATEGY 2: Try FindView with action context
+        // FindView() uses the configured ViewLocationFormats from Program.cs
+        // This will search in all configured locations:
+        // - /Experimental/Views/{controller}/{action}.cshtml
+        // - /Experimental/Views/Shared/{action}.cshtml
+        // - /Views/{controller}/{action}.cshtml
+        // - /Views/Shared/{action}.cshtml
+        var findViewResult = _razorViewEngine.FindView(actionContext, viewName, isMainPage: true);
+
+        if (findViewResult.Success)
+        {
+            _logger.LogDebug("Found view using FindView: {ViewName}", viewName);
+            return findViewResult;
+        }
+
+        _logger.LogWarning("FindView failed for {ViewName}. Searched: {SearchedLocations}",
+            viewName,
+            string.Join(", ", findViewResult.SearchedLocations ?? Array.Empty<string>()));
+
+        // STRATEGY 3: If viewName contains a slash, try treating it as a path
+        if (viewName.Contains('/'))
+        {
+            var pathViewResult = _razorViewEngine.GetView(
+                executingFilePath: null,
+                viewPath: $"~/Experimental/Views/{viewName}.cshtml",
+                isMainPage: true);
+
+            if (pathViewResult.Success)
+            {
+                _logger.LogDebug("Found view using path-based GetView: {ViewName}", viewName);
+                return pathViewResult;
+            }
+        }
+
+        // Return the last result (which contains all searched locations for error reporting)
+        return findViewResult;
     }
 
     // Authentication view rendering methods

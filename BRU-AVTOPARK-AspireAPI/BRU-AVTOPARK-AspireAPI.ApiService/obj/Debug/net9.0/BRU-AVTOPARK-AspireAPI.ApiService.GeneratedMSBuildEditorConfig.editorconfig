@@ -115,3 +115,7 @@ build_metadata.AdditionalFiles.CssScope =
 [G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Experimental/Views/Shared/_StatusMessages.cshtml]
 build_metadata.AdditionalFiles.TargetPath = RXhwZXJpbWVudGFsXFZpZXdzXFNoYXJlZFxfU3RhdHVzTWVzc2FnZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
+
+[G:/codesecondfolder/SpacetimeDB-BRU-AVTOPARK-avtobusov/BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/Experimental/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = RXhwZXJpbWVudGFsXFZpZXdzXF9WaWV3SW1wb3J0cy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 

@@ -1,0 +1,447 @@
+# Priority 1 Refactored Endpoints - Test URLs
+# Base URL: http://localhost:5000 (HTTP) or https://localhost:5001 (HTTPS)
+# Feature Flags Enabled: Login, Register, TOTP Validate, WebAuthn Validate, Profile
+
+## IMPORTANT NOTES:
+- These endpoints return HTML by default (browser requests)
+- Add "Accept: application/json" header for JSON responses
+- Most endpoints require authentication (JWT token in Authorization header)
+- Test both with flags enabled (refactored) and disabled (legacy) to compare behavior
+
+================================================================================
+## 1. LOGIN ENDPOINT (EnableLoginRefactoring: true)
+================================================================================
+
+### GET - Login Page (HTML)
+http://localhost:5000/api/auth/login
+https://localhost:5001/api/auth/login
+
+Description: Returns HTML login form
+Method: GET
+Authentication: None required
+Expected Response: HTML page with login form
+
+---
+
+### POST - Login (JSON)
+http://localhost:5000/api/auth/login
+https://localhost:5001/api/auth/login
+
+Description: Authenticate user with username/password
+Method: POST
+Headers: 
+  Content-Type: application/json
+  Accept: application/json
+Body (JSON):
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+Expected Response (Success):
+{
+  "token": "eyJhbGc...",
+  "user": {
+    "identity": "...",
+    "username": "admin",
+    "email": "admin@example.com"
+  },
+  "requiresTwoFactor": false
+}
+
+Expected Response (2FA Required):
+{
+  "requiresTwoFactor": true,
+  "tempToken": "temp-token-here",
+  "availableMethods": ["totp", "webauthn"]
+}
+
+---
+
+### POST - Login (Form Data)
+http://localhost:5000/api/auth/login
+https://localhost:5001/api/auth/login
+
+Description: Authenticate user with form data
+Method: POST
+Headers: 
+  Content-Type: application/x-www-form-urlencoded
+Body (Form):
+username=admin&password=admin123
+
+Expected Response: Redirect or HTML success page
+
+
+================================================================================
+## 2. REGISTER ENDPOINT (EnableRegisterRefactoring: true)
+================================================================================
+
+### GET - Register Page (HTML)
+http://localhost:5000/api/auth/register
+https://localhost:5001/api/auth/register
+
+Description: Returns HTML registration form
+Method: GET
+Authentication: None required
+Expected Response: HTML page with registration form
+
+---
+
+### POST - Register (JSON)
+http://localhost:5000/api/auth/register
+https://localhost:5001/api/auth/register
+
+Description: Register new user account
+Method: POST
+Headers: 
+  Content-Type: application/json
+  Accept: application/json
+Body (JSON):
+{
+  "username": "newuser",
+  "password": "SecurePass123!",
+  "email": "newuser@example.com"
+}
+
+Expected Response (Success):
+{
+  "success": true,
+  "message": "Registration successful",
+  "userId": "..."
+}
+
+Expected Response (Error):
+{
+  "success": false,
+  "error": "Username already exists"
+}
+
+---
+
+### POST - Register (Form Data)
+http://localhost:5000/api/auth/register
+https://localhost:5001/api/auth/register
+
+Description: Register new user with form data
+Method: POST
+Headers: 
+  Content-Type: application/x-www-form-urlencoded
+Body (Form):
+username=newuser&password=SecurePass123!&email=newuser@example.com
+
+Expected Response: Redirect or HTML success page
+
+
+================================================================================
+## 3. TOTP VALIDATE ENDPOINT (EnableTotpValidateRefactoring: true)
+================================================================================
+
+### POST - Validate TOTP Code (JSON)
+http://localhost:5000/api/auth/totp/validate
+https://localhost:5001/api/auth/totp/validate
+
+Description: Validate TOTP 2FA code after login
+Method: POST
+Headers: 
+  Content-Type: application/json
+  Accept: application/json
+Body (JSON):
+{
+  "tempToken": "temp-token-from-login",
+  "code": "123456"
+}
+
+Expected Response (Success):
+{
+  "success": true,
+  "token": "eyJhbGc...",
+  "user": {
+    "identity": "...",
+    "username": "admin"
+  }
+}
+
+Expected Response (Error):
+{
+  "success": false,
+  "error": "Invalid TOTP code"
+}
+
+---
+
+### POST - Validate TOTP Code (Form Data)
+http://localhost:5000/api/auth/totp/validate
+https://localhost:5001/api/auth/totp/validate
+
+Description: Validate TOTP code with form data
+Method: POST
+Headers: 
+  Content-Type: application/x-www-form-urlencoded
+Body (Form):
+tempToken=temp-token-from-login&code=123456
+
+Expected Response: Redirect or HTML success page
+
+
+================================================================================
+## 4. WEBAUTHN VALIDATE ENDPOINT (EnableWebAuthnValidateRefactoring: true)
+================================================================================
+
+### POST - Validate WebAuthn Assertion (JSON)
+http://localhost:5000/api/auth/webauthn/validate
+https://localhost:5001/api/auth/webauthn/validate
+
+Description: Validate WebAuthn 2FA assertion after login
+Method: POST
+Headers: 
+  Content-Type: application/json
+  Accept: application/json
+Body (JSON):
+{
+  "tempToken": "temp-token-from-login",
+  "assertionResponse": {
+    "id": "credential-id",
+    "rawId": "base64-encoded-raw-id",
+    "response": {
+      "authenticatorData": "base64-data",
+      "clientDataJSON": "base64-data",
+      "signature": "base64-signature"
+    },
+    "type": "public-key"
+  }
+}
+
+Expected Response (Success):
+{
+  "success": true,
+  "token": "eyJhbGc...",
+  "user": {
+    "identity": "...",
+    "username": "admin"
+  }
+}
+
+Expected Response (Error):
+{
+  "success": false,
+  "error": "Invalid WebAuthn assertion"
+}
+
+
+================================================================================
+## 5. PROFILE ENDPOINT (EnableProfileRefactoring: true)
+================================================================================
+
+### GET - Profile Page (HTML)
+http://localhost:5000/api/auth/profile
+https://localhost:5001/api/auth/profile
+
+Description: Returns HTML profile page with user information
+Method: GET
+Authentication: Required (JWT token)
+Headers:
+  Authorization: Bearer eyJhbGc...
+Expected Response: HTML page with user profile
+
+---
+
+### GET - Profile Data (JSON)
+http://localhost:5000/api/auth/profile
+https://localhost:5001/api/auth/profile
+
+Description: Get user profile data as JSON
+Method: GET
+Authentication: Required (JWT token)
+Headers:
+  Authorization: Bearer eyJhbGc...
+  Accept: application/json
+Expected Response (Success):
+{
+  "user": {
+    "identity": "...",
+    "username": "admin",
+    "email": "admin@example.com",
+    "roles": ["Admin", "User"],
+    "permissions": ["read", "write", "delete"]
+  },
+  "settings": {
+    "totpEnabled": true,
+    "webAuthnEnabled": false
+  },
+  "webAuthnCredentials": []
+}
+
+
+================================================================================
+## TESTING WORKFLOW
+================================================================================
+
+### Step 1: Test Login
+1. Open browser to: http://localhost:5000/api/auth/login
+2. Enter credentials: admin / admin123
+3. Verify HTML form renders correctly
+4. Submit form and verify redirect/success
+
+### Step 2: Test Login (JSON API)
+Use curl or Postman:
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+Save the token from response for next steps.
+
+### Step 3: Test Profile (Authenticated)
+curl -X GET http://localhost:5000/api/auth/profile \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Accept: application/json"
+
+### Step 4: Test Register
+1. Open browser to: http://localhost:5000/api/auth/register
+2. Fill in registration form
+3. Submit and verify success
+
+### Step 5: Test 2FA (if enabled for user)
+1. Login with 2FA-enabled user
+2. Receive tempToken in response
+3. Use TOTP or WebAuthn validate endpoint with tempToken
+
+
+================================================================================
+## COMPARISON TESTING (Legacy vs Refactored)
+================================================================================
+
+To verify refactored endpoints match legacy behavior:
+
+1. Set feature flags to FALSE in appsettings.json:
+   "EnableLoginRefactoring": false,
+   "EnableRegisterRefactoring": false,
+   etc.
+
+2. Restart application
+
+3. Test all endpoints and save responses
+
+4. Set feature flags to TRUE
+
+5. Restart application
+
+6. Test all endpoints again and compare responses
+
+Expected: Responses should be identical (same status codes, same data structure)
+
+
+================================================================================
+## ADMIN ENDPOINTS (Feature Flag Management)
+================================================================================
+
+### GET - Feature Flags Admin UI
+http://localhost:5000/admin/feature-flags-ui
+https://localhost:5001/admin/feature-flags-ui
+
+Description: Admin UI for managing feature flags
+Method: GET
+Authentication: Required (Admin role)
+Expected Response: HTML page with toggle switches for all flags
+
+---
+
+### GET - List All Feature Flags (JSON)
+http://localhost:5000/api/admin/feature-flags
+https://localhost:5001/api/admin/feature-flags
+
+Description: Get all feature flags and their current state
+Method: GET
+Authentication: Required (Admin role)
+Headers:
+  Authorization: Bearer YOUR_ADMIN_TOKEN
+  Accept: application/json
+
+---
+
+### PUT - Update Feature Flag
+http://localhost:5000/api/admin/feature-flags/EnableLoginRefactoring
+https://localhost:5001/api/admin/feature-flags/EnableLoginRefactoring
+
+Description: Enable/disable a specific feature flag at runtime
+Method: PUT
+Authentication: Required (Admin role)
+Headers:
+  Authorization: Bearer YOUR_ADMIN_TOKEN
+  Content-Type: application/json
+Body (JSON):
+{
+  "enabled": true
+}
+
+
+================================================================================
+## TROUBLESHOOTING
+================================================================================
+
+### Issue: 404 Not Found
+- Verify server is running on port 5000/5001
+- Check route matches exactly (case-sensitive)
+- Verify controller is registered in DI
+
+### Issue: 401 Unauthorized
+- Verify JWT token is valid and not expired
+- Check Authorization header format: "Bearer <token>"
+- Verify user has required role/permissions
+
+### Issue: 500 Internal Server Error
+- Check application logs in BRU-AVTOPARK-AspireAPI.ApiService/logs/
+- Verify SpacetimeDB is running on localhost:3000
+- Check database connection
+
+### Issue: Endpoints return legacy behavior despite flags enabled
+- Verify [LegacyAction] attributes are on legacy endpoints
+- Verify [RefactoredAction] attributes are on refactored endpoints
+- Restart application after changing flags
+- Check namespace imports are correct
+
+
+================================================================================
+## QUICK TEST SCRIPT (PowerShell)
+================================================================================
+
+# Save this as test-priority1-endpoints.ps1
+
+$baseUrl = "http://localhost:5000"
+
+# Test 1: Login Page (HTML)
+Write-Host "Testing Login Page (HTML)..."
+Invoke-WebRequest -Uri "$baseUrl/api/auth/login" -Method GET
+
+# Test 2: Login (JSON)
+Write-Host "Testing Login (JSON)..."
+$loginBody = @{
+    username = "admin"
+    password = "admin123"
+} | ConvertTo-Json
+
+$loginResponse = Invoke-RestMethod -Uri "$baseUrl/api/auth/login" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $loginBody
+
+$token = $loginResponse.token
+Write-Host "Token: $token"
+
+# Test 3: Profile (JSON)
+Write-Host "Testing Profile (JSON)..."
+$headers = @{
+    Authorization = "Bearer $token"
+    Accept = "application/json"
+}
+
+Invoke-RestMethod -Uri "$baseUrl/api/auth/profile" `
+    -Method GET `
+    -Headers $headers
+
+Write-Host "All tests completed!"
+
+
+================================================================================
+## END OF TEST URLS
+================================================================================

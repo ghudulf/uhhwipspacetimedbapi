@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using BRU_AVTOPARK_AspireAPI.ApiService;
 using BRU_AVTOPARK_AspireAPI.ApiService.Services;
+using BRU_AVTOPARK_AspireAPI.ApiService.Middleware;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
@@ -157,10 +158,20 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmailService, 
 
 // Add Experimental services (for refactoring)
 builder.Services.AddSingleton<TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService, TicketSalesApp.AdminServer.Experimental.Services.Implementations.FeatureFlagService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthOrchestrationService, BRU_AVTOPARK.Services.Implementations.AuthOrchestrationService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IHtmlRenderingService, BRU_AVTOPARK.Experimental.Services.Implementations.HtmlRenderingService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.ITokenService, BRU_AVTOPARK.Services.Implementations.TokenService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IProfileService, BRU_AVTOPARK.Services.Implementations.ProfileService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IRequestDetector, BRU_AVTOPARK.Services.Implementations.RequestDetector>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IOidcHelperService, BRU_AVTOPARK.Services.Implementations.OidcHelperService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BRU_AVTOPARK.Services.Implementations.IdentityService>();
 
 // Configure FeatureFlagOptions from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
+
+// Add Routing Diagnostics Service for debugging controller discovery issues
+builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();
 
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
@@ -387,21 +398,107 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = null;
 });
 
-// Add controllers
-builder.Services.AddControllers(options =>
+// Add controllers with views support (needed for HtmlRenderingService)
+// ENHANCED: Add feature flag-aware controller configuration
+var featureFlagOptions = builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags)
+    .Get<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>();
+
+builder.Services.AddControllersWithViews(options =>
             {
                 options.RespectBrowserAcceptHeader = true;
                 options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+                
+                // ENHANCED DEBUG LOGGING: Log controller configuration
+                var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("ControllerConfiguration");
+                logger.LogInformation("Configuring controllers with feature flags:");
+                logger.LogInformation("  EnableLoginRefactoring: {Value}", featureFlagOptions?.EnableLoginRefactoring ?? false);
+                logger.LogInformation("  EnableRegisterRefactoring: {Value}", featureFlagOptions?.EnableRegisterRefactoring ?? false);
+                logger.LogInformation("  EnableProfileRefactoring: {Value}", featureFlagOptions?.EnableProfileRefactoring ?? false);
             })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            })
+            .AddRazorOptions(options =>
+            {
+                // CRITICAL: Configure Razor to look in Experimental/Views folder
+                // This allows HtmlRenderingService to find views in the Experimental folder
+                options.ViewLocationFormats.Clear();
+                options.ViewLocationFormats.Add("/Experimental/Views/{1}/{0}.cshtml");
+                options.ViewLocationFormats.Add("/Experimental/Views/Shared/{0}.cshtml");
+                options.ViewLocationFormats.Add("/Views/{1}/{0}.cshtml");
+                options.ViewLocationFormats.Add("/Views/Shared/{0}.cshtml");
+                
+                // Add area support if needed
+                options.AreaViewLocationFormats.Clear();
+                options.AreaViewLocationFormats.Add("/Experimental/Views/{2}/{1}/{0}.cshtml");
+                options.AreaViewLocationFormats.Add("/Experimental/Views/{2}/Shared/{0}.cshtml");
+                options.AreaViewLocationFormats.Add("/Experimental/Views/Shared/{0}.cshtml");
+                options.AreaViewLocationFormats.Add("/Areas/{2}/Views/{1}/{0}.cshtml");
+                options.AreaViewLocationFormats.Add("/Areas/{2}/Views/Shared/{0}.cshtml");
+                options.AreaViewLocationFormats.Add("/Views/Shared/{0}.cshtml");
+                
+                var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("RazorConfiguration");
+                logger.LogInformation("Razor view locations configured:");
+                foreach (var format in options.ViewLocationFormats)
+                {
+                    logger.LogInformation("  {Format}", format);
+                }
+            })
+            .ConfigureApplicationPartManager(manager =>
+            {
+                // ENHANCED: Ensure both controllers are discovered
+                // This explicitly adds both AuthController and AuthControllerRefactored to the application parts
+                var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("ApplicationPartManager");
+                logger.LogInformation("Application parts count: {Count}", manager.ApplicationParts.Count);
+                
+                foreach (var part in manager.ApplicationParts)
+                {
+                    logger.LogInformation("  Part: {PartName} ({PartType})", part.Name, part.GetType().Name);
+                }
+                
+                // Force discovery of both controllers by ensuring the assembly is loaded
+                var controllerAssembly = typeof(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController).Assembly;
+                var refactoredControllerType = controllerAssembly.GetType("BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthControllerRefactored");
+                
+                if (refactoredControllerType != null)
+                {
+                    logger.LogInformation("AuthControllerRefactored type found in assembly");
+                }
+                else
+                {
+                    logger.LogWarning("AuthControllerRefactored type NOT found in assembly!");
+                }
             });
 
 
 var app = builder.Build();
 app.UseRouting();
+
+// CRITICAL: Serve static files from Experimental folder (CSS, JS)
+// This allows the browser to load /css/bru-design-system.css and /js/*.js files
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "Experimental")),
+    RequestPath = "",
+    OnPrepareResponse = ctx =>
+    {
+        // Add cache headers for static files
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=3600");
+    }
+});
+
+// Also serve from wwwroot if it exists (standard location)
+if (Directory.Exists(Path.Combine(builder.Environment.ContentRootPath, "wwwroot")))
+{
+    app.UseStaticFiles();
+}
+
+// Add controller logging middleware to track which controller handles each request
+// This is especially useful for debugging feature flag routing (legacy vs refactored)
+app.UseControllerLogging();
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
@@ -883,8 +980,54 @@ app.MapGet("/health", () =>
 }).AllowAnonymous();
 
 // Map controllers - let each endpoint specify its own authorization policy
-app.MapControllers()
-.WithOpenApi();
+// ENHANCED: Add endpoint routing diagnostics and fallback mechanisms
+var controllerEndpoints = app.MapControllers()
+    .WithOpenApi();
+
+// ENHANCED DEBUG LOGGING: Log all mapped endpoints at startup
+var endpointDataSource = app.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>();
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+
+startupLogger.LogInformation("========== ENDPOINT MAPPING DIAGNOSTICS ==========");
+startupLogger.LogInformation("Total endpoints mapped: {Count}", endpointDataSource.Endpoints.Count);
+
+var authEndpoints = endpointDataSource.Endpoints
+    .Where(e => e.DisplayName?.Contains("Auth", StringComparison.OrdinalIgnoreCase) == true)
+    .ToList();
+
+startupLogger.LogInformation("Auth-related endpoints: {Count}", authEndpoints.Count);
+foreach (var endpoint in authEndpoints)
+{
+    var routeEndpoint = endpoint as Microsoft.AspNetCore.Routing.RouteEndpoint;
+    var pattern = routeEndpoint?.RoutePattern?.RawText ?? "No pattern";
+    var metadata = string.Join(", ", endpoint.Metadata.Select(m => m.GetType().Name));
+    
+    startupLogger.LogInformation(
+        "  Endpoint: {DisplayName}, Pattern: {Pattern}, Metadata: [{Metadata}]",
+        endpoint.DisplayName, pattern, metadata);
+}
+
+// Check for POST /api/auth/login specifically
+var loginEndpoints = endpointDataSource.Endpoints
+    .Where(e => e.DisplayName?.Contains("Login", StringComparison.OrdinalIgnoreCase) == true)
+    .ToList();
+
+startupLogger.LogInformation("Login endpoints found: {Count}", loginEndpoints.Count);
+foreach (var endpoint in loginEndpoints)
+{
+    var routeEndpoint = endpoint as Microsoft.AspNetCore.Routing.RouteEndpoint;
+    var pattern = routeEndpoint?.RoutePattern?.RawText ?? "No pattern";
+    var httpMethods = endpoint.Metadata
+        .OfType<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()
+        .SelectMany(m => m.HttpMethods)
+        .ToList();
+    
+    startupLogger.LogInformation(
+        "  Login Endpoint: {DisplayName}, Pattern: {Pattern}, Methods: [{Methods}]",
+        endpoint.DisplayName, pattern, string.Join(", ", httpMethods));
+}
+
+startupLogger.LogInformation("========== ENDPOINT MAPPING DIAGNOSTICS END ==========");
 
 // Initialize SpacetimeDB connection
 var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();

@@ -6,6 +6,7 @@ using System.Linq;
 using System;
 using System.Security.Claims;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using TicketSalesApp.AdminServer.Configuration;
 using BRU_AVTOPARK.Services.Interfaces;
 using BRU_AVTOPARK.Models.Requests;
@@ -31,24 +32,28 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     /// Refactored AuthController that uses the orchestration service pattern.
     /// This controller is used when feature flags are enabled.
     /// Routes are conditionally registered based on feature flags via [RefactoredAction] attribute.
+    /// CRITICAL: Route must match legacy AuthController ("api/Auth") for feature flag routing to work.
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/Auth")]
     public class AuthControllerRefactored : ControllerBase
     {
         private readonly IAuthOrchestrationService _authOrchestrationService;
         private readonly IHtmlRenderingService _htmlRenderingService;
+        private readonly IRequestDetector _requestDetector;
         private readonly IOptions<FeatureFlagOptions> _featureFlags;
         private readonly ILogger<AuthControllerRefactored> _logger;
 
         public AuthControllerRefactored(
             IAuthOrchestrationService authOrchestrationService,
             IHtmlRenderingService htmlRenderingService,
+            IRequestDetector requestDetector,
             IOptions<FeatureFlagOptions> featureFlags,
             ILogger<AuthControllerRefactored> logger)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
             _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
+            _requestDetector = requestDetector ?? throw new ArgumentNullException(nameof(requestDetector));
             _featureFlags = featureFlags ?? throw new ArgumentNullException(nameof(featureFlags));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -102,7 +107,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            var loginResponse = new ApiResponse<LoginResponse>
             {
                 Success = true,
                 Message = "Authentication successful",
@@ -119,7 +124,38 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Role = result.User.Role
                     }
                 }
-            });
+            };
+
+            // For browser requests, set cookie authentication
+            if (_requestDetector.IsBrowserRequest())
+            {
+                _logger.LogInformation("Browser request detected, setting cookie authentication for user: {Username}", request.Username);
+                
+                // Parse JWT token to extract claims
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(result.Token);
+                
+                // Create claims identity from JWT token
+                var claims = jwtToken.Claims.ToList();
+                _logger.LogInformation("Setting cookie with {ClaimCount} claims", claims.Count);
+                
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                
+                // Sign in with cookie
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+                
+                _logger.LogInformation("Cookie authentication set successfully");
+            }
+
+            return Ok(loginResponse);
         }
 
         /// <summary>
@@ -362,7 +398,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            var loginResponse = new ApiResponse<LoginResponse>
             {
                 Success = true,
                 Message = "TOTP validation successful",
@@ -379,7 +415,33 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Role = result.User.Role
                     }
                 }
-            });
+            };
+
+            // For browser requests, set cookie authentication
+            if (_requestDetector.IsBrowserRequest())
+            {
+                _logger.LogInformation("Browser request detected, setting cookie authentication after TOTP validation");
+                
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(result.Token);
+                var claims = jwtToken.Claims.ToList();
+                
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+                
+                _logger.LogInformation("Cookie authentication set successfully after TOTP validation");
+            }
+
+            return Ok(loginResponse);
         }
 
         #endregion
@@ -521,7 +583,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            var loginResponse = new ApiResponse<LoginResponse>
             {
                 Success = true,
                 Message = "WebAuthn login successful",
@@ -538,7 +600,33 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Role = result.User.Role
                     }
                 }
-            });
+            };
+
+            // For browser requests, set cookie authentication
+            if (_requestDetector.IsBrowserRequest())
+            {
+                _logger.LogInformation("Browser request detected, setting cookie authentication after WebAuthn login");
+                
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(result.Token);
+                var claims = jwtToken.Claims.ToList();
+                
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+                
+                _logger.LogInformation("Cookie authentication set successfully after WebAuthn login");
+            }
+
+            return Ok(loginResponse);
         }
 
         /// <summary>
@@ -572,7 +660,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            var loginResponse = new ApiResponse<LoginResponse>
             {
                 Success = true,
                 Message = "WebAuthn validation successful",
@@ -589,7 +677,33 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Role = result.User.Role
                     }
                 }
-            });
+            };
+
+            // For browser requests, set cookie authentication
+            if (_requestDetector.IsBrowserRequest())
+            {
+                _logger.LogInformation("Browser request detected, setting cookie authentication after WebAuthn validation");
+                
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(result.Token);
+                var claims = jwtToken.Claims.ToList();
+                
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+                
+                _logger.LogInformation("Cookie authentication set successfully after WebAuthn validation");
+            }
+
+            return Ok(loginResponse);
         }
 
         /// <summary>
@@ -754,7 +868,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            return Ok(new ApiResponse<LoginResponse>
+            var loginResponse = new ApiResponse<LoginResponse>
             {
                 Success = true,
                 Message = "Magic link validation successful",
@@ -771,7 +885,33 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         Role = result.User.Role
                     }
                 }
-            });
+            };
+
+            // For browser requests, set cookie authentication
+            if (_requestDetector.IsBrowserRequest())
+            {
+                _logger.LogInformation("Browser request detected, setting cookie authentication after Magic Link validation");
+                
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(result.Token);
+                var claims = jwtToken.Claims.ToList();
+                
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+                
+                _logger.LogInformation("Cookie authentication set successfully after Magic Link validation");
+            }
+
+            return Ok(loginResponse);
         }
 
         /// <summary>
@@ -1946,34 +2086,109 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// <summary>
         /// GET /api/auth/profile - Get user profile
         /// Enabled by: EnableProfileRefactoring feature flag
+        /// Accepts token from Authorization header OR query string parameter
         /// </summary>
         [HttpGet("profile")]
-        [Authorize]
+        [AllowAnonymous]
         [RefactoredAction(nameof(FeatureFlagOptions.EnableProfileRefactoring))]
-        public async Task<IActionResult> Profile()
+        public async Task<IActionResult> Profile([FromQuery] string? token = null)
         {
             _logger.LogInformation("Refactored Profile endpoint called");
 
-            var userId = User.FindFirst("identity")?.Value;
-            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            var isBrowserRequest = _requestDetector.IsBrowserRequest();
 
-            if (string.IsNullOrEmpty(userId))
+            // Check Authorization header first
+            if (string.IsNullOrEmpty(token) && Request.Headers.Authorization.Count > 0)
+            {
+                var authHeader = Request.Headers.Authorization.ToString();
+                if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
+
+            // If no auth header, check query string
+            if (string.IsNullOrEmpty(token) && Request.Query.ContainsKey("token"))
+            {
+                token = Request.Query["token"];
+            }
+
+            // If still no token and browser request, check localStorage via JavaScript
+            if (string.IsNullOrEmpty(token) && isBrowserRequest)
+            {
+                return Content($@"
+                    <script>
+                        const storedToken = localStorage.getItem('auth_token');
+                        if (storedToken) {{
+                            window.location.href = '/api/auth/profile?token=' + encodeURIComponent(storedToken);
+                        }} else {{
+                            window.location.href = '/api/auth/login?error=Please log in to view your profile';
+                        }}
+                    </script>
+                ", "text/html");
+            }
+
+            // If no token and API request, return error
+            if (string.IsNullOrEmpty(token))
             {
                 return Unauthorized(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "User not authenticated"
+                    Message = "Token is required (provide via Authorization header or ?token= query parameter)"
                 });
             }
 
-            var profile = await _authOrchestrationService.GetProfileAsync(userId, token);
+            // Validate token format
+            if (!token.Contains('.') || token.Count(c => c == '.') != 2)
+            {
+                if (isBrowserRequest)
+                {
+                    return Redirect("/api/auth/login?error=Invalid token format");
+                }
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid token format"
+                });
+            }
+
+            // For browser requests, get SpacetimeDB data for HTML rendering
+            if (isBrowserRequest)
+            {
+                var profileRenderData = await _authOrchestrationService.GetProfileWithSpacetimeDataAsync(token);
+
+                if (profileRenderData == null)
+                {
+                    // Clear localStorage and redirect to login
+                    return Content(@"
+                        <script>
+                            localStorage.removeItem('auth_token');
+                            window.location.href = '/api/auth/login?error=' + encodeURIComponent('Invalid token. Please log in again.');
+                        </script>
+                    ", "text/html");
+                }
+
+                // Render HTML using HtmlRenderingService
+                var html = _htmlRenderingService.RenderProfilePage(
+                    profileRenderData.User,
+                    profileRenderData.TotpEnabled,
+                    profileRenderData.WebAuthnCredentials,
+                    profileRenderData.Roles,
+                    profileRenderData.Permissions
+                );
+
+                return Content(html, "text/html");
+            }
+
+            // For API requests, return JSON
+            var profile = await _authOrchestrationService.GetProfileAsync(token);
 
             if (profile == null)
             {
                 return NotFound(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "Profile not found"
+                    Message = "Profile not found or invalid token"
                 });
             }
 

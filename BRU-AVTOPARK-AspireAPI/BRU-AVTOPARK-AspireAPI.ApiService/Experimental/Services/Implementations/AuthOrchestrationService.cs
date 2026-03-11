@@ -470,6 +470,41 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         }
     }
 
+    /// <summary>
+    /// Get user profile by validating token and extracting userId.
+    /// Overload that accepts just the token for endpoints that receive token as query parameter.
+    /// </summary>
+    public async Task<ProfileViewModel?> GetProfileAsync(string token)
+    {
+        _logger.LogInformation("Profile retrieval orchestration started with token validation");
+
+        try
+        {
+            // Validate token and extract userId
+            var principal = _tokenService.ValidateToken(token);
+            if (principal == null)
+            {
+                _logger.LogWarning("Invalid token provided for profile retrieval");
+                return null;
+            }
+
+            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "identity");
+            if (userIdClaim == null)
+            {
+                _logger.LogWarning("Token missing identity claim");
+                return null;
+            }
+
+            // Delegate to existing method
+            return await GetProfileAsync(userIdClaim.Value, token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during profile retrieval with token validation");
+            return null;
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Priority 2 Orchestration Methods (High - Complete TOTP/WebAuthn Flows)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -499,6 +534,118 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             return TotpSetupResult.Failed("An error occurred during TOTP setup");
         }
     }
+    /// <summary>
+    /// Get user profile with raw SpacetimeDB types for HTML rendering.
+    /// This method returns data in the format expected by HtmlRenderingService.RenderProfilePage.
+    /// </summary>
+    public async Task<ProfileRenderData?> GetProfileWithSpacetimeDataAsync(string token)
+    {
+        _logger.LogInformation("Profile retrieval with SpacetimeDB data started");
+
+        try
+        {
+            // Validate token and extract userId
+            var principal = _tokenService.ValidateToken(token);
+            if (principal == null)
+            {
+                _logger.LogWarning("Invalid token provided for profile retrieval");
+                return null;
+            }
+
+            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "identity");
+            if (userIdClaim == null)
+            {
+                _logger.LogWarning("Token missing identity claim");
+                return null;
+            }
+
+            // Get SpacetimeDB connection
+            var conn = _spacetimeService.GetConnection();
+
+            // Get user profile
+            var user = conn.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.UserId.ToString() == userIdClaim.Value);
+
+            if (user == null)
+            {
+                _logger.LogWarning("User profile not found for userId: {UserId}", userIdClaim.Value);
+                return null;
+            }
+
+            // Get user settings
+            var userSettings = conn.Db.UserSettings.Iter()
+                .FirstOrDefault(s => s.UserId.Equals(user.UserId));
+
+            if (userSettings == null)
+            {
+                // Create default settings if they don't exist
+                conn.Reducers.CreateUserSettings(user.UserId);
+                await Task.Delay(100); // Wait for reducer
+                userSettings = conn.Db.UserSettings.Iter()
+                    .FirstOrDefault(s => s.UserId.Equals(user.UserId));
+            }
+
+            // Get WebAuthn credentials
+            var webAuthnCredentials = conn.Db.WebAuthnCredential.Iter()
+                .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
+                .Select(c => new WebAuthnCredentialDto
+                {
+                    Id = Convert.ToBase64String(c.CredentialId.ToArray()),
+                    CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
+                })
+                .ToList();
+
+            // Get user roles
+            var userRoles = conn.Db.UserRole.Iter()
+                .Where(ur => ur.UserId.Equals(user.UserId))
+                .ToList();
+
+            // Get role details
+            var roles = new List<Role>();
+            foreach (var ur in userRoles)
+            {
+                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                if (role != null && role.IsActive)
+                {
+                    roles.Add(role);
+                }
+            }
+
+            // Get role permissions
+            var rolePermissions = conn.Db.RolePermission.Iter()
+                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+                .ToList();
+
+            // Get permission details
+            var permissionIds = rolePermissions.Select(rp => rp.PermissionId).Distinct().ToList();
+            var permissions = new List<Permission>();
+            foreach (var permissionId in permissionIds)
+            {
+                var permission = conn.Db.Permission.PermissionId.Find(permissionId);
+                if (permission != null && permission.IsActive)
+                {
+                    permissions.Add(permission);
+                }
+            }
+
+            _logger.LogInformation("Profile with SpacetimeDB data retrieved successfully for user: {UserId}", userIdClaim.Value);
+
+            return new ProfileRenderData
+            {
+                User = user,
+                TotpEnabled = userSettings?.TotpEnabled ?? false,
+                WebAuthnCredentials = webAuthnCredentials,
+                Roles = roles,
+                Permissions = permissions
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during profile retrieval with SpacetimeDB data");
+            return null;
+        }
+    }
+
 
     /// <inheritdoc />
     public async Task<TotpEnableResult> EnableTotpAsync(Identity userId, string username, string code, string secretKey)
@@ -1811,3 +1958,17 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         }
     }
 }
+
+/// <summary>
+/// Result containing raw SpacetimeDB types for HTML rendering.
+/// Used by profile endpoint to pass data to HtmlRenderingService.
+/// </summary>
+public class ProfileRenderData
+{
+    public required UserProfile User { get; init; }
+    public required bool TotpEnabled { get; init; }
+    public required List<WebAuthnCredentialDto> WebAuthnCredentials { get; init; }
+    public required List<Role> Roles { get; init; }
+    public required List<Permission> Permissions { get; init; }
+}
+

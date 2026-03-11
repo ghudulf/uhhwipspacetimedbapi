@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using BRU_AVTOPARK.Models.Responses;
 using BRU_AVTOPARK.Models.ViewModels;
+using BRU_AVTOPARK.Services.Implementations;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 
@@ -103,6 +104,18 @@ public interface IAuthOrchestrationService
     /// Orchestration wrapper for existing ProfileService.
     /// </summary>
     Task<ProfileViewModel?> GetProfileAsync(string userId, string? token);
+
+    /// <summary>
+    /// Get user profile by validating token and extracting userId.
+    /// Overload that accepts just the token for endpoints that receive token as query parameter.
+    /// </summary>
+    Task<ProfileViewModel?> GetProfileAsync(string token);
+
+    /// <summary>
+    /// Get user profile with raw SpacetimeDB types for HTML rendering.
+    /// Returns data in the format expected by HtmlRenderingService.RenderProfilePage.
+    /// </summary>
+    Task<ProfileRenderData?> GetProfileWithSpacetimeDataAsync(string token);
 
     // ─── Priority 2 Orchestration Methods (High - Complete TOTP/WebAuthn Flows) ───
 
