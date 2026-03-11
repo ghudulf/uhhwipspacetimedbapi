@@ -602,5 +602,80 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
+
+        /// <summary>
+        /// Gets the username from claims.
+        /// Supports both ASP.NET Core auth and custom JWT.
+        /// </summary>
+        protected string? GetUserName()
+        {
+            try
+            {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var nameClaim = User.FindFirst("name") ?? User.FindFirst(ClaimTypes.Name) ?? User.FindFirst("preferred_username");
+                    if (nameClaim != null)
+                    {
+                        return nameClaim.Value;
+                    }
+                }
+
+                // Fallback to custom JWT authentication
+                var authHeader = Request.Headers["Authorization"].ToString();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                {
+                    return null;
+                }
+
+                var token = authHeader.Substring("Bearer ".Length);
+                var tokenHandler = new JwtSecurityTokenHandler();
+
+                if (tokenHandler.CanReadToken(token))
+                {
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "name" || c.Type == "preferred_username")?.Value;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting user name from token");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the client IP address from the request.
+        /// </summary>
+        protected string GetClientIp()
+        {
+            try
+            {
+                // Check for X-Forwarded-For header (proxy/load balancer scenario)
+                var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(forwardedFor))
+                {
+                    // X-Forwarded-For can contain multiple IPs, take the first one
+                    return forwardedFor.Split(',')[0].Trim();
+                }
+
+                // Check for X-Real-IP header
+                var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(realIp))
+                {
+                    return realIp;
+                }
+
+                // Fallback to direct connection IP
+                return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting client IP");
+                return "unknown";
+            }
+        }
     }
 } 

@@ -111,27 +111,63 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateEmployeeModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var success = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId);
-            var snapshot = await _employeeService.GetAllEmployeesAsync();
+            var newEmployee = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId);
+            var success = newEmployee != null;
 
             if (success)
             {
-                var userId = GetUserId();
-                if (userId != null)
+                // Publish domain event for websocket-originated changes
+                var metadata = new Dictionary<string, string>
                 {
-                    var newEmployee = snapshot.LastOrDefault();
-                    if (newEmployee != null)
-                    {
-                        await _adminLogger.LogActionAsync(
-                            userId,
-                            "employees.create",
-                            $"Created employee: {model.Name} {model.Surname}, JobId: {model.JobId}, EmployeeId: {newEmployee.EmployeeId}"
-                        );
-                    }
+                    ["name"] = model.Name,
+                    ["surname"] = model.Surname,
+                    ["jobId"] = model.JobId.ToString()
+                };
+                if (newEmployee != null)
+                {
+                    metadata["employeeId"] = newEmployee.EmployeeId.ToString();
                 }
+
+                var domainEvent = new ApiDomainEvent(
+                    EventName: "employee.created",
+                    Resource: "employees",
+                    HttpMethod: "WS_CREATE",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
+                    UserId: GetUserId(),
+                    UserName: GetUserName(),
+                    Tenant: null,
+                    SourceIp: GetClientIp(),
+                    Metadata: metadata
+                );
+                await _realtimeEventBus.PublishAsync(domainEvent);
+
+                // Fire-and-forget: enrich with snapshot and log action
+                var userId = GetUserId();
+                var employeeId = newEmployee?.EmployeeId;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var snapshot = await _employeeService.GetAllEmployeesAsync();
+                        if (userId != null && employeeId.HasValue)
+                        {
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "employees.create",
+                                $"Created employee: {model.Name} {model.Surname}, JobId: {model.JobId}, EmployeeId: {employeeId.Value}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in background enrichment/logging for create");
+                    }
+                });
             }
 
-            return new { operation = "create", success, snapshot };
+            return new { operation = "create", success, employeeId = newEmployee?.EmployeeId };
         }
 
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
@@ -146,23 +182,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId);
-            var entity = await _employeeService.GetEmployeeByIdAsync(id);
-            var snapshot = await _employeeService.GetAllEmployeesAsync();
 
             if (success)
             {
+                // Publish domain event for websocket-originated changes
+                var domainEvent = new ApiDomainEvent(
+                    EventName: "employee.updated",
+                    Resource: "employees",
+                    HttpMethod: "WS_UPDATE",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
+                    UserId: GetUserId(),
+                    UserName: GetUserName(),
+                    Tenant: null,
+                    SourceIp: GetClientIp(),
+                    Metadata: new Dictionary<string, string>
+                    {
+                        ["employeeId"] = id.ToString(),
+                        ["name"] = model.Name ?? "",
+                        ["surname"] = model.Surname ?? "",
+                        ["jobId"] = model.JobId?.ToString() ?? ""
+                    }
+                );
+                await _realtimeEventBus.PublishAsync(domainEvent);
+
+                // Fire-and-forget: enrich with entity/snapshot and log action
                 var userId = GetUserId();
-                if (userId != null && entity != null)
+                _ = Task.Run(async () =>
                 {
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "employees.update",
-                        $"Updated employee: {entity.Name} {entity.Surname}, JobId: {entity.JobId}, EmployeeId: {id}"
-                    );
-                }
+                    try
+                    {
+                        var entity = await _employeeService.GetEmployeeByIdAsync(id);
+                        var snapshot = await _employeeService.GetAllEmployeesAsync();
+                        if (userId != null && entity != null)
+                        {
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "employees.update",
+                                $"Updated employee: {entity.Name} {entity.Surname}, JobId: {entity.JobId}, EmployeeId: {id}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in background enrichment/logging for update");
+                    }
+                });
             }
 
-            return new { operation = "update", success, entity, snapshot };
+            return new { operation = "update", success, employeeId = id };
         }
 
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
@@ -175,26 +244,65 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var employeeBeforeDelete = await _employeeService.GetEmployeeByIdAsync(id);
             var success = await _employeeService.DeleteEmployeeAsync(id);
-            var snapshot = await _employeeService.GetAllEmployeesAsync();
 
             if (success)
             {
-                var userId = GetUserId();
-                if (userId != null)
+                // Publish domain event for websocket-originated changes
+                var metadata = new Dictionary<string, string>
                 {
-                    var details = employeeBeforeDelete != null
-                        ? $"Deleted employee: {employeeBeforeDelete.Name} {employeeBeforeDelete.Surname}, JobId: {employeeBeforeDelete.JobId}, EmployeeId: {id}"
-                        : $"Deleted employee with EmployeeId: {id}";
-
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "employees.delete",
-                        details
-                    );
+                    ["employeeId"] = id.ToString()
+                };
+                if (employeeBeforeDelete != null)
+                {
+                    metadata["name"] = employeeBeforeDelete.Name;
+                    metadata["surname"] = employeeBeforeDelete.Surname;
+                    metadata["jobId"] = employeeBeforeDelete.JobId.ToString();
                 }
+
+                var domainEvent = new ApiDomainEvent(
+                    EventName: "employee.deleted",
+                    Resource: "employees",
+                    HttpMethod: "WS_DELETE",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
+                    UserId: GetUserId(),
+                    UserName: GetUserName(),
+                    Tenant: null,
+                    SourceIp: GetClientIp(),
+                    Metadata: metadata
+                );
+                await _realtimeEventBus.PublishAsync(domainEvent);
+
+                // Fire-and-forget: enrich with snapshot and log action
+                var userId = GetUserId();
+                var deletedEmployee = employeeBeforeDelete;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var snapshot = await _employeeService.GetAllEmployeesAsync();
+                        if (userId != null)
+                        {
+                            var details = deletedEmployee != null
+                                ? $"Deleted employee: {deletedEmployee.Name} {deletedEmployee.Surname}, JobId: {deletedEmployee.JobId}, EmployeeId: {id}"
+                                : $"Deleted employee with EmployeeId: {id}";
+
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "employees.delete",
+                                details
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in background enrichment/logging for delete");
+                    }
+                });
             }
 
-            return new { operation = "delete", success, deletedId = id, snapshot };
+            return new { operation = "delete", success, deletedId = id };
         }
 
         [HttpGet]
@@ -302,7 +410,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<ActionResult<Employee>> CreateEmployee([FromBody] CreateEmployeeModel model)
         {
             _logger.LogInformation("REQUEST RECEIVED: CreateEmployee with data: {RequestData}", JsonSerializer.Serialize(model));
-            
+
             try
             {
                 if (!IsAdmin() && !HasPermission("employees.create"))
@@ -313,45 +421,44 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE OPERATION: Creating new employee: {Name} {Surname}", model.Name, model.Surname);
 
-                var success = await _employeeService.CreateEmployeeAsync(
+                var employee = await _employeeService.CreateEmployeeAsync(
                     model.Name,
                     model.Surname,
                     model.Patronym ?? string.Empty,
                     model.JobId
                 );
 
-                if (!success)
+                if (employee == null)
                 {
                     _logger.LogWarning("DATABASE RESULT: Failed to create employee");
                     return BadRequest("Failed to create employee");
                 }
 
-                // Get the newly created employee
-                _logger.LogInformation("DATABASE OPERATION: Retrieving newly created employee");
-                var employees = await _employeeService.GetAllEmployeesAsync();
-                var employee = employees.LastOrDefault();
-
-                if (employee == null)
-                {
-                    _logger.LogError("DATABASE RESULT: Employee was created but could not be retrieved");
-                    return StatusCode(500, "Employee was created but could not be retrieved");
-                }
-
                 _logger.LogInformation("DATABASE RESULT: Successfully created employee with ID {EmployeeId}", employee.EmployeeId);
                 _logger.LogInformation("FULL EMPLOYEE DATA: {EmployeeData}", JsonSerializer.Serialize(employee));
-                
-                // Get the current user ID from token
+
+                // Fire-and-forget: Log the admin action
                 var userId = GetUserId();
-                if (userId != null)
+                var createdEmployee = employee;
+                _ = Task.Run(async () =>
                 {
-                    // Log the admin action
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "CreateEmployee",
-                        $"Created employee with ID {employee.EmployeeId}, Name: {employee.Name} {employee.Surname}"
-                    );
-                }
-                
+                    try
+                    {
+                        if (userId != null)
+                        {
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "CreateEmployee",
+                                $"Created employee with ID {createdEmployee.EmployeeId}, Name: {createdEmployee.Name} {createdEmployee.Surname}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error logging admin action for create");
+                    }
+                });
+
                 _logger.LogInformation("RESPONSE SENT: Created employee with ID {EmployeeId}", employee.EmployeeId);
                 return CreatedAtAction(nameof(GetEmployee), new { id = employee.EmployeeId }, employee);
             }
@@ -366,9 +473,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateEmployee(uint id, [FromBody] UpdateEmployeeModel model)
         {
-            _logger.LogInformation("REQUEST RECEIVED: UpdateEmployee ID {EmployeeId} with data: {RequestData}", 
+            _logger.LogInformation("REQUEST RECEIVED: UpdateEmployee ID {EmployeeId} with data: {RequestData}",
                 id, JsonSerializer.Serialize(model));
-            
+
             try
             {
                 if (!IsAdmin() && !HasPermission("employees.update"))
@@ -400,27 +507,35 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                // Get employee data after update for logging
-                _logger.LogInformation("DATABASE OPERATION: Fetching employee with ID {EmployeeId} after update", id);
-                var employeeAfterUpdate = await _employeeService.GetEmployeeByIdAsync(id);
-                if (employeeAfterUpdate != null)
-                {
-                    _logger.LogInformation("EMPLOYEE AFTER UPDATE: {EmployeeData}", JsonSerializer.Serialize(employeeAfterUpdate));
-                }
-
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId != null)
-                {
-                    // Log the admin action
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "UpdateEmployee",
-                        $"Updated employee with ID {id}"
-                    );
-                }
-
                 _logger.LogInformation("DATABASE RESULT: Successfully updated employee {EmployeeId}", id);
+
+                // Fire-and-forget: Get employee after update and log admin action
+                var userId = GetUserId();
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var employeeAfterUpdate = await _employeeService.GetEmployeeByIdAsync(id);
+                        if (employeeAfterUpdate != null)
+                        {
+                            _logger.LogInformation("EMPLOYEE AFTER UPDATE: {EmployeeData}", JsonSerializer.Serialize(employeeAfterUpdate));
+                        }
+
+                        if (userId != null)
+                        {
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "UpdateEmployee",
+                                $"Updated employee with ID {id}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in background enrichment/logging for update");
+                    }
+                });
+
                 _logger.LogInformation("RESPONSE SENT: Updated employee with ID {EmployeeId}", id);
                 return NoContent();
             }
@@ -436,7 +551,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> DeleteEmployee(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: DeleteEmployee ID {EmployeeId}", id);
-            
+
             try
             {
                 if (!IsAdmin() && !HasPermission("employees.delete"))
@@ -461,19 +576,29 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId != null)
-                {
-                    // Log the admin action
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "DeleteEmployee",
-                        $"Deleted employee with ID {id}"
-                    );
-                }
-
                 _logger.LogInformation("DATABASE RESULT: Successfully deleted employee {EmployeeId}", id);
+
+                // Fire-and-forget: Log the admin action
+                var userId = GetUserId();
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (userId != null)
+                        {
+                            await _adminLogger.LogActionAsync(
+                                userId,
+                                "DeleteEmployee",
+                                $"Deleted employee with ID {id}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error logging admin action for delete");
+                    }
+                });
+
                 _logger.LogInformation("RESPONSE SENT: Deleted employee with ID {EmployeeId}", id);
                 return NoContent();
             }

@@ -11,7 +11,7 @@ namespace TicketSalesApp.Services.Interfaces
         Task<List<Employee>> GetAllEmployeesAsync();
         Task<Employee?> GetEmployeeByIdAsync(uint employeeId);
         Task<List<Employee>> GetEmployeesByJobIdAsync(uint jobId);
-        Task<bool> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null);
+        Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null);
         Task<bool> UpdateEmployeeAsync(uint employeeId, string? employeeName = null, string? employeeSurname = null, string? employeePatronym = null, uint? jobId = null, Identity? actingUser = null);
         Task<bool> DeleteEmployeeAsync(uint employeeId, Identity? actingUser = null);
         Task<List<Job>> GetAllJobsAsync();

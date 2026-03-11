@@ -67,16 +67,18 @@ public static class WebSocketEventStreamWriter
                     break;
                 }
 
+                // Prepare response payload (isolate business logic from transport)
+                object payload;
                 try
                 {
                     var data = await requestHandler(request, linkedCts.Token);
-                    await SendJsonAsync(webSocket, new
+                    payload = new
                     {
                         type = "result",
                         requestId = request.RequestId,
                         ok = true,
                         data
-                    }, sendLock, linkedCts.Token);
+                    };
                 }
                 catch (Exception ex)
                 {
@@ -91,14 +93,17 @@ public static class WebSocketEventStreamWriter
                         _ => "Internal server error"
                     };
 
-                    await SendJsonAsync(webSocket, new
+                    payload = new
                     {
                         type = "result",
                         requestId = request.RequestId,
                         ok = false,
                         error = clientErrorMessage
-                    }, sendLock, linkedCts.Token);
+                    };
                 }
+
+                // Send response (transport errors will propagate and close session)
+                await SendJsonAsync(webSocket, payload, sendLock, linkedCts.Token);
             }
         }
         finally
@@ -130,6 +135,24 @@ public static class WebSocketEventStreamWriter
             var result = await webSocket.ReceiveAsync(buffer, cancellationToken);
             if (result.MessageType == WebSocketMessageType.Close)
             {
+                // Complete the close handshake
+                if (webSocket.State == WebSocketState.CloseReceived)
+                {
+                    await webSocket.CloseOutputAsync(
+                        result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+                        result.CloseStatusDescription ?? "Client requested close",
+                        cancellationToken);
+                }
+                return null;
+            }
+
+            // Reject non-text frames
+            if (result.MessageType != WebSocketMessageType.Text)
+            {
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.InvalidMessageType,
+                    "Only text frames are supported",
+                    cancellationToken);
                 return null;
             }
 
@@ -154,7 +177,20 @@ public static class WebSocketEventStreamWriter
         }
 
         var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
-        return JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+
+        // Wrap JSON deserialization in try-catch to handle invalid JSON
+        try
+        {
+            return JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            await webSocket.CloseAsync(
+                WebSocketCloseStatus.InvalidPayloadData,
+                $"Invalid JSON: {ex.Message}",
+                cancellationToken);
+            return null;
+        }
     }
 
     private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)

@@ -84,25 +84,45 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
+        public async Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
         {
             try
             {
                 _logger.LogInformation("Creating new employee: {Name} {Surname}", employeeName, employeeSurname);
                 var connection = _spacetimeDBService.GetConnection();
-                
+
                 var job = connection.Db.Job.Iter()
                     .FirstOrDefault(j => j.JobId == jobId);
                 if (job == null)
                 {
                     _logger.LogWarning("Job not found: {JobId}", jobId);
-                    return false;
+                    return null;
                 }
 
+                // Get the count before insertion to help identify the new employee
+                var employeesBefore = connection.Db.Employee.Iter().ToList();
+                var maxIdBefore = employeesBefore.Any() ? employeesBefore.Max(e => e.EmployeeId) : 0u;
+
                 // Call the CreateEmployee reducer
-                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);// doesent need active user 
-                
-                return true;
+                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);// doesent need active user
+
+                // Retrieve the newly created employee
+                // The new employee should have an ID greater than maxIdBefore
+                var newEmployee = connection.Db.Employee.Iter()
+                    .Where(e => e.EmployeeId > maxIdBefore && e.Name == employeeName && e.Surname == employeeSurname && e.JobId == jobId)
+                    .OrderByDescending(e => e.EmployeeId)
+                    .FirstOrDefault();
+
+                if (newEmployee != null)
+                {
+                    _logger.LogInformation("Successfully created employee with ID: {EmployeeId}", newEmployee.EmployeeId);
+                }
+                else
+                {
+                    _logger.LogWarning("Employee reducer called but could not retrieve created employee");
+                }
+
+                return newEmployee;
             }
             catch (Exception ex)
             {
