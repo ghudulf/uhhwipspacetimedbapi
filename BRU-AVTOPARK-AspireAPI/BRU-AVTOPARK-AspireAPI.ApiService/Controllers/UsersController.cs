@@ -80,31 +80,47 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("users.create"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.create");
+            }
+
             var model = request.Payload?.Deserialize<CreateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var actionResult = await CreateUser(model);
+            var created = await _userService.CreateUserAsync(model.Login, model.Password, model.Role, model.Email, model.PhoneNumber);
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "create", actionResult = ControllerActionResultMapper.Map(actionResult.Result ?? new OkObjectResult(actionResult.Value)), snapshot };
+            return new { operation = "create", success = created is not null, entity = created, snapshot };
         }
 
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("users.edit"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.edit");
+            }
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var actionResult = await UpdateUser(id, model);
+            var success = await _userService.UpdateUserAsync(id, model.Login, model.Password, model.Role, model.Email, model.PhoneNumber, model.IsActive);
+            var entity = await _userService.GetUserByIdAsync(id);
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "update", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "update", success, entity, snapshot };
         }
 
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("users.delete"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.delete");
+            }
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var actionResult = await DeleteUser(id);
+            var success = await _userService.DeleteUserAsync(id);
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "delete", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
         [HttpGet]

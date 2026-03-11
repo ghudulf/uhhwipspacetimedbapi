@@ -72,32 +72,49 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("buses.create"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.create");
+            }
+
             var model = request.Payload?.Deserialize<CreateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var actionResult = await CreateBus(model);
+            var bus = await _busService.CreateBusAsync(model.Model);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "create", actionResult = ControllerActionResultMapper.Map(actionResult.Result ?? new OkObjectResult(actionResult.Value)), snapshot };
+            return new { operation = "create", success = bus is not null, entity = bus, snapshot };
         }
 
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("buses.edit"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.edit");
+            }
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var actionResult = await UpdateBus(id, model);
+            var success = await _busService.UpdateBusAsync(id, model.Model);
+            var entity = await _busService.GetBusByIdAsync(id);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "update", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "update", success, entity, snapshot };
         }
 
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin() && !HasPermission("buses.delete"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.delete");
+            }
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var actionResult = await DeleteBus(id);
+            var success = await _busService.DeleteBusAsync(id);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "delete", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "delete", success, deletedId = id, snapshot };
         }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetBuses()
         {

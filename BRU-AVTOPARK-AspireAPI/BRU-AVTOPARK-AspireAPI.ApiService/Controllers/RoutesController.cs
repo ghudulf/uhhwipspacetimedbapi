@@ -73,31 +73,38 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+
             var model = request.Payload?.Deserialize<CreateRouteModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var actionResult = await CreateRoute(model);
+            var success = await _routeService.CreateRouteAsync(model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, true);
             var snapshot = await _routeService.GetAllRoutesAsync();
-            return new { operation = "create", actionResult = ControllerActionResultMapper.Map(actionResult.Result ?? new OkObjectResult(actionResult.Value)), snapshot };
+            return new { operation = "create", success, snapshot };
         }
 
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateRouteModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var actionResult = await UpdateRoute(id, model);
+            var success = await _routeService.UpdateRouteAsync(id, model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, null);
+            var entity = await _routeService.GetRouteByIdAsync(id);
             var snapshot = await _routeService.GetAllRoutesAsync();
-            return new { operation = "update", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "update", success, entity, snapshot };
         }
 
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var actionResult = await DeleteRoute(id);
+            var success = await _routeService.DeleteRouteAsync(id);
             var snapshot = await _routeService.GetAllRoutesAsync();
-            return new { operation = "delete", actionResult = ControllerActionResultMapper.Map(actionResult), snapshot };
+            return new { operation = "delete", success, deletedId = id, snapshot };
         }
 
         [HttpGet]
