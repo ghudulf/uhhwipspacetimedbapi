@@ -22,11 +22,11 @@
             <div class="text text--m profile-card__description">
                 @if (!string.IsNullOrEmpty(Model.User.PhoneNumber))
                 {
-                    <span class="bulleted-item">@Html.Encode(Model.User.PhoneNumber)</span>
+                    <span class="bulleted-item">@Model.User.PhoneNumber</span>
                 }
                 @if (!string.IsNullOrEmpty(Model.User.Email))
                 {
-                    <span class="bulleted-item">@Html.Encode(Model.User.Email)</span>
+                    <span class="bulleted-item">@Model.User.Email</span>
                 }
                 @if (string.IsNullOrEmpty(Model.User.PhoneNumber) && string.IsNullOrEmpty(Model.User.Email))
                 {

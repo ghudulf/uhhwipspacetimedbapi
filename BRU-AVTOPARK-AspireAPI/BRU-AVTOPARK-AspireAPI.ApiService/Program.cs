@@ -216,6 +216,9 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IRequestDetector, BR
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IOidcHelperService, BRU_AVTOPARK.Services.Implementations.OidcHelperService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BRU_AVTOPARK.Services.Implementations.IdentityService>();
 
+// Add input sanitization service for security
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationService, BRU_AVTOPARK.Services.Implementations.InputSanitizationService>();
+
 // Configure FeatureFlagOptions from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
@@ -589,6 +592,10 @@ if (Directory.Exists(Path.Combine(builder.Environment.ContentRootPath, "wwwroot"
 // Add controller logging middleware to track which controller handles each request
 // This is especially useful for debugging feature flag routing (legacy vs refactored)
 app.UseControllerLogging();
+
+// Add input validation middleware for security (before authentication)
+// This provides defense-in-depth protection against injection attacks
+app.UseMiddleware<BRU_AVTOPARK.Middleware.InputValidationMiddleware>();
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
