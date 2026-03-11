@@ -150,14 +150,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.created, but write succeeded");
                 }
 
-                // Fire-and-forget: enrich with snapshot and log action
+                // Fire-and-forget: log action
                 var userId = GetUserId();
                 var employeeId = newEmployee?.EmployeeId;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var snapshot = await _employeeService.GetAllEmployeesAsync();
                         if (userId != null && employeeId.HasValue)
                         {
                             await _adminLogger.LogActionAsync(
@@ -169,7 +168,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error in background enrichment/logging for create");
+                        _logger.LogError(ex, "Error in background logging for create");
                     }
                 });
             }
@@ -236,14 +235,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.updated, but write succeeded");
                 }
 
-                // Fire-and-forget: enrich with entity/snapshot and log action
+                // Fire-and-forget: enrich with entity and log action
                 var userId = GetUserId();
                 _ = Task.Run(async () =>
                 {
                     try
                     {
                         var entity = await _employeeService.GetEmployeeByIdAsync(id);
-                        var snapshot = await _employeeService.GetAllEmployeesAsync();
                         if (userId != null && entity != null)
                         {
                             await _adminLogger.LogActionAsync(
@@ -255,7 +253,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error in background enrichment/logging for update");
+                        _logger.LogError(ex, "Error in background logging for update");
                     }
                 });
             }
@@ -310,14 +308,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.deleted, but write succeeded");
                 }
 
-                // Fire-and-forget: enrich with snapshot and log action
+                // Fire-and-forget: log action
                 var userId = GetUserId();
                 var deletedEmployee = employeeBeforeDelete;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var snapshot = await _employeeService.GetAllEmployeesAsync();
                         if (userId != null)
                         {
                             var details = deletedEmployee != null
@@ -333,7 +330,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error in background enrichment/logging for delete");
+                        _logger.LogError(ex, "Error in background logging for delete");
                     }
                 });
             }

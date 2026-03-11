@@ -90,6 +90,7 @@ public static class WebSocketEventStreamWriter
                         UnauthorizedAccessException => ex.Message,
                         InvalidOperationException => ex.Message,
                         ArgumentException => "Bad request",
+                        JsonException => "Bad request",
                         _ => "Internal server error"
                     };
 
