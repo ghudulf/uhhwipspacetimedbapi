@@ -15,12 +15,12 @@ namespace TicketSalesApp.AdminServer.Configuration
         // ============================================
         
         /// <summary>
-        /// POST /api/auth/login - Login with username/password
+        /// GET/POST /api/auth/login - Login page (HTML) and authentication
         /// </summary>
         public bool EnableLoginRefactoring { get; set; } = false;
         
         /// <summary>
-        /// POST /api/auth/register - Register new user account
+        /// GET/POST /api/auth/register - Registration page (HTML) and account creation
         /// </summary>
         public bool EnableRegisterRefactoring { get; set; } = false;
 

@@ -55,7 +55,7 @@
 
                 @* Right panel - registration form *@
                 <div class="register-layout__form">
-                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");" novalidate>
+                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");" novalidate onsubmit="return submitRegisterForm();">
                         <div class="form-row">
                             <partial name="_FormField"
                                      model='new FormFieldViewModel("username", "Username", Required: true)' />

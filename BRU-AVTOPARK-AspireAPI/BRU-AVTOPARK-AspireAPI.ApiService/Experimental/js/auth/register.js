@@ -99,19 +99,34 @@
     }
     
     function showAdminStatus(isAdmin, message) {
-        const statusDiv = document.getElementById('adminStatus');
-        if (!statusDiv) return;
+        const statusSuccess = document.getElementById('admin-check-status');
+        const statusPending = document.getElementById('admin-check-pending');
+        
+        if (!statusSuccess || !statusPending) return;
         
         if (isAdmin) {
-            statusDiv.innerHTML = `<div class="success-message">${message}</div>`;
+            statusSuccess.style.display = 'flex';
+            statusPending.style.display = 'none';
+            // Update the success message text
+            const statusText = statusSuccess.querySelector('span');
+            if (statusText) {
+                statusText.innerHTML = `<strong>${message}</strong>`;
+            }
         } else {
-            statusDiv.innerHTML = `<div class="error-message">${message}</div>`;
+            statusSuccess.style.display = 'none';
+            statusPending.style.display = 'flex';
+            // Update the pending/error message
+            const statusText = statusPending.querySelector('div > strong');
+            if (statusText) {
+                statusText.textContent = message;
+            }
         }
     }
     
     function enableRegistrationForm() {
         const form = document.getElementById('registerForm');
         if (form) {
+            form.style.display = 'block';
             const inputs = form.querySelectorAll('input, select, button');
             inputs.forEach(input => input.disabled = false);
         }
@@ -120,6 +135,7 @@
     function disableRegistrationForm() {
         const form = document.getElementById('registerForm');
         if (form) {
+            form.style.display = 'none';
             const inputs = form.querySelectorAll('input, select, button');
             inputs.forEach(input => input.disabled = true);
         }
@@ -128,7 +144,7 @@
     // Submit registration form
     window.submitRegisterForm = function() {
         const form = document.getElementById('registerForm');
-        const statusDiv = document.getElementById('registerStatus');
+        const statusDiv = document.getElementById('register-status');
         
         if (!form || !statusDiv) {
             console.error('Required form elements not found');
@@ -154,7 +170,7 @@
             headers['Authorization'] = authHeader;
         }
         
-        statusDiv.innerHTML = '<div class="text-center"><div class="loader"></div><p>Registering user...</p></div>';
+        statusDiv.innerHTML = '<div class="status-message status-message--info"><div class="loader" style="width: 18px; height: 18px; margin-right: 8px;"></div><span>Registering user...</span></div>';
         
         fetch('/api/auth/register', {
             method: 'POST',
@@ -164,18 +180,18 @@
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                statusDiv.innerHTML = '<div class="success-message">User registered successfully!</div>';
+                statusDiv.innerHTML = '<div class="status-message status-message--success"><svg class="status-message__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>User registered successfully!</span></div>';
                 setTimeout(() => {
                     form.reset();
                     statusDiv.innerHTML = '';
                 }, 3000);
             } else {
-                statusDiv.innerHTML = `<div class="error-message">${result.message || 'Registration failed'}</div>`;
+                statusDiv.innerHTML = `<div class="status-message status-message--error"><svg class="status-message__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>${result.message || 'Registration failed'}</span></div>`;
             }
         })
         .catch(error => {
             console.error('Registration error:', error);
-            statusDiv.innerHTML = `<div class="error-message">Error: ${error.message || 'Unknown error'}</div>`;
+            statusDiv.innerHTML = `<div class="status-message status-message--error"><svg class="status-message__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>Error: ${error.message || 'Unknown error'}</span></div>`;
         });
         
         return false;

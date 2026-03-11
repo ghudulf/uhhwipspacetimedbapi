@@ -61,6 +61,36 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         #region Traditional Authentication (2 endpoints)
 
         /// <summary>
+        /// GET /api/auth/login - Show login page (HTML) or return login info (JSON)
+        /// Enabled by: EnableLoginRefactoring feature flag
+        /// </summary>
+        [HttpGet("login")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableLoginRefactoring))]
+        public IActionResult LoginPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        {
+            _logger.LogInformation("Refactored Login Page endpoint called");
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                var html = _htmlRenderingService.RenderLoginForm(error, message);
+                return Content(html, "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Login endpoint available. Use POST method to authenticate.",
+                Data = new
+                {
+                    Method = "POST",
+                    Endpoint = "/api/auth/login",
+                    RequiredFields = new[] { "username", "password" }
+                }
+            });
+        }
+
+        /// <summary>
         /// POST /api/auth/login - Login with username/password
         /// Enabled by: EnableLoginRefactoring feature flag
         /// </summary>
@@ -159,6 +189,36 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         /// <summary>
+        /// GET /api/auth/register - Show registration page (HTML) or return registration info (JSON)
+        /// Enabled by: EnableRegisterRefactoring feature flag
+        /// </summary>
+        [HttpGet("register")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableRegisterRefactoring))]
+        public IActionResult RegisterPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        {
+            _logger.LogInformation("Refactored Register Page endpoint called");
+
+            if (_requestDetector.IsBrowserRequest())
+            {
+                var html = _htmlRenderingService.RenderRegisterForm(error, message);
+                return Content(html, "text/html");
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Register endpoint available. Use POST method to create account.",
+                Data = new
+                {
+                    Method = "POST",
+                    Endpoint = "/api/auth/register",
+                    RequiredFields = new[] { "username", "password", "email" }
+                }
+            });
+        }
+
+        /// <summary>
         /// POST /api/auth/register - Register new user account
         /// Enabled by: EnableRegisterRefactoring feature flag
         /// </summary>
@@ -232,7 +292,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
             });
         }
-
         #endregion
 
         #region TOTP Endpoints (4 endpoints)

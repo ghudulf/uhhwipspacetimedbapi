@@ -152,5 +152,17 @@
                 }
             });
         }
+        
+        // Hook up secondary authentication option buttons
+        const secondaryOptions = document.querySelectorAll('.secondary-option[data-href]');
+        secondaryOptions.forEach(function(button) {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                const href = this.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+        });
     });
 })();
