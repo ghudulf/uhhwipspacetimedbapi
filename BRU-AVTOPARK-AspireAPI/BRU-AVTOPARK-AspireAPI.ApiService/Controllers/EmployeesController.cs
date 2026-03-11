@@ -11,6 +11,10 @@ using TicketSalesApp.Services.Interfaces;
 using System.Text.Json;
 using SpacetimeDB;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -22,17 +26,36 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<EmployeesController> _logger;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
         public EmployeesController(
             IEmployeeService employeeService,
             ILogger<EmployeesController> logger,
             IAdminActionLogger adminLogger,
-            ISpacetimeDBService spacetimeService)
+            ISpacetimeDBService spacetimeService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _employeeService = employeeService ?? throw new ArgumentNullException(nameof(employeeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+        }
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("employees", cancellationToken),
+                _logger,
+                cancellationToken);
         }
 
         [HttpGet]

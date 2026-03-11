@@ -13,6 +13,10 @@ using System.Security.Claims;
 using System.Text.Json;
 using Route = SpacetimeDB.Types.Route; // Add alias for Route
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -24,19 +28,38 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<TicketsController> _logger;
         private readonly ITicketService _ticketService;
         private readonly IAuthenticationService _authService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
         public TicketsController(
             ISpacetimeDBService spacetimeService, 
             ILogger<TicketsController> logger, 
             ITicketService ticketService,
-            IAuthenticationService authService)
+            IAuthenticationService authService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _spacetimeService = spacetimeService;
             _logger = logger;
             _ticketService = ticketService;
             _authService = authService;
+            _realtimeEventBus = realtimeEventBus;
             _logger.LogInformation("TicketsController initialized with services: {@Services}", 
                 new { SpacetimeDBService = spacetimeService != null, TicketService = ticketService != null, AuthService = authService != null });
+        }
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("tickets", cancellationToken),
+                _logger,
+                cancellationToken);
         }
 
         [HttpGet]

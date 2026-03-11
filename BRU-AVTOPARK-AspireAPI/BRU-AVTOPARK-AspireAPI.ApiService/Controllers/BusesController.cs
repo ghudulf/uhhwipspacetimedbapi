@@ -10,6 +10,8 @@ using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Text.Json;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -21,17 +23,36 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IBusService _busService;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<BusesController> _logger;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
         public BusesController(
             IBusService busService,
             IAdminActionLogger adminLogger,
-            ILogger<BusesController> logger)
+            ILogger<BusesController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _busService = busService ?? throw new ArgumentNullException(nameof(busService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeBusEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("buses", cancellationToken),
+                _logger,
+                cancellationToken);
+        }
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetBuses()
         {

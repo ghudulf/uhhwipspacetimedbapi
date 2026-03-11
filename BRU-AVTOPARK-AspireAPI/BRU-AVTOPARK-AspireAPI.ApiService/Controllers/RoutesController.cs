@@ -13,6 +13,10 @@ using Log = Serilog.Log;
 using SpacetimeDB;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -23,15 +27,33 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRouteService _routeService;
         private readonly ILogger<RoutesController> _logger;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
-        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService)
+        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus)
         {
             _routeService = routeService ?? throw new ArgumentNullException(nameof(routeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
       
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("routes", cancellationToken),
+                _logger,
+                cancellationToken);
+        }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRoutes()

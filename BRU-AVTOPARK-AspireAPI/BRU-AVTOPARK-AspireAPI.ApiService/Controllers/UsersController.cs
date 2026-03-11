@@ -16,6 +16,10 @@ using SpacetimeDB;
 using Log = Serilog.Log;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -28,14 +32,34 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRoleService _roleService;
         private readonly IConfiguration _configuration;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService)
+        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus, ILogger<UsersController> logger)
         {
             _userService = userService;
             _authService = authService;
             _roleService = roleService;
             _configuration = configuration;
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("users", cancellationToken),
+                _logger,
+                cancellationToken);
         }
 
         [HttpGet]
