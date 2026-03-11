@@ -2723,5 +2723,562 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         #endregion
+
+        #region Missing Endpoints - OAuth Callback and Form Submissions
+
+        /// <summary>
+        /// GET ~/connect/tokeninfo - Token validation endpoint used by BaseController for OAuth token validation
+        /// </summary>
+        [HttpGet("~/connect/tokeninfo")]
+        [Produces("application/json")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthTokenInfoRefactoring))]
+        public async Task<IActionResult> TokenInfo()
+        {
+            try
+            {
+                _logger.LogInformation("TokenInfo endpoint called");
+                
+                // Manually authenticate the request using OpenIddict validation
+                var authenticateResult = await HttpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                
+                if (!authenticateResult.Succeeded || authenticateResult.Principal == null)
+                {
+                    _logger.LogWarning("TokenInfo - Authentication failed");
+                    return Unauthorized(new { error = "invalid_token", error_description = "The access token is invalid or expired" });
+                }
+                
+                // Extract all claims from the authenticated principal
+                var claimsDict = new Dictionary<string, object>();
+                
+                foreach (var claim in authenticateResult.Principal.Claims)
+                {
+                    // Group multiple claims with the same type into arrays
+                    if (claimsDict.ContainsKey(claim.Type))
+                    {
+                        // Convert to list if not already
+                        if (claimsDict[claim.Type] is List<string> list)
+                        {
+                            list.Add(claim.Value);
+                        }
+                        else
+                        {
+                            // Convert single value to list
+                            var existingValue = claimsDict[claim.Type].ToString();
+                            claimsDict[claim.Type] = new List<string> { existingValue!, claim.Value };
+                        }
+                    }
+                    else
+                    {
+                        claimsDict[claim.Type] = claim.Value;
+                    }
+                }
+                
+                _logger.LogInformation("TokenInfo - Returning {ClaimCount} claims from token", claimsDict.Count);
+                _logger.LogDebug("TokenInfo - Claims: {Claims}", string.Join(", ", claimsDict.Keys));
+                
+                return Ok(new
+                {
+                    claims = claimsDict,
+                    token_type = "Bearer",
+                    authenticated = authenticateResult.Principal.Identity?.IsAuthenticated ?? false,
+                    authentication_type = authenticateResult.Principal.Identity?.AuthenticationType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing tokeninfo request");
+                return StatusCode(500, "An error occurred while processing the tokeninfo request");
+            }
+        }
+
+        /// <summary>
+        /// POST ~/connect/authorize/callback - OAuth authorization callback form handler
+        /// Processes user login during OAuth authorization flow
+        /// </summary>
+        [HttpPost("~/connect/authorize/callback")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizeCallbackRefactoring))]
+        public async Task<IActionResult> AuthorizeCallback([FromForm] AuthorizeCallbackRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("OIDC Authorize Callback: Processing login for RequestId: {RequestId}, Username: {Username}", 
+                    request.RequestId, request.Username);
+
+                // Get the original OpenIddict request parameters from cache
+                var requestParams = _cache.Get<Dictionary<string, string>>($"oidc_request_params_{request.RequestId}");
+                if (requestParams == null)
+                {
+                    _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId, "Unknown", Array.Empty<string>(), 
+                            "Invalid or expired request. Please try again."), "text/html");
+                    }
+                    return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
+                }
+                
+                // Extract key parameters for validation
+                var clientId = requestParams.GetValueOrDefault("client_id", "");
+                var redirectUri = requestParams.GetValueOrDefault("redirect_uri", "");
+                var scope = requestParams.GetValueOrDefault("scope", "");
+
+                // Authenticate user
+                var authResult = await _authOrchestrationService.AuthenticateAsync(request.Username, request.Password);
+                if (authResult == null)
+                {
+                    _logger.LogWarning("Authentication failed for user: {Username}", request.Username);
+                    
+                    // Get client info for re-rendering the form
+                    var clientResult = await _oidcHelperService.GetApplicationByClientIdAsync(clientId);
+                    var clientName = clientResult.success && clientResult.application != null 
+                        ? await _oidcHelperService.GetDisplayNameAsync(clientResult.application) ?? clientId
+                        : clientId;
+                    var scopes = scope?.Split(' ') ?? Array.Empty<string>();
+                    
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId, clientName, scopes, 
+                            "Invalid username or password. Please try again."), "text/html");
+                    }
+                    return Unauthorized(new { error = "invalid_credentials", error_description = "Invalid username or password" });
+                }
+
+                _logger.LogInformation("User authenticated successfully: {Username}, UserId: {UserId}", authResult.Username, authResult.UserId);
+
+                // Get the application for authorization
+                var appResult = await _oidcHelperService.GetApplicationByClientIdAsync(clientId);
+                if (!appResult.success || appResult.application == null)
+                {
+                    _logger.LogError("Failed to get application: {ClientId}, Error: {Error}", 
+                        clientId, appResult.errorMessage);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = appResult.errorMessage ?? "Invalid client application."
+                        }));
+                }
+
+                // Build OAuth claims identity using service
+                var identityResult = await _authOrchestrationService.BuildOAuthTokenIdentityAsync(
+                    authResult.UserId, 
+                    scope?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>(),
+                    Array.Empty<string>());
+
+                if (identityResult == null)
+                {
+                    _logger.LogError("Failed to build OAuth identity for user: {Username}", request.Username);
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.ServerError,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Failed to build authorization identity."
+                        }));
+                }
+
+                // Create authentication cookie for the user session
+                var cookieIdentity = new ClaimsIdentity(
+                    new[]
+                    {
+                        new Claim(ClaimTypes.Name, authResult.Username),
+                        new Claim(ClaimTypes.NameIdentifier, authResult.UserId.ToString()),
+                        new Claim(Claims.Subject, authResult.UserId.ToString())
+                    },
+                    CookieAuthenticationDefaults.AuthenticationScheme);
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(cookieIdentity),
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                    });
+
+                _logger.LogInformation("Cookie authentication successful for user: {Username}", authResult.Username);
+
+                // Reconstruct the authorization URL with ALL original parameters
+                var authUrl = "/connect/authorize?";
+                var queryParams = new List<string>();
+                
+                foreach (var param in requestParams)
+                {
+                    queryParams.Add($"{Uri.EscapeDataString(param.Key)}={Uri.EscapeDataString(param.Value)}");
+                }
+                
+                authUrl += string.Join("&", queryParams);
+                
+                _logger.LogInformation("Redirecting to authorization endpoint with {Count} parameters (including PKCE)", requestParams.Count);
+                
+                // Remove the cached request as it's been processed
+                _cache.Remove($"oidc_request_params_{request.RequestId}");
+                
+                return Redirect(authUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing authorization callback for RequestId: {RequestId}", request.RequestId);
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return Content(_htmlRenderingService.RenderOAuthLogin(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
+                        "An error occurred while processing your request. Please try again."), "text/html");
+                }
+                return StatusCode(500, new { error = "server_error", 
+                    error_description = "An error occurred while processing the authorization callback" });
+            }
+        }
+
+        /// <summary>
+        /// POST /connect/register-client - Form-based client registration
+        /// </summary>
+        [HttpPost("connect/register-client")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring))]
+        public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(request.Token))
+            {
+                _logger.LogWarning("No token provided to RegisterClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(request.Token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to RegisterClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                // Check if user is an administrator
+                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+                bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+                
+                if (!isAdmin)
+                {
+                    _logger.LogWarning("User is not an administrator");
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to RegisterClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        var clientData = new OAuthClientFormViewModel
+                        {
+                            ClientId = request.ClientId,
+                            DisplayName = request.DisplayName,
+                            RedirectUris = _oidcHelperService.SplitTextareaInput(request.RedirectUris),
+                            PostLogoutRedirectUris = _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
+                            AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
+                            RequireConsent = request.RequireConsent,
+                            IsEdit = false,
+                            Token = request.Token
+                        };
+                        return Content(_htmlRenderingService.RenderOAuthClientForm(clientData), "text/html");
+                    }
+
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid form data",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+                    });
+                }
+
+                // Register client application
+                var result = await _authOrchestrationService.RegisterOAuthClientAsync(
+                    request.ClientId,
+                    request.ClientSecret,
+                    request.DisplayName,
+                    _oidcHelperService.SplitTextareaInput(request.RedirectUris),
+                    _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
+                    _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
+                    request.RequireConsent
+                );
+
+                if (!result.Success)
+                {
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to register client application")}");
+                    }
+
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = result.ErrorMessage ?? "Failed to register client application"
+                    });
+                }
+
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
+                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                }
+
+                return Ok(new ApiResponse<OAuthClientDto>
+                {
+                    Success = true,
+                    Message = "Client application registered successfully",
+                    Data = new OAuthClientDto
+                    {
+                        ClientId = result.ClientId,
+                        DisplayName = result.DisplayName
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error registering client application");
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/error?message={Uri.EscapeDataString("An error occurred while registering client application")}");
+                }
+
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while registering client application"
+                });
+            }
+        }
+
+        /// <summary>
+        /// POST /connect/update-client/{clientId} - Form-based client update
+        /// </summary>
+        [HttpPost("connect/update-client/{clientId}")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring))]
+        public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(request.Token))
+            {
+                _logger.LogWarning("No token provided to UpdateClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(request.Token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to UpdateClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                // Check if user is an administrator
+                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+                bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+                
+                if (!isAdmin)
+                {
+                    _logger.LogWarning("User is not an administrator");
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to UpdateClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        var clientData = new OAuthClientFormViewModel
+                        {
+                            ClientId = clientId,
+                            DisplayName = request.DisplayName,
+                            RedirectUris = _oidcHelperService.SplitTextareaInput(request.RedirectUris),
+                            PostLogoutRedirectUris = _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
+                            AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
+                            RequireConsent = request.RequireConsent,
+                            IsEdit = true,
+                            Token = request.Token
+                        };
+                        return Content(_htmlRenderingService.RenderOAuthClientForm(clientData), "text/html");
+                    }
+
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Invalid form data",
+                        Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+                    });
+                }
+
+                // Update client application
+                var result = await _authOrchestrationService.UpdateOAuthClientAsync(
+                    clientId,
+                    request.ClientSecret,
+                    request.DisplayName,
+                    _oidcHelperService.SplitTextareaInput(request.RedirectUris),
+                    _oidcHelperService.SplitTextareaInput(request.PostLogoutRedirectUris),
+                    _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
+                    request.RequireConsent
+                );
+
+                if (!result.Success)
+                {
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to update client application")}");
+                    }
+
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = result.ErrorMessage ?? "Failed to update client application"
+                    });
+                }
+
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
+                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                }
+
+                return Ok(new ApiResponse<OAuthClientDto>
+                {
+                    Success = true,
+                    Message = "Client application updated successfully",
+                    Data = new OAuthClientDto
+                    {
+                        ClientId = result.ClientId,
+                        DisplayName = result.DisplayName
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating client application");
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/error?message={Uri.EscapeDataString("An error occurred while updating client application")}");
+                }
+
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while updating client application"
+                });
+            }
+        }
+
+        /// <summary>
+        /// POST /connect/clients/{clientId}/delete - Form-based client deletion
+        /// </summary>
+        [HttpPost("connect/clients/{clientId}/delete")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring))]
+        public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token)
+        {
+            // Validate JWT token from form
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("No token provided to DeleteClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(token);
+                
+                // Validate token is not expired
+                if (jwtToken.ValidTo < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Expired token provided to DeleteClientSubmit");
+                    return Redirect("/api/auth/login");
+                }
+
+                // Check if user is an administrator
+                var roleClaims = jwtToken.Claims.Where(c => c.Type == "role" || c.Type == ClaimTypes.Role);
+                bool isAdmin = roleClaims.Any(c => c.Value == "Administrator" || c.Value == "1");
+                
+                if (!isAdmin)
+                {
+                    _logger.LogWarning("User is not an administrator");
+                    return Redirect("/api/auth/error?message=" + Uri.EscapeDataString("Administrator access required"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invalid token provided to DeleteClientSubmit");
+                return Redirect("/api/auth/login");
+            }
+            
+            try
+            {
+                var result = await _authOrchestrationService.DeleteOAuthClientAsync(clientId);
+
+                if (!result.Success)
+                {
+                    if (_requestDetector.IsBrowserRequest())
+                    {
+                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to delete client application")}");
+                    }
+
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = result.ErrorMessage ?? "Failed to delete client application"
+                    });
+                }
+
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
+                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Client application deleted successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting client application");
+                if (_requestDetector.IsBrowserRequest())
+                {
+                    return Redirect($"/api/auth/error?message={Uri.EscapeDataString("An error occurred while deleting client application")}");
+                }
+
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while deleting client application"
+                });
+            }
+        }
+
+        #endregion
     }
 }

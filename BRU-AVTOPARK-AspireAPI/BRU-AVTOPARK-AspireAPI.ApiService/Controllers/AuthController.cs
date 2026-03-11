@@ -3911,6 +3911,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpPost("~/connect/authorize/callback")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthAuthorizeCallbackRefactoring))]
         public async Task<IActionResult> AuthorizeCallback([FromForm] AuthorizeCallbackRequest request)
         {
             try
@@ -4548,6 +4549,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("~/connect/tokeninfo")]
         [Produces("application/json")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableOAuthTokenInfoRefactoring))]
         public async Task<IActionResult> TokenInfo()
         {
             try

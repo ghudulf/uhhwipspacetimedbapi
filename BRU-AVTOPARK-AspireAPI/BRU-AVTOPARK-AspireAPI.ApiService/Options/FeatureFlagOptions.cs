@@ -164,6 +164,16 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// </summary>
         public bool EnableOAuthUserInfoRefactoring { get; set; } = false;
 
+        /// <summary>
+        /// GET ~/connect/tokeninfo - Token validation endpoint for BaseController
+        /// </summary>
+        public bool EnableOAuthTokenInfoRefactoring { get; set; } = false;
+
+        /// <summary>
+        /// POST ~/connect/authorize/callback - OAuth authorization callback form handler
+        /// </summary>
+        public bool EnableOAuthAuthorizeCallbackRefactoring { get; set; } = false;
+
         // ============================================
         // OAuth Client Management API (7 endpoints)
         // ============================================
