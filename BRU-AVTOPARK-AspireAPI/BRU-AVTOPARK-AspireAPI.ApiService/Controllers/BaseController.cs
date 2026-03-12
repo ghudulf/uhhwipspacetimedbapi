@@ -17,6 +17,16 @@ namespace TicketSalesApp.AdminServer.Controllers
     public abstract class BaseController : ControllerBase
     {
         /// <summary>
+        /// Cache key for storing validated OAuth claims in HttpContext.Items
+        /// </summary>
+        private const string ValidatedOAuthClaimsKey = "_validatedOAuthClaims";
+        
+        /// <summary>
+        /// Cache key for storing failed OAuth validation sentinel in HttpContext.Items
+        /// </summary>
+        private const string ValidatedOAuthClaimsFailedKey = "_validatedOAuthClaimsFailed";
+        
+        /// <summary>
         /// Asynchronously validates if the current request is authenticated.
         /// Performs full validation including tokeninfo endpoint calls for encrypted tokens.
         /// </summary>
@@ -95,10 +105,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 Log.Warning(ex, "IsAuthenticatedAsync - Error validating token: {Message}", ex.Message);
                 return false;
             }
-
-            // Unknown or invalid token format
-            Log.Debug("IsAuthenticatedAsync - Unknown token format");
-            return false;
         }
 
         /// <summary>
@@ -238,31 +244,39 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return false;
                 }
                 
-                // CRITICAL FIX: Check if it's a parseable JWT first
+                // CRITICAL FIX: Validate JWT signature properly
                 if (tokenHandler.CanReadToken(token))
                 {
-                    // It's a regular JWT
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-
-                    // Check primary role first
-                    var jwtPrimaryRole = jwtToken.Claims.FirstOrDefault(c => c.Type == "primary_role");
-                    Log.Debug("IsAdmin check (JWT) - primary_role claim: {Value}", jwtPrimaryRole?.Value ?? "NOT FOUND");
+                    // It's a regular JWT - validate it properly
+                    Log.Debug("IsAdmin check (JWT) - Validating JWT signature");
+                    var claims = await ValidateOAuthTokenAsync();
                     
-                    if (jwtPrimaryRole?.Value == "1")
+                    if (claims == null)
+                    {
+                        Log.Warning("IsAdmin check (JWT) - Token validation failed");
+                        return false;
+                    }
+                    
+                    // Check primary_role in validated claims
+                    if (claims.TryGetValue("primary_role", out var primaryRoleObj) && primaryRoleObj?.ToString() == "1")
                     {
                         Log.Information("IsAdmin check (JWT) - User is admin (primary_role=1)");
                         return true;
                     }
-
-                    // Fallback to checking all role claims
-                    var jwtRoles = jwtToken.Claims.Where(c => c.Type == "role");
-                    var jwtRolesStr = string.Join(", ", jwtRoles.Select(c => c.Value));
-                    Log.Debug("IsAdmin check (JWT) - role claims: {Claims}", jwtRolesStr);
                     
-                    if (jwtRoles.Any(c => c.Value == "1"))
+                    // Check role claims
+                    if (claims.TryGetValue("role", out var roleObj))
                     {
-                        Log.Information("IsAdmin check (JWT) - User is admin (role claim)");
-                        return true;
+                        if (roleObj is List<string> roleList && roleList.Contains("1"))
+                        {
+                            Log.Information("IsAdmin check (JWT) - User is admin (role claim in list)");
+                            return true;
+                        }
+                        else if (roleObj?.ToString() == "1")
+                        {
+                            Log.Information("IsAdmin check (JWT) - User is admin (role claim)");
+                            return true;
+                        }
                     }
                     
                     Log.Warning("IsAdmin check (JWT) - User not admin");
@@ -287,6 +301,49 @@ namespace TicketSalesApp.AdminServer.Controllers
         protected bool HasPermission(string permissionName)
         {
             return HasPermissionAsync(permissionName).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Checks if the current user has a specific permission using pre-validated claims.
+        /// This overload avoids re-validation when claims have already been validated.
+        /// </summary>
+        /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
+        /// <param name="validatedClaims">Pre-validated claims dictionary from ValidateOAuthTokenAsync.</param>
+        /// <returns>True if the user has the specified permission; false otherwise.</returns>
+        protected bool HasPermission(string permissionName, Dictionary<string, object>? validatedClaims)
+        {
+            try
+            {
+                // Try ASP.NET Core authentication first (OpenIddict)
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    var permissionClaims = User.FindAll("permission");
+                    if (permissionClaims.Any(c => c.Value == permissionName))
+                    {
+                        return true;
+                    }
+                }
+
+                // Use pre-validated claims if provided
+                if (validatedClaims != null && validatedClaims.TryGetValue("permission", out var permissionObj))
+                {
+                    if (permissionObj is List<string> permissionList && permissionList.Contains(permissionName))
+                    {
+                        return true;
+                    }
+                    else if (permissionObj?.ToString() == permissionName)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error checking permission: {Permission}", permissionName);
+                return false;
+            }
         }
 
         /// <summary>
@@ -405,10 +462,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Gets the SpacetimeDB identity from claims.
-        /// Supports both ASP.NET Core auth and custom JWT.
+        /// Gets the SpacetimeDB identity from claims using validated OAuth tokens.
+        /// Supports both ASP.NET Core auth and custom JWT/JWE tokens.
         /// </summary>
-        protected string? GetSpacetimeIdentity()
+        /// <returns>The SpacetimeDB identity string if present; otherwise null.</returns>
+        protected async Task<string?> GetSpacetimeIdentityAsync()
         {
             try
             {
@@ -422,25 +480,21 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Fallback to custom JWT authentication
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                // For tokens that aren't already authenticated, validate via OAuth
+                // This handles both regular JWTs and encrypted JWE tokens
+                var claims = await ValidateOAuthTokenAsync();
+                if (claims != null)
                 {
-                    Log.Warning("Missing or invalid Authorization header");
-                    return null;
+                    if (claims.TryGetValue("identity", out var identityObj))
+                    {
+                        return identityObj?.ToString();
+                    }
+                    if (claims.TryGetValue("spacetime_identity", out var spacetimeIdentityObj))
+                    {
+                        return spacetimeIdentityObj?.ToString();
+                    }
                 }
 
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-                
-                if (tokenHandler.CanReadToken(token))
-                {
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
-                }
-                
-                // For encrypted tokens, we can't extract claims here
-                Log.Warning("Cannot extract identity from encrypted token");
                 return null;
             }
             catch (Exception ex)
@@ -451,17 +505,39 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
+        /// Synchronous wrapper for GetSpacetimeIdentityAsync - for backward compatibility.
+        /// Prefer using GetSpacetimeIdentityAsync when possible.
+        /// </summary>
+        /// <returns>The SpacetimeDB identity string if present; otherwise null.</returns>
+        protected string? GetSpacetimeIdentity() => GetSpacetimeIdentityAsync().GetAwaiter().GetResult();
+
+        /// <summary>
         /// CRITICAL FIX: Validates encrypted OpenIddict tokens by calling the tokeninfo endpoint
-        /// Returns claims dictionary if valid, null if invalid
+        /// Returns claims dictionary if valid, null if invalid.
+        /// Implements per-request caching to avoid redundant validation calls.
         /// </summary>
         protected async Task<Dictionary<string, object>?> ValidateOAuthTokenAsync()
         {
             try
             {
+                // Check per-request cache first
+                if (HttpContext.Items.ContainsKey(ValidatedOAuthClaimsKey))
+                {
+                    Log.Debug("ValidateOAuthTokenAsync - Returning cached claims");
+                    return HttpContext.Items[ValidatedOAuthClaimsKey] as Dictionary<string, object>;
+                }
+                
+                if (HttpContext.Items.ContainsKey(ValidatedOAuthClaimsFailedKey))
+                {
+                    Log.Debug("ValidateOAuthTokenAsync - Returning cached validation failure");
+                    return null;
+                }
+                
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
                     Log.Debug("ValidateOAuthTokenAsync - No Bearer token found");
+                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                     return null;
                 }
 
@@ -491,6 +567,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         var errorContent = await response.Content.ReadAsStringAsync();
                         Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}", 
                             response.StatusCode, errorContent);
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                         return null;
                     }
                     
@@ -546,53 +623,88 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
                         
                         Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
+                        HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
                         return claims;
                     }
                     
                     Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response");
+                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                     return null;
                 }
                 
-                // Check if it's a JWT we can parse directly
+                // Check if it's a JWT we can validate
                 var tokenHandler = new JwtSecurityTokenHandler();
                 if (tokenHandler.CanReadToken(token))
                 {
-                    Log.Debug("ValidateOAuthTokenAsync - Token is parseable JWT, extracting claims directly");
-                    // It's a regular JWT, parse it directly
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-                    var claims = new Dictionary<string, object>();
+                    Log.Debug("ValidateOAuthTokenAsync - Token is parseable JWT, performing signature validation");
                     
-                    foreach (var claim in jwtToken.Claims)
+                    // Get JWT secret from configuration
+                    var jwtSecret = HttpContext.RequestServices.GetService<IConfiguration>()?["JwtSettings:Secret"];
+                    if (string.IsNullOrEmpty(jwtSecret))
                     {
-                        if (claims.ContainsKey(claim.Type))
+                        Log.Error("ValidateOAuthTokenAsync - JWT secret not configured");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
+                    
+                    var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+                    var validationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = key,
+                        ValidateIssuer = false, // Set to true if you have a specific issuer
+                        ValidateAudience = false, // Set to true if you have a specific audience
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromMinutes(5)
+                    };
+                    
+                    try
+                    {
+                        var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+                        
+                        // Extract claims from validated token
+                        var claims = new Dictionary<string, object>();
+                        foreach (var claim in principal.Claims)
                         {
-                            if (claims[claim.Type] is List<string> list)
+                            if (claims.ContainsKey(claim.Type))
                             {
-                                list.Add(claim.Value);
+                                if (claims[claim.Type] is List<string> list)
+                                {
+                                    list.Add(claim.Value);
+                                }
+                                else
+                                {
+                                    var existingValue = claims[claim.Type].ToString();
+                                    claims[claim.Type] = new List<string> { existingValue!, claim.Value };
+                                }
                             }
                             else
                             {
-                                var existingValue = claims[claim.Type].ToString();
-                                claims[claim.Type] = new List<string> { existingValue!, claim.Value };
+                                claims[claim.Type] = claim.Value;
                             }
                         }
-                        else
-                        {
-                            claims[claim.Type] = claim.Value;
-                        }
+                        
+                        Log.Debug("ValidateOAuthTokenAsync - Successfully validated JWT with {ClaimCount} claims", claims.Count);
+                        HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
+                        return claims;
                     }
-                    
-                    Log.Debug("ValidateOAuthTokenAsync - Extracted {ClaimCount} claims from JWT", claims.Count);
-                    return claims;
+                    catch (SecurityTokenException ex)
+                    {
+                        Log.Warning(ex, "ValidateOAuthTokenAsync - JWT signature validation failed: {Message}", ex.Message);
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
                 }
                 
                 // Unknown token format
                 Log.Warning("ValidateOAuthTokenAsync - Unknown token format");
+                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                 return null;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "ValidateOAuthTokenAsync - Error validating OAuth token: {Message}", ex.Message);
+                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                 return null;
             }
         }
@@ -635,10 +747,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Retrieve the XUID claim for the current request's user from ASP.NET Core claims or from a bearer JWT in the Authorization header.
+        /// Retrieve the XUID claim for the current request's user from ASP.NET Core claims or from validated OAuth token.
         /// </summary>
         /// <returns>The XUID string if present; otherwise null.</returns>
-        protected string? GetXuid()
+        protected async Task<string?> GetXuidAsync()
         {
             try
             {
@@ -652,19 +764,18 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Fallback to custom JWT authentication
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                // For tokens that aren't already authenticated, validate via OAuth
+                // This handles both regular JWTs and encrypted JWE tokens
+                var claims = await ValidateOAuthTokenAsync();
+                if (claims != null)
                 {
-                    Log.Warning("Missing or invalid Authorization header");
-                    return null;
+                    if (claims.TryGetValue("xuid", out var xuidObj))
+                    {
+                        return xuidObj?.ToString();
+                    }
                 }
 
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
-
-                return jwtToken.Claims.FirstOrDefault(c => c.Type == "xuid")?.Value;
+                return null;
             }
             catch (Exception ex)
             {
@@ -672,6 +783,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
+
+        /// <summary>
+        /// Synchronous wrapper for GetXuidAsync - for backward compatibility.
+        /// Prefer using GetXuidAsync when possible.
+        /// </summary>
+        /// <returns>The XUID string if present; otherwise null.</returns>
+        protected string? GetXuid() => GetXuidAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Retrieve the current user's username from ASP.NET Core claims or from validated OAuth token claims.

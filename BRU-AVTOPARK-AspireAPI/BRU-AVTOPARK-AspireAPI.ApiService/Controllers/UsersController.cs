@@ -19,6 +19,7 @@ using System.Text.Json;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using TicketSalesApp.AdminServer.Mappers;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -66,7 +67,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Require admin or users.view permission to subscribe to users channel
-            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view"))
+            if (!await IsAdminAsync() && !HasPermission("users.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -114,18 +115,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var users = await _userService.GetAllUsersAsync();
-            var result = users.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(),
-                u.Login,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
+            var result = users.Select(UserMapper.MapToSafeUserDto).ToList();
 
             return new { users = result };
         }
@@ -213,36 +203,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             var created = await _userService.CreateUserAsync(model.Login, model.Password, model.Role, model.Email, model.PhoneNumber);
             
             // Map to safe projection (exclude PasswordHash)
-            var safeEntity = created != null ? new {
-                created.LegacyUserId,
-                UserId = created.UserId.ToString(),
-                created.Login,
-                created.Email,
-                created.PhoneNumber,
-                created.IsActive,
-                created.CreatedAt,
-                created.LastLoginAt,
-                created.LegacyGuid,
-                created.EmailConfirmed
-            } : null;
+            var safeEntity = created != null ? UserMapper.MapToSafeUserDto(created) : null;
 
             // Only include snapshot if user has view permission
             object result;
             if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
             {
                 var snapshot = await _userService.GetAllUsersAsync();
-                var safeSnapshot = snapshot.Select(u => new {
-                    u.LegacyUserId,
-                    UserId = u.UserId.ToString(),
-                    u.Login,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.IsActive,
-                    u.CreatedAt,
-                    u.LastLoginAt,
-                    u.LegacyGuid,
-                    u.EmailConfirmed
-                }).ToList();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
                 result = new { operation = "create", success = created is not null, entity = safeEntity, snapshot = safeSnapshot };
             }
             else
@@ -298,36 +266,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             var entity = await _userService.GetUserByIdAsync(id);
             
             // Map to safe projection (exclude PasswordHash)
-            var safeEntity = entity != null ? new {
-                entity.LegacyUserId,
-                UserId = entity.UserId.ToString(),
-                entity.Login,
-                entity.Email,
-                entity.PhoneNumber,
-                entity.IsActive,
-                entity.CreatedAt,
-                entity.LastLoginAt,
-                entity.LegacyGuid,
-                entity.EmailConfirmed
-            } : null;
+            var safeEntity = entity != null ? UserMapper.MapToSafeUserDto(entity) : null;
 
             // Only include snapshot if user has view permission
             object result;
             if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
             {
                 var snapshot = await _userService.GetAllUsersAsync();
-                var safeSnapshot = snapshot.Select(u => new {
-                    u.LegacyUserId,
-                    UserId = u.UserId.ToString(),
-                    u.Login,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.IsActive,
-                    u.CreatedAt,
-                    u.LastLoginAt,
-                    u.LegacyGuid,
-                    u.EmailConfirmed
-                }).ToList();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
                 result = new { operation = "update", success, entity = safeEntity, snapshot = safeSnapshot };
             }
             else
@@ -404,18 +350,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
             {
                 var snapshot = await _userService.GetAllUsersAsync();
-                var safeSnapshot = snapshot.Select(u => new {
-                    u.LegacyUserId,
-                    UserId = u.UserId.ToString(),
-                    u.Login,
-                    u.Email,
-                    u.PhoneNumber,
-                    u.IsActive,
-                    u.CreatedAt,
-                    u.LastLoginAt,
-                    u.LegacyGuid,
-                    u.EmailConfirmed
-                }).ToList();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
                 result = new { operation = "delete", success, deletedId = id, snapshot = safeSnapshot };
             }
             else
@@ -472,20 +407,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             Log.Information("Fetching all users");
             var users = await _userService.GetAllUsersAsync();
 
-            // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
-            // Exclude PasswordHash for security
-            var result = users.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(), // Convert Identity to string for JSON
-                u.Login,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
+            // Map to safe DTO using mapper
+            var result = users.Select(UserMapper.MapToSafeUserDto).ToList();
 
             Log.Debug("Retrieved {UserCount} users", result.Count);
             return Ok(result);
@@ -577,19 +500,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             Log.Information("Successfully created user with ID {UserId}", createdUser.LegacyUserId);
             
-            // Return safe projection (exclude PasswordHash)
-            var safeUser = new {
-                createdUser.LegacyUserId,
-                UserId = createdUser.UserId.ToString(),
-                createdUser.Login,
-                createdUser.Email,
-                createdUser.PhoneNumber,
-                createdUser.IsActive,
-                createdUser.CreatedAt,
-                createdUser.LastLoginAt,
-                createdUser.LegacyGuid,
-                createdUser.EmailConfirmed
-            };
+            // Return safe projection using mapper (exclude PasswordHash)
+            var safeUser = UserMapper.MapToSafeUserDto(createdUser);
             
             return CreatedAtAction(nameof(GetUser), new { id = createdUser.LegacyUserId }, safeUser);
         }

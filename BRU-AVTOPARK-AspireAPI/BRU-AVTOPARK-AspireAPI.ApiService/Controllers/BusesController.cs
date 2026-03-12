@@ -66,7 +66,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
+            if (!await IsAdminAsync() && !HasPermission("buses.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -475,6 +475,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token BEFORE performing the mutation
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before creating bus");
+                    return Unauthorized();
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Creating new bus with model {Model}", model.Model);
                 
                 var bus = await _busService.CreateBusAsync(model.Model);
@@ -487,14 +495,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully created bus with ID {BusId}", bus.BusId);
                 _logger.LogInformation("FULL BUS DATA CREATED: {BusData}", JsonSerializer.Serialize(bus));
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
-                {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
-                }
-                
                 // Log the admin action (best-effort)
                 try
                 {
@@ -542,6 +542,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token BEFORE performing the mutation
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before updating bus");
+                    return Unauthorized();
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Updating bus with ID {BusId}, New Model: {Model}", 
                     id, model.Model ?? "unchanged");
                 
@@ -554,14 +562,6 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully updated bus with ID {BusId}", id);
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
-                {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
-                }
-                
                 // Log the admin action (best-effort)
                 try
                 {
@@ -599,6 +599,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token BEFORE performing the mutation
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before deleting bus");
+                    return Unauthorized();
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Deleting bus with ID {BusId}", id);
                 
                 // Get bus data before deletion for logging
@@ -617,14 +625,6 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully deleted bus with ID {BusId}", id);
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
-                {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
-                }
-                
                 // Log the admin action (best-effort)
                 try
                 {
