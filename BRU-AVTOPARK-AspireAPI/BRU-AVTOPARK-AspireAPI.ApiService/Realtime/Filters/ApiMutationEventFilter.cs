@@ -54,6 +54,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             return;
         }
 
+        // Normalize HTTP method to prevent log forging and ensure consistent event naming
+        var sanitizedMethod = request.Method?.ToUpperInvariant().Trim() ?? "UNKNOWN";
+
         var statusCode = ResolveStatusCode(executedContext.Result, context.HttpContext.Response.StatusCode);
         if (statusCode is < 200 or >= 400)
         {
@@ -117,9 +120,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         };
 
         var domainEvent = new ApiDomainEvent(
-            EventName: $"{resource}.{request.Method}.completed",
+            EventName: $"{resource}.{sanitizedMethod}.completed",
             Resource: resource,
-            HttpMethod: request.Method,
+            HttpMethod: sanitizedMethod,
             StatusCode: statusCode,
             OccurredAt: DateTimeOffset.UtcNow,
             CorrelationId: context.HttpContext.TraceIdentifier,
