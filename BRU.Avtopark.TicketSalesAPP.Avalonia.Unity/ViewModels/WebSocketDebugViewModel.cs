@@ -547,7 +547,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             var httpClient = _apiClient.CreateClient();
             
             AddLog("Sending broadcast test...");
-            var response = await httpClient.PostAsync("api/realtime/broadcast-test", null);
+            var response = await httpClient.PostAsync("realtime/broadcast-test", null);
             var content = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
