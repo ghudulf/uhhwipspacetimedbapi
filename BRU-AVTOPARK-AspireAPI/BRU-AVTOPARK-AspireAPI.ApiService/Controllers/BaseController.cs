@@ -578,7 +578,16 @@ namespace TicketSalesApp.AdminServer.Controllers
                     // It's a JWE (encrypted token), call tokeninfo endpoint to validate and get claims
                     Log.Information("ValidateOAuthTokenAsync - Token has 5 segments (JWE encrypted), calling tokeninfo endpoint");
                     
-                    using var httpClient = new System.Net.Http.HttpClient();
+                    // Use IHttpClientFactory to avoid socket exhaustion
+                    var httpClientFactory = HttpContext.RequestServices.GetService<IHttpClientFactory>();
+                    if (httpClientFactory == null)
+                    {
+                        Log.Error("ValidateOAuthTokenAsync - IHttpClientFactory not available");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
+                    
+                    var httpClient = httpClientFactory.CreateClient("TokenInfo");
                     httpClient.DefaultRequestHeaders.Authorization = 
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                     

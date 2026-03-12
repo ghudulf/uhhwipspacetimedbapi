@@ -253,6 +253,12 @@ builder.Services.AddScoped<ApiMutationEventFilter>();
 // Add HTTP context accessor for admin action logging
 builder.Services.AddHttpContextAccessor();
 
+// Configure HttpClient factory for tokeninfo endpoint calls
+builder.Services.AddHttpClient("TokenInfo", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
 // IMPORTANT: Clearing KnownNetworks/KnownProxies and setting ForwardLimit = 1 trusts only the immediate upstream proxy.
 // This is suitable for single-proxy setups (e.g., Nginx/Caddy directly in front of the app).
