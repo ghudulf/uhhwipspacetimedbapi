@@ -186,12 +186,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                var userName = await GetUserNameAsync();
-                var tenant = User?.FindFirst("tenant")?.Value;
-                var sourceIp = GetClientIp();
-
                 try
                 {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "bus.created",
                         Resource: "buses",
@@ -240,8 +240,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _busService.UpdateBusAsync(id, model.Model);
-            var entity = await _busService.GetBusByIdAsync(id);
-            var mappedEntity = entity != null ? BusMapper.ToDto(entity) : null;
+            object? entity = null;
+            object? mappedEntity = null;
+            
+            if (success)
+            {
+                entity = await _busService.GetBusByIdAsync(id);
+                mappedEntity = entity != null ? BusMapper.ToDto(entity) : null;
+            }
+            
             var result = new { operation = "update", success, entity = mappedEntity };
 
             if (success)
@@ -263,12 +270,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                var userName = await GetUserNameAsync();
-                var tenant = User?.FindFirst("tenant")?.Value;
-                var sourceIp = GetClientIp();
-
                 try
                 {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "bus.updated",
                         Resource: "buses",
@@ -340,12 +347,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                var userName = await GetUserNameAsync();
-                var tenant = User?.FindFirst("tenant")?.Value;
-                var sourceIp = GetClientIp();
-
                 try
                 {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "bus.deleted",
                         Resource: "buses",
@@ -473,12 +480,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                // Get the current user ID from token BEFORE performing the mutation
+                // Get the current user ID from token for audit logging (best-effort)
                 var userId = GetUserId();
                 if (userId == null)
                 {
-                    _logger.LogWarning("Failed to get user ID from token before creating bus");
-                    return Unauthorized();
+                    _logger.LogWarning("Failed to get user ID from token before creating bus - proceeding without audit");
                 }
                 
                 _logger.LogInformation("DATABASE OPERATION: Creating new bus with model {Model}", model.Model);
@@ -494,17 +500,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL BUS DATA CREATED: {BusData}", JsonSerializer.Serialize(bus));
 
                 // Log the admin action (best-effort)
-                try
+                if (userId != null)
                 {
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "CreateBus",
-                        $"Created bus with model {model.Model}, ID: {bus.BusId}"
-                    );
-                }
-                catch (Exception logEx)
-                {
-                    _logger.LogError(logEx, "Failed to log admin action for CreateBus (BusId: {BusId})", bus.BusId);
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "CreateBus",
+                            $"Created bus with model {model.Model}, ID: {bus.BusId}"
+                        );
+                    }
+                    catch (Exception logEx)
+                    {
+                        _logger.LogError(logEx, "Failed to log admin action for CreateBus (BusId: {BusId})", bus.BusId);
+                    }
                 }
 
                 _logger.LogInformation("RESPONSE SENT: Created bus with ID {BusId}, Model: {Model}", 

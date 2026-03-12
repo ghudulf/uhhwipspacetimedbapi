@@ -71,6 +71,39 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
 
         var user = context.HttpContext.User;
+        
+        // CRITICAL: Try to get cached validated claims first (from BaseController manual validation)
+        // This ensures events have correct identity even when controllers authenticate manually
+        var cachedClaims = context.HttpContext.Items["_validatedOAuthClaims"] as Dictionary<string, object>;
+        
+        string? userId = null;
+        string? userName = null;
+        string? tenant = null;
+        
+        if (cachedClaims != null)
+        {
+            // Use cached claims from manual validation
+            if (cachedClaims.TryGetValue("sub", out var subObj))
+            {
+                userId = subObj?.ToString();
+            }
+            if (cachedClaims.TryGetValue("name", out var nameObj))
+            {
+                userName = nameObj?.ToString();
+            }
+            if (cachedClaims.TryGetValue(TenantClaimType, out var tenantObj))
+            {
+                tenant = tenantObj?.ToString();
+            }
+        }
+        else
+        {
+            // Fallback to HttpContext.User
+            userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+            userName = user.Identity?.Name;
+            tenant = user.FindFirst(TenantClaimType)?.Value;
+        }
+        
         var sanitizedPath = TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength);
         var sanitizedUserAgent = TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
         
@@ -90,9 +123,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             StatusCode: statusCode,
             OccurredAt: DateTimeOffset.UtcNow,
             CorrelationId: context.HttpContext.TraceIdentifier,
-            UserId: user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value,
-            UserName: user.Identity?.Name,
-            Tenant: user.FindFirst(TenantClaimType)?.Value,
+            UserId: userId,
+            UserName: userName,
+            Tenant: tenant,
             SourceIp: context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             Metadata: metadata);
 

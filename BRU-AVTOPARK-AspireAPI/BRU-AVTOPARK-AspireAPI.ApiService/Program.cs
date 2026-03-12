@@ -605,6 +605,9 @@ catch (Exception ex)
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
 
+// CRITICAL: CORS must run BEFORE authentication/authorization for preflight requests
+app.UseCors("AllowAll");
+
 try
 {
     // CRITICAL: Feature flag routing middleware MUST run BEFORE UseRouting()
@@ -679,9 +682,6 @@ foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.Is
 }
 
 app.UseWebSockets(webSocketOptions);
-
-// Configure CORS before routing
-app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
 {

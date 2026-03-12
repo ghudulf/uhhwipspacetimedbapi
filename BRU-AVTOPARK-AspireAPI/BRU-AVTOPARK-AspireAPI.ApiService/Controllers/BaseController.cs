@@ -368,6 +368,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
         /// <returns>True if the user has the specified permission; false otherwise.</returns>
+        /// <summary>
+        /// Asynchronously checks if the current user has a specific permission by inspecting validated claims.
+        /// This method properly handles both ASP.NET Core authenticated principals and OAuth tokens (including JWE).
+        /// </summary>
+        /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
+        /// <returns>True if the user has the specified permission; false otherwise.</returns>
         protected async Task<bool> HasPermissionAsync(string permissionName)
         {
             try
@@ -388,29 +394,9 @@ namespace TicketSalesApp.AdminServer.Controllers
                 // For tokens that aren't already authenticated, validate via OAuth
                 // This handles both regular JWTs and encrypted JWE tokens
                 var claims = await ValidateOAuthTokenAsync();
-                if (claims == null)
-                {
-                    Log.Warning("HasPermission check - Token validation failed");
-                    return false;
-                }
 
-                // Check if permission exists in validated claims
-                if (claims.TryGetValue("permission", out var permissionObj))
-                {
-                    if (permissionObj is List<string> permissionList && permissionList.Contains(permissionName))
-                    {
-                        Log.Information("HasPermission check (validated token) - User has permission '{Permission}'", permissionName);
-                        return true;
-                    }
-                    else if (permissionObj?.ToString() == permissionName)
-                    {
-                        Log.Information("HasPermission check (validated token) - User has permission '{Permission}'", permissionName);
-                        return true;
-                    }
-                }
-
-                Log.Warning("HasPermission check - User does not have permission '{Permission}'", permissionName);
-                return false;
+                // Delegate to the synchronous overload with validated claims
+                return HasPermission(permissionName, claims);
             }
             catch (Exception ex)
             {
@@ -418,6 +404,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return false;
             }
         }
+
 
         /// <summary>
         /// Gets the current user's ID from claims.
