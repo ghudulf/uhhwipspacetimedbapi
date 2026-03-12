@@ -22,6 +22,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.DataProtection;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Filters;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Options;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -229,8 +234,47 @@ builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.Rou
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
 
+// Configure realtime eventing and websocket options
+builder.Services.Configure<RealtimeEventOptions>(builder.Configuration.GetSection(RealtimeEventOptions.SectionName));
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.MaximumReceiveMessageSize = 64 * 1024;
+    options.StreamBufferCapacity = 50;
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddSingleton<SignalRRealtimeEventBus>();
+builder.Services.AddSingleton<IRealtimeEventBus>(sp => sp.GetRequiredService<SignalRRealtimeEventBus>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SignalRRealtimeEventBus>());
+builder.Services.AddScoped<ApiMutationEventFilter>();
+
 // Add HTTP context accessor for admin action logging
 builder.Services.AddHttpContextAccessor();
+
+// Configure HttpClient factory for tokeninfo endpoint calls
+builder.Services.AddHttpClient("TokenInfo", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
+// IMPORTANT: Clearing KnownNetworks/KnownProxies and setting ForwardLimit = 1 trusts only the immediate upstream proxy.
+// This is suitable for single-proxy setups (e.g., Nginx/Caddy directly in front of the app).
+// For production multi-proxy environments (e.g., CDN -> Load Balancer -> App):
+// - Set ForwardLimit = null (trust all proxies) or a specific count
+// - Add known proxy IP ranges to KnownProxies/KnownNetworks for security
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    // Clear default networks/proxies and configure based on your infrastructure
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    // For development, trust all proxies (in production, configure specific KnownProxies/KnownNetworks)
+    options.ForwardLimit = 1; // Only trust the first proxy
+});
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -391,6 +435,18 @@ builder.Services.AddAuthentication(options =>
     };
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var path = context.HttpContext.Request.Path;
+            if ((path.StartsWithSegments("/hubs/system-events") || (path.StartsWithSegments("/api") && path.Value.Contains("/realtime/ws"))) &&
+                context.Request.Query.TryGetValue("access_token", out var accessToken) &&
+                !string.IsNullOrWhiteSpace(accessToken))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
         OnTokenValidated = async context =>
         {
             var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
@@ -460,6 +516,7 @@ builder.Services.AddControllersWithViews(options =>
             {
                 options.RespectBrowserAcceptHeader = true;
                 options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+                options.Filters.AddService<ApiMutationEventFilter>();
                 
                 // ENHANCED DEBUG LOGGING: Log controller configuration
                 var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("ControllerConfiguration");
@@ -545,6 +602,12 @@ catch (Exception ex)
 }
 
 // CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
+// Configure ForwardedHeaders middleware FIRST to process proxy headers
+app.UseForwardedHeaders();
+
+// CRITICAL: CORS must run BEFORE authentication/authorization for preflight requests
+app.UseCors("AllowAll");
+
 try
 {
     // CRITICAL: Feature flag routing middleware MUST run BEFORE UseRouting()
@@ -604,8 +667,21 @@ app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Configure CORS before routing
-app.UseCors("AllowAll");
+var realtimeOptions = app.Services
+    .GetRequiredService<Microsoft.Extensions.Options.IOptions<RealtimeEventOptions>>()
+    .Value;
+
+var webSocketOptions = new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(15)
+};
+
+foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.IsNullOrWhiteSpace(origin)))
+{
+    webSocketOptions.AllowedOrigins.Add(origin);
+}
+
+app.UseWebSockets(webSocketOptions);
 
 if (app.Environment.IsDevelopment())
 {
@@ -1080,6 +1156,10 @@ app.MapGet("/health", () =>
 // ENHANCED: Add endpoint routing diagnostics and fallback mechanisms
 var controllerEndpoints = app.MapControllers()
     .WithOpenApi();
+
+app.MapHub<SystemEventsHub>("/hubs/system-events")
+    .RequireAuthorization("FlexibleApiAccess");
+
 
 // ENHANCED DEBUG LOGGING: Log all mapped endpoints at startup
 var endpointDataSource = app.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>();

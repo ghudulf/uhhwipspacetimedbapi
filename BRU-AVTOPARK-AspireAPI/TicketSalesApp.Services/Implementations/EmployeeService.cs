@@ -51,6 +51,11 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Retrieves all employees assigned to the specified job ID.
+        /// </summary>
+        /// <param name="jobId">The identifier of the job used to filter employees.</param>
+        /// <returns>A list of employees whose JobId equals the provided jobId; an empty list if no matches are found.</returns>
         public async Task<List<Employee>> GetEmployeesByJobIdAsync(uint jobId)
         {
             try
@@ -58,21 +63,21 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Retrieving employees by job ID: {JobId}", jobId);
                 var connection = _spacetimeDBService.GetConnection();
                 
-                // Add detailed logging before ToList()
-                var filteredEmployees = connection.Db.Employee.Iter()
-                    .Where(e => e.JobId == jobId);
+                // Materialize the query once to avoid double enumeration
+                var resultList = connection.Db.Employee.Iter()
+                    .Where(e => e.JobId == jobId)
+                    .ToList();
                 
-                _logger.LogDebug("Employees matching JobId {JobId} before ToList():", jobId);
-                foreach (var emp in filteredEmployees) // Iterate before ToList to log IDs
+                _logger.LogDebug("Employees matching JobId {JobId}:", jobId);
+                foreach (var emp in resultList)
                 {
                     _logger.LogDebug("- EmployeeId: {EmployeeId}, Name: {Surname}, JobId: {JobId}", emp.EmployeeId, emp.Surname, emp.JobId);
                     if (emp.EmployeeId == 0)
                     {
-                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId} before ToList()!", jobId);
+                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId}!", jobId);
                     }
                 }
                 
-                var resultList = filteredEmployees.ToList();
                 _logger.LogDebug("Final list count for JobId {JobId}: {Count}", jobId, resultList.Count);
                 
                 return resultList;
@@ -84,25 +89,101 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
+        /// <summary>
+        /// Creates a new employee with the specified name, surname, patronym, and job association.
+        /// </summary>
+        /// <param name="employeeName">The first name of the employee.</param>
+        /// <param name="employeeSurname">The surname (last name) of the employee.</param>
+        /// <param name="employeePatronym">The patronym (middle name) of the employee.</param>
+        /// <param name="jobId">Identifier of the job to associate with the new employee.</param>
+        /// <param name="actingUser">Optional identity of the user performing the operation.</param>
+        /// <returns>The created <see cref="Employee"/> if the job exists and the new employee is confirmed or found; otherwise <c>null</c>.</returns>
+        public async Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null)
         {
             try
             {
                 _logger.LogInformation("Creating new employee: {Name} {Surname}", employeeName, employeeSurname);
                 var connection = _spacetimeDBService.GetConnection();
-                
+
                 var job = connection.Db.Job.Iter()
                     .FirstOrDefault(j => j.JobId == jobId);
                 if (job == null)
                 {
                     _logger.LogWarning("Job not found: {JobId}", jobId);
-                    return false;
+                    return null;
                 }
 
-                // Call the CreateEmployee reducer
-                connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);// doesent need active user 
-                
-                return true;
+                // NOTE: Correlation token flow would require modifying the SpacetimeDB reducer signature
+                // to accept a correlationToken parameter and the Employee table schema to include a
+                // CorrelationToken field. This would allow matching by token instead of field combination.
+                // For now, we use the existing approach of matching by unique field combination.
+                // TODO: Update when reducer and schema support correlation tokens:
+                // var correlationToken = Guid.NewGuid().ToString();
+                // connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId, correlationToken);
+
+                // Use a TaskCompletionSource to wait for the employee insert event
+                var tcs = new TaskCompletionSource<Employee>();
+                var timeout = TimeSpan.FromSeconds(5);
+
+                // Subscribe to Employee table insert events to capture the newly created employee
+                void insertHandler(EventContext ctx, Employee employee)
+                {
+                    // Match the employee by the unique combination of fields we're creating
+                    // TODO: When correlation token support is added, match by: employee.CorrelationToken == correlationToken
+                    if (employee.Name == employeeName &&
+                        employee.Surname == employeeSurname &&
+                        employee.Patronym == employeePatronym &&
+                        employee.JobId == jobId)
+                    {
+                        _logger.LogInformation("Captured newly created employee with ID: {EmployeeId}", employee.EmployeeId);
+                        tcs.TrySetResult(employee);
+                    }
+                }
+
+                connection.Db.Employee.OnInsert += insertHandler;
+
+                try
+                {
+                    // Call the CreateEmployee reducer
+                    connection.Reducers.CreateEmployee(employeeName, employeeSurname, employeePatronym, jobId);
+
+                    // Wait for the insert event with timeout
+                    using var cts = new CancellationTokenSource(timeout);
+                    cts.Token.Register(() => tcs.TrySetCanceled());
+
+                    var newEmployee = await tcs.Task;
+                    _logger.LogInformation("Successfully created employee with ID: {EmployeeId}", newEmployee.EmployeeId);
+                    return newEmployee;
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogWarning("Timeout waiting for employee creation event. Attempting fallback retrieval.");
+
+                    // Fallback: try to find the employee by unique fields
+                    var employee = connection.Db.Employee.Iter()
+                        .Where(e => e.Name == employeeName &&
+                                   e.Surname == employeeSurname &&
+                                   e.Patronym == employeePatronym &&
+                                   e.JobId == jobId)
+                        .OrderByDescending(e => e.EmployeeId)
+                        .FirstOrDefault();
+
+                    if (employee != null)
+                    {
+                        _logger.LogInformation("Found employee via fallback with ID: {EmployeeId}", employee.EmployeeId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Employee reducer called but could not retrieve created employee");
+                    }
+
+                    return employee;
+                }
+                finally
+                {
+                    // Always unsubscribe to prevent memory leaks
+                    connection.Db.Employee.OnInsert -= insertHandler;
+                }
             }
             catch (Exception ex)
             {

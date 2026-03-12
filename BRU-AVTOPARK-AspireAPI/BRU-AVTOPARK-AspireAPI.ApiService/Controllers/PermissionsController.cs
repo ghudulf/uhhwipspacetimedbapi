@@ -4,10 +4,15 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using TicketSalesApp.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using SpacetimeDB.Types;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -20,18 +25,330 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<PermissionsController> _logger;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="PermissionsController"/> with the required services.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when any of the required dependency arguments is null.</exception>
         public PermissionsController(
             IPermissionService permissionService,
             IAdminActionLogger adminLogger,
-            ILogger<PermissionsController> logger)
+            ILogger<PermissionsController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
        
 
+        /// <summary>
+        /// Streams real-time CRUD permission events to the caller over a WebSocket connection.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token used to terminate the streaming session.</param>
+        /// <remarks>
+        /// Requires an authenticated user with either the admin role or the "permissions.view" permission;
+        /// when not authorized the method sets the response status to 401 or 403 and ends the request.
+        /// </remarks>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            if (!IsAdmin() && !HasPermission("permissions.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("permissions", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the appropriate handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command name and any associated Id or Payload.</param>
+        /// <param name="cancellationToken">A token to observe while processing the request.</param>
+        /// <returns>An object containing the command-specific response payload; the exact shape varies by command (read_all, read, create, update, delete).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request contains an unsupported command.</exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and provide a snapshot of all permissions.
+        /// </summary>
+        /// <returns>An object with a `permissions` property containing all permissions.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the `permissions.view` permission.</exception>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("permissions.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for permissions.view");
+            }
+
+            return new { permissions = await _permissionService.GetAllPermissionsAsync() };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" CRUD request and retrieve a single permission by id.
+        /// </summary>
+        /// <param name="request">The realtime request; its <c>Id</c> must be provided to identify the permission to read.</param>
+        /// <returns>An object with a <c>permission</c> property containing the permission with the specified id, or <c>null</c> if not found.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "permissions.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for permissions.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { permission = await _permissionService.GetPermissionByIdAsync(id) };
+        }
+
+        /// <summary>
+        /// Handle a realtime "create" CRUD command to create a permission and return the result snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose Payload must deserialize to a CreatePermissionModel.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "create".
+        /// - success: `true` if a permission was created, `false` otherwise.
+        /// - entity: the created permission object or `null` when creation failed.
+        /// - snapshot: the current list of all permissions after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "permissions.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to CreatePermissionModel.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
+            var model = request.Payload?.Deserialize<CreatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
+
+            object result;
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                result = new { operation = "create", success = created is not null, entity = created, snapshot };
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = created };
+            }
+
+            if (created is not null)
+            {
+                // Log admin action after successful creation
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "CreatePermission",
+                        $"Created permission {created.Name} with ID {created.PermissionId}");
+                }
+
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.created",
+                        Resource: "permissions",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.created (Resource: permissions, EventName: permission.created, PermissionId: {PermissionId})", created.PermissionId);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "update" CRUD command for a permission.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request expected to contain an Id and a Payload serializable to <see cref="UpdatePermissionModel"/>.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "update"
+        /// - success: `true` if the update succeeded, `false` otherwise
+        /// - entity: the updated permission entity (or `null` if not found)
+        /// - snapshot: the current list of all permissions
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "permissions.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.edit")) throw new UnauthorizedAccessException("Not authorized for permissions.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
+            var entity = await _permissionService.GetPermissionByIdAsync(id);
+
+            object result;
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                result = new { operation = "update", success, entity, snapshot };
+            }
+            else
+            {
+                result = new { operation = "update", success, entity };
+            }
+
+            if (success)
+            {
+                // Log admin action after successful update
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "UpdatePermission",
+                        $"Updated permission {entity.Name} with ID {id}");
+                }
+
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.updated",
+                        Resource: "permissions",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.updated (Resource: permissions, EventName: permission.updated, PermissionId: {PermissionId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for permissions.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request; must include the permission Id to delete in <c>request.Id</c>.</param>
+        /// <returns>
+        /// An anonymous object with:
+        /// - <c>operation</c>: the string "delete",
+        /// - <c>success</c>: a boolean indicating whether the deletion succeeded,
+        /// - <c>deletedId</c>: the Id of the deleted permission,
+        /// - <c>snapshot</c>: the current list of all permissions after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "permissions.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when the permission is currently assigned to one or more roles and cannot be deleted.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            // Retrieve permission before deletion for logging
+            var existingPermission = await _permissionService.GetPermissionByIdAsync(id);
+
+            var isInUse = await _permissionService.IsPermissionInUseAsync(id);
+            if (isInUse)
+            {
+                throw new InvalidOperationException("Cannot delete permission as it is currently assigned to one or more roles");
+            }
+
+            var success = await _permissionService.DeletePermissionAsync(id);
+
+            object result;
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                result = new { operation = "delete", success, deletedId = id, snapshot };
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
+            }
+
+            if (success)
+            {
+                // Log admin action after successful deletion
+                var userId = GetUserId();
+                if (userId != null && existingPermission != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeletePermission",
+                        $"Deleted permission {existingPermission.Name} with ID {id}");
+                }
+
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.deleted",
+                        Resource: "permissions",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.deleted (Resource: permissions, EventName: permission.deleted, PermissionId: {PermissionId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Retrieve all permissions and return a client-facing projection of each permission.
+        /// </summary>
+        /// <returns>An ActionResult containing a list of permission objects with fields: PermissionId, Name, Description, Category, and IsActive. Returns a Forbid result when the caller lacks view permission, or a 500 status result with an error message if an unexpected error occurs.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetPermissions()
         {

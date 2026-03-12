@@ -12,6 +12,10 @@ using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -24,19 +28,299 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<RolesController> _logger;
         private readonly ISpacetimeDBService _spacetimeService;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="RolesController"/> with the required services.
+        /// </summary>
+        /// <param name="roleService">Service for managing roles and role-related data.</param>
+        /// <param name="adminLogger">Logger for recording administrative actions.</param>
+        /// <param name="logger">Application logger for controller diagnostics.</param>
+        /// <param name="spacetimeService">Database service used for spacetime-related persistence operations.</param>
+        /// <param name="realtimeEventBus">Event bus used to subscribe and publish realtime role events.</param>
         public RolesController(
             IRoleService roleService,
             IAdminActionLogger adminLogger,
             ILogger<RolesController> logger,
-            ISpacetimeDBService spacetimeService)
+            ISpacetimeDBService spacetimeService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         }
 
        
+        /// <summary>
+        /// Opens a WebSocket session that streams realtime CRUD events for roles to an authenticated client.
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the streaming session.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("roles", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the matching command handler and returns that handler's result.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing a command, optional Id, and optional payload.</param>
+        /// <param name="cancellationToken">Cancellation token to observe while handling the request.</param>
+        /// <returns>The value returned by the command handler (varies by command: data, operation result, or snapshot object).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the request contains an unsupported command.</exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Gets all roles after confirming the caller is an administrator or has the "roles.view" permission.
+        /// </summary>
+        /// <returns>An object with a `roles` property containing the collection of all roles.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and does not have the "roles.view" permission.</exception>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!IsAdmin() && !HasPermission("roles.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for roles.view");
+            }
+
+            return new { roles = await _roleService.GetAllRolesAsync() };
+        }
+
+        /// <summary>
+        /// Retrieves a single role by the ID provided in the realtime CRUD request.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request. Must include a non-null `Id` identifying the role to read.</param>
+        /// <returns>An object with a `role` property containing the role matching the requested ID (or `null` if not found).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks the required admin role or the `roles.view` permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an `Id`.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for roles.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            return new { role = await _roleService.GetRoleByIdAsync(id) };
+        }
+
+        /// <summary>
+        /// Creates a new role from the JSON payload in the realtime request and returns an operation result with the created entity and a current roles snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose Payload must contain a JSON representation of <see cref="CreateRoleModel"/>.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "create".
+        /// - success: `true` if the role was created, `false` otherwise.
+        /// - entity: the created role object when successful, or `null` on failure.
+        /// - snapshot: the current list of all roles after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "roles.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateRoleModel"/>.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.create")) throw new UnauthorizedAccessException("Not authorized for roles.create");
+            var model = request.Payload?.Deserialize<CreateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var created = await _roleService.CreateRoleAsync(model.Name, model.Description, model.LegacyRoleId, model.Priority, model.PermissionIds);
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "create", success = created is not null, entity = created, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after create, returning without snapshot");
+                    result = new { operation = "create", success = created is not null, entity = created };
+                }
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = created };
+            }
+
+            if (created is not null)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.create",
+                        $"Created role: {created.Name}, RoleId: {created.RoleId}"
+                    );
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Process a realtime "update" CRUD request for a role and return the operation result.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request. Must include <c>Id</c> of the role to update and a JSON <c>Payload</c> deserializable to <see cref="UpdateRoleModel"/>.</param>
+        /// <returns>
+        /// An object containing:
+        /// - <c>operation</c>: the string "update",
+        /// - <c>success</c>: `true` if the update succeeded, `false` otherwise,
+        /// - <c>entity</c>: the updated role entity or <c>null</c> if not available,
+        /// - <c>snapshot</c>: the current list of all roles.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "roles.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the request is missing the required <c>Id</c>, the <c>Payload</c> is missing or invalid, or when attempting to modify a system role.
+        /// </exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.edit")) throw new UnauthorizedAccessException("Not authorized for roles.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+
+            var existingRole = await _roleService.GetRoleByIdAsync(id);
+            if (existingRole == null)
+            {
+                throw new InvalidOperationException($"Role with id {id} not found");
+            }
+            if (existingRole.IsSystem)
+            {
+                throw new InvalidOperationException("System roles cannot be modified");
+            }
+
+            var model = request.Payload?.Deserialize<UpdateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
+            var entity = await _roleService.GetRoleByIdAsync(id);
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "update", success, entity, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after update, returning without snapshot");
+                    result = new { operation = "update", success, entity };
+                }
+            }
+            else
+            {
+                result = new { operation = "update", success, entity };
+            }
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.update",
+                        $"Updated role: {entity.Name}, RoleId: {id}"
+                    );
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for roles and produce an operation result with a current snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target role Id and optional payload.</param>
+        /// <returns>An object describing the operation: { operation = "delete", success, deletedId, snapshot }.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "roles.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not contain an Id or when attempting to delete a system role.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin() && !HasPermission("roles.delete")) throw new UnauthorizedAccessException("Not authorized for roles.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            var existingRole = await _roleService.GetRoleByIdAsync(id);
+            if (existingRole == null)
+            {
+                throw new InvalidOperationException($"Role with id {id} not found");
+            }
+            if (existingRole.IsSystem)
+            {
+                throw new InvalidOperationException("System roles cannot be deleted");
+            }
+
+            var success = await _roleService.DeleteRoleAsync(id);
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "delete", success, deletedId = id, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after delete, returning without snapshot");
+                    result = new { operation = "delete", success, deletedId = id };
+                }
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
+            }
+
+            if (success)
+            {
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    var details = existingRole != null
+                        ? $"Deleted role: {existingRole.Name}, RoleId: {id}"
+                        : $"Deleted role with RoleId: {id}";
+
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "roles.delete",
+                        details
+                    );
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Gets all roles projected to a lightweight view that includes RoleId, LegacyRoleId, Name, Description, IsActive, Priority, and IsSystem.
+        /// Authorization: requires an administrator or the "roles.view" permission.
+        /// </summary>
+        /// <returns>An <see cref="ActionResult"/> containing an enumerable of role projection objects with the properties: RoleId, LegacyRoleId, Name, Description, IsActive, Priority, and IsSystem. May also return 403 Forbidden if the caller lacks permission or 500 Internal Server Error on failure.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRoles()
         {

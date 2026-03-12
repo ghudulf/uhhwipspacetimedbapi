@@ -1,4 +1,4 @@
-﻿// API/Controllers/UsersController.cs
+// API/Controllers/UsersController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -16,6 +16,11 @@ using SpacetimeDB;
 using Log = Serilog.Log;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using TicketSalesApp.AdminServer.Mappers;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -28,20 +33,373 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRoleService _roleService;
         private readonly IConfiguration _configuration;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UsersController"/> with its required services and infrastructure.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown if <c>spacetimeService</c>, <c>realtimeEventBus</c>, or <c>logger</c> is null.</exception>
+        public UsersController(IUserService userService, IAuthenticationService authService, IRoleService roleService, IConfiguration configuration, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus, ILogger<UsersController> logger)
         {
             _userService = userService;
             _authService = authService;
             _roleService = roleService;
             _configuration = configuration;
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Streams realtime user CRUD events over a WebSocket to the authenticated caller.
+        /// </summary>
+        /// <param name="cancellationToken">Token used to cancel the streaming session.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            // Validate token - require successful validation only
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            // Require admin or users.view permission to subscribe to users channel
+            if (!await IsAdminAsync() && !HasPermission("users.view", claims))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("users", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the corresponding handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command and optional payload.</param>
+        /// <param name="cancellationToken">Token to observe for cancellation.</param>
+        /// <returns>The handler's response object: for "read_all" or "read" commands an object containing user data; for "create", "update", and "delete" commands an operation result object indicating success and related data.</returns>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Retrieves all users and returns a JSON-serializable snapshot containing a list of user summaries.
+        /// </summary>
+        /// <returns>An object with a `users` property containing an array of user summary objects (LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed).</returns>
+        /// <exception cref="System.UnauthorizedAccessException">Thrown when the caller is neither an administrator nor has the "users.view" permission.</exception>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.view");
+            }
+
+            var users = await _userService.GetAllUsersAsync();
+            var result = users.Select(UserMapper.MapToSafeUserDto).ToList();
+
+            return new { users = result };
+        }
+
+        /// <summary>
+        /// Retrieves a detailed user snapshot for the given realtime read request, including the user's roles and derived permissions.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose <c>Id</c> must contain the target user's identifier.</param>
+        /// <returns>
+        /// An object with a single property <c>user</c> that contains the user's fields:
+        /// LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, Roles, and Permissions.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the "users.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when no user is found for the provided id.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"User {id} not found");
+            }
+
+            var conn = _spacetimeService.GetConnection();
+            var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+            var roles = userRoles.Select(ur => {
+                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
+            }).Where(r => r != null).ToList();
+
+            var permissionIds = conn.Db.RolePermission.Iter()
+                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+                .Select(rp => rp.PermissionId)
+                .Distinct()
+                .ToList();
+            var permissions = permissionIds.Select(pid => {
+                var perm = conn.Db.Permission.PermissionId.Find(pid);
+                return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
+            }).Where(p => p != null).ToList();
+
+            var result = new {
+                user.LegacyUserId,
+                UserId = user.UserId.ToString(),
+                user.Login,
+                user.Email,
+                user.PhoneNumber,
+                user.IsActive,
+                CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)user.CreatedAt).DateTime,
+                LastLoginAt = user.LastLoginAt.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds((long)user.LastLoginAt.Value).DateTime : (DateTime?)null,
+                Roles = roles,
+                Permissions = permissions
+            };
+
+            return new { user = result };
+        }
+
+        /// <summary>
+        /// Processes a realtime "create" command by creating a new user from the request payload.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request whose payload must deserialize to <see cref="CreateUserModel"/>.</param>
+        /// <returns>
+        /// An object with the operation result:
+        /// - `operation`: the string "create".
+        /// - `success`: `true` if a user was created, `false` otherwise.
+        /// - `entity`: the created user object (or null if creation failed).
+        /// - `snapshot`: current list of all users after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights or the "users.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateUserModel"/>.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.create"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.create");
+            }
+
+            var model = request.Payload?.Deserialize<CreateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+
+            var created = await _userService.CreateUserAsync(model.Login, model.Password, model.Role, model.Email, model.PhoneNumber);
+            
+            // Map to safe projection (exclude PasswordHash)
+            var safeEntity = created != null ? UserMapper.MapToSafeUserDto(created) : null;
+
+            // Only include snapshot if user has view permission
+            object result;
+            if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
+                result = new { operation = "create", success = created is not null, entity = safeEntity, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = safeEntity };
+            }
+
+            // Publish realtime event (best-effort)
+            if (created != null)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.created",
+                        Resource: "users",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: GetUserId(),
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true", ["createdUserId"] = created.UserId.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.created");
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "update" CRUD request for a user.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the target Id and a payload deserializable as UpdateUserModel.</param>
+        /// <returns>An object with properties: `operation` (string, value "update"), `success` (bool indicating whether the update succeeded), `entity` (the updated user or null), and `snapshot` (the current list of all users).</returns>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.edit"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.edit");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+
+            var success = await _userService.UpdateUserAsync(id, model.Login, model.Password, model.Role, model.Email, model.PhoneNumber, model.IsActive);
+            var entity = await _userService.GetUserByIdAsync(id);
+            
+            // Map to safe projection (exclude PasswordHash)
+            var safeEntity = entity != null ? UserMapper.MapToSafeUserDto(entity) : null;
+
+            // Only include snapshot if user has view permission
+            object result;
+            if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
+                result = new { operation = "update", success, entity = safeEntity, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "update", success, entity = safeEntity };
+            }
+
+            // Publish realtime event (best-effort)
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.updated",
+                        Resource: "users",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: GetUserId(),
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true", ["updatedUserId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.updated");
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for users.
+        /// </summary>
+        /// <param name="request">The realtime request which must include the target user's Id.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "delete"
+        /// - success: `true` if the delete succeeded, `false` otherwise
+        /// - deletedId: the id of the deleted user
+        /// - snapshot: the current collection of users after the operation
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "users.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not provide an id or when attempting to delete the current caller's own account.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.delete"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for users.delete");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+
+            // Reject if caller identity cannot be resolved - use async version to support JWE tokens
+            var currentUserId = await GetUserIdAsync();
+            if (currentUserId == null)
+            {
+                throw new UnauthorizedAccessException("Unable to resolve caller identity");
+            }
+
+            if (id.ToString() == currentUserId)
+            {
+                throw new InvalidOperationException("You cannot delete your own account");
+            }
+
+            var success = await _userService.DeleteUserAsync(id);
+
+            // Only include snapshot if user has view permission
+            object result;
+            if (await IsAdminAsync() || await HasPermissionAsync("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(UserMapper.MapToSafeUserDto).ToList();
+                result = new { operation = "delete", success, deletedId = id, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
+            }
+
+            // Publish realtime event (best-effort)
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.deleted",
+                        Resource: "users",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: currentUserId,
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true", ["deletedUserId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.deleted");
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Retrieves all users and maps their public data for JSON serialization.
+        /// </summary>
+        /// <remarks>
+        /// Requires the caller to be an administrator or to have the "users.view" permission.
+        /// The returned user objects include fields intended for client consumption and JSON transport.
+        /// </remarks>
+        /// <returns>
+        /// An Ok result containing a list of user objects with the following fields: LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed; or a 403 Forbidden result when the caller is not authorized.
+        /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetUsers()
         {
-            if (!IsAdmin() && !HasPermission("users.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view"))
             {
                 Log.Warning("Unauthorized attempt to access users list");
                 return Forbid();
@@ -49,31 +407,17 @@ namespace TicketSalesApp.AdminServer.Controllers
             Log.Information("Fetching all users");
             var users = await _userService.GetAllUsersAsync();
 
-            // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
-            // Include ALL fields that the client needs
-            var result = users.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(), // Convert Identity to string for JSON
-                u.Login,
-                u.PasswordHash,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
+            // Map to safe DTO using mapper
+            var result = users.Select(UserMapper.MapToSafeUserDto).ToList();
 
             Log.Debug("Retrieved {UserCount} users", result.Count);
-            Log.Information("FULL USERS DATA: {UsersData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetUser(uint id)
         {
-            if (!IsAdmin() && !HasPermission("users.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view"))
             {
                 Log.Warning("Unauthorized attempt to access user {UserId}", id);
                 return Forbid();
@@ -106,7 +450,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             // Map to anonymous type including Roles and Permissions
             var result = new {
                 user.LegacyUserId,
-                user.UserId,
+                UserId = user.UserId.ToString(),
                 user.Login,
                 user.Email,
                 user.PhoneNumber,
@@ -118,14 +462,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
 
             Log.Debug("Successfully retrieved user with ID {UserId}", id);
-            Log.Information("FULL USER DATA: {UserData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
         [HttpPost]
         public async Task<ActionResult<UserProfile>> CreateUser([FromBody] CreateUserModel model)
         {
-            if (!IsAdmin() && !HasPermission("users.create"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.create"))
             {
                 Log.Warning("Unauthorized attempt to create user");
                 return Forbid();
@@ -156,13 +499,17 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             Log.Information("Successfully created user with ID {UserId}", createdUser.LegacyUserId);
-            return CreatedAtAction(nameof(GetUser), new { id = createdUser.LegacyUserId }, createdUser);
+            
+            // Return safe projection using mapper (exclude PasswordHash)
+            var safeUser = UserMapper.MapToSafeUserDto(createdUser);
+            
+            return CreatedAtAction(nameof(GetUser), new { id = createdUser.LegacyUserId }, safeUser);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(uint id, [FromBody] UpdateUserModel model)
         {
-            if (!IsAdmin() && !HasPermission("users.edit"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.edit"))
             {
                 Log.Warning("Unauthorized attempt to update user {UserId}", id);
                 return Forbid();
@@ -213,16 +560,16 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(uint id)
         {
-            if (!IsAdmin() && !HasPermission("users.delete"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.delete"))
             {
                 Log.Warning("Unauthorized attempt to delete user {UserId}", id);
                 return Forbid();
             }
 
             Log.Information("Attempting to delete user with ID {UserId}", id);
-            
-            // Get current user ID from token
-            var currentUserId = GetUserId();
+
+            // Get current user ID from token - use async version to support JWE tokens
+            var currentUserId = await GetUserIdAsync();
             if (currentUserId == null)
             {
                 Log.Warning("Failed to get current user ID from token");
@@ -259,7 +606,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}/roles")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetUserRoles(uint id)
         {
-            if (!IsAdmin() && !HasPermission("users.view.roles"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view.roles"))
             {
                 Log.Warning("Unauthorized attempt to access user roles for user {UserId}", id);
                 return Forbid();
@@ -289,14 +636,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             }).ToList();
 
             Log.Information("Retrieved {RoleCount} roles for user {UserId}", result.Count(), id);
-            Log.Information("FULL USER ROLES DATA: {RolesData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
         [HttpGet("{id}/permissions")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetUserPermissions(uint id)
         {
-            if (!IsAdmin() && !HasPermission("users.view.permissions"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view.permissions"))
             {
                 Log.Warning("Unauthorized attempt to access user permissions for user {UserId}", id);
                 return Forbid();
@@ -324,14 +670,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             }).ToList();
 
             Log.Information("Retrieved {PermissionCount} permissions for user {UserId}", result.Count(), id);
-            Log.Information("FULL USER PERMISSIONS DATA: {PermissionsData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
         [HttpPost("{id}/roles")]
         public async Task<IActionResult> AssignRoleToUser(uint id, [FromBody] AssignRoleModel model)
         {
-            if (!IsAdmin() && !HasPermission("users.assign.roles"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.assign.roles"))
             {
                 Log.Warning("Unauthorized attempt to assign role to user {UserId}", id);
                 return Forbid();
@@ -353,7 +698,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}/roles/{roleId}")]
         public async Task<IActionResult> RemoveRoleFromUser(uint id, uint roleId)
         {
-            if (!IsAdmin() && !HasPermission("users.remove.roles"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.remove.roles"))
             {
                 Log.Warning("Unauthorized attempt to remove role from user {UserId}", id);
                 return Forbid();
@@ -419,7 +764,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 // Map to anonymous type including Roles and Permissions
                 var result = new {
                     user.LegacyUserId,
-                    user.UserId,
+                    UserId = user.UserId.ToString(),
                     user.Login,
                     user.Email,
                     user.PhoneNumber,
@@ -431,7 +776,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 };
 
                 Log.Information("Successfully retrieved current user information for {Username}", user.Login);
-                Log.Information("FULL CURRENT USER DATA: {UserData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
             catch (Exception ex)

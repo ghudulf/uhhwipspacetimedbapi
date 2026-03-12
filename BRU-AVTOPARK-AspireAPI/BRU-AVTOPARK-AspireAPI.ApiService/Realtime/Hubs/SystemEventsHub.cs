@@ -1,0 +1,150 @@
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+
+namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
+
+[Authorize(Policy = "FlexibleApiAccess")]
+public sealed class SystemEventsHub : Hub
+{
+    private const string AdminRoleValue = "1";
+    
+    private readonly ILogger<SystemEventsHub> _logger;
+
+    public SystemEventsHub(ILogger<SystemEventsHub> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Handles a new client connection by sending the caller a "connectionEstablished" notification containing connection metadata.
+    /// Does NOT automatically add the connection to the "system-events" group - clients must explicitly subscribe via SubscribeToSystemEvents.
+    /// </summary>
+    /// <returns>A task that completes when connection handling is finished.</returns>
+    public override async Task OnConnectedAsync()
+    {
+        var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
+        
+        // NOTE: IHttpTransportFeature does not exist in Microsoft.AspNetCore.Http.Features namespace.
+        // Attempting to use Context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpTransportFeature>()
+        // results in compile error CS0234: The type or namespace name 'IHttpTransportFeature' does not exist
+        // in the namespace 'Microsoft.AspNetCore.Http.Features'.
+        // SignalR abstracts transport details at the Hub level - no direct API to get negotiated transport type.
+        // If transport type is needed, consider:
+        // 1. Passing it from client during connection
+        // 2. Using SignalR connection diagnostics/logging
+        // 3. Inspecting lower-level connection features (if available in specific hosting scenario)
+        var transport = "signalr";
+
+        await Clients.Caller.SendAsync("connectionEstablished", new
+        {
+            ConnectionId = Context.ConnectionId,
+            User = userName,
+            ServerTimeUtc = DateTimeOffset.UtcNow,
+            Transport = transport
+        });
+
+        await base.OnConnectedAsync();
+    }
+
+    /// <summary>
+    /// Handles a client disconnection by removing the connection from the "system-events" group and delegating remaining cleanup to the base hub.
+    /// </summary>
+    /// <param name="exception">The exception that triggered the disconnection, if any; passed to the base handler.</param>
+    /// <returns>A Task that completes when group removal and base disconnection handling have finished.</returns>
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "system-events");
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    /// <summary>
+    /// Subscribes the current connection to updates for the specified resource.
+    /// </summary>
+    /// <param name="resourceName">The resource name to subscribe to; null or whitespace subscribes to the "all" resource. The value is trimmed and converted to lower-case.</param>
+    /// <returns>A task that completes when the connection has been added to the corresponding resource group.</returns>
+    public async Task SubscribeResource(string resourceName)
+    {
+        var normalized = ResourceNormalization.Normalize(resourceName);
+
+        // Check if user has permission to view this resource using claim-based check
+        var permissionName = $"{normalized}.view";
+
+        // Check if user is admin (admins can view all resources) or has the specific permission
+        var isAdmin = IsAdminUser();
+        var hasPermission = Context.User?.Claims.Any(c => c.Type == "permission" && c.Value == permissionName) == true;
+
+        if (!isAdmin && !hasPermission)
+        {
+            _logger.LogWarning("User {User} attempted to subscribe to resource {Resource} without permission",
+                Context.User?.Identity?.Name ?? "unknown", normalized);
+            throw new HubException($"Access denied: You do not have permission to view '{normalized}' resources");
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"resource:{normalized}");
+        _logger.LogInformation("User {User} subscribed to resource {Resource}",
+            Context.User?.Identity?.Name ?? "unknown", normalized);
+    }
+
+    /// <summary>
+    /// Subscribes the current connection to the "system-events" group after performing authorization checks.
+    /// Only administrators or users with audit/system permissions should be allowed to subscribe.
+    /// </summary>
+    /// <returns>A task that completes when the connection has been added to the system-events group.</returns>
+    public async Task SubscribeToSystemEvents()
+    {
+        // Check if user is admin using the helper
+        if (!IsAdminUser())
+        {
+            _logger.LogWarning("User {User} attempted to subscribe to system-events without admin privileges",
+                Context.User?.Identity?.Name ?? "unknown");
+            throw new HubException("Access denied: Only administrators can subscribe to system events");
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
+        _logger.LogInformation("Admin user {User} subscribed to system-events",
+            Context.User?.Identity?.Name ?? "unknown");
+    }
+
+    /// <summary>
+    /// Unsubscribes the current connection from the "system-events" group.
+    /// Allows any connected user to unsubscribe (useful when user roles change or they no longer need system events).
+    /// </summary>
+    /// <returns>A task that completes when the connection has been removed from the system-events group.</returns>
+    public async Task UnsubscribeFromSystemEvents()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "system-events");
+        _logger.LogInformation("User {User} unsubscribed from system-events",
+            Context.User?.Identity?.Name ?? "unknown");
+    }
+
+    /// <summary>
+    /// Unsubscribes the current connection from the group associated with the specified resource.
+    /// </summary>
+    /// <param name="resourceName">The resource name to unsubscribe from. If null or whitespace, "all" is used; otherwise the name is trimmed and converted to lowercase.</param>
+    /// <returns>A task that completes when the connection has been removed from the corresponding resource group.</returns>
+    public async Task UnsubscribeResource(string resourceName)
+    {
+        var normalized = ResourceNormalization.Normalize(resourceName);
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"resource:{normalized}");
+        _logger.LogInformation("User {User} unsubscribed from resource {Resource}",
+            Context.User?.Identity?.Name ?? "unknown", normalized);
+    }
+
+    /// <summary>
+    /// Checks if the current SignalR connection context user has administrator privileges.
+    /// </summary>
+    /// <returns>True if the user has admin role (primary_role or role claim equals "1"); false otherwise or if Context/User is null.</returns>
+    private bool IsAdminUser()
+    {
+        if (Context?.User == null)
+        {
+            return false;
+        }
+
+        return Context.User.FindFirst("primary_role")?.Value == AdminRoleValue ||
+               Context.User.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue);
+    }
+}

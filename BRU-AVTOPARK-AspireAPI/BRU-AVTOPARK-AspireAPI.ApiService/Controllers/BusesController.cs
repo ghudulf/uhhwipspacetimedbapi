@@ -10,6 +10,10 @@ using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Text.Json;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using TicketSalesApp.AdminServer.Mappers;
+using TicketSalesApp.AdminServer.Models;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -21,17 +25,364 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IBusService _busService;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<BusesController> _logger;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="BusesController"/> with its required services.
+        /// </summary>
+        /// <param name="busService">Service for bus data access and operations.</param>
+        /// <param name="adminLogger">Service for recording administrative actions.</param>
+        /// <param name="logger">Logger for controller diagnostics.</param>
+        /// <param name="realtimeEventBus">Pub/sub bus for subscribing and publishing realtime events.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any provided dependency is null.</exception>
         public BusesController(
             IBusService busService,
             IAdminActionLogger adminLogger,
-            ILogger<BusesController> logger)
+            ILogger<BusesController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _busService = busService ?? throw new ArgumentNullException(nameof(busService));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
+
+        /// <summary>
+        /// Streams real-time CRUD events for buses over a WebSocket connection.
+        /// </summary>
+        /// <remarks>
+        /// If the caller is not authenticated, the method sets the response status to 401 Unauthorized and returns without starting a stream.
+        /// </remarks>
+        /// <param name="cancellationToken">Token used to cancel the streaming session and associated subscriptions.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeBusEvents(CancellationToken cancellationToken)
+        {
+            // Use async token validation instead of weak IsAuthenticated check
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            if (!await IsAdminAsync() && !HasPermission("buses.view", claims))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("buses", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request to the corresponding handler based on the request's Command.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command, optional Id, and optional payload.</param>
+        /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
+        /// <returns>An object containing the command-specific response (e.g., snapshot, entity, operation result).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Command is not one of: "read_all", "read", "create", "update", or "delete".</exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Retrieve a snapshot of all buses for realtime "read_all" requests, enforcing admin or "buses.view" permission.
+        /// </summary>
+        /// <returns>An object with a `buses` property containing the collection of all buses.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "buses.view" permission.</exception>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.view");
+            }
+
+            var buses = await _busService.GetAllBusesAsync();
+            var mapped = buses.Select(BusMapper.ToDto).ToList();
+            return new { buses = mapped };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" CRUD request and return the bus matching the provided request Id.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; its <see cref="RealtimeCrudRequest.Id"/> must be provided.</param>
+        /// <returns>An object with a single property `bus` containing the requested bus entity (or `null` if not found).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights and the "buses.view" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.view");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var bus = await _busService.GetBusByIdAsync(id);
+            
+            var mappedBus = bus != null ? BusMapper.ToDto(bus) : null;
+            
+            return new { bus = mappedBus };
+        }
+
+        /// <summary>
+        /// Handles a realtime "create" CRUD request by creating a new bus from the request payload and returning the operation result.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request whose Payload must deserialize to a CreateBusModel.</param>
+        /// <returns>
+        /// An object containing:
+        /// - operation: the string "create",
+        /// - success: `true` if the bus was created, `false` otherwise,
+        /// - entity: the created bus entity (or null on failure).
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into CreateBusModel.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.create"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.create");
+            }
+
+            var model = request.Payload?.Deserialize<CreateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+
+            var bus = await _busService.CreateBusAsync(model.Model);
+            var mappedEntity = bus != null ? BusMapper.ToDto(bus) : null;
+            var result = new { operation = "create", success = bus is not null, entity = mappedEntity };
+
+            if (bus is not null)
+            {
+                // Log admin action (best-effort)
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "CreateBus",
+                            $"Created bus {model.Model} with ID {bus.BusId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.created (BusId: {BusId})", bus.BusId);
+                    }
+                }
+
+                try
+                {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.created",
+                        Resource: "buses",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string>
+                        {
+                            ["operation"] = "create",
+                            ["success"] = "true",
+                            ["busId"] = bus.BusId.ToString(),
+                            ["bus"] = JsonSerializer.Serialize(mappedEntity)
+                        }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.created (Resource: buses, EventName: bus.created, BusId: {BusId})", bus.BusId);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle an incoming realtime "update" CRUD request for buses.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target <c>Id</c> and a JSON <c>Payload</c> deserializable to <see cref="UpdateBusModel"/>.</param>
+        /// <returns>An object with keys: <c>operation</c> (string "update"), <c>success</c> (bool), and <c>entity</c> (the updated bus or null).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing <c>Id</c> or <c>Payload</c>.</exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.edit");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+
+            var success = await _busService.UpdateBusAsync(id, model.Model);
+            object? entity = null;
+            object? mappedEntity = null;
+            
+            if (success)
+            {
+                entity = await _busService.GetBusByIdAsync(id);
+                mappedEntity = entity != null ? BusMapper.ToDto(entity) : null;
+            }
+            
+            var result = new { operation = "update", success, entity = mappedEntity };
+
+            if (success)
+            {
+                // Log admin action (best-effort)
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "UpdateBus",
+                            $"Updated bus {model.Model} with ID {id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.updated (BusId: {BusId})", id);
+                    }
+                }
+
+                try
+                {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.updated",
+                        Resource: "buses",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string>
+                        {
+                            ["operation"] = "update",
+                            ["success"] = success.ToString(),
+                            ["busId"] = id.ToString(),
+                            ["bus"] = JsonSerializer.Serialize(mappedEntity)
+                        }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.updated (Resource: buses, EventName: bus.updated, BusId: {BusId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD request for buses, performing authorization and deletion.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request. Must contain an <c>Id</c> of the bus to delete.</param>
+        /// <returns>
+        /// An object with the result of the operation:
+        /// - <c>operation</c>: the string "delete";
+        /// - <c>success</c>: a boolean indicating whether deletion succeeded;
+        /// - <c>deletedId</c>: the id of the deleted entity.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include a required <c>Id</c>.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.delete"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for buses.delete");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _busService.DeleteBusAsync(id);
+            var result = new { operation = "delete", success, deletedId = id };
+
+            if (success)
+            {
+                // Log admin action (best-effort)
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "DeleteBus",
+                            $"Deleted bus with ID {id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.deleted (BusId: {BusId})", id);
+                    }
+                }
+
+                try
+                {
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.deleted",
+                        Resource: "buses",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString(), ["deletedId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.deleted (Resource: buses, EventName: bus.deleted, BusId: {BusId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Retrieves all buses and returns them mapped to a client-facing JSON-friendly representation.
+        /// </summary>
+        /// <returns>
+        /// An ActionResult containing a list of bus representations (objects with fields such as BusId, Model, RegistrationNumber, Capacity, BusType, Year, Vin, LicensePlate, CurrentStatus, IsActive, SeatedCapacity, StandingCapacity, CurrentLocation, LastLocationUpdate, FuelConsumption, CurrentFuelLevel, FuelType, MileageTotal, MileageSinceService, HasAccessibility, HasAirConditioning, HasWifi, and HasUsbCharging).
+        /// Returns 200 OK with the list on success, 403 Forbidden if the caller lacks permission, or 500 Internal Server Error if an unexpected error occurs.
+        /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetBuses()
         {
@@ -39,7 +390,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view buses");
                     return Forbid();
@@ -50,33 +401,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 _logger.LogInformation("DATABASE RESULT: GetAllBuses - Retrieved {BusCount} buses", buses.Count());
                 
-                // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
-                // Include ALL fields that the client needs
-                var result = buses.Select(b => new {
-                    b.BusId,
-                    b.Model,
-                    b.RegistrationNumber,
-                    b.Capacity,
-                    b.BusType,
-                    b.Year,
-                    b.Vin,
-                    b.LicensePlate,
-                    b.CurrentStatus,
-                    b.IsActive,
-                    b.SeatedCapacity,
-                    b.StandingCapacity,
-                    b.CurrentLocation,
-                    b.LastLocationUpdate,
-                    b.FuelConsumption,
-                    b.CurrentFuelLevel,
-                    b.FuelType,
-                    b.MileageTotal,
-                    b.MileageSinceService,
-                    b.HasAccessibility,
-                    b.HasAirConditioning,
-                    b.HasWifi,
-                    b.HasUsbCharging
-                }).ToList();
+                var result = buses.Select(BusMapper.ToDto).ToList();
 
                 _logger.LogInformation("FULL BUS DATA: {BusData}", JsonSerializer.Serialize(result));
                 
@@ -103,7 +428,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view bus {BusId}", id);
                     return Forbid();
@@ -146,8 +471,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<ActionResult<dynamic>> CreateBus([FromBody] CreateBusModel model)
         {
             _logger.LogInformation("REQUEST RECEIVED: CreateBus with data: {RequestData}", JsonSerializer.Serialize(model));
-            
-            if (!IsAdmin() && !HasPermission("buses.create"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create bus");
                 return Forbid();
@@ -155,6 +480,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token for audit logging (best-effort)
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before creating bus - proceeding without audit");
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Creating new bus with model {Model}", model.Model);
                 
                 var bus = await _busService.CreateBusAsync(model.Model);
@@ -167,20 +499,22 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully created bus with ID {BusId}", bus.BusId);
                 _logger.LogInformation("FULL BUS DATA CREATED: {BusData}", JsonSerializer.Serialize(bus));
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
+                // Log the admin action (best-effort)
+                if (userId != null)
                 {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "CreateBus",
+                            $"Created bus with model {model.Model}, ID: {bus.BusId}"
+                        );
+                    }
+                    catch (Exception logEx)
+                    {
+                        _logger.LogError(logEx, "Failed to log admin action for CreateBus (BusId: {BusId})", bus.BusId);
+                    }
                 }
-                
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "CreateBus",
-                    $"Created bus with model {model.Model}, ID: {bus.BusId}"
-                );
 
                 _logger.LogInformation("RESPONSE SENT: Created bus with ID {BusId}, Model: {Model}", 
                     bus.BusId, bus.Model);
@@ -204,10 +538,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBus(uint id, [FromBody] UpdateBusModel model)
         {
-            _logger.LogInformation("REQUEST RECEIVED: UpdateBus ID {BusId} with data: {RequestData}", 
+            _logger.LogInformation("REQUEST RECEIVED: UpdateBus ID {BusId} with data: {RequestData}",
                 id, JsonSerializer.Serialize(model));
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update bus");
                 return Forbid();
@@ -215,6 +549,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token BEFORE performing the mutation
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before updating bus");
+                    return Unauthorized();
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Updating bus with ID {BusId}, New Model: {Model}", 
                     id, model.Model ?? "unchanged");
                 
@@ -227,20 +569,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully updated bus with ID {BusId}", id);
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
+                // Log the admin action (best-effort)
+                try
                 {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "UpdateBus",
+                        $"Updated bus with ID {id}, Model: {model.Model ?? "unchanged"}"
+                    );
                 }
-                
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "UpdateBus",
-                    $"Updated bus with ID {id}, Model: {model.Model ?? "unchanged"}"
-                );
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for UpdateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Updated bus with ID {BusId}", id);
                 return NoContent();
@@ -256,8 +597,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> DeleteBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: DeleteBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.delete"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete bus");
                 return Forbid();
@@ -265,6 +606,14 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
+                // Get the current user ID from token BEFORE performing the mutation
+                var userId = GetUserId();
+                if (userId == null)
+                {
+                    _logger.LogWarning("Failed to get user ID from token before deleting bus");
+                    return Unauthorized();
+                }
+                
                 _logger.LogInformation("DATABASE OPERATION: Deleting bus with ID {BusId}", id);
                 
                 // Get bus data before deletion for logging
@@ -283,20 +632,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully deleted bus with ID {BusId}", id);
 
-                // Get the current user ID from token
-                var userId = GetUserId();
-                if (userId == null)
+                // Log the admin action (best-effort)
+                try
                 {
-                    _logger.LogWarning("Failed to get user ID from token");
-                    return Unauthorized();
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeleteBus",
+                        $"Deleted bus with ID {id}"
+                    );
                 }
-                
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "DeleteBus",
-                    $"Deleted bus with ID {id}"
-                );
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for DeleteBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Deleted bus with ID {BusId}", id);
                 return NoContent();
@@ -318,7 +666,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to search buses");
                     return Forbid();
@@ -335,7 +683,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                     b.Model,
                     b.RegistrationNumber,
                     b.Capacity,
-             
+                    b.BusType,
+                    b.Year,
+                    b.Vin,
+                    b.LicensePlate,
+                    b.CurrentStatus,
                     b.IsActive
                 }).ToList();
 
@@ -362,8 +714,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> ActivateBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: ActivateBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to activate bus");
                 return Forbid();
@@ -404,12 +756,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "ActivateBus",
-                    $"Activated bus with ID {id}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "ActivateBus",
+                        $"Activated bus with ID {id}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for ActivateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Activated bus with ID {BusId}", id);
                 return NoContent();
@@ -425,8 +784,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> DeactivateBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: DeactivateBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to deactivate bus");
                 return Forbid();
@@ -467,12 +826,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "DeactivateBus",
-                    $"Deactivated bus with ID {id}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeactivateBus",
+                        $"Deactivated bus with ID {id}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for DeactivateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Deactivated bus with ID {BusId}", id);
                 return NoContent();

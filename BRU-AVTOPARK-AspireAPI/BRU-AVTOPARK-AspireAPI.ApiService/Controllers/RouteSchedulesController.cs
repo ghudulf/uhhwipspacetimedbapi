@@ -10,6 +10,10 @@ using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 using System.Text.Json;
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -20,16 +24,333 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="RouteSchedulesController"/> with its required services.
+        /// </summary>
+        /// <param name="routeScheduleService">Service for managing route schedules.</param>
+        /// <param name="logger">Logger for controller operations.</param>
+        /// <param name="realtimeEventBus">Event bus used to publish and subscribe realtime schedule events.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any of the provided dependencies is null.</exception>
         public RouteSchedulesController(
             IRouteScheduleService routeScheduleService,
-            ILogger<RouteSchedulesController> logger)
+            ILogger<RouteSchedulesController> logger,
+            IRealtimeEventBus realtimeEventBus)
         {
             _routeScheduleService = routeScheduleService ?? throw new ArgumentNullException(nameof(routeScheduleService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
        
 
+        /// <summary>
+        /// Opens a WebSocket stream that serves realtime CRUD events for route schedules.
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the streaming session.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Handle a realtime CRUD request for route schedules by dispatching the request command to the corresponding operation.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the command, optional id, and payload.</param>
+        /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+        /// <returns>
+        /// An object whose shape depends on the command:
+        /// - For "read_all": { schedules = IEnumerable of all schedules }.
+        /// - For "read": { schedule = the schedule with the specified id }.
+        /// - For "create": an operation result object containing operation, success flag and a snapshot of schedules after creation.
+        /// - For "update": an operation result object containing operation, success flag, the updated entity and a snapshot of schedules.
+        /// - For "delete": an operation result object containing operation, success flag, deletedId and a snapshot of schedules.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a required id is missing for "read" or when the command is unsupported.
+        /// </exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected route schedules matching the REST DTO shape with timestamp conversions.
+        /// </summary>
+        /// <returns>An object with a `schedules` property containing all projected route schedules.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = schedules.Select(s => new {
+                s.ScheduleId,
+                s.RouteId,
+                s.StartPoint,
+                s.RouteStops,
+                s.EndPoint,
+                s.DepartureTime,
+                s.ArrivalTime,
+                s.Price,
+                s.AvailableSeats,
+                s.SeatedCapacity,
+                s.StandingCapacity,
+                s.DaysOfWeek,
+                s.BusTypes,
+                s.IsActive,
+                s.ValidFrom,
+                s.ValidUntil,
+                s.StopDurationMinutes,
+                s.IsRecurring,
+                s.EstimatedStopTimes,
+                s.StopDistances,
+                s.Notes,
+                s.CreatedAt,
+                s.UpdatedAt,
+                s.UpdatedBy,
+                s.PeakHourLoad,
+                s.OffPeakHourLoad,
+                s.IsSpecialEvent,
+                s.SpecialEventName,
+                s.IsHoliday,
+                s.HolidayName,
+                s.IsWeekend,
+                s.SeatConfigurationId,
+                s.RequiresSeatReservation,
+                s.RouteType
+            }).ToList();
+
+            return new { schedules = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected route schedule matching the REST DTO shape with timestamp conversions.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the route schedule.</param>
+        /// <returns>An object with a `schedule` property containing the projected route schedule, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+
+            if (schedule == null)
+            {
+                return new { schedule = (object?)null };
+            }
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                schedule.ScheduleId,
+                schedule.RouteId,
+                schedule.StartPoint,
+                schedule.EndPoint,
+                schedule.RouteStops,
+                DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                schedule.Price,
+                schedule.AvailableSeats,
+                schedule.DaysOfWeek,
+                schedule.BusTypes,
+                schedule.StopDurationMinutes,
+                schedule.IsRecurring,
+                schedule.EstimatedStopTimes,
+                schedule.StopDistances,
+                schedule.Notes
+            };
+
+            return new { schedule = result };
+        }
+
+        /// <summary>
+        /// Processes a realtime "create" CRUD request: authorizes the caller, deserializes the payload into a CreateRouteScheduleModel, creates the schedule, and returns an operation result with a fresh snapshot of all schedules.
+        /// </summary>
+        /// <returns>An object containing `operation` set to "create", `success` as a boolean indicating creation outcome, and `snapshot` containing the full list of schedules after the operation.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin rights and the "schedules.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateRouteScheduleModel.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.create");
+            var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var success = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), (ulong)new DateTimeOffset(m.DepartureTime).ToUnixTimeMilliseconds(), (ulong)new DateTimeOffset(m.ArrivalTime).ToUnixTimeMilliseconds(), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
+            var result = new { operation = "create", success };
+
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.created",
+                        Resource: "route-schedules",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.created (Resource: route-schedules, EventName: route-schedule.created, Payload: {Payload})", JsonSerializer.Serialize(result));
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Processes a realtime "update" CRUD request, applies the schedule update, and returns the updated entity.
+        /// </summary>
+        /// <returns>
+        /// An object containing:
+        /// - `operation`: the string "update",
+        /// - `success`: a boolean indicating whether the update succeeded,
+        /// - `entity`: the updated schedule entity (or null if not found).
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required `id` or `payload` for the update.</exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.update");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
+            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (schedule != null)
+            {
+                projectedEntity = new {
+                    schedule.ScheduleId,
+                    schedule.RouteId,
+                    schedule.StartPoint,
+                    schedule.EndPoint,
+                    schedule.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                    schedule.Price,
+                    schedule.AvailableSeats,
+                    schedule.DaysOfWeek,
+                    schedule.BusTypes,
+                    schedule.StopDurationMinutes,
+                    schedule.IsRecurring,
+                    schedule.EstimatedStopTimes,
+                    schedule.StopDistances,
+                    schedule.Notes
+                };
+            }
+
+            var result = new { operation = "update", success, entity = projectedEntity };
+
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.updated",
+                        Resource: "route-schedules",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.updated (Resource: route-schedules, EventName: route-schedule.updated, ScheduleId: {ScheduleId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command for route schedules.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; must include the Id of the schedule to delete.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the string "delete"
+        /// - success: `true` if the schedule was deleted, `false` otherwise
+        /// - deletedId: the id of the schedule that was targeted for deletion
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _routeScheduleService.DeleteScheduleAsync(id);
+            var result = new { operation = "delete", success, deletedId = id };
+
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.deleted",
+                        Resource: "route-schedules",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.deleted (Resource: route-schedules, EventName: route-schedule.deleted, DeletedId: {DeletedId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Retrieves a paginated list of route schedules, optionally filtered by active status.
+        /// </summary>
+        /// <param name="page">1-based page number to return (default is 1).</param>
+        /// <param name="pageSize">Number of items per page (default is 100).</param>
+        /// <param name="isActive">If specified, limits results to schedules with the given active state; otherwise returns all schedules.</param>
+        /// <returns>A collection of schedule objects for the requested page. Pagination metadata is provided in response headers: X-Total-Count, X-Page, X-Page-Size, and X-Total-Pages.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRouteSchedules(
             [FromQuery] int page = 1,

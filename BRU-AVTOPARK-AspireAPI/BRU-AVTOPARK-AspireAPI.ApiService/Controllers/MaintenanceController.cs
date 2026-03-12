@@ -5,12 +5,16 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using Serilog;// NO THIS STAYS
+using Serilog;
 using System.Text.Json; // Added for serialization logging
 using Log = Serilog.Log;
 using SpacetimeDB.Types;
 using SpacetimeDB; // Added for direct DB access
 using TicketSalesApp.Services.Interfaces;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -23,18 +27,337 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<MaintenanceController> _logger;
         private readonly ISpacetimeDBService _spacetimeService; // Added SpacetimeDBService
 
+        private readonly IRealtimeEventBus _realtimeEventBus;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="MaintenanceController"/> with its required services.
+        /// </summary>
+        /// <param name="maintenanceService">Service that manages maintenance record operations.</param>
+        /// <param name="logger">Logger for controller diagnostics and informational events.</param>
+        /// <param name="spacetimeService">Database service used to query related Bus data.</param>
+        /// <param name="realtimeEventBus">Real-time event bus used to publish and subscribe maintenance CRUD events.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required dependency is <c>null</c>.</exception>
         public MaintenanceController(
             IMaintenanceService maintenanceService,
             ILogger<MaintenanceController> logger,
-            ISpacetimeDBService spacetimeService) // Added SpacetimeDBService
+            ISpacetimeDBService spacetimeService, // Added SpacetimeDBService
+            IRealtimeEventBus realtimeEventBus)
         {
             _maintenanceService = maintenanceService ?? throw new ArgumentNullException(nameof(maintenanceService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService)); // Added SpacetimeDBService
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
         
 
+        /// <summary>
+        /// Streams maintenance CRUD events over a WebSocket to an authenticated client.
+        /// If the caller is not authenticated, responds with HTTP 401 and does not start a stream.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token that cancels the WebSocket streaming session and related operations.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            // Use async token validation - require successful validation only
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("maintenance", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request for maintenance records based on the request's Command and returns the corresponding result payload.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request; its Command determines the action. Supported commands: "read_all" (returns all records), "read" (requires request.Id and returns a single record), "create" (creates a record), "update" (updates a record), and "delete" (deletes a record).</param>
+        /// <param name="cancellationToken">Token to observe while processing the request.</param>
+        /// <returns>
+        /// An object whose shape depends on the command:
+        /// - For "read_all": { records = IEnumerable&lt;MaintenanceRecord&gt; }
+        /// - For "read": { record = MaintenanceRecord }
+        /// - For "create"/"update"/"delete": a command-specific operation result (includes success status and related data/snapshot).
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown when "read" is requested without an Id or when the Command value is unsupported.</exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected maintenance records with timestamps converted and bus data enriched.
+        /// </summary>
+        /// <returns>An object with a `records` property containing all projected maintenance records matching the HTTP API shape.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = records.Select(m => new {
+                m.MaintenanceId,
+                m.BusId,
+                m.LastServiceDate,
+                m.MileageThreshold,
+                m.MaintenanceType,
+                m.ServiceEngineer,
+                m.FoundIssues,
+                m.NextServiceDate,
+                m.Roadworthiness,
+                m.MaintenanceCost,
+                m.PartsReplaced,
+                m.MaintenanceDuration,
+                m.IsScheduled,
+                m.MaintenanceLocation,
+                m.ScheduledByEmployeeId,
+                m.CompletedByEmployeeId,
+                m.MaintenanceNotes,
+                m.MaintenanceStatus,
+                m.DiagnosticCodes,
+                m.LaborCost,
+                m.PartsCost
+            }).ToList();
+
+            return new { records = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected maintenance record with enriched bus data and timestamp conversion.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the maintenance record.</param>
+        /// <returns>An object with a `record` property containing the projected maintenance record matching the HTTP API shape, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
+
+            if (maintenance == null)
+            {
+                return new { record = (object?)null };
+            }
+
+            var conn = _spacetimeService.GetConnection();
+            var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                maintenance.MaintenanceId,
+                maintenance.BusId,
+                Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.LastServiceDate).DateTime,
+                maintenance.ServiceEngineer,
+                maintenance.FoundIssues,
+                NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.NextServiceDate).DateTime,
+                maintenance.Roadworthiness,
+                maintenance.MaintenanceType,
+                maintenance.MileageThreshold
+            };
+
+            return new { record = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "create" CRUD command and create a new maintenance record.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request whose payload must contain a CreateMaintenanceModel.</param>
+        /// <returns>An object with operation = "create", `success` set to `true` if the creation succeeded and `false` otherwise, and `snapshot` containing the full list of maintenance records.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "maintenance.create" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateMaintenanceModel.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
+            var model = request.Payload?.Deserialize<CreateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+            var maintenanceType = string.IsNullOrWhiteSpace(model.MaintenanceType) ? "Regular" : model.MaintenanceType;
+            var createdId = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, maintenanceType);
+            var record = createdId ? await _maintenanceService.GetMaintenanceByBusIdAsync(model.BusId).ContinueWith(t => t.Result.OrderByDescending(r => r.LastServiceDate).FirstOrDefault()) : null;
+            var result = new { operation = "create", success = createdId, record };
+
+            if (createdId)
+            {
+                try
+                {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.created",
+                        Resource: "maintenance",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.created (Resource: maintenance, EventName: maintenance.created, RecordId: {RecordId})", record?.MaintenanceId);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle an incoming realtime "update" command for a maintenance record and return the operation result with an updated entity snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target Id and a payload deserializable to <see cref="UpdateMaintenanceModel"/>.</param>
+        /// <returns>
+        /// An object with:
+        /// - `operation`: the operation name ("update"),
+        /// - `success`: `true` if the update succeeded, `false` otherwise,
+        /// - `entity`: the updated maintenance entity (or null if not found),
+        /// - `snapshot`: the current list of all maintenance records.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "maintenance.edit" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+            var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
+            var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (maintenance != null)
+            {
+                var conn = _spacetimeService.GetConnection();
+                var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+
+                projectedEntity = new {
+                    maintenance.MaintenanceId,
+                    maintenance.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.LastServiceDate).DateTime,
+                    maintenance.ServiceEngineer,
+                    maintenance.FoundIssues,
+                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.NextServiceDate).DateTime,
+                    maintenance.Roadworthiness,
+                    maintenance.MaintenanceType,
+                    maintenance.MileageThreshold
+                };
+            }
+
+            var result = new { operation = "update", success, entity = projectedEntity, record = projectedEntity };
+
+            if (success)
+            {
+                try
+                {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.updated",
+                        Resource: "maintenance",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.updated (Resource: maintenance, EventName: maintenance.updated, MaintenanceId: {MaintenanceId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD command by deleting the specified maintenance record and returning an operation snapshot.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target record Id and optional payload metadata.</param>
+        /// <returns>
+        /// An object with properties:
+        /// - operation: the string "delete",
+        /// - success: `true` if the delete succeeded, `false` otherwise,
+        /// - deletedId: the Id of the deleted record,
+        /// - snapshot: the full list of maintenance records after the operation.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller lacks admin role and the "maintenance.delete" permission.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id for the delete operation.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _maintenanceService.DeleteMaintenanceAsync(id);
+            var result = new { operation = "delete", success, deletedId = id, record = (object?)null };
+
+            if (success)
+            {
+                try
+                {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.deleted",
+                        Resource: "maintenance",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.deleted (Resource: maintenance, EventName: maintenance.deleted, DeletedId: {DeletedId})", id);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Retrieves all maintenance records projected to an anonymous shape containing all fields required by clients.
+        /// </summary>
+        /// <returns>A list of maintenance record objects with the complete field set used by clients for deserialization.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords()
         {
@@ -306,6 +629,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         public required string FoundIssues { get; set; }
         public required DateTime NextServiceDate { get; set; }
         public required string Roadworthiness { get; set; }
+        public string MaintenanceType { get; set; } = "Regular";
     }
 
     public class UpdateMaintenanceModel

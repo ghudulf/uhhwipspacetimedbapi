@@ -13,6 +13,10 @@ using System.Security.Claims;
 using System.Text.Json;
 using Route = SpacetimeDB.Types.Route; // Add alias for Route
 
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+
 namespace TicketSalesApp.AdminServer.Controllers
 {
     [ApiController]
@@ -24,21 +28,360 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<TicketsController> _logger;
         private readonly ITicketService _ticketService;
         private readonly IAuthenticationService _authService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TicketsController"/> with the required services and logger.
+        /// </summary>
+        /// <param name="spacetimeService">Service providing database connections and reducers for spacetime data operations.</param>
+        /// <param name="logger">Logger for controller diagnostics and operational messages.</param>
+        /// <param name="ticketService">Domain service for ticket-related operations and queries.</param>
+        /// <param name="authService">Service for resolving and validating user identities.</param>
+        /// <param name="realtimeEventBus">Event bus used to subscribe and publish realtime ticket events.</param>
         public TicketsController(
             ISpacetimeDBService spacetimeService, 
             ILogger<TicketsController> logger, 
             ITicketService ticketService,
-            IAuthenticationService authService)
+            IAuthenticationService authService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _spacetimeService = spacetimeService;
             _logger = logger;
             _ticketService = ticketService;
             _authService = authService;
+            _realtimeEventBus = realtimeEventBus;
             _logger.LogInformation("TicketsController initialized with services: {@Services}", 
                 new { SpacetimeDBService = spacetimeService != null, TicketService = ticketService != null, AuthService = authService != null });
         }
 
+        /// <summary>
+        /// Opens a WebSocket endpoint that streams realtime ticket CRUD events to the caller.
+        /// The request must be authenticated; unauthorized requests receive a 401 response.
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the realtime stream and associated operations.</param>
+        [HttpGet("realtime/ws")]
+        public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
+        {
+            if (!IsAuthenticated())
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await WebSocketEventStreamWriter.StreamCrudSessionAsync(
+                HttpContext,
+                _realtimeEventBus.SubscribeAsync("tickets", cancellationToken),
+                HandleRealtimeCrudAsync,
+                _logger,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Dispatches a realtime CRUD request for tickets and returns a command-specific result object.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing a command, optional id, and payload.</param>
+        /// <param name="cancellationToken">Cancellation token for the operation.</param>
+        /// <returns>
+        /// An object whose shape depends on the command:
+        /// - "read_all": { tickets = IEnumerable&lt;Ticket&gt; }
+        /// - "read": { ticket = Ticket }
+        /// - "create": operation result object including snapshot
+        /// - "update": operation result object including entity and snapshot
+        /// - "delete": operation result object including deletedId and snapshot
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a required id is missing for a "read" command, or when an unsupported command is provided.
+        /// </exception>
+        private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+        {
+            var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
+
+            return command switch
+            {
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
+                "create" => await HandleCreateCommandAsync(request),
+                "update" => await HandleUpdateCommandAsync(request),
+                "delete" => await HandleDeleteCommandAsync(request),
+                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+            };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected tickets with route details and PurchaseTime conversion matching the REST shape.
+        /// </summary>
+        /// <returns>An object with a `tickets` property containing all projected tickets.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { tickets = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected ticket with route details and PurchaseTime conversion matching the REST shape.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the ticket.</param>
+        /// <returns>An object with a `ticket` property containing the projected ticket, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var conn = _spacetimeService.GetConnection();
+            var ticket = conn.Db.Ticket.TicketId.Find(id);
+
+            if (ticket == null)
+            {
+                return new { ticket = (object?)null };
+            }
+
+            var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                ticket.TicketId,
+                ticket.RouteId,
+                Route = route != null ? new {
+                    route.RouteId,
+                    route.StartPoint,
+                    route.EndPoint,
+                    route.TravelTime,
+                    route.IsActive
+                } : null,
+                ticket.SeatNumber,
+                ticket.TicketPrice,
+                ticket.PaymentMethod,
+                PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)ticket.PurchaseTime).DateTime,
+                ticket.IsActive
+            };
+
+            return new { ticket = result };
+        }
+
+        /// <summary>
+        /// Process a realtime "create" CRUD request to create a ticket and return the operation result with a full ticket snapshot.
+        /// </summary>
+        /// <param name="request">The incoming realtime CRUD request whose payload must deserialize to <see cref="CreateTicketModel"/>.</param>
+        /// <returns>An object with properties: `operation` (string "create"), `success` (boolean indicating if creation succeeded), and `snapshot` (the current list of all tickets).</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin, when the user identity cannot be determined from claims, or when the user identity cannot be resolved.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a <see cref="CreateTicketModel"/>.</exception>
+        private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin())
+            {
+                throw new UnauthorizedAccessException("Admin role required");
+            }
+
+            var model = request.Payload?.Deserialize<CreateTicketModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for create");
+
+            var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
+                ?? User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
+
+            // If claims lookup returns null, fall back to validated-token path from BaseController
+            if (string.IsNullOrWhiteSpace(userLogin))
+            {
+                // Use BaseController's GetUserNameAsync for fallback
+                userLogin = await GetUserNameAsync();
+                if (string.IsNullOrWhiteSpace(userLogin))
+                {
+                    throw new UnauthorizedAccessException("User identity could not be determined");
+                }
+            }
+
+            var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin)
+                ?? throw new UnauthorizedAccessException("Unable to resolve user identity");
+
+            var success = await _ticketService.CreateTicketAsync(
+                model.RouteId,
+                model.SeatNumber,
+                model.TicketPrice,
+                model.PaymentMethod,
+                (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                userIdentity);
+
+            // Get projected snapshot matching REST endpoint shape
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { operation = "create", success, snapshot };
+        }
+
+        /// <summary>
+        /// Processes an "update" realtime CRUD request, applies ticket updates, and returns the updated entity plus a full snapshot of tickets.
+        /// </summary>
+        /// <param name="request">Realtime CRUD request containing the target ticket id and a payload deserializable to <see cref="UpdateTicketModel"/>.</param>
+        /// <returns>
+        /// An object with the following properties:
+        /// - operation: the operation name ("update"),
+        /// - success: a boolean indicating whether the update succeeded,
+        /// - entity: the updated ticket entity (or null if not found),
+        /// - snapshot: the current list of all tickets.
+        /// </returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller does not have the admin role.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request is missing the required id or payload for the update.</exception>
+        private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin())
+            {
+                throw new UnauthorizedAccessException("Admin role required");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for update");
+            var model = request.Payload?.Deserialize<UpdateTicketModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("payload is required for update");
+
+            var success = await _ticketService.UpdateTicketAsync(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive);
+
+            var conn = _spacetimeService.GetConnection();
+            var ticket = conn.Db.Ticket.TicketId.Find(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (ticket != null)
+            {
+                var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+                projectedEntity = new {
+                    ticket.TicketId,
+                    ticket.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    ticket.SeatNumber,
+                    ticket.TicketPrice,
+                    ticket.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)ticket.PurchaseTime).DateTime,
+                    ticket.IsActive
+                };
+            }
+
+            // Get projected snapshot matching REST endpoint shape
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { operation = "update", success, entity = projectedEntity, snapshot };
+        }
+
+        /// <summary>
+        /// Handle a realtime "delete" CRUD request by deleting the specified ticket and returning an updated snapshot.
+        /// </summary>
+        /// <param name="request">The realtime CRUD request containing the ticket Id to delete.</param>
+        /// <returns>An object containing the operation name ("delete"), a boolean success flag, the deletedId, and a snapshot of all tickets.</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the request does not specify an Id for deletion.</exception>
+        private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
+        {
+            if (!IsAdmin())
+            {
+                throw new UnauthorizedAccessException("Admin role required");
+            }
+
+            var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
+            var success = await _ticketService.DeleteTicketAsync(id);
+
+            // Get projected snapshot matching REST endpoint shape
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { operation = "delete", success, deletedId = id, snapshot };
+        }
+
+        /// <summary>
+        /// Retrieve all tickets with their associated route details and mapped presentation fields.
+        /// </summary>
+        /// <returns>
+        /// A collection of ticket objects where each item contains:
+        /// - TicketId
+        /// - RouteId
+        /// - Route: an object with RouteId, StartPoint, EndPoint, TravelTime, and IsActive, or null if the route is missing
+        /// - SeatNumber
+        /// - TicketPrice
+        /// - PaymentMethod
+        /// - PurchaseTime: the ticket purchase time converted from Unix milliseconds to a DateTime
+        /// - IsActive
+        /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetTickets()
         {
