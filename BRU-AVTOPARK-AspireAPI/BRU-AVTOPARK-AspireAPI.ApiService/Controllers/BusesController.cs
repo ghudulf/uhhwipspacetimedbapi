@@ -64,7 +64,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !HasPermission("buses.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -107,7 +107,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "buses.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!await IsAdminAsync() && !HasPermission("buses.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.view");
             }
@@ -150,7 +150,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("buses.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.view");
             }
@@ -203,7 +203,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into CreateBusModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !HasPermission("buses.create"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.create"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.create");
             }
@@ -268,7 +268,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                         UserName: userName,
                         Tenant: tenant,
                         SourceIp: sourceIp,
-                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                        Metadata: new Dictionary<string, string>
+                        {
+                            ["operation"] = "create",
+                            ["success"] = "true",
+                            ["busId"] = bus.BusId.ToString(),
+                            ["bus"] = JsonSerializer.Serialize(mappedEntity)
+                        }
                     ));
                 }
                 catch (Exception ex)
@@ -289,7 +295,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing <c>Id</c> or <c>Payload</c>.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !HasPermission("buses.edit"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.edit");
             }
@@ -356,7 +362,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                         UserName: userName,
                         Tenant: tenant,
                         SourceIp: sourceIp,
-                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
+                        Metadata: new Dictionary<string, string>
+                        {
+                            ["operation"] = "update",
+                            ["success"] = success.ToString(),
+                            ["busId"] = id.ToString(),
+                            ["bus"] = JsonSerializer.Serialize(mappedEntity)
+                        }
                     ));
                 }
                 catch (Exception ex)
@@ -383,7 +395,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include a required <c>Id</c>.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !HasPermission("buses.delete"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.delete"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.delete");
             }
@@ -447,7 +459,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view buses");
                     return Forbid();
@@ -511,7 +523,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view bus {BusId}", id);
                     return Forbid();
@@ -554,8 +566,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<ActionResult<dynamic>> CreateBus([FromBody] CreateBusModel model)
         {
             _logger.LogInformation("REQUEST RECEIVED: CreateBus with data: {RequestData}", JsonSerializer.Serialize(model));
-            
-            if (!IsAdmin() && !HasPermission("buses.create"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create bus");
                 return Forbid();
@@ -612,10 +624,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBus(uint id, [FromBody] UpdateBusModel model)
         {
-            _logger.LogInformation("REQUEST RECEIVED: UpdateBus ID {BusId} with data: {RequestData}", 
+            _logger.LogInformation("REQUEST RECEIVED: UpdateBus ID {BusId} with data: {RequestData}",
                 id, JsonSerializer.Serialize(model));
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update bus");
                 return Forbid();
@@ -664,8 +676,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> DeleteBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: DeleteBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.delete"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete bus");
                 return Forbid();
@@ -726,7 +738,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("buses.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to search buses");
                     return Forbid();
@@ -770,8 +782,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> ActivateBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: ActivateBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to activate bus");
                 return Forbid();
@@ -833,8 +845,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<IActionResult> DeactivateBus(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: DeactivateBus ID {BusId}", id);
-            
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to deactivate bus");
                 return Forbid();

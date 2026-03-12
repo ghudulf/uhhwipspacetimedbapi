@@ -69,26 +69,22 @@ public sealed class SystemEventsHub : Hub
     {
         var normalized = ResourceNormalization.Normalize(resourceName);
 
-        // Check if user has permission to view this resource
+        // Check if user has permission to view this resource using claim-based check
         var permissionName = $"{normalized}.view";
-        var authResult = await _authorizationService.AuthorizeAsync(Context.User, null, permissionName);
-        
-        if (!authResult.Succeeded)
+
+        // Check if user is admin (admins can view all resources) or has the specific permission
+        var isAdmin = IsAdminUser();
+        var hasPermission = Context.User?.Claims.Any(c => c.Type == "permission" && c.Value == permissionName) == true;
+
+        if (!isAdmin && !hasPermission)
         {
-            // Check if user is admin (admins can view all resources)
-            var isAdmin = Context.User?.FindFirst("primary_role")?.Value == AdminRoleValue ||
-                         Context.User?.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue) == true;
-            
-            if (!isAdmin)
-            {
-                _logger.LogWarning("User {User} attempted to subscribe to resource {Resource} without permission", 
-                    Context.User?.Identity?.Name ?? "unknown", normalized);
-                throw new HubException($"Access denied: You do not have permission to view '{normalized}' resources");
-            }
+            _logger.LogWarning("User {User} attempted to subscribe to resource {Resource} without permission",
+                Context.User?.Identity?.Name ?? "unknown", normalized);
+            throw new HubException($"Access denied: You do not have permission to view '{normalized}' resources");
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, $"resource:{normalized}");
-        _logger.LogInformation("User {User} subscribed to resource {Resource}", 
+        _logger.LogInformation("User {User} subscribed to resource {Resource}",
             Context.User?.Identity?.Name ?? "unknown", normalized);
     }
 
@@ -99,19 +95,16 @@ public sealed class SystemEventsHub : Hub
     /// <returns>A task that completes when the connection has been added to the system-events group.</returns>
     public async Task SubscribeToSystemEvents()
     {
-        // Check if user is admin
-        var isAdmin = Context.User?.FindFirst("primary_role")?.Value == AdminRoleValue ||
-                     Context.User?.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue) == true;
-        
-        if (!isAdmin)
+        // Check if user is admin using the helper
+        if (!IsAdminUser())
         {
-            _logger.LogWarning("User {User} attempted to subscribe to system-events without admin privileges", 
+            _logger.LogWarning("User {User} attempted to subscribe to system-events without admin privileges",
                 Context.User?.Identity?.Name ?? "unknown");
             throw new HubException("Access denied: Only administrators can subscribe to system events");
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
-        _logger.LogInformation("Admin user {User} subscribed to system-events", 
+        _logger.LogInformation("Admin user {User} subscribed to system-events",
             Context.User?.Identity?.Name ?? "unknown");
     }
 
@@ -125,7 +118,22 @@ public sealed class SystemEventsHub : Hub
         var normalized = ResourceNormalization.Normalize(resourceName);
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"resource:{normalized}");
-        _logger.LogInformation("User {User} unsubscribed from resource {Resource}", 
+        _logger.LogInformation("User {User} unsubscribed from resource {Resource}",
             Context.User?.Identity?.Name ?? "unknown", normalized);
+    }
+
+    /// <summary>
+    /// Checks if the current SignalR connection context user has administrator privileges.
+    /// </summary>
+    /// <returns>True if the user has admin role (primary_role or role claim equals "1"); false otherwise or if Context/User is null.</returns>
+    private bool IsAdminUser()
+    {
+        if (Context?.User == null)
+        {
+            return false;
+        }
+
+        return Context.User.FindFirst("primary_role")?.Value == AdminRoleValue ||
+               Context.User.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue);
     }
 }

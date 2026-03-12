@@ -54,51 +54,47 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 var tokenHandler = new JwtSecurityTokenHandler();
-                
+
                 // Check if it's a JWE token (encrypted OpenIddict token)
                 if (IsJweToken(token))
                 {
                     // For JWE tokens, validate via tokeninfo endpoint
                     Log.Debug("IsAuthenticatedAsync - Detected JWE token, validating via tokeninfo endpoint");
-                    
+
                     var claims = await ValidateOAuthTokenAsync();
                     if (claims == null || claims.Count == 0)
                     {
                         Log.Warning("IsAuthenticatedAsync - JWE token validation failed");
                         return false;
                     }
-                    
+
                     Log.Debug("IsAuthenticatedAsync - JWE token validated successfully with {ClaimCount} claims", claims.Count);
                     return true;
                 }
-                
-                // For regular JWT tokens, validate structure and claims
-                if (tokenHandler.CanReadToken(token))
+
+                // For regular JWT tokens, perform full validation via ValidateOAuthTokenAsync
+                // This ensures proper signature validation, issuer/audience checks, etc.
+                Log.Debug("IsAuthenticatedAsync - Detected non-JWE token, performing full validation");
+                var validatedClaims = await ValidateOAuthTokenAsync();
+                if (validatedClaims == null || validatedClaims.Count == 0)
                 {
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-                    
-                    // Validate token has required claims (sub or identity)
-                    var hasRequiredClaims = jwtToken.Claims.Any(c => 
-                        c.Type == "sub" || 
-                        c.Type == "identity" ||
-                        c.Type == ClaimTypes.NameIdentifier);
-                    
-                    if (!hasRequiredClaims)
-                    {
-                        Log.Warning("IsAuthenticatedAsync - JWT token missing required claims (sub/identity/NameIdentifier)");
-                        return false;
-                    }
-                    
-                    // Validate token expiration
-                    if (jwtToken.ValidTo < DateTime.UtcNow)
-                    {
-                        Log.Warning("IsAuthenticatedAsync - JWT token expired at {ExpiryTime}", jwtToken.ValidTo);
-                        return false;
-                    }
-                    
-                    Log.Debug("IsAuthenticatedAsync - Valid JWT token with required claims");
-                    return true;
+                    Log.Warning("IsAuthenticatedAsync - Token validation failed");
+                    return false;
                 }
+
+                // Validate token has required claims (sub or identity)
+                var hasRequiredClaims = validatedClaims.ContainsKey("sub") ||
+                                       validatedClaims.ContainsKey("identity") ||
+                                       validatedClaims.ContainsKey(ClaimTypes.NameIdentifier);
+
+                if (!hasRequiredClaims)
+                {
+                    Log.Warning("IsAuthenticatedAsync - Token missing required claims (sub/identity/NameIdentifier)");
+                    return false;
+                }
+
+                Log.Debug("IsAuthenticatedAsync - Token validated successfully with required claims");
+                return true;
             }
             catch (Exception ex)
             {
@@ -299,6 +295,17 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         protected bool HasPermission(string permissionName)
         {
+            return HasPermissionAsync(permissionName).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Asynchronously checks if the current user has a specific permission by inspecting validated claims.
+        /// This method properly handles both ASP.NET Core authenticated principals and OAuth tokens (including JWE).
+        /// </summary>
+        /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
+        /// <returns>True if the user has the specified permission; false otherwise.</returns>
+        protected async Task<bool> HasPermissionAsync(string permissionName)
+        {
             try
             {
                 // Try ASP.NET Core authentication first (OpenIddict)
@@ -306,7 +313,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     var permissionClaims = User.FindAll("permission");
                     Log.Debug("HasPermission check for '{Permission}' - permission claims count: {Count}", permissionName, permissionClaims.Count());
-                    
+
                     if (permissionClaims.Any(c => c.Value == permissionName))
                     {
                         Log.Information("HasPermission check - User has permission '{Permission}'", permissionName);
@@ -314,36 +321,30 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Fallback to custom JWT authentication
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                // For tokens that aren't already authenticated, validate via OAuth
+                // This handles both regular JWTs and encrypted JWE tokens
+                var claims = await ValidateOAuthTokenAsync();
+                if (claims == null)
                 {
-                    Log.Warning("HasPermission check - Missing or invalid Authorization header");
+                    Log.Warning("HasPermission check - Token validation failed");
                     return false;
                 }
 
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-                
-                // Check if it's a valid JWT token (not an opaque OpenIddict token)
-                if (!tokenHandler.CanReadToken(token))
+                // Check if permission exists in validated claims
+                if (claims.TryGetValue("permission", out var permissionObj))
                 {
-                    Log.Warning("HasPermission check - Token is not a valid JWT");
-                    return false;
+                    if (permissionObj is List<string> permissionList && permissionList.Contains(permissionName))
+                    {
+                        Log.Information("HasPermission check (validated token) - User has permission '{Permission}'", permissionName);
+                        return true;
+                    }
+                    else if (permissionObj?.ToString() == permissionName)
+                    {
+                        Log.Information("HasPermission check (validated token) - User has permission '{Permission}'", permissionName);
+                        return true;
+                    }
                 }
-                
-                var jwtToken = tokenHandler.ReadJwtToken(token);
 
-                var jwtPermissions = jwtToken.Claims.Where(c => c.Type == "permission");
-                var jwtPermissionsStr = string.Join(", ", jwtPermissions.Select(c => c.Value));
-                Log.Debug("HasPermission check (JWT) for '{Permission}' - permission claims: {Claims}", permissionName, jwtPermissionsStr);
-                
-                if (jwtPermissions.Any(c => c.Value == permissionName))
-                {
-                    Log.Information("HasPermission check (JWT) - User has permission '{Permission}'", permissionName);
-                    return true;
-                }
-                
                 Log.Warning("HasPermission check - User does not have permission '{Permission}'", permissionName);
                 return false;
             }
@@ -360,6 +361,16 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         protected string? GetUserId()
         {
+            return GetUserIdAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Asynchronously gets the current user's ID from validated claims.
+        /// This method properly handles both ASP.NET Core authenticated principals and OAuth tokens (including JWE).
+        /// </summary>
+        /// <returns>The user ID (sub claim) if present; otherwise null.</returns>
+        protected async Task<string?> GetUserIdAsync()
+        {
             try
             {
                 // Try ASP.NET Core authentication first (OpenIddict)
@@ -372,19 +383,28 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                // Fallback to custom JWT authentication
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                // For tokens that aren't already authenticated, validate via OAuth
+                // This handles both regular JWTs and encrypted JWE tokens
+                var claims = await ValidateOAuthTokenAsync();
+                if (claims == null)
                 {
-                    Log.Warning("Missing or invalid Authorization header");
+                    Log.Warning("GetUserId - Token validation failed");
                     return null;
                 }
 
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
+                // Try to extract user ID from validated claims
+                if (claims.TryGetValue("sub", out var subObj))
+                {
+                    return subObj?.ToString();
+                }
 
-                return jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+                if (claims.TryGetValue(ClaimTypes.NameIdentifier, out var nameIdObj))
+                {
+                    return nameIdObj?.ToString();
+                }
+
+                Log.Warning("GetUserId - No user ID claim found in validated token");
+                return null;
             }
             catch (Exception ex)
             {
