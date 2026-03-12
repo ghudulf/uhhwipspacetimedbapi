@@ -52,7 +52,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            // Use async token validation instead of weak IsAuthenticated check
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
@@ -87,13 +89,54 @@ namespace TicketSalesApp.AdminServer.Controllers
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
-                "read_all" => new { jobs = await _employeeService.GetAllJobsAsync() },
-                "read" => new { job = await _employeeService.GetJobByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var jobs = await _employeeService.GetAllJobsAsync();
+            // Map to same DTO shape as REST GetJobs endpoint
+            var mappedJobs = jobs.Select(j => new {
+                j.JobId,
+                j.JobTitle,
+                j.Internship,
+                j.BaseSalary,
+                j.Department,
+                j.JobDescription,
+                j.RequiredExperience,
+                j.RequiredSkills,
+                j.RequiredCertifications,
+                j.EducationRequirements,
+                j.WorkSchedule,
+                j.IsFullTime,
+                j.IsPartTime,
+                j.IsShiftWork,
+                j.Benefits,
+                j.ReportingTo,
+                j.VacationDays,
+                j.SickDays,
+                j.PerformanceMetrics
+            }).ToList();
+            return new { jobs = mappedJobs };
+        }
+
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var job = await _employeeService.GetJobByIdAsync(id);
+            // Map to same DTO shape as REST GetJob endpoint
+            var mappedJob = job != null ? new {
+                job.JobId,
+                job.JobTitle,
+                job.Internship
+            } : null;
+            return new { job = mappedJob };
         }
 
         /// <summary>
@@ -105,7 +148,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into a CreateJobModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
             var model = request.Payload?.Deserialize<CreateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
@@ -115,6 +158,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "job.created",
                         Resource: "jobs",
@@ -122,11 +170,16 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 201,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
-                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = success.ToString() }
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { 
+                            ["operation"] = "create", 
+                            ["success"] = success.ToString(),
+                            ["jobTitle"] = model.JobTitle ?? "",
+                            ["internship"] = model.JobInternship?.ToString() ?? ""
+                        }
                     ));
                 }
                 catch (Exception ex)
@@ -147,7 +200,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing or invalid for the update operation.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
@@ -159,6 +212,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "job.updated",
                         Resource: "jobs",
@@ -166,11 +224,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
-                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { 
+                            ["operation"] = "update", 
+                            ["success"] = success.ToString(),
+                            ["id"] = id.ToString()
+                        }
                     ));
                 }
                 catch (Exception ex)
@@ -191,7 +253,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _employeeService.DeleteJobAsync(id);
             var result = new { operation = "delete", success, deletedId = id };
@@ -200,6 +262,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "job.deleted",
                         Resource: "jobs",
@@ -207,11 +274,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
-                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString() }
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { 
+                            ["operation"] = "delete", 
+                            ["success"] = success.ToString(),
+                            ["deletedId"] = id.ToString()
+                        }
                     ));
                 }
                 catch (Exception ex)

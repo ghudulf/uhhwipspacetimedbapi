@@ -59,9 +59,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            // Use async token validation instead of weak IsAuthenticated check
+            // Use async token validation - require successful validation only
             var claims = await ValidateOAuthTokenAsync();
-            if (claims == null && !IsAuthenticated())
+            if (claims == null)
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;

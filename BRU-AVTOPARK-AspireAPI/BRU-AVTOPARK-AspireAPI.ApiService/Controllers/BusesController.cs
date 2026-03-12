@@ -56,13 +56,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeBusEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            // Use async token validation instead of weak IsAuthenticated check
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
-            if (!IsAdmin() && !HasPermission("buses.view"))
+            if (!await IsAdminAsync() && !HasPermission("buses.view"))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -154,7 +156,36 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for read");
-            return new { bus = await _busService.GetBusByIdAsync(id) };
+            var bus = await _busService.GetBusByIdAsync(id);
+            
+            // Map to same DTO shape as HandleReadAllCommandAsync
+            var mappedBus = bus != null ? new {
+                bus.BusId,
+                bus.Model,
+                bus.RegistrationNumber,
+                bus.Capacity,
+                bus.BusType,
+                bus.Year,
+                bus.Vin,
+                bus.LicensePlate,
+                bus.CurrentStatus,
+                bus.IsActive,
+                bus.SeatedCapacity,
+                bus.StandingCapacity,
+                bus.CurrentLocation,
+                bus.LastLocationUpdate,
+                bus.FuelConsumption,
+                bus.CurrentFuelLevel,
+                bus.FuelType,
+                bus.MileageTotal,
+                bus.MileageSinceService,
+                bus.HasAccessibility,
+                bus.HasAirConditioning,
+                bus.HasWifi,
+                bus.HasUsbCharging
+            } : null;
+            
+            return new { bus = mappedBus };
         }
 
         /// <summary>
@@ -220,6 +251,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         $"Created bus {model.Model} with ID {bus.BusId}");
                 }
 
+                var userName = await GetUserNameAsync();
+                var tenant = User?.FindFirst("tenant")?.Value;
+                var sourceIp = GetClientIp();
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.created",
                     Resource: "buses",
@@ -227,10 +262,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 201,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
+                    UserId: userId,
+                    UserName: userName,
+                    Tenant: tenant,
+                    SourceIp: sourceIp,
                     Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
                 ));
             }
@@ -297,6 +332,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         $"Updated bus {model.Model} with ID {id}");
                 }
 
+                var userName = await GetUserNameAsync();
+                var tenant = User?.FindFirst("tenant")?.Value;
+                var sourceIp = GetClientIp();
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.updated",
                     Resource: "buses",
@@ -304,10 +343,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 200,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
+                    UserId: userId,
+                    UserName: userName,
+                    Tenant: tenant,
+                    SourceIp: sourceIp,
                     Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
                 ));
             }
@@ -351,6 +390,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         $"Deleted bus with ID {id}");
                 }
 
+                var userName = await GetUserNameAsync();
+                var tenant = User?.FindFirst("tenant")?.Value;
+                var sourceIp = GetClientIp();
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.deleted",
                     Resource: "buses",
@@ -358,10 +401,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 200,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
+                    UserId: userId,
+                    UserName: userName,
+                    Tenant: tenant,
+                    SourceIp: sourceIp,
                     Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString(), ["deletedId"] = id.ToString() }
                 ));
             }

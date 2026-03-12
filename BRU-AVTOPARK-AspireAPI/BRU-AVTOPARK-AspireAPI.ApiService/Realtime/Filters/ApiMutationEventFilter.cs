@@ -6,6 +6,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Filters;
 
 public sealed class ApiMutationEventFilter : IAsyncActionFilter
 {
+    private const string TenantClaimType = "tenant";
+    private const int MaxMetadataStringLength = 200;
+
     private static readonly HashSet<string> MutationMethods = new(StringComparer.OrdinalIgnoreCase)
     {
         HttpMethods.Post,
@@ -68,17 +71,14 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
 
         var user = context.HttpContext.User;
-        var sanitizedPath = request.Path.ToString();
-        if (sanitizedPath.Length > 200)
-        {
-            sanitizedPath = sanitizedPath.Substring(0, 200);
-        }
+        var sanitizedPath = TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength);
+        var sanitizedUserAgent = TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
         
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["action"] = context.ActionDescriptor.DisplayName ?? "unknown",
             ["path"] = sanitizedPath,
-            ["userAgent"] = request.Headers.UserAgent.ToString(),
+            ["userAgent"] = sanitizedUserAgent,
             ["traceId"] = context.HttpContext.TraceIdentifier
             // Query string intentionally omitted to prevent PII/token leakage
         };
@@ -92,7 +92,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             CorrelationId: context.HttpContext.TraceIdentifier,
             UserId: user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value,
             UserName: user.Identity?.Name,
-            Tenant: user.FindFirst("tenant")?.Value,
+            Tenant: user.FindFirst(TenantClaimType)?.Value,
             SourceIp: context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             Metadata: metadata);
 
@@ -104,6 +104,21 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         {
             _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", request.Method, sanitizedPath);
         }
+    }
+
+    /// <summary>
+    /// Truncates a string to the specified maximum length if it exceeds that length.
+    /// </summary>
+    /// <param name="value">The string to truncate.</param>
+    /// <param name="maxLength">The maximum allowed length.</param>
+    /// <returns>The original string if it's within the limit, otherwise a truncated version.</returns>
+    private static string TruncateIfNeeded(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+        return value.Substring(0, maxLength);
     }
 
     /// <summary>

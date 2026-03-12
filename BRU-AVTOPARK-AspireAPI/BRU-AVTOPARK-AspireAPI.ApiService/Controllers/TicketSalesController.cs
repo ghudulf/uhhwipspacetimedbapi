@@ -69,9 +69,9 @@ using Microsoft.AspNetCore.Authorization;
             [HttpGet("realtime/ws")]
             public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
             {
-                // Use async token validation instead of weak IsAuthenticated check
+                // Use async token validation - require successful validation only
                 var claims = await ValidateOAuthTokenAsync();
-                if (claims == null && !IsAuthenticated())
+                if (claims == null)
                 {
                     Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return;
@@ -129,7 +129,7 @@ using Microsoft.AspNetCore.Authorization;
             /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateTicketSaleModel"/>.</exception>
             private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
             {
-                if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+                if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
                 var model = request.Payload?.Deserialize<CreateTicketSaleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? throw new InvalidOperationException("payload is required for create");
 
