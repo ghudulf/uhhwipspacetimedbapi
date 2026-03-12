@@ -69,7 +69,9 @@ using Microsoft.AspNetCore.Authorization;
             [HttpGet("realtime/ws")]
             public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
             {
-                if (!IsAuthenticated())
+                // Use async token validation instead of weak IsAuthenticated check
+                var claims = await ValidateOAuthTokenAsync();
+                if (claims == null && !IsAuthenticated())
                 {
                     Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return;

@@ -17,11 +17,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Auth",
-        "AuthController",
         "AuthRefactored",
-        "AuthControllerRefactored",
-        "Realtime",
-        "RealtimeController"
+        "Realtime"
     };
 
     private readonly IRealtimeEventBus _eventBus;
@@ -65,16 +62,22 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             : "unknown";
 
         // Skip RealtimeController to prevent duplicate events (it publishes its own)
-        if (ExcludedControllers.Contains(resource) || resource == "Realtime")
+        if (ExcludedControllers.Contains(resource))
         {
             return;
         }
 
         var user = context.HttpContext.User;
+        var sanitizedPath = request.Path.ToString();
+        if (sanitizedPath.Length > 200)
+        {
+            sanitizedPath = sanitizedPath.Substring(0, 200);
+        }
+        
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["action"] = context.ActionDescriptor.DisplayName ?? "unknown",
-            ["path"] = request.Path.ToString(),
+            ["path"] = sanitizedPath,
             ["userAgent"] = request.Headers.UserAgent.ToString(),
             ["traceId"] = context.HttpContext.TraceIdentifier
             // Query string intentionally omitted to prevent PII/token leakage
@@ -87,7 +90,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             StatusCode: statusCode,
             OccurredAt: DateTimeOffset.UtcNow,
             CorrelationId: context.HttpContext.TraceIdentifier,
-            UserId: user.FindFirst("sub")?.Value ?? user.FindFirst("identity")?.Value,
+            UserId: user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value,
             UserName: user.Identity?.Name,
             Tenant: user.FindFirst("tenant")?.Value,
             SourceIp: context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -99,7 +102,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", request.Method, request.Path);
+            _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", request.Method, sanitizedPath);
         }
     }
 

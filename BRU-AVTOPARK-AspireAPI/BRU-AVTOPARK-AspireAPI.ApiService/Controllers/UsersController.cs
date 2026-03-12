@@ -57,9 +57,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            // Validate token and check permissions
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null && !IsAuthenticated())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            // Require admin or users.view permission to subscribe to users channel
+            if (!await IsAdminAsync() && !HasPermission("users.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
             }
 
@@ -217,21 +226,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 created.EmailConfirmed
             } : null;
 
-            var snapshot = await _userService.GetAllUsersAsync();
-            var safeSnapshot = snapshot.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(),
-                u.Login,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
+            // Only include snapshot if user has view permission
+            object result;
+            if (IsAdmin() || HasPermission("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(u => new {
+                    u.LegacyUserId,
+                    UserId = u.UserId.ToString(),
+                    u.Login,
+                    u.Email,
+                    u.PhoneNumber,
+                    u.IsActive,
+                    u.CreatedAt,
+                    u.LastLoginAt,
+                    u.LegacyGuid,
+                    u.EmailConfirmed
+                }).ToList();
+                result = new { operation = "create", success = created is not null, entity = safeEntity, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = safeEntity };
+            }
 
-            return new { operation = "create", success = created is not null, entity = safeEntity, snapshot = safeSnapshot };
+            // Publish realtime event (best-effort)
+            if (created != null)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.created",
+                        Resource: "users",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: GetUserId(),
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true", ["createdUserId"] = created.UserId.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.created");
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -267,21 +311,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 entity.EmailConfirmed
             } : null;
 
-            var snapshot = await _userService.GetAllUsersAsync();
-            var safeSnapshot = snapshot.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(),
-                u.Login,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
+            // Only include snapshot if user has view permission
+            object result;
+            if (IsAdmin() || HasPermission("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(u => new {
+                    u.LegacyUserId,
+                    UserId = u.UserId.ToString(),
+                    u.Login,
+                    u.Email,
+                    u.PhoneNumber,
+                    u.IsActive,
+                    u.CreatedAt,
+                    u.LastLoginAt,
+                    u.LegacyGuid,
+                    u.EmailConfirmed
+                }).ToList();
+                result = new { operation = "update", success, entity = safeEntity, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "update", success, entity = safeEntity };
+            }
 
-            return new { operation = "update", success, entity = safeEntity, snapshot = safeSnapshot };
+            // Publish realtime event (best-effort)
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.updated",
+                        Resource: "users",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: GetUserId(),
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true", ["updatedUserId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.updated");
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -306,28 +385,71 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
 
+            // Reject if caller identity cannot be resolved
             var currentUserId = GetUserId();
-            if (currentUserId != null && id.ToString() == currentUserId)
+            if (currentUserId == null)
+            {
+                Response.StatusCode = StatusCodes.Status401Unauthorized;
+                throw new UnauthorizedAccessException("Unable to resolve caller identity");
+            }
+
+            if (id.ToString() == currentUserId)
             {
                 throw new InvalidOperationException("You cannot delete your own account");
             }
 
             var success = await _userService.DeleteUserAsync(id);
-            var snapshot = await _userService.GetAllUsersAsync();
-            var safeSnapshot = snapshot.Select(u => new {
-                u.LegacyUserId,
-                UserId = u.UserId.ToString(),
-                u.Login,
-                u.Email,
-                u.PhoneNumber,
-                u.IsActive,
-                u.CreatedAt,
-                u.LastLoginAt,
-                u.LegacyGuid,
-                u.EmailConfirmed
-            }).ToList();
 
-            return new { operation = "delete", success, deletedId = id, snapshot = safeSnapshot };
+            // Only include snapshot if user has view permission
+            object result;
+            if (IsAdmin() || HasPermission("users.view"))
+            {
+                var snapshot = await _userService.GetAllUsersAsync();
+                var safeSnapshot = snapshot.Select(u => new {
+                    u.LegacyUserId,
+                    UserId = u.UserId.ToString(),
+                    u.Login,
+                    u.Email,
+                    u.PhoneNumber,
+                    u.IsActive,
+                    u.CreatedAt,
+                    u.LastLoginAt,
+                    u.LegacyGuid,
+                    u.EmailConfirmed
+                }).ToList();
+                result = new { operation = "delete", success, deletedId = id, snapshot = safeSnapshot };
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
+            }
+
+            // Publish realtime event (best-effort)
+            if (success)
+            {
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "user.deleted",
+                        Resource: "users",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: currentUserId,
+                        UserName: await GetUserNameAsync(),
+                        Tenant: User?.FindFirst("tenant")?.Value,
+                        SourceIp: GetClientIp(),
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true", ["deletedUserId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for user.deleted");
+                }
+            }
+
+            return result;
         }
 
         /// <summary>

@@ -63,21 +63,21 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Retrieving employees by job ID: {JobId}", jobId);
                 var connection = _spacetimeDBService.GetConnection();
                 
-                // Add detailed logging before ToList()
-                var filteredEmployees = connection.Db.Employee.Iter()
-                    .Where(e => e.JobId == jobId);
+                // Materialize the query once to avoid double enumeration
+                var resultList = connection.Db.Employee.Iter()
+                    .Where(e => e.JobId == jobId)
+                    .ToList();
                 
-                _logger.LogDebug("Employees matching JobId {JobId} before ToList():", jobId);
-                foreach (var emp in filteredEmployees) // Iterate before ToList to log IDs
+                _logger.LogDebug("Employees matching JobId {JobId}:", jobId);
+                foreach (var emp in resultList)
                 {
                     _logger.LogDebug("- EmployeeId: {EmployeeId}, Name: {Surname}, JobId: {JobId}", emp.EmployeeId, emp.Surname, emp.JobId);
                     if (emp.EmployeeId == 0)
                     {
-                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId} before ToList()!", jobId);
+                         _logger.LogWarning("Found employee with EmployeeId = 0 and JobId = {JobId}!", jobId);
                     }
                 }
                 
-                var resultList = filteredEmployees.ToList();
                 _logger.LogDebug("Final list count for JobId {JobId}: {Count}", jobId, resultList.Count);
                 
                 return resultList;
@@ -136,7 +136,6 @@ namespace TicketSalesApp.Services.Implementations
                         employee.JobId == jobId)
                     {
                         _logger.LogInformation("Captured newly created employee with ID: {EmployeeId}", employee.EmployeeId);
-                        connection.Db.Employee.OnInsert -= insertHandler;
                         tcs.TrySetResult(employee);
                     }
                 }

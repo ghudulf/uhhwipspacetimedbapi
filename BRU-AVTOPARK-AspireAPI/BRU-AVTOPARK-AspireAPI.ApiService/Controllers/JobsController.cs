@@ -113,19 +113,26 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "job.created",
-                    Resource: "jobs",
-                    HttpMethod: "POST",
-                    StatusCode: 201,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
-                    Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = success.ToString() }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "job.created",
+                        Resource: "jobs",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = success.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for job.created (Resource: jobs, EventName: job.created)");
+                }
             }
 
             return result;
@@ -150,19 +157,26 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "job.updated",
-                    Resource: "jobs",
-                    HttpMethod: "PUT",
-                    StatusCode: 200,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
-                    Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "job.updated",
+                        Resource: "jobs",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for job.updated (Resource: jobs, EventName: job.updated, JobId: {JobId})", id);
+                }
             }
 
             return result;
@@ -184,19 +198,26 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "job.deleted",
-                    Resource: "jobs",
-                    HttpMethod: "DELETE",
-                    StatusCode: 200,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: null,
-                    UserName: null,
-                    Tenant: null,
-                    SourceIp: "internal",
-                    Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString() }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "job.deleted",
+                        Resource: "jobs",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for job.deleted (Resource: jobs, EventName: job.deleted, JobId: {JobId})", id);
+                }
             }
 
             return result;

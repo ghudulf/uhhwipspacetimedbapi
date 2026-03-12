@@ -210,6 +210,16 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (bus is not null)
             {
+                // Log admin action
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "CreateBus",
+                        $"Created bus {model.Model} with ID {bus.BusId}");
+                }
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.created",
                     Resource: "buses",
@@ -277,6 +287,16 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
+                // Log admin action
+                var userId = GetUserId();
+                if (userId != null && entity != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "UpdateBus",
+                        $"Updated bus {model.Model} with ID {id}");
+                }
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.updated",
                     Resource: "buses",
@@ -321,6 +341,16 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
+                // Log admin action
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeleteBus",
+                        $"Deleted bus with ID {id}");
+                }
+
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                     EventName: "bus.deleted",
                     Resource: "buses",

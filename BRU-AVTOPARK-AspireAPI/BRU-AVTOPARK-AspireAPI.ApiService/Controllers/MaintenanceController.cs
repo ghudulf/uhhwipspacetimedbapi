@@ -59,7 +59,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            // Use async token validation instead of weak IsAuthenticated check
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null && !IsAuthenticated())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
@@ -191,6 +193,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "maintenance.created",
                         Resource: "maintenance",
@@ -198,10 +206,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 201,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
                     ));
                 }
@@ -263,6 +271,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "maintenance.updated",
                         Resource: "maintenance",
@@ -270,10 +284,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
                     ));
                 }
@@ -310,6 +324,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
+                    // Extract user context from request
+                    var userId = GetUserId();
+                    var userName = await GetUserNameAsync();
+                    var tenant = User?.FindFirst("tenant")?.Value;
+                    var sourceIp = GetClientIp();
+
                     await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
                         EventName: "maintenance.deleted",
                         Resource: "maintenance",
@@ -317,10 +337,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: null,
-                        UserName: null,
-                        Tenant: null,
-                        SourceIp: "internal",
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
                     ));
                 }

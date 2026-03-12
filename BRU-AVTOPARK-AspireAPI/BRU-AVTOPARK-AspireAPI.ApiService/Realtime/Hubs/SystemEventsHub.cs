@@ -8,6 +8,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
 [Authorize(Policy = "FlexibleApiAccess")]
 public sealed class SystemEventsHub : Hub
 {
+    private readonly IAuthorizationService _authorizationService;
+    private readonly ILogger<SystemEventsHub> _logger;
+
+    public SystemEventsHub(IAuthorizationService authorizationService, ILogger<SystemEventsHub> logger)
+    {
+        _authorizationService = authorizationService;
+        _logger = logger;
+    }
+
     /// <summary>
     /// Handles a new client connection by adding the connection to the "system-events" group and sending the caller a "connectionEstablished" notification containing connection metadata.
     /// </summary>
@@ -49,12 +58,27 @@ public sealed class SystemEventsHub : Hub
     {
         var normalized = ResourceNormalization.Normalize(resourceName);
 
-        // TODO: Implement resource-scoped permission validation
-        // Verify that Context.User has access to the specific normalized resource
-        // Example: Check if user has permission for the resource via IAuthorizationService
-        // If unauthorized, throw HubException or return failed Task
+        // Check if user has permission to view this resource
+        var permissionName = $"{normalized}.view";
+        var authResult = await _authorizationService.AuthorizeAsync(Context.User, null, permissionName);
+        
+        if (!authResult.Succeeded)
+        {
+            // Check if user is admin (admins can view all resources)
+            var isAdmin = Context.User?.FindFirst("primary_role")?.Value == "1" ||
+                         Context.User?.Claims.Any(c => c.Type == "role" && c.Value == "1") == true;
+            
+            if (!isAdmin)
+            {
+                _logger.LogWarning("User {User} attempted to subscribe to resource {Resource} without permission", 
+                    Context.User?.Identity?.Name ?? "unknown", normalized);
+                throw new HubException($"Access denied: You do not have permission to view '{normalized}' resources");
+            }
+        }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, $"resource:{normalized}");
+        _logger.LogInformation("User {User} subscribed to resource {Resource}", 
+            Context.User?.Identity?.Name ?? "unknown", normalized);
     }
 
     /// <summary>
@@ -66,11 +90,8 @@ public sealed class SystemEventsHub : Hub
     {
         var normalized = ResourceNormalization.Normalize(resourceName);
 
-        // TODO: Implement resource-scoped permission validation
-        // Verify that Context.User has access to the specific normalized resource
-        // Example: Check if user has permission for the resource via IAuthorizationService
-        // If unauthorized, throw HubException or return failed Task
-
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"resource:{normalized}");
+        _logger.LogInformation("User {User} unsubscribed from resource {Resource}", 
+            Context.User?.Identity?.Name ?? "unknown", normalized);
     }
 }
