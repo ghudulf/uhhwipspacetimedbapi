@@ -148,8 +148,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
-            var snapshot = await _permissionService.GetAllPermissionsAsync();
-            return new { operation = "create", success = created is not null, entity = created, snapshot };
+
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                return new { operation = "create", success = created is not null, entity = created, snapshot };
+            }
+
+            return new { operation = "create", success = created is not null, entity = created };
         }
 
         /// <summary>
@@ -173,8 +179,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
             var entity = await _permissionService.GetPermissionByIdAsync(id);
-            var snapshot = await _permissionService.GetAllPermissionsAsync();
-            return new { operation = "update", success, entity, snapshot };
+
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                return new { operation = "update", success, entity, snapshot };
+            }
+
+            return new { operation = "update", success, entity };
         }
 
         /// <summary>
@@ -202,8 +214,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var success = await _permissionService.DeletePermissionAsync(id);
-            var snapshot = await _permissionService.GetAllPermissionsAsync();
-            return new { operation = "delete", success, deletedId = id, snapshot };
+
+            if (IsAdmin() || HasPermission("permissions.view"))
+            {
+                var snapshot = await _permissionService.GetAllPermissionsAsync();
+                return new { operation = "delete", success, deletedId = id, snapshot };
+            }
+
+            return new { operation = "delete", success, deletedId = id };
         }
 
         /// <summary>

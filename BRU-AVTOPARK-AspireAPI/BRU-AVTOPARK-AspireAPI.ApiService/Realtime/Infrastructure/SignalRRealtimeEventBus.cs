@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Helpers;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Options;
 using Microsoft.AspNetCore.SignalR;
@@ -75,7 +76,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var normalizedResource = NormalizeResource(resource);
+        var normalizedResource = ResourceNormalization.Normalize(resource);
         var subscriptionChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(256)
         {
             SingleReader = true,
@@ -143,7 +144,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <param name="domainEvent">The domain event to dispatch to matching local subscribers.</param>
     private void DispatchToLocalSubscribers(ApiDomainEvent domainEvent)
     {
-        var normalized = NormalizeResource(domainEvent.Resource);
+        var normalized = ResourceNormalization.Normalize(domainEvent.Resource);
 
         foreach (var (_, subscriber) in _subscribers)
         {
@@ -168,17 +169,5 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         while (_recentEvents.Count > max && _recentEvents.TryDequeue(out _))
         {
         }
-    }
-
-    /// <summary>
-    /// Normalize a resource identifier to a canonical form used for subscription matching.
-    /// </summary>
-    /// <param name="resource">The resource identifier to normalize; may be null, empty, or whitespace.</param>
-    /// <returns>The trimmed, lowercase resource identifier, or the literal "all" if <paramref name="resource"/> is null, empty, or whitespace.</returns>
-    private static string NormalizeResource(string resource)
-    {
-        return string.IsNullOrWhiteSpace(resource)
-            ? "all"
-            : resource.Trim().ToLowerInvariant();
     }
 }

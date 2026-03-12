@@ -125,8 +125,18 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
-                ?? User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value
-                ?? throw new UnauthorizedAccessException("User identity could not be determined");
+                ?? User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
+
+            // If claims lookup returns null, fall back to validated-token path from BaseController
+            if (string.IsNullOrWhiteSpace(userLogin))
+            {
+                // Use BaseController's GetUserNameAsync for fallback
+                userLogin = await GetUserNameAsync();
+                if (string.IsNullOrWhiteSpace(userLogin))
+                {
+                    throw new UnauthorizedAccessException("User identity could not be determined");
+                }
+            }
 
             var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin)
                 ?? throw new UnauthorizedAccessException("Unable to resolve user identity");

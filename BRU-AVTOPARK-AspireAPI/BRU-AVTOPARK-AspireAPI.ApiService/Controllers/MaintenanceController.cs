@@ -113,7 +113,21 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
             var success = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, "General");
             var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            return new { operation = "create", success, snapshot };
+            var record = success ? snapshot.LastOrDefault() : null;
+            var result = new { operation = "create", success, snapshot, record };
+
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "maintenance",
+                    EventName = "maintenance.created",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -138,7 +152,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
             var entity = await _maintenanceService.GetMaintenanceByIdAsync(id);
             var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            return new { operation = "update", success, entity, snapshot };
+            var result = new { operation = "update", success, entity, snapshot, record = entity };
+
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "maintenance",
+                    EventName = "maintenance.updated",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -160,7 +187,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _maintenanceService.DeleteMaintenanceAsync(id);
             var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            return new { operation = "delete", success, deletedId = id, snapshot };
+            var result = new { operation = "delete", success, deletedId = id, snapshot, record = (object?)null };
+
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "maintenance",
+                    EventName = "maintenance.deleted",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>

@@ -62,6 +62,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!IsAdmin() && !HasPermission("buses.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 _realtimeEventBus.SubscribeAsync("buses", cancellationToken),
@@ -150,7 +156,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var bus = await _busService.CreateBusAsync(model.Model);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "create", success = bus is not null, entity = bus, snapshot };
+            var result = new { operation = "create", success = bus is not null, entity = bus, snapshot };
+
+            if (bus is not null)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "buses",
+                    EventName = "bus.created",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -174,7 +193,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _busService.UpdateBusAsync(id, model.Model);
             var entity = await _busService.GetBusByIdAsync(id);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "update", success, entity, snapshot };
+            var result = new { operation = "update", success, entity, snapshot };
+
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "buses",
+                    EventName = "bus.updated",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -200,7 +232,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _busService.DeleteBusAsync(id);
             var snapshot = await _busService.GetAllBusesAsync();
-            return new { operation = "delete", success, deletedId = id, snapshot };
+            var result = new { operation = "delete", success, deletedId = id, snapshot };
+
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "buses",
+                    EventName = "bus.deleted",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>

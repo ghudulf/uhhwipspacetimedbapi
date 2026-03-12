@@ -1,4 +1,5 @@
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -44,7 +45,7 @@ public sealed class SystemEventsHub : Hub
     /// <returns>A task that completes when the connection has been added to the corresponding resource group.</returns>
     public Task SubscribeResource(string resourceName)
     {
-        var normalized = NormalizeResource(resourceName);
+        var normalized = ResourceNormalization.Normalize(resourceName);
         return Groups.AddToGroupAsync(Context.ConnectionId, $"resource:{normalized}");
     }
 
@@ -55,19 +56,7 @@ public sealed class SystemEventsHub : Hub
     /// <returns>A task that completes when the connection has been removed from the corresponding resource group.</returns>
     public Task UnsubscribeResource(string resourceName)
     {
-        var normalized = NormalizeResource(resourceName);
+        var normalized = ResourceNormalization.Normalize(resourceName);
         return Groups.RemoveFromGroupAsync(Context.ConnectionId, $"resource:{normalized}");
-    }
-
-    /// <summary>
-    /// Normalize a resource name for group identifiers by returning "all" for null or whitespace inputs or the trimmed, lower-case name otherwise.
-    /// </summary>
-    /// <param name="resourceName">The resource name to normalize; if null or whitespace, the method returns "all".</param>
-    /// <returns>The normalized resource name: "all" when input is null/empty/whitespace; otherwise the input trimmed and converted to lower-case.</returns>
-    private static string NormalizeResource(string resourceName)
-    {
-        return string.IsNullOrWhiteSpace(resourceName)
-            ? "all"
-            : resourceName.Trim().ToLowerInvariant();
     }
 }

@@ -203,7 +203,29 @@ using Microsoft.AspNetCore.Authorization;
                     throw new InvalidOperationException($"Ticket {model.TicketId} already sold");
                 }
 
-                var identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+                // Extract login from validated bearer/token data path (same as BaseController)
+                string? identityClaim = null;
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+                }
+
+                if (string.IsNullOrWhiteSpace(identityClaim))
+                {
+                    // Fallback to parsing JWT from Authorization header
+                    var authHeader = Request.Headers["Authorization"].ToString();
+                    if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                    {
+                        var token = authHeader.Substring("Bearer ".Length);
+                        var tokenHandler = new JwtSecurityTokenHandler();
+                        if (tokenHandler.CanReadToken(token))
+                        {
+                            var jwtToken = tokenHandler.ReadJwtToken(token);
+                            identityClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                        }
+                    }
+                }
+
                 if (string.IsNullOrWhiteSpace(identityClaim))
                 {
                     throw new UnauthorizedAccessException("Identity claim missing");
