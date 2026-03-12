@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
-public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventBus
+public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventBus, IAsyncDisposable
 {
     private readonly record struct EventSubscriber(string Resource, Channel<ApiDomainEvent> Channel);
 
@@ -20,6 +20,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly IHubContext<SystemEventsHub> _hubContext;
     private readonly ILogger<SignalRRealtimeEventBus> _logger;
     private readonly RealtimeEventOptions _options;
+    private readonly SemaphoreSlim _disposalLock = new(1, 1);
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a SignalRRealtimeEventBus with the provided SignalR hub context, configuration options, and logger.
@@ -53,6 +55,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
     public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
         _logger.LogInformation("[EventBus] Publishing event: {EventName} for resource: {Resource} (CorrelationId: {CorrelationId})",
             domainEvent.EventName,
             domainEvent.Resource,
@@ -71,6 +75,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An array containing up to the requested number of most recent events in reverse chronological order.</returns>
     public IReadOnlyCollection<ApiDomainEvent> GetRecentEvents(int maxCount = 250)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
         var safeCount = Math.Clamp(maxCount, 1, Math.Max(1, _options.RecentEventLimit));
         return _recentEvents.Reverse().Take(safeCount).ToArray();
     }
@@ -83,6 +89,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
         var normalizedResource = ResourceNormalization.Normalize(resource);
         var subscriptionChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(256)
         {
@@ -95,6 +103,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         var subscriberId = Guid.NewGuid();
         _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
 
+        _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", subscriberId, normalizedResource);
+
         try
         {
             await foreach (var evt in subscriptionChannel.Reader.ReadAllAsync(cancellationToken))
@@ -104,8 +114,12 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
         finally
         {
-            _subscribers.TryRemove(subscriberId, out _);
-            subscriptionChannel.Writer.TryComplete();
+            // Ensure cleanup happens even if enumeration is abandoned
+            if (_subscribers.TryRemove(subscriberId, out var removedSubscriber))
+            {
+                removedSubscriber.Channel.Writer.TryComplete();
+                _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, normalizedResource);
+            }
         }
     }
 
@@ -117,33 +131,65 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// </remarks>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var domainEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
+        _logger.LogInformation("[EventBus] Background event processing started");
+        
+        try
         {
-            DispatchToLocalSubscribers(domainEvent);
+            await foreach (var domainEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
+            {
+                DispatchToLocalSubscribers(domainEvent);
 
-            using var timeoutCts = new CancellationTokenSource(Math.Max(25, _options.PublishTimeoutMs));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
+                using var timeoutCts = new CancellationTokenSource(Math.Max(25, _options.PublishTimeoutMs));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
 
-            try
-            {
-                var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
-                await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                await _hubContext.Clients.Group($"resource:{normalizedResource}")
-                    .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
-            }
-            catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
-            {
-                _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
-                    domainEvent.EventName,
-                    domainEvent.CorrelationId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
-                    domainEvent.EventName,
-                    domainEvent.CorrelationId);
+                try
+                {
+                    var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
+                    await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
+                    await _hubContext.Clients.Group($"resource:{normalizedResource}")
+                        .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
+                }
+                catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
+                {
+                    _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
+                        domainEvent.EventName,
+                        domainEvent.CorrelationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
+                        domainEvent.EventName,
+                        domainEvent.CorrelationId);
+                }
             }
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[EventBus] Background event processing cancelled");
+        }
+        finally
+        {
+            _logger.LogInformation("[EventBus] Background event processing stopped");
+        }
+    }
+
+    /// <summary>
+    /// Stops the background service and ensures all resources are properly disposed.
+    /// </summary>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("[EventBus] Stopping event bus and cleaning up resources");
+        
+        // Complete the event channel to stop accepting new events
+        _eventChannel.Writer.TryComplete();
+        
+        // Wait for background processing to complete
+        await base.StopAsync(cancellationToken);
+        
+        // Dispose all active subscriptions
+        await DisposeAllSubscriptionsAsync();
+        
+        _logger.LogInformation("[EventBus] Event bus stopped successfully");
     }
 
     /// <summary>
@@ -177,5 +223,92 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         while (_recentEvents.Count > max && _recentEvents.TryDequeue(out _))
         {
         }
+    }
+
+    /// <summary>
+    /// Disposes all active subscriptions and completes their channels.
+    /// </summary>
+    private async Task DisposeAllSubscriptionsAsync()
+    {
+        await _disposalLock.WaitAsync();
+        try
+        {
+            var subscriberCount = _subscribers.Count;
+            if (subscriberCount > 0)
+            {
+                _logger.LogInformation("[EventBus] Disposing {Count} active subscriptions", subscriberCount);
+                
+                foreach (var (subscriberId, subscriber) in _subscribers)
+                {
+                    subscriber.Channel.Writer.TryComplete();
+                    _logger.LogDebug("[EventBus] Completed channel for subscription: {SubscriberId}", subscriberId);
+                }
+                
+                _subscribers.Clear();
+                _logger.LogInformation("[EventBus] All subscriptions disposed");
+            }
+        }
+        finally
+        {
+            _disposalLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the event bus and all its resources.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await _disposalLock.WaitAsync();
+        try
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _logger.LogInformation("[EventBus] Disposing event bus");
+
+            // Complete the event channel
+            _eventChannel.Writer.TryComplete();
+
+            // Dispose all subscriptions
+            await DisposeAllSubscriptionsAsync();
+
+            // Clear recent events
+            _recentEvents.Clear();
+
+            _disposed = true;
+            _logger.LogInformation("[EventBus] Event bus disposed successfully");
+        }
+        finally
+        {
+            _disposalLock.Release();
+            _disposalLock.Dispose();
+        }
+
+        // Call base dispose
+        Dispose();
+    }
+
+    /// <summary>
+    /// Synchronous dispose implementation.
+    /// </summary>
+    public override void Dispose()
+    {
+        if (!_disposed)
+        {
+            _eventChannel.Writer.TryComplete();
+            _disposalLock.Dispose();
+            _disposed = true;
+        }
+        
+        base.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

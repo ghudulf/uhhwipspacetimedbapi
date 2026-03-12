@@ -1,6 +1,7 @@
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -108,7 +109,7 @@ public sealed class RealtimeController : ControllerBase
 
         var buffer = new byte[8192];
         var subscriptions = new HashSet<string>();
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
 
         try
         {
@@ -136,7 +137,8 @@ public sealed class RealtimeController : ControllerBase
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var messageJson = Encoding.UTF8.GetString(ms.ToArray());
-                    _logger.LogInformation("[{ConnectionId}] <<<< RECEIVED RAW: {Message}", connectionId, messageJson);
+                    var sanitizedMessage = SanitizeMessageForLogging(messageJson);
+                    _logger.LogDebug("[{ConnectionId}] <<<< RECEIVED: {Message}", connectionId, sanitizedMessage);
 
                     await HandleMessageAsync(webSocket, messageJson, subscriptions, connectionId, linkedCts.Token);
                 }
@@ -167,10 +169,6 @@ public sealed class RealtimeController : ControllerBase
                 };
                 await SendJsonAsync(webSocket, errorResponse, CancellationToken.None);
             }
-        }
-        finally
-        {
-            linkedCts.Dispose();
         }
     }
 
@@ -374,39 +372,38 @@ public sealed class RealtimeController : ControllerBase
                     if (pageSizeParam < 1) pageSizeParam = 100;
                     if (pageSizeParam > 500) pageSizeParam = 500; // Max 500 items per page
                     
-                    // Get total count first for navigation commands
-                    var paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
-                    totalCount = paginatedResult.TotalCount;
-                    totalPages = (int)Math.Ceiling(totalCount.Value / (double)pageSizeParam);
+                    // Get total count with lightweight count-only call
+                    totalCount = await ExecuteCountAsync(service, resource);
                     
-                    // Handle navigation commands
+                    // Ensure totalPages is at least 1 to prevent page from being set to 0
+                    totalPages = Math.Max(1, (int)Math.Ceiling(totalCount.Value / (double)pageSizeParam));
+                    
+                    // Determine target page based on navigation command
+                    int targetPage = pageParam;
                     switch (command)
                     {
                         case "next_page":
-                            pageParam = Math.Min(pageParam + 1, totalPages.Value);
-                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            targetPage = Math.Min(pageParam + 1, totalPages.Value);
                             break;
                         case "prev_page":
-                            pageParam = Math.Max(pageParam - 1, 1);
-                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            targetPage = Math.Max(pageParam - 1, 1);
                             break;
                         case "first_page":
-                            pageParam = 1;
-                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            targetPage = 1;
                             break;
                         case "last_page":
-                            pageParam = totalPages.Value;
-                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            targetPage = totalPages.Value;
                             break;
                         case "goto_page":
-                            // pageParam already extracted, just clamp it
-                            pageParam = Math.Max(1, Math.Min(pageParam, totalPages.Value));
-                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            targetPage = Math.Max(1, Math.Min(pageParam, totalPages.Value));
                             break;
                     }
                     
+                    // Fetch data once for the computed target page
+                    var paginatedResult = await ExecuteReadAllAsync(service, resource, targetPage, pageSizeParam);
+                    
                     result = paginatedResult.Data;
-                    page = pageParam;
+                    page = targetPage;
                     pageSize = pageSizeParam;
                     
                     _logger.LogInformation("[{ConnectionId}] {Command} {Resource} - Page {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}", 
@@ -488,17 +485,57 @@ public sealed class RealtimeController : ControllerBase
             return (null, 0);
         }
 
-        // Convert to enumerable for pagination
-        var enumerable = allData as IEnumerable<object> ?? Enumerable.Empty<object>();
-        var totalCount = enumerable.Count();
+        // Materialize to list once to avoid multiple enumerations
+        var materializedList = allData switch
+        {
+            IEnumerable<object> enumerable => enumerable.ToList(),
+            IEnumerable enumerable => enumerable.Cast<object>().ToList(),
+            _ => new List<object> { allData }
+        };
+        
+        var totalCount = materializedList.Count;
         
         // Apply pagination
-        var pagedData = enumerable
+        var pagedData = materializedList
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
 
         return (pagedData, totalCount);
+    }
+
+    private async Task<int> ExecuteCountAsync(object service, string resource)
+    {
+        object? allData = resource.ToLowerInvariant() switch
+        {
+            "buses" => await ((IBusService)service).GetAllBusesAsync(),
+            "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
+            "jobs" => await ((IEmployeeService)service).GetAllJobsAsync(),
+            "maintenance" => await ((IMaintenanceService)service).GetAllMaintenanceRecordsAsync(),
+            "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
+            "roles" => await ((IRoleService)service).GetAllRolesAsync(),
+            "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
+            "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
+            "tickets" => null,
+            "ticketsales" => null,
+            "users" => await ((IUserService)service).GetAllUsersAsync(),
+            _ => null
+        };
+
+        if (allData == null)
+        {
+            return 0;
+        }
+
+        // Materialize to get count
+        var materializedList = allData switch
+        {
+            IEnumerable<object> enumerable => enumerable.ToList(),
+            IEnumerable enumerable => enumerable.Cast<object>().ToList(),
+            _ => new List<object> { allData }
+        };
+        
+        return materializedList.Count;
     }
 
     private async Task<object?> ExecuteReadAsync(object service, string resource, uint id)
@@ -574,7 +611,7 @@ public sealed class RealtimeController : ControllerBase
         CancellationToken cancellationToken)
     {
         var enumerators = streams.Select(s => s.GetAsyncEnumerator(cancellationToken)).ToList();
-        var activeTasks = new Dictionary<Task<bool>, IAsyncEnumerator<ApiDomainEvent>>();
+        var activeTasks = new Dictionary<IAsyncEnumerator<ApiDomainEvent>, Task<bool>>();
 
         try
         {
@@ -582,22 +619,44 @@ public sealed class RealtimeController : ControllerBase
             foreach (var enumerator in enumerators)
             {
                 var moveTask = enumerator.MoveNextAsync().AsTask();
-                activeTasks[moveTask] = enumerator;
+                activeTasks[enumerator] = moveTask;
             }
 
             while (activeTasks.Count > 0 && !cancellationToken.IsCancellationRequested)
             {
-                var completed = await Task.WhenAny(activeTasks.Keys);
-                var enumerator = activeTasks[completed];
-                activeTasks.Remove(completed);
+                var completed = await Task.WhenAny(activeTasks.Values);
+                var enumerator = activeTasks.Single(kv => kv.Value == completed).Key;
+                activeTasks.Remove(enumerator);
 
-                if (await completed)
+                // Check task status before accessing Result
+                if (completed.IsFaulted)
+                {
+                    _logger.LogError(completed.Exception, "Enumerator MoveNextAsync faulted in MergeEventStreams");
+                    // Dispose the faulted enumerator and continue without re-queuing
+                    await enumerator.DisposeAsync();
+                    continue;
+                }
+
+                if (completed.IsCanceled)
+                {
+                    _logger.LogDebug("Enumerator MoveNextAsync was canceled in MergeEventStreams");
+                    await enumerator.DisposeAsync();
+                    continue;
+                }
+
+                // Safe to access Result now that we know it's completed successfully
+                if (completed.IsCompletedSuccessfully && completed.Result)
                 {
                     yield return enumerator.Current;
 
-                    // Re-queue this enumerator
+                    // Re-queue this enumerator with a new task
                     var moveTask = enumerator.MoveNextAsync().AsTask();
-                    activeTasks[moveTask] = enumerator;
+                    activeTasks[enumerator] = moveTask;
+                }
+                else
+                {
+                    // Enumerator completed (no more items)
+                    await enumerator.DisposeAsync();
                 }
             }
         }
@@ -649,6 +708,109 @@ public sealed class RealtimeController : ControllerBase
     {
         return command is "read_all" or "read" or "create" or "update" or "delete" or
             "next_page" or "prev_page" or "first_page" or "last_page" or "goto_page";
+    }
+
+    private static string SanitizeMessageForLogging(string messageJson)
+    {
+        if (string.IsNullOrEmpty(messageJson))
+        {
+            return messageJson ?? string.Empty;
+        }
+
+        const int maxLength = 200;
+        const string redactedValue = "***REDACTED***";
+        
+        // List of sensitive keys to mask
+        var sensitiveKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "password", "token", "access_token", "refresh_token", "auth", "authorization",
+            "ssn", "creditCard", "credit_card", "cvv", "pin", "secret", "api_key", "apiKey",
+            "private_key", "privateKey", "bearer"
+        };
+
+        try
+        {
+            // Try to parse as JSON and mask sensitive fields
+            using var doc = JsonDocument.Parse(messageJson);
+            var root = doc.RootElement;
+            
+            // Recursively mask sensitive values
+            var sanitized = MaskSensitiveFields(root, sensitiveKeys, redactedValue);
+            var sanitizedJson = JsonSerializer.Serialize(sanitized);
+            
+            // Apply truncation
+            if (sanitizedJson.Length > maxLength)
+            {
+                return sanitizedJson.Substring(0, maxLength) + "... (truncated)";
+            }
+            return sanitizedJson;
+        }
+        catch
+        {
+            // Fallback: use heuristic string replacement if JSON parsing fails
+            var sanitized = messageJson;
+            foreach (var key in sensitiveKeys)
+            {
+                // Simple pattern: "key":"value" or "key": "value"
+                var pattern = $"\"{key}\"\\s*:\\s*\"[^\"]*\"";
+                sanitized = System.Text.RegularExpressions.Regex.Replace(
+                    sanitized, 
+                    pattern, 
+                    $"\"{key}\":\"{redactedValue}\"",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }
+            
+            // Apply truncation
+            if (sanitized.Length > maxLength)
+            {
+                return sanitized.Substring(0, maxLength) + "... (truncated)";
+            }
+            return sanitized;
+        }
+    }
+
+    private static object MaskSensitiveFields(JsonElement element, HashSet<string> sensitiveKeys, string redactedValue)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                var dict = new Dictionary<string, object>();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (sensitiveKeys.Contains(prop.Name))
+                    {
+                        dict[prop.Name] = redactedValue;
+                    }
+                    else
+                    {
+                        dict[prop.Name] = MaskSensitiveFields(prop.Value, sensitiveKeys, redactedValue);
+                    }
+                }
+                return dict;
+            
+            case JsonValueKind.Array:
+                return element.EnumerateArray()
+                    .Select(item => MaskSensitiveFields(item, sensitiveKeys, redactedValue))
+                    .ToArray();
+            
+            case JsonValueKind.String:
+                return element.GetString() ?? string.Empty;
+            
+            case JsonValueKind.Number:
+                return element.TryGetInt64(out var longVal) ? longVal : element.GetDouble();
+            
+            case JsonValueKind.True:
+                return true;
+            
+            case JsonValueKind.False:
+                return false;
+            
+            case JsonValueKind.Null:
+                return null!;
+            
+            default:
+                return element.ToString();
+        }
     }
 
     private class ResourceHandler

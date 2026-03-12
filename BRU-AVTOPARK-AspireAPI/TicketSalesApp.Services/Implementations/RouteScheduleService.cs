@@ -132,7 +132,7 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<bool> CreateScheduleAsync(
+        public async Task<uint?> CreateScheduleAsync(
             uint? routeId = null,
             string? startPoint = null,
             string? endPoint = null,
@@ -175,8 +175,11 @@ namespace TicketSalesApp.Services.Implementations
                 if (route == null)
                 {
                     _logger.LogWarning("Route not found: {RouteId}", routeId);
-                    return false;
+                    return null;
                 }
+
+                // Get count before creation to identify the new schedule
+                var beforeCount = connection.Db.RouteSchedule.Iter().Count();
 
                 // Call the CreateRouteSchedule reducer
                 connection.Reducers.CreateRouteSchedule(
@@ -197,7 +200,20 @@ namespace TicketSalesApp.Services.Implementations
                     
                 );
 
-                return true;
+                // Wait a moment for the reducer to complete
+                await Task.Delay(100);
+
+                // Find the newly created schedule by matching unique attributes
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                var newSchedule = allSchedules
+                    .Where(s => s.RouteId == routeId && 
+                               s.DepartureTime == departureTime &&
+                               s.StartPoint == route.StartPoint &&
+                               s.EndPoint == route.EndPoint)
+                    .OrderByDescending(s => s.ScheduleId)
+                    .FirstOrDefault();
+
+                return newSchedule?.ScheduleId;
             }
             catch (Exception ex)
             {

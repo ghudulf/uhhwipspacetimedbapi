@@ -42,6 +42,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cts;
     private readonly ConcurrentDictionary<string, ControllerTestResult> _pendingRequests = new();
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCompletions = new();
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -156,14 +157,19 @@ public partial class WebSocketDebugViewModel : ObservableObject
             StatusMessage = "Connected";
             AddLog($"✓ Connected successfully");
 
-            // Start receiving messages
-            _ = Task.Run(ReceiveMessagesAsync).ContinueWith(t =>
+            // Start receiving messages with explicit exception handling
+            _ = Task.Run(async () =>
             {
-                if (t.IsFaulted && t.Exception != null)
+                try
                 {
-                    AddLog($"✗ ReceiveMessagesAsync failed: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
+                    await ReceiveMessagesAsync();
                 }
-            }, TaskContinuationOptions.OnlyOnFaulted);
+                catch (Exception ex)
+                {
+                    AddLog($"✗ ReceiveMessagesAsync failed: {ex.Message}");
+                    Log.Error(ex, "ReceiveMessagesAsync failed");
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -290,6 +296,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
     {
         try
         {
+            const int DEFAULT_PAGE = 1;
+            const int DEFAULT_PAGE_SIZE = 50;
+            
             var requestId = Guid.NewGuid().ToString();
             
             var options = new JsonSerializerOptions 
@@ -298,31 +307,22 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 WriteIndented = false
             };
             
-            string json;
+            // Build request object with conditional pagination
+            var request = new Dictionary<string, object>
+            {
+                ["command"] = "read_all",
+                ["requestId"] = requestId,
+                ["resource"] = result.ControllerName
+            };
             
             // Add pagination for routeschedules to prevent memory issues
             if (result.ControllerName == "routeschedules")
             {
-                var request = new
-                {
-                    command = "read_all",
-                    requestId = requestId,
-                    resource = result.ControllerName,
-                    page = 1,
-                    pageSize = 50  // Limit to 50 items for testing
-                };
-                json = JsonSerializer.Serialize(request, options);
+                request["page"] = DEFAULT_PAGE;
+                request["pageSize"] = DEFAULT_PAGE_SIZE;
             }
-            else
-            {
-                var request = new
-                {
-                    command = "read_all",
-                    requestId = requestId,
-                    resource = result.ControllerName
-                };
-                json = JsonSerializer.Serialize(request, options);
-            }
+            
+            var json = JsonSerializer.Serialize(request, options);
             
             AddLog($"→ [{result.ControllerName}] Sending JSON: {json}");
             
@@ -330,6 +330,10 @@ public partial class WebSocketDebugViewModel : ObservableObject
 
             if (_webSocket?.State == WebSocketState.Open)
             {
+                // Create TaskCompletionSource for awaitable response
+                var tcs = new TaskCompletionSource<bool>();
+                _pendingCompletions[requestId] = tcs;
+                
                 // Add to pending requests for correlation
                 _pendingRequests[requestId] = result;
 
@@ -339,28 +343,28 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 result.Status = TestStatus.Testing;
                 result.Message = "Request sent via universal stream (awaiting response)";
 
-                // Wait for response with timeout
-                var timeout = Task.Delay(TimeSpan.FromSeconds(10));
-                var startTime = DateTime.Now;
+                // Wait for response with timeout using TaskCompletionSource
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
                 
-                while ((DateTime.Now - startTime).TotalSeconds < 10)
+                if (completedTask == tcs.Task)
                 {
-                    if (result.Status != TestStatus.Testing)
+                    // Response received and processed
+                    AddLog($"✓ [{result.ControllerName}] Response received and processed");
+                }
+                else
+                {
+                    // Timeout
+                    if (_pendingRequests.TryRemove(requestId, out _))
                     {
-                        // Response received and processed
-                        AddLog($"✓ [{result.ControllerName}] Response received and processed");
-                        return;
+                        result.Status = TestStatus.Failed;
+                        result.Message = "Timeout waiting for response";
+                        AddLog($"✗ [{result.ControllerName}] Timeout waiting for universal stream response (RequestId: {requestId})");
                     }
-                    await Task.Delay(100);
                 }
-
-                // Timeout
-                if (_pendingRequests.TryRemove(requestId, out _))
-                {
-                    result.Status = TestStatus.Failed;
-                    result.Message = "Timeout waiting for response";
-                    AddLog($"✗ [{result.ControllerName}] Timeout waiting for universal stream response (RequestId: {requestId})");
-                }
+                
+                // Cleanup
+                _pendingCompletions.TryRemove(requestId, out _);
             }
             else
             {
@@ -426,9 +430,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
             {
                 var readAllRequest = new
                 {
-                    Command = "read_all",
-                    RequestId = Guid.NewGuid().ToString(),
-                    Payload = new { page = 1, pageSize = 50 }
+                    command = "read_all",
+                    requestId = Guid.NewGuid().ToString(),
+                    payload = new { page = 1, pageSize = 50 }
                 };
                 json = JsonSerializer.Serialize(readAllRequest);
             }
@@ -436,8 +440,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
             {
                 var readAllRequest = new
                 {
-                    Command = "read_all",
-                    RequestId = Guid.NewGuid().ToString()
+                    command = "read_all",
+                    requestId = Guid.NewGuid().ToString()
                 };
                 json = JsonSerializer.Serialize(readAllRequest);
             }
@@ -770,6 +774,12 @@ public partial class WebSocketDebugViewModel : ObservableObject
                                         testResult.LastTested = DateTime.Now;
                                         AddLog($"📬 Updated test result for {testResult.ControllerName}: {testResult.Status}");
                                     });
+                                    
+                                    // Signal completion
+                                    if (_pendingCompletions.TryGetValue(requestId, out var tcs))
+                                    {
+                                        tcs.TrySetResult(ok);
+                                    }
                                 }
                                 else
                                 {
@@ -802,6 +812,12 @@ public partial class WebSocketDebugViewModel : ObservableObject
                                         testResult.Message = $"Error: {message}";
                                         testResult.LastTested = DateTime.Now;
                                     });
+                                    
+                                    // Signal completion with error
+                                    if (_pendingCompletions.TryGetValue(requestId, out var tcs))
+                                    {
+                                        tcs.TrySetResult(false);
+                                    }
                                 }
                                 else
                                 {
@@ -885,19 +901,24 @@ public partial class WebSocketDebugViewModel : ObservableObject
         Dispatcher.UIThread.Post(() =>
         {
             EventLog.Add($"[{timestamp}] {message}");
-            
-            // Keep log size manageable - batch replace for O(n) instead of O(n²)
-            if (EventLog.Count > 500)
-            {
-                var removeCount = EventLog.Count - 500;
-                var keep = EventLog.Skip(removeCount).ToList();
-                EventLog.Clear();
-                foreach (var item in keep)
-                {
-                    EventLog.Add(item);
-                }
-            }
+            TrimEventLog();
         });
+    }
+    
+    private void TrimEventLog()
+    {
+        // Keep log size manageable - remove oldest entries in bulk
+        if (EventLog.Count > 500)
+        {
+            var keepCount = 500;
+            var itemsToKeep = EventLog.Skip(EventLog.Count - keepCount).ToList();
+            
+            EventLog.Clear();
+            foreach (var item in itemsToKeep)
+            {
+                EventLog.Add(item);
+            }
+        }
     }
 }
 
