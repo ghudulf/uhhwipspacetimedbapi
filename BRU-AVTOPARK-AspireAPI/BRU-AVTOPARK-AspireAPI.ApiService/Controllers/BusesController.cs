@@ -142,15 +142,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Handles a realtime "create" CRUD request by creating a new bus from the request payload and returning the operation result with a full snapshot of buses.
+        /// Handles a realtime "create" CRUD request by creating a new bus from the request payload and returning the operation result.
         /// </summary>
         /// <param name="request">The realtime CRUD request whose Payload must deserialize to a CreateBusModel.</param>
         /// <returns>
         /// An object containing:
         /// - operation: the string "create",
         /// - success: `true` if the bus was created, `false` otherwise,
-        /// - entity: the created bus entity (or null on failure),
-        /// - snapshot: the current list of all buses.
+        /// - entity: the created bus entity (or null on failure).
         /// </returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.create" permission.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into CreateBusModel.</exception>
@@ -226,7 +225,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Handle an incoming realtime "update" CRUD request for buses.
         /// </summary>
         /// <param name="request">Realtime CRUD request containing the target <c>Id</c> and a JSON <c>Payload</c> deserializable to <see cref="UpdateBusModel"/>.</param>
-        /// <returns>An object with keys: <c>operation</c> (string "update"), <c>success</c> (bool), <c>entity</c> (the updated bus or null), and <c>snapshot</c> (the current list of all buses).</returns>
+        /// <returns>An object with keys: <c>operation</c> (string "update"), <c>success</c> (bool), and <c>entity</c> (the updated bus or null).</returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.edit" permission.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the request is missing <c>Id</c> or <c>Payload</c>.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
@@ -300,15 +299,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Handle a realtime "delete" CRUD request for buses, performing authorization, deletion, and returning a post-operation snapshot.
+        /// Handle a realtime "delete" CRUD request for buses, performing authorization and deletion.
         /// </summary>
         /// <param name="request">The realtime CRUD request. Must contain an <c>Id</c> of the bus to delete.</param>
         /// <returns>
         /// An object with the result of the operation:
         /// - <c>operation</c>: the string "delete";
         /// - <c>success</c>: a boolean indicating whether deletion succeeded;
-        /// - <c>deletedId</c>: the id of the deleted entity;
-        /// - <c>snapshot</c>: the current collection of buses after the operation.
+        /// - <c>deletedId</c>: the id of the deleted entity.
         /// </returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "buses.delete" permission.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the request does not include a required <c>Id</c>.</exception>

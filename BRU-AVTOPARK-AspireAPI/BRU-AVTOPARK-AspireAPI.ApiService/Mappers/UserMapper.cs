@@ -23,13 +23,19 @@ namespace TicketSalesApp.AdminServer.Mappers
                 throw new ArgumentNullException(nameof(user), "User entity cannot be null");
             }
 
+            // Validate Login field before mapping
+            if (string.IsNullOrWhiteSpace(user.Login))
+            {
+                throw new ArgumentException("User Login cannot be null or empty", nameof(user));
+            }
+
             try
             {
                 return new SafeUserDto
                 {
                     LegacyUserId = user.LegacyUserId,
                     UserId = user.UserId.ToString(),
-                    Login = user.Login ?? throw new ArgumentException("User Login cannot be null", nameof(user)),
+                    Login = user.Login,
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,

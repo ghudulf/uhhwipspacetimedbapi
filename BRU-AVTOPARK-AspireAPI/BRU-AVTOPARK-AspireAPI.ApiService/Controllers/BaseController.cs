@@ -214,12 +214,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                     // Check role claims
                     if (claims.TryGetValue("role", out var roleObj))
                     {
-                        if (roleObj is List<string> roleList && roleList.Contains("1"))
+                        if (roleObj is List<string> roleList && (roleList.Contains("1") || roleList.Contains("Administrator")))
                         {
                             Log.Information("IsAdmin check (OAuth) - User is admin (role claim in list)");
                             return true;
                         }
-                        else if (roleObj?.ToString() == "1")
+                        else if (roleObj?.ToString() == "1" || roleObj?.ToString() == "Administrator")
                         {
                             Log.Information("IsAdmin check (OAuth) - User is admin (role claim)");
                             return true;
@@ -268,14 +268,29 @@ namespace TicketSalesApp.AdminServer.Controllers
                     // Check role claims
                     if (claims.TryGetValue("role", out var roleObj))
                     {
-                        if (roleObj is List<string> roleList && roleList.Contains("1"))
+                        if (roleObj is List<string> roleList && (roleList.Contains("1") || roleList.Contains("Administrator")))
                         {
                             Log.Information("IsAdmin check (JWT) - User is admin (role claim in list)");
                             return true;
                         }
-                        else if (roleObj?.ToString() == "1")
+                        else if (roleObj?.ToString() == "1" || roleObj?.ToString() == "Administrator")
                         {
                             Log.Information("IsAdmin check (JWT) - User is admin (role claim)");
+                            return true;
+                        }
+                    }
+                    
+                    // Check http://schemas.microsoft.com/ws/2008/06/identity/claims/role
+                    if (claims.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var standardRoleObj))
+                    {
+                        if (standardRoleObj is List<string> standardRoleList && (standardRoleList.Contains("1") || standardRoleList.Contains("Administrator")))
+                        {
+                            Log.Information("IsAdmin check (JWT) - User is admin (standard role claim in list)");
+                            return true;
+                        }
+                        else if (standardRoleObj?.ToString() == "1" || standardRoleObj?.ToString() == "Administrator")
+                        {
+                            Log.Information("IsAdmin check (JWT) - User is admin (standard role claim)");
                             return true;
                         }
                     }
@@ -537,19 +552,31 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var authHeader = Request.Headers["Authorization"].ToString();
                 if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 {
-                    Log.Debug("ValidateOAuthTokenAsync - No Bearer token found");
-                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                    return null;
+                    // Fallback to query parameter for SignalR/WebSocket connections
+                    var accessToken = Request.Query["access_token"].ToString();
+                    if (string.IsNullOrEmpty(accessToken))
+                    {
+                        Log.Debug("ValidateOAuthTokenAsync - No Bearer token found in header or query parameter");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
+                    
+                    Log.Debug("ValidateOAuthTokenAsync - Using access_token from query parameter");
+                    authHeader = $"Bearer {accessToken}";
                 }
 
                 var token = authHeader.Substring("Bearer ".Length);
                 
-                // CRITICAL: Check if it's a JWE token FIRST before trying to parse as JWT
-                // JwtSecurityTokenHandler.CanReadToken() returns true for JWE tokens but can't read encrypted payload
-                if (IsJweToken(token))
+                // CRITICAL: Route based on token structure (dot-separated segment count)
+                // 5 segments = JWE (encrypted token) -> call tokeninfo endpoint
+                // 3 segments = JWT (signed token) -> validate locally
+                // Other = invalid token format
+                var tokenParts = token.Split('.');
+                
+                if (tokenParts.Length == 5)
                 {
-                    // It's an encrypted token, call tokeninfo endpoint to validate and get claims
-                    Log.Information("ValidateOAuthTokenAsync - Token is JWE (encrypted), calling tokeninfo endpoint");
+                    // It's a JWE (encrypted token), call tokeninfo endpoint to validate and get claims
+                    Log.Information("ValidateOAuthTokenAsync - Token has 5 segments (JWE encrypted), calling tokeninfo endpoint");
                     
                     using var httpClient = new System.Net.Http.HttpClient();
                     httpClient.DefaultRequestHeaders.Authorization = 
@@ -633,72 +660,75 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return null;
                 }
                 
-                // Check if it's a JWT we can validate
-                var tokenHandler = new JwtSecurityTokenHandler();
-                if (tokenHandler.CanReadToken(token))
+                // Check if it's a 3-segment JWT we can validate locally
+                if (tokenParts.Length == 3)
                 {
-                    Log.Debug("ValidateOAuthTokenAsync - Token is parseable JWT, performing signature validation");
-                    
-                    // Get JWT secret from configuration
-                    var jwtSecret = HttpContext.RequestServices.GetService<IConfiguration>()?["JwtSettings:Secret"];
-                    if (string.IsNullOrEmpty(jwtSecret))
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    if (tokenHandler.CanReadToken(token))
                     {
-                        Log.Error("ValidateOAuthTokenAsync - JWT secret not configured");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-                    
-                    var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
-                    var validationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = key,
-                        ValidateIssuer = false, // Set to true if you have a specific issuer
-                        ValidateAudience = false, // Set to true if you have a specific audience
-                        ValidateLifetime = true,
-                        ClockSkew = TimeSpan.FromMinutes(5)
-                    };
-                    
-                    try
-                    {
-                        var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+                        Log.Debug("ValidateOAuthTokenAsync - Token has 3 segments (JWT), performing local signature validation");
                         
-                        // Extract claims from validated token
-                        var claims = new Dictionary<string, object>();
-                        foreach (var claim in principal.Claims)
+                        // Get JWT secret from configuration
+                        var jwtSecret = HttpContext.RequestServices.GetService<IConfiguration>()?["JwtSettings:Secret"];
+                        if (string.IsNullOrEmpty(jwtSecret))
                         {
-                            if (claims.ContainsKey(claim.Type))
+                            Log.Error("ValidateOAuthTokenAsync - JWT secret not configured");
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
+                        
+                        var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+                        var validationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuerSigningKey = true,
+                            IssuerSigningKey = key,
+                            ValidateIssuer = false, // Set to true if you have a specific issuer
+                            ValidateAudience = false, // Set to true if you have a specific audience
+                            ValidateLifetime = true,
+                            ClockSkew = TimeSpan.FromMinutes(5)
+                        };
+                        
+                        try
+                        {
+                            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+                            
+                            // Extract claims from validated token
+                            var claims = new Dictionary<string, object>();
+                            foreach (var claim in principal.Claims)
                             {
-                                if (claims[claim.Type] is List<string> list)
+                                if (claims.ContainsKey(claim.Type))
                                 {
-                                    list.Add(claim.Value);
+                                    if (claims[claim.Type] is List<string> list)
+                                    {
+                                        list.Add(claim.Value);
+                                    }
+                                    else
+                                    {
+                                        var existingValue = claims[claim.Type].ToString();
+                                        claims[claim.Type] = new List<string> { existingValue!, claim.Value };
+                                    }
                                 }
                                 else
                                 {
-                                    var existingValue = claims[claim.Type].ToString();
-                                    claims[claim.Type] = new List<string> { existingValue!, claim.Value };
+                                    claims[claim.Type] = claim.Value;
                                 }
                             }
-                            else
-                            {
-                                claims[claim.Type] = claim.Value;
-                            }
+                            
+                            Log.Debug("ValidateOAuthTokenAsync - Successfully validated JWT with {ClaimCount} claims", claims.Count);
+                            HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
+                            return claims;
                         }
-                        
-                        Log.Debug("ValidateOAuthTokenAsync - Successfully validated JWT with {ClaimCount} claims", claims.Count);
-                        HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
-                        return claims;
-                    }
-                    catch (SecurityTokenException ex)
-                    {
-                        Log.Warning(ex, "ValidateOAuthTokenAsync - JWT signature validation failed: {Message}", ex.Message);
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
+                        catch (SecurityTokenException ex)
+                        {
+                            Log.Warning(ex, "ValidateOAuthTokenAsync - JWT signature validation failed: {Message}", ex.Message);
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
                     }
                 }
                 
-                // Unknown token format
-                Log.Warning("ValidateOAuthTokenAsync - Unknown token format");
+                // Unknown or invalid token format
+                Log.Warning("ValidateOAuthTokenAsync - Invalid token format (expected 3 or 5 segments, got {Count})", tokenParts.Length);
                 HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                 return null;
             }
