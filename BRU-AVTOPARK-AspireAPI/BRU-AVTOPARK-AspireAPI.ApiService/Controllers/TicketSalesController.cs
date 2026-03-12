@@ -132,7 +132,27 @@ using Microsoft.AspNetCore.Authorization;
                     ?? throw new InvalidOperationException("payload is required for create");
 
                 var created = ExecuteCreateSale(model);
-                return new { operation = "create", success = created is not null, entity = created, snapshot = BuildSalesSnapshot() };
+                var result = new { operation = "create", success = created is not null, entity = created, snapshot = BuildSalesSnapshot() };
+
+                if (created is not null)
+                {
+                    try
+                    {
+                        await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                        {
+                            Resource = "ticket-sales",
+                            EventName = "ticket-sale.created",
+                            Timestamp = DateTimeOffset.UtcNow,
+                            Payload = result
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to publish realtime event for ticket-sale.created (Resource: ticket-sales, EventName: ticket-sale.created)");
+                    }
+                }
+
+                return result;
             }
 
             /// <summary>

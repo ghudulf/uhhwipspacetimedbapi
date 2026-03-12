@@ -87,13 +87,101 @@ namespace TicketSalesApp.AdminServer.Controllers
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
-                "read_all" => new { schedules = await _routeScheduleService.GetAllSchedulesAsync() },
-                "read" => new { schedule = await _routeScheduleService.GetScheduleByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected route schedules matching the REST DTO shape with timestamp conversions.
+        /// </summary>
+        /// <returns>An object with a `schedules` property containing all projected route schedules.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = schedules.Select(s => new {
+                s.ScheduleId,
+                s.RouteId,
+                s.StartPoint,
+                s.RouteStops,
+                s.EndPoint,
+                s.DepartureTime,
+                s.ArrivalTime,
+                s.Price,
+                s.AvailableSeats,
+                s.SeatedCapacity,
+                s.StandingCapacity,
+                s.DaysOfWeek,
+                s.BusTypes,
+                s.IsActive,
+                s.ValidFrom,
+                s.ValidUntil,
+                s.StopDurationMinutes,
+                s.IsRecurring,
+                s.EstimatedStopTimes,
+                s.StopDistances,
+                s.Notes,
+                s.CreatedAt,
+                s.UpdatedAt,
+                s.UpdatedBy,
+                s.PeakHourLoad,
+                s.OffPeakHourLoad,
+                s.IsSpecialEvent,
+                s.SpecialEventName,
+                s.IsHoliday,
+                s.HolidayName,
+                s.IsWeekend,
+                s.SeatConfigurationId,
+                s.RequiresSeatReservation,
+                s.RouteType
+            }).ToList();
+
+            return new { schedules = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected route schedule matching the REST DTO shape with timestamp conversions.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the route schedule.</param>
+        /// <returns>An object with a `schedule` property containing the projected route schedule, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+
+            if (schedule == null)
+            {
+                return new { schedule = (object?)null };
+            }
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                schedule.ScheduleId,
+                schedule.RouteId,
+                schedule.StartPoint,
+                schedule.EndPoint,
+                schedule.RouteStops,
+                DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                schedule.Price,
+                schedule.AvailableSeats,
+                schedule.DaysOfWeek,
+                schedule.BusTypes,
+                schedule.StopDurationMinutes,
+                schedule.IsRecurring,
+                schedule.EstimatedStopTimes,
+                schedule.StopDistances,
+                schedule.Notes
+            };
+
+            return new { schedule = result };
         }
 
         /// <summary>
@@ -143,8 +231,33 @@ namespace TicketSalesApp.AdminServer.Controllers
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
-            var entity = await _routeScheduleService.GetScheduleByIdAsync(id);
-            var result = new { operation = "update", success, entity };
+            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (schedule != null)
+            {
+                projectedEntity = new {
+                    schedule.ScheduleId,
+                    schedule.RouteId,
+                    schedule.StartPoint,
+                    schedule.EndPoint,
+                    schedule.RouteStops,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                    schedule.Price,
+                    schedule.AvailableSeats,
+                    schedule.DaysOfWeek,
+                    schedule.BusTypes,
+                    schedule.StopDurationMinutes,
+                    schedule.IsRecurring,
+                    schedule.EstimatedStopTimes,
+                    schedule.StopDistances,
+                    schedule.Notes
+                };
+            }
+
+            var result = new { operation = "update", success, entity = projectedEntity };
 
             if (success)
             {

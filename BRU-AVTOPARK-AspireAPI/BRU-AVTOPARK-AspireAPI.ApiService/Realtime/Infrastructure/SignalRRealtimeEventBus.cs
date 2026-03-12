@@ -40,7 +40,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         {
             SingleReader = true,
             SingleWriter = false,
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.Wait,
             AllowSynchronousContinuations = false
         });
     }
@@ -50,11 +50,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// </summary>
     /// <param name="domainEvent">The domain event to publish and record in the recent-events history.</param>
     /// <param name="cancellationToken">A token to cancel the publish operation while queuing the event.</param>
-    /// <returns>A ValueTask that completes when the event has been queued for dispatch.</returns>
-    public ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
+    public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
         EnqueueForHistory(domainEvent);
-        return _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
+        await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
     }
 
     /// <summary>

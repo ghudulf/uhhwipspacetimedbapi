@@ -90,13 +90,85 @@ namespace TicketSalesApp.AdminServer.Controllers
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
-                "read_all" => new { records = await _maintenanceService.GetAllMaintenanceRecordsAsync() },
-                "read" => new { record = await _maintenanceService.GetMaintenanceByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected maintenance records with timestamps converted and bus data enriched.
+        /// </summary>
+        /// <returns>An object with a `records` property containing all projected maintenance records matching the HTTP API shape.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = records.Select(m => new {
+                m.MaintenanceId,
+                m.BusId,
+                m.LastServiceDate,
+                m.MileageThreshold,
+                m.MaintenanceType,
+                m.ServiceEngineer,
+                m.FoundIssues,
+                m.NextServiceDate,
+                m.Roadworthiness,
+                m.MaintenanceCost,
+                m.PartsReplaced,
+                m.MaintenanceDuration,
+                m.IsScheduled,
+                m.MaintenanceLocation,
+                m.ScheduledByEmployeeId,
+                m.CompletedByEmployeeId,
+                m.MaintenanceNotes,
+                m.MaintenanceStatus,
+                m.DiagnosticCodes,
+                m.LaborCost,
+                m.PartsCost
+            }).ToList();
+
+            return new { records = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected maintenance record with enriched bus data and timestamp conversion.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the maintenance record.</param>
+        /// <returns>An object with a `record` property containing the projected maintenance record matching the HTTP API shape, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
+
+            if (maintenance == null)
+            {
+                return new { record = (object?)null };
+            }
+
+            var conn = _spacetimeService.GetConnection();
+            var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                maintenance.MaintenanceId,
+                maintenance.BusId,
+                Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.LastServiceDate).DateTime,
+                maintenance.ServiceEngineer,
+                maintenance.FoundIssues,
+                NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.NextServiceDate).DateTime,
+                maintenance.Roadworthiness,
+                maintenance.MaintenanceType,
+                maintenance.MileageThreshold
+            };
+
+            return new { record = result };
         }
 
         /// <summary>
@@ -149,8 +221,30 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
-            var entity = await _maintenanceService.GetMaintenanceByIdAsync(id);
-            var result = new { operation = "update", success, entity, record = entity };
+            var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (maintenance != null)
+            {
+                var conn = _spacetimeService.GetConnection();
+                var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+
+                projectedEntity = new {
+                    maintenance.MaintenanceId,
+                    maintenance.BusId,
+                    Bus = bus != null ? new { bus.BusId, bus.Model, bus.RegistrationNumber } : null,
+                    LastServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.LastServiceDate).DateTime,
+                    maintenance.ServiceEngineer,
+                    maintenance.FoundIssues,
+                    NextServiceDate = DateTimeOffset.FromUnixTimeMilliseconds((long)maintenance.NextServiceDate).DateTime,
+                    maintenance.Roadworthiness,
+                    maintenance.MaintenanceType,
+                    maintenance.MileageThreshold
+                };
+            }
+
+            var result = new { operation = "update", success, entity = projectedEntity, record = projectedEntity };
 
             if (success)
             {

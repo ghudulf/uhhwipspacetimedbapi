@@ -98,13 +98,86 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             return command switch
             {
-                "read_all" => new { tickets = await _ticketService.GetAllTicketsAsync() },
-                "read" => new { ticket = await _ticketService.GetTicketByIdAsync(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                "read_all" => await HandleReadAllCommandAsync(),
+                "read" => await HandleReadCommandAsync(request),
                 "create" => await HandleCreateCommandAsync(request),
                 "update" => await HandleUpdateCommandAsync(request),
                 "delete" => await HandleDeleteCommandAsync(request),
                 _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
             };
+        }
+
+        /// <summary>
+        /// Handle the realtime "read_all" command and return projected tickets with route details and PurchaseTime conversion matching the REST shape.
+        /// </summary>
+        /// <returns>An object with a `tickets` property containing all projected tickets.</returns>
+        private async Task<object> HandleReadAllCommandAsync()
+        {
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { tickets = result };
+        }
+
+        /// <summary>
+        /// Handle a realtime "read" command and return a single projected ticket with route details and PurchaseTime conversion matching the REST shape.
+        /// </summary>
+        /// <param name="request">The realtime request; its Id must be provided to identify the ticket.</param>
+        /// <returns>An object with a `ticket` property containing the projected ticket, or null if not found.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
+        private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
+        {
+            var id = request.Id ?? throw new InvalidOperationException("id is required for read");
+            var conn = _spacetimeService.GetConnection();
+            var ticket = conn.Db.Ticket.TicketId.Find(id);
+
+            if (ticket == null)
+            {
+                return new { ticket = (object?)null };
+            }
+
+            var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+
+            // Map to anonymous type matching REST endpoint projection
+            var result = new {
+                ticket.TicketId,
+                ticket.RouteId,
+                Route = route != null ? new {
+                    route.RouteId,
+                    route.StartPoint,
+                    route.EndPoint,
+                    route.TravelTime,
+                    route.IsActive
+                } : null,
+                ticket.SeatNumber,
+                ticket.TicketPrice,
+                ticket.PaymentMethod,
+                PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)ticket.PurchaseTime).DateTime,
+                ticket.IsActive
+            };
+
+            return new { ticket = result };
         }
 
         /// <summary>
@@ -149,7 +222,29 @@ namespace TicketSalesApp.AdminServer.Controllers
                 (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 userIdentity);
 
-            var snapshot = await _ticketService.GetAllTicketsAsync();
+            // Get projected snapshot matching REST endpoint shape
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
             return new { operation = "create", success, snapshot };
         }
 
@@ -178,9 +273,56 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _ticketService.UpdateTicketAsync(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive);
-            var entity = await _ticketService.GetTicketByIdAsync(id);
-            var snapshot = await _ticketService.GetAllTicketsAsync();
-            return new { operation = "update", success, entity, snapshot };
+
+            var conn = _spacetimeService.GetConnection();
+            var ticket = conn.Db.Ticket.TicketId.Find(id);
+
+            // Project entity to match REST endpoint shape
+            object? projectedEntity = null;
+            if (ticket != null)
+            {
+                var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+                projectedEntity = new {
+                    ticket.TicketId,
+                    ticket.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    ticket.SeatNumber,
+                    ticket.TicketPrice,
+                    ticket.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)ticket.PurchaseTime).DateTime,
+                    ticket.IsActive
+                };
+            }
+
+            // Get projected snapshot matching REST endpoint shape
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
+            return new { operation = "update", success, entity = projectedEntity, snapshot };
         }
 
         /// <summary>
@@ -199,7 +341,30 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _ticketService.DeleteTicketAsync(id);
-            var snapshot = await _ticketService.GetAllTicketsAsync();
+
+            // Get projected snapshot matching REST endpoint shape
+            var conn = _spacetimeService.GetConnection();
+            var tickets = conn.Db.Ticket.Iter().ToList();
+            var snapshot = tickets.Select(t => {
+                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                return new {
+                    t.TicketId,
+                    t.RouteId,
+                    Route = route != null ? new {
+                        route.RouteId,
+                        route.StartPoint,
+                        route.EndPoint,
+                        route.TravelTime,
+                        route.IsActive
+                    } : null,
+                    t.SeatNumber,
+                    t.TicketPrice,
+                    t.PaymentMethod,
+                    PurchaseTime = DateTimeOffset.FromUnixTimeMilliseconds((long)t.PurchaseTime).DateTime,
+                    t.IsActive
+                };
+            }).ToList();
+
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
 

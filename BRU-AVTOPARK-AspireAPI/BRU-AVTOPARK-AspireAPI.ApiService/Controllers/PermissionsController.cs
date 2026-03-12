@@ -162,13 +162,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (created is not null)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "permissions",
-                    EventName = "permission.created",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "permissions",
+                        EventName = "permission.created",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.created (Resource: permissions, EventName: permission.created, PermissionId: {PermissionId})", created.PermissionId);
+                }
             }
 
             return result;
@@ -209,13 +216,30 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                // Log admin action after successful update
+                var userId = GetUserId();
+                if (userId != null && entity != null)
                 {
-                    Resource = "permissions",
-                    EventName = "permission.updated",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "UpdatePermission",
+                        $"Updated permission {entity.Name} with ID {id}");
+                }
+
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "permissions",
+                        EventName = "permission.updated",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.updated (Resource: permissions, EventName: permission.updated, PermissionId: {PermissionId})", id);
+                }
             }
 
             return result;
@@ -239,6 +263,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
 
+            // Retrieve permission before deletion for logging
+            var existingPermission = await _permissionService.GetPermissionByIdAsync(id);
+
             var isInUse = await _permissionService.IsPermissionInUseAsync(id);
             if (isInUse)
             {
@@ -260,13 +287,30 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                // Log admin action after successful deletion
+                var userId = GetUserId();
+                if (userId != null && existingPermission != null)
                 {
-                    Resource = "permissions",
-                    EventName = "permission.deleted",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeletePermission",
+                        $"Deleted permission {existingPermission.Name} with ID {id}");
+                }
+
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "permissions",
+                        EventName = "permission.deleted",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for permission.deleted (Resource: permissions, EventName: permission.deleted, PermissionId: {PermissionId})", id);
+                }
             }
 
             return result;
