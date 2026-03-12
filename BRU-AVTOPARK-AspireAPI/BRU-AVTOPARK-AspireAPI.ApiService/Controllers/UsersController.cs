@@ -108,7 +108,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="System.UnauthorizedAccessException">Thrown when the caller is neither an administrator nor has the "users.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!IsAdmin() && !HasPermission("users.view"))
+            if (!await IsAdminAsync() && !HasPermission("users.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for users.view");
             }
@@ -142,7 +142,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when no user is found for the provided id.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("users.view"))
+            if (!await IsAdminAsync() && !HasPermission("users.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for users.view");
             }
@@ -202,7 +202,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateUserModel"/>.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("users.create"))
+            if (!await IsAdminAsync() && !HasPermission("users.create"))
             {
                 throw new UnauthorizedAccessException("Not authorized for users.create");
             }
@@ -285,7 +285,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>An object with properties: `operation` (string, value "update"), `success` (bool indicating whether the update succeeded), `entity` (the updated user or null), and `snapshot` (the current list of all users).</returns>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("users.edit"))
+            if (!await IsAdminAsync() && !HasPermission("users.edit"))
             {
                 throw new UnauthorizedAccessException("Not authorized for users.edit");
             }
@@ -378,7 +378,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not provide an id or when attempting to delete the current caller's own account.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("users.delete"))
+            if (!await IsAdminAsync() && !HasPermission("users.delete"))
             {
                 throw new UnauthorizedAccessException("Not authorized for users.delete");
             }
@@ -389,7 +389,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             var currentUserId = GetUserId();
             if (currentUserId == null)
             {
-                Response.StatusCode = StatusCodes.Status401Unauthorized;
                 throw new UnauthorizedAccessException("Unable to resolve caller identity");
             }
 
@@ -460,7 +459,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// The returned user objects include fields intended for client consumption and JSON transport.
         /// </remarks>
         /// <returns>
-        /// An Ok result containing a list of user objects with the following fields: LegacyUserId, UserId, Login, PasswordHash, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed; or a 403 Forbidden result when the caller is not authorized.
+        /// An Ok result containing a list of user objects with the following fields: LegacyUserId, UserId, Login, Email, PhoneNumber, IsActive, CreatedAt, LastLoginAt, LegacyGuid, EmailConfirmed; or a 403 Forbidden result when the caller is not authorized.
         /// </returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetUsers()

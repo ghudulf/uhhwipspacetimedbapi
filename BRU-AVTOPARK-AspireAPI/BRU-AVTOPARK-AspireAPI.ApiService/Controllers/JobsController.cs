@@ -100,6 +100,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleReadAllCommandAsync()
         {
+            if (!await IsAdminAsync() && !HasPermission("jobs.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for jobs.view");
+            }
+            
             var jobs = await _employeeService.GetAllJobsAsync();
             // Map to same DTO shape as REST GetJobs endpoint
             var mappedJobs = jobs.Select(j => new {
@@ -128,6 +133,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
+            if (!await IsAdminAsync() && !HasPermission("jobs.view"))
+            {
+                throw new UnauthorizedAccessException("Not authorized for jobs.view");
+            }
+            
             var id = request.Id ?? throw new InvalidOperationException("id is required for read");
             var job = await _employeeService.GetJobByIdAsync(id);
             // Map to same DTO shape as REST GetJob endpoint
@@ -303,6 +313,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             _logger.LogInformation("REQUEST RECEIVED: GetJobs - Fetching all jobs");
             
+            if (!IsAdmin() && !HasPermission("jobs.view"))
+            {
+                _logger.LogWarning("Unauthorized attempt to access jobs list");
+                return Forbid();
+            }
+            
             try
             {
                 _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync");
@@ -355,6 +371,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         public async Task<ActionResult<dynamic>> GetJob(uint id)
         {
             _logger.LogInformation("REQUEST RECEIVED: GetJob with ID {JobId}", id);
+            
+            if (!IsAdmin() && !HasPermission("jobs.view"))
+            {
+                _logger.LogWarning("Unauthorized attempt to access job {JobId}", id);
+                return Forbid();
+            }
             
             try
             {

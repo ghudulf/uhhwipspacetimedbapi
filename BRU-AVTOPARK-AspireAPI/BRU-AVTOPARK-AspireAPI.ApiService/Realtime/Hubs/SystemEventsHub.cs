@@ -20,33 +20,24 @@ public sealed class SystemEventsHub : Hub
     }
 
     /// <summary>
-    /// Handles a new client connection by adding the connection to the "system-events" group and sending the caller a "connectionEstablished" notification containing connection metadata.
+    /// Handles a new client connection by sending the caller a "connectionEstablished" notification containing connection metadata.
+    /// Does NOT automatically add the connection to the "system-events" group - clients must explicitly subscribe via SubscribeToSystemEvents.
     /// </summary>
     /// <returns>A task that completes when connection handling is finished.</returns>
     public override async Task OnConnectedAsync()
     {
         var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
         
-        // Attempt to get the actual negotiated transport from connection features
-        // SignalR doesn't expose transport type directly, so we use "unknown" as fallback
-        var transport = "unknown";
-        try
-        {
-            // Try to infer transport from connection ID format or other indicators
-            // This is a best-effort approach since SignalR abstracts transport details
-            var connectionId = Context.ConnectionId;
-            if (!string.IsNullOrEmpty(connectionId))
-            {
-                // Connection IDs often contain transport hints, but this is implementation-specific
-                transport = "signalr"; // Generic indicator that SignalR is handling transport
-            }
-        }
-        catch
-        {
-            // Silently fall back to unknown if any issues occur
-        }
+        // NOTE: IHttpTransportFeature does not exist in Microsoft.AspNetCore.Http.Features namespace
+        // Attempting to use Context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpTransportFeature>()
+        // results in compile error CS0234: "Тип или имя пространства имен 'IHttpTransportFeature' не существует"
+        // SignalR abstracts transport details at the Hub level - no direct API to get negotiated transport type
+        // If transport type is needed, consider:
+        // 1. Passing it from client during connection
+        // 2. Using SignalR connection diagnostics/logging
+        // 3. Inspecting lower-level connection features (if available in specific hosting scenario)
+        var transport = "signalr";
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
         await Clients.Caller.SendAsync("connectionEstablished", new
         {
             ConnectionId = Context.ConnectionId,
@@ -99,6 +90,29 @@ public sealed class SystemEventsHub : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, $"resource:{normalized}");
         _logger.LogInformation("User {User} subscribed to resource {Resource}", 
             Context.User?.Identity?.Name ?? "unknown", normalized);
+    }
+
+    /// <summary>
+    /// Subscribes the current connection to the "system-events" group after performing authorization checks.
+    /// Only administrators or users with audit/system permissions should be allowed to subscribe.
+    /// </summary>
+    /// <returns>A task that completes when the connection has been added to the system-events group.</returns>
+    public async Task SubscribeToSystemEvents()
+    {
+        // Check if user is admin
+        var isAdmin = Context.User?.FindFirst("primary_role")?.Value == AdminRoleValue ||
+                     Context.User?.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue) == true;
+        
+        if (!isAdmin)
+        {
+            _logger.LogWarning("User {User} attempted to subscribe to system-events without admin privileges", 
+                Context.User?.Identity?.Name ?? "unknown");
+            throw new HubException("Access denied: Only administrators can subscribe to system events");
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
+        _logger.LogInformation("Admin user {User} subscribed to system-events", 
+            Context.User?.Identity?.Name ?? "unknown");
     }
 
     /// <summary>

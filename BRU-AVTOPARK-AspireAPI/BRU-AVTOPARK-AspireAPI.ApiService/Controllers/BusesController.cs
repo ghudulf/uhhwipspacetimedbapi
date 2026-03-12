@@ -107,7 +107,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "buses.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!IsAdmin() && !HasPermission("buses.view"))
+            if (!await IsAdminAsync() && !HasPermission("buses.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.view");
             }
@@ -203,7 +203,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into CreateBusModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("buses.create"))
+            if (!await IsAdminAsync() && !HasPermission("buses.create"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.create");
             }
@@ -255,19 +255,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var tenant = User?.FindFirst("tenant")?.Value;
                 var sourceIp = GetClientIp();
 
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "bus.created",
-                    Resource: "buses",
-                    HttpMethod: "POST",
-                    StatusCode: 201,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: userId,
-                    UserName: userName,
-                    Tenant: tenant,
-                    SourceIp: sourceIp,
-                    Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.created",
+                        Resource: "buses",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.created (Resource: buses, EventName: bus.created, BusId: {BusId})", bus.BusId);
+                }
             }
 
             return result;
@@ -282,7 +289,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing <c>Id</c> or <c>Payload</c>.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("buses.edit"))
+            if (!await IsAdminAsync() && !HasPermission("buses.edit"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.edit");
             }
@@ -336,19 +343,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var tenant = User?.FindFirst("tenant")?.Value;
                 var sourceIp = GetClientIp();
 
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "bus.updated",
-                    Resource: "buses",
-                    HttpMethod: "PUT",
-                    StatusCode: 200,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: userId,
-                    UserName: userName,
-                    Tenant: tenant,
-                    SourceIp: sourceIp,
-                    Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.updated",
+                        Resource: "buses",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.updated (Resource: buses, EventName: bus.updated, BusId: {BusId})", id);
+                }
             }
 
             return result;
@@ -369,7 +383,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include a required <c>Id</c>.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("buses.delete"))
+            if (!await IsAdminAsync() && !HasPermission("buses.delete"))
             {
                 throw new UnauthorizedAccessException("Not authorized for buses.delete");
             }
@@ -394,19 +408,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var tenant = User?.FindFirst("tenant")?.Value;
                 var sourceIp = GetClientIp();
 
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
-                    EventName: "bus.deleted",
-                    Resource: "buses",
-                    HttpMethod: "DELETE",
-                    StatusCode: 200,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString(),
-                    UserId: userId,
-                    UserName: userName,
-                    Tenant: tenant,
-                    SourceIp: sourceIp,
-                    Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString(), ["deletedId"] = id.ToString() }
-                ));
+                try
+                {
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "bus.deleted",
+                        Resource: "buses",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: userId,
+                        UserName: userName,
+                        Tenant: tenant,
+                        SourceIp: sourceIp,
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString(), ["deletedId"] = id.ToString() }
+                    ));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for bus.deleted (Resource: buses, EventName: bus.deleted, BusId: {BusId})", id);
+                }
             }
 
             return result;

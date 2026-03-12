@@ -182,10 +182,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateMaintenanceModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
             var model = request.Payload?.Deserialize<CreateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var createdId = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, "General");
+            var maintenanceType = string.IsNullOrWhiteSpace(model.MaintenanceType) ? "Regular" : model.MaintenanceType;
+            var createdId = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, maintenanceType);
             var record = createdId ? await _maintenanceService.GetMaintenanceByBusIdAsync(model.BusId).ContinueWith(t => t.Result.OrderByDescending(r => r.LastServiceDate).FirstOrDefault()) : null;
             var result = new { operation = "create", success = createdId, record };
 
@@ -237,7 +238,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
@@ -315,7 +316,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id for the delete operation.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
+            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _maintenanceService.DeleteMaintenanceAsync(id);
             var result = new { operation = "delete", success, deletedId = id, record = (object?)null };

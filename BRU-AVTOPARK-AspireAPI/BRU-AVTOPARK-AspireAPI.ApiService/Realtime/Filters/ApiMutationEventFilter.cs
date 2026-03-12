@@ -98,7 +98,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
 
         try
         {
-            await _eventBus.PublishAsync(domainEvent, context.HttpContext.RequestAborted);
+            await _eventBus.PublishAsync(domainEvent, CancellationToken.None);
         }
         catch (Exception ex)
         {

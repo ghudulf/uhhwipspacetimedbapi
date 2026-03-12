@@ -22,7 +22,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// 2. Custom JWT in Authorization header
         /// 3. Manually validated OpenIddict token
         /// </summary>
-        protected bool IsAuthenticated()
+        /// <summary>
+        /// Asynchronously validates if the current request is authenticated.
+        /// Performs full validation including tokeninfo endpoint calls for encrypted tokens.
+        /// </summary>
+        /// <returns>True if authenticated with valid token; false otherwise.</returns>
+        protected async Task<bool> IsAuthenticatedAsync()
         {
             // Check ASP.NET Core authentication first (OpenIddict)
             if (User?.Identity?.IsAuthenticated == true)
@@ -39,35 +44,80 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var token = authHeader.Substring("Bearer ".Length);
             
-            // Try to parse as JWT first (custom JWT tokens)
+            // Validate token format and structure
+            if (string.IsNullOrWhiteSpace(token) || token.Length < 20)
+            {
+                Log.Debug("IsAuthenticatedAsync - Token too short or empty");
+                return false;
+            }
+            
             try
             {
                 var tokenHandler = new JwtSecurityTokenHandler();
                 
+                // Check if it's a JWE token (encrypted OpenIddict token)
+                if (IsJweToken(token))
+                {
+                    // For JWE tokens, validate via tokeninfo endpoint
+                    Log.Debug("IsAuthenticatedAsync - Detected JWE token, validating via tokeninfo endpoint");
+                    
+                    var claims = await ValidateOAuthTokenAsync();
+                    if (claims == null || claims.Count == 0)
+                    {
+                        Log.Warning("IsAuthenticatedAsync - JWE token validation failed");
+                        return false;
+                    }
+                    
+                    Log.Debug("IsAuthenticatedAsync - JWE token validated successfully with {ClaimCount} claims", claims.Count);
+                    return true;
+                }
+                
+                // For regular JWT tokens, validate structure and claims
                 if (tokenHandler.CanReadToken(token))
                 {
                     var jwtToken = tokenHandler.ReadJwtToken(token);
-                    // Check if token has required claims
-                    return jwtToken.Claims.Any(c => c.Type == "sub" || c.Type == "identity");
+                    
+                    // Validate token has required claims (sub or identity)
+                    var hasRequiredClaims = jwtToken.Claims.Any(c => 
+                        c.Type == "sub" || 
+                        c.Type == "identity" ||
+                        c.Type == ClaimTypes.NameIdentifier);
+                    
+                    if (!hasRequiredClaims)
+                    {
+                        Log.Warning("IsAuthenticatedAsync - JWT token missing required claims (sub/identity/NameIdentifier)");
+                        return false;
+                    }
+                    
+                    // Validate token expiration
+                    if (jwtToken.ValidTo < DateTime.UtcNow)
+                    {
+                        Log.Warning("IsAuthenticatedAsync - JWT token expired at {ExpiryTime}", jwtToken.ValidTo);
+                        return false;
+                    }
+                    
+                    Log.Debug("IsAuthenticatedAsync - Valid JWT token with required claims");
+                    return true;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Not a valid JWT, might be an encrypted OpenIddict token
+                Log.Warning(ex, "IsAuthenticatedAsync - Error validating token: {Message}", ex.Message);
+                return false;
             }
 
-            // CRITICAL FIX: For encrypted OpenIddict tokens (JWE format), we can't parse them client-side
-            // But we can assume they're valid if they exist and are in the right format
-            // The actual validation happens when we try to use them in API calls
-            // OpenIddict tokens are typically longer and contain dots (header.payload.signature or JWE format)
-            if (token.Length > 100 && token.Contains('.'))
-            {
-                Log.Debug("Detected potential encrypted OpenIddict token (length: {Length})", token.Length);
-                return true; // Assume valid, will be validated by OpenIddict middleware on actual API calls
-            }
-
+            // Unknown or invalid token format
+            Log.Debug("IsAuthenticatedAsync - Unknown token format");
             return false;
         }
+
+        /// <summary>
+        /// Synchronously validates if the current request is authenticated.
+        /// This is a backwards-compatible wrapper around IsAuthenticatedAsync.
+        /// For new code, prefer using IsAuthenticatedAsync for better async/await patterns.
+        /// </summary>
+        /// <returns>True if authenticated with valid token; false otherwise.</returns>
+        protected bool IsAuthenticated() => IsAuthenticatedAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Checks if the current user has administrator role.

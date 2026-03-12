@@ -69,9 +69,8 @@ using Microsoft.AspNetCore.Authorization;
             [HttpGet("realtime/ws")]
             public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
             {
-                // Use async token validation - require successful validation only
-                var claims = await ValidateOAuthTokenAsync();
-                if (claims == null)
+                // Use hybrid authentication - check if already authenticated or validate token
+                if (!await IsAuthenticatedAsync())
                 {
                     Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return;
@@ -244,7 +243,7 @@ using Microsoft.AspNetCore.Authorization;
                     throw new InvalidOperationException($"Ticket {ticketId} already sold");
                 }
 
-                // Extract login from validated bearer/token data path with same precedence as CreateTicketSale
+                // Extract identity from already-validated User claims (no raw token parsing)
                 string? identityClaim = null;
                 if (User?.Identity?.IsAuthenticated == true)
                 {
@@ -253,27 +252,6 @@ using Microsoft.AspNetCore.Authorization;
                                  ?? User.FindFirst(ClaimTypes.Name)?.Value
                                  ?? User.FindFirst("name")?.Value
                                  ?? User.FindFirst("login")?.Value;
-                }
-
-                if (string.IsNullOrWhiteSpace(identityClaim))
-                {
-                    // Fallback to parsing JWT from Authorization header
-                    var authHeader = Request.Headers["Authorization"].ToString();
-                    if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-                    {
-                        var token = authHeader.Substring("Bearer ".Length);
-                        var tokenHandler = new JwtSecurityTokenHandler();
-                        if (tokenHandler.CanReadToken(token))
-                        {
-                            var jwtToken = tokenHandler.ReadJwtToken(token);
-                            identityClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub"
-                                                                              || c.Type == ClaimTypes.NameIdentifier
-                                                                              || c.Type == "unique_name"
-                                                                              || c.Type == ClaimTypes.Name
-                                                                              || c.Type == "name"
-                                                                              || c.Type == "login")?.Value;
-                        }
-                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(identityClaim))
