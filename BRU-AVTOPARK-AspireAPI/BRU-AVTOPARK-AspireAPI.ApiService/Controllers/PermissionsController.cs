@@ -149,13 +149,29 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
             var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
 
+            object result;
             if (IsAdmin() || HasPermission("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
-                return new { operation = "create", success = created is not null, entity = created, snapshot };
+                result = new { operation = "create", success = created is not null, entity = created, snapshot };
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = created };
             }
 
-            return new { operation = "create", success = created is not null, entity = created };
+            if (created is not null)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "permissions",
+                    EventName = "permission.created",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -180,13 +196,29 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
             var entity = await _permissionService.GetPermissionByIdAsync(id);
 
+            object result;
             if (IsAdmin() || HasPermission("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
-                return new { operation = "update", success, entity, snapshot };
+                result = new { operation = "update", success, entity, snapshot };
+            }
+            else
+            {
+                result = new { operation = "update", success, entity };
             }
 
-            return new { operation = "update", success, entity };
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "permissions",
+                    EventName = "permission.updated",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -215,13 +247,29 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _permissionService.DeletePermissionAsync(id);
 
+            object result;
             if (IsAdmin() || HasPermission("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
-                return new { operation = "delete", success, deletedId = id, snapshot };
+                result = new { operation = "delete", success, deletedId = id, snapshot };
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
             }
 
-            return new { operation = "delete", success, deletedId = id };
+            if (success)
+            {
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "permissions",
+                    EventName = "permission.deleted",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
+
+            return result;
         }
 
         /// <summary>

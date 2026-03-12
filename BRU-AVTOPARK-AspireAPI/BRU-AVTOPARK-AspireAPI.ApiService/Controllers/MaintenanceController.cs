@@ -108,15 +108,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateMaintenanceModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("maintenance.create")) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
             var model = request.Payload?.Deserialize<CreateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var success = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, "General");
-            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var record = success ? snapshot.LastOrDefault() : null;
-            var result = new { operation = "create", success, snapshot, record };
+            var createdId = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, "General");
+            var record = createdId ? await _maintenanceService.GetMaintenanceByBusIdAsync(model.BusId).ContinueWith(t => t.Result.OrderByDescending(r => r.LastServiceDate).FirstOrDefault()) : null;
+            var result = new { operation = "create", success = createdId, record };
 
-            if (success)
+            if (createdId)
             {
                 await _realtimeEventBus.PublishAsync(new ApiDomainEvent
                 {
@@ -145,14 +144,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("maintenance.edit")) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
             var entity = await _maintenanceService.GetMaintenanceByIdAsync(id);
-            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var result = new { operation = "update", success, entity, snapshot, record = entity };
+            var result = new { operation = "update", success, entity, record = entity };
 
             if (success)
             {
@@ -183,11 +181,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id for the delete operation.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("maintenance.delete")) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _maintenanceService.DeleteMaintenanceAsync(id);
-            var snapshot = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var result = new { operation = "delete", success, deletedId = id, snapshot, record = (object?)null };
+            var result = new { operation = "delete", success, deletedId = id, record = (object?)null };
 
             if (success)
             {

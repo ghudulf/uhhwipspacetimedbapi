@@ -104,7 +104,7 @@ using Microsoft.AspNetCore.Authorization;
                 return command switch
                 {
                     "read_all" => new { sales = BuildSalesSnapshot() },
-                    "read" => new { sale = BuildSaleById(request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                    "read" => new { sale = BuildSaleById(_spacetimeService.GetConnection(), request.Id ?? throw new InvalidOperationException("id is required for read")) },
                     "create" => await HandleCreateCommandAsync(request),
                     "update" => new { operation = "update", success = false, message = "Update operation is not implemented in SpacetimeDB module" },
                     "delete" => new { operation = "delete", success = false, message = "Delete operation is not implemented in SpacetimeDB module" },
@@ -138,10 +138,10 @@ using Microsoft.AspNetCore.Authorization;
             /// <summary>
             /// Builds a detailed view of the ticket sale identified by the provided saleId, including nested ticket and route information when available.
             /// </summary>
+            /// <param name="conn">The SpacetimeDB connection to use for database queries.</param>
             /// <returns>An anonymous object containing SaleId, SaleDate (DateTime), TicketId, TicketSoldToUser, TicketSoldToUserPhone, SellerId, and a nested Ticket object with TicketId, RouteId, TicketPrice and optional Route (RouteId, StartPoint, EndPoint); or null if the sale does not exist.</returns>
-            private object? BuildSaleById(uint saleId)
+            private object? BuildSaleById(SpacetimeDBClient conn, uint saleId)
             {
-                var conn = _spacetimeService.GetConnection();
                 var sale = conn.Db.Sale.SaleId.Find(saleId);
                 if (sale == null) return null;
 
@@ -174,7 +174,7 @@ using Microsoft.AspNetCore.Authorization;
             {
                 var conn = _spacetimeService.GetConnection();
                 return conn.Db.Sale.Iter()
-                    .Select(s => BuildSaleById(s.SaleId))
+                    .Select(s => BuildSaleById(conn, s.SaleId))
                     .Where(s => s != null)
                     .Cast<object>()
                     .ToList();
@@ -241,7 +241,7 @@ using Microsoft.AspNetCore.Authorization;
                 conn.Reducers.CreateSale((uint)model.TicketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? string.Empty, "POS", null);
 
                 var newSale = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).OrderByDescending(s => s.SaleId).FirstOrDefault();
-                return newSale == null ? null : BuildSaleById(newSale.SaleId);
+                return newSale == null ? null : BuildSaleById(conn, newSale.SaleId);
             }
 
             /// <summary>
@@ -432,9 +432,9 @@ using Microsoft.AspNetCore.Authorization;
                             jwtToken.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
                         return Unauthorized(new { message = "Invalid token: no username claim found" });
                     }
-                    
-                    // Find user by login
-                    var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == usernameClaim.Value);
+
+                    // Find user by login or UserId
+                    var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == usernameClaim.Value || u.Login == usernameClaim.Value);
                     Log.Information("Seller lookup result for username {Username}: {@Seller}", usernameClaim.Value, seller);
                     
                     if (seller == null)

@@ -109,8 +109,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
-            var snapshot = await _employeeService.GetAllJobsAsync();
-            var result = new { operation = "create", success, snapshot };
+            var result = new { operation = "create", success };
 
             if (success)
             {
@@ -141,8 +140,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
             var entity = await _employeeService.GetJobByIdAsync(id);
-            var snapshot = await _employeeService.GetAllJobsAsync();
-            var result = new { operation = "update", success, entity, snapshot };
+            var result = new { operation = "update", success, entity };
 
             if (success)
             {
@@ -170,8 +168,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _employeeService.DeleteJobAsync(id);
-            var snapshot = await _employeeService.GetAllJobsAsync();
-            var result = new { operation = "delete", success, deletedId = id, snapshot };
+            var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
             {

@@ -104,20 +104,22 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateRouteScheduleModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("schedules.create")) throw new UnauthorizedAccessException("Not authorized for schedules.create");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.create");
             var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var success = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), (ulong)new DateTimeOffset(m.DepartureTime).ToUnixTimeMilliseconds(), (ulong)new DateTimeOffset(m.ArrivalTime).ToUnixTimeMilliseconds(), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
-            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
-            var result = new { operation = "create", success, snapshot };
+            var result = new { operation = "create", success };
 
-            await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+            if (success)
             {
-                Resource = "route-schedules",
-                EventName = "route-schedule.created",
-                Timestamp = DateTimeOffset.UtcNow,
-                Payload = result
-            });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "route-schedules",
+                    EventName = "route-schedule.created",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
 
             return result;
         }
@@ -136,22 +138,24 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required `id` or `payload` for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("schedules.update")) throw new UnauthorizedAccessException("Not authorized for schedules.update");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.update");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
             var entity = await _routeScheduleService.GetScheduleByIdAsync(id);
-            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
-            var result = new { operation = "update", success, entity, snapshot };
+            var result = new { operation = "update", success, entity };
 
-            await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+            if (success)
             {
-                Resource = "route-schedules",
-                EventName = "route-schedule.updated",
-                Timestamp = DateTimeOffset.UtcNow,
-                Payload = result
-            });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "route-schedules",
+                    EventName = "route-schedule.updated",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
 
             return result;
         }
@@ -171,19 +175,21 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("schedules.delete")) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
+            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _routeScheduleService.DeleteScheduleAsync(id);
-            var snapshot = await _routeScheduleService.GetAllSchedulesAsync();
-            var result = new { operation = "delete", success, deletedId = id, snapshot };
+            var result = new { operation = "delete", success, deletedId = id };
 
-            await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+            if (success)
             {
-                Resource = "route-schedules",
-                EventName = "route-schedule.deleted",
-                Timestamp = DateTimeOffset.UtcNow,
-                Payload = result
-            });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                {
+                    Resource = "route-schedules",
+                    EventName = "route-schedule.deleted",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Payload = result
+                });
+            }
 
             return result;
         }

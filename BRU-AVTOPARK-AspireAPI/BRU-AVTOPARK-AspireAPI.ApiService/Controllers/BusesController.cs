@@ -110,7 +110,33 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new UnauthorizedAccessException("Not authorized for buses.view");
             }
 
-            return new { buses = await _busService.GetAllBusesAsync() };
+            var buses = await _busService.GetAllBusesAsync();
+            var mapped = buses.Select(b => new {
+                b.BusId,
+                b.Model,
+                b.RegistrationNumber,
+                b.Capacity,
+                b.BusType,
+                b.Year,
+                b.Vin,
+                b.LicensePlate,
+                b.CurrentStatus,
+                b.IsActive,
+                b.SeatedCapacity,
+                b.StandingCapacity,
+                b.CurrentLocation,
+                b.LastLocationUpdate,
+                b.FuelConsumption,
+                b.CurrentFuelLevel,
+                b.FuelType,
+                b.MileageTotal,
+                b.MileageSinceService,
+                b.HasAccessibility,
+                b.HasAirConditioning,
+                b.HasWifi,
+                b.HasUsbCharging
+            }).ToList();
+            return new { buses = mapped };
         }
 
         /// <summary>
@@ -155,8 +181,32 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var bus = await _busService.CreateBusAsync(model.Model);
-            var snapshot = await _busService.GetAllBusesAsync();
-            var result = new { operation = "create", success = bus is not null, entity = bus, snapshot };
+            var mappedEntity = bus != null ? new {
+                bus.BusId,
+                bus.Model,
+                bus.RegistrationNumber,
+                bus.Capacity,
+                bus.BusType,
+                bus.Year,
+                bus.Vin,
+                bus.LicensePlate,
+                bus.CurrentStatus,
+                bus.IsActive,
+                bus.SeatedCapacity,
+                bus.StandingCapacity,
+                bus.CurrentLocation,
+                bus.LastLocationUpdate,
+                bus.FuelConsumption,
+                bus.CurrentFuelLevel,
+                bus.FuelType,
+                bus.MileageTotal,
+                bus.MileageSinceService,
+                bus.HasAccessibility,
+                bus.HasAirConditioning,
+                bus.HasWifi,
+                bus.HasUsbCharging
+            } : null;
+            var result = new { operation = "create", success = bus is not null, entity = mappedEntity };
 
             if (bus is not null)
             {
@@ -192,8 +242,32 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _busService.UpdateBusAsync(id, model.Model);
             var entity = await _busService.GetBusByIdAsync(id);
-            var snapshot = await _busService.GetAllBusesAsync();
-            var result = new { operation = "update", success, entity, snapshot };
+            var mappedEntity = entity != null ? new {
+                entity.BusId,
+                entity.Model,
+                entity.RegistrationNumber,
+                entity.Capacity,
+                entity.BusType,
+                entity.Year,
+                entity.Vin,
+                entity.LicensePlate,
+                entity.CurrentStatus,
+                entity.IsActive,
+                entity.SeatedCapacity,
+                entity.StandingCapacity,
+                entity.CurrentLocation,
+                entity.LastLocationUpdate,
+                entity.FuelConsumption,
+                entity.CurrentFuelLevel,
+                entity.FuelType,
+                entity.MileageTotal,
+                entity.MileageSinceService,
+                entity.HasAccessibility,
+                entity.HasAirConditioning,
+                entity.HasWifi,
+                entity.HasUsbCharging
+            } : null;
+            var result = new { operation = "update", success, entity = mappedEntity };
 
             if (success)
             {
@@ -231,8 +305,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _busService.DeleteBusAsync(id);
-            var snapshot = await _busService.GetAllBusesAsync();
-            var result = new { operation = "delete", success, deletedId = id, snapshot };
+            var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
             {
