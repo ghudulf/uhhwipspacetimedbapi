@@ -200,13 +200,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "route-schedules",
-                    EventName = "route-schedule.created",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "route-schedules",
+                        EventName = "route-schedule.created",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.created (Resource: route-schedules, EventName: route-schedule.created, Payload: {Payload})", JsonSerializer.Serialize(result));
+                }
             }
 
             return result;
@@ -261,13 +268,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "route-schedules",
-                    EventName = "route-schedule.updated",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "route-schedules",
+                        EventName = "route-schedule.updated",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.updated (Resource: route-schedules, EventName: route-schedule.updated, ScheduleId: {ScheduleId})", id);
+                }
             }
 
             return result;
@@ -295,13 +309,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "route-schedules",
-                    EventName = "route-schedule.deleted",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "route-schedules",
+                        EventName = "route-schedule.deleted",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.deleted (Resource: route-schedules, EventName: route-schedule.deleted, DeletedId: {DeletedId})", id);
+                }
             }
 
             return result;

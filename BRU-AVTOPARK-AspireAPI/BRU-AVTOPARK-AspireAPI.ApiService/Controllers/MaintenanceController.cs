@@ -189,13 +189,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (createdId)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "maintenance",
-                    EventName = "maintenance.created",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "maintenance",
+                        EventName = "maintenance.created",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.created (Resource: maintenance, EventName: maintenance.created, RecordId: {RecordId})", record?.MaintenanceId);
+                }
             }
 
             return result;
@@ -248,13 +255,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "maintenance",
-                    EventName = "maintenance.updated",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "maintenance",
+                        EventName = "maintenance.updated",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.updated (Resource: maintenance, EventName: maintenance.updated, MaintenanceId: {MaintenanceId})", id);
+                }
             }
 
             return result;
@@ -282,13 +296,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                try
                 {
-                    Resource = "maintenance",
-                    EventName = "maintenance.deleted",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
+                    {
+                        Resource = "maintenance",
+                        EventName = "maintenance.deleted",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Payload = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish realtime event for maintenance.deleted (Resource: maintenance, EventName: maintenance.deleted, DeletedId: {DeletedId})", id);
+                }
             }
 
             return result;

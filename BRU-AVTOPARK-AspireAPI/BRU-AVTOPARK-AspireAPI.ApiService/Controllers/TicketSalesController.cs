@@ -223,11 +223,15 @@ using Microsoft.AspNetCore.Authorization;
                     throw new InvalidOperationException($"Ticket {model.TicketId} already sold");
                 }
 
-                // Extract login from validated bearer/token data path (same as BaseController)
+                // Extract login from validated bearer/token data path with same precedence as CreateTicketSale
                 string? identityClaim = null;
                 if (User?.Identity?.IsAuthenticated == true)
                 {
-                    identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+                    identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                 ?? User.FindFirst("sub")?.Value
+                                 ?? User.FindFirst(ClaimTypes.Name)?.Value
+                                 ?? User.FindFirst("name")?.Value
+                                 ?? User.FindFirst("login")?.Value;
                 }
 
                 if (string.IsNullOrWhiteSpace(identityClaim))
@@ -241,7 +245,12 @@ using Microsoft.AspNetCore.Authorization;
                         if (tokenHandler.CanReadToken(token))
                         {
                             var jwtToken = tokenHandler.ReadJwtToken(token);
-                            identityClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                            identityClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub"
+                                                                              || c.Type == ClaimTypes.NameIdentifier
+                                                                              || c.Type == "unique_name"
+                                                                              || c.Type == ClaimTypes.Name
+                                                                              || c.Type == "name"
+                                                                              || c.Type == "login")?.Value;
                         }
                     }
                 }
