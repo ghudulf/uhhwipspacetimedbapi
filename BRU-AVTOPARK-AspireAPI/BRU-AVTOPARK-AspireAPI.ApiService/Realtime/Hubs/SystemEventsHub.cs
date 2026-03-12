@@ -8,6 +8,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
 [Authorize(Policy = "FlexibleApiAccess")]
 public sealed class SystemEventsHub : Hub
 {
+    private const string AdminRoleValue = "1";
+    
     private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<SystemEventsHub> _logger;
 
@@ -24,7 +26,10 @@ public sealed class SystemEventsHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
-        var transport = "websocket"; // Default transport type for SignalR
+        
+        // Attempt to get the actual negotiated transport from connection features
+        var transport = Context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpTransportFeature>()?.TransportType.ToString() 
+                       ?? "unknown";
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
         await Clients.Caller.SendAsync("connectionEstablished", new
@@ -65,8 +70,8 @@ public sealed class SystemEventsHub : Hub
         if (!authResult.Succeeded)
         {
             // Check if user is admin (admins can view all resources)
-            var isAdmin = Context.User?.FindFirst("primary_role")?.Value == "1" ||
-                         Context.User?.Claims.Any(c => c.Type == "role" && c.Value == "1") == true;
+            var isAdmin = Context.User?.FindFirst("primary_role")?.Value == AdminRoleValue ||
+                         Context.User?.Claims.Any(c => c.Type == "role" && c.Value == AdminRoleValue) == true;
             
             if (!isAdmin)
             {

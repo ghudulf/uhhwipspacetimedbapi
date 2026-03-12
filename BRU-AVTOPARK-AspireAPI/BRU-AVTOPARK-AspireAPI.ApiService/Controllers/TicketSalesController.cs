@@ -315,15 +315,15 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Get all sales from SpacetimeDB
                     var sales = conn.Db.Sale.Iter().ToList();
-                    Log.Information("Raw sales data retrieved from database: {@Sales}", sales);
+                    Log.Information("Retrieved {Count} sales from database", sales.Count);
                     
                     // Convert to a list of dynamic objects with necessary properties
                     var result = sales.Select(s => {
                         var ticket = conn.Db.Ticket.TicketId.Find(s.TicketId);
-                        Log.Debug("Found ticket for sale {SaleId}: {@Ticket}", s.SaleId, ticket);
+                        Log.Debug("Found ticket for sale {SaleId}", s.SaleId);
                         
                         var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-                        Log.Debug("Found route for ticket {TicketId}: {@Route}", ticket?.TicketId, route);
+                        Log.Debug("Found route for ticket {TicketId}", ticket?.TicketId);
                         
                         return new {
                             SaleId = s.SaleId,
@@ -345,7 +345,6 @@ using Microsoft.AspNetCore.Authorization;
                         };
                     }).ToList();
                     
-                    Log.Information("Processed ticket sales data: {@Result}", result);
                     Log.Debug("Retrieved {SalesCount} ticket sales with full details", result.Count);
                     return Ok(result);
                 }
@@ -361,6 +360,13 @@ using Microsoft.AspNetCore.Authorization;
             {
                 try
                 {
+                    // Validate id is within valid uint range
+                    if (id < 0 || id > uint.MaxValue)
+                    {
+                        Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
+                        return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
+                    }
+                    
                     Log.Information("Fetching ticket sale with ID {SaleId}", id);
                     
                     var conn = _spacetimeService.GetConnection();
@@ -368,7 +374,8 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    Log.Information("Retrieved sale data for ID {SaleId}: {@Sale}", id, sale);
+                    // Log without PII - don't log full sale object
+                    Log.Information("Retrieved sale data for ID {SaleId}", id);
                     
                     if (sale == null)
                     {
@@ -378,10 +385,10 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Get related ticket and route
                     var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                    Log.Information("Retrieved ticket data for sale {SaleId}: {@Ticket}", id, ticket);
+                    Log.Information("Retrieved ticket data for sale {SaleId}", id);
                     
                     var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-                    Log.Information("Retrieved route data for ticket {TicketId}: {@Route}", ticket?.TicketId, route);
+                    Log.Information("Retrieved route data for ticket {TicketId}", ticket?.TicketId);
                     
                     // Create response object
                     var result = new {
@@ -403,7 +410,7 @@ using Microsoft.AspNetCore.Authorization;
                         } : null
                     };
                     
-                    Log.Information("Returning ticket sale response for ID {SaleId}: {@Result}", id, result);
+                    Log.Information("Returning ticket sale response for ID {SaleId}", id);
                     Log.Debug("Successfully retrieved ticket sale with ID {SaleId}", id);
                     return Ok(result);
                 }
@@ -432,9 +439,16 @@ using Microsoft.AspNetCore.Authorization;
                     var conn = _spacetimeService.GetConnection();
                     Log.Debug("Database connection established successfully for creating sale");
                     
+                    // Validate TicketId is within valid uint range
+                    if (model.TicketId < 0 || model.TicketId > uint.MaxValue)
+                    {
+                        Log.Warning("Invalid ticket ID {TicketId} - must be between 0 and {MaxValue}", model.TicketId, uint.MaxValue);
+                        return BadRequest(new { message = $"Ticket ID must be between 0 and {uint.MaxValue}" });
+                    }
+                    
                     // Check if ticket exists
                     var ticket = conn.Db.Ticket.TicketId.Find((uint)model.TicketId);
-                    Log.Information("Ticket lookup result for ID {TicketId}: {@Ticket}", model.TicketId, ticket);
+                    Log.Information("Ticket lookup result for ID {TicketId}", model.TicketId);
                     
                     if (ticket == null)
                     {
@@ -444,11 +458,11 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Check if ticket is already sold
                     var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
-                    Log.Information("Existing sales for ticket {TicketId}: {@ExistingSales}", model.TicketId, existingSales);
+                    Log.Information("Existing sales count for ticket {TicketId}: {Count}", model.TicketId, existingSales.Count);
                     
                     if (existingSales.Any())
                     {
-                        Log.Warning("Ticket with ID {TicketId} is already sold. Existing sales: {@ExistingSales}", model.TicketId, existingSales);
+                        Log.Warning("Ticket with ID {TicketId} is already sold", model.TicketId);
                         return BadRequest("Ticket is already sold");
                     }
                     
@@ -485,7 +499,7 @@ using Microsoft.AspNetCore.Authorization;
 
                     // Find user by login or UserId
                     var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == usernameClaim.Value || u.Login == usernameClaim.Value);
-                    Log.Information("Seller lookup result for username {Username}: {@Seller}", usernameClaim.Value, seller);
+                    Log.Information("Seller lookup result for username {Username}: {Found}", usernameClaim.Value, seller != null);
                     
                     if (seller == null)
                     {
@@ -515,7 +529,7 @@ using Microsoft.AspNetCore.Authorization;
                         .OrderByDescending(s => s.SaleId)
                         .FirstOrDefault();
                     
-                    Log.Information("Newly created sale: {@NewSale}", newSale);
+                    Log.Information("Newly created sale ID: {SaleId}", newSale?.SaleId);
                     
                     if (newSale == null)
                     {
@@ -533,8 +547,14 @@ using Microsoft.AspNetCore.Authorization;
                         SellerId = newSale.SellerId?.ToString()
                     };
                     
-                    Log.Information("Successfully created ticket sale with ID {SaleId} for user {User} with phone {Phone}. Full result: {@Result}", 
-                        newSale.SaleId, newSale.TicketSoldToUser, newSale.TicketSoldToUserPhone, result);
+                    // Log without PII - mask phone number
+                    var maskedPhone = string.IsNullOrEmpty(newSale.TicketSoldToUserPhone) 
+                        ? "none" 
+                        : newSale.TicketSoldToUserPhone.Length > 4 
+                            ? "***" + newSale.TicketSoldToUserPhone.Substring(newSale.TicketSoldToUserPhone.Length - 4) 
+                            : "***";
+                    Log.Information("Successfully created ticket sale with ID {SaleId} for user {User} with phone {MaskedPhone}", 
+                        newSale.SaleId, newSale.TicketSoldToUser, maskedPhone);
                     
                     return CreatedAtAction(nameof(GetTicketSale), new { id = newSale.SaleId }, result);
                 }
@@ -548,7 +568,14 @@ using Microsoft.AspNetCore.Authorization;
             [HttpPut("{id}")]
             public IActionResult UpdateTicketSale(long id, [FromBody] UpdateTicketSaleModel model)
             {
-                Log.Information("Update ticket sale request received for ID {SaleId} with data: {@Model}", id, model);
+                // Validate id is within valid uint range
+                if (id < 0 || id > uint.MaxValue)
+                {
+                    Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
+                    return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
+                }
+                
+                Log.Information("Update ticket sale request received for ID {SaleId}", id);
                 
                 if (!IsAdmin())
                 {
@@ -565,7 +592,7 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    Log.Information("Existing sale data for ID {SaleId}: {@Sale}", id, sale);
+                    Log.Information("Existing sale data for ID {SaleId}: {Found}", id, sale != null);
                     
                     if (sale == null)
                     {
@@ -576,7 +603,7 @@ using Microsoft.AspNetCore.Authorization;
                     // Note: SpacetimeDB doesn't have an UpdateSale reducer yet
                     // This would need to be implemented in the SpacetimeDB module
                     
-                    Log.Warning("UpdateTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}, Requested changes: {@Model}", id, model);
+                    Log.Warning("UpdateTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}", id);
                     return StatusCode(501, new { message = "Update operation is not implemented" });
                 }
                 catch (Exception ex)
@@ -589,6 +616,13 @@ using Microsoft.AspNetCore.Authorization;
             [HttpDelete("{id}")]
             public IActionResult DeleteTicketSale(long id)
             {
+                // Validate id is within valid uint range
+                if (id < 0 || id > uint.MaxValue)
+                {
+                    Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
+                    return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
+                }
+                
                 Log.Information("Delete ticket sale request received for ID {SaleId}", id);
                 
                 if (!IsAdmin())
@@ -606,7 +640,7 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Find sale by ID
                     var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    Log.Information("Sale to be deleted with ID {SaleId}: {@Sale}", id, sale);
+                    Log.Information("Sale to be deleted with ID {SaleId}: {Found}", id, sale != null);
                     
                     if (sale == null)
                     {
@@ -617,7 +651,7 @@ using Microsoft.AspNetCore.Authorization;
                     // Note: SpacetimeDB doesn't have a DeleteSale reducer yet
                     // This would need to be implemented in the SpacetimeDB module
                     
-                    Log.Warning("DeleteTicketSale is not implemented in the SpacetimeDB module. Attempted to delete sale: {@Sale}", sale);
+                    Log.Warning("DeleteTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}", id);
                     return StatusCode(501, new { message = "Delete operation is not implemented" });
                 }
                 catch (Exception ex)
@@ -681,7 +715,7 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Get all sales
                     var allSales = conn.Db.Sale.Iter().ToList();
-                    Log.Debug("All sales retrieved from database: {@AllSales}", allSales);
+                    Log.Debug("All sales retrieved from database: {Count}", allSales.Count);
                     
                     var query = allSales.AsEnumerable();
                     
@@ -708,14 +742,14 @@ using Microsoft.AspNetCore.Authorization;
                     
                     // Apply price filters (need to join with tickets)
                     var filteredSales = query.ToList();
-                    Log.Information("Sales after date and user filtering: {@FilteredSales}", filteredSales);
+                    Log.Information("Sales after date and user filtering: {Count}", filteredSales.Count);
                     
                     var result = new List<dynamic>();
                     
                     foreach (var sale in filteredSales)
                     {
                         var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                        Log.Debug("Ticket for sale {SaleId}: {@Ticket}", sale.SaleId, ticket);
+                        Log.Debug("Ticket for sale {SaleId}", sale.SaleId);
                         
                         if (ticket == null) continue;
                         
@@ -735,7 +769,7 @@ using Microsoft.AspNetCore.Authorization;
                         }
                         
                         var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
-                        Log.Debug("Route for ticket {TicketId}: {@Route}", ticket.TicketId, route);
+                        Log.Debug("Route for ticket {TicketId}", ticket.TicketId);
                         
                         result.Add(new {
                             SaleId = sale.SaleId,
@@ -760,7 +794,7 @@ using Microsoft.AspNetCore.Authorization;
                     // Order by sale date descending
                     result = result.OrderByDescending(s => ((DateTime)s.SaleDate)).ToList();
                     
-                    Log.Information("Search results: {@SearchResults}", result);
+                    Log.Information("Search results count: {Count}", result.Count);
                     Log.Debug("Found {SalesCount} sales matching search criteria", result.Count);
                     return Ok(result);
                 }
