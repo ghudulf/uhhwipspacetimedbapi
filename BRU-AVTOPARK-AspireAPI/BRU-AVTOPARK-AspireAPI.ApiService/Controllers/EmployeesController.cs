@@ -14,6 +14,7 @@ using SpacetimeDB;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using System.Threading;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -61,18 +62,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!IsAdmin() && !HasPermission("employees.view"))
-            {
-                Response.StatusCode = StatusCodes.Status403Forbidden;
-                return;
-            }
+            // Allow connection for mutation-only users; permission checks enforced per-command
+            var eventsSource = (IsAdmin() || HasPermission("employees.view"))
+                ? _realtimeEventBus.SubscribeAsync("employees", cancellationToken)
+                : EmptyAsyncEnumerable();
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("employees", cancellationToken),
+                eventsSource,
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// Returns an empty async enumerable of ApiDomainEvent.
+        /// </summary>
+        private static async IAsyncEnumerable<ApiDomainEvent> EmptyAsyncEnumerable()
+        {
+            await Task.CompletedTask;
+            yield break;
         }
 
         /// <summary>
@@ -191,27 +200,24 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.created, but write succeeded");
                 }
 
-                // Fire-and-forget: log action
+                // Log action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
                 var employeeId = newEmployee?.EmployeeId;
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    if (userId != null && employeeId.HasValue)
                     {
-                        if (userId != null && employeeId.HasValue)
-                        {
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "employees.create",
-                                $"Created employee: {model.Name} {model.Surname}, JobId: {model.JobId}, EmployeeId: {employeeId.Value}"
-                            );
-                        }
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "employees.create",
+                            $"Created employee: {model.Name} {model.Surname}, JobId: {model.JobId}, EmployeeId: {employeeId.Value}"
+                        );
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in background logging for create");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error logging admin action for create");
+                }
             }
 
             return new { operation = "create", success, employeeId = newEmployee?.EmployeeId };
@@ -283,27 +289,24 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.updated, but write succeeded");
                 }
 
-                // Fire-and-forget: enrich with entity and log action
+                // Log action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    var entity = await _employeeService.GetEmployeeByIdAsync(id);
+                    if (userId != null && entity != null)
                     {
-                        var entity = await _employeeService.GetEmployeeByIdAsync(id);
-                        if (userId != null && entity != null)
-                        {
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "employees.update",
-                                $"Updated employee: {entity.Name} {entity.Surname}, JobId: {entity.JobId}, EmployeeId: {id}"
-                            );
-                        }
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "employees.update",
+                            $"Updated employee: {entity.Name} {entity.Surname}, JobId: {entity.JobId}, EmployeeId: {id}"
+                        );
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in background logging for update");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error logging admin action for update");
+                }
             }
 
             return new { operation = "update", success, employeeId = id };
@@ -363,31 +366,28 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogError(ex, "Failed to publish realtime event for employee.deleted, but write succeeded");
                 }
 
-                // Fire-and-forget: log action
+                // Log action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
                 var deletedEmployee = employeeBeforeDelete;
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    if (userId != null)
                     {
-                        if (userId != null)
-                        {
-                            var details = deletedEmployee != null
-                                ? $"Deleted employee: {deletedEmployee.Name} {deletedEmployee.Surname}, JobId: {deletedEmployee.JobId}, EmployeeId: {id}"
-                                : $"Deleted employee with EmployeeId: {id}";
+                        var details = deletedEmployee != null
+                            ? $"Deleted employee: {deletedEmployee.Name} {deletedEmployee.Surname}, JobId: {deletedEmployee.JobId}, EmployeeId: {id}"
+                            : $"Deleted employee with EmployeeId: {id}";
 
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "employees.delete",
-                                details
-                            );
-                        }
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "employees.delete",
+                            details
+                        );
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in background logging for delete");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error logging admin action for delete");
+                }
             }
 
             return new { operation = "delete", success, deletedId = id };
@@ -536,27 +536,24 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully created employee with ID {EmployeeId}", employee.EmployeeId);
                 _logger.LogInformation("FULL EMPLOYEE DATA: {EmployeeData}", JsonSerializer.Serialize(employee));
 
-                // Fire-and-forget: Log the admin action
+                // Log the admin action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
                 var createdEmployee = employee;
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    if (userId != null)
                     {
-                        if (userId != null)
-                        {
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "CreateEmployee",
-                                $"Created employee with ID {createdEmployee.EmployeeId}, Name: {createdEmployee.Name} {createdEmployee.Surname}"
-                            );
-                        }
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "CreateEmployee",
+                            $"Created employee with ID {createdEmployee.EmployeeId}, Name: {createdEmployee.Name} {createdEmployee.Surname}"
+                        );
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error logging admin action for create");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error logging admin action for create");
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Created employee with ID {EmployeeId}", employee.EmployeeId);
                 return CreatedAtAction(nameof(GetEmployee), new { id = employee.EmployeeId }, employee);
@@ -614,32 +611,29 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully updated employee {EmployeeId}", id);
 
-                // Fire-and-forget: Get employee after update and log admin action
+                // Get employee after update and log admin action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    var employeeAfterUpdate = await _employeeService.GetEmployeeByIdAsync(id);
+                    if (employeeAfterUpdate != null)
                     {
-                        var employeeAfterUpdate = await _employeeService.GetEmployeeByIdAsync(id);
-                        if (employeeAfterUpdate != null)
-                        {
-                            _logger.LogInformation("EMPLOYEE AFTER UPDATE: {EmployeeData}", JsonSerializer.Serialize(employeeAfterUpdate));
-                        }
+                        _logger.LogInformation("EMPLOYEE AFTER UPDATE: {EmployeeData}", JsonSerializer.Serialize(employeeAfterUpdate));
+                    }
 
-                        if (userId != null)
-                        {
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "UpdateEmployee",
-                                $"Updated employee with ID {id}"
-                            );
-                        }
-                    }
-                    catch (Exception ex)
+                    if (userId != null)
                     {
-                        _logger.LogError(ex, "Error in background enrichment/logging for update");
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "UpdateEmployee",
+                            $"Updated employee with ID {id}"
+                        );
                     }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in enrichment/logging for update");
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Updated employee with ID {EmployeeId}", id);
                 return NoContent();
@@ -688,26 +682,23 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE RESULT: Successfully deleted employee {EmployeeId}", id);
 
-                // Fire-and-forget: Log the admin action
+                // Log the admin action synchronously to avoid disposed scope issues
                 var userId = GetUserId();
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    if (userId != null)
                     {
-                        if (userId != null)
-                        {
-                            await _adminLogger.LogActionAsync(
-                                userId,
-                                "DeleteEmployee",
-                                $"Deleted employee with ID {id}"
-                            );
-                        }
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "DeleteEmployee",
+                            $"Deleted employee with ID {id}"
+                        );
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error logging admin action for delete");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error logging admin action for delete");
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Deleted employee with ID {EmployeeId}", id);
                 return NoContent();
