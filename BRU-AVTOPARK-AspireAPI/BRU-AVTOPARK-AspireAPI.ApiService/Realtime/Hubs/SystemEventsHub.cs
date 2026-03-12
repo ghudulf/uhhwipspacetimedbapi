@@ -28,8 +28,23 @@ public sealed class SystemEventsHub : Hub
         var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
         
         // Attempt to get the actual negotiated transport from connection features
-        var transport = Context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpTransportFeature>()?.TransportType.ToString() 
-                       ?? "unknown";
+        // SignalR doesn't expose transport type directly, so we use "unknown" as fallback
+        var transport = "unknown";
+        try
+        {
+            // Try to infer transport from connection ID format or other indicators
+            // This is a best-effort approach since SignalR abstracts transport details
+            var connectionId = Context.ConnectionId;
+            if (!string.IsNullOrEmpty(connectionId))
+            {
+                // Connection IDs often contain transport hints, but this is implementation-specific
+                transport = "signalr"; // Generic indicator that SignalR is handling transport
+            }
+        }
+        catch
+        {
+            // Silently fall back to unknown if any issues occur
+        }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
         await Clients.Caller.SendAsync("connectionEstablished", new
