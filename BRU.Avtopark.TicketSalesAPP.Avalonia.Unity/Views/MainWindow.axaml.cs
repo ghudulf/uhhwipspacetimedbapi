@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private Button? _systemSettingsButton;
     private Button? _createBackupButton;
     private Button? _testTokenButton;
+    private Button? _webSocketDebugButton;
     
     // Command buttons
     private Button? _okButton;
@@ -323,6 +324,7 @@ public partial class MainWindow : Window
         _systemSettingsButton = this.FindControl<Button>("SystemSettingsButton");
         _createBackupButton = this.FindControl<Button>("CreateBackupButton");
         _testTokenButton = this.FindControl<Button>("TestTokenButton");
+        _webSocketDebugButton = this.FindControl<Button>("WebSocketDebugButton");
         
         // Attach event handlers to utility buttons
         if (_runEmployeeManagementButton != null)
@@ -354,6 +356,9 @@ public partial class MainWindow : Window
             
         if (_testTokenButton != null)
             _testTokenButton.Click += TestToken_Click;
+            
+        if (_webSocketDebugButton != null)
+            _webSocketDebugButton.Click += OpenWebSocketDebug_Click;
     }
     
     private void SetupCommandButtons()
@@ -601,5 +606,10 @@ public partial class MainWindow : Window
             Environment.Exit(0);
         }
     }
-    
+
+    private void OpenWebSocketDebug_Click(object? sender, RoutedEventArgs e)
+    {
+        var debugWindow = new WebSocketDebugWindow();
+        debugWindow.Show();
+    }
 }

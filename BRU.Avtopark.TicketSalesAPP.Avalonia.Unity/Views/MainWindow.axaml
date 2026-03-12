@@ -467,6 +467,15 @@
                                     <TextBlock Classes="ButtonSubtitle" Text="Проверка аутентификации"/>
 						</StackPanel>
 					</Button>
+
+                            <!-- WebSocket Debug -->
+                            <Button Classes="UtilityButton" x:Name="WebSocketDebugButton">
+						<StackPanel>
+							<icons:MaterialIcon Kind="Web"/>
+                                    <TextBlock Classes="ButtonTitle" Text="WebSocket Debug"/>
+                                    <TextBlock Classes="ButtonSubtitle" Text="Тестирование WebSocket"/>
+						</StackPanel>
+					</Button>
                         </WrapPanel>
                     </ScrollViewer>
                 </Grid>

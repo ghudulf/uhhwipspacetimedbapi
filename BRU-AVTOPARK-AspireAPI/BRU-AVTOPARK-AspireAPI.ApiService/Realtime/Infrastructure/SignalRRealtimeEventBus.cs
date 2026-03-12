@@ -53,8 +53,15 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
     public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("[EventBus] Publishing event: {EventName} for resource: {Resource} (CorrelationId: {CorrelationId})",
+            domainEvent.EventName,
+            domainEvent.Resource,
+            domainEvent.CorrelationId);
+        
         await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
         EnqueueForHistory(domainEvent);
+        
+        _logger.LogDebug("[EventBus] Event queued successfully: {EventName}", domainEvent.EventName);
     }
 
     /// <summary>

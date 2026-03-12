@@ -1,0 +1,270 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.WebSocketDebugWindow"
+        x:DataType="vm:WebSocketDebugViewModel"
+        Title="WebSocket Debug Tool - BRU Avtopark"
+        Width="1200" Height="800"
+        Icon="/Assets/avalonia-logo.ico"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:WebSocketDebugViewModel/>
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="Border.status-panel">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+
+        <Style Selector="Border.NotTested">
+            <Setter Property="Background" Value="#3A3A3A"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+        </Style>
+
+        <Style Selector="Border.Testing">
+            <Setter Property="Background" Value="#2D4F67"/>
+            <Setter Property="BorderBrush" Value="#3A7CA5"/>
+        </Style>
+
+        <Style Selector="Border.Passed">
+            <Setter Property="Background" Value="#1E4620"/>
+            <Setter Property="BorderBrush" Value="#2D7A2E"/>
+        </Style>
+
+        <Style Selector="Border.Failed">
+            <Setter Property="Background" Value="#5A1E1E"/>
+            <Setter Property="BorderBrush" Value="#8B2E2E"/>
+        </Style>
+
+        <Style Selector="TextBlock.header">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+        </Style>
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#0E639C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="#1177BB"/>
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#3E3E42"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#C42B1C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="16">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="WebSocket Debug Tool" Classes="header" FontSize="20"/>
+                    <TextBlock Text="Test WebSocket connections for all API controllers" 
+                               Foreground="#CCCCCC" FontSize="12" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Classes="status-panel" Padding="12,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="12" Height="12" 
+                                     Fill="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"/>
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="2*,3*" Margin="16">
+            <!-- Left Panel - Connection & Tests -->
+            <Border Grid.Column="0" Classes="status-panel" Margin="0,0,8,0">
+                <ScrollViewer>
+                    <StackPanel Spacing="16">
+                        <!-- Connection Settings -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Connection Settings" Classes="header"/>
+                            
+                            <TextBlock Text="Server URL:" Foreground="#CCCCCC" FontSize="12"/>
+                            <TextBox Text="{Binding ServerUrl}" 
+                                     Watermark="ws://localhost:5000"
+                                     Background="#3E3E42" 
+                                     Foreground="White"
+                                     BorderBrush="#555555"/>
+
+                            <TextBlock Text="Access Token (Optional):" Foreground="#CCCCCC" FontSize="12" Margin="0,8,0,0"/>
+                            <TextBox Text="{Binding AccessToken}" 
+                                     Watermark="Bearer token..."
+                                     PasswordChar="•"
+                                     Background="#3E3E42" 
+                                     Foreground="White"
+                                     BorderBrush="#555555"/>
+
+                            <Button Command="{Binding ConnectWebSocketCommand}"
+                                    Classes="primary"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,8,0,0">
+                                <TextBlock Text="{Binding IsConnected, Converter={StaticResource BoolToConnectTextConverter}}"
+                                           FontWeight="SemiBold"/>
+                            </Button>
+                        </StackPanel>
+
+                        <Separator Background="#3F3F46" Height="1"/>
+
+                        <!-- Test Controls -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Test Controls" Classes="header"/>
+                            
+                            <Button Command="{Binding TestAllControllersCommand}"
+                                    Classes="primary"
+                                    HorizontalAlignment="Stretch"
+                                    IsEnabled="{Binding IsConnected}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🧪" FontSize="16"/>
+                                    <TextBlock Text="Test All Controllers" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding SendBroadcastTestCommand}"
+                                    Classes="secondary"
+                                    HorizontalAlignment="Stretch"
+                                    IsEnabled="{Binding IsConnected}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="📡" FontSize="16"/>
+                                    <TextBlock Text="Send Broadcast Test"/>
+                                </StackPanel>
+                            </Button>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                <Button Command="{Binding ResetTestsCommand}"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch">
+                                    <TextBlock Text="🔄 Reset"/>
+                                </Button>
+                                <Button Command="{Binding ClearLogCommand}"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch">
+                                    <TextBlock Text="🗑️ Clear Log"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Separator Background="#3F3F46" Height="1"/>
+
+                        <!-- Controller Test Results -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Controller Tests" Classes="header"/>
+                            
+                            <ItemsControl ItemsSource="{Binding TestResults}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderThickness="1" 
+                                                CornerRadius="4" 
+                                                Padding="12" 
+                                                Margin="0,4"
+                                                Tag="{Binding Status}">
+                                            <Border.Styles>
+                                                <Style Selector="Border[Tag=NotTested]">
+                                                    <Setter Property="Background" Value="#3A3A3A"/>
+                                                    <Setter Property="BorderBrush" Value="#555555"/>
+                                                </Style>
+                                                <Style Selector="Border[Tag=Testing]">
+                                                    <Setter Property="Background" Value="#2D4F67"/>
+                                                    <Setter Property="BorderBrush" Value="#3A7CA5"/>
+                                                </Style>
+                                                <Style Selector="Border[Tag=Passed]">
+                                                    <Setter Property="Background" Value="#1E4620"/>
+                                                    <Setter Property="BorderBrush" Value="#2D7A2E"/>
+                                                </Style>
+                                                <Style Selector="Border[Tag=Failed]">
+                                                    <Setter Property="Background" Value="#5A1E1E"/>
+                                                    <Setter Property="BorderBrush" Value="#8B2E2E"/>
+                                                </Style>
+                                            </Border.Styles>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding ControllerName}" 
+                                                               FontWeight="Bold" 
+                                                               Foreground="White"
+                                                               FontSize="13"/>
+                                                    <TextBlock Text="{Binding Message}" 
+                                                               Foreground="#CCCCCC" 
+                                                               FontSize="11"
+                                                               Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding LastTested, StringFormat='Last: {0:HH:mm:ss}'}" 
+                                                               Foreground="#999999" 
+                                                               FontSize="10"
+                                                               Margin="0,2,0,0"
+                                                               IsVisible="{Binding LastTested, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" 
+                                                        Command="{Binding DataContext.TestSingleControllerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Classes="secondary"
+                                                        Padding="8,4"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Test" FontSize="11"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Right Panel - Event Log -->
+            <Border Grid.Column="1" Classes="status-panel" Margin="8,0,0,0">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="Event Log" Classes="header" Margin="0,0,0,12"/>
+                    
+                    <Border Grid.Row="1" 
+                            Background="#252526" 
+                            BorderBrush="#3F3F46" 
+                            BorderThickness="1" 
+                            CornerRadius="4">
+                        <ScrollViewer x:Name="EventLogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding EventLog}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" 
+                                                   Foreground="#D4D4D4" 
+                                                   FontFamily="Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Padding="8,2"
+                                                   TextWrapping="Wrap"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
