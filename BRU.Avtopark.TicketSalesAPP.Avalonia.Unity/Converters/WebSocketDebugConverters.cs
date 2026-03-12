@@ -35,7 +35,7 @@ public class BoolToConnectTextConverter : IValueConverter
         {
             return isConnected ? "🔌 Disconnect" : "🔌 Connect";
         }
-        return "Connect";
+        return "🔌 Connect";
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

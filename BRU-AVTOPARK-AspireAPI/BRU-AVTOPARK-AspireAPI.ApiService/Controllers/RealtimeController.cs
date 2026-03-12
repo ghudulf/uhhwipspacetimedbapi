@@ -458,7 +458,7 @@ public sealed class RealtimeController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{ConnectionId}] Error executing CRUD {Command} on {Resource}", connectionId, command, resource);
-            await SendErrorAsync(webSocket, requestId, $"Error executing {command}: {ex.Message}", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, "Failed to execute command", cancellationToken);
         }
     }
 

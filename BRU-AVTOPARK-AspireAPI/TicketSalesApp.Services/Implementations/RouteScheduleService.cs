@@ -209,7 +209,7 @@ namespace TicketSalesApp.Services.Implementations
                         route.StartPoint, // startPoint
                         route.EndPoint, // endPoint
                         routeStops?.ToList(), // routeStops, convert to List<string> if not null
-                        (departureTime ?? 0) + 3600000, // arrivalTime, add 1 hour for arrival time, default to 0 if null
+                        arrivalTime ?? (departureTime ?? 0) + 3600000, // arrivalTime, use caller-provided value or add 1 hour to departure time
                         stopDurationMinutes, // stopDurationMinutes
                         isRecurring, // isRecurring
                         estimatedStopTimes?.ToList() ?? new List<string>(), // estimatedStopTimes, convert to List<string> if not null, default to empty list

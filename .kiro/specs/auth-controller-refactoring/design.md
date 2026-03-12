@@ -2561,10 +2561,14 @@ Elysia is a fast, ergonomic TypeScript web framework built on Bun runtime with f
 **Elysia JS Benefits**:
 1. **Lightweight**: Purpose-built for auth/proxy use cases
 2. **Modern DX**: TypeScript, hot reload, modern tooling
-3. **Simpler OAuth**: `@myazarc/elysia-oauth2-server` + `oidc-provider` for full OIDC
+3. **Production-grade OIDC**: `oidc-provider` (v9.x) integrated via `elysiajs/node` adapter for full OIDC compliance
 4. **Easy integration**: Can proxy to existing C# backend for business logic
 5. **Independent scaling**: Auth layer scales separately from business logic
 6. **Native WebSocket support**: Built-in WebSocket handling for real-time auth
+
+**Note on OAuth packages**:
+- `elysia-oauth2` (v2+) is for **consuming** third-party OAuth2 providers (e.g., login with Google/GitHub), not for implementing your own OAuth server
+- For implementing a full OIDC provider, use `oidc-provider` (v9.x) mounted on http.Server before Elysia's routing for `/oidc/*` endpoints
 
 #### Architecture Option 1: Elysia as Authentication Gateway
 
@@ -2715,374 +2719,242 @@ Use Elysia for new features, keep C# for existing features.
 - **Operational complexity**: Two services to maintain
 - **Unclear boundaries**: Which features go where?
 
-#### Implementation Example: Elysia OAuth Server
+#### Implementation Example: Elysia OIDC Server
 
-Here's how the OAuth flow would look with Elysia JS using the actual `@myazarc/elysia-oauth2-server` plugin:
+For production OIDC implementation, use `oidc-provider` (v9.x) - the industry-standard library used by Auth0, Okta, and other major identity providers.
 
 **Installation**:
 ```bash
-bun add @myazarc/elysia-oauth2-server
+bun add oidc-provider
+bun add @elysiajs/node
 ```
 
-**Supported Grant Types**:
-- `password` - Resource Owner Password Credentials
-- `authorization_code` - Authorization Code Flow (with PKCE support)
-- `client_credentials` - Client Credentials Flow
-- `refresh_token` - Refresh Token Flow
+**Why oidc-provider?**:
+- **Battle-tested**: Used in production by major identity providers
+- **Full OIDC spec**: ID tokens, discovery endpoints, userinfo, token introspection
+- **PKCE support**: Built-in support for public clients
+- **Flexible adapters**: Works with any database (including SpacetimeDB via custom adapter)
+
+**Note**: `elysia-oauth2` (v2+) is designed for **consuming** third-party OAuth2 providers, not for implementing your own OAuth server.
 
 **Complete Implementation**:
 ```typescript
 import { Elysia, t } from 'elysia'
-import { oauth2, Oauth2Options, Client, Token } from '@myazarc/elysia-oauth2-server'
+import Provider from 'oidc-provider'
+import { node } from '@elysiajs/node'
 
-// In-memory storage (replace with SpacetimeDB or C# backend calls)
-const clients: Client[] = [
-  {
-    id: 'avalonia-client',
-    clientSecret: 'client-secret-here',
-    redirectUris: ['http://localhost:3000/callback'],
-    grants: [
-      'password',
-      'authorization_code',
-      'client_credentials',
-      'refresh_token',
-    ],
-  },
-]
+// Custom SpacetimeDB adapter for oidc-provider
+class SpacetimeDBAdapter {
+  constructor(private name: string) {}
 
-const users = [
-  { id: '123', username: 'testuser', password: 'password123' }
-]
+  async upsert(id: string, payload: any, expiresIn: number) {
+    // Store in SpacetimeDB via C# backend
+    await fetch('http://csharp-backend:5000/api/oidc/store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: this.name,
+        id,
+        payload,
+        expiresAt: Date.now() + (expiresIn * 1000)
+      })
+    })
+  }
 
-const tokens: Token[] = []
-const codes: any[] = []
+  async find(id: string) {
+    const response = await fetch(`http://csharp-backend:5000/api/oidc/find/${this.name}/${id}`)
+    if (!response.ok) return undefined
+    return await response.json()
+  }
 
-// OAuth2 model implementation
-const oauth2Opts: Oauth2Options = {
-  model: {
-    // ===== Core Methods (Required for all flows) =====
-    
-    getAccessToken: async (accessToken: string) => {
-      return tokens.find((token) => token.accessToken === accessToken)
-    },
-    
-    getClient: async (clientId: string, clientSecret: string) => {
-      if (clientSecret === null) {
-        // Public client (PKCE flow)
-        return clients.find((client) => client.id === clientId)
-      }
-      
-      // Confidential client
-      return clients.find(
-        (client) => 
-          client.id === clientId && 
-          client.clientSecret === clientSecret
-      )
-    },
-    
-    getUser: async (username: string, password: string) => {
-      // TODO: Call C# backend to validate credentials
-      // const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ username, password })
-      // })
-      // return await response.json()
-      
-      return users.find(
-        (user) => user.username === username && user.password === password
-      )
-    },
-    
-    saveToken: async (token: any, client: any, user: any) => {
-      const tokenData: Token = {
-        accessToken: token.accessToken,
-        accessTokenExpiresAt: token.accessTokenExpiresAt,
-        refreshToken: token.refreshToken,
-        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-        client: {
-          id: client.id,
-          grants: client.grants,
-        },
-        user: {
-          id: user.id,
-        },
-      }
-      
-      tokens.push(tokenData)
-      return tokenData
-    },
-    
-    // ===== Authorization Code Flow Methods =====
-    
-    saveAuthorizationCode: async (code: any, client: any, user: any) => {
-      const codeData = {
-        ...code,
-        client: {
-          id: client.id,
-          grants: client.grants,
-        },
-        user: {
-          id: user.id,
-        },
-      }
-      
-      codes.push(codeData)
-      return codeData
-    },
-    
-    getAuthorizationCode: async (authorizationCode: string) => {
-      return codes.find(
-        (code) => code.authorizationCode === authorizationCode
-      )
-    },
-    
-    revokeAuthorizationCode: async (code: any) => {
-      const index = codes.findIndex(
-        (c) => c.authorizationCode === code.authorizationCode
-      )
-      
-      if (index !== -1) {
-        codes.splice(index, 1)
-      }
-      
-      return true
-    },
-    
-    // ===== Client Credentials Flow Methods =====
-    
-    getUserFromClient: async (client: any) => {
-      // TODO: Find user associated with client
-      // For machine-to-machine, might return service account
-      return users[0]
-    },
-    
-    // ===== Refresh Token Flow Methods =====
-    
-    getRefreshToken: async (refreshToken: string) => {
-      return tokens.find((token) => token.refreshToken === refreshToken)
-    },
-    
-    revokeToken: async (token: any) => {
-      const index = tokens.findIndex(
-        (t) => t.accessToken === token.accessToken
-      )
-      
-      if (index !== -1) {
-        tokens.splice(index, 1)
-      }
-      
-      return true
-    },
-  },
+  async findByUserCode(userCode: string) {
+    const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUserCode/${userCode}`)
+    if (!response.ok) return undefined
+    return await response.json()
+  }
+
+  async findByUid(uid: string) {
+    const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUid/${this.name}/${uid}`)
+    if (!response.ok) return undefined
+    return await response.json()
+  }
+
+  async destroy(id: string) {
+    await fetch(`http://csharp-backend:5000/api/oidc/destroy/${this.name}/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async revokeByGrantId(grantId: string) {
+    await fetch(`http://csharp-backend:5000/api/oidc/revokeByGrantId/${grantId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async consume(id: string) {
+    await fetch(`http://csharp-backend:5000/api/oidc/consume/${this.name}/${id}`, {
+      method: 'POST'
+    })
+  }
 }
 
-// Create Elysia app with OAuth2 plugin
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter,
+  clients: [
+    {
+      client_id: 'avalonia-client',
+      client_secret: 'client-secret',
+      redirect_uris: ['http://localhost:3000/callback'],
+      response_types: ['code'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_method: 'client_secret_post',
+    },
+  ],
+  pkce: {
+    required: () => true, // Enforce PKCE for all clients
+  },
+  features: {
+    devInteractions: { enabled: false }, // Use custom login pages
+    rpInitiatedLogout: { enabled: true },
+    revocation: { enabled: true },
+    introspection: { enabled: true },
+  },
+  findAccount: async (ctx, id) => {
+    // Fetch user from SpacetimeDB via C# backend
+    const response = await fetch(`http://csharp-backend:5000/api/users/${id}`)
+    if (!response.ok) return undefined
+
+    const user = await response.json()
+    return {
+      accountId: id,
+      async claims() {
+        return {
+          sub: id,
+          email: user.email,
+          name: user.login,
+          preferred_username: user.login,
+        }
+      },
+    }
+  },
+})
+
+// Integration approach 1: Mount oidc-provider via server-level interception
+// Use @elysiajs/node adapter to access underlying http.Server
 const app = new Elysia()
-  .use(oauth2(oauth2Opts))
-  
-  // Token endpoint (handles all grant types)
-  .post(
-    '/oauth2/token',
-    ({ oauth2, ...payload }) => {
-      return oauth2.token(payload)
-    },
-    {
-      headers: t.Object({
-        // Basic auth: "Basic " + base64(clientId:clientSecret)
-        authorization: t.String(),
-      }),
-      body: t.Object({
-        // Password grant
-        username: t.Optional(t.String()),
-        password: t.Optional(t.String()),
-        
-        // Grant type (required)
-        grant_type: t.String({
-          examples: [
-            'password',
-            'refresh_token',
-            'client_credentials',
-            'authorization_code',
-          ],
-        }),
-        
-        // Authorization code grant
-        code: t.Optional(t.String()),
-        redirect_uri: t.Optional(t.String()),
-        
-        // Refresh token grant
-        refresh_token: t.Optional(t.String()),
-        
-        // PKCE parameters
-        code_verifier: t.Optional(t.String()),
-      }),
-    }
-  )
-  
-  // Token verification endpoint
-  .post(
-    '/oauth2/authenticate',
-    ({ oauth2, ...payload }) => {
-      return oauth2.authenticate(payload)
-    },
-    {
-      headers: t.Object({
-        authorization: t.String(),
-      }),
-      body: t.Object({
-        token: t.String(),
-      }),
-    }
-  )
-  
-  // Authorization endpoint (for authorization code flow)
-  .post(
-    '/oauth2/authorize',
-    ({ oauth2, ...payload }) => {
-      return oauth2.authorize(payload, {
-        // Custom authentication handler
-        authenticateHandler: {
-          handle: (request: any) => {
-            // TODO: Validate user session
-            // Check if user is logged in via cookie/session
-            // Return user object if authenticated
-            return { id: '123' }
-          },
-        },
-      })
-    },
-    {
-      body: t.Object({
-        client_id: t.String(),
-        response_type: t.String({
-          examples: ['code', 'token'],
-        }),
-        state: t.String(),
-        redirect_uri: t.String(),
-        scope: t.Optional(t.String()),
-        
-        // PKCE parameters
-        code_challenge: t.Optional(t.String()),
-        code_challenge_method: t.Optional(t.String()),
-      }),
-    }
-  )
-  
+  .use(node()) // Enable Node.js adapter
+
+  // Elysia routes
+  .get('/health', () => ({ status: 'ok' }))
+
   // Proxy to C# backend for business logic
   .all('/api/*', async ({ request, headers }) => {
-    // Extract and validate token
     const authHeader = headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
-      return { status: 401, body: { error: 'Unauthorized' } }
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
     }
-    
-    const token = authHeader.substring(7)
-    
-    // Validate token via OAuth2 plugin
-    // (In production, use oauth2.authenticate)
-    
-    // Forward to C# backend with user context
-    const response = await fetch(`http://csharp-backend:5000${request.url}`, {
+
+    const response = await fetch(`http://csharp-backend:5000${new URL(request.url).pathname}`, {
       method: request.method,
-      headers: {
-        ...headers,
-        'X-User-Id': 'extracted-from-token',
-      },
-      body: request.body,
+      headers: headers as HeadersInit,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
     })
-    
+
     return response
   })
-  
-  .listen(3000)
 
-console.log('🦊 Elysia OAuth2 server listening on :3000')
+// Mount oidc-provider on the Node.js http.Server BEFORE Elysia routing
+// Access via app.server?.node?.server after calling .listen()
+app.listen(3000, (server) => {
+  const httpServer = server.server // Access underlying Node.js http.Server
+
+  // Intercept requests matching /oidc/* before they reach Elysia
+  const originalListener = httpServer.listeners('request')[0]
+  httpServer.removeAllListeners('request')
+
+  httpServer.on('request', (req, res) => {
+    if (req.url?.startsWith('/oidc')) {
+      // Route to oidc-provider
+      oidc.callback()(req, res)
+    } else {
+      // Route to Elysia
+      originalListener(req, res)
+    }
+  })
+
+  console.log('🔐 OIDC provider mounted on /oidc/* endpoints')
+  console.log('🦊 Elysia server listening on :3000')
+})
+
+// Alternative approach 2: Fetch-based shim (simpler but adds overhead)
+// Convert Elysia Request ↔ Node.js req/res for oidc-provider compatibility
+/*
+app.all('/oidc/*', async ({ request }) => {
+  // Create Node.js-like req/res objects from Fetch Request
+  const { toNodeRequest, toFetchResponse } = await import('./node-shim')
+
+  return new Promise((resolve) => {
+    const nodeReq = toNodeRequest(request)
+    const nodeRes = {
+      statusCode: 200,
+      headers: {},
+      setHeader(name: string, value: string) {
+        this.headers[name] = value
+      },
+      end(body: string) {
+        resolve(toFetchResponse(this.statusCode, this.headers, body))
+      }
+    }
+
+    oidc.callback()(nodeReq, nodeRes)
+  })
+})
+*/
 ```
 
-**Key Features of @myazarc/elysia-oauth2-server**:
+**Key Features of oidc-provider**:
 
-1. **Based on @node-oauth/oauth2-server**: Battle-tested OAuth2 implementation
-2. **Complete OAuth2 spec compliance**: Supports all standard grant types
+1. **Production-grade**: Used by Auth0, Okta, and other major identity providers
+2. **Full OIDC compliance**: ID tokens, discovery endpoints, userinfo, token introspection
 3. **PKCE support**: Built-in support for public clients (mobile apps, SPAs)
-4. **Flexible storage**: Model-based approach allows any storage backend (SpacetimeDB, PostgreSQL, Redis)
-5. **Type-safe**: Full TypeScript support with Elysia's type system
+4. **Flexible adapters**: Works with any storage backend (SpacetimeDB, PostgreSQL, Redis)
+5. **Extensive features**: Dynamic client registration, session management, consent flows
+6. **Active maintenance**: Regular security patches and updates
 
 **Integration with SpacetimeDB**:
 
-Replace in-memory storage with SpacetimeDB calls:
+The `SpacetimeDBAdapter` class shown above integrates oidc-provider with SpacetimeDB via the C# backend. All OIDC session data (authorization codes, access tokens, refresh tokens) is stored in SpacetimeDB tables and accessed through C# API endpoints.
 
-```typescript
-const oauth2Opts: Oauth2Options = {
-  model: {
-    getUser: async (username: string, password: string) => {
-      // Call C# backend to validate against SpacetimeDB
-      const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      
-      if (!response.ok) return null
-      
-      return await response.json()
-    },
-    
-    getClient: async (clientId: string, clientSecret: string) => {
-      // Query SpacetimeDB via C# backend
-      const response = await fetch(
-        `http://csharp-backend:5000/api/oauth/clients/${clientId}`,
-        {
-          headers: {
-            'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`
-          }
-        }
-      )
-      
-      if (!response.ok) return null
-      
-      return await response.json()
-    },
-    
-    saveToken: async (token: any, client: any, user: any) => {
-      // Store token in SpacetimeDB via C# backend
-      const response = await fetch('http://csharp-backend:5000/api/oauth/tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accessToken: token.accessToken,
-          accessTokenExpiresAt: token.accessTokenExpiresAt,
-          refreshToken: token.refreshToken,
-          refreshTokenExpiresAt: token.refreshTokenExpiresAt,
-          clientId: client.id,
-          userId: user.id,
-        })
-      })
-      
-      return await response.json()
-    },
-    
-    // ... implement other methods similarly
-  }
-}
-```
+The adapter implements the required oidc-provider interface:
+- `upsert`: Store/update session data in SpacetimeDB
+- `find`: Retrieve session data by ID
+- `findByUserCode`: Support for device flow
+- `findByUid`: Support for grant lookups
+- `destroy`: Delete session data
+- `revokeByGrantId`: Revoke all tokens for a grant
+- `consume`: Mark authorization codes as used
+
+This approach leverages the existing C# backend for SpacetimeDB access while using oidc-provider for OIDC protocol handling.
 
 **Comparison with OpenIddict**:
 
-| Feature | OpenIddict (C#) | @myazarc/elysia-oauth2-server |
-|---------|-----------------|-------------------------------|
-| **Language** | C# | TypeScript |
-| **Runtime** | .NET | Bun |
+| Feature | OpenIddict (C#) | oidc-provider (Node.js) |
+|---------|-----------------|-------------------------|
+| **Language** | C# | TypeScript/JavaScript |
+| **Runtime** | .NET | Node.js/Bun |
 | **OAuth2 Spec** | ✅ Full compliance | ✅ Full compliance |
-| **OIDC Support** | ✅ Full OIDC | ⚠️ OAuth2 only (no OIDC claims) |
+| **OIDC Support** | ✅ Full OIDC | ✅ Full OIDC |
 | **PKCE** | ✅ Built-in | ✅ Built-in |
-| **Storage** | Custom stores required | Model-based (flexible) |
-| **SpacetimeDB Integration** | ⚠️ Complex (custom stores) | ✅ Easy (delegate to C# backend) |
+| **Storage** | Custom stores required | Adapter-based (flexible) |
+| **SpacetimeDB Integration** | ⚠️ Complex (custom stores) | ✅ Easy (custom adapter → C# backend) |
 | **Performance** | ~5k req/s | ~10k req/s |
-| **Developer Experience** | ⚠️ Complex setup | ✅ Simple, type-safe |
-| **Discovery Endpoint** | ✅ Auto-generated | ❌ Manual implementation |
-| **Token Introspection** | ✅ Built-in | ⚠️ Manual implementation |
+| **Developer Experience** | ⚠️ Complex setup | ✅ Simple, well-documented |
+| **Discovery Endpoint** | ✅ Auto-generated | ✅ Auto-generated |
+| **Token Introspection** | ✅ Built-in | ✅ Built-in |
+| **Production Readiness** | ✅ Mature | ✅ Battle-tested (Auth0, Okta) |
 
-**Note**: The `@myazarc/elysia-oauth2-server` plugin provides OAuth2 functionality but does NOT include full OpenID Connect (OIDC) features like ID tokens, discovery endpoints, or userinfo endpoint. For full OIDC compliance, you would need to implement these features manually or use the plugin for OAuth2 and add OIDC on top.
+**Note**: `oidc-provider` is a production-grade OIDC implementation. For **consuming** third-party OAuth2 providers (e.g., "Login with Google"), use `elysia-oauth2` (v2+) instead.
 
 #### SpacetimeDB Integration with Elysia
 
@@ -3129,19 +3001,17 @@ app.post('/auth/login', async ({ body }) => {
 })
 ```
 
-#### Production-Grade OIDC with oidc-provider
+#### Integrating oidc-provider with Elysia
 
-For full OpenID Connect compliance beyond what `@myazarc/elysia-oauth2-server` provides, use **oidc-provider** by panva - the industry-standard OIDC implementation used by major identity providers.
+Since oidc-provider is built for Node.js and expects `req`/`res` objects, it cannot be directly used as an Elysia plugin. There are two integration approaches:
 
-**Why oidc-provider?**
-- **Battle-tested**: Used in production by Auth0, Okta, and other major providers
-- **Full OIDC spec**: ID tokens, discovery endpoints, userinfo, token introspection
-- **Flexible adapters**: Works with any database (including SpacetimeDB via custom adapter)
-- **PKCE support**: Built-in support for public clients
-- **Extensive features**: Dynamic client registration, session management, consent flows
-- **Active maintenance**: Regular updates and security patches
+**Approach 1: Server-level interception (recommended)**
+Mount oidc-provider on the underlying http.Server before Elysia's routing handles `/oidc/*` endpoints. Use `@elysiajs/node` adapter to access `app.server?.node?.server`.
 
-**Integration with Elysia + SpacetimeDB**:
+**Approach 2: Fetch↔Node.js request shim**
+Create a shim layer that converts Elysia's Fetch `Request` objects to Node.js `req`/`res` objects for oidc-provider compatibility.
+
+**Full Integration Example**:
 
 ```typescript
 import { Elysia } from 'elysia'
@@ -3285,8 +3155,9 @@ const app = new Elysia()
 #### Migration Path to Elysia
 
 **Phase 1: Proof of Concept** (2-4 weeks)
-- [ ] Set up Elysia project with OAuth2 plugin
-- [ ] Implement basic OAuth flow (authorize, token, userinfo)
+- [ ] Set up Elysia project with oidc-provider
+- [ ] Implement server-level interception for /oidc/* endpoints
+- [ ] Implement basic OIDC flow (authorize, token, userinfo)
 - [ ] Test with Avalonia client
 - [ ] Compare performance with OpenIddict
 - [ ] Evaluate developer experience

@@ -175,31 +175,66 @@ public partial class WebSocketDebugViewModel : ObservableObject
         {
             StatusMessage = $"Connection failed: {ex.Message}";
             AddLog($"✗ Connection failed: {ex.Message}");
-            IsConnected = false;
+            await CleanupWebSocketAsync();
         }
     }
 
     [RelayCommand]
     private async Task DisconnectWebSocket()
     {
+        await CleanupWebSocketAsync();
+        AddLog("Disconnected from WebSocket");
+    }
+
+    private async Task CleanupWebSocketAsync()
+    {
         try
         {
+            // Attempt polite close with short timeout
             if (_webSocket?.State == WebSocketState.Open)
             {
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "User disconnect", CancellationToken.None);
+                using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                try
+                {
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "User disconnect", closeCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Timeout - fall back to abort
+                    _webSocket?.Abort();
+                }
+                catch
+                {
+                    // Any other error - fall back to abort
+                    _webSocket?.Abort();
+                }
             }
 
+            // Cancel and dispose cancellation token source
             _cts?.Cancel();
-            _webSocket?.Dispose();
             _cts?.Dispose();
+            _cts = null;
 
+            // Dispose WebSocket
+            _webSocket?.Dispose();
+            _webSocket = null;
+
+            // Cancel and clear pending completions
+            foreach (var kvp in _pendingCompletions)
+            {
+                kvp.Value.TrySetCanceled();
+            }
+            _pendingCompletions.Clear();
+
+            // Update UI state
             IsConnected = false;
             StatusMessage = "Disconnected";
-            AddLog("Disconnected from WebSocket");
         }
         catch (Exception ex)
         {
-            AddLog($"Error during disconnect: {ex.Message}");
+            AddLog($"Error during cleanup: {ex.Message}");
+            IsConnected = false;
+            StatusMessage = "Disconnected (with errors)";
         }
     }
 
@@ -392,7 +427,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 {
                     command = "read_all",
                     requestId = Guid.NewGuid().ToString(),
-                    payload = new { page = 1, pageSize = 50 }
+                    page = 1,
+                    pageSize = 50
                 };
                 json = JsonSerializer.Serialize(readAllRequest);
             }
@@ -827,8 +863,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
         catch (Exception ex)
         {
             AddLog($"✗ Receive error: {ex.Message}");
-            IsConnected = false;
-            StatusMessage = $"Error: {ex.Message}";
+            await CleanupWebSocketAsync();
         }
     }
 

@@ -187,7 +187,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
         /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
         /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
-        private object ApplyPaginationAndProject(List<dynamic> schedules, int? page, int? pageSize)
+        private object ApplyPaginationAndProject(IReadOnlyList<RouteSchedule> schedules, int? page, int? pageSize)
         {
             // Apply defaults and validation
             var currentPage = page ?? 1;
@@ -488,7 +488,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 Response.Headers["X-Total-Count"] = totalCount.ToString();
                 Response.Headers["X-Page"] = page.ToString();
                 Response.Headers["X-Page-Size"] = pageSize.ToString();
-                Response.Headers["X-Total-Pages"] = ((int)Math.Ceiling(totalCount / (double)pageSize)).ToString();
+                Response.Headers["X-Total-Pages"] = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize)).ToString();
                 
                 return Ok(result);
             }

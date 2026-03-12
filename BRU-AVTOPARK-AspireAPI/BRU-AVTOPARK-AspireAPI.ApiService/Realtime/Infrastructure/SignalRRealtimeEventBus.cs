@@ -281,10 +281,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 c == ' ')
             .ToArray());
 
-        // Truncate if needed
+        // Truncate if needed - ensure output never exceeds maxLength
         if (sanitized.Length > maxLength)
         {
-            return sanitized.Substring(0, maxLength) + "...";
+            return sanitized.Substring(0, maxLength - 3) + "...";
         }
 
         return sanitized;
