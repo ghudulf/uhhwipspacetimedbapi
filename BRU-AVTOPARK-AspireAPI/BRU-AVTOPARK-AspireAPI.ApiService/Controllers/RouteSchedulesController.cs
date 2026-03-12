@@ -139,17 +139,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         private async Task<object> HandleNavigationCommandAsync(string command, int? page, int? pageSize)
         {
-            // Apply defaults and validation
+            // Fetch schedules once and materialize
+            var schedules = (await _routeScheduleService.GetAllSchedulesAsync()).ToList();
+
+            // Calculate page size and total pages for navigation
             var currentPageSize = pageSize ?? 100;
             if (currentPageSize < 1) currentPageSize = 100;
             if (currentPageSize > 500) currentPageSize = 500;
-            
-            // Fetch schedules once and materialize
-            var schedules = (await _routeScheduleService.GetAllSchedulesAsync()).ToList();
+
             var totalCount = schedules.Count;
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
-            var currentPage = page ?? 1;
-            
+
+            // Normalize page value before switch statement
+            var currentPage = Math.Max(1, Math.Min(page ?? 1, totalPages));
+
             // Apply navigation logic
             switch (command)
             {
@@ -166,14 +169,41 @@ namespace TicketSalesApp.AdminServer.Controllers
                     currentPage = totalPages;
                     break;
                 case "goto_page":
-                    currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+                    // Already normalized above
                     break;
             }
-            
+
             _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
                 command, currentPage, totalPages, currentPageSize, totalCount);
-            
-            // Apply pagination to the already-fetched schedules
+
+            // Use shared pagination helper
+            return ApplyPaginationAndProject(schedules, currentPage, currentPageSize);
+        }
+
+        /// <summary>
+        /// Shared helper method to apply pagination logic and return paginated schedules with metadata.
+        /// </summary>
+        /// <param name="schedules">The full collection of schedules to paginate.</param>
+        /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
+        /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
+        /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
+        private object ApplyPaginationAndProject(List<dynamic> schedules, int? page, int? pageSize)
+        {
+            // Apply defaults and validation
+            var currentPage = page ?? 1;
+            var currentPageSize = pageSize ?? 100;
+
+            if (currentPage < 1) currentPage = 1;
+            if (currentPageSize < 1) currentPageSize = 100;
+            if (currentPageSize > 500) currentPageSize = 500;
+
+            var totalCount = schedules.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
+
+            // Clamp page to valid range
+            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+
+            // Apply pagination
             var pagedSchedules = schedules
                 .Skip((currentPage - 1) * currentPageSize)
                 .Take(currentPageSize);
@@ -181,7 +211,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             // Map using centralized projection helper
             var result = pagedSchedules.Select(ProjectScheduleForList).ToList();
 
-            return new { 
+            return new {
                 schedules = result,
                 pagination = new {
                     page = currentPage,
@@ -202,42 +232,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
         private async Task<object> HandleReadAllCommandAsync(int? page = null, int? pageSize = null)
         {
-            // Apply defaults and validation
-            var currentPage = page ?? 1;
-            var currentPageSize = pageSize ?? 100;
-            
-            if (currentPage < 1) currentPage = 1;
-            if (currentPageSize < 1) currentPageSize = 100;
-            if (currentPageSize > 500) currentPageSize = 500; // Max 500 items per page to prevent memory issues
-            
             // Materialize the collection once to avoid multiple enumeration
             var schedules = (await _routeScheduleService.GetAllSchedulesAsync()).ToList();
-            var totalCount = schedules.Count;
-            
-            _logger.LogInformation("RouteSchedules WebSocket read_all - Page: {Page}, PageSize: {PageSize}, Total: {TotalCount}", 
-                currentPage, currentPageSize, totalCount);
 
-            // Apply pagination
-            var pagedSchedules = schedules
-                .Skip((currentPage - 1) * currentPageSize)
-                .Take(currentPageSize);
+            _logger.LogInformation("RouteSchedules WebSocket read_all - Page: {Page}, PageSize: {PageSize}, Total: {TotalCount}",
+                page ?? 1, pageSize ?? 100, schedules.Count);
 
-            // Map using centralized projection helper
-            var result = pagedSchedules.Select(ProjectScheduleForList).ToList();
-
-            var totalPages = (int)Math.Ceiling(totalCount / (double)currentPageSize);
-
-            return new { 
-                schedules = result,
-                pagination = new {
-                    page = currentPage,
-                    pageSize = currentPageSize,
-                    totalCount = totalCount,
-                    totalPages = totalPages,
-                    hasNextPage = currentPage < totalPages,
-                    hasPrevPage = currentPage > 1
-                }
-            };
+            // Use shared pagination helper
+            return ApplyPaginationAndProject(schedules, page, pageSize);
         }
 
         /// <summary>
@@ -860,8 +862,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Use the returned scheduleId to fetch the created schedule directly
-                var routeSchedules = await _routeScheduleService.GetSchedulesByRouteIdAsync(model.RouteId);
-                var schedule = routeSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId.Value);
+                var schedule = await _routeScheduleService.GetScheduleByIdAsync(scheduleId.Value);
 
                 if (schedule == null)
                 {

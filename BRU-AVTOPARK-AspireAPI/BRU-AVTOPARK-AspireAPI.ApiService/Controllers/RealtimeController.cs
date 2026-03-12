@@ -231,12 +231,12 @@ public sealed class RealtimeController : ControllerBase
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[{ConnectionId}] JSON parsing error. Raw message: {Message}", connectionId, messageJson);
+            _logger.LogError(ex, "[{ConnectionId}] JSON parsing error. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
             await SendErrorAsync(webSocket, null, "Invalid JSON format", cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{ConnectionId}] Error handling message. Raw: {Message}", connectionId, messageJson);
+            _logger.LogError(ex, "[{ConnectionId}] Error handling message. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
             await SendErrorAsync(webSocket, null, "Error processing message", cancellationToken);
         }
     }

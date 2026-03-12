@@ -178,42 +178,73 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
-                // Get count before creation to identify the new schedule
-                var beforeCount = connection.Db.RouteSchedule.Iter().Count();
+                // Use TaskCompletionSource to wait for reducer confirmation
+                var tcs = new TaskCompletionSource<uint?>();
 
-                // Call the CreateRouteSchedule reducer
-                connection.Reducers.CreateRouteSchedule(
-                    routeId ?? throw new ArgumentNullException(nameof(routeId)), // Ensure routeId is not null
-                    departureTime ?? 0, // departureTime, default to 0 if null
-                    price ?? 0.0, // price, default to 0.0 if null
-                    availableSeats ?? 0, // availableSeats, default to 0 if null
-                    daysOfWeek?.ToList(), // daysOfWeek, convert to List<string> if not null
-                    route.StartPoint, // startPoint
-                    route.EndPoint, // endPoint
-                    routeStops?.ToList(), // routeStops, convert to List<string> if not null
-                    (departureTime ?? 0) + 3600000, // arrivalTime, add 1 hour for arrival time, default to 0 if null
-                    stopDurationMinutes, // stopDurationMinutes
-                    isRecurring, // isRecurring
-                    estimatedStopTimes?.ToList() ?? new List<string>(), // estimatedStopTimes, convert to List<string> if not null, default to empty list
-                    stopDistances?.ToList() ?? new List<double>(), // stopDistances, convert to List<double> if not null, default to empty list
-                    notes // notes
-                    
-                );
+                // Set up event handler to capture the created schedule ID
+                void OnScheduleCreated(ReducerEvent reducerEvent, string? callbackMessage, uint? scheduleId)
+                {
+                    if (scheduleId.HasValue)
+                    {
+                        tcs.TrySetResult(scheduleId.Value);
+                    }
+                    else
+                    {
+                        tcs.TrySetResult(null);
+                    }
+                }
 
-                // Wait a moment for the reducer to complete
-                await Task.Delay(100);
+                // Attach event handler
+                connection.Reducers.OnCreateRouteSchedule += OnScheduleCreated;
 
-                // Find the newly created schedule by matching unique attributes
-                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
-                var newSchedule = allSchedules
-                    .Where(s => s.RouteId == routeId && 
-                               s.DepartureTime == departureTime &&
-                               s.StartPoint == route.StartPoint &&
-                               s.EndPoint == route.EndPoint)
-                    .OrderByDescending(s => s.ScheduleId)
-                    .FirstOrDefault();
+                try
+                {
+                    // Call the CreateRouteSchedule reducer
+                    connection.Reducers.CreateRouteSchedule(
+                        routeId ?? throw new ArgumentNullException(nameof(routeId)), // Ensure routeId is not null
+                        departureTime ?? 0, // departureTime, default to 0 if null
+                        price ?? 0.0, // price, default to 0.0 if null
+                        availableSeats ?? 0, // availableSeats, default to 0 if null
+                        daysOfWeek?.ToList(), // daysOfWeek, convert to List<string> if not null
+                        route.StartPoint, // startPoint
+                        route.EndPoint, // endPoint
+                        routeStops?.ToList(), // routeStops, convert to List<string> if not null
+                        (departureTime ?? 0) + 3600000, // arrivalTime, add 1 hour for arrival time, default to 0 if null
+                        stopDurationMinutes, // stopDurationMinutes
+                        isRecurring, // isRecurring
+                        estimatedStopTimes?.ToList() ?? new List<string>(), // estimatedStopTimes, convert to List<string> if not null, default to empty list
+                        stopDistances?.ToList() ?? new List<double>(), // stopDistances, convert to List<double> if not null, default to empty list
+                        notes // notes
+                    );
 
-                return newSchedule?.ScheduleId;
+                    // Wait for reducer to complete with timeout
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(-1, cts.Token));
+
+                    if (completedTask == tcs.Task)
+                    {
+                        return await tcs.Task;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("CreateScheduleAsync timed out waiting for reducer confirmation");
+                        // Fallback: try to find the schedule by matching attributes
+                        var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                        var newSchedule = allSchedules
+                            .Where(s => s.RouteId == routeId &&
+                                       s.DepartureTime == departureTime &&
+                                       s.StartPoint == route.StartPoint &&
+                                       s.EndPoint == route.EndPoint)
+                            .OrderByDescending(s => s.ScheduleId)
+                            .FirstOrDefault();
+                        return newSchedule?.ScheduleId;
+                    }
+                }
+                finally
+                {
+                    // Clean up event handler
+                    connection.Reducers.OnCreateRouteSchedule -= OnScheduleCreated;
+                }
             }
             catch (Exception ex)
             {

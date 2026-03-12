@@ -57,10 +57,15 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         
+        // Sanitize and truncate event-derived fields to prevent log injection
+        var sanitizedEventName = SanitizeLogField(domainEvent.EventName, maxLength: 100);
+        var sanitizedResource = SanitizeLogField(domainEvent.Resource, maxLength: 100);
+        var sanitizedCorrelationId = SanitizeLogField(domainEvent.CorrelationId, maxLength: 100);
+
         _logger.LogInformation("[EventBus] Publishing event: {EventName} for resource: {Resource} (CorrelationId: {CorrelationId})",
-            domainEvent.EventName,
-            domainEvent.Resource,
-            domainEvent.CorrelationId);
+            sanitizedEventName,
+            sanitizedResource,
+            sanitizedCorrelationId);
         
         await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
         EnqueueForHistory(domainEvent);
@@ -252,6 +257,33 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         {
             _disposalLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Sanitizes and truncates a log field to prevent log injection and excessive log growth.
+    /// </summary>
+    /// <param name="value">The value to sanitize.</param>
+    /// <param name="maxLength">Maximum length to truncate to.</param>
+    /// <returns>A sanitized and truncated string safe for logging.</returns>
+    private static string SanitizeLogField(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        // Remove newlines and control characters to prevent log injection
+        var sanitized = new string(value
+            .Where(c => !char.IsControl(c) || c == ' ')
+            .ToArray());
+
+        // Truncate if needed
+        if (sanitized.Length > maxLength)
+        {
+            return sanitized.Substring(0, maxLength) + "...";
+        }
+
+        return sanitized;
     }
 
     /// <summary>

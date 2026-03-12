@@ -59,7 +59,7 @@ debugWindow.Show();
 
 ### 2. Configure Connection
 
-1. Enter the server URL (default: `ws://localhost:5000`)
+1. Enter the server URL (default: `ws://localhost:5000` for local development only; use `wss://` for production environments)
 2. Optionally enter an access token for authentication
 3. Click "🔌 Connect"
 

@@ -3245,37 +3245,33 @@ const oidc = new Provider('http://localhost:3000', {
 })
 
 // Integrate with Elysia
+// NOTE: oidc-provider requires Node.js req/res objects and cannot be directly
+// integrated into Elysia route handlers. Instead, mount oidc-provider at the
+// server level using app.listen() callback or run as a standalone Express service.
+//
+// Recommended approach:
+// 1. Run oidc-provider as a separate Express/Fastify service on a different port
+// 2. Use Elysia to proxy requests to the oidc-provider service
+// 3. Or use http.createServer to wrap oidc-provider middleware and mount at server level
+//
+// Example standalone service:
+// const express = require('express')
+// const app = express()
+// app.use('/oidc', oidc.callback())
+// app.listen(3001)
+//
+// Then proxy from Elysia:
 const app = new Elysia()
-  .get('/interaction/:uid', async ({ params }) => {
-    // Custom login page - render with Elysia or proxy to frontend
-    const details = await oidc.interactionDetails(req, res)
-    // Return login form HTML or redirect to frontend
-  })
-  
-  .post('/interaction/:uid/login', async ({ params, body }) => {
-    // Validate credentials via C# backend
-    const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
-      method: 'POST',
-      body: JSON.stringify(body)
+  .all('/oidc/*', async ({ request }) => {
+    // Proxy to standalone oidc-provider service
+    const response = await fetch('http://localhost:3001' + new URL(request.url).pathname, {
+      method: request.method,
+      headers: request.headers,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
     })
-    
-    if (response.ok) {
-      const user = await response.json()
-      // Complete OIDC interaction
-      await oidc.interactionFinished(req, res, {
-        login: {
-          accountId: user.id,
-        },
-      })
-    }
+    return response
   })
-  
-  // Mount oidc-provider routes
-  .all('/oidc/*', ({ request }) => {
-    // Proxy to oidc-provider
-    return oidc.callback()(request)
-  })
-  
+
   .listen(3000)
 ```
 

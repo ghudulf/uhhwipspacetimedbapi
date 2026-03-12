@@ -252,46 +252,6 @@ public partial class WebSocketDebugViewModel : ObservableObject
         }
     }
 
-    private async Task TestController(ControllerTestResult result)
-    {
-        try
-        {
-            var requestId = Guid.NewGuid().ToString();
-            var request = new
-            {
-                command = "read_all",
-                requestId = requestId,
-                resource = result.ControllerName
-            };
-
-            var json = JsonSerializer.Serialize(request);
-            var bytes = Encoding.UTF8.GetBytes(json);
-
-            if (_webSocket?.State == WebSocketState.Open)
-            {
-                // Add to pending requests for correlation
-                _pendingRequests[requestId] = result;
-
-                await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
-                AddLog($"→ Sent test request for {result.ControllerName} via universal stream");
-
-                result.Status = TestStatus.Testing;
-                result.Message = "Request sent (awaiting response)";
-            }
-            else
-            {
-                result.Status = TestStatus.Failed;
-                result.Message = "WebSocket not open";
-            }
-        }
-        catch (Exception ex)
-        {
-            result.Status = TestStatus.Failed;
-            result.Message = $"Error: {ex.Message}";
-            AddLog($"✗ Test failed for {result.ControllerName}: {ex.Message}");
-        }
-    }
-
     private async Task TestControllerViaUniversalStream(ControllerTestResult result)
     {
         try
