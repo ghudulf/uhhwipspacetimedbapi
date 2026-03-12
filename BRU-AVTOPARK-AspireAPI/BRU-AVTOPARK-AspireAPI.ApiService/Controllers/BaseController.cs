@@ -17,12 +17,6 @@ namespace TicketSalesApp.AdminServer.Controllers
     public abstract class BaseController : ControllerBase
     {
         /// <summary>
-        /// Checks if the current user is authenticated via either:
-        /// 1. ASP.NET Core authentication (OpenIddict tokens)
-        /// 2. Custom JWT in Authorization header
-        /// 3. Manually validated OpenIddict token
-        /// </summary>
-        /// <summary>
         /// Asynchronously validates if the current request is authenticated.
         /// Performs full validation including tokeninfo endpoint calls for encrypted tokens.
         /// </summary>
@@ -115,9 +109,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>True if authenticated with valid token; false otherwise.</returns>
         protected bool IsAuthenticated() => IsAuthenticatedAsync().GetAwaiter().GetResult();
 
-        /// <summary>
-        /// Checks if the current user has administrator role.
-        /// Supports both ASP.NET Core auth and custom JWT.
         /// <summary>
         /// Determine whether the current request is associated with an administrator account.
         /// </summary>
@@ -644,9 +635,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Gets the XUID from claims.
-        /// Supports both ASP.NET Core auth and custom JWT.
-        /// <summary>
         /// Retrieve the XUID claim for the current request's user from ASP.NET Core claims or from a bearer JWT in the Authorization header.
         /// </summary>
         /// <returns>The XUID string if present; otherwise null.</returns>
@@ -685,9 +673,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
-        /// <summary>
-        /// Gets the username from claims.
-        /// Supports both ASP.NET Core auth and custom JWT.
         /// <summary>
         /// Retrieve the current user's username from ASP.NET Core claims or from validated OAuth token claims.
         /// </summary>
@@ -736,28 +721,22 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronous wrapper for GetUserNameAsync - for backward compatibility.
-        /// Prefer using GetUserNameAsync when possible.
-        /// <summary>
-/// Retrieve the current user's username from claims, or null if none is available.
-/// </summary>
-/// <returns>The username extracted from the user's claims (for example `name` or `preferred_username`), or `null` if not found.</returns>
+        /// Retrieve the current user's username from claims, or null if none is available.
+        /// Synchronous wrapper for GetUserNameAsync - for backward compatibility. Prefer using GetUserNameAsync when possible.
+        /// </summary>
+        /// <returns>The username extracted from the user's claims (for example `name` or `preferred_username`), or `null` if not found.</returns>
         protected string? GetUserName() => GetUserNameAsync().GetAwaiter().GetResult();
 
         /// <summary>
-        /// Synchronous wrapper for IsAdminAsync - for backward compatibility.
-        /// Prefer using IsAdminAsync when possible.
-        /// <summary>
-/// Synchronously determines whether the current user has administrator privileges.
-/// </summary>
-/// <returns>`true` if the current user is an administrator, `false` otherwise.</returns>
+        /// Synchronously determines whether the current user has administrator privileges.
+        /// Synchronous wrapper for IsAdminAsync - for backward compatibility. Prefer using IsAdminAsync when possible.
+        /// </summary>
+        /// <returns>`true` if the current user is an administrator, `false` otherwise.</returns>
         protected bool IsAdmin() => IsAdminAsync().GetAwaiter().GetResult();
 
         /// <summary>
-        /// Gets the client IP address from the request.
-        /// Uses HttpContext.Connection.RemoteIpAddress which is populated by ForwardedHeadersMiddleware.
-        /// <summary>
         /// Get the client's IP address from the current HTTP context.
+        /// Uses HttpContext.Connection.RemoteIpAddress which is populated by ForwardedHeadersMiddleware.
         /// </summary>
         /// <returns>The client's IP address as a string, or "unknown" if it cannot be determined.</returns>
         protected string GetClientIp()

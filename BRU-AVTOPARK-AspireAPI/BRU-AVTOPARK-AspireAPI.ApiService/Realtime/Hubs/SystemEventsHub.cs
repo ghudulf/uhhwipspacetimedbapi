@@ -10,12 +10,10 @@ public sealed class SystemEventsHub : Hub
 {
     private const string AdminRoleValue = "1";
     
-    private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<SystemEventsHub> _logger;
 
-    public SystemEventsHub(IAuthorizationService authorizationService, ILogger<SystemEventsHub> logger)
+    public SystemEventsHub(ILogger<SystemEventsHub> logger)
     {
-        _authorizationService = authorizationService;
         _logger = logger;
     }
 
@@ -28,10 +26,11 @@ public sealed class SystemEventsHub : Hub
     {
         var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
         
-        // NOTE: IHttpTransportFeature does not exist in Microsoft.AspNetCore.Http.Features namespace
+        // NOTE: IHttpTransportFeature does not exist in Microsoft.AspNetCore.Http.Features namespace.
         // Attempting to use Context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpTransportFeature>()
-        // results in compile error CS0234: "Тип или имя пространства имен 'IHttpTransportFeature' не существует"
-        // SignalR abstracts transport details at the Hub level - no direct API to get negotiated transport type
+        // results in compile error CS0234: The type or namespace name 'IHttpTransportFeature' does not exist
+        // in the namespace 'Microsoft.AspNetCore.Http.Features'.
+        // SignalR abstracts transport details at the Hub level - no direct API to get negotiated transport type.
         // If transport type is needed, consider:
         // 1. Passing it from client during connection
         // 2. Using SignalR connection diagnostics/logging
@@ -105,6 +104,18 @@ public sealed class SystemEventsHub : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
         _logger.LogInformation("Admin user {User} subscribed to system-events",
+            Context.User?.Identity?.Name ?? "unknown");
+    }
+
+    /// <summary>
+    /// Unsubscribes the current connection from the "system-events" group.
+    /// Allows any connected user to unsubscribe (useful when user roles change or they no longer need system events).
+    /// </summary>
+    /// <returns>A task that completes when the connection has been removed from the system-events group.</returns>
+    public async Task UnsubscribeFromSystemEvents()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "system-events");
+        _logger.LogInformation("User {User} unsubscribed from system-events",
             Context.User?.Identity?.Name ?? "unknown");
     }
 

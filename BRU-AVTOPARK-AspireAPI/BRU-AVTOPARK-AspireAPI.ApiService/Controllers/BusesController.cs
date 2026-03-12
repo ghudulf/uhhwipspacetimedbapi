@@ -12,6 +12,8 @@ using SpacetimeDB.Types;
 using System.Text.Json;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
+using TicketSalesApp.AdminServer.Mappers;
+using TicketSalesApp.AdminServer.Models;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -113,31 +115,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var buses = await _busService.GetAllBusesAsync();
-            var mapped = buses.Select(b => new {
-                b.BusId,
-                b.Model,
-                b.RegistrationNumber,
-                b.Capacity,
-                b.BusType,
-                b.Year,
-                b.Vin,
-                b.LicensePlate,
-                b.CurrentStatus,
-                b.IsActive,
-                b.SeatedCapacity,
-                b.StandingCapacity,
-                b.CurrentLocation,
-                b.LastLocationUpdate,
-                b.FuelConsumption,
-                b.CurrentFuelLevel,
-                b.FuelType,
-                b.MileageTotal,
-                b.MileageSinceService,
-                b.HasAccessibility,
-                b.HasAirConditioning,
-                b.HasWifi,
-                b.HasUsbCharging
-            }).ToList();
+            var mapped = buses.Select(BusMapper.ToDto).ToList();
             return new { buses = mapped };
         }
 
@@ -158,32 +136,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for read");
             var bus = await _busService.GetBusByIdAsync(id);
             
-            // Map to same DTO shape as HandleReadAllCommandAsync
-            var mappedBus = bus != null ? new {
-                bus.BusId,
-                bus.Model,
-                bus.RegistrationNumber,
-                bus.Capacity,
-                bus.BusType,
-                bus.Year,
-                bus.Vin,
-                bus.LicensePlate,
-                bus.CurrentStatus,
-                bus.IsActive,
-                bus.SeatedCapacity,
-                bus.StandingCapacity,
-                bus.CurrentLocation,
-                bus.LastLocationUpdate,
-                bus.FuelConsumption,
-                bus.CurrentFuelLevel,
-                bus.FuelType,
-                bus.MileageTotal,
-                bus.MileageSinceService,
-                bus.HasAccessibility,
-                bus.HasAirConditioning,
-                bus.HasWifi,
-                bus.HasUsbCharging
-            } : null;
+            var mappedBus = bus != null ? BusMapper.ToDto(bus) : null;
             
             return new { bus = mappedBus };
         }
@@ -212,43 +165,26 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var bus = await _busService.CreateBusAsync(model.Model);
-            var mappedEntity = bus != null ? new {
-                bus.BusId,
-                bus.Model,
-                bus.RegistrationNumber,
-                bus.Capacity,
-                bus.BusType,
-                bus.Year,
-                bus.Vin,
-                bus.LicensePlate,
-                bus.CurrentStatus,
-                bus.IsActive,
-                bus.SeatedCapacity,
-                bus.StandingCapacity,
-                bus.CurrentLocation,
-                bus.LastLocationUpdate,
-                bus.FuelConsumption,
-                bus.CurrentFuelLevel,
-                bus.FuelType,
-                bus.MileageTotal,
-                bus.MileageSinceService,
-                bus.HasAccessibility,
-                bus.HasAirConditioning,
-                bus.HasWifi,
-                bus.HasUsbCharging
-            } : null;
+            var mappedEntity = bus != null ? BusMapper.ToDto(bus) : null;
             var result = new { operation = "create", success = bus is not null, entity = mappedEntity };
 
             if (bus is not null)
             {
-                // Log admin action
+                // Log admin action (best-effort)
                 var userId = GetUserId();
                 if (userId != null)
                 {
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "CreateBus",
-                        $"Created bus {model.Model} with ID {bus.BusId}");
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "CreateBus",
+                            $"Created bus {model.Model} with ID {bus.BusId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.created (BusId: {BusId})", bus.BusId);
+                    }
                 }
 
                 var userName = await GetUserNameAsync();
@@ -306,43 +242,26 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _busService.UpdateBusAsync(id, model.Model);
             var entity = await _busService.GetBusByIdAsync(id);
-            var mappedEntity = entity != null ? new {
-                entity.BusId,
-                entity.Model,
-                entity.RegistrationNumber,
-                entity.Capacity,
-                entity.BusType,
-                entity.Year,
-                entity.Vin,
-                entity.LicensePlate,
-                entity.CurrentStatus,
-                entity.IsActive,
-                entity.SeatedCapacity,
-                entity.StandingCapacity,
-                entity.CurrentLocation,
-                entity.LastLocationUpdate,
-                entity.FuelConsumption,
-                entity.CurrentFuelLevel,
-                entity.FuelType,
-                entity.MileageTotal,
-                entity.MileageSinceService,
-                entity.HasAccessibility,
-                entity.HasAirConditioning,
-                entity.HasWifi,
-                entity.HasUsbCharging
-            } : null;
+            var mappedEntity = entity != null ? BusMapper.ToDto(entity) : null;
             var result = new { operation = "update", success, entity = mappedEntity };
 
             if (success)
             {
-                // Log admin action
+                // Log admin action (best-effort)
                 var userId = GetUserId();
                 if (userId != null && entity != null)
                 {
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "UpdateBus",
-                        $"Updated bus {model.Model} with ID {id}");
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "UpdateBus",
+                            $"Updated bus {model.Model} with ID {id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.updated (BusId: {BusId})", id);
+                    }
                 }
 
                 var userName = await GetUserNameAsync();
@@ -406,14 +325,21 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                // Log admin action
+                // Log admin action (best-effort)
                 var userId = GetUserId();
                 if (userId != null)
                 {
-                    await _adminLogger.LogActionAsync(
-                        userId,
-                        "DeleteBus",
-                        $"Deleted bus with ID {id}");
+                    try
+                    {
+                        await _adminLogger.LogActionAsync(
+                            userId,
+                            "DeleteBus",
+                            $"Deleted bus with ID {id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to log admin action for bus.deleted (BusId: {BusId})", id);
+                    }
                 }
 
                 var userName = await GetUserNameAsync();
@@ -470,33 +396,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 _logger.LogInformation("DATABASE RESULT: GetAllBuses - Retrieved {BusCount} buses", buses.Count());
                 
-                // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
-                // Include ALL fields that the client needs
-                var result = buses.Select(b => new {
-                    b.BusId,
-                    b.Model,
-                    b.RegistrationNumber,
-                    b.Capacity,
-                    b.BusType,
-                    b.Year,
-                    b.Vin,
-                    b.LicensePlate,
-                    b.CurrentStatus,
-                    b.IsActive,
-                    b.SeatedCapacity,
-                    b.StandingCapacity,
-                    b.CurrentLocation,
-                    b.LastLocationUpdate,
-                    b.FuelConsumption,
-                    b.CurrentFuelLevel,
-                    b.FuelType,
-                    b.MileageTotal,
-                    b.MileageSinceService,
-                    b.HasAccessibility,
-                    b.HasAirConditioning,
-                    b.HasWifi,
-                    b.HasUsbCharging
-                }).ToList();
+                var result = buses.Select(BusMapper.ToDto).ToList();
 
                 _logger.LogInformation("FULL BUS DATA: {BusData}", JsonSerializer.Serialize(result));
                 
@@ -595,12 +495,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "CreateBus",
-                    $"Created bus with model {model.Model}, ID: {bus.BusId}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "CreateBus",
+                        $"Created bus with model {model.Model}, ID: {bus.BusId}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for CreateBus (BusId: {BusId})", bus.BusId);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Created bus with ID {BusId}, Model: {Model}", 
                     bus.BusId, bus.Model);
@@ -655,12 +562,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "UpdateBus",
-                    $"Updated bus with ID {id}, Model: {model.Model ?? "unchanged"}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "UpdateBus",
+                        $"Updated bus with ID {id}, Model: {model.Model ?? "unchanged"}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for UpdateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Updated bus with ID {BusId}", id);
                 return NoContent();
@@ -711,12 +625,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "DeleteBus",
-                    $"Deleted bus with ID {id}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeleteBus",
+                        $"Deleted bus with ID {id}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for DeleteBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Deleted bus with ID {BusId}", id);
                 return NoContent();
@@ -755,7 +676,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                     b.Model,
                     b.RegistrationNumber,
                     b.Capacity,
-             
+                    b.BusType,
+                    b.Year,
+                    b.Vin,
+                    b.LicensePlate,
+                    b.CurrentStatus,
                     b.IsActive
                 }).ToList();
 
@@ -824,12 +749,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "ActivateBus",
-                    $"Activated bus with ID {id}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "ActivateBus",
+                        $"Activated bus with ID {id}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for ActivateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Activated bus with ID {BusId}", id);
                 return NoContent();
@@ -887,12 +819,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return Unauthorized();
                 }
                 
-                // Log the admin action
-                await _adminLogger.LogActionAsync(
-                    userId,
-                    "DeactivateBus",
-                    $"Deactivated bus with ID {id}"
-                );
+                // Log the admin action (best-effort)
+                try
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "DeactivateBus",
+                        $"Deactivated bus with ID {id}"
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log admin action for DeactivateBus (BusId: {BusId})", id);
+                }
 
                 _logger.LogInformation("RESPONSE SENT: Deactivated bus with ID {BusId}", id);
                 return NoContent();

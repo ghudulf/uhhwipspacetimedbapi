@@ -173,7 +173,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var result = new {
                 user.LegacyUserId,
-                user.UserId,
+                UserId = user.UserId.ToString(),
                 user.Login,
                 user.Email,
                 user.PhoneNumber,
@@ -488,7 +488,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             }).ToList();
 
             Log.Debug("Retrieved {UserCount} users", result.Count);
-            Log.Information("FULL USERS DATA: {UsersData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
@@ -528,7 +527,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             // Map to anonymous type including Roles and Permissions
             var result = new {
                 user.LegacyUserId,
-                user.UserId,
+                UserId = user.UserId.ToString(),
                 user.Login,
                 user.Email,
                 user.PhoneNumber,
@@ -540,7 +539,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
 
             Log.Debug("Successfully retrieved user with ID {UserId}", id);
-            Log.Information("FULL USER DATA: {UserData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
@@ -578,7 +576,22 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             Log.Information("Successfully created user with ID {UserId}", createdUser.LegacyUserId);
-            return CreatedAtAction(nameof(GetUser), new { id = createdUser.LegacyUserId }, createdUser);
+            
+            // Return safe projection (exclude PasswordHash)
+            var safeUser = new {
+                createdUser.LegacyUserId,
+                UserId = createdUser.UserId.ToString(),
+                createdUser.Login,
+                createdUser.Email,
+                createdUser.PhoneNumber,
+                createdUser.IsActive,
+                createdUser.CreatedAt,
+                createdUser.LastLoginAt,
+                createdUser.LegacyGuid,
+                createdUser.EmailConfirmed
+            };
+            
+            return CreatedAtAction(nameof(GetUser), new { id = createdUser.LegacyUserId }, safeUser);
         }
 
         [HttpPut("{id}")]
@@ -711,7 +724,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             }).ToList();
 
             Log.Information("Retrieved {RoleCount} roles for user {UserId}", result.Count(), id);
-            Log.Information("FULL USER ROLES DATA: {RolesData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
@@ -746,7 +758,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             }).ToList();
 
             Log.Information("Retrieved {PermissionCount} permissions for user {UserId}", result.Count(), id);
-            Log.Information("FULL USER PERMISSIONS DATA: {PermissionsData}", JsonSerializer.Serialize(result));
             return Ok(result);
         }
 
@@ -841,7 +852,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 // Map to anonymous type including Roles and Permissions
                 var result = new {
                     user.LegacyUserId,
-                    user.UserId,
+                    UserId = user.UserId.ToString(),
                     user.Login,
                     user.Email,
                     user.PhoneNumber,
@@ -853,7 +864,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 };
 
                 Log.Information("Successfully retrieved current user information for {Username}", user.Login);
-                Log.Information("FULL CURRENT USER DATA: {UserData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
             catch (Exception ex)
