@@ -113,15 +113,14 @@ using Microsoft.AspNetCore.Authorization;
             }
 
             /// <summary>
-            /// Handles a realtime "create" CRUD command by creating a ticket sale and returning the result and updated snapshot.
+            /// Handles a realtime "create" CRUD command by creating a ticket sale and returning the result.
             /// </summary>
             /// <param name="request">Realtime CRUD request whose Payload must deserialize to <see cref="CreateTicketSaleModel"/> (case-insensitive).</param>
             /// <returns>
             /// An object containing:
             /// - `operation`: the string "create",
             /// - `success`: `true` if creation succeeded, `false` otherwise,
-            /// - `entity`: the created sale view or `null`,
-            /// - `snapshot`: the current list of sales.
+            /// - `entity`: the created sale view or `null`.
             /// </returns>
             /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator.</exception>
             /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateTicketSaleModel"/>.</exception>
@@ -132,7 +131,7 @@ using Microsoft.AspNetCore.Authorization;
                     ?? throw new InvalidOperationException("payload is required for create");
 
                 var created = ExecuteCreateSale(model);
-                var result = new { operation = "create", success = created is not null, entity = created, snapshot = BuildSalesSnapshot() };
+                var result = new { operation = "create", success = created is not null, entity = created };
 
                 if (created is not null)
                 {
@@ -211,16 +210,23 @@ using Microsoft.AspNetCore.Authorization;
             {
                 var conn = _spacetimeService.GetConnection();
 
-                var ticket = conn.Db.Ticket.TicketId.Find((uint)model.TicketId);
-                if (ticket == null)
+                // Validate TicketId is within valid uint range
+                if (model.TicketId < 0 || model.TicketId > uint.MaxValue)
                 {
-                    throw new InvalidOperationException($"Ticket {model.TicketId} does not exist");
+                    throw new ArgumentException($"TicketId must be between 0 and {uint.MaxValue}", nameof(model.TicketId));
                 }
 
-                var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
+                var ticketId = (uint)model.TicketId;
+                var ticket = conn.Db.Ticket.TicketId.Find(ticketId);
+                if (ticket == null)
+                {
+                    throw new InvalidOperationException($"Ticket {ticketId} does not exist");
+                }
+
+                var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == ticketId).ToList();
                 if (existingSales.Any())
                 {
-                    throw new InvalidOperationException($"Ticket {model.TicketId} already sold");
+                    throw new InvalidOperationException($"Ticket {ticketId} already sold");
                 }
 
                 // Extract login from validated bearer/token data path with same precedence as CreateTicketSale
@@ -267,9 +273,9 @@ using Microsoft.AspNetCore.Authorization;
                     throw new InvalidOperationException("Seller not found");
                 }
 
-                conn.Reducers.CreateSale((uint)model.TicketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? string.Empty, "POS", null);
+                conn.Reducers.CreateSale(ticketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? string.Empty, "POS", null);
 
-                var newSale = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).OrderByDescending(s => s.SaleId).FirstOrDefault();
+                var newSale = conn.Db.Sale.Iter().Where(s => s.TicketId == ticketId).OrderByDescending(s => s.SaleId).FirstOrDefault();
                 return newSale == null ? null : BuildSaleById(conn, newSale.SaleId);
             }
 

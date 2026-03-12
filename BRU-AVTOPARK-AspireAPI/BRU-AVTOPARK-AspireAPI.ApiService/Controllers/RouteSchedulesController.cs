@@ -220,14 +220,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Processes a realtime "update" CRUD request, applies the schedule update, and returns the updated entity plus a full snapshot of schedules.
+        /// Processes a realtime "update" CRUD request, applies the schedule update, and returns the updated entity.
         /// </summary>
         /// <returns>
         /// An object containing:
         /// - `operation`: the string "update",
         /// - `success`: a boolean indicating whether the update succeeded,
-        /// - `entity`: the updated schedule entity (or null if not found),
-        /// - `snapshot`: the current list of all schedules after the operation.
+        /// - `entity`: the updated schedule entity (or null if not found).
         /// </returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.edit" permission.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required `id` or `payload` for the update.</exception>
@@ -296,7 +295,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// - operation: the string "delete"
         /// - success: `true` if the schedule was deleted, `false` otherwise
         /// - deletedId: the id of the schedule that was targeted for deletion
-        /// - snapshot: the current collection of all schedules after the operation
         /// </returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and lacks the "schedules.delete" permission.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
