@@ -53,8 +53,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
     public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
-        EnqueueForHistory(domainEvent);
         await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
+        EnqueueForHistory(domainEvent);
     }
 
     /// <summary>
@@ -119,8 +119,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
 
             try
             {
+                var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
                 await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                await _hubContext.Clients.Group($"resource:{domainEvent.Resource.ToLowerInvariant()}")
+                await _hubContext.Clients.Group($"resource:{normalizedResource}")
                     .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
             }
             catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)

@@ -64,7 +64,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             ? controllerObj?.ToString() ?? "unknown"
             : "unknown";
 
-        if (ExcludedControllers.Contains(resource))
+        // Skip RealtimeController to prevent duplicate events (it publishes its own)
+        if (ExcludedControllers.Contains(resource) || resource == "Realtime")
         {
             return;
         }
@@ -76,6 +77,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             ["path"] = request.Path.ToString(),
             ["userAgent"] = request.Headers.UserAgent.ToString(),
             ["traceId"] = context.HttpContext.TraceIdentifier
+            // Query string intentionally omitted to prevent PII/token leakage
         };
 
         var domainEvent = new ApiDomainEvent(

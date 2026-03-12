@@ -6332,11 +6332,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
+      "projectUniqueName": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
       "projectName": "BRU-AVTOPARK-AspireAPI.ApiService",
-      "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
+      "projectPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\BRU-AVTOPARK-AspireAPI.ApiService.csproj",
       "packagesPath": "C:\\Users\\andrej\\.nuget\\packages\\",
-      "outputPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\obj\\",
+      "outputPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ApiService\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",
@@ -6361,11 +6361,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {
-              "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj"
+            "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {
+              "projectPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj"
             },
-            "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {
-              "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj"
+            "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {
+              "projectPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj"
             }
           }
         }

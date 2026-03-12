@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {}
+    "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {}
   },
   "projects": {
-    "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {
+    "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
+        "projectUniqueName": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
         "projectName": "TicketSalesApp.Services",
-        "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
+        "projectPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\TicketSalesApp.Services.csproj",
         "packagesPath": "C:\\Users\\andrej\\.nuget\\packages\\",
-        "outputPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\obj\\",
+        "outputPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\TicketSalesApp.Services\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",

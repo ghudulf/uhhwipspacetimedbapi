@@ -210,13 +210,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (bus is not null)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                {
-                    Resource = "buses",
-                    EventName = "bus.created",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                    EventName: "bus.created",
+                    Resource: "buses",
+                    HttpMethod: "POST",
+                    StatusCode: 201,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: Guid.NewGuid().ToString(),
+                    UserId: null,
+                    UserName: null,
+                    Tenant: null,
+                    SourceIp: "internal",
+                    Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                ));
             }
 
             return result;
@@ -271,13 +277,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                {
-                    Resource = "buses",
-                    EventName = "bus.updated",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                    EventName: "bus.updated",
+                    Resource: "buses",
+                    HttpMethod: "PUT",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: Guid.NewGuid().ToString(),
+                    UserId: null,
+                    UserName: null,
+                    Tenant: null,
+                    SourceIp: "internal",
+                    Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = success.ToString() }
+                ));
             }
 
             return result;
@@ -309,13 +321,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                {
-                    Resource = "buses",
-                    EventName = "bus.deleted",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Payload = result
-                });
+                await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                    EventName: "bus.deleted",
+                    Resource: "buses",
+                    HttpMethod: "DELETE",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: Guid.NewGuid().ToString(),
+                    UserId: null,
+                    UserName: null,
+                    Tenant: null,
+                    SourceIp: "internal",
+                    Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = success.ToString(), ["deletedId"] = id.ToString() }
+                ));
             }
 
             return result;

@@ -1,7 +1,6 @@
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Helpers;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
@@ -16,8 +15,7 @@ public sealed class SystemEventsHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userName = Context.User?.Identity?.Name ?? Context.UserIdentifier ?? "anonymous";
-        var transportFeature = Context.Features.Get<IHttpTransportFeature>();
-        var transport = transportFeature?.TransportType.ToString() ?? "unknown";
+        var transport = "websocket"; // Default transport type for SignalR
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "system-events");
         await Clients.Caller.SendAsync("connectionEstablished", new

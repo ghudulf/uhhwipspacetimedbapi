@@ -202,13 +202,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "route-schedules",
-                        EventName = "route-schedule.created",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.created",
+                        Resource: "route-schedules",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -269,13 +275,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "route-schedules",
-                        EventName = "route-schedule.updated",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.updated",
+                        Resource: "route-schedules",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -309,13 +321,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "route-schedules",
-                        EventName = "route-schedule.deleted",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "route-schedule.deleted",
+                        Resource: "route-schedules",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {

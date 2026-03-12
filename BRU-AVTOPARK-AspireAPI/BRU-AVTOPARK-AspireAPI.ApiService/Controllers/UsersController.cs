@@ -202,8 +202,36 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var created = await _userService.CreateUserAsync(model.Login, model.Password, model.Role, model.Email, model.PhoneNumber);
+            
+            // Map to safe projection (exclude PasswordHash)
+            var safeEntity = created != null ? new {
+                created.LegacyUserId,
+                UserId = created.UserId.ToString(),
+                created.Login,
+                created.Email,
+                created.PhoneNumber,
+                created.IsActive,
+                created.CreatedAt,
+                created.LastLoginAt,
+                created.LegacyGuid,
+                created.EmailConfirmed
+            } : null;
+
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "create", success = created is not null, entity = created, snapshot };
+            var safeSnapshot = snapshot.Select(u => new {
+                u.LegacyUserId,
+                UserId = u.UserId.ToString(),
+                u.Login,
+                u.Email,
+                u.PhoneNumber,
+                u.IsActive,
+                u.CreatedAt,
+                u.LastLoginAt,
+                u.LegacyGuid,
+                u.EmailConfirmed
+            }).ToList();
+
+            return new { operation = "create", success = created is not null, entity = safeEntity, snapshot = safeSnapshot };
         }
 
         /// <summary>
@@ -224,8 +252,36 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _userService.UpdateUserAsync(id, model.Login, model.Password, model.Role, model.Email, model.PhoneNumber, model.IsActive);
             var entity = await _userService.GetUserByIdAsync(id);
+            
+            // Map to safe projection (exclude PasswordHash)
+            var safeEntity = entity != null ? new {
+                entity.LegacyUserId,
+                UserId = entity.UserId.ToString(),
+                entity.Login,
+                entity.Email,
+                entity.PhoneNumber,
+                entity.IsActive,
+                entity.CreatedAt,
+                entity.LastLoginAt,
+                entity.LegacyGuid,
+                entity.EmailConfirmed
+            } : null;
+
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "update", success, entity, snapshot };
+            var safeSnapshot = snapshot.Select(u => new {
+                u.LegacyUserId,
+                UserId = u.UserId.ToString(),
+                u.Login,
+                u.Email,
+                u.PhoneNumber,
+                u.IsActive,
+                u.CreatedAt,
+                u.LastLoginAt,
+                u.LegacyGuid,
+                u.EmailConfirmed
+            }).ToList();
+
+            return new { operation = "update", success, entity = safeEntity, snapshot = safeSnapshot };
         }
 
         /// <summary>
@@ -258,7 +314,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var success = await _userService.DeleteUserAsync(id);
             var snapshot = await _userService.GetAllUsersAsync();
-            return new { operation = "delete", success, deletedId = id, snapshot };
+            var safeSnapshot = snapshot.Select(u => new {
+                u.LegacyUserId,
+                UserId = u.UserId.ToString(),
+                u.Login,
+                u.Email,
+                u.PhoneNumber,
+                u.IsActive,
+                u.CreatedAt,
+                u.LastLoginAt,
+                u.LegacyGuid,
+                u.EmailConfirmed
+            }).ToList();
+
+            return new { operation = "delete", success, deletedId = id, snapshot = safeSnapshot };
         }
 
         /// <summary>
@@ -283,12 +352,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             var users = await _userService.GetAllUsersAsync();
 
             // Map to anonymous type - CRITICAL: This converts SpacetimeDB structure to valid JSON
-            // Include ALL fields that the client needs
+            // Exclude PasswordHash for security
             var result = users.Select(u => new {
                 u.LegacyUserId,
                 UserId = u.UserId.ToString(), // Convert Identity to string for JSON
                 u.Login,
-                u.PasswordHash,
                 u.Email,
                 u.PhoneNumber,
                 u.IsActive,

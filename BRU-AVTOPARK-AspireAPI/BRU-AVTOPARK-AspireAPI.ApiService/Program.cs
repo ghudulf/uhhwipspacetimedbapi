@@ -358,23 +358,8 @@ builder.Services.AddOpenIddict()
     })
     .AddValidation(options =>
     {
-        // Register the ASP.NET Core host with custom event handlers
-        options.UseAspNetCore(aspNetCoreOptions =>
-        {
-            // Extract access_token from query string for WebSocket endpoints
-            aspNetCoreOptions.Events = new OpenIddictValidationAspNetCoreHandlers();
-            aspNetCoreOptions.Events.OnMessageReceived = context =>
-            {
-                var path = context.HttpContext.Request.Path;
-                if ((path.StartsWithSegments("/hubs/system-events") || (path.StartsWithSegments("/api") && path.Value.Contains("/realtime/ws"))) &&
-                    context.Request.Query.TryGetValue("access_token", out var accessToken) &&
-                    !string.IsNullOrWhiteSpace(accessToken))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
-            };
-        });
+        // Register the ASP.NET Core host
+        options.UseAspNetCore();
 
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();

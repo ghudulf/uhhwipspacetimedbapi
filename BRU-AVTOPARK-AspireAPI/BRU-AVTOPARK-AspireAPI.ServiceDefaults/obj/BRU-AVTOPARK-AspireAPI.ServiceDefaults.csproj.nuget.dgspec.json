@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {}
+    "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {}
   },
   "projects": {
-    "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {
+    "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj",
+        "projectUniqueName": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj",
         "projectName": "BRU-AVTOPARK-AspireAPI.ServiceDefaults",
-        "projectPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj",
+        "projectPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\BRU-AVTOPARK-AspireAPI.ServiceDefaults.csproj",
         "packagesPath": "C:\\Users\\andrej\\.nuget\\packages\\",
-        "outputPath": "G:\\codesecondfolder\\SpacetimeDB-BRU-AVTOPARK-avtobusov\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\obj\\",
+        "outputPath": "G:\\codesecondfolder\\uhhwipspacetimedbapi\\BRU-AVTOPARK-AspireAPI\\BRU-AVTOPARK-AspireAPI.ServiceDefaults\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",

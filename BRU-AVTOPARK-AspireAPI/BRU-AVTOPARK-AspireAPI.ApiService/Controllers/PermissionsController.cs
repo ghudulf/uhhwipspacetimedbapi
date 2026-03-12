@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using TicketSalesApp.Services.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -162,15 +163,31 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (created is not null)
             {
+                // Log admin action after successful creation
+                var userId = GetUserId();
+                if (userId != null)
+                {
+                    await _adminLogger.LogActionAsync(
+                        userId,
+                        "CreatePermission",
+                        $"Created permission {created.Name} with ID {created.PermissionId}");
+                }
+
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "permissions",
-                        EventName = "permission.created",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.created",
+                        Resource: "permissions",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -228,13 +245,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "permissions",
-                        EventName = "permission.updated",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.updated",
+                        Resource: "permissions",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -299,13 +322,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "permissions",
-                        EventName = "permission.deleted",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "permission.deleted",
+                        Resource: "permissions",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {

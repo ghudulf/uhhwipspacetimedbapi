@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
     using System.Text;
     using Microsoft.Extensions.Configuration;
     using SpacetimeDB;
+    using SpacetimeDB.Types;
     using Log = Serilog.Log;
     using System.Text.Json;
 
@@ -137,13 +138,24 @@ using Microsoft.AspNetCore.Authorization;
                 {
                     try
                     {
-                        await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                        {
-                            Resource = "ticket-sales",
-                            EventName = "ticket-sale.created",
-                            Timestamp = DateTimeOffset.UtcNow,
-                            Payload = result
-                        });
+                        await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                            EventName: "ticket-sale.created",
+                            Resource: "ticket-sales",
+                            HttpMethod: "POST",
+                            StatusCode: 201,
+                            OccurredAt: DateTimeOffset.UtcNow,
+                            CorrelationId: Guid.NewGuid().ToString(),
+                            UserId: User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+                            UserName: User?.Identity?.Name,
+                            Tenant: null,
+                            SourceIp: HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            Metadata: new Dictionary<string, string>
+                            {
+                                ["operation"] = "create",
+                                ["success"] = "true",
+                                ["saleId"] = created.GetType().GetProperty("SaleId")?.GetValue(created)?.ToString() ?? "unknown"
+                            }
+                        ));
                     }
                     catch (Exception ex)
                     {
@@ -158,8 +170,9 @@ using Microsoft.AspNetCore.Authorization;
             /// Builds a detailed view of the ticket sale identified by the provided saleId, including nested ticket and route information when available.
             /// </summary>
             /// <param name="conn">The SpacetimeDB connection to use for database queries.</param>
+            /// <param name="saleId">The sale ID to retrieve.</param>
             /// <returns>An anonymous object containing SaleId, SaleDate (DateTime), TicketId, TicketSoldToUser, TicketSoldToUserPhone, SellerId, and a nested Ticket object with TicketId, RouteId, TicketPrice and optional Route (RouteId, StartPoint, EndPoint); or null if the sale does not exist.</returns>
-            private object? BuildSaleById(SpacetimeDBClient conn, uint saleId)
+            private object? BuildSaleById(DbConnection conn, uint saleId)
             {
                 var sale = conn.Db.Sale.SaleId.Find(saleId);
                 if (sale == null) return null;

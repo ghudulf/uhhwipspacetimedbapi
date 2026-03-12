@@ -147,7 +147,25 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var created = await _roleService.CreateRoleAsync(model.Name, model.Description, model.LegacyRoleId, model.Priority, model.PermissionIds);
-            var snapshot = await _roleService.GetAllRolesAsync();
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "create", success = created is not null, entity = created, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after create, returning without snapshot");
+                    result = new { operation = "create", success = created is not null, entity = created };
+                }
+            }
+            else
+            {
+                result = new { operation = "create", success = created is not null, entity = created };
+            }
 
             if (created is not null)
             {
@@ -162,7 +180,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
             }
 
-            return new { operation = "create", success = created is not null, entity = created, snapshot };
+            return result;
         }
 
         /// <summary>
@@ -186,7 +204,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
 
             var existingRole = await _roleService.GetRoleByIdAsync(id);
-            if (existingRole != null && existingRole.IsSystem)
+            if (existingRole == null)
+            {
+                throw new InvalidOperationException($"Role with id {id} not found");
+            }
+            if (existingRole.IsSystem)
             {
                 throw new InvalidOperationException("System roles cannot be modified");
             }
@@ -195,7 +217,25 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
             var entity = await _roleService.GetRoleByIdAsync(id);
-            var snapshot = await _roleService.GetAllRolesAsync();
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "update", success, entity, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after update, returning without snapshot");
+                    result = new { operation = "update", success, entity };
+                }
+            }
+            else
+            {
+                result = new { operation = "update", success, entity };
+            }
 
             if (success)
             {
@@ -210,7 +250,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
             }
 
-            return new { operation = "update", success, entity, snapshot };
+            return result;
         }
 
         /// <summary>
@@ -226,13 +266,35 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
 
             var existingRole = await _roleService.GetRoleByIdAsync(id);
-            if (existingRole != null && existingRole.IsSystem)
+            if (existingRole == null)
+            {
+                throw new InvalidOperationException($"Role with id {id} not found");
+            }
+            if (existingRole.IsSystem)
             {
                 throw new InvalidOperationException("System roles cannot be deleted");
             }
 
             var success = await _roleService.DeleteRoleAsync(id);
-            var snapshot = await _roleService.GetAllRolesAsync();
+
+            object result;
+            if (IsAdmin() || HasPermission("roles.view"))
+            {
+                try
+                {
+                    var snapshot = await _roleService.GetAllRolesAsync();
+                    result = new { operation = "delete", success, deletedId = id, snapshot };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch roles snapshot after delete, returning without snapshot");
+                    result = new { operation = "delete", success, deletedId = id };
+                }
+            }
+            else
+            {
+                result = new { operation = "delete", success, deletedId = id };
+            }
 
             if (success)
             {
@@ -251,7 +313,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
             }
 
-            return new { operation = "delete", success, deletedId = id, snapshot };
+            return result;
         }
 
         /// <summary>

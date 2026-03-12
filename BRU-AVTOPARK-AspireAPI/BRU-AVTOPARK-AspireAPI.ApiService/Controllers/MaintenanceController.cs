@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using Serilog;// NO THIS STAYS
+using Serilog;
 using System.Text.Json; // Added for serialization logging
 using Log = Serilog.Log;
 using SpacetimeDB.Types;
@@ -191,13 +191,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "maintenance",
-                        EventName = "maintenance.created",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.created",
+                        Resource: "maintenance",
+                        HttpMethod: "POST",
+                        StatusCode: 201,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -257,13 +263,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "maintenance",
-                        EventName = "maintenance.updated",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.updated",
+                        Resource: "maintenance",
+                        HttpMethod: "PUT",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -298,13 +310,19 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent
-                    {
-                        Resource = "maintenance",
-                        EventName = "maintenance.deleted",
-                        Timestamp = DateTimeOffset.UtcNow,
-                        Payload = result
-                    });
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent(
+                        EventName: "maintenance.deleted",
+                        Resource: "maintenance",
+                        HttpMethod: "DELETE",
+                        StatusCode: 200,
+                        OccurredAt: DateTimeOffset.UtcNow,
+                        CorrelationId: Guid.NewGuid().ToString(),
+                        UserId: null,
+                        UserName: null,
+                        Tenant: null,
+                        SourceIp: "internal",
+                        Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
+                    ));
                 }
                 catch (Exception ex)
                 {
@@ -590,6 +608,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         public required string FoundIssues { get; set; }
         public required DateTime NextServiceDate { get; set; }
         public required string Roadworthiness { get; set; }
+        public string MaintenanceType { get; set; } = "Regular";
     }
 
     public class UpdateMaintenanceModel

@@ -126,8 +126,7 @@ namespace TicketSalesApp.Services.Implementations
                 var timeout = TimeSpan.FromSeconds(5);
 
                 // Subscribe to Employee table insert events to capture the newly created employee
-                EventHandler<Employee>? insertHandler = null;
-                insertHandler = (sender, employee) =>
+                void insertHandler(EventContext ctx, Employee employee)
                 {
                     // Match the employee by the unique combination of fields we're creating
                     // TODO: When correlation token support is added, match by: employee.CorrelationToken == correlationToken
@@ -140,7 +139,7 @@ namespace TicketSalesApp.Services.Implementations
                         connection.Db.Employee.OnInsert -= insertHandler;
                         tcs.TrySetResult(employee);
                     }
-                };
+                }
 
                 connection.Db.Employee.OnInsert += insertHandler;
 
