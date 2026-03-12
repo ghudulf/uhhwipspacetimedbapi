@@ -73,7 +73,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>
         /// An object whose shape depends on the command:
-        /// - For "read_all": { schedules = IEnumerable of all schedules }.
+        /// - For "read_all": { schedules = IEnumerable of schedules, pagination = { page, pageSize, totalCount, totalPages } }.
         /// - For "read": { schedule = the schedule with the specified id }.
         /// - For "create": an operation result object containing operation, success flag and a snapshot of schedules after creation.
         /// - For "update": an operation result object containing operation, success flag, the updated entity and a snapshot of schedules.
@@ -85,27 +85,116 @@ namespace TicketSalesApp.AdminServer.Controllers
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
-            return command switch
+            
+            // Extract pagination parameters from payload
+            int? page = null;
+            int? pageSize = null;
+            
+            if (request.Payload.HasValue)
             {
-                "read_all" => await HandleReadAllCommandAsync(),
-                "read" => await HandleReadCommandAsync(request),
-                "create" => await HandleCreateCommandAsync(request),
-                "update" => await HandleUpdateCommandAsync(request),
-                "delete" => await HandleDeleteCommandAsync(request),
-                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
-            };
+                try
+                {
+                    if (request.Payload.Value.TryGetProperty("page", out var pageEl))
+                        page = pageEl.GetInt32();
+                    if (request.Payload.Value.TryGetProperty("pageSize", out var pageSizeEl))
+                        pageSize = pageSizeEl.GetInt32();
+                }
+                catch
+                {
+                    // Ignore parsing errors, use defaults
+                }
+            }
+            
+            // Handle pagination navigation commands
+            switch (command)
+            {
+                case "read_all":
+                case "next_page":
+                case "prev_page":
+                case "first_page":
+                case "last_page":
+                case "goto_page":
+                    // Get total count first for navigation
+                    var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                    var totalCount = schedules.Count();
+                    var currentPageSize = pageSize ?? 100;
+                    if (currentPageSize < 1) currentPageSize = 100;
+                    if (currentPageSize > 500) currentPageSize = 500;
+                    
+                    var totalPages = (int)Math.Ceiling(totalCount / (double)currentPageSize);
+                    var currentPage = page ?? 1;
+                    
+                    // Apply navigation logic
+                    switch (command)
+                    {
+                        case "next_page":
+                            currentPage = Math.Min(currentPage + 1, totalPages);
+                            break;
+                        case "prev_page":
+                            currentPage = Math.Max(currentPage - 1, 1);
+                            break;
+                        case "first_page":
+                            currentPage = 1;
+                            break;
+                        case "last_page":
+                            currentPage = totalPages;
+                            break;
+                        case "goto_page":
+                            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+                            break;
+                    }
+                    
+                    _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
+                        command, currentPage, totalPages, currentPageSize, totalCount);
+                    
+                    return await HandleReadAllCommandAsync(currentPage, currentPageSize);
+                
+                case "read":
+                    return await HandleReadCommandAsync(request);
+                
+                case "create":
+                    return await HandleCreateCommandAsync(request);
+                
+                case "update":
+                    return await HandleUpdateCommandAsync(request);
+                
+                case "delete":
+                    return await HandleDeleteCommandAsync(request);
+                
+                default:
+                    throw new InvalidOperationException($"Unsupported command '{request.Command}'");
+            }
         }
 
         /// <summary>
-        /// Handle the realtime "read_all" command and return projected route schedules matching the REST DTO shape with timestamp conversions.
+        /// Handle the realtime "read_all" command and return paginated projected route schedules matching the REST DTO shape with timestamp conversions.
         /// </summary>
-        /// <returns>An object with a `schedules` property containing all projected route schedules.</returns>
-        private async Task<object> HandleReadAllCommandAsync()
+        /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
+        /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
+        /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
+        private async Task<object> HandleReadAllCommandAsync(int? page = null, int? pageSize = null)
         {
+            // Apply defaults and validation
+            var currentPage = page ?? 1;
+            var currentPageSize = pageSize ?? 100;
+            
+            if (currentPage < 1) currentPage = 1;
+            if (currentPageSize < 1) currentPageSize = 100;
+            if (currentPageSize > 500) currentPageSize = 500; // Max 500 items per page to prevent memory issues
+            
             var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+            var totalCount = schedules.Count();
+            
+            _logger.LogInformation("RouteSchedules WebSocket read_all - Page: {Page}, PageSize: {PageSize}, Total: {TotalCount}", 
+                currentPage, currentPageSize, totalCount);
+
+            // Apply pagination
+            var pagedSchedules = schedules
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize);
 
             // Map to anonymous type matching REST endpoint projection
-            var result = schedules.Select(s => new {
+            var result = pagedSchedules.Select(s => new {
                 s.ScheduleId,
                 s.RouteId,
                 s.StartPoint,
@@ -142,7 +231,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                 s.RouteType
             }).ToList();
 
-            return new { schedules = result };
+            var totalPages = (int)Math.Ceiling(totalCount / (double)currentPageSize);
+
+            return new { 
+                schedules = result,
+                pagination = new {
+                    page = currentPage,
+                    pageSize = currentPageSize,
+                    totalCount = totalCount,
+                    totalPages = totalPages,
+                    hasNextPage = currentPage < totalPages,
+                    hasPrevPage = currentPage > 1
+                }
+            };
         }
 
         /// <summary>

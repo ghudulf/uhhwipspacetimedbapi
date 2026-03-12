@@ -351,12 +351,66 @@ public sealed class RealtimeController : ControllerBase
 
             object? result = null;
             var success = true;
+            int? totalCount = null;
+            int? page = null;
+            int? pageSize = null;
+            int? totalPages = null;
 
             // Route to appropriate CRUD handler based on command
             switch (command)
             {
                 case "read_all":
-                    result = await ExecuteReadAllAsync(service, resource);
+                case "next_page":
+                case "prev_page":
+                case "first_page":
+                case "last_page":
+                case "goto_page":
+                    // Extract pagination parameters
+                    var pageParam = root.TryGetProperty("page", out var pageEl) ? pageEl.GetInt32() : 1;
+                    var pageSizeParam = root.TryGetProperty("pageSize", out var pageSizeEl) ? pageSizeEl.GetInt32() : 100;
+                    
+                    // Validate pagination parameters
+                    if (pageParam < 1) pageParam = 1;
+                    if (pageSizeParam < 1) pageSizeParam = 100;
+                    if (pageSizeParam > 500) pageSizeParam = 500; // Max 500 items per page
+                    
+                    // Get total count first for navigation commands
+                    var paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                    totalCount = paginatedResult.TotalCount;
+                    totalPages = (int)Math.Ceiling(totalCount.Value / (double)pageSizeParam);
+                    
+                    // Handle navigation commands
+                    switch (command)
+                    {
+                        case "next_page":
+                            pageParam = Math.Min(pageParam + 1, totalPages.Value);
+                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            break;
+                        case "prev_page":
+                            pageParam = Math.Max(pageParam - 1, 1);
+                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            break;
+                        case "first_page":
+                            pageParam = 1;
+                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            break;
+                        case "last_page":
+                            pageParam = totalPages.Value;
+                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            break;
+                        case "goto_page":
+                            // pageParam already extracted, just clamp it
+                            pageParam = Math.Max(1, Math.Min(pageParam, totalPages.Value));
+                            paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                            break;
+                    }
+                    
+                    result = paginatedResult.Data;
+                    page = pageParam;
+                    pageSize = pageSizeParam;
+                    
+                    _logger.LogInformation("[{ConnectionId}] {Command} {Resource} - Page {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}", 
+                        connectionId, command, resource, page, totalPages, pageSize, totalCount);
                     break;
 
                 case "read":
@@ -380,7 +434,7 @@ public sealed class RealtimeController : ControllerBase
                     return;
             }
 
-            // Send success response
+            // Send success response with pagination metadata
             var response = new
             {
                 type = "result",
@@ -389,6 +443,15 @@ public sealed class RealtimeController : ControllerBase
                 resource,
                 ok = success,
                 data = result,
+                pagination = totalCount.HasValue ? new
+                {
+                    page = page!.Value,
+                    pageSize = pageSize!.Value,
+                    totalCount = totalCount.Value,
+                    totalPages = totalPages!.Value,
+                    hasNextPage = page.Value < totalPages.Value,
+                    hasPrevPage = page.Value > 1
+                } : null,
                 timestamp = DateTimeOffset.UtcNow
             };
 
@@ -402,9 +465,9 @@ public sealed class RealtimeController : ControllerBase
         }
     }
 
-    private async Task<object?> ExecuteReadAllAsync(object service, string resource)
+    private async Task<(object? Data, int TotalCount)> ExecuteReadAllAsync(object service, string resource, int page, int pageSize)
     {
-        return resource.ToLowerInvariant() switch
+        object? allData = resource.ToLowerInvariant() switch
         {
             "buses" => await ((IBusService)service).GetAllBusesAsync(),
             "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
@@ -419,6 +482,23 @@ public sealed class RealtimeController : ControllerBase
             "users" => await ((IUserService)service).GetAllUsersAsync(),
             _ => null
         };
+
+        if (allData == null)
+        {
+            return (null, 0);
+        }
+
+        // Convert to enumerable for pagination
+        var enumerable = allData as IEnumerable<object> ?? Enumerable.Empty<object>();
+        var totalCount = enumerable.Count();
+        
+        // Apply pagination
+        var pagedData = enumerable
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return (pagedData, totalCount);
     }
 
     private async Task<object?> ExecuteReadAsync(object service, string resource, uint id)
@@ -541,7 +621,8 @@ public sealed class RealtimeController : ControllerBase
         var options = new JsonSerializerOptions 
         { 
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            IncludeFields = true // CRITICAL: SpacetimeDB generated types use fields, not properties
         };
         
         var json = JsonSerializer.Serialize(data, options);
@@ -566,7 +647,8 @@ public sealed class RealtimeController : ControllerBase
 
     private static bool IsCrudCommand(string? command)
     {
-        return command is "read_all" or "read" or "create" or "update" or "delete";
+        return command is "read_all" or "read" or "create" or "update" or "delete" or
+            "next_page" or "prev_page" or "first_page" or "last_page" or "goto_page";
     }
 
     private class ResourceHandler

@@ -17,7 +17,8 @@ public static class WebSocketEventStreamWriter
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        IncludeFields = true // CRITICAL: SpacetimeDB generated types use fields, not properties
     };
 
     /// <summary>

@@ -291,20 +291,39 @@ public partial class WebSocketDebugViewModel : ObservableObject
         try
         {
             var requestId = Guid.NewGuid().ToString();
-            var request = new
-            {
-                command = "read_all",
-                requestId = requestId,
-                resource = result.ControllerName
-            };
-
+            
             var options = new JsonSerializerOptions 
             { 
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             };
             
-            var json = JsonSerializer.Serialize(request, options);
+            string json;
+            
+            // Add pagination for routeschedules to prevent memory issues
+            if (result.ControllerName == "routeschedules")
+            {
+                var request = new
+                {
+                    command = "read_all",
+                    requestId = requestId,
+                    resource = result.ControllerName,
+                    page = 1,
+                    pageSize = 50  // Limit to 50 items for testing
+                };
+                json = JsonSerializer.Serialize(request, options);
+            }
+            else
+            {
+                var request = new
+                {
+                    command = "read_all",
+                    requestId = requestId,
+                    resource = result.ControllerName
+                };
+                json = JsonSerializer.Serialize(request, options);
+            }
+            
             AddLog($"→ [{result.ControllerName}] Sending JSON: {json}");
             
             var bytes = Encoding.UTF8.GetBytes(json);
@@ -401,14 +420,28 @@ public partial class WebSocketDebugViewModel : ObservableObject
             AddLog($"✓ [{result.ControllerName}] Connected successfully");
             result.Message = "Connected, testing read_all...";
 
-            // Test read_all command
-            var readAllRequest = new
+            // Test read_all command with pagination for routeschedules
+            string json;
+            if (result.ControllerName == "routeschedules")
             {
-                Command = "read_all",
-                RequestId = Guid.NewGuid().ToString()
-            };
+                var readAllRequest = new
+                {
+                    Command = "read_all",
+                    RequestId = Guid.NewGuid().ToString(),
+                    Payload = new { page = 1, pageSize = 50 }
+                };
+                json = JsonSerializer.Serialize(readAllRequest);
+            }
+            else
+            {
+                var readAllRequest = new
+                {
+                    Command = "read_all",
+                    RequestId = Guid.NewGuid().ToString()
+                };
+                json = JsonSerializer.Serialize(readAllRequest);
+            }
 
-            var json = JsonSerializer.Serialize(readAllRequest);
             var bytes = Encoding.UTF8.GetBytes(json);
             
             AddLog($"→ [{result.ControllerName}] Sending read_all command");
