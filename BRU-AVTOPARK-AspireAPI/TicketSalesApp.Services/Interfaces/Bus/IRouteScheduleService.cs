@@ -11,7 +11,7 @@ namespace TicketSalesApp.Services.Interfaces
         Task<List<RouteSchedule>> GetAllSchedulesAsync();
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);
         Task<List<RouteSchedule>> GetSchedulesByRouteIdAsync(uint routeId);
-        Task<bool> CreateScheduleAsync(
+        Task<uint?> CreateScheduleAsync(
             uint? routeId = null,
             string? startPoint = null,
             string? endPoint = null,

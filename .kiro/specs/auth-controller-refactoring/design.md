@@ -3245,37 +3245,33 @@ const oidc = new Provider('http://localhost:3000', {
 })
 
 // Integrate with Elysia
+// NOTE: oidc-provider requires Node.js req/res objects and cannot be directly
+// integrated into Elysia route handlers. Instead, mount oidc-provider at the
+// server level using app.listen() callback or run as a standalone Express service.
+//
+// Recommended approach:
+// 1. Run oidc-provider as a separate Express/Fastify service on a different port
+// 2. Use Elysia to proxy requests to the oidc-provider service
+// 3. Or use http.createServer to wrap oidc-provider middleware and mount at server level
+//
+// Example standalone service:
+// const express = require('express')
+// const app = express()
+// app.use('/oidc', oidc.callback())
+// app.listen(3001)
+//
+// Then proxy from Elysia:
 const app = new Elysia()
-  .get('/interaction/:uid', async ({ params }) => {
-    // Custom login page - render with Elysia or proxy to frontend
-    const details = await oidc.interactionDetails(req, res)
-    // Return login form HTML or redirect to frontend
-  })
-  
-  .post('/interaction/:uid/login', async ({ params, body }) => {
-    // Validate credentials via C# backend
-    const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
-      method: 'POST',
-      body: JSON.stringify(body)
+  .all('/oidc/*', async ({ request }) => {
+    // Proxy to standalone oidc-provider service
+    const response = await fetch('http://localhost:3001' + new URL(request.url).pathname, {
+      method: request.method,
+      headers: request.headers,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
     })
-    
-    if (response.ok) {
-      const user = await response.json()
-      // Complete OIDC interaction
-      await oidc.interactionFinished(req, res, {
-        login: {
-          accountId: user.id,
-        },
-      })
-    }
+    return response
   })
-  
-  // Mount oidc-provider routes
-  .all('/oidc/*', ({ request }) => {
-    // Proxy to oidc-provider
-    return oidc.callback()(request)
-  })
-  
+
   .listen(3000)
 ```
 
@@ -3285,287 +3281,6 @@ const app = new Elysia()
 3. **No AuthorizationStore issues**: Custom adapter works around SpacetimeDB reactive state
 4. **Better PKCE handling**: Native PKCE support without Data Protection keys
 5. **Simpler debugging**: TypeScript stack traces vs C# + SpacetimeDB + OpenIddict
-
-#### Node HTTP Context Handling for OIDC Provider
-
-**Future Vision: Cross-Environment OIDC Context Bridging**
-
-The `oidc-provider` library is built on Node.js HTTP primitives (IncomingMessage, ServerResponse) which are tightly coupled to the Node runtime. To enable flexible deployment models (e.g., running OIDC logic in different environments, proxying to C# backend, or supporting non-HTTP transports like WebSockets), we need a strategy to extract, serialize, and convert OIDC request/response contexts.
-
-**Challenge**:
-- `oidc-provider` expects standard Node.js HTTP objects: `http.IncomingMessage` (request) and `http.ServerResponse` (response)
-- These objects contain runtime-specific state: streams, socket handles, internal buffers
-- To bridge environments (Node ↔ C# backend, HTTP ↔ WebSocket), we need a protocol-agnostic representation
-
-**Proposed Architecture**:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Elysia JS + oidc-provider (Node.js HTTP Context)           │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 1. Receive HTTP Request (Elysia Context)             │  │
-│  │    - method, headers, body, query, path              │  │
-│  └────────────────────────┬─────────────────────────────┘  │
-│                           │                                 │
-│  ┌────────────────────────▼─────────────────────────────┐  │
-│  │ 2. Convert to Node HTTP Context                      │  │
-│  │    - Create http.IncomingMessage wrapper             │  │
-│  │    - Create http.ServerResponse wrapper              │  │
-│  │    - Populate headers, method, url, body stream      │  │
-│  └────────────────────────┬─────────────────────────────┘  │
-│                           │                                 │
-│  ┌────────────────────────▼─────────────────────────────┐  │
-│  │ 3. Pass to oidc-provider                             │  │
-│  │    - oidc.callback()(req, res)                       │  │
-│  │    - oidc.interactionDetails(req, res)               │  │
-│  │    - oidc.interactionFinished(req, res, result)      │  │
-│  └────────────────────────┬─────────────────────────────┘  │
-│                           │                                 │
-│  ┌────────────────────────▼─────────────────────────────┐  │
-│  │ 4. Extract Response from ServerResponse              │  │
-│  │    - Intercept res.write(), res.end()                │  │
-│  │    - Capture statusCode, headers, body               │  │
-│  │    - Convert to serializable format                  │  │
-│  └────────────────────────┬─────────────────────────────┘  │
-│                           │                                 │
-│  ┌────────────────────────▼─────────────────────────────┐  │
-│  │ 5. Return Elysia Response                            │  │
-│  │    - Map status, headers, body to Elysia context     │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Implementation Strategy**:
-
-**Step 1: HTTP Context Adapter**
-Create adapters to convert between Elysia's context and Node HTTP primitives:
-
-```typescript
-import { IncomingMessage, ServerResponse } from 'http'
-import { Readable, Writable } from 'stream'
-
-class ElysiaToNodeRequest extends IncomingMessage {
-  constructor(elysiaRequest: Request) {
-    super(null as any) // Socket not needed for oidc-provider
-
-    // Map HTTP method and URL
-    this.method = elysiaRequest.method
-    this.url = new URL(elysiaRequest.url).pathname +
-               new URL(elysiaRequest.url).search
-
-    // Map headers
-    this.headers = {}
-    elysiaRequest.headers.forEach((value, key) => {
-      this.headers[key.toLowerCase()] = value
-    })
-
-    // Map body as readable stream
-    if (elysiaRequest.body) {
-      const bodyStream = new Readable()
-      bodyStream.push(elysiaRequest.body)
-      bodyStream.push(null)
-      this.push = bodyStream.push.bind(bodyStream)
-      this.read = bodyStream.read.bind(bodyStream)
-    }
-  }
-}
-
-class CaptureNodeResponse extends ServerResponse {
-  private capturedStatus: number = 200
-  private capturedHeaders: Record<string, string> = {}
-  private capturedBody: Buffer[] = []
-
-  constructor() {
-    super({ write: () => {} } as any) // Mock socket
-  }
-
-  writeHead(statusCode: number, headers?: any) {
-    this.capturedStatus = statusCode
-    if (headers) {
-      Object.assign(this.capturedHeaders, headers)
-    }
-    return this
-  }
-
-  setHeader(name: string, value: string) {
-    this.capturedHeaders[name.toLowerCase()] = value
-  }
-
-  write(chunk: any) {
-    this.capturedBody.push(Buffer.from(chunk))
-    return true
-  }
-
-  end(chunk?: any) {
-    if (chunk) {
-      this.capturedBody.push(Buffer.from(chunk))
-    }
-    this.finished = true
-  }
-
-  getResponse() {
-    return {
-      status: this.capturedStatus,
-      headers: this.capturedHeaders,
-      body: Buffer.concat(this.capturedBody).toString()
-    }
-  }
-}
-```
-
-**Step 2: OIDC Context Serialization**
-For cross-environment scenarios (e.g., proxying OIDC requests to C# backend), serialize the context:
-
-```typescript
-interface SerializedOIDCRequest {
-  method: string
-  path: string
-  query: Record<string, string>
-  headers: Record<string, string>
-  body: string
-  cookies: Record<string, string>
-}
-
-interface SerializedOIDCResponse {
-  status: number
-  headers: Record<string, string>
-  body: string
-  setCookies: string[]
-}
-
-function serializeNodeRequest(req: IncomingMessage): SerializedOIDCRequest {
-  return {
-    method: req.method!,
-    path: new URL(req.url!, 'http://localhost').pathname,
-    query: Object.fromEntries(
-      new URL(req.url!, 'http://localhost').searchParams
-    ),
-    headers: req.headers as Record<string, string>,
-    body: '', // Populated from stream
-    cookies: parseCookies(req.headers.cookie || '')
-  }
-}
-
-function deserializeToNodeRequest(
-  serialized: SerializedOIDCRequest
-): IncomingMessage {
-  const req = new IncomingMessage(null as any)
-  req.method = serialized.method
-  req.url = serialized.path + '?' +
-    new URLSearchParams(serialized.query).toString()
-  req.headers = serialized.headers
-
-  // Reconstitute body stream
-  const bodyStream = new Readable()
-  bodyStream.push(serialized.body)
-  bodyStream.push(null)
-  req.push = bodyStream.push.bind(bodyStream)
-
-  return req
-}
-```
-
-**Step 3: Integration with Elysia**
-
-```typescript
-const app = new Elysia()
-  .all('/oidc/*', async ({ request }) => {
-    // Convert Elysia request to Node HTTP context
-    const nodeReq = new ElysiaToNodeRequest(request)
-    const nodeRes = new CaptureNodeResponse()
-
-    // Pass to oidc-provider
-    await oidc.callback()(nodeReq, nodeRes)
-
-    // Extract captured response
-    const response = nodeRes.getResponse()
-
-    // Return Elysia response
-    return new Response(response.body, {
-      status: response.status,
-      headers: response.headers
-    })
-  })
-```
-
-**Step 4: Cross-Environment Proxying** (Future Vision)
-
-For scenarios where OIDC logic must be validated or processed by C# backend:
-
-```typescript
-// Elysia: Serialize and forward to C# backend
-app.all('/oidc/*', async ({ request }) => {
-  const nodeReq = new ElysiaToNodeRequest(request)
-  const serialized = serializeNodeRequest(nodeReq)
-
-  // Forward to C# backend for validation/processing
-  const backendResponse = await fetch('http://csharp-backend:5000/api/oidc/process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(serialized)
-  })
-
-  const serializedResponse: SerializedOIDCResponse = await backendResponse.json()
-
-  // Convert back to HTTP response
-  return new Response(serializedResponse.body, {
-    status: serializedResponse.status,
-    headers: serializedResponse.headers
-  })
-})
-```
-
-```csharp
-// C# Backend: Receive serialized OIDC context, process, return
-[HttpPost("api/oidc/process")]
-public async Task<IActionResult> ProcessOIDCRequest(
-    [FromBody] SerializedOIDCRequest oidcRequest)
-{
-    // Validate against SpacetimeDB
-    var user = await _userService.ValidateCredentialsAsync(
-        oidcRequest.Body.username,
-        oidcRequest.Body.password
-    );
-
-    if (user == null)
-    {
-        return Ok(new SerializedOIDCResponse
-        {
-            Status = 401,
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = "{\"error\":\"invalid_grant\"}"
-        });
-    }
-
-    // Return success with user context
-    return Ok(new SerializedOIDCResponse
-    {
-        Status = 200,
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = JsonSerializer.Serialize(new { userId = user.UserId })
-    });
-}
-```
-
-**Use Cases**:
-1. **Elysia → C# Backend Validation**: Forward OIDC login requests to C# for SpacetimeDB user validation
-2. **WebSocket OIDC**: Convert WebSocket messages to OIDC requests, process via oidc-provider, return via WebSocket
-3. **Multi-Runtime OIDC**: Run oidc-provider logic in Node, but delegate storage/validation to C# backend
-4. **Testing & Development**: Serialize OIDC contexts for debugging, replay, or integration testing
-
-**Benefits**:
-- **Decoupling**: OIDC logic separated from transport layer (HTTP, WebSocket, gRPC)
-- **Flexibility**: Can run oidc-provider in Node but delegate to C# for business logic
-- **Testability**: Serialized contexts enable easy testing without full HTTP stack
-- **Migration Path**: Gradual migration from OpenIddict to oidc-provider while keeping C# validation logic
-
-**Implementation Timeline**:
-- **Phase 1** (2-3 weeks): Build HTTP context adapters for Elysia ↔ oidc-provider
-- **Phase 2** (2-3 weeks): Implement serialization/deserialization for cross-environment proxying
-- **Phase 3** (3-4 weeks): Integrate with C# backend for validation delegation
-- **Phase 4** (2-3 weeks): Extend to WebSocket transport for real-time OIDC
-
-**Total Effort**: 9-13 weeks for full cross-environment OIDC bridging
 
 #### Migration Path to Elysia
 

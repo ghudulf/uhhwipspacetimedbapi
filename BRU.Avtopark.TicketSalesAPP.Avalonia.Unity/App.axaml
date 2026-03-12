@@ -7,9 +7,17 @@
              xmlns:sty="using:FluentAvalonia.Styling"   
 			 xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
 			xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
-             xmlns:materialIcons="using:Material.Icons.Avalonia"    
+             xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converters:BoolToConnectTextConverter x:Key="BoolToConnectTextConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:StatusToClassConverter x:Key="StatusToClassConverter"/>
+    </Application.Resources>
 
     
   
