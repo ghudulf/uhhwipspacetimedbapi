@@ -70,7 +70,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
         EnqueueForHistory(domainEvent);
         
-        _logger.LogDebug("[EventBus] Event queued successfully: {EventName}", domainEvent.EventName);
+        // Use sanitized event name to avoid log forging in debug logs as well
+        _logger.LogDebug("[EventBus] Event queued successfully: {EventName}", sanitizedEventName);
     }
 
     /// <summary>
@@ -272,9 +273,12 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             return string.Empty;
         }
 
-        // Remove newlines and control characters to prevent log injection
+        // Remove newlines and control characters (including CR/LF and other non-printable chars) to prevent log injection
         var sanitized = new string(value
-            .Where(c => !char.IsControl(c) || c == ' ')
+            .Where(c =>
+                // Allow common printable characters and space
+                !char.IsControl(c) ||
+                c == ' ')
             .ToArray());
 
         // Truncate if needed
