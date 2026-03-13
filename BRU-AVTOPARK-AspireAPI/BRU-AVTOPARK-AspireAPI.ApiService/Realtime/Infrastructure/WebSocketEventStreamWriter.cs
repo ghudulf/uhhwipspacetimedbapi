@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
@@ -87,8 +88,11 @@ public static class WebSocketEventStreamWriter
                 object payload;
                 try
                 {
+                    var sanitizedCommand = LogSanitizer.SanitizeLogField(request.Command ?? "", 100);
+                    var sanitizedRequestId = LogSanitizer.SanitizeLogField(request.RequestId ?? "", 50);
+                    
                     logger.LogInformation("[WebSocketEventStreamWriter] Processing request - Command: {Command}, RequestId: {RequestId}", 
-                        request.Command, request.RequestId);
+                        sanitizedCommand, sanitizedRequestId);
                     var data = await requestHandler(request, linkedCts.Token);
                     logger.LogInformation("[WebSocketEventStreamWriter] Request handler completed successfully");
                     
@@ -102,7 +106,8 @@ public static class WebSocketEventStreamWriter
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "WebSocket CRUD command failed: {Command}", request.Command);
+                    var sanitizedCommand = LogSanitizer.SanitizeLogField(request.Command ?? "", 100);
+                    logger.LogError(ex, "WebSocket CRUD command failed: {Command}", sanitizedCommand);
 
                     // Determine client-facing error message (sanitize sensitive information)
                     var clientErrorMessage = ex switch
@@ -225,8 +230,13 @@ public static class WebSocketEventStreamWriter
         try
         {
             var request = JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+            
+            var sanitizedCommand = LogSanitizer.SanitizeLogField(request?.Command ?? "", 100);
+            var sanitizedRequestId = LogSanitizer.SanitizeLogField(request?.RequestId ?? "", 50);
+            var sanitizedId = request?.Id?.ToString() ?? "null";
+            
             logger.LogInformation("[WebSocketEventStreamWriter] Parsed request - Command: {Command}, RequestId: {RequestId}, Id: {Id}",
-                request?.Command, request?.RequestId, request?.Id);
+                sanitizedCommand, sanitizedRequestId, sanitizedId);
 
             // Validate the deserialized request
             if (request == null || string.IsNullOrEmpty(request.Command))

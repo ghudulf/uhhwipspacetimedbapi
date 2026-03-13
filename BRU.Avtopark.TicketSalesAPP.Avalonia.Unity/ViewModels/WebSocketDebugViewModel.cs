@@ -16,7 +16,7 @@ using Serilog;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
-public partial class WebSocketDebugViewModel : ObservableObject
+public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
 {
     private readonly ApiClientService _apiClient;
     private readonly TokenStorageService _tokenStorage;
@@ -1189,10 +1189,10 @@ public partial class WebSocketDebugViewModel : ObservableObject
         if (EventLog.Count > maxLogSize)
         {
             var itemsToRemove = EventLog.Count - maxLogSize;
-            for (int i = 0; i < itemsToRemove; i++)
-            {
-                EventLog.RemoveAt(0);
-            }
+            // Remove in bulk to avoid O(n²) behavior
+            var newLog = new ObservableCollection<string>(EventLog.Skip(itemsToRemove));
+            EventLog = newLog;
+            OnPropertyChanged(nameof(EventLog));
         }
     }
     
@@ -1216,6 +1216,13 @@ public partial class WebSocketDebugViewModel : ObservableObject
             "users" => "users",
             _ => controllerName // Default to controller name
         };
+    }
+    
+    public void Dispose()
+    {
+        _sendSemaphore?.Dispose();
+        _cts?.Dispose();
+        _webSocket?.Dispose();
     }
 }
 

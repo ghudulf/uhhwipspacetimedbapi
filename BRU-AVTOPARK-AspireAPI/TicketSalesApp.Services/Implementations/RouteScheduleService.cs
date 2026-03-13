@@ -660,10 +660,11 @@ namespace TicketSalesApp.Services.Implementations
                 
                 foreach (var schedule in allSchedules)
                 {
-                    if (schedule.DaysOfWeek != null && 
-                        schedule.DaysOfWeek.Contains(dayOfWeek) &&
-                        schedule.DepartureTime >= date &&
-                        schedule.DepartureTime < date + 86400000) // 86400000 ms = 24 hours
+                    // Allow both recurring schedules (with DaysOfWeek) and one-off schedules (DaysOfWeek == null)
+                    bool matchesDay = schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek);
+                    bool matchesTimeWindow = schedule.DepartureTime >= date && schedule.DepartureTime < date + 86400000; // 86400000 ms = 24 hours
+                    
+                    if (matchesDay && matchesTimeWindow)
                     {
                         matchingSchedules.Add(schedule);
                     }

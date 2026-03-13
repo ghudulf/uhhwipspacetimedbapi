@@ -1445,6 +1445,13 @@ public sealed class RealtimeController : BaseController
                             if (activeEnumerators.TryRemove(completedChannel, out var faultedEnum))
                             {
                                 await faultedEnum.DisposeAsync();
+                                
+                                // Clear associated pendingMoves entry to avoid reusing stale task
+                                if (pendingMoves.TryRemove(completedChannel, out var pendingTask))
+                                {
+                                    _logger.LogDebug("[{ConnectionId}] Cleared stale pendingMoves entry for channel {Channel}", 
+                                        connectionId, completedChannel);
+                                }
                             }
                         }
                     }

@@ -40,6 +40,13 @@ internal static class LogSanitizer
 
         // Guard against negative length in AsSpan and Substring
         var clampedLength = Math.Max(maxLength, 0);
+        
+        // If value is already within bounds, return it unchanged
+        if (sanitized.Length <= clampedLength)
+        {
+            return sanitized;
+        }
+        
         if (clampedLength <= 3)
         {
             // Return truncated ellipsis if maxLength is too small
@@ -47,11 +54,6 @@ internal static class LogSanitizer
         }
 
         // Truncate if needed - ensure output never exceeds maxLength
-        if (sanitized.Length > clampedLength)
-        {
-            return string.Concat(sanitized.AsSpan(0, clampedLength - 3), "...");
-        }
-
-        return sanitized;
+        return string.Concat(sanitized.AsSpan(0, clampedLength - 3), "...");
     }
 }

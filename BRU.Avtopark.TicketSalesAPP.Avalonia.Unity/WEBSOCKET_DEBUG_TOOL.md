@@ -203,7 +203,7 @@ ws://[server]/api/realtime/stream
 ### Connection Fails
 
 - Verify API server is running
-- Check server URL format (ws:// or wss://)
+- Check server URL format (http:// or https://)
 - Ensure firewall allows WebSocket connections
 - Verify authentication token is valid
 

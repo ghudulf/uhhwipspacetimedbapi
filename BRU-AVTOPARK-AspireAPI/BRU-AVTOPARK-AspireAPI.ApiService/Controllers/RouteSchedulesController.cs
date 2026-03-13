@@ -161,14 +161,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (currentPageSize > 500) currentPageSize = 500;
 
             // Normalize initial page value
-            var currentPage = Math.Max(1, page ?? 1);
+            var initialPage = Math.Max(1, page ?? 1);
 
             // Get first page to determine total count and pages
-            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
 
             // Normalize page within bounds
-            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+            var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));
 
             // Apply navigation logic
             switch (command)
@@ -193,8 +193,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
                 command, currentPage, totalPages, currentPageSize, totalCount);
 
-            // Fetch the final target page after navigation
-            var (schedules, _) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+            // Reuse initialItems if page didn't change, otherwise fetch the new page
+            var schedules = (currentPage == initialPage) ? initialItems : (await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize)).Item1;
 
             // Project schedules and return with pagination metadata
             var result = schedules.Select(ProjectScheduleForList).ToList();
@@ -258,23 +258,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             };
         }
 
-        /// <summary>
-        /// Handle the realtime "read_all" command and return paginated projected route schedules matching the REST DTO shape with timestamp conversions.
-        /// </summary>
-        /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
-        /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
-        /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
-        private async Task<object> HandleReadAllCommandAsync(int? page = null, int? pageSize = null)
-        {
-            // Materialize the collection once to avoid multiple enumeration
-            var schedules = (await _routeScheduleService.GetAllSchedulesAsync()).ToList();
-
-            _logger.LogInformation("RouteSchedules WebSocket read_all - Page: {Page}, PageSize: {PageSize}, Total: {TotalCount}",
-                page ?? 1, pageSize ?? 100, schedules.Count);
-
-            // Use shared pagination helper
-            return ApplyPaginationAndProject(schedules, page, pageSize);
-        }
 
         /// <summary>
         /// Handle a realtime "read" command and return a single projected route schedule matching the REST DTO shape with timestamp conversions.
@@ -492,7 +475,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Clamp pagination parameters to safe bounds
+                const int MAX_PAGE_SIZE = 500;
                 if (pageSize < 1) pageSize = 1;
+                if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
                 if (page < 1) page = 1;
                 
                 _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
