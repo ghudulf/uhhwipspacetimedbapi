@@ -135,10 +135,10 @@ namespace TicketSalesApp.Services.Implementations
                 // Flush pending reducer responses
                 conn.FrameTick();
 
-                // Find the newly created sale using out-of-band correlation:
-                // - Must be for the same ticketId
-                // - Must have been created after our call (SaleDate >= preCallTimestamp)
-                // - Should be the most recent one
+                // WORKAROUND: SpacetimeDB reducers don't return created IDs, forcing timestamp-based correlation.
+                // This is racy - concurrent creates for the same ticket can return wrong sale.
+                // TODO: Add correlation token to Sale table or use SpacetimeDB transaction support when available.
+                // Find the newly created sale using timestamp correlation
                 var newSale = conn.Db.Sale.Iter()
                     .Where(s => s.TicketId == ticketId && s.SaleDate >= (ulong)preCallTimestamp)
                     .OrderByDescending(s => s.SaleDate)

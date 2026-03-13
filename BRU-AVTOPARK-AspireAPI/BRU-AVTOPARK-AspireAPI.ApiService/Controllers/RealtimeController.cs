@@ -65,6 +65,13 @@ public sealed class RealtimeController : BaseController
     [HttpGet("events")]
     public IActionResult GetRecentEvents([FromQuery] int maxCount = 100)
     {
+        // Validate OAuth token for HTTP endpoint
+        var validatedClaims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+        if (validatedClaims == null)
+        {
+            return Unauthorized(new { error = "Invalid or missing authentication token" });
+        }
+
         return Ok(_eventBus.GetRecentEvents(maxCount));
     }
 
@@ -76,6 +83,13 @@ public sealed class RealtimeController : BaseController
     [HttpPost("broadcast-test")]
     public async Task<IActionResult> BroadcastTest(CancellationToken cancellationToken)
     {
+        // Validate OAuth token for HTTP endpoint
+        var validatedClaims = await ValidateOAuthTokenAsync();
+        if (validatedClaims == null)
+        {
+            return Unauthorized(new { error = "Invalid or missing authentication token" });
+        }
+
         var evt = new ApiDomainEvent(
             EventName: "system.broadcast-test",
             Resource: "system",
@@ -748,7 +762,7 @@ public sealed class RealtimeController : BaseController
         {
             _logger.LogError(ex, "[{ConnectionId}] Error executing CRUD {Command} on {Resource}. RequestId: {RequestId}, ExceptionType: {ExceptionType}", 
                 connectionId, command, resource, requestId, ex.GetType().Name);
-            await SendErrorAsync(webSocket, requestId, $"Failed to execute command: {ex.Message}", sendLock, cancellationToken);
+            await SendErrorAsync(webSocket, requestId, $"Failed to execute command. RequestId: {requestId}, Command: {command}, Resource: {resource}", sendLock, cancellationToken);
         }
     }
 

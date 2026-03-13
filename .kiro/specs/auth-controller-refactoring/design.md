@@ -2620,7 +2620,7 @@ Replace ASP.NET Core authentication layer with Elysia JS, keep C# for business l
 **CRITICAL: Elysia as Standalone Auth Server**:
 - Elysia JS connects DIRECTLY to SpacetimeDB (no C# backend calls for auth data)
 - Elysia handles ALL authentication: JWT, OAuth/OIDC, TOTP, WebAuthn, QR codes
-- C# backend becomes a pure business logic API that trusts Elysia's auth tokens
+- C# backend MUST validate all tokens: the C# service must validate token signature, issuer, audience, and expiry before accepting requests from Elysia (or require documented mTLS plus signed assertions)
 - SpacetimeDB is accessed by BOTH Elysia (for auth data) and C# (for business data)
 
 **Request Flow**:
@@ -3164,14 +3164,14 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { jwt } from '@elysiajs/jwt'
-import { SpacetimeDBClient } from '@clockworklabs/spacetimedb-sdk'
+import { DbConnection } from 'spacetimedb'
 import Provider from 'oidc-provider'
 
-// Initialize SpacetimeDB connection
-const spacetimeDB = new SpacetimeDBClient({
+// Initialize SpacetimeDB connection using official SDK
+const spacetimeDB = new DbConnection({
   host: process.env.SPACETIMEDB_HOST || 'localhost:3000',
-  name_or_address: 'bru-avtopark',
-  auth_token: process.env.SPACETIMEDB_TOKEN
+  database: 'bru-avtopark',
+  authToken: process.env.SPACETIMEDB_TOKEN
 })
 
 const app = new Elysia()
@@ -4295,7 +4295,8 @@ const app = new Elysia()
 
 **Phase 1: Proof of Concept** (2-4 weeks)
 - [ ] Set up Elysia project with oidc-provider
-- [ ] Implement server-level interception for /oidc/* endpoints
+- [ ] Route OIDC traffic through Elysia app.fetch using a Fetch↔Node shim (Pattern B) and implement OIDC handlers (authorize, token, userinfo) that convert between Fetch and Node requests/responses
+- [ ] Implement server-level interception for /oidc/* endpoints (fallback/alternative)
 - [ ] Implement basic OIDC flow (authorize, token, userinfo)
 - [ ] Test with Avalonia client
 - [ ] Compare performance with OpenIddict

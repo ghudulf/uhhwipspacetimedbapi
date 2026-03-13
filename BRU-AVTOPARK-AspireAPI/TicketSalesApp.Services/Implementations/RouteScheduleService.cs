@@ -414,6 +414,47 @@ namespace TicketSalesApp.Services.Implementations
                     {
                         _logger.LogWarning("CreateScheduleAsync timed out waiting for reducer confirmation");
                         
+                        // CRITICAL: Timeout fallback - check if schedule was created but event missed
+                        // Final check: schedule may have been created but event missed
+                        var scheduleWithTag = connection.Db.RouteSchedule.Iter()
+                            .FirstOrDefault(s => s.Notes != null && s.Notes.Contains(correlationTag));
+                        
+                        if (scheduleWithTag != null)
+                        {
+                            _logger.LogInformation("Found schedule {ScheduleId} with correlation tag after timeout - cleaning tag", scheduleWithTag.ScheduleId);
+                            
+                            // Clean the correlation tag from Notes
+                            var cleanedNotesAfterTimeout = scheduleWithTag.Notes?.Replace(correlationTag, "").Trim();
+                            if (string.IsNullOrWhiteSpace(cleanedNotesAfterTimeout))
+                            {
+                                cleanedNotesAfterTimeout = null;
+                            }
+                            
+                            // Update schedule to remove correlation tag
+                            connection.Reducers.UpdateRouteSchedule(
+                                scheduleWithTag.ScheduleId,
+                                scheduleWithTag.RouteId,
+                                scheduleWithTag.StartPoint,
+                                scheduleWithTag.EndPoint,
+                                scheduleWithTag.RouteStops,
+                                scheduleWithTag.DepartureTime,
+                                scheduleWithTag.ArrivalTime,
+                                scheduleWithTag.Price,
+                                scheduleWithTag.AvailableSeats,
+                                scheduleWithTag.DaysOfWeek,
+                                scheduleWithTag.BusTypes,
+                                scheduleWithTag.StopDurationMinutes,
+                                scheduleWithTag.IsRecurring,
+                                scheduleWithTag.EstimatedStopTimes,
+                                scheduleWithTag.StopDistances,
+                                cleanedNotesAfterTimeout,
+                                null
+                            );
+                            connection.FrameTick();
+                            
+                            return scheduleWithTag.ScheduleId;
+                        }
+                        
                         // CRITICAL: Timeout fallback returns null instead of guessing with non-unique fields
                         // The previous fallback used non-unique fields (RouteId, DepartureTime, StartPoint, EndPoint)
                         // which could match the wrong schedule under concurrency.
