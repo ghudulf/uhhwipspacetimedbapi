@@ -46,11 +46,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "✗ Failed to remove StdbModule.csproj from temp solution" -ForegroundColor Red
-    Remove-Item $tempSln -ErrorAction SilentlyContinue
-    exit 1
-}
+ 
 
 # Build the temp solution
 dotnet build $tempSln --configuration Release
