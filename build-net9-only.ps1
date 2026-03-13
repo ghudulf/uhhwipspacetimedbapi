@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 # Quick build script for .NET 9 projects only (excludes SpacetimeDB module)
 
-Write-Host "Building .NET 9 projects only..." -ForegroundColor Cyan
+Write-Information "Building .NET 9 projects only..." -InformationAction Continue
 
 # Create a filtered solution
 $tempSln = "Net9Projects.sln"

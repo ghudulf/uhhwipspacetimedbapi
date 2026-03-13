@@ -117,8 +117,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}", 
-                        request.Payload.Value.ToString());
+                    _logger.LogWarning(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
+                        SanitizePayloadForLogging(request.Payload.Value));
                 }
             }
             
@@ -1027,6 +1027,72 @@ namespace TicketSalesApp.AdminServer.Controllers
                 s.RequiresSeatReservation,
                 s.RouteType
             };
+        }
+
+        /// <summary>
+        /// Sanitizes a JSON payload for logging by masking sensitive fields and limiting length.
+        /// </summary>
+        private string SanitizePayloadForLogging(JsonElement payload)
+        {
+            const int MaxLength = 500;
+            var sensitiveFields = new[] { "password", "token", "secret", "apikey", "api_key" };
+
+            try
+            {
+                var payloadStr = payload.ToString();
+                if (string.IsNullOrEmpty(payloadStr))
+                    return "[empty]";
+
+                // Parse and mask sensitive fields
+                using var doc = JsonDocument.Parse(payloadStr);
+                var sanitized = SanitizeJsonElement(doc.RootElement, sensitiveFields);
+                var result = sanitized.Length > MaxLength
+                    ? sanitized.Substring(0, MaxLength) + "... [truncated]"
+                    : sanitized;
+                return result;
+            }
+            catch
+            {
+                return "[invalid JSON]";
+            }
+        }
+
+        private string SanitizeJsonElement(JsonElement element, string[] sensitiveFields)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                var sanitizedObj = new Dictionary<string, object>();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    var key = prop.Name;
+                    var isSensitive = sensitiveFields.Any(sf => key.Contains(sf, StringComparison.OrdinalIgnoreCase));
+
+                    if (isSensitive)
+                    {
+                        sanitizedObj[key] = "***";
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        sanitizedObj[key] = SanitizeJsonElement(prop.Value, sensitiveFields);
+                    }
+                    else
+                    {
+                        sanitizedObj[key] = prop.Value.ToString();
+                    }
+                }
+                return JsonSerializer.Serialize(sanitizedObj);
+            }
+            else if (element.ValueKind == JsonValueKind.Array)
+            {
+                var sanitizedArray = new List<object>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    sanitizedArray.Add(SanitizeJsonElement(item, sensitiveFields));
+                }
+                return JsonSerializer.Serialize(sanitizedArray);
+            }
+
+            return element.ToString();
         }
     }
 

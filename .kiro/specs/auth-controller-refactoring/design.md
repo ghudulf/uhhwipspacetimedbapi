@@ -3177,11 +3177,11 @@ import { DbConnection } from 'spacetimedb'
 import Provider from 'oidc-provider'
 
 // Initialize SpacetimeDB connection using official SDK
-const spacetimeDB = new DbConnection({
-  host: process.env.SPACETIMEDB_HOST || 'localhost:3000',
-  database: 'bru-avtopark',
-  authToken: process.env.SPACETIMEDB_TOKEN
-})
+const spacetimeDB = DbConnection.builder()
+  .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+  .withDatabaseName('bru-avtopark')
+  .withToken(process.env.SPACETIMEDB_TOKEN)
+  .build()
 
 const app = new Elysia()
   .use(cors({
@@ -3718,7 +3718,7 @@ app.post('/auth/login', async ({ body }) => {
 
 Since oidc-provider is built for Node.js and expects `req`/`res` objects, while Elysia uses modern Fetch API `Request`/`Response` objects, we need an integration layer. There are two approaches:
 
-**Approach 1: Elysia Route Handlers with Node.js Shim** (Recommended)
+**Approach 1: Elysia app.fetch + Fetch↔Node Shim** (Recommended - Canonical Pattern)
 
 OIDC traffic flows through Elysia's Fetch-based routing. The Node.js compatibility shim intercepts at the server level to bridge oidc-provider's req/res expectations with Elysia's Fetch API, but the interception happens WITHIN Elysia's route handlers, allowing Elysia middleware and features to apply.
 
@@ -3836,7 +3836,7 @@ const app = new Elysia()
   .listen(3000)
 ```
 
-**Approach 2: Server-Level Interception Before Elysia** (Alternative)
+**Approach 2: Server-Level Interception Before Elysia** (Fallback-Only Pattern)
 
 OIDC traffic is intercepted at the Node.js HTTP server level BEFORE reaching Elysia routing. This approach completely bypasses Elysia for OIDC endpoints.
 
@@ -3907,7 +3907,7 @@ const app = new Elysia()
   })
 ```
 
-**Recommendation**: Use **Approach 1** (Elysia Route Handlers) for production. The unified middleware and type safety benefits outweigh the small performance overhead of the Fetch↔Node.js conversion. Use **Approach 2** only if you need maximum performance and don't require Elysia middleware on OIDC endpoints.
+**Recommendation**: Use **Approach 1** (Elysia app.fetch + Fetch↔Node Shim) as the canonical/primary pattern for production. The unified middleware and type safety benefits outweigh the small performance overhead of the Fetch↔Node.js conversion. Use **Approach 2** (Server-Level Interception) only as a fallback if you need maximum performance and don't require Elysia middleware on OIDC endpoints.
 
 **Full Integration Example**:
 

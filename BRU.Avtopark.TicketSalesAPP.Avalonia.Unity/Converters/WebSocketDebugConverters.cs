@@ -57,23 +57,6 @@ public class NullToVisibilityConverter : IValueConverter
     }
 }
 
-public class StatusToClassConverter : IValueConverter
-{
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is TestStatus status)
-        {
-            return status.ToString();
-        }
-        return "NotTested";
-    }
-
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
-
 public class StatusToBackgroundConverter : IValueConverter
 {
     private static readonly SolidColorBrush NotTestedBrush = new SolidColorBrush(Color.Parse("#3A3A3A"));

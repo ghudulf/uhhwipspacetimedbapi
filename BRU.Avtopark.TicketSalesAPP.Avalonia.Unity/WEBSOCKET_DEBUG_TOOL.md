@@ -92,7 +92,7 @@ The tool uses the `bru.events.v1` subprotocol and communicates with:
 ### Endpoint
 
 ```text
-ws://[server]/api/realtime/stream
+ws[s]://[server]/api/realtime/stream
 ```
 
 ### Message Format

@@ -657,8 +657,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 - **Phase 2 (Week 8)**: Add feature flag system to orchestration layer
 - **Phase 3 (Weeks 9-10)**: Create dual-controller architecture with dynamic routing based on feature flags
 - **Phase 4 (Post-deployment)**: Gradually enable feature flags, monitor, improve as needed
-- **Phase 5 (Cleanup)**: Delete legacy controller, rename refactored controller, KEEP feature flags for operational flexibility
-- **Post-Cleanup**: Feature flags repurposed for endpoint availability control (enable/disable endpoints for operational needs)
+- **Phase 5 (Cleanup and Repurposing)**: Delete legacy controller, rename refactored controller, KEEP feature flags for operational flexibility (repurposed for endpoint availability control - enable/disable endpoints for operational needs)
 
 **Critical Constraint**: The current AuthController (8,293 lines) MUST remain completely untouched and operational until Phase 3. All new code is built in parallel in the Experimental folder, allowing the system to continue functioning normally during development.
 
@@ -1091,11 +1090,11 @@ public async Task<LoginResult> LoginAsync(string username, string password)
 - **AuthController**: Running both code paths
 - **Risk Level**: CONTROLLED - instant rollback available
 
-**Phase 6: Legacy Code Cleanup (After validation)** - Zero Risk
+**Phase 5: Legacy Code Cleanup and Repurposing (After validation)** - Zero Risk
 - Delete legacy AuthController.cs file
 - Rename AuthControllerRefactored.cs to AuthController.cs
 - Remove routing infrastructure
-- KEEP feature flags for operational flexibility
+- KEEP feature flags for operational flexibility (repurposed for endpoint availability control)
 - **Risk Level**: ZERO - new code already validated
 - Clean up and optimize
 - **AuthController**: Simplified to ~2,000 lines

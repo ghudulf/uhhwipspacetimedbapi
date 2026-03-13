@@ -856,7 +856,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 **Note**: These tasks are performed AFTER all endpoints have been at 100% rollout for several weeks/months with stable operation.
 
-**IMPORTANT**: Feature flag infrastructure is KEPT for operational flexibility. This allows instant rollback capability and A/B testing even after cleanup.
+**IMPORTANT**: Feature flag infrastructure is KEPT for operational flexibility. This allows operational disablement (flags disable endpoints with 503 response after legacy controller deletion, rather than restoring implementations) and endpoint availability control even after cleanup.
 
 - [ ] 23. Delete legacy AuthController.cs file
   - [ ] 23.1 Verify all feature flags are enabled and stable
@@ -870,10 +870,11 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - This file contains all legacy implementations with [LegacyAction] attributes
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 23.3 Update integration tests to remove legacy controller tests
-    - Remove tests that specifically test legacy AuthController
+  - [ ] 23.3 Update integration tests for post-cleanup behavior
+    - Remove tests that specifically test legacy AuthController implementations
     - Keep tests for AuthControllerRefactored
-    - Remove feature flag toggle tests (no longer needed since only one controller exists)
+    - Keep/rewrite feature flag toggle tests to validate endpoint-disable semantics (503 responses when disabled)
+    - Remove only legacy-controller-specific test logic, not toggle validation assertions
     - _Requirements: 5.5_
 
 - [ ] 24. Clean up AuthControllerRefactored.cs
@@ -946,12 +947,12 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Update UI documentation to reflect new purpose (enable/disable endpoints, not switch implementations)
     - _Requirements: 6.1.4, 6.1.5, 6.1.8, 6.1.9_
 
-- [ ] 27. Update AuthController to use feature flags for endpoint disabling
-  - [ ] 27.1 Add feature flag checks at start of each endpoint
+- [ ] 27. Update AuthController to use feature flags for operational disablement
+  - [ ] 27.1 Add feature flag checks at start of each endpoint for operational control
     - Check if endpoint's feature flag is enabled
-    - If disabled, return 503 Service Unavailable with message
+    - If disabled, return 503 Service Unavailable with message (operational disablement, not rollback to legacy)
     - Example: `if (!_featureFlags.Value.EnableLoginRefactoring) return StatusCode(503, "Login endpoint temporarily disabled");`
-    - This provides operational control to disable problematic endpoints
+    - This provides operational control to disable endpoints after legacy controller deletion
     - _Requirements: 6.1, 6.2, 6.3, 15.4_
   
   - [ ] 27.2 Add logging for disabled endpoint access attempts
@@ -1018,11 +1019,12 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - All performance tests passing
     - _Requirements: 5.5_
   
-  - [ ] 30.2 Test feature flag endpoint disabling
+  - [ ] 30.2 Test feature flag endpoint operational disablement
     - Disable each endpoint via feature flag
-    - Verify 503 Service Unavailable response
+    - Verify 503 Service Unavailable response (operational disablement semantics)
     - Verify logging works correctly
     - Re-enable and verify endpoint works again
+    - Validate that disabling does not restore legacy implementations (confirms post-cleanup behavior)
     - _Requirements: 6.1, 6.2, 6.3, 6.5_
   
   - [ ] 30.3 Perform security audit
@@ -1534,10 +1536,10 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 7. ✅ **Milestone 7**: Legacy code cleaned up (End of Phase 7) - **STOPPING POINT FOR MOST TEAMS**
 
 **Future Vision (Optional - Choose Your Path)**:
-8. ⭕ **Milestone 8**: JSON API complete (End of Phase 8) - *Option 2 or 3*
-9. ⭕ **Milestone 9**: Rendering abstracted (End of Phase 9) - *Option 2 only*
-10. ⭕ **Milestone 10**: New frontend live (End of Phase 10) - *Option 2 or 4*
-11. ⭕ **Milestone 11**: Frontend-agnostic architecture complete (End of Phase 11) - *Option 2 only*
+8. ⭕ **Milestone 8**: JSON API complete (End of Phase 8) - _Option 2 or 3_
+9. ⭕ **Milestone 9**: Rendering abstracted (End of Phase 9) - _Option 2 only_
+10. ⭕ **Milestone 10**: New frontend live (End of Phase 10) - _Option 2 or 4_
+11. ⭕ **Milestone 11**: Frontend-agnostic architecture complete (End of Phase 11) - _Option 2 only_
 
 **Legend**:
 - ✅ = Required milestone (all teams should complete)

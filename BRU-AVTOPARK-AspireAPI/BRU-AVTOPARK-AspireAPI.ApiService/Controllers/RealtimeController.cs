@@ -72,6 +72,12 @@ public sealed class RealtimeController : BaseController
             return Unauthorized(new { error = "Invalid or missing authentication token" });
         }
 
+        // Enforce admin/permission check for diagnostic endpoints
+        if (!HasSystemOrAdminPermission(validatedClaims))
+        {
+            return Forbid();
+        }
+
         return Ok(_eventBus.GetRecentEvents(maxCount));
     }
 
@@ -88,6 +94,12 @@ public sealed class RealtimeController : BaseController
         if (validatedClaims == null)
         {
             return Unauthorized(new { error = "Invalid or missing authentication token" });
+        }
+
+        // Enforce admin/permission check for diagnostic endpoints
+        if (!HasSystemOrAdminPermission(validatedClaims))
+        {
+            return Forbid();
         }
 
         var evt = new ApiDomainEvent(
@@ -1172,6 +1184,11 @@ public sealed class RealtimeController : BaseController
                         return;
                     }
                     result = await ExecuteReadAsync(service, resource, id.Value);
+                    if (result == null)
+                    {
+                        await SendErrorAsync(webSocket, requestId, $"Resource with ID {id.Value} not found", sendLock, cancellationToken);
+                        return;
+                    }
                     break;
 
                 case "create":
@@ -2145,6 +2162,43 @@ public sealed class RealtimeController : BaseController
             default:
                 return element.ToString();
         }
+    }
+
+    /// <summary>
+    /// Checks if the validated claims contain system.* permissions or admin role.
+    /// </summary>
+    private bool HasSystemOrAdminPermission(Dictionary<string, object>? validatedClaims)
+    {
+        if (validatedClaims == null)
+            return false;
+
+        // Check for permissions claim
+        if (validatedClaims.TryGetValue("permissions", out var permissionsObj))
+        {
+            if (permissionsObj is JsonElement permissionsEl && permissionsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var permission in permissionsEl.EnumerateArray())
+                {
+                    var permissionStr = permission.GetString();
+                    if (permissionStr?.StartsWith("system.", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check for admin role
+        if (validatedClaims.TryGetValue("role", out var roleObj))
+        {
+            var roleStr = roleObj?.ToString();
+            if (string.Equals(roleStr, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private class ResourceHandler

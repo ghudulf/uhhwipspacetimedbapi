@@ -63,6 +63,14 @@ namespace TicketSalesApp.Services.Implementations
                     totalCount++;
                 }
 
+                // Validate paging parameters
+                if (page < 1)
+                    throw new ArgumentOutOfRangeException(nameof(page), "Page must be >= 1");
+                if (pageSize < 1)
+                    throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize must be >= 1");
+                if (pageSize > 1000)
+                    throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize cannot exceed 1000");
+
                 // Calculate skip and take for pagination
                 var skip = (page - 1) * pageSize;
 
@@ -668,8 +676,20 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     // Allow both recurring schedules (with DaysOfWeek) and one-off schedules (DaysOfWeek == null)
                     bool matchesDay = schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek);
-                    bool matchesTimeWindow = schedule.DepartureTime >= date && schedule.DepartureTime < date + 86400000; // 86400000 ms = 24 hours
-                    
+
+                    bool matchesTimeWindow;
+                    if (schedule.DaysOfWeek == null)
+                    {
+                        // One-off schedule: use exact timestamp matching within the target day
+                        matchesTimeWindow = schedule.DepartureTime >= date && schedule.DepartureTime < date + 86400000; // 86400000 ms = 24 hours
+                    }
+                    else
+                    {
+                        // Recurring schedule: match by time-of-day (DepartureTime % 86400000)
+                        var timeOfDay = schedule.DepartureTime % 86400000;
+                        matchesTimeWindow = timeOfDay >= 0 && timeOfDay < 86400000; // Always true for recurring, just sanity check
+                    }
+
                     if (matchesDay && matchesTimeWindow)
                     {
                         matchingSchedules.Add(schedule);

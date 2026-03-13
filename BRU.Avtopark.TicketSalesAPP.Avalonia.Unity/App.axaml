@@ -16,7 +16,6 @@
         <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <converters:BoolToConnectTextConverter x:Key="BoolToConnectTextConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
-        <converters:StatusToClassConverter x:Key="StatusToClassConverter"/>
         <converters:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
         <converters:StatusToBorderBrushConverter x:Key="StatusToBorderBrushConverter"/>
     </Application.Resources>

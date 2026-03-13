@@ -1412,6 +1412,9 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
     
     public void Dispose()
     {
+        // Ensure cleanup completes before disposing resources to prevent race conditions
+        CleanupWebSocketAsync().GetAwaiter().GetResult();
+
         _sendSemaphore?.Dispose();
         _cts?.Dispose();
         _webSocket?.Dispose();
