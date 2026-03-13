@@ -233,7 +233,8 @@ namespace TicketSalesApp.Services.Implementations
                 var oldSaleStillExists = conn.Db.Sale.SaleId.Find(saleId);
                 if (oldSaleStillExists != null)
                 {
-                    _logger.LogWarning("Old sale {SaleId} still exists after delete attempt", saleId);
+                    _logger.LogError("Old sale {SaleId} still exists after delete attempt - update failed", saleId);
+                    return false;
                 }
 
                 _logger.LogInformation("Sale updated via create+delete: old SaleId={OldSaleId}, new SaleId={NewSaleId}", saleId, newSale.SaleId);

@@ -48,6 +48,34 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        public async Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(int page, int pageSize)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving schedules page {Page} with page size {PageSize}", page, pageSize);
+                var connection = _spacetimeDBService.GetConnection();
+
+                // Get all schedules using iterator (server-side)
+                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
+                var totalCount = allSchedules.Count;
+
+                // Calculate skip and take for pagination
+                var skip = (page - 1) * pageSize;
+                var items = allSchedules
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .ToList();
+
+                _logger.LogInformation("Retrieved {ItemCount} schedules out of {TotalCount} total", items.Count, totalCount);
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving schedules page {Page}", page);
+                throw;
+            }
+        }
+
         public async Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId)
         {
             try
@@ -571,8 +599,20 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Retrieving schedules for date: {Date}", DateTimeOffset.FromUnixTimeMilliseconds((long)date).ToString());
                 var connection = _spacetimeDBService.GetConnection();
 
-                var dayOfWeek = DateTimeOffset.FromUnixTimeMilliseconds((long)date).DayOfWeek.ToString();
-                
+                // Convert DayOfWeek enum to Russian names matching stored values
+                var dayOfWeekEnum = DateTimeOffset.FromUnixTimeMilliseconds((long)date).DayOfWeek;
+                var dayOfWeek = dayOfWeekEnum switch
+                {
+                    DayOfWeek.Monday => "Понедельник",
+                    DayOfWeek.Tuesday => "Вторник",
+                    DayOfWeek.Wednesday => "Среда",
+                    DayOfWeek.Thursday => "Четверг",
+                    DayOfWeek.Friday => "Пятница",
+                    DayOfWeek.Saturday => "Суббота",
+                    DayOfWeek.Sunday => "Воскресенье",
+                    _ => dayOfWeekEnum.ToString() // Fallback to English if unknown
+                };
+
                 var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
                 
                 List<RouteSchedule> matchingSchedules = [];

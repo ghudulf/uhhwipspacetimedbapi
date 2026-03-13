@@ -151,23 +151,24 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Handle navigation commands by fetching schedules once and applying navigation logic.
+        /// Handle navigation commands by using server-side paging to avoid materializing entire table.
         /// </summary>
         private async Task<object> HandleNavigationCommandAsync(string command, int? page, int? pageSize)
         {
-            // Fetch schedules once and materialize
-            var schedules = (await _routeScheduleService.GetAllSchedulesAsync()).ToList();
-
-            // Calculate page size and total pages for navigation
+            // Calculate page size
             var currentPageSize = pageSize ?? 100;
             if (currentPageSize < 1) currentPageSize = 100;
             if (currentPageSize > 500) currentPageSize = 500;
 
-            var totalCount = schedules.Count;
+            // Normalize initial page value
+            var currentPage = Math.Max(1, page ?? 1);
+
+            // Get first page to determine total count and pages
+            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
 
-            // Normalize page value before switch statement
-            var currentPage = Math.Max(1, Math.Min(page ?? 1, totalPages));
+            // Normalize page within bounds
+            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
 
             // Apply navigation logic
             switch (command)
@@ -192,8 +193,25 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
                 command, currentPage, totalPages, currentPageSize, totalCount);
 
-            // Use shared pagination helper
-            return ApplyPaginationAndProject(schedules, currentPage, currentPageSize);
+            // Fetch the final target page after navigation
+            var (schedules, _) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+
+            // Project schedules and return with pagination metadata
+            var result = schedules.Select(ProjectScheduleForList).ToList();
+
+            return new
+            {
+                schedules = result,
+                pagination = new
+                {
+                    page = currentPage,
+                    pageSize = currentPageSize,
+                    totalCount = totalCount,
+                    totalPages = totalPages,
+                    hasNextPage = currentPage < totalPages,
+                    hasPreviousPage = currentPage > 1
+                }
+            };
         }
 
         /// <summary>

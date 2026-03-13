@@ -12,6 +12,13 @@ Copy-Item "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln" $tempSln -Force
 # Remove SpacetimeDB module
 dotnet sln $tempSln remove server\StdbModule.csproj 2>$null | Out-Null
 
+# Check if removal succeeded
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to remove server\StdbModule.csproj from solution"
+    Remove-Item $tempSln -ErrorAction SilentlyContinue
+    exit $LASTEXITCODE
+}
+
 # Build
 dotnet build $tempSln $args
 

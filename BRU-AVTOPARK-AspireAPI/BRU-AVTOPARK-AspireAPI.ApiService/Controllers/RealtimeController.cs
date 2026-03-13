@@ -267,15 +267,21 @@ public sealed class RealtimeController : BaseController
             var root = doc.RootElement;
 
             // Extract message type/command (case-insensitive property search)
-            var messageType = root.EnumerateObject()
+            var messageTypeProp = root.EnumerateObject()
                 .FirstOrDefault(p => p.Name.Equals("type", StringComparison.OrdinalIgnoreCase))
-                .Value.GetString();
-            var command = root.EnumerateObject()
+                .Value;
+            var messageType = messageTypeProp.ValueKind != JsonValueKind.Undefined ? messageTypeProp.GetString() : null;
+
+            var commandProp = root.EnumerateObject()
                 .FirstOrDefault(p => p.Name.Equals("command", StringComparison.OrdinalIgnoreCase))
-                .Value.GetString()?.ToLowerInvariant();
-            requestId = root.EnumerateObject()
+                .Value;
+            var command = commandProp.ValueKind != JsonValueKind.Undefined ? commandProp.GetString()?.ToLowerInvariant() : null;
+
+            var requestIdProp = root.EnumerateObject()
                 .FirstOrDefault(p => p.Name.Equals("requestId", StringComparison.OrdinalIgnoreCase))
-                .Value.GetString() ?? Guid.NewGuid().ToString();
+                .Value;
+            requestId = requestIdProp.ValueKind != JsonValueKind.Undefined ? requestIdProp.GetString() : null;
+            requestId ??= Guid.NewGuid().ToString();
 
             _logger.LogInformation("[{ConnectionId}] Parsed - Type: {Type}, Command: {Command}, RequestId: {RequestId}", 
                 connectionId, messageType ?? "null", command ?? "null", requestId ?? "null");
@@ -856,7 +862,15 @@ public sealed class RealtimeController : BaseController
     private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
-        
+
+        // For delete+create pattern (ticket-sales), get original record's TicketId before update
+        uint? ticketId = null;
+        if (normalizedResource is "ticket-sales" or "ticketsales")
+        {
+            var originalSale = await ((ITicketSalesService)service).GetSaleByIdAsync(id);
+            ticketId = originalSale?.TicketId;
+        }
+
         bool success = normalizedResource switch
         {
             "buses" => await UpdateBusAsync((IBusService)service, id, payload),
@@ -872,6 +886,29 @@ public sealed class RealtimeController : BaseController
             "users" => await UpdateUserAsync((IUserService)service, id, payload),
             _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
         };
+
+        if (!success)
+        {
+            return null;
+        }
+
+        // For ticket-sales delete+create pattern, find the new sale by TicketId if original ID no longer exists
+        if (normalizedResource is "ticket-sales" or "ticketsales" && ticketId.HasValue)
+        {
+            var result = await ExecuteReadAsync(service, resource, id);
+            if (result == null)
+            {
+                // Original ID doesn't exist (delete+create pattern), find newest sale for this ticket
+                var allSales = await ((ITicketSalesService)service).GetAllSalesAsync();
+                var newestSale = allSales
+                    .Where(s => s.TicketId == ticketId.Value && s.SaleId != id)
+                    .OrderByDescending(s => s.SaleDate)
+                    .FirstOrDefault();
+
+                return newestSale;
+            }
+            return result;
+        }
 
         return success ? await ExecuteReadAsync(service, resource, id) : null;
     }
@@ -1287,14 +1324,16 @@ public sealed class RealtimeController : BaseController
                         if (_resourceHandlers.TryGetValue(resource, out var handler))
                         {
                             var channel = handler.EventChannel;
-                            
-                            var stillNeeded = currentSubscriptions.Any(r => 
+
+                            var stillNeeded = currentSubscriptions.Any(r =>
                                 _resourceHandlers.TryGetValue(r, out var h) && h.EventChannel == channel);
-                            
+
                             if (!stillNeeded && activeEnumerators.TryRemove(channel, out var enumerator))
                             {
+                                // Remove both enumerator and pending move atomically to prevent stale Task corruption
+                                pendingMoves.TryRemove(channel, out _);
                                 await enumerator.DisposeAsync();
-                                _logger.LogDebug("[{ConnectionId}] Disposed enumerator for channel {Channel}", 
+                                _logger.LogDebug("[{ConnectionId}] Disposed enumerator and cleared pending move for channel {Channel}",
                                     connectionId, channel);
                             }
                         }

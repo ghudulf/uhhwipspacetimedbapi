@@ -59,7 +59,8 @@ debugWindow.Show();
 
 ### 2. Configure Connection
 
-1. Enter the server URL (default: `ws://localhost:5000` for local development only; use `wss://` for production environments)
+1. Enter the server URL (default: `http://localhost:5000` for local development; use `https://` for production environments)
+   - Note: The client automatically maps `http://` to `ws://` and `https://` to `wss://` for WebSocket connections
 2. Optionally enter an access token for authentication
 3. Click "🔌 Connect"
 

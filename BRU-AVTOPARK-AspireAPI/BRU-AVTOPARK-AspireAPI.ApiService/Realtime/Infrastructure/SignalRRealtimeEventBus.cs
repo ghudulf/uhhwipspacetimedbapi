@@ -282,6 +282,25 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     }
 
     /// <summary>
+    /// Core teardown logic shared by both DisposeAsync and Dispose.
+    /// </summary>
+    private void DisposeCoreLogic()
+    {
+        // Set stopping flag to fail-fast concurrent operations
+        _stopping = true;
+
+        _logger.LogInformation("[EventBus] Disposing event bus");
+
+        // Complete the event channel
+        _eventChannel.Writer.TryComplete();
+
+        // Clear recent events
+        _recentEvents.Clear();
+
+        _logger.LogInformation("[EventBus] Event bus disposed successfully");
+    }
+
+    /// <summary>
     /// Asynchronously disposes the event bus and all its resources.
     /// </summary>
     public async ValueTask DisposeAsync()
@@ -295,21 +314,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         await _disposalLock.WaitAsync();
         try
         {
-            // Set stopping flag to fail-fast concurrent operations
-            _stopping = true;
-
-            _logger.LogInformation("[EventBus] Disposing event bus");
-
-            // Complete the event channel
-            _eventChannel.Writer.TryComplete();
+            // Shared core teardown logic
+            DisposeCoreLogic();
 
             // Dispose all subscriptions (call core method directly since we already hold the lock)
             await DisposeAllSubscriptionsCoreAsync();
-
-            // Clear recent events
-            _recentEvents.Clear();
-
-            _logger.LogInformation("[EventBus] Event bus disposed successfully");
         }
         finally
         {
@@ -324,7 +333,18 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     {
         if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            _eventChannel.Writer.TryComplete();
+            // Synchronous disposal follows same teardown path
+            _disposalLock.Wait();
+            try
+            {
+                DisposeCoreLogic();
+                DisposeAllSubscriptionsCoreAsync().GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _disposalLock.Release();
+                _disposalLock.Dispose();
+            }
         }
 
         base.Dispose();

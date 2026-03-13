@@ -9,6 +9,7 @@ namespace TicketSalesApp.Services.Interfaces
     public interface IRouteScheduleService
     {
         Task<List<RouteSchedule>> GetAllSchedulesAsync();
+        Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(int page, int pageSize);
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);
         Task<List<RouteSchedule>> GetSchedulesByRouteIdAsync(uint routeId);
         Task<uint?> CreateScheduleAsync(

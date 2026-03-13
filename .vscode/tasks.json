@@ -3,13 +3,11 @@
     "tasks": [
         {
             "label": "build",
-            "command": "dotnet",
+            "command": "pwsh",
             "type": "process",
             "args": [
-                "build",
-                "${workspaceFolder}/SpacetimeDB-BRU-AVTOPARK-avtobusov.sln",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+                "-File",
+                "${workspaceFolder}/build-all.ps1"
             ],
             "problemMatcher": "$msCompile",
             "group": {
@@ -23,7 +21,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/SpacetimeDB-BRU-AVTOPARK-avtobusov.sln",
+                "${workspaceFolder}/BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.AppHost/BRU-AVTOPARK-AspireAPI.AppHost.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
