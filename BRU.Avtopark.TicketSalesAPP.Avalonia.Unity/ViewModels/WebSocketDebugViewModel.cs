@@ -483,6 +483,13 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 }
                 accessToken = tokens.AccessToken;
             }
+            
+            // Normalize token: trim whitespace and remove "Bearer " prefix if present
+            accessToken = accessToken.Trim();
+            if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                accessToken = accessToken.Substring(7).Trim();
+            }
 
             cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             ws = new ClientWebSocket();
@@ -633,8 +640,22 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
 
             // Close connection
-            await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
-            AddLog($"✓ [{result.ControllerName}] Test complete, connection closed");
+            using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            try
+            {
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", closeCts.Token);
+                AddLog($"✓ [{result.ControllerName}] Test complete, connection closed");
+            }
+            catch (OperationCanceledException)
+            {
+                AddLog($"⚠ [{result.ControllerName}] Close timeout, aborting connection");
+                ws.Abort();
+            }
+            catch (Exception closeEx)
+            {
+                AddLog($"⚠ [{result.ControllerName}] Close failed: {closeEx.Message}, aborting");
+                ws.Abort();
+            }
         }
         catch (OperationCanceledException)
         {

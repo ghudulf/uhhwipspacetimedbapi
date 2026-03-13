@@ -9,7 +9,11 @@ public sealed record RealtimeCrudRequest(
     string Command,
     string? RequestId,
     uint? Id,
-    JsonElement? Payload);
+    JsonElement? Payload)
+{
+    public int? Page { get; init; }
+    public int? PageSize { get; init; }
+};
 
 public static class WebSocketEventStreamWriter
 {
@@ -103,8 +107,8 @@ public static class WebSocketEventStreamWriter
                     // Determine client-facing error message (sanitize sensitive information)
                     var clientErrorMessage = ex switch
                     {
-                        UnauthorizedAccessException => ex.Message,
-                        InvalidOperationException => ex.Message,
+                        UnauthorizedAccessException => "Unauthorized",
+                        InvalidOperationException => "Invalid operation",
                         ArgumentException => "Bad request",
                         JsonException => "Bad request",
                         _ => "Internal server error"

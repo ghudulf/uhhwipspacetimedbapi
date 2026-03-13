@@ -8,6 +8,8 @@ using System.Text;
 using System.Text.Json;
 using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
+using SpacetimeDB;
+using SpacetimeDB.Types;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers;
 
@@ -158,6 +160,18 @@ public sealed class RealtimeController : BaseController
                     if (totalBytes > MaxIncomingMessageSize)
                     {
                         _logger.LogWarning("[{ConnectionId}] Message exceeds max size: {Size} bytes", connectionId, totalBytes);
+                        
+                        // Cancel background tasks before closing
+                        linkedCts.Cancel();
+                        try
+                        {
+                            await broadcastTask;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected when canceling
+                        }
+                        
                         await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, 
                             $"Message exceeds maximum size of {MaxIncomingMessageSize} bytes", 
                             CancellationToken.None);
@@ -412,14 +426,17 @@ public sealed class RealtimeController : BaseController
             return;
         }
 
-        subscriptions.TryRemove(resource, out _);
-        _logger.LogInformation("[{ConnectionId}] Unsubscribed from resource: {Resource}", connectionId, resource);
+        // Normalize resource name (same logic as HandleSubscribeAsync)
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        subscriptions.TryRemove(normalizedResource, out _);
+        _logger.LogInformation("[{ConnectionId}] Unsubscribed from resource: {Resource}", connectionId, normalizedResource);
 
         var response = new
         {
             type = "unsubscribed",
             requestId,
-            resource,
+            resource = normalizedResource,
             timestamp = DateTimeOffset.UtcNow
         };
 
@@ -567,10 +584,41 @@ public sealed class RealtimeController : BaseController
                     break;
 
                 case "create":
+                    if (!root.TryGetProperty("payload", out var createPayloadEl))
+                    {
+                        await SendErrorAsync(webSocket, requestId, "Payload required for create operation", sendLock, cancellationToken);
+                        return;
+                    }
+                    result = await ExecuteCreateAsync(service, resource, createPayloadEl, cancellationToken);
+                    success = result != null;
+                    break;
+
                 case "update":
+                    var updateId = root.TryGetProperty("id", out var updateIdEl) ? updateIdEl.GetUInt32() : (uint?)null;
+                    if (!updateId.HasValue)
+                    {
+                        await SendErrorAsync(webSocket, requestId, "ID required for update operation", sendLock, cancellationToken);
+                        return;
+                    }
+                    if (!root.TryGetProperty("payload", out var updatePayloadEl))
+                    {
+                        await SendErrorAsync(webSocket, requestId, "Payload required for update operation", sendLock, cancellationToken);
+                        return;
+                    }
+                    result = await ExecuteUpdateAsync(service, resource, updateId.Value, updatePayloadEl, cancellationToken);
+                    success = result != null;
+                    break;
+
                 case "delete":
-                    await SendErrorAsync(webSocket, requestId, $"{command} operations not yet implemented via universal stream", sendLock, cancellationToken);
-                    return;
+                    var deleteId = root.TryGetProperty("id", out var deleteIdEl) ? deleteIdEl.GetUInt32() : (uint?)null;
+                    if (!deleteId.HasValue)
+                    {
+                        await SendErrorAsync(webSocket, requestId, "ID required for delete operation", sendLock, cancellationToken);
+                        return;
+                    }
+                    await ExecuteDeleteAsync(service, resource, deleteId.Value, cancellationToken);
+                    result = new { deleted = true, id = deleteId.Value };
+                    break;
 
                 default:
                     await SendErrorAsync(webSocket, requestId, $"Unsupported CRUD command: {command}", sendLock, cancellationToken);
@@ -692,7 +740,6 @@ public sealed class RealtimeController : BaseController
 
     private async Task<object?> ExecuteReadAsync(object service, string resource, uint id)
     {
-        // Normalize resource name for consistent switch matching
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
         return normalizedResource switch
@@ -705,12 +752,357 @@ public sealed class RealtimeController : BaseController
             "roles" => await ((IRoleService)service).GetRoleByIdAsync(id),
             "routes" => await ((IRouteService)service).GetRouteByIdAsync(id),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetScheduleByIdAsync(id),
-            "tickets" => null, // Tickets use SpacetimeDB directly
-            "ticket-sales" or "ticketsales" => null, // TicketSales use SpacetimeDB directly
+            "tickets" => null,
+            "ticket-sales" or "ticketsales" => null,
             "users" => await ((IUserService)service).GetUserByIdAsync(id),
             _ => null
         };
     }
+
+    private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, CancellationToken cancellationToken)
+    {
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        return normalizedResource switch
+        {
+            "buses" => await CreateBusAsync((IBusService)service, payload),
+            "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload),
+            "jobs" => await CreateJobAsync((IEmployeeService)service, payload),
+            "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload),
+            "permissions" => await CreatePermissionAsync((IPermissionService)service, payload),
+            "roles" => await CreateRoleAsync((IRoleService)service, payload),
+            "routes" => await CreateRouteAsync((IRouteService)service, payload),
+            "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload),
+            "tickets" => await CreateTicketAsync((ITicketService)service, payload),
+            "users" => await CreateUserAsync((IUserService)service, payload),
+            _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
+        };
+    }
+
+    private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, CancellationToken cancellationToken)
+    {
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        bool success = normalizedResource switch
+        {
+            "buses" => await UpdateBusAsync((IBusService)service, id, payload),
+            "employees" => await UpdateEmployeeAsync((IEmployeeService)service, id, payload),
+            "jobs" => await UpdateJobAsync((IEmployeeService)service, id, payload),
+            "maintenance" => await UpdateMaintenanceAsync((IMaintenanceService)service, id, payload),
+            "permissions" => await UpdatePermissionAsync((IPermissionService)service, id, payload),
+            "roles" => await UpdateRoleAsync((IRoleService)service, id, payload),
+            "routes" => await UpdateRouteAsync((IRouteService)service, id, payload),
+            "route-schedules" or "routeschedules" => await UpdateRouteScheduleAsync((IRouteScheduleService)service, id, payload),
+            "tickets" => await UpdateTicketAsync((ITicketService)service, id, payload),
+            "users" => await UpdateUserAsync((IUserService)service, id, payload),
+            _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
+        };
+
+        return success ? await ExecuteReadAsync(service, resource, id) : null;
+    }
+
+    private async Task ExecuteDeleteAsync(object service, string resource, uint id, CancellationToken cancellationToken)
+    {
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        bool success = normalizedResource switch
+        {
+            "buses" => await ((IBusService)service).DeleteBusAsync(id),
+            "employees" => await ((IEmployeeService)service).DeleteEmployeeAsync(id),
+            "jobs" => await ((IEmployeeService)service).DeleteJobAsync(id),
+            "maintenance" => await ((IMaintenanceService)service).DeleteMaintenanceAsync(id),
+            "permissions" => await ((IPermissionService)service).DeletePermissionAsync(id),
+            "roles" => await ((IRoleService)service).DeleteRoleAsync(id),
+            "routes" => await ((IRouteService)service).DeleteRouteAsync(id),
+            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).DeleteScheduleAsync(id),
+            "tickets" => await ((ITicketService)service).DeleteTicketAsync(id),
+            "users" => await ((IUserService)service).DeleteUserAsync(id),
+            _ => throw new NotSupportedException($"Delete not supported for resource: {resource}")
+        };
+
+        if (!success)
+        {
+            throw new InvalidOperationException($"Failed to delete {resource} with id {id}");
+        }
+    }
+
+    private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload)
+    {
+        var model = payload.TryGetProperty("model", out var modelEl) ? modelEl.GetString() : null;
+        var registrationNumber = payload.TryGetProperty("registrationNumber", out var regEl) ? regEl.GetString() : null;
+        
+        if (string.IsNullOrEmpty(model))
+            throw new ArgumentException("Model is required");
+            
+        return await service.CreateBusAsync(model, registrationNumber);
+    }
+
+    private async Task<bool> UpdateBusAsync(IBusService service, uint id, JsonElement payload)
+    {
+        var model = payload.TryGetProperty("model", out var modelEl) ? modelEl.GetString() : null;
+        var registrationNumber = payload.TryGetProperty("registrationNumber", out var regEl) ? regEl.GetString() : null;
+        
+        return await service.UpdateBusAsync(id, model, registrationNumber);
+    }
+
+    private async Task<UserProfile?> CreateUserAsync(IUserService service, JsonElement payload)
+    {
+        var login = payload.TryGetProperty("login", out var loginEl) ? loginEl.GetString() : null;
+        var password = payload.TryGetProperty("password", out var passEl) ? passEl.GetString() : null;
+        var role = payload.TryGetProperty("role", out var roleEl) ? roleEl.GetInt32() : 0;
+        var email = payload.TryGetProperty("email", out var emailEl) ? emailEl.GetString() : null;
+        var phoneNumber = payload.TryGetProperty("phoneNumber", out var phoneEl) ? phoneEl.GetString() : null;
+        
+        if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            throw new ArgumentException("Login and password are required");
+            
+        return await service.CreateUserAsync(login, password, role, email, phoneNumber);
+    }
+
+    private async Task<bool> UpdateUserAsync(IUserService service, uint id, JsonElement payload)
+    {
+        var login = payload.TryGetProperty("login", out var loginEl) ? loginEl.GetString() : null;
+        var password = payload.TryGetProperty("password", out var passEl) ? passEl.GetString() : null;
+        var role = payload.TryGetProperty("role", out var roleEl) ? (int?)roleEl.GetInt32() : null;
+        var email = payload.TryGetProperty("email", out var emailEl) ? emailEl.GetString() : null;
+        var phoneNumber = payload.TryGetProperty("phoneNumber", out var phoneEl) ? phoneEl.GetString() : null;
+        var isActive = payload.TryGetProperty("isActive", out var activeEl) ? (bool?)activeEl.GetBoolean() : null;
+        
+        return await service.UpdateUserAsync(id, login, password, role, email, phoneNumber, isActive);
+    }
+
+    private async Task<object?> CreateRouteScheduleAsync(IRouteScheduleService service, JsonElement payload)
+    {
+        var routeId = payload.TryGetProperty("routeId", out var routeEl) ? (uint?)routeEl.GetUInt32() : null;
+        var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
+        var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
+        var routeStops = payload.TryGetProperty("routeStops", out var stopsEl) && stopsEl.ValueKind == JsonValueKind.Array
+            ? stopsEl.EnumerateArray().Select(e => e.GetString()).Where(s => s != null).Cast<string>().ToList()
+            : null;
+        var departureTime = payload.TryGetProperty("departureTime", out var depEl) ? (ulong?)depEl.GetUInt64() : null;
+        var arrivalTime = payload.TryGetProperty("arrivalTime", out var arrEl) ? (ulong?)arrEl.GetUInt64() : null;
+        var price = payload.TryGetProperty("price", out var priceEl) ? (double?)priceEl.GetDouble() : null;
+        var availableSeats = payload.TryGetProperty("availableSeats", out var seatsEl) ? (uint?)seatsEl.GetUInt32() : null;
+        
+        var scheduleId = await service.CreateScheduleAsync(
+            routeId: routeId,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            routeStops: routeStops,
+            departureTime: departureTime,
+            arrivalTime: arrivalTime,
+            price: price,
+            availableSeats: availableSeats
+        );
+        return scheduleId.HasValue ? await service.GetScheduleByIdAsync(scheduleId.Value) : null;
+    }
+
+    private async Task<bool> UpdateRouteScheduleAsync(IRouteScheduleService service, uint id, JsonElement payload)
+    {
+        var routeId = payload.TryGetProperty("routeId", out var routeEl) ? (uint?)routeEl.GetUInt32() : null;
+        var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
+        var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
+        var routeStops = payload.TryGetProperty("routeStops", out var stopsEl) && stopsEl.ValueKind == JsonValueKind.Array
+            ? stopsEl.EnumerateArray().Select(e => e.GetString()).Where(s => s != null).Cast<string>().ToList()
+            : null;
+        var departureTime = payload.TryGetProperty("departureTime", out var depEl) ? (ulong?)depEl.GetUInt64() : null;
+        var arrivalTime = payload.TryGetProperty("arrivalTime", out var arrEl) ? (ulong?)arrEl.GetUInt64() : null;
+        var price = payload.TryGetProperty("price", out var priceEl) ? (double?)priceEl.GetDouble() : null;
+        var availableSeats = payload.TryGetProperty("availableSeats", out var seatsEl) ? (uint?)seatsEl.GetUInt32() : null;
+        
+        return await service.UpdateScheduleAsync(
+            scheduleId: id,
+            routeId: routeId,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            routeStops: routeStops,
+            departureTime: departureTime,
+            arrivalTime: arrivalTime,
+            price: price,
+            availableSeats: availableSeats
+        );
+    }
+
+    private async Task<Employee?> CreateEmployeeAsync(IEmployeeService service, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var surname = payload.TryGetProperty("surname", out var surnameEl) ? surnameEl.GetString() : null;
+        var patronym = payload.TryGetProperty("patronym", out var patronymEl) ? patronymEl.GetString() : null;
+        var jobId = payload.TryGetProperty("jobId", out var jobEl) ? jobEl.GetUInt32() : 0u;
+        
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(surname))
+            throw new ArgumentException("Name and surname are required");
+            
+        return await service.CreateEmployeeAsync(name, surname, patronym ?? "", jobId);
+    }
+
+    private async Task<bool> UpdateEmployeeAsync(IEmployeeService service, uint id, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var surname = payload.TryGetProperty("surname", out var surnameEl) ? surnameEl.GetString() : null;
+        var patronym = payload.TryGetProperty("patronym", out var patronymEl) ? patronymEl.GetString() : null;
+        var jobId = payload.TryGetProperty("jobId", out var jobEl) ? (uint?)jobEl.GetUInt32() : null;
+        
+        return await service.UpdateEmployeeAsync(id, name, surname, patronym, jobId);
+    }
+
+    private async Task<object?> CreateJobAsync(IEmployeeService service, JsonElement payload)
+    {
+        var jobTitle = payload.TryGetProperty("jobTitle", out var titleEl) ? titleEl.GetString() : null;
+        var internship = payload.TryGetProperty("internship", out var internEl) ? internEl.GetString() : null;
+        
+        if (string.IsNullOrEmpty(jobTitle))
+            throw new ArgumentException("Job title is required");
+            
+        var success = await service.CreateJobAsync(jobTitle, internship ?? "");
+        return success ? new { jobTitle, internship } : null;
+    }
+
+    private async Task<bool> UpdateJobAsync(IEmployeeService service, uint id, JsonElement payload)
+    {
+        var jobTitle = payload.TryGetProperty("jobTitle", out var titleEl) ? titleEl.GetString() : null;
+        var internship = payload.TryGetProperty("internship", out var internEl) ? internEl.GetString() : null;
+        
+        return await service.UpdateJobAsync(id, jobTitle, internship);
+    }
+
+    private async Task<object?> CreateMaintenanceAsync(IMaintenanceService service, JsonElement payload)
+    {
+        var busId = payload.TryGetProperty("busId", out var busEl) ? busEl.GetUInt32() : 0u;
+        var lastServiceDate = payload.TryGetProperty("lastServiceDate", out var lastEl) ? lastEl.GetUInt64() : 0ul;
+        var serviceEngineer = payload.TryGetProperty("serviceEngineer", out var engEl) ? engEl.GetString() : null;
+        var foundIssues = payload.TryGetProperty("foundIssues", out var issuesEl) ? issuesEl.GetString() : null;
+        var nextServiceDate = payload.TryGetProperty("nextServiceDate", out var nextEl) ? nextEl.GetUInt64() : 0ul;
+        var roadworthiness = payload.TryGetProperty("roadworthiness", out var roadEl) ? roadEl.GetString() : null;
+        var maintenanceType = payload.TryGetProperty("maintenanceType", out var typeEl) ? typeEl.GetString() : null;
+        
+        if (busId == 0 || string.IsNullOrEmpty(serviceEngineer) || string.IsNullOrEmpty(foundIssues))
+            throw new ArgumentException("BusId, serviceEngineer, and foundIssues are required");
+            
+        var success = await service.CreateMaintenanceAsync(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness ?? "", maintenanceType ?? "");
+        return success ? new { busId, lastServiceDate, serviceEngineer, foundIssues } : null;
+    }
+
+    private async Task<bool> UpdateMaintenanceAsync(IMaintenanceService service, uint id, JsonElement payload)
+    {
+        var busId = payload.TryGetProperty("busId", out var busEl) ? (uint?)busEl.GetUInt32() : null;
+        var lastServiceDate = payload.TryGetProperty("lastServiceDate", out var lastEl) ? (ulong?)lastEl.GetUInt64() : null;
+        var serviceEngineer = payload.TryGetProperty("serviceEngineer", out var engEl) ? engEl.GetString() : null;
+        var foundIssues = payload.TryGetProperty("foundIssues", out var issuesEl) ? issuesEl.GetString() : null;
+        var nextServiceDate = payload.TryGetProperty("nextServiceDate", out var nextEl) ? (ulong?)nextEl.GetUInt64() : null;
+        var roadworthiness = payload.TryGetProperty("roadworthiness", out var roadEl) ? roadEl.GetString() : null;
+        var maintenanceType = payload.TryGetProperty("maintenanceType", out var typeEl) ? typeEl.GetString() : null;
+        var mileage = payload.TryGetProperty("mileage", out var mileageEl) ? mileageEl.GetString() : null;
+        
+        return await service.UpdateMaintenanceAsync(id, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage);
+    }
+
+    private async Task<Permission?> CreatePermissionAsync(IPermissionService service, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
+        var category = payload.TryGetProperty("category", out var catEl) ? catEl.GetString() : null;
+        
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(description) || string.IsNullOrEmpty(category))
+            throw new ArgumentException("Name, description, and category are required");
+            
+        return await service.CreatePermissionAsync(name, description, category);
+    }
+
+    private async Task<bool> UpdatePermissionAsync(IPermissionService service, uint id, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
+        var category = payload.TryGetProperty("category", out var catEl) ? catEl.GetString() : null;
+        var isActive = payload.TryGetProperty("isActive", out var activeEl) ? (bool?)activeEl.GetBoolean() : null;
+        
+        return await service.UpdatePermissionAsync(id, name, description, category, isActive);
+    }
+
+    private async Task<Role?> CreateRoleAsync(IRoleService service, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
+        var legacyRoleId = payload.TryGetProperty("legacyRoleId", out var legacyEl) ? legacyEl.GetInt32() : 0;
+        var priority = payload.TryGetProperty("priority", out var prioEl) ? prioEl.GetUInt32() : 0u;
+        var permissionIds = payload.TryGetProperty("permissionIds", out var permEl) && permEl.ValueKind == JsonValueKind.Array
+            ? permEl.EnumerateArray().Select(e => e.GetUInt32()).ToList()
+            : null;
+        
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(description))
+            throw new ArgumentException("Name and description are required");
+            
+        return await service.CreateRoleAsync(name, description, legacyRoleId, priority, permissionIds);
+    }
+
+    private async Task<bool> UpdateRoleAsync(IRoleService service, uint id, JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+        var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
+        var priority = payload.TryGetProperty("priority", out var prioEl) ? (uint?)prioEl.GetUInt32() : null;
+        var permissionIds = payload.TryGetProperty("permissionIds", out var permEl) && permEl.ValueKind == JsonValueKind.Array
+            ? permEl.EnumerateArray().Select(e => e.GetUInt32()).ToList()
+            : null;
+        
+        return await service.UpdateRoleAsync(id, name, description, priority, permissionIds);
+    }
+
+    private async Task<object?> CreateRouteAsync(IRouteService service, JsonElement payload)
+    {
+        var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
+        var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
+        var driverId = payload.TryGetProperty("driverId", out var driverEl) ? driverEl.GetUInt32() : 0u;
+        var busId = payload.TryGetProperty("busId", out var busEl) ? busEl.GetUInt32() : 0u;
+        var travelTime = payload.TryGetProperty("travelTime", out var timeEl) ? timeEl.GetString() : null;
+        var isActive = payload.TryGetProperty("isActive", out var activeEl) ? activeEl.GetBoolean() : true;
+        
+        if (string.IsNullOrEmpty(startPoint) || string.IsNullOrEmpty(endPoint))
+            throw new ArgumentException("StartPoint and endPoint are required");
+            
+        var success = await service.CreateRouteAsync(startPoint, endPoint, driverId, busId, travelTime ?? "", isActive);
+        return success ? new { startPoint, endPoint, driverId, busId, travelTime, isActive } : null;
+    }
+
+    private async Task<bool> UpdateRouteAsync(IRouteService service, uint id, JsonElement payload)
+    {
+        var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
+        var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
+        var driverId = payload.TryGetProperty("driverId", out var driverEl) ? (uint?)driverEl.GetUInt32() : null;
+        var busId = payload.TryGetProperty("busId", out var busEl) ? (uint?)busEl.GetUInt32() : null;
+        var travelTime = payload.TryGetProperty("travelTime", out var timeEl) ? timeEl.GetString() : null;
+        var isActive = payload.TryGetProperty("isActive", out var activeEl) ? (bool?)activeEl.GetBoolean() : null;
+        
+        return await service.UpdateRouteAsync(id, startPoint, endPoint, driverId, busId, travelTime, isActive);
+    }
+
+    private async Task<object?> CreateTicketAsync(ITicketService service, JsonElement payload)
+    {
+        var routeId = payload.TryGetProperty("routeId", out var routeEl) ? routeEl.GetUInt32() : 0u;
+        var seatNumber = payload.TryGetProperty("seatNumber", out var seatEl) ? seatEl.GetUInt32() : 0u;
+        var ticketPrice = payload.TryGetProperty("ticketPrice", out var priceEl) ? priceEl.GetDouble() : 0.0;
+        var paymentMethod = payload.TryGetProperty("paymentMethod", out var payEl) ? payEl.GetString() : null;
+        var purchaseTime = payload.TryGetProperty("purchaseTime", out var timeEl) ? timeEl.GetUInt64() : (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        
+        if (routeId == 0 || string.IsNullOrEmpty(paymentMethod))
+            throw new ArgumentException("RouteId and paymentMethod are required");
+            
+        var success = await service.CreateTicketAsync(routeId, seatNumber, ticketPrice, paymentMethod, purchaseTime, new Identity());
+        return success ? new { routeId, seatNumber, ticketPrice, paymentMethod, purchaseTime } : null;
+    }
+
+    private async Task<bool> UpdateTicketAsync(ITicketService service, uint id, JsonElement payload)
+    {
+        var routeId = payload.TryGetProperty("routeId", out var routeEl) ? (uint?)routeEl.GetUInt32() : null;
+        var ticketPrice = payload.TryGetProperty("ticketPrice", out var priceEl) ? (double?)priceEl.GetDouble() : null;
+        var seatNumber = payload.TryGetProperty("seatNumber", out var seatEl) ? (uint?)seatEl.GetUInt32() : null;
+        var paymentMethod = payload.TryGetProperty("paymentMethod", out var payEl) ? payEl.GetString() : null;
+        var isActive = payload.TryGetProperty("isActive", out var activeEl) ? (bool?)activeEl.GetBoolean() : null;
+        var updatedAt = payload.TryGetProperty("updatedAt", out var timeEl) ? (ulong?)timeEl.GetUInt64() : null;
+        var updatedBy = payload.TryGetProperty("updatedBy", out var byEl) ? byEl.GetString() : null;
+        
+        return await service.UpdateTicketAsync(id, routeId, ticketPrice, seatNumber, paymentMethod, isActive, updatedAt, updatedBy);
+    }
+
 
     private async Task BroadcastEventsAsync(
         WebSocket webSocket,

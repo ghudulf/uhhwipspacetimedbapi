@@ -138,7 +138,6 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
         catch (Exception ex)
         {
-            var sanitizedMethod = SanitizeForLogging(request.Method);
             _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", sanitizedMethod, sanitizedPath);
         }
     }

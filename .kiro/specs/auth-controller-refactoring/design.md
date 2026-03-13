@@ -2931,18 +2931,20 @@ const app = new Elysia()
    - Elysia connects DIRECTLY to SpacetimeDB using TypeScript SDK
    - NO C# backend calls for authentication data
    - C# backend becomes a pure business logic API
-   - C# backend trusts Elysia's JWT tokens without validation logic
+   - C# backend MUST validate JWT tokens (verify signature, issuer, audience, expiry) OR enforce mTLS with strict network isolation and signed internal assertions
 
 2. **Option 2 (OAuth Proxy)** - Compatibility Layer:
    - Elysia PROXIES requests to existing C# OpenIddict endpoints
    - C# backend retains ALL authentication logic
    - Used when C# auth system must remain operational
    - Provides OAuth/OIDC to JavaScript clients without changing C# code
+   - C# backend validates tokens as it currently does (OpenIddict validation)
 
 3. **Option 3 (Hybrid)** - Gradual Migration:
    - Mix of both approaches
    - New features in Elysia, existing features in C#
    - Allows incremental migration over time
+   - C# backend validates tokens for its own endpoints; Elysia validates for its endpoints
 
 #### Architecture Option 3: Hybrid Approach
 

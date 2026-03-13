@@ -110,7 +110,7 @@
                             
                             <TextBlock Text="Server URL:" Foreground="#CCCCCC" FontSize="12"/>
                             <TextBox Text="{Binding ServerUrl}" 
-                                     Watermark="ws://localhost:5000"
+                                     Watermark="http://localhost:5000"
                                      Background="#3E3E42" 
                                      Foreground="White"
                                      BorderBrush="#555555"/>
@@ -184,25 +184,8 @@
                                                 CornerRadius="4" 
                                                 Padding="12" 
                                                 Margin="0,4"
-                                                Tag="{Binding Status}">
-                                            <Border.Styles>
-                                                <Style Selector="Border[Tag=NotTested]">
-                                                    <Setter Property="Background" Value="#3A3A3A"/>
-                                                    <Setter Property="BorderBrush" Value="#555555"/>
-                                                </Style>
-                                                <Style Selector="Border[Tag=Testing]">
-                                                    <Setter Property="Background" Value="#2D4F67"/>
-                                                    <Setter Property="BorderBrush" Value="#3A7CA5"/>
-                                                </Style>
-                                                <Style Selector="Border[Tag=Passed]">
-                                                    <Setter Property="Background" Value="#1E4620"/>
-                                                    <Setter Property="BorderBrush" Value="#2D7A2E"/>
-                                                </Style>
-                                                <Style Selector="Border[Tag=Failed]">
-                                                    <Setter Property="Background" Value="#5A1E1E"/>
-                                                    <Setter Property="BorderBrush" Value="#8B2E2E"/>
-                                                </Style>
-                                            </Border.Styles>
+                                                Background="{Binding Status, Converter={StaticResource StatusToBackgroundConverter}}"
+                                                BorderBrush="{Binding Status, Converter={StaticResource StatusToBorderBrushConverter}}">
                                             <Grid ColumnDefinitions="*,Auto">
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="{Binding ControllerName}" 
