@@ -287,10 +287,12 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     public async ValueTask DisposeAsync()
     {
         // Use Interlocked.CompareExchange to ensure only one thread disposes
-        if (Interlocked.CompareExchange(ref _disposed != 0, 1, 0) == 1)
+        var disposedValue = _disposed;
+        if (Interlocked.CompareExchange(ref disposedValue, 1, 0) == 1)
         {
             return;
         }
+        _disposed = disposedValue;
 
         await _disposalLock.WaitAsync();
         try

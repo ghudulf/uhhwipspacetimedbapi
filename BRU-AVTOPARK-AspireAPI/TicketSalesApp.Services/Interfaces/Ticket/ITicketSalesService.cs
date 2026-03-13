@@ -50,8 +50,8 @@ namespace TicketSalesApp.Services.Interfaces
         Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
         
         // Create/Update/Delete operations
-        Task<uint?> CreateSaleAsync(uint ticketId, string paymentMethod, string paymentStatus, string? paymentReference = null, string? notes = null);
-        Task<bool> UpdateSaleAsync(uint saleId, string? paymentMethod = null, string? paymentStatus = null, string? paymentReference = null, string? notes = null);
+        Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null);
+        Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null, string? saleLocation = null, string? saleNotes = null);
         Task<bool> DeleteSaleAsync(uint saleId);
         
         // Reporting operations

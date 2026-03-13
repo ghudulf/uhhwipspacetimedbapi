@@ -670,7 +670,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 result.Status = TestStatus.Failed;
                 result.Message = $"No matching response received after {maxAttempts} attempts";
                 AddLog($"✗ [{result.ControllerName}] No matching response received");
-                return result;
+                return;
             }
 
             AddLog($"← [{result.ControllerName}] Response: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}...");
