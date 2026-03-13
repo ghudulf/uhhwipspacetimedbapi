@@ -3676,17 +3676,26 @@ This approach leverages the existing C# backend for SpacetimeDB access while usi
 | Feature | OpenIddict (C#) | oidc-provider (Node.js) |
 |---------|-----------------|-------------------------|
 | **Language** | C# | TypeScript/JavaScript |
-| **Runtime** | .NET | Node.js/Bun |
+| **Runtime** | .NET 8.0 | Node.js 18+/Bun 1.0+ |
 | **OAuth2 Spec** | ✅ Full compliance | ✅ Full compliance |
-| **OIDC Support** | ✅ Full OIDC | ✅ Full OIDC |
-| **PKCE** | ✅ Built-in | ✅ Built-in |
-| **Storage** | Custom stores required | Adapter-based (flexible) |
-| **SpacetimeDB Integration** | ⚠️ Complex (custom stores) | ✅ Easy (custom adapter → C# backend) |
-| **Performance** | ~5k req/s | ~10k req/s |
-| **Developer Experience** | ⚠️ Complex setup | ✅ Simple, well-documented |
-| **Discovery Endpoint** | ✅ Auto-generated | ✅ Auto-generated |
-| **Token Introspection** | ✅ Built-in | ✅ Built-in |
-| **Production Readiness** | ✅ Mature | ✅ Battle-tested (Auth0, Okta) |
+| **OIDC Support** | ✅ Full OIDC 1.0 | ✅ Full OIDC 1.0 |
+| **PKCE** | ✅ Built-in (RFC 7636) | ✅ Built-in (RFC 7636) |
+| **Storage** | Custom stores (IOpenIddictTokenStore, IOpenIddictAuthorizationStore, IOpenIddictApplicationStore) | Adapter-based (single interface) |
+| **SpacetimeDB Integration** | ⚠️ Complex: 3-tier ID mapping (ReferenceId→InternalId→DatabaseId), ConcurrentDictionary safety nets, 50-attempt polling loops, AuthorizationStore permanently disabled due to validation bugs | ✅ Simpler: Direct adapter with async/await, no ID mapping, no polling, works with SpacetimeDB reactive state |
+| **Authorization Storage** | ⚠️ Permanently disabled (`DisableAuthorizationStorage()`) - unfixable SpacetimeDB validation conflicts | ✅ Works with adapter (or can be disabled if needed) |
+| **Data Protection Keys** | ⚠️ Required for PKCE payload encryption/decryption, must persist to disk (`DataProtectionKeys/` folder) | ✅ Not required - oidc-provider handles encryption internally |
+| **Memory Cache Usage** | ✅ Used for OAuth request parameters (10-minute TTL) | ✅ Can use same pattern or store in adapter |
+| **Performance** | ~3-5k req/s (ASP.NET Core overhead) | ~8-12k req/s (Bun/Node.js) |
+| **Developer Experience** | ⚠️ Complex: Custom stores, ID mapping, polling confirmations, Data Protection setup, SpacetimeDB workarounds | ✅ Simpler: Single adapter interface, well-documented, fewer edge cases |
+| **Discovery Endpoint** | ✅ Auto-generated (`/.well-known/openid-configuration`) | ✅ Auto-generated (`/.well-known/openid-configuration`) |
+| **Token Introspection** | ✅ Built-in (`/connect/introspect`) | ✅ Built-in (configurable endpoint) |
+| **Refresh Tokens** | ✅ Full support | ✅ Full support |
+| **Device Flow** | ✅ Supported | ✅ Supported |
+| **Dynamic Client Registration** | ⚠️ Manual implementation required | ✅ Built-in support |
+| **Session Management** | ⚠️ Manual implementation | ✅ Built-in support |
+| **Production Readiness** | ✅ Mature, widely used in .NET ecosystem | ✅ Battle-tested (used by Auth0, Okta, Keycloak) |
+| **Current Issues** | ⚠️ AuthorizationStore disabled, complex workarounds for SpacetimeDB, polling-based confirmations, 3-tier ID mapping | ✅ No known blockers for SpacetimeDB integration |
+| **Migration Complexity** | N/A (current implementation) | ⚠️ High: Requires TypeScript expertise, dual runtime (Bun + .NET), adapter implementation |
 
 **Note**: `oidc-provider` is a production-grade OIDC implementation. For **consuming** third-party OAuth2 providers (e.g., "Login with Google"), use `elysia-oauth2` (v2+) instead.
 
