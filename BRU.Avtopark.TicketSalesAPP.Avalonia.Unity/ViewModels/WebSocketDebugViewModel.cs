@@ -978,6 +978,195 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
         StatusMessage = "Tests reset";
     }
 
+    [RelayCommand]
+    private async Task SendInteractiveCommand(string? commandType)
+    {
+        if (!IsConnected || _webSocket == null)
+        {
+            AddLog("❌ Not connected. Please connect first.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(commandType))
+        {
+            AddLog("❌ Command type is required.");
+            return;
+        }
+
+        try
+        {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            object message = commandType.ToLowerInvariant() switch
+            {
+                "echo" => new
+                {
+                    command = "echo",
+                    requestId,
+                    data = $"Hello from Avalonia at {DateTime.Now:HH:mm:ss}"
+                },
+                "time" => new
+                {
+                    command = "time",
+                    requestId
+                },
+                "stats" => new
+                {
+                    command = "stats",
+                    requestId
+                },
+                "ping" => new
+                {
+                    command = "ping",
+                    requestId
+                },
+                "help" => new
+                {
+                    command = "help",
+                    requestId
+                },
+                "calculate" => new
+                {
+                    command = "calculate",
+                    requestId,
+                    expression = "2+2*3"
+                },
+                "stream:buses" => new
+                {
+                    command = "stream:start",
+                    requestId,
+                    resource = "buses"
+                },
+                "stream:routes" => new
+                {
+                    command = "stream:start",
+                    requestId,
+                    resource = "routes"
+                },
+                _ => new
+                {
+                    command = commandType,
+                    requestId
+                }
+            };
+
+            var json = JsonSerializer.Serialize(message);
+            var bytes = Encoding.UTF8.GetBytes(json);
+
+            await SendAsyncWithLock(_webSocket, bytes, _cts!.Token);
+            AddLog($"📤 Sent {commandType} command (ID: {requestId})");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ Error sending {commandType} command: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopStream(string? streamId)
+    {
+        if (!IsConnected || _webSocket == null)
+        {
+            AddLog("❌ Not connected. Please connect first.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(streamId))
+        {
+            AddLog("❌ Stream ID is required.");
+            return;
+        }
+
+        try
+        {
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            var message = new
+            {
+                command = "stream:stop",
+                requestId,
+                streamId
+            };
+
+            var json = JsonSerializer.Serialize(message);
+            var bytes = Encoding.UTF8.GetBytes(json);
+
+            await SendAsyncWithLock(_webSocket, bytes, _cts!.Token);
+            AddLog($"📤 Sent stop stream command for {streamId} (ID: {requestId})");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ Error stopping stream: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestInteractiveEndpoint()
+    {
+        if (string.IsNullOrWhiteSpace(ServerUrl))
+        {
+            AddLog("❌ Server URL is required");
+            return;
+        }
+
+        try
+        {
+            AddLog("🧪 Testing interactive WebSocket endpoint...");
+            
+            var serverUri = new Uri(ServerUrl);
+            var (success, wsUri, errorMessage) = BuildWebSocketUri(serverUri, "/api/realtime/interactive");
+
+            if (!success || wsUri == null)
+            {
+                AddLog($"❌ Failed to build WebSocket URI: {errorMessage}");
+                return;
+            }
+
+            using var testSocket = new ClientWebSocket();
+            testSocket.Options.AddSubProtocol("bru.interactive.v1");
+
+            if (!string.IsNullOrWhiteSpace(AccessToken))
+            {
+                var normalizedToken = NormalizeAccessToken(AccessToken);
+                testSocket.Options.SetRequestHeader("Authorization", $"Bearer {normalizedToken}");
+            }
+
+            await testSocket.ConnectAsync(wsUri, CancellationToken.None);
+            AddLog($"✅ Connected to interactive endpoint: {wsUri}");
+
+            // Receive welcome message
+            var buffer = new byte[8192];
+            var result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var welcomeMsg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            AddLog($"📨 Welcome: {welcomeMsg}");
+
+            // Test echo command
+            var echoCmd = new { command = "echo", requestId = "test-1", data = "Test from Avalonia" };
+            var echoJson = JsonSerializer.Serialize(echoCmd);
+            await testSocket.SendAsync(Encoding.UTF8.GetBytes(echoJson), WebSocketMessageType.Text, true, CancellationToken.None);
+            AddLog($"📤 Sent echo command");
+
+            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var echoResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            AddLog($"📨 Echo response: {echoResponse}");
+
+            // Test time command
+            var timeCmd = new { command = "time", requestId = "test-2" };
+            var timeJson = JsonSerializer.Serialize(timeCmd);
+            await testSocket.SendAsync(Encoding.UTF8.GetBytes(timeJson), WebSocketMessageType.Text, true, CancellationToken.None);
+            AddLog($"📤 Sent time command");
+
+            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var timeResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            AddLog($"📨 Time response: {timeResponse}");
+
+            await testSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
+            AddLog("✅ Interactive endpoint test completed successfully");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ Interactive endpoint test failed: {ex.Message}");
+        }
+    }
+
     private async Task ReceiveMessagesAsync()
     {
         var buffer = new byte[8192];

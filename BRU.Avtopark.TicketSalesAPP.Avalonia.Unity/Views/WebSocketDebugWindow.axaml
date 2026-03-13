@@ -137,6 +137,15 @@
                                 </StackPanel>
                             </Button>
 
+                            <Button Command="{Binding TestInteractiveEndpointCommand}"
+                                    Classes="primary"
+                                    HorizontalAlignment="Stretch">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🎮" FontSize="16"/>
+                                    <TextBlock Text="Test Interactive Endpoint" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                                 <Button Command="{Binding ResetTestsCommand}"
                                         Classes="secondary"
@@ -149,6 +158,97 @@
                                     <TextBlock Text="🗑️ Clear Log"/>
                                 </Button>
                             </StackPanel>
+                        </StackPanel>
+
+                        <Separator Background="#3F3F46" Height="1"/>
+
+                        <!-- Interactive Commands -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Interactive Commands" Classes="header"/>
+                            <TextBlock Text="Send commands to /api/realtime/interactive" 
+                                       Foreground="#999999" FontSize="11" Margin="0,0,0,4"/>
+                            
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                                <Button Grid.Row="0" Grid.Column="0"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="echo"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="0,0,4,4">
+                                    <TextBlock Text="💬 Echo"/>
+                                </Button>
+                                
+                                <Button Grid.Row="0" Grid.Column="1"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="time"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="4,0,0,4">
+                                    <TextBlock Text="🕐 Time"/>
+                                </Button>
+                                
+                                <Button Grid.Row="1" Grid.Column="0"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="stats"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="0,0,4,4">
+                                    <TextBlock Text="📊 Stats"/>
+                                </Button>
+                                
+                                <Button Grid.Row="1" Grid.Column="1"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="ping"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="4,0,0,4">
+                                    <TextBlock Text="🏓 Ping"/>
+                                </Button>
+                                
+                                <Button Grid.Row="2" Grid.Column="0"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="calculate"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="0,0,4,4">
+                                    <TextBlock Text="🔢 Calculate"/>
+                                </Button>
+                                
+                                <Button Grid.Row="2" Grid.Column="1"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="help"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="4,0,0,4">
+                                    <TextBlock Text="❓ Help"/>
+                                </Button>
+                                
+                                <Button Grid.Row="3" Grid.Column="0"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="stream:buses"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="0,0,4,0">
+                                    <TextBlock Text="🚌 Stream Buses"/>
+                                </Button>
+                                
+                                <Button Grid.Row="3" Grid.Column="1"
+                                        Command="{Binding SendInteractiveCommandCommand}"
+                                        CommandParameter="stream:routes"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding IsConnected}"
+                                        Margin="4,0,0,0">
+                                    <TextBlock Text="🛣️ Stream Routes"/>
+                                </Button>
+                            </Grid>
                         </StackPanel>
 
                         <Separator Background="#3F3F46" Height="1"/>

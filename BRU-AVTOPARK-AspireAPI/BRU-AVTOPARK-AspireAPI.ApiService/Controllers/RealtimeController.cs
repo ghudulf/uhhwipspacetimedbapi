@@ -113,6 +113,507 @@ public sealed class RealtimeController : BaseController
     }
 
     /// <summary>
+    /// Enhanced interactive WebSocket endpoint demonstrating complex bidirectional communication.
+    /// Supports: commands, real-time data streaming, state synchronization, and interactive sessions.
+    /// Commands: echo, time, stats, stream:start, stream:stop, calculate, ping, help
+    /// </summary>
+    [HttpGet("interactive")]
+    public async Task InteractiveWebSocket()
+    {
+        if (!HttpContext.WebSockets.IsWebSocketRequest)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await HttpContext.Response.WriteAsync("WebSocket connection required");
+            return;
+        }
+
+        // Validate authentication
+        var validatedClaims = await ValidateOAuthTokenAsync();
+        if (validatedClaims == null)
+        {
+            _logger.LogWarning("Unauthenticated interactive WebSocket attempt from {IP}", 
+                HttpContext.Connection.RemoteIpAddress);
+            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await HttpContext.Response.WriteAsync("Unauthorized");
+            return;
+        }
+
+        using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("bru.interactive.v1");
+        var sessionId = Guid.NewGuid().ToString();
+        var userId = validatedClaims.TryGetValue("sub", out var subObj) ? subObj?.ToString() ?? "anonymous" : "anonymous";
+        var sendLock = new SemaphoreSlim(1, 1);
+        var cts = new CancellationTokenSource();
+        
+        _logger.LogInformation("[{SessionId}] Interactive WebSocket session started for user: {UserId}", sessionId, userId);
+
+        // Send welcome message
+        await SendJsonAsync(webSocket, new
+        {
+            type = "welcome",
+            sessionId,
+            userId,
+            timestamp = DateTime.UtcNow,
+            message = "Connected to BRU Avtopark Interactive WebSocket",
+            capabilities = new[]
+            {
+                "echo - Echo back your message",
+                "time - Get current server time",
+                "stats - Get server statistics",
+                "stream:start - Start real-time data streaming (buses/routes)",
+                "stream:stop - Stop active stream",
+                "calculate - Calculate math expression",
+                "ping - Test connection latency",
+                "help - Show available commands"
+            }
+        }, sendLock, cts.Token);
+
+        // Start background tasks
+        var heartbeatTask = SendHeartbeatsAsync(webSocket, sessionId, sendLock, cts.Token);
+        var receiveTask = HandleInteractiveMessagesAsync(webSocket, sessionId, userId, sendLock, cts.Token);
+
+        await Task.WhenAny(heartbeatTask, receiveTask);
+        
+        cts.Cancel();
+        _logger.LogInformation("[{SessionId}] Interactive WebSocket session ended", sessionId);
+    }
+
+    private async Task SendHeartbeatsAsync(WebSocket webSocket, string sessionId, SemaphoreSlim sendLock, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                
+                var process = System.Diagnostics.Process.GetCurrentProcess();
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "heartbeat",
+                    sessionId,
+                    timestamp = DateTime.UtcNow,
+                    serverUptime = DateTime.UtcNow - process.StartTime
+                }, sendLock, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation is requested
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{SessionId}] Error in heartbeat task", sessionId);
+        }
+    }
+
+    private async Task HandleInteractiveMessagesAsync(
+        WebSocket webSocket, 
+        string sessionId,
+        string userId,
+        SemaphoreSlim sendLock, 
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[8192];
+        var streamingSessions = new Dictionary<string, CancellationTokenSource>();
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
+            {
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", cancellationToken);
+                    break;
+                }
+
+                var messageJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                _logger.LogInformation("[{SessionId}] Interactive message received: {Message}", sessionId, SanitizeMessageForLogging(messageJson));
+
+                JsonDocument? doc = null;
+                try
+                {
+                    doc = JsonDocument.Parse(messageJson);
+                    var root = doc.RootElement;
+
+                    var command = root.GetProperty("command").GetString()?.ToLowerInvariant();
+                    var requestId = root.TryGetProperty("requestId", out var reqId) ? reqId.GetString() : null;
+
+                    await ProcessInteractiveCommandAsync(
+                        webSocket, 
+                        command, 
+                        root, 
+                        requestId, 
+                        sessionId,
+                        userId,
+                        streamingSessions, 
+                        sendLock, 
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{SessionId}] Error processing interactive message", sessionId);
+                    await SendJsonAsync(webSocket, new
+                    {
+                        type = "error",
+                        sessionId,
+                        message = $"Error processing command: {ex.Message}",
+                        timestamp = DateTime.UtcNow
+                    }, sendLock, cancellationToken);
+                }
+                finally
+                {
+                    doc?.Dispose();
+                }
+            }
+        }
+        finally
+        {
+            // Cancel all streaming sessions
+            foreach (var streamCts in streamingSessions.Values)
+            {
+                streamCts.Cancel();
+                streamCts.Dispose();
+            }
+        }
+    }
+
+    private async Task ProcessInteractiveCommandAsync(
+        WebSocket webSocket,
+        string? command,
+        JsonElement root,
+        string? requestId,
+        string sessionId,
+        string userId,
+        Dictionary<string, CancellationTokenSource> streamingSessions,
+        SemaphoreSlim sendLock,
+        CancellationToken cancellationToken)
+    {
+        // Handle streaming commands first
+        if (command?.StartsWith("stream:") == true)
+        {
+            await HandleStreamingCommandAsync(
+                webSocket, 
+                command, 
+                root, 
+                requestId, 
+                sessionId,
+                streamingSessions, 
+                sendLock, 
+                cancellationToken);
+            return;
+        }
+
+        // Handle calculate command
+        if (command == "calculate")
+        {
+            await HandleCalculateCommandAsync(webSocket, root, requestId, sessionId, sendLock, cancellationToken);
+            return;
+        }
+
+        // Handle standard commands
+        object? response = command switch
+        {
+            "echo" => new
+            {
+                type = "response",
+                command = "echo",
+                requestId,
+                sessionId,
+                data = root.TryGetProperty("data", out var data) ? data.GetString() : "No data provided",
+                timestamp = DateTime.UtcNow
+            },
+            "time" => new
+            {
+                type = "response",
+                command = "time",
+                requestId,
+                sessionId,
+                data = new
+                {
+                    utc = DateTime.UtcNow,
+                    local = DateTime.Now,
+                    timezone = TimeZoneInfo.Local.DisplayName,
+                    unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                },
+                timestamp = DateTime.UtcNow
+            },
+            "stats" => new
+            {
+                type = "response",
+                command = "stats",
+                requestId,
+                sessionId,
+                data = new
+                {
+                    sessionId,
+                    userId,
+                    serverTime = DateTime.UtcNow,
+                    uptime = DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime,
+                    memoryUsageMB = GC.GetTotalMemory(false) / 1024 / 1024,
+                    threadCount = System.Diagnostics.Process.GetCurrentProcess().Threads.Count,
+                    activeStreams = streamingSessions.Count
+                },
+                timestamp = DateTime.UtcNow
+            },
+            "ping" => new
+            {
+                type = "response",
+                command = "pong",
+                requestId,
+                sessionId,
+                timestamp = DateTime.UtcNow
+            },
+            "help" => new
+            {
+                type = "response",
+                command = "help",
+                requestId,
+                sessionId,
+                data = new
+                {
+                    commands = new[]
+                    {
+                        new { name = "echo", description = "Echo back your message", usage = "{\"command\":\"echo\",\"data\":\"your message\",\"requestId\":\"123\"}" },
+                        new { name = "time", description = "Get current server time", usage = "{\"command\":\"time\",\"requestId\":\"123\"}" },
+                        new { name = "stats", description = "Get server statistics", usage = "{\"command\":\"stats\",\"requestId\":\"123\"}" },
+                        new { name = "stream:start", description = "Start data streaming", usage = "{\"command\":\"stream:start\",\"resource\":\"buses\",\"requestId\":\"123\"}" },
+                        new { name = "stream:stop", description = "Stop data streaming", usage = "{\"command\":\"stream:stop\",\"streamId\":\"id\",\"requestId\":\"123\"}" },
+                        new { name = "calculate", description = "Calculate expression", usage = "{\"command\":\"calculate\",\"expression\":\"2+2\",\"requestId\":\"123\"}" },
+                        new { name = "ping", description = "Test connection latency", usage = "{\"command\":\"ping\",\"requestId\":\"123\"}" }
+                    }
+                },
+                timestamp = DateTime.UtcNow
+            },
+            _ => new
+            {
+                type = "error",
+                command,
+                requestId,
+                sessionId,
+                message = $"Unknown command: {command}. Send 'help' for available commands.",
+                timestamp = DateTime.UtcNow
+            }
+        };
+
+        if (response != null)
+        {
+            await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
+        }
+    }
+
+    private async Task HandleStreamingCommandAsync(
+        WebSocket webSocket,
+        string command,
+        JsonElement root,
+        string? requestId,
+        string sessionId,
+        Dictionary<string, CancellationTokenSource> streamingSessions,
+        SemaphoreSlim sendLock,
+        CancellationToken cancellationToken)
+    {
+        if (command == "stream:start")
+        {
+            var resource = root.TryGetProperty("resource", out var res) ? res.GetString() : null;
+            var streamId = Guid.NewGuid().ToString();
+            var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            
+            streamingSessions[streamId] = streamCts;
+
+            await SendJsonAsync(webSocket, new
+            {
+                type = "stream:started",
+                requestId,
+                sessionId,
+                streamId,
+                resource,
+                message = $"Started streaming {resource} data",
+                timestamp = DateTime.UtcNow
+            }, sendLock, cancellationToken);
+
+            // Start streaming in background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await StreamDataAsync(webSocket, resource, streamId, sessionId, sendLock, streamCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{SessionId}] Error in streaming task for {Resource}", sessionId, resource);
+                }
+            }, streamCts.Token);
+        }
+        else if (command == "stream:stop")
+        {
+            var streamId = root.TryGetProperty("streamId", out var sid) ? sid.GetString() : null;
+            
+            if (streamId != null && streamingSessions.TryGetValue(streamId, out var streamCts))
+            {
+                streamCts.Cancel();
+                streamingSessions.Remove(streamId);
+
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "stream:stopped",
+                    requestId,
+                    sessionId,
+                    streamId,
+                    message = "Stream stopped successfully",
+                    timestamp = DateTime.UtcNow
+                }, sendLock, cancellationToken);
+            }
+            else
+            {
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "error",
+                    requestId,
+                    sessionId,
+                    message = $"Stream not found: {streamId}",
+                    timestamp = DateTime.UtcNow
+                }, sendLock, cancellationToken);
+            }
+        }
+    }
+
+    private async Task StreamDataAsync(
+        WebSocket webSocket,
+        string? resource,
+        string streamId,
+        string sessionId,
+        SemaphoreSlim sendLock,
+        CancellationToken cancellationToken)
+    {
+        var counter = 0;
+        
+        while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                object data = resource?.ToLowerInvariant() switch
+                {
+                    "buses" => new
+                    {
+                        id = counter,
+                        registrationNumber = $"BUS-{Random.Shared.Next(1000, 9999)}",
+                        status = Random.Shared.Next(0, 2) == 0 ? "Active" : "Maintenance",
+                        location = new 
+                        { 
+                            lat = 53.9 + Random.Shared.NextDouble() * 0.1, 
+                            lon = 27.5 + Random.Shared.NextDouble() * 0.1 
+                        },
+                        speed = Random.Shared.Next(0, 60),
+                        passengers = Random.Shared.Next(0, 50)
+                    },
+                    "routes" => new
+                    {
+                        id = counter,
+                        routeNumber = $"R-{Random.Shared.Next(1, 100)}",
+                        passengers = Random.Shared.Next(0, 50),
+                        delay = Random.Shared.Next(-5, 15),
+                        nextStop = $"Stop-{Random.Shared.Next(1, 20)}",
+                        eta = DateTime.UtcNow.AddMinutes(Random.Shared.Next(1, 30))
+                    },
+                    _ => new { message = "Unknown resource", counter }
+                };
+
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "stream:data",
+                    streamId,
+                    sessionId,
+                    resource,
+                    sequence = counter,
+                    data,
+                    timestamp = DateTime.UtcNow
+                }, sendLock, cancellationToken);
+
+                counter++;
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{SessionId}] Error streaming data", sessionId);
+                break;
+            }
+        }
+
+        _logger.LogInformation("[{SessionId}] Stream {StreamId} ended after {Count} messages", sessionId, streamId, counter);
+    }
+
+    private async Task HandleCalculateCommandAsync(
+        WebSocket webSocket,
+        JsonElement root,
+        string? requestId,
+        string sessionId,
+        SemaphoreSlim sendLock,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var expression = root.TryGetProperty("expression", out var expr) ? expr.GetString() : null;
+            
+            if (string.IsNullOrWhiteSpace(expression))
+            {
+                await SendJsonAsync(webSocket, new
+                {
+                    type = "error",
+                    command = "calculate",
+                    requestId,
+                    sessionId,
+                    message = "Expression is required",
+                    timestamp = DateTime.UtcNow
+                }, sendLock, cancellationToken);
+                return;
+            }
+
+            // Simple calculator (supports +, -, *, /)
+            var result = EvaluateExpression(expression);
+
+            await SendJsonAsync(webSocket, new
+            {
+                type = "response",
+                command = "calculate",
+                requestId,
+                sessionId,
+                data = new
+                {
+                    expression,
+                    result
+                },
+                timestamp = DateTime.UtcNow
+            }, sendLock, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await SendJsonAsync(webSocket, new
+            {
+                type = "error",
+                command = "calculate",
+                requestId,
+                sessionId,
+                message = $"Calculation error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            }, sendLock, cancellationToken);
+        }
+    }
+
+    private static double EvaluateExpression(string expression)
+    {
+        // Simple expression evaluator (for demo purposes)
+        expression = expression.Replace(" ", "");
+        
+        var dataTable = new System.Data.DataTable();
+        var result = dataTable.Compute(expression, "");
+        return Convert.ToDouble(result);
+    }
+
+    /// <summary>
     /// Universal WebSocket stream endpoint with dynamic CRUD routing and event handling.
     /// Supports: ping/pong, CRUD operations for all resources, event subscriptions, and broadcasting.
     /// For controller-specific CRUD event streams, use individual controller WebSocket endpoints.
