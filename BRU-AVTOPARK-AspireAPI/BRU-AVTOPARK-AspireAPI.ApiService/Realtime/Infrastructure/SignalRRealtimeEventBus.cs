@@ -341,19 +341,14 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             _disposalLock.Dispose();
         }
 
-        // Call base dispose
         Dispose();
     }
 
-    /// <summary>
-    /// Synchronous dispose implementation.
-    /// </summary>
     public override void Dispose()
     {
         if (!_disposed)
         {
             _eventChannel.Writer.TryComplete();
-            _disposalLock.Dispose();
             _disposed = true;
         }
         

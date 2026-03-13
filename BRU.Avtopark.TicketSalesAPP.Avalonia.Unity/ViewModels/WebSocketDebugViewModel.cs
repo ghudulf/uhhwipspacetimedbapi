@@ -41,6 +41,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
 
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cts;
+    private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<string, ControllerTestResult> _pendingRequests = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCompletions = new();
 
@@ -163,11 +164,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
             AccessToken = accessToken; // Store normalized token
 
-            _cts = new CancellationTokenSource();
-            _webSocket = new ClientWebSocket();
-            _webSocket.Options.AddSubProtocol("bru.events.v1");
-            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-
+            // Validate URL scheme BEFORE allocating resources
             string wsScheme;
             if (serverUri.Scheme == "https")
             {
@@ -195,6 +192,12 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 AddLog($"✗ Unsupported URL scheme: {serverUri.Scheme}");
                 return;
             }
+
+            // Now allocate resources after validation passed
+            _cts = new CancellationTokenSource();
+            _webSocket = new ClientWebSocket();
+            _webSocket.Options.AddSubProtocol("bru.events.v1");
+            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
 
             var wsUrl = new UriBuilder(serverUri)
             {
@@ -388,7 +391,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
 
                 try
                 {
-                    await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
+                    await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
                     AddLog($"→ [{result.ControllerName}] Sent read_all via universal stream (RequestId: {requestId})");
 
                     result.Status = TestStatus.Testing;
@@ -673,15 +676,46 @@ public partial class WebSocketDebugViewModel : ObservableObject
         {
             try
             {
+                // Close connection with timeout + Abort fallback
                 if (ws?.State == WebSocketState.Open)
                 {
-                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Cleanup", CancellationToken.None);
+                    using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    try
+                    {
+                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Cleanup", closeCts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Timeout - fall back to abort
+                        ws.Abort();
+                    }
+                    catch
+                    {
+                        // Any other error - fall back to abort
+                        ws.Abort();
+                    }
                 }
             }
             catch { /* Ignore cleanup errors */ }
             
             ws?.Dispose();
             cts?.Dispose();
+        }
+    }
+
+    private async Task SendAsyncWithLock(byte[] bytes, CancellationToken cancellationToken)
+    {
+        await _sendSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            if (_webSocket?.State == WebSocketState.Open)
+            {
+                await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+            }
+        }
+        finally
+        {
+            _sendSemaphore.Release();
         }
     }
 
@@ -752,7 +786,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
+            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
             AddLog("🏓 Ping sent to universal stream");
         }
         catch (Exception ex)
@@ -791,7 +825,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
+            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
             AddLog($"📢 Subscribe request sent for resource: {resource}");
         }
         catch (Exception ex)
@@ -830,7 +864,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
+            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
             AddLog($"📢 Unsubscribe request sent for resource: {resource}");
         }
         catch (Exception ex)

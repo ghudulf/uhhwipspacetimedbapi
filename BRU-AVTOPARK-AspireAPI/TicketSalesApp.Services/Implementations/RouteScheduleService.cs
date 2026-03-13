@@ -208,7 +208,7 @@ namespace TicketSalesApp.Services.Implementations
                     ulong? arrivalTimeParam, uint? stopDurationMinutesParam, bool? isRecurringParam, 
                     List<string>? estimatedStopTimesParam, List<double>? stopDistancesParam, string? notesParam)
                 {
-                    _handlerLock.Wait();
+                    _handlerLock.WaitAsync().GetAwaiter().GetResult();
                     try
                     {
                         // Check if reducer succeeded

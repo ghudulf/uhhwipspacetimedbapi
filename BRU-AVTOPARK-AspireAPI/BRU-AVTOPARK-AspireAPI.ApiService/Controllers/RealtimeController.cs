@@ -589,7 +589,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "Payload required for create operation", sendLock, cancellationToken);
                         return;
                     }
-                    result = await ExecuteCreateAsync(service, resource, createPayloadEl, cancellationToken);
+                    result = await ExecuteCreateAsync(service, resource, createPayloadEl, validatedClaims, cancellationToken);
                     success = result != null;
                     break;
 
@@ -701,43 +701,6 @@ public sealed class RealtimeController : BaseController
         return (pagedData, totalCount);
     }
 
-    private async Task<int> ExecuteCountAsync(object service, string resource)
-    {
-        // Normalize resource name for consistent switch matching
-        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
-        
-        object? allData = normalizedResource switch
-        {
-            "buses" => await ((IBusService)service).GetAllBusesAsync(),
-            "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
-            "jobs" => await ((IEmployeeService)service).GetAllJobsAsync(),
-            "maintenance" => await ((IMaintenanceService)service).GetAllMaintenanceRecordsAsync(),
-            "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
-            "roles" => await ((IRoleService)service).GetAllRolesAsync(),
-            "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
-            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
-            "tickets" => null,
-            "ticket-sales" or "ticketsales" => null,
-            "users" => await ((IUserService)service).GetAllUsersAsync(),
-            _ => null
-        };
-
-        if (allData == null)
-        {
-            return 0;
-        }
-
-        // Materialize to get count
-        var materializedList = allData switch
-        {
-            IEnumerable<object> enumerable => enumerable.ToList(),
-            IEnumerable enumerable => enumerable.Cast<object>().ToList(),
-            _ => new List<object> { allData }
-        };
-        
-        return materializedList.Count;
-    }
-
     private async Task<object?> ExecuteReadAsync(object service, string resource, uint id)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
@@ -759,22 +722,22 @@ public sealed class RealtimeController : BaseController
         };
     }
 
-    private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, CancellationToken cancellationToken)
+    private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
         return normalizedResource switch
         {
-            "buses" => await CreateBusAsync((IBusService)service, payload),
-            "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload),
-            "jobs" => await CreateJobAsync((IEmployeeService)service, payload),
-            "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload),
-            "permissions" => await CreatePermissionAsync((IPermissionService)service, payload),
-            "roles" => await CreateRoleAsync((IRoleService)service, payload),
-            "routes" => await CreateRouteAsync((IRouteService)service, payload),
-            "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload),
-            "tickets" => await CreateTicketAsync((ITicketService)service, payload),
-            "users" => await CreateUserAsync((IUserService)service, payload),
+            "buses" => await CreateBusAsync((IBusService)service, payload, validatedClaims),
+            "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload, validatedClaims),
+            "jobs" => await CreateJobAsync((IEmployeeService)service, payload, validatedClaims),
+            "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload, validatedClaims),
+            "permissions" => await CreatePermissionAsync((IPermissionService)service, payload, validatedClaims),
+            "roles" => await CreateRoleAsync((IRoleService)service, payload, validatedClaims),
+            "routes" => await CreateRouteAsync((IRouteService)service, payload, validatedClaims),
+            "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload, validatedClaims),
+            "tickets" => await CreateTicketAsync((ITicketService)service, payload, validatedClaims),
+            "users" => await CreateUserAsync((IUserService)service, payload, validatedClaims),
             _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
         };
     }
@@ -826,7 +789,41 @@ public sealed class RealtimeController : BaseController
         }
     }
 
-    private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload)
+    private SpacetimeDB.Identity ExtractIdentityFromClaims(Dictionary<string, object>? validatedClaims)
+    {
+        if (validatedClaims == null)
+            return new SpacetimeDB.Identity();
+
+        if (validatedClaims.TryGetValue("identity", out var identityObj) && identityObj is string identityStr && !string.IsNullOrEmpty(identityStr))
+        {
+            try
+            {
+                byte[] bytes = Convert.FromHexString(identityStr);
+                return new SpacetimeDB.Identity(bytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse Identity hex string '{IdentityHex}' from 'identity' claim", identityStr);
+            }
+        }
+
+        if (validatedClaims.TryGetValue("sub", out var subObj) && subObj is string subStr && !string.IsNullOrEmpty(subStr))
+        {
+            try
+            {
+                byte[] bytes = Convert.FromHexString(subStr);
+                return new SpacetimeDB.Identity(bytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse Identity hex string '{IdentityHex}' from 'sub' claim", subStr);
+            }
+        }
+
+        return new SpacetimeDB.Identity();
+    }
+
+    private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var model = payload.TryGetProperty("model", out var modelEl) ? modelEl.GetString() : null;
         var registrationNumber = payload.TryGetProperty("registrationNumber", out var regEl) ? regEl.GetString() : null;
@@ -845,7 +842,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateBusAsync(id, model, registrationNumber);
     }
 
-    private async Task<UserProfile?> CreateUserAsync(IUserService service, JsonElement payload)
+    private async Task<UserProfile?> CreateUserAsync(IUserService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var login = payload.TryGetProperty("login", out var loginEl) ? loginEl.GetString() : null;
         var password = payload.TryGetProperty("password", out var passEl) ? passEl.GetString() : null;
@@ -871,7 +868,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateUserAsync(id, login, password, role, email, phoneNumber, isActive);
     }
 
-    private async Task<object?> CreateRouteScheduleAsync(IRouteScheduleService service, JsonElement payload)
+    private async Task<object?> CreateRouteScheduleAsync(IRouteScheduleService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var routeId = payload.TryGetProperty("routeId", out var routeEl) ? (uint?)routeEl.GetUInt32() : null;
         var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
@@ -923,7 +920,7 @@ public sealed class RealtimeController : BaseController
         );
     }
 
-    private async Task<Employee?> CreateEmployeeAsync(IEmployeeService service, JsonElement payload)
+    private async Task<Employee?> CreateEmployeeAsync(IEmployeeService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
         var surname = payload.TryGetProperty("surname", out var surnameEl) ? surnameEl.GetString() : null;
@@ -946,7 +943,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateEmployeeAsync(id, name, surname, patronym, jobId);
     }
 
-    private async Task<object?> CreateJobAsync(IEmployeeService service, JsonElement payload)
+    private async Task<object?> CreateJobAsync(IEmployeeService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var jobTitle = payload.TryGetProperty("jobTitle", out var titleEl) ? titleEl.GetString() : null;
         var internship = payload.TryGetProperty("internship", out var internEl) ? internEl.GetString() : null;
@@ -966,7 +963,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateJobAsync(id, jobTitle, internship);
     }
 
-    private async Task<object?> CreateMaintenanceAsync(IMaintenanceService service, JsonElement payload)
+    private async Task<object?> CreateMaintenanceAsync(IMaintenanceService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var busId = payload.TryGetProperty("busId", out var busEl) ? busEl.GetUInt32() : 0u;
         var lastServiceDate = payload.TryGetProperty("lastServiceDate", out var lastEl) ? lastEl.GetUInt64() : 0ul;
@@ -997,7 +994,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateMaintenanceAsync(id, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage);
     }
 
-    private async Task<Permission?> CreatePermissionAsync(IPermissionService service, JsonElement payload)
+    private async Task<Permission?> CreatePermissionAsync(IPermissionService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
         var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
@@ -1019,7 +1016,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdatePermissionAsync(id, name, description, category, isActive);
     }
 
-    private async Task<Role?> CreateRoleAsync(IRoleService service, JsonElement payload)
+    private async Task<Role?> CreateRoleAsync(IRoleService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
         var description = payload.TryGetProperty("description", out var descEl) ? descEl.GetString() : null;
@@ -1047,7 +1044,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateRoleAsync(id, name, description, priority, permissionIds);
     }
 
-    private async Task<object?> CreateRouteAsync(IRouteService service, JsonElement payload)
+    private async Task<object?> CreateRouteAsync(IRouteService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
         var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
@@ -1075,7 +1072,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateRouteAsync(id, startPoint, endPoint, driverId, busId, travelTime, isActive);
     }
 
-    private async Task<object?> CreateTicketAsync(ITicketService service, JsonElement payload)
+    private async Task<object?> CreateTicketAsync(ITicketService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
         var routeId = payload.TryGetProperty("routeId", out var routeEl) ? routeEl.GetUInt32() : 0u;
         var seatNumber = payload.TryGetProperty("seatNumber", out var seatEl) ? seatEl.GetUInt32() : 0u;
@@ -1085,8 +1082,9 @@ public sealed class RealtimeController : BaseController
         
         if (routeId == 0 || string.IsNullOrEmpty(paymentMethod))
             throw new ArgumentException("RouteId and paymentMethod are required");
-            
-        var success = await service.CreateTicketAsync(routeId, seatNumber, ticketPrice, paymentMethod, purchaseTime, new Identity());
+        
+        var userId = ExtractIdentityFromClaims(validatedClaims);
+        var success = await service.CreateTicketAsync(routeId, seatNumber, ticketPrice, paymentMethod, purchaseTime, userId);
         return success ? new { routeId, seatNumber, ticketPrice, paymentMethod, purchaseTime } : null;
     }
 
@@ -1112,36 +1110,127 @@ public sealed class RealtimeController : BaseController
         Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
+        // Track active channel subscriptions: EventChannel -> (IAsyncEnumerable, refCount)
+        var activeChannelSubscriptions = new ConcurrentDictionary<string, (IAsyncEnumerable<ApiDomainEvent> Stream, int RefCount)>();
+        var subscriptionLock = new SemaphoreSlim(1, 1);
+        
         try
         {
-            // Subscribe to all resource channels
-            var eventStreams = new List<IAsyncEnumerable<ApiDomainEvent>>();
+            // Monitor subscription changes and dynamically manage channel subscriptions
+            var previousSubscriptions = new HashSet<string>();
             
-            foreach (var handler in _resourceHandlers.Values.DistinctBy(h => h.EventChannel))
+            while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
             {
-                eventStreams.Add(_eventBus.SubscribeAsync(handler.EventChannel, cancellationToken));
-            }
-
-            // Merge all event streams and broadcast to client
-            await foreach (var evt in MergeEventStreams(eventStreams, cancellationToken))
-            {
-                // Only send events for subscribed resources (thread-safe check)
-                if (subscriptions.ContainsKey(evt.Resource))
+                // Get current subscriptions snapshot
+                var currentSubscriptions = new HashSet<string>(subscriptions.Keys);
+                
+                // Determine which channels need to be subscribed/unsubscribed
+                await subscriptionLock.WaitAsync(cancellationToken);
+                try
                 {
-                    var eventMessage = new
+                    // Find new subscriptions
+                    var newSubscriptions = currentSubscriptions.Except(previousSubscriptions).ToList();
+                    foreach (var resource in newSubscriptions)
                     {
-                        type = "event",
-                        eventName = evt.EventName,
-                        resource = evt.Resource,
-                        timestamp = evt.OccurredAt,
-                        metadata = evt.Metadata
-                    };
-
-                    if (webSocket.State == WebSocketState.Open)
-                    {
-                        await SendJsonAsync(webSocket, eventMessage, sendLock, cancellationToken);
-                        _logger.LogDebug("[{ConnectionId}] Broadcasted event {EventName} for {Resource}", connectionId, evt.EventName, evt.Resource);
+                        // Find the event channel for this resource
+                        if (_resourceHandlers.TryGetValue(resource, out var handler))
+                        {
+                            var channel = handler.EventChannel;
+                            
+                            // Subscribe to channel if not already subscribed
+                            if (!activeChannelSubscriptions.ContainsKey(channel))
+                            {
+                                var stream = _eventBus.SubscribeAsync(channel, cancellationToken);
+                                activeChannelSubscriptions[channel] = (stream, 1);
+                                _logger.LogDebug("[{ConnectionId}] Subscribed to channel {Channel} for resource {Resource}", 
+                                    connectionId, channel, resource);
+                            }
+                            else
+                            {
+                                // Increment ref count
+                                var (stream, refCount) = activeChannelSubscriptions[channel];
+                                activeChannelSubscriptions[channel] = (stream, refCount + 1);
+                            }
+                        }
                     }
+                    
+                    // Find removed subscriptions
+                    var removedSubscriptions = previousSubscriptions.Except(currentSubscriptions).ToList();
+                    foreach (var resource in removedSubscriptions)
+                    {
+                        // Find the event channel for this resource
+                        if (_resourceHandlers.TryGetValue(resource, out var handler))
+                        {
+                            var channel = handler.EventChannel;
+                            
+                            // Decrement ref count and unsubscribe if no more resources use this channel
+                            if (activeChannelSubscriptions.TryGetValue(channel, out var entry))
+                            {
+                                var (stream, refCount) = entry;
+                                if (refCount <= 1)
+                                {
+                                    activeChannelSubscriptions.TryRemove(channel, out _);
+                                    _logger.LogDebug("[{ConnectionId}] Unsubscribed from channel {Channel} (no more resources)", 
+                                        connectionId, channel);
+                                }
+                                else
+                                {
+                                    activeChannelSubscriptions[channel] = (stream, refCount - 1);
+                                }
+                            }
+                        }
+                    }
+                    
+                    previousSubscriptions = currentSubscriptions;
+                }
+                finally
+                {
+                    subscriptionLock.Release();
+                }
+                
+                // Read events from active channels
+                if (activeChannelSubscriptions.Any())
+                {
+                    var streams = activeChannelSubscriptions.Values.Select(v => v.Stream).ToList();
+                    
+                    // Use a short timeout to periodically check for subscription changes
+                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(1));
+                    
+                    try
+                    {
+                        await foreach (var evt in MergeEventStreams(streams, timeoutCts.Token))
+                        {
+                            // Only send events for subscribed resources (thread-safe check)
+                            if (subscriptions.ContainsKey(evt.Resource))
+                            {
+                                var eventMessage = new
+                                {
+                                    type = "event",
+                                    eventName = evt.EventName,
+                                    resource = evt.Resource,
+                                    timestamp = evt.OccurredAt,
+                                    metadata = evt.Metadata
+                                };
+
+                                if (webSocket.State == WebSocketState.Open)
+                                {
+                                    await SendJsonAsync(webSocket, eventMessage, sendLock, cancellationToken);
+                                    _logger.LogDebug("[{ConnectionId}] Broadcasted event {EventName} for {Resource}", 
+                                        connectionId, evt.EventName, evt.Resource);
+                                }
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                    {
+                        // Timeout reached, loop will continue to check for subscription changes
+                    }
+                }
+                else
+                {
+                    // No active subscriptions, wait before checking again
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
         }
@@ -1153,6 +1242,10 @@ public sealed class RealtimeController : BaseController
         {
             _logger.LogError(ex, "[{ConnectionId}] Error in event broadcasting", connectionId);
         }
+        finally
+        {
+            subscriptionLock.Dispose();
+        }
     }
 
     private async IAsyncEnumerable<ApiDomainEvent> MergeEventStreams(
@@ -1161,6 +1254,7 @@ public sealed class RealtimeController : BaseController
     {
         var enumerators = streams.Select(s => s.GetAsyncEnumerator(cancellationToken)).ToList();
         var activeTasks = new Dictionary<IAsyncEnumerator<ApiDomainEvent>, Task<bool>>();
+        var disposedEnumerators = new HashSet<IAsyncEnumerator<ApiDomainEvent>>();
 
         try
         {
@@ -1181,8 +1275,8 @@ public sealed class RealtimeController : BaseController
                 if (completed.IsFaulted)
                 {
                     _logger.LogError(completed.Exception, "Enumerator MoveNextAsync faulted in MergeEventStreams");
-                    // Dispose the faulted enumerator and continue without re-queuing
                     await enumerator.DisposeAsync();
+                    disposedEnumerators.Add(enumerator);
                     continue;
                 }
 
@@ -1190,6 +1284,7 @@ public sealed class RealtimeController : BaseController
                 {
                     _logger.LogDebug("Enumerator MoveNextAsync was canceled in MergeEventStreams");
                     await enumerator.DisposeAsync();
+                    disposedEnumerators.Add(enumerator);
                     continue;
                 }
 
@@ -1206,6 +1301,7 @@ public sealed class RealtimeController : BaseController
                 {
                     // Enumerator completed (no more items)
                     await enumerator.DisposeAsync();
+                    disposedEnumerators.Add(enumerator);
                 }
             }
         }
@@ -1213,7 +1309,10 @@ public sealed class RealtimeController : BaseController
         {
             foreach (var enumerator in enumerators)
             {
-                await enumerator.DisposeAsync();
+                if (!disposedEnumerators.Contains(enumerator))
+                {
+                    await enumerator.DisposeAsync();
+                }
             }
         }
     }
@@ -1234,7 +1333,7 @@ public sealed class RealtimeController : BaseController
         };
         
         var json = JsonSerializer.Serialize(data, options);
-        _logger.LogInformation(">>>> SENDING: {Json}", json);
+        _logger.LogDebug(">>>> SENDING: {Json}", json);
         
         var bytes = Encoding.UTF8.GetBytes(json);
         
