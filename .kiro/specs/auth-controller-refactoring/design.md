@@ -3664,21 +3664,32 @@ Elysia can integrate with SpacetimeDB in two ways:
 
 **Option 1: Direct SpacetimeDB Client**
 ```typescript
-import { createClient } from '@spacetimedb/client'
+import { DbConnection } from 'spacetimedb'
 
-const spacetime = createClient({
-  url: 'https://api.spacetimedb.com',
-  token: process.env.SPACETIME_TOKEN
-})
+// Initialize SpacetimeDB connection using canonical builder pattern
+const spacetimeDB = DbConnection.builder()
+  .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+  .withModuleName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+  .withToken(process.env.SPACETIMEDB_TOKEN)
+  .withLifecycleCallbacks({
+    onConnect: () => console.log('Connected to SpacetimeDB'),
+    onDisconnect: () => console.log('Disconnected from SpacetimeDB')
+  })
+  .build()
 
-app.state('spacetime', spacetime)
+app.state('spacetimeDB', spacetimeDB)
 
 // Use in handlers
-app.post('/auth/login', async ({ body, spacetime }) => {
-  const user = await spacetime.query(
-    'SELECT * FROM users WHERE username = ?', 
-    [body.username]
-  )
+app.post('/auth/login', async ({ body, spacetimeDB }) => {
+  // Query SpacetimeDB tables directly
+  const users = Array.from(spacetimeDB.db.UserProfile.iter())
+    .filter(user => user.Login === body.username)
+  
+  if (users.length === 0) {
+    return { error: 'User not found' }
+  }
+  
+  const user = users[0]
   // ... authentication logic
 })
 ```
@@ -4304,8 +4315,8 @@ const app = new Elysia()
 
 **Phase 1: Proof of Concept** (2-4 weeks)
 - [ ] Set up Elysia project with oidc-provider
-- [ ] Route OIDC traffic through Elysia app.fetch using a Fetch↔Node shim (Pattern B) and implement OIDC handlers (authorize, token, userinfo) that convert between Fetch and Node requests/responses
-- [ ] Implement server-level interception for /oidc/* endpoints (fallback/alternative)
+- [ ] Route OIDC traffic through Elysia app.fetch using a Fetch↔Node shim (Pattern A - RECOMMENDED) and implement OIDC handlers (authorize, token, userinfo) that convert between Fetch and Node requests/responses
+- [ ] Implement server-level interception for /oidc/* endpoints (Pattern B - fallback/alternative)
 - [ ] Implement basic OIDC flow (authorize, token, userinfo)
 - [ ] Test with Avalonia client
 - [ ] Compare performance with OpenIddict
