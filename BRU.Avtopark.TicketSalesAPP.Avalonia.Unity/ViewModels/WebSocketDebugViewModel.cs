@@ -1189,9 +1189,12 @@ public partial class WebSocketDebugViewModel : ObservableObject
         if (EventLog.Count > maxLogSize)
         {
             var itemsToRemove = EventLog.Count - maxLogSize;
-            for (int i = 0; i < itemsToRemove; i++)
+            // Remove in bulk by creating new collection from remaining items to avoid O(n²)
+            var remaining = EventLog.Skip(itemsToRemove).ToList();
+            EventLog.Clear();
+            foreach (var item in remaining)
             {
-                EventLog.RemoveAt(0);
+                EventLog.Add(item);
             }
         }
     }

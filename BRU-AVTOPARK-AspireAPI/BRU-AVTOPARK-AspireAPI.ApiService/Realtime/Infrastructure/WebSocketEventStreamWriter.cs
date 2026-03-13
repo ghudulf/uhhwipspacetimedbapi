@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
@@ -87,8 +88,9 @@ public static class WebSocketEventStreamWriter
                 object payload;
                 try
                 {
-                    logger.LogInformation("[WebSocketEventStreamWriter] Processing request - Command: {Command}, RequestId: {RequestId}", 
-                        request.Command, request.RequestId);
+                    logger.LogInformation("[WebSocketEventStreamWriter] Processing request - Command: {Command}, RequestId: {RequestId}",
+                        LogSanitizer.SanitizeLogField(request.Command, 100),
+                        LogSanitizer.SanitizeLogField(request.RequestId, 100));
                     var data = await requestHandler(request, linkedCts.Token);
                     logger.LogInformation("[WebSocketEventStreamWriter] Request handler completed successfully");
                     

@@ -161,14 +161,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (currentPageSize > 500) currentPageSize = 500;
 
             // Normalize initial page value
-            var currentPage = Math.Max(1, page ?? 1);
+            var initialPage = Math.Max(1, page ?? 1);
 
             // Get first page to determine total count and pages
-            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
 
             // Normalize page within bounds
-            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+            var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));
 
             // Apply navigation logic
             switch (command)
@@ -193,8 +193,17 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
                 command, currentPage, totalPages, currentPageSize, totalCount);
 
-            // Fetch the final target page after navigation
-            var (schedules, _) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+            // Reuse initialItems if currentPage hasn't changed, otherwise fetch new page
+            List<RouteSchedule> schedules;
+            if (currentPage == initialPage)
+            {
+                schedules = initialItems;
+            }
+            else
+            {
+                var (newItems, _) = await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize);
+                schedules = newItems;
+            }
 
             // Project schedules and return with pagination metadata
             var result = schedules.Select(ProjectScheduleForList).ToList();

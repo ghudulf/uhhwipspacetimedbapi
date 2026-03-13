@@ -55,13 +55,19 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Retrieving schedules page {Page} with page size {PageSize}", page, pageSize);
                 var connection = _spacetimeDBService.GetConnection();
 
-                // Get all schedules using iterator (server-side)
-                var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
-                var totalCount = allSchedules.Count;
+                // Count total items using iterator
+                var iterator = connection.Db.RouteSchedule.Iter();
+                var totalCount = 0;
+                foreach (var _ in iterator)
+                {
+                    totalCount++;
+                }
 
                 // Calculate skip and take for pagination
                 var skip = (page - 1) * pageSize;
-                var items = allSchedules
+
+                // Get paginated items using iterator with Skip/Take
+                var items = connection.Db.RouteSchedule.Iter()
                     .Skip(skip)
                     .Take(pageSize)
                     .ToList();
@@ -655,13 +661,14 @@ namespace TicketSalesApp.Services.Implementations
                 };
 
                 var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
-                
+
                 List<RouteSchedule> matchingSchedules = [];
-                
+
                 foreach (var schedule in allSchedules)
                 {
-                    if (schedule.DaysOfWeek != null && 
-                        schedule.DaysOfWeek.Contains(dayOfWeek) &&
+                    // Allow schedules with DaysOfWeek == null (one-off schedules) as long as DepartureTime is in range
+                    // OR recurring schedules that match the day of week
+                    if ((schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek)) &&
                         schedule.DepartureTime >= date &&
                         schedule.DepartureTime < date + 86400000) // 86400000 ms = 24 hours
                     {
