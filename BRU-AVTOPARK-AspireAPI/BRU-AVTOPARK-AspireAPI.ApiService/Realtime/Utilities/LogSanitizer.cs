@@ -38,17 +38,18 @@ internal static class LogSanitizer
             .Where(c => !char.IsControl(c))
             .ToArray());
 
-        // Guard against negative length in AsSpan
-        if (maxLength <= 3)
+        // Guard against negative length in AsSpan and Substring
+        var clampedLength = Math.Max(maxLength, 0);
+        if (clampedLength <= 3)
         {
             // Return truncated ellipsis if maxLength is too small
-            return "...".Substring(0, Math.Min(maxLength, 3));
+            return "...".Substring(0, Math.Min(clampedLength, 3));
         }
 
         // Truncate if needed - ensure output never exceeds maxLength
-        if (sanitized.Length > maxLength)
+        if (sanitized.Length > clampedLength)
         {
-            return string.Concat(sanitized.AsSpan(0, maxLength - 3), "...");
+            return string.Concat(sanitized.AsSpan(0, clampedLength - 3), "...");
         }
 
         return sanitized;

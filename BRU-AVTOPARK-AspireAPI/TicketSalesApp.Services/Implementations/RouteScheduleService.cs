@@ -224,6 +224,9 @@ namespace TicketSalesApp.Services.Implementations
                 var tcs = new TaskCompletionSource<uint?>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _pendingCreates[correlationId] = tcs;
 
+                // Capture the original cleaned notes before the event handler to avoid closure bug
+                var originalCleanedNotes = cleanedNotes;
+
                 // Set up event handler to capture the created schedule ID
                 void OnScheduleCreated(ReducerEventContext ctx, uint routeIdParam, ulong departureTimeParam, 
                     double priceParam, uint availableSeatsParam, List<string>? daysOfWeekParam, 
@@ -283,7 +286,6 @@ namespace TicketSalesApp.Services.Implementations
                                     _logger.LogInformation("Successfully created schedule with ID: {ScheduleId}", createdSchedule.ScheduleId);
                                     
                                     // Clean up correlation marker from Notes field now that we have the ID
-                                    var cleanedNotes = notes; // Original user-provided notes without correlation marker
                                     if (!string.IsNullOrEmpty(createdSchedule.Notes) && createdSchedule.Notes.Contains($"[CORRELATION:{correlationGuid}]"))
                                     {
                                         _logger.LogDebug("Cleaning up correlation marker from schedule {ScheduleId} Notes field", createdSchedule.ScheduleId);
@@ -307,7 +309,7 @@ namespace TicketSalesApp.Services.Implementations
                                                 createdSchedule.IsRecurring,
                                                 createdSchedule.EstimatedStopTimes,
                                                 createdSchedule.StopDistances,
-                                                cleanedNotes, // Use original notes without correlation marker
+                                                originalCleanedNotes, // Use captured original notes without correlation marker
                                                 null // actingUser
                                             );
                                             _logger.LogDebug("Correlation marker cleaned up from schedule {ScheduleId}", createdSchedule.ScheduleId);
@@ -603,8 +605,8 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving schedules between {StartDate} and {EndDate}",
-                    DateTimeOffset.FromUnixTimeSeconds((long)startDate).ToString(),
-                    DateTimeOffset.FromUnixTimeSeconds((long)endDate).ToString());
+                    DateTimeOffset.FromUnixTimeMilliseconds((long)startDate).ToString(),
+                    DateTimeOffset.FromUnixTimeMilliseconds((long)endDate).ToString());
 
                 var connection = _spacetimeDBService.GetConnection();
                 
@@ -628,8 +630,8 @@ namespace TicketSalesApp.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving schedules between {StartDate} and {EndDate}",
-                    DateTimeOffset.FromUnixTimeSeconds((long)startDate).ToString(),
-                    DateTimeOffset.FromUnixTimeSeconds((long)endDate).ToString());
+                    DateTimeOffset.FromUnixTimeMilliseconds((long)startDate).ToString(),
+                    DateTimeOffset.FromUnixTimeMilliseconds((long)endDate).ToString());
                 throw;
             }
         }

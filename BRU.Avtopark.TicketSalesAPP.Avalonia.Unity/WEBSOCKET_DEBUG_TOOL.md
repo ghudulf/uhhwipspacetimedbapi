@@ -2,7 +2,7 @@
 
 ## Overview
 
-The WebSocket Debug Tool is a comprehensive testing utility for validating WebSocket connections to the BRU Avtopark API. It was created to test the WebSocket functionality introduced in this review.
+The WebSocket Debug Tool is a comprehensive testing utility for validating WebSocket connections to the BRU Avtopark API. It was created to test the WebSocket functionality introduced in this pull request.
 
 ## Features
 

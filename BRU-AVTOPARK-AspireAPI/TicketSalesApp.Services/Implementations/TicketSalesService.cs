@@ -122,6 +122,9 @@ namespace TicketSalesApp.Services.Implementations
                     notes
                 );
 
+                // Flush pending reducer responses to avoid race condition
+                conn.FrameTick();
+
                 // Find the newly created sale (most recent for this ticket)
                 var newSale = conn.Db.Sale.Iter()
                     .Where(s => s.TicketId == ticketId)
@@ -151,13 +154,8 @@ namespace TicketSalesApp.Services.Implementations
                     return false;
                 }
 
-                // Call the UpdateSale reducer if it exists
-                // Note: If UpdateSale reducer doesn't exist in SpacetimeDB, this will need to be implemented
-                // For now, we'll log that the operation would succeed
-                _logger.LogInformation("Sale {SaleId} would be updated with: PaymentMethod={PaymentMethod}, PaymentStatus={PaymentStatus}", 
-                    saleId, paymentMethod ?? sale.PaymentMethod, paymentStatus ?? sale.PaymentStatus);
-
-                return true;
+                // UpdateSale reducer is not yet implemented in SpacetimeDB schema
+                throw new NotImplementedException("UpdateSale reducer is not available in the current SpacetimeDB schema. Add UpdateSale reducer to server/reducers or use DeleteSale + CreateSale as a workaround.");
             }
             catch (Exception ex)
             {
