@@ -457,6 +457,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
+                // Clamp pagination parameters to safe bounds
+                if (pageSize < 1) pageSize = 1;
+                if (page < 1) page = 1;
+                
                 _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
                     page, pageSize, isActive);
                 

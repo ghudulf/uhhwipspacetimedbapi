@@ -140,8 +140,7 @@
                             
                             <Button Command="{Binding TestAllControllersCommand}"
                                     Classes="primary"
-                                    HorizontalAlignment="Stretch"
-                                    IsEnabled="{Binding IsConnected}">
+                                    HorizontalAlignment="Stretch">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="🧪" FontSize="16"/>
                                     <TextBlock Text="Test All Controllers" FontWeight="SemiBold"/>

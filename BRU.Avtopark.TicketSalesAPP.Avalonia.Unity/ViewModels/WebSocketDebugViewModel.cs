@@ -132,27 +132,69 @@ public partial class WebSocketDebugViewModel : ObservableObject
             StatusMessage = "Connecting...";
             AddLog("Attempting to connect to WebSocket...");
 
-            // Ensure we have a valid token
-            var tokens = await _tokenStorage.GetTokensAsync();
-            if (tokens == null || string.IsNullOrEmpty(tokens.AccessToken))
+            // Prefer existing AccessToken (textbox value) if non-empty, otherwise load from storage
+            if (string.IsNullOrEmpty(AccessToken))
             {
-                StatusMessage = "Authentication required";
-                AddLog("✗ No access token available. Please login first.");
-                return;
+                var tokens = await _tokenStorage.GetTokensAsync();
+                if (tokens == null || string.IsNullOrEmpty(tokens.AccessToken))
+                {
+                    StatusMessage = "Authentication required";
+                    AddLog("✗ No access token available. Please login first.");
+                    return;
+                }
+                AccessToken = tokens.AccessToken;
             }
-
-            AccessToken = tokens.AccessToken;
 
             _cts = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
             _webSocket.Options.AddSubProtocol("bru.events.v1");
-            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {tokens.AccessToken}");
+            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {AccessToken}");
 
-            var wsUrl = ServerUrl.Replace("http://", "ws://").Replace("https://", "wss://");
-            var uri = new Uri($"{wsUrl}/api/realtime/stream");
+            // Secure WebSocket URL construction
+            Uri serverUri;
+            if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
+            {
+                StatusMessage = "Invalid server URL";
+                AddLog("✗ Invalid server URL format");
+                return;
+            }
 
-            AddLog($"Connecting to {uri}...");
-            await _webSocket.ConnectAsync(uri, _cts.Token);
+            string wsScheme;
+            if (serverUri.Scheme == "https")
+            {
+                wsScheme = "wss";
+            }
+            else if (serverUri.Scheme == "http")
+            {
+                // Only allow ws:// for localhost/loopback
+                if (serverUri.IsLoopback || 
+                    serverUri.Host == "localhost" || 
+                    serverUri.Host == "127.0.0.1" || 
+                    serverUri.Host == "[::1]")
+                {
+                    wsScheme = "ws";
+                }
+                else
+                {
+                    wsScheme = "wss"; // Force secure for remote hosts
+                    AddLog("⚠ Forcing wss:// for non-loopback host");
+                }
+            }
+            else
+            {
+                StatusMessage = "Unsupported URL scheme";
+                AddLog($"✗ Unsupported URL scheme: {serverUri.Scheme}");
+                return;
+            }
+
+            var wsUrl = new UriBuilder(serverUri)
+            {
+                Scheme = wsScheme,
+                Path = "/api/realtime/stream"
+            }.Uri;
+
+            AddLog($"Connecting to {wsUrl}...");
+            await _webSocket.ConnectAsync(wsUrl, _cts.Token);
             IsConnected = true;
             StatusMessage = "Connected";
             AddLog($"✓ Connected successfully");
@@ -225,6 +267,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 kvp.Value.TrySetCanceled();
             }
             _pendingCompletions.Clear();
+
+            // Cancel and clear pending requests
+            _pendingRequests.Clear();
 
             // Update UI state
             IsConnected = false;
@@ -387,22 +432,68 @@ public partial class WebSocketDebugViewModel : ObservableObject
             result.Status = TestStatus.Testing;
             result.Message = "Connecting...";
 
-            var tokens = await _tokenStorage.GetTokensAsync();
-            if (tokens == null || string.IsNullOrEmpty(tokens.AccessToken))
+            // Prefer existing AccessToken if non-empty, otherwise load from storage
+            string? accessToken = AccessToken;
+            if (string.IsNullOrEmpty(accessToken))
             {
-                result.Status = TestStatus.Failed;
-                result.Message = "No access token available";
-                AddLog($"✗ {result.ControllerName}: No access token");
-                return;
+                var tokens = await _tokenStorage.GetTokensAsync();
+                if (tokens == null || string.IsNullOrEmpty(tokens.AccessToken))
+                {
+                    result.Status = TestStatus.Failed;
+                    result.Message = "No access token available";
+                    AddLog($"✗ {result.ControllerName}: No access token");
+                    return;
+                }
+                accessToken = tokens.AccessToken;
             }
 
             cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             ws = new ClientWebSocket();
             ws.Options.AddSubProtocol("bru.events.v1");
-            ws.Options.SetRequestHeader("Authorization", $"Bearer {tokens.AccessToken}");
+            ws.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
 
-            var wsUrl = ServerUrl.Replace("http://", "ws://").Replace("https://", "wss://");
-            var uri = new Uri($"{wsUrl}{result.EndpointPath}");
+            // Secure WebSocket URL construction
+            Uri serverUri;
+            if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
+            {
+                result.Status = TestStatus.Failed;
+                result.Message = "Invalid server URL";
+                AddLog($"✗ {result.ControllerName}: Invalid server URL");
+                return;
+            }
+
+            string wsScheme;
+            if (serverUri.Scheme == "https")
+            {
+                wsScheme = "wss";
+            }
+            else if (serverUri.Scheme == "http")
+            {
+                if (serverUri.IsLoopback || 
+                    serverUri.Host == "localhost" || 
+                    serverUri.Host == "127.0.0.1" || 
+                    serverUri.Host == "[::1]")
+                {
+                    wsScheme = "ws";
+                }
+                else
+                {
+                    wsScheme = "wss";
+                }
+            }
+            else
+            {
+                result.Status = TestStatus.Failed;
+                result.Message = "Unsupported URL scheme";
+                AddLog($"✗ {result.ControllerName}: Unsupported URL scheme");
+                return;
+            }
+
+            var uri = new UriBuilder(serverUri)
+            {
+                Scheme = wsScheme,
+                Path = result.EndpointPath
+            }.Uri;
 
             AddLog($"→ [{result.ControllerName}] Connecting to {uri}");
             
@@ -462,7 +553,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             AddLog($"← [{result.ControllerName}] Response: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}...");
 
             // Parse response to check success
-            var doc = JsonDocument.Parse(responseJson);
+            using var doc = JsonDocument.Parse(responseJson);
             var success = false;
             
             if (doc.RootElement.TryGetProperty("operation", out var opElement) && 
@@ -716,8 +807,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     AddLog("Server closed connection");
-                    IsConnected = false;
-                    StatusMessage = "Connection closed by server";
+                    await CleanupWebSocketAsync();
                     break;
                 }
 
@@ -859,6 +949,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             AddLog("Receive operation cancelled");
+            await CleanupWebSocketAsync();
         }
         catch (Exception ex)
         {

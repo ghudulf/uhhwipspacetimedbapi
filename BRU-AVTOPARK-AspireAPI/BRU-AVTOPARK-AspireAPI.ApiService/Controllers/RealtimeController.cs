@@ -2,6 +2,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +21,9 @@ public sealed class RealtimeController : ControllerBase
 
     // Map resource names to their service interfaces and event channels
     private readonly Dictionary<string, ResourceHandler> _resourceHandlers;
+    
+    // Max message size to prevent OOM
+    private const int MaxIncomingMessageSize = 1 * 1024 * 1024; // 1MB
 
     public RealtimeController(
         IRealtimeEventBus eventBus,
@@ -30,7 +34,7 @@ public sealed class RealtimeController : ControllerBase
         _logger = logger;
         _serviceProvider = serviceProvider;
 
-        // Initialize resource handlers for dynamic CRUD routing
+        // Initialize resource handlers for dynamic CRUD routing with normalized keys
         _resourceHandlers = new Dictionary<string, ResourceHandler>(StringComparer.OrdinalIgnoreCase)
         {
             { "buses", new ResourceHandler(typeof(IBusService), "buses") },
@@ -41,8 +45,10 @@ public sealed class RealtimeController : ControllerBase
             { "roles", new ResourceHandler(typeof(IRoleService), "roles") },
             { "routes", new ResourceHandler(typeof(IRouteService), "routes") },
             { "routeschedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") },
+            { "route-schedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") }, // Alias
             { "tickets", new ResourceHandler(typeof(ITicketService), "tickets") },
             { "ticketsales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") },
+            { "ticket-sales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") }, // Alias
             { "users", new ResourceHandler(typeof(IUserService), "users") }
         };
     }
@@ -108,23 +114,36 @@ public sealed class RealtimeController : ControllerBase
         _logger.LogInformation("[{ConnectionId}] Universal stream WebSocket connection established", connectionId);
 
         var buffer = new byte[8192];
-        var subscriptions = new HashSet<string>();
+        var subscriptions = new ConcurrentDictionary<string, byte>(); // Thread-safe subscription tracking
+        var sendLock = new SemaphoreSlim(1, 1); // Ensure only one send at a time
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
 
         try
         {
             // Start event broadcasting task
-            var broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, connectionId, linkedCts.Token);
+            var broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, sendLock, connectionId, linkedCts.Token);
 
             while (webSocket.State == WebSocketState.Open && !linkedCts.Token.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
                 WebSocketReceiveResult result;
+                int totalBytes = 0;
 
                 do
                 {
                     result = await webSocket.ReceiveAsync(buffer, linkedCts.Token);
                     ms.Write(buffer, 0, result.Count);
+                    totalBytes += result.Count;
+                    
+                    // Check max size to prevent OOM
+                    if (totalBytes > MaxIncomingMessageSize)
+                    {
+                        _logger.LogWarning("[{ConnectionId}] Message exceeds max size: {Size} bytes", connectionId, totalBytes);
+                        await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, 
+                            $"Message exceeds maximum size of {MaxIncomingMessageSize} bytes", 
+                            CancellationToken.None);
+                        return;
+                    }
                 } while (!result.EndOfMessage);
 
                 if (result.MessageType == WebSocketMessageType.Close)
@@ -140,7 +159,7 @@ public sealed class RealtimeController : ControllerBase
                     var sanitizedMessage = SanitizeMessageForLogging(messageJson);
                     _logger.LogDebug("[{ConnectionId}] <<<< RECEIVED: {Message}", connectionId, sanitizedMessage);
 
-                    await HandleMessageAsync(webSocket, messageJson, subscriptions, connectionId, linkedCts.Token);
+                    await HandleMessageAsync(webSocket, messageJson, subscriptions, sendLock, connectionId, linkedCts.Token);
                 }
             }
 
@@ -167,15 +186,20 @@ public sealed class RealtimeController : ControllerBase
                     message = "Internal server error",
                     timestamp = DateTimeOffset.UtcNow
                 };
-                await SendJsonAsync(webSocket, errorResponse, CancellationToken.None);
+                await SendJsonAsync(webSocket, errorResponse, sendLock, CancellationToken.None);
             }
+        }
+        finally
+        {
+            sendLock.Dispose();
         }
     }
 
     private async Task HandleMessageAsync(
         WebSocket webSocket,
         string messageJson,
-        HashSet<string> subscriptions,
+        ConcurrentDictionary<string, byte> subscriptions,
+        SemaphoreSlim sendLock,
         string connectionId,
         CancellationToken cancellationToken)
     {
@@ -192,13 +216,13 @@ public sealed class RealtimeController : ControllerBase
             var requestId = root.TryGetProperty("requestId", out var reqIdEl) ? reqIdEl.GetString() : Guid.NewGuid().ToString();
 
             _logger.LogInformation("[{ConnectionId}] Parsed - Type: {Type}, Command: {Command}, RequestId: {RequestId}", 
-                connectionId, messageType ?? "null", command ?? "null", requestId);
+                connectionId, messageType ?? "null", command ?? "null", requestId ?? "null");
 
             // Handle ping/pong
             if (messageType == "ping" || command == "ping")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling PING", connectionId);
-                await HandlePingAsync(webSocket, requestId, cancellationToken);
+                await HandlePingAsync(webSocket, requestId ?? Guid.NewGuid().ToString(), sendLock, cancellationToken);
                 return;
             }
 
@@ -206,14 +230,14 @@ public sealed class RealtimeController : ControllerBase
             if (command == "subscribe")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling SUBSCRIBE", connectionId);
-                await HandleSubscribeAsync(webSocket, root, subscriptions, requestId, connectionId, cancellationToken);
+                await HandleSubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, cancellationToken);
                 return;
             }
 
             if (command == "unsubscribe")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling UNSUBSCRIBE", connectionId);
-                await HandleUnsubscribeAsync(webSocket, root, subscriptions, requestId, connectionId, cancellationToken);
+                await HandleUnsubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, cancellationToken);
                 return;
             }
 
@@ -221,27 +245,27 @@ public sealed class RealtimeController : ControllerBase
             if (IsCrudCommand(command))
             {
                 _logger.LogInformation("[{ConnectionId}] Handling CRUD command: {Command}", connectionId, command);
-                await HandleCrudAsync(webSocket, root, command, requestId, connectionId, cancellationToken);
+                await HandleCrudAsync(webSocket, root, command, requestId ?? Guid.NewGuid().ToString(), sendLock, connectionId, cancellationToken);
                 return;
             }
 
             // Unknown command
             _logger.LogWarning("[{ConnectionId}] Unknown command/type: {Command}/{Type}", connectionId, command, messageType);
-            await SendErrorAsync(webSocket, requestId, $"Unknown command: {command ?? messageType}", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, $"Unknown command: {command ?? messageType}", sendLock, cancellationToken);
         }
         catch (JsonException ex)
         {
             _logger.LogError(ex, "[{ConnectionId}] JSON parsing error. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
-            await SendErrorAsync(webSocket, null, "Invalid JSON format", cancellationToken);
+            await SendErrorAsync(webSocket, null, "Invalid JSON format", sendLock, cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{ConnectionId}] Error handling message. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
-            await SendErrorAsync(webSocket, null, "Error processing message", cancellationToken);
+            await SendErrorAsync(webSocket, null, "Error processing message", sendLock, cancellationToken);
         }
     }
 
-    private async Task HandlePingAsync(WebSocket webSocket, string requestId, CancellationToken cancellationToken)
+    private async Task HandlePingAsync(WebSocket webSocket, string requestId, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         var pong = new
         {
@@ -251,15 +275,16 @@ public sealed class RealtimeController : ControllerBase
             serverTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
-        await SendJsonAsync(webSocket, pong, cancellationToken);
+        await SendJsonAsync(webSocket, pong, sendLock, cancellationToken);
         _logger.LogInformation("Sent pong response for request {RequestId}", requestId);
     }
 
     private async Task HandleSubscribeAsync(
         WebSocket webSocket,
         JsonElement root,
-        HashSet<string> subscriptions,
         string requestId,
+        ConcurrentDictionary<string, byte> subscriptions,
+        SemaphoreSlim sendLock,
         string connectionId,
         CancellationToken cancellationToken)
     {
@@ -267,11 +292,11 @@ public sealed class RealtimeController : ControllerBase
 
         if (string.IsNullOrEmpty(resource))
         {
-            await SendErrorAsync(webSocket, requestId, "Resource name required for subscription", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, "Resource name required for subscription", sendLock, cancellationToken);
             return;
         }
 
-        subscriptions.Add(resource);
+        subscriptions.TryAdd(resource, 0);
         _logger.LogInformation("[{ConnectionId}] Subscribed to resource: {Resource}", connectionId, resource);
 
         var response = new
@@ -282,14 +307,15 @@ public sealed class RealtimeController : ControllerBase
             timestamp = DateTimeOffset.UtcNow
         };
 
-        await SendJsonAsync(webSocket, response, cancellationToken);
+        await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
     }
 
     private async Task HandleUnsubscribeAsync(
         WebSocket webSocket,
         JsonElement root,
-        HashSet<string> subscriptions,
         string requestId,
+        ConcurrentDictionary<string, byte> subscriptions,
+        SemaphoreSlim sendLock,
         string connectionId,
         CancellationToken cancellationToken)
     {
@@ -297,11 +323,11 @@ public sealed class RealtimeController : ControllerBase
 
         if (string.IsNullOrEmpty(resource))
         {
-            await SendErrorAsync(webSocket, requestId, "Resource name required for unsubscription", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, "Resource name required for unsubscription", sendLock, cancellationToken);
             return;
         }
 
-        subscriptions.Remove(resource);
+        subscriptions.TryRemove(resource, out _);
         _logger.LogInformation("[{ConnectionId}] Unsubscribed from resource: {Resource}", connectionId, resource);
 
         var response = new
@@ -312,7 +338,7 @@ public sealed class RealtimeController : ControllerBase
             timestamp = DateTimeOffset.UtcNow
         };
 
-        await SendJsonAsync(webSocket, response, cancellationToken);
+        await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
     }
 
     private async Task HandleCrudAsync(
@@ -320,6 +346,7 @@ public sealed class RealtimeController : ControllerBase
         JsonElement root,
         string? command,
         string requestId,
+        SemaphoreSlim sendLock,
         string connectionId,
         CancellationToken cancellationToken)
     {
@@ -327,13 +354,13 @@ public sealed class RealtimeController : ControllerBase
 
         if (string.IsNullOrEmpty(resource))
         {
-            await SendErrorAsync(webSocket, requestId, "Resource name required for CRUD operations", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, "Resource name required for CRUD operations", sendLock, cancellationToken);
             return;
         }
 
         if (!_resourceHandlers.TryGetValue(resource, out var handler))
         {
-            await SendErrorAsync(webSocket, requestId, $"Unknown resource: {resource}", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, $"Unknown resource: {resource}", sendLock, cancellationToken);
             return;
         }
 
@@ -343,7 +370,7 @@ public sealed class RealtimeController : ControllerBase
             var service = _serviceProvider.GetService(handler.ServiceType);
             if (service == null)
             {
-                await SendErrorAsync(webSocket, requestId, $"Service not available for resource: {resource}", cancellationToken);
+                await SendErrorAsync(webSocket, requestId, $"Service not available for resource: {resource}", sendLock, cancellationToken);
                 return;
             }
 
@@ -372,11 +399,12 @@ public sealed class RealtimeController : ControllerBase
                     if (pageSizeParam < 1) pageSizeParam = 100;
                     if (pageSizeParam > 500) pageSizeParam = 500; // Max 500 items per page
                     
-                    // Get total count with lightweight count-only call
-                    totalCount = await ExecuteCountAsync(service, resource);
+                    // Use paginatedResult.TotalCount instead of separate ExecuteCountAsync to avoid double materialization
+                    var paginatedResult = await ExecuteReadAllAsync(service, resource, pageParam, pageSizeParam);
+                    totalCount = paginatedResult.TotalCount;
                     
                     // Ensure totalPages is at least 1 to prevent page from being set to 0
-                    totalPages = Math.Max(1, (int)Math.Ceiling(totalCount.Value / (double)pageSizeParam));
+                    totalPages = Math.Max(1, (int)Math.Ceiling((double)totalCount / pageSizeParam));
                     
                     // Determine target page based on navigation command
                     int targetPage = pageParam;
@@ -399,8 +427,11 @@ public sealed class RealtimeController : ControllerBase
                             break;
                     }
                     
-                    // Fetch data once for the computed target page
-                    var paginatedResult = await ExecuteReadAllAsync(service, resource, targetPage, pageSizeParam);
+                    // If navigation changed the page, fetch again
+                    if (targetPage != pageParam)
+                    {
+                        paginatedResult = await ExecuteReadAllAsync(service, resource, targetPage, pageSizeParam);
+                    }
                     
                     result = paginatedResult.Data;
                     page = targetPage;
@@ -414,7 +445,7 @@ public sealed class RealtimeController : ControllerBase
                     var id = root.TryGetProperty("id", out var idEl) ? idEl.GetUInt32() : (uint?)null;
                     if (!id.HasValue)
                     {
-                        await SendErrorAsync(webSocket, requestId, "ID required for read operation", cancellationToken);
+                        await SendErrorAsync(webSocket, requestId, "ID required for read operation", sendLock, cancellationToken);
                         return;
                     }
                     result = await ExecuteReadAsync(service, resource, id.Value);
@@ -423,11 +454,11 @@ public sealed class RealtimeController : ControllerBase
                 case "create":
                 case "update":
                 case "delete":
-                    await SendErrorAsync(webSocket, requestId, $"{command} operations not yet implemented via universal stream", cancellationToken);
+                    await SendErrorAsync(webSocket, requestId, $"{command} operations not yet implemented via universal stream", sendLock, cancellationToken);
                     return;
 
                 default:
-                    await SendErrorAsync(webSocket, requestId, $"Unsupported CRUD command: {command}", cancellationToken);
+                    await SendErrorAsync(webSocket, requestId, $"Unsupported CRUD command: {command}", sendLock, cancellationToken);
                     return;
             }
 
@@ -452,13 +483,13 @@ public sealed class RealtimeController : ControllerBase
                 timestamp = DateTimeOffset.UtcNow
             };
 
-            await SendJsonAsync(webSocket, response, cancellationToken);
+            await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
             _logger.LogInformation("[{ConnectionId}] CRUD {Command} on {Resource} completed successfully", connectionId, command, resource);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{ConnectionId}] Error executing CRUD {Command} on {Resource}", connectionId, command, resource);
-            await SendErrorAsync(webSocket, requestId, "Failed to execute command", cancellationToken);
+            await SendErrorAsync(webSocket, requestId, "Failed to execute command", sendLock, cancellationToken);
         }
     }
 
@@ -559,7 +590,8 @@ public sealed class RealtimeController : ControllerBase
 
     private async Task BroadcastEventsAsync(
         WebSocket webSocket,
-        HashSet<string> subscriptions,
+        ConcurrentDictionary<string, byte> subscriptions,
+        SemaphoreSlim sendLock,
         string connectionId,
         CancellationToken cancellationToken)
     {
@@ -576,8 +608,8 @@ public sealed class RealtimeController : ControllerBase
             // Merge all event streams and broadcast to client
             await foreach (var evt in MergeEventStreams(eventStreams, cancellationToken))
             {
-                // Only send events for subscribed resources
-                if (subscriptions.Contains(evt.Resource))
+                // Only send events for subscribed resources (thread-safe check)
+                if (subscriptions.ContainsKey(evt.Resource))
                 {
                     var eventMessage = new
                     {
@@ -590,7 +622,7 @@ public sealed class RealtimeController : ControllerBase
 
                     if (webSocket.State == WebSocketState.Open)
                     {
-                        await SendJsonAsync(webSocket, eventMessage, cancellationToken);
+                        await SendJsonAsync(webSocket, eventMessage, sendLock, cancellationToken);
                         _logger.LogDebug("[{ConnectionId}] Broadcasted event {EventName} for {Resource}", connectionId, evt.EventName, evt.Resource);
                     }
                 }
@@ -608,7 +640,7 @@ public sealed class RealtimeController : ControllerBase
 
     private async IAsyncEnumerable<ApiDomainEvent> MergeEventStreams(
         List<IAsyncEnumerable<ApiDomainEvent>> streams,
-        CancellationToken cancellationToken)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var enumerators = streams.Select(s => s.GetAsyncEnumerator(cancellationToken)).ToList();
         var activeTasks = new Dictionary<IAsyncEnumerator<ApiDomainEvent>, Task<bool>>();
@@ -669,7 +701,7 @@ public sealed class RealtimeController : ControllerBase
         }
     }
 
-    private async Task SendJsonAsync(WebSocket webSocket, object data, CancellationToken cancellationToken)
+    private async Task SendJsonAsync(WebSocket webSocket, object data, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         if (webSocket.State != WebSocketState.Open)
         {
@@ -688,10 +720,19 @@ public sealed class RealtimeController : ControllerBase
         _logger.LogInformation(">>>> SENDING: {Json}", json);
         
         var bytes = Encoding.UTF8.GetBytes(json);
-        await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+        
+        await sendLock.WaitAsync(cancellationToken);
+        try
+        {
+            await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+        }
+        finally
+        {
+            sendLock.Release();
+        }
     }
 
-    private async Task SendErrorAsync(WebSocket webSocket, string? requestId, string message, CancellationToken cancellationToken)
+    private async Task SendErrorAsync(WebSocket webSocket, string? requestId, string message, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         var error = new
         {
@@ -701,7 +742,7 @@ public sealed class RealtimeController : ControllerBase
             timestamp = DateTimeOffset.UtcNow
         };
 
-        await SendJsonAsync(webSocket, error, cancellationToken);
+        await SendJsonAsync(webSocket, error, sendLock, cancellationToken);
     }
 
     private static bool IsCrudCommand(string? command)

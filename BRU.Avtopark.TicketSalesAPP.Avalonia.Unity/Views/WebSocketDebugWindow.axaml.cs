@@ -53,16 +53,6 @@ public partial class WebSocketDebugWindow : Window
                 System.Diagnostics.Debug.WriteLine($"Error during WebSocket disconnect: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
             }
         }, TaskContinuationOptions.OnlyOnFaulted);
-        
-        // Wait briefly to ensure disconnect completes
-        try
-        {
-            disconnectTask.Wait(TimeSpan.FromSeconds(2));
-        }
-        catch
-        {
-            // Ignore timeout or cancellation - window is closing anyway
-        }
     }
 
     private void EventLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

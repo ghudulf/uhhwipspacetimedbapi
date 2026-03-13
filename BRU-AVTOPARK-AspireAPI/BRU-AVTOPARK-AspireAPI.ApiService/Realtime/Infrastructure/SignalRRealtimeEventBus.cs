@@ -109,7 +109,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         var subscriberId = Guid.NewGuid();
         _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
 
-        _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", subscriberId, normalizedResource);
+        _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", 
+            subscriberId, SanitizeLogField(normalizedResource, 100));
 
         try
         {
@@ -158,14 +159,14 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
                 {
                     _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
-                        domainEvent.EventName,
-                        domainEvent.CorrelationId);
+                        SanitizeLogField(domainEvent.EventName, 100),
+                        SanitizeLogField(domainEvent.CorrelationId, 100));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
-                        domainEvent.EventName,
-                        domainEvent.CorrelationId);
+                        SanitizeLogField(domainEvent.EventName, 100),
+                        SanitizeLogField(domainEvent.CorrelationId, 100));
                 }
             }
         }
@@ -234,25 +235,33 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <summary>
     /// Disposes all active subscriptions and completes their channels.
     /// </summary>
+    private async Task DisposeAllSubscriptionsCoreAsync()
+    {
+        var subscriberCount = _subscribers.Count;
+        if (subscriberCount > 0)
+        {
+            _logger.LogInformation("[EventBus] Disposing {Count} active subscriptions", subscriberCount);
+            
+            foreach (var (subscriberId, subscriber) in _subscribers)
+            {
+                subscriber.Channel.Writer.TryComplete();
+                _logger.LogDebug("[EventBus] Completed channel for subscription: {SubscriberId}", subscriberId);
+            }
+            
+            _subscribers.Clear();
+            _logger.LogInformation("[EventBus] All subscriptions disposed");
+        }
+    }
+
+    /// <summary>
+    /// Disposes all active subscriptions with lock acquisition.
+    /// </summary>
     private async Task DisposeAllSubscriptionsAsync()
     {
         await _disposalLock.WaitAsync();
         try
         {
-            var subscriberCount = _subscribers.Count;
-            if (subscriberCount > 0)
-            {
-                _logger.LogInformation("[EventBus] Disposing {Count} active subscriptions", subscriberCount);
-                
-                foreach (var (subscriberId, subscriber) in _subscribers)
-                {
-                    subscriber.Channel.Writer.TryComplete();
-                    _logger.LogDebug("[EventBus] Completed channel for subscription: {SubscriberId}", subscriberId);
-                }
-                
-                _subscribers.Clear();
-                _logger.LogInformation("[EventBus] All subscriptions disposed");
-            }
+            await DisposeAllSubscriptionsCoreAsync();
         }
         finally
         {
@@ -313,8 +322,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             // Complete the event channel
             _eventChannel.Writer.TryComplete();
 
-            // Dispose all subscriptions
-            await DisposeAllSubscriptionsAsync();
+            // Dispose all subscriptions (call core method directly since we already hold the lock)
+            await DisposeAllSubscriptionsCoreAsync();
 
             // Clear recent events
             _recentEvents.Clear();

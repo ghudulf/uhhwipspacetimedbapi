@@ -215,7 +215,7 @@ public static class WebSocketEventStreamWriter
         }
 
         var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
-        logger.LogInformation("[WebSocketEventStreamWriter] <<<< RECEIVED RAW: {Json}", json);
+        logger.LogDebug("[WebSocketEventStreamWriter] <<<< RECEIVED RAW: {Json}", json);
 
         // Wrap JSON deserialization in try-catch to handle invalid JSON
         try
@@ -247,7 +247,7 @@ public static class WebSocketEventStreamWriter
     private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, ILogger logger, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        logger.LogInformation("[WebSocketEventStreamWriter] >>>> SENDING: {Json}", json);
+        logger.LogDebug("[WebSocketEventStreamWriter] >>>> SENDING: {Json}", json);
         
         var bytes = Encoding.UTF8.GetBytes(json);
 
