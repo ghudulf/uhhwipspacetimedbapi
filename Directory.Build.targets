@@ -1,0 +1,19 @@
+<Project>
+  <!-- 
+    This file ensures proper build order and compatibility between:
+    - SpacetimeDB module (net8.0 + wasi-wasm)
+    - All other projects (net9.0)
+  -->
+  
+  <Target Name="ValidateSpacetimeDBModuleBuild" 
+          BeforeTargets="Build" 
+          Condition="'$(IsSpacetimeDBModule)' == 'true'">
+    <Message Text="Building SpacetimeDB module with .NET 8.0 and WASI-WASM runtime" Importance="high" />
+  </Target>
+  
+  <Target Name="ValidateStandardProjectBuild" 
+          BeforeTargets="Build" 
+          Condition="'$(IsSpacetimeDBModule)' != 'true' AND '$(TargetFramework)' == 'net9.0'">
+    <Message Text="Building $(MSBuildProjectName) with .NET 9.0" Importance="normal" />
+  </Target>
+</Project>

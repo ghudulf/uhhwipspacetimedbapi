@@ -74,14 +74,15 @@ builder.Host.UseSerilog();
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 // Configure logging first
-builder.Services.AddLogging(builder =>
+builder.Services.AddLogging(loggingBuilder =>
 {
-    builder.ClearProviders();
-    builder.AddConsole();
-    builder.AddDebug();
-
-    builder.SetMinimumLevel(LogLevel.Debug);
-
+    loggingBuilder.ClearProviders();
+    loggingBuilder.AddConsole();
+    loggingBuilder.AddDebug();
+    loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+    
+    // Suppress Windows Event Log to avoid permission errors
+    loggingBuilder.AddFilter("Microsoft.Extensions.Logging.EventLog", LogLevel.None);
 });
 
 // Add services to the container.
