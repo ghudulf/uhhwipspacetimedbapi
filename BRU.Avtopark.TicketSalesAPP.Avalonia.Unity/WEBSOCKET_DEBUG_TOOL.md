@@ -2,7 +2,7 @@
 
 ## Overview
 
-The WebSocket Debug Tool is a comprehensive testing utility for validating WebSocket connections to the BRU Avtopark API. It was created to test the WebSocket functionality added in commit `2c7cec6`.
+The WebSocket Debug Tool is a comprehensive testing utility for validating WebSocket connections to the BRU Avtopark API. It was created to test the WebSocket functionality introduced in this review.
 
 ## Features
 
@@ -224,10 +224,7 @@ ws://[server]/api/realtime/stream
 
 ### Commit Reference
 
-This tool was created to test WebSocket functionality added in:
-
-- **Commit**: `2c7cec6`
-- **PR**: #4 - "Add realtime event bus (SignalR/WebSocket) with mutation event publishing"
+This tool was created to test WebSocket functionality added in the realtime event bus implementation.
 
 ### Files Modified/Added
 
@@ -262,7 +259,7 @@ For issues or questions:
 
 1. Check the event log for detailed error messages
 2. Review server logs for backend errors
-3. Verify WebSocket implementation in commit `2c7cec6`
+3. Verify WebSocket implementation in the realtime event bus
 4. Contact the development team
 
 ## License

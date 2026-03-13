@@ -199,11 +199,26 @@ namespace TicketSalesApp.Services.Implementations
                 // 3. It's automatically cleaned up after the operation completes
                 // 4. A proper solution requires SpacetimeDB schema changes to add a dedicated correlation field
                 // TODO: Remove this workaround when SpacetimeDB supports transient fields or add a dedicated CorrelationId column
+                
+                // Check for existing correlation marker and strip it to avoid collisions
+                var cleanedNotes = notes;
+                if (!string.IsNullOrEmpty(notes) && notes.Contains("[CORRELATION:"))
+                {
+                    // Strip existing correlation marker
+                    var startIdx = notes.IndexOf("[CORRELATION:");
+                    var endIdx = notes.IndexOf(']', startIdx);
+                    if (endIdx > startIdx)
+                    {
+                        cleanedNotes = notes.Remove(startIdx, endIdx - startIdx + 1).Trim();
+                        _logger.LogWarning("Stripped existing correlation marker from notes");
+                    }
+                }
+                
                 var correlationId = Guid.NewGuid();
                 var correlationTag = $"[CORRELATION:{correlationId}]";
-                var notesWithCorrelation = string.IsNullOrEmpty(notes) 
+                var notesWithCorrelation = string.IsNullOrEmpty(cleanedNotes) 
                     ? correlationTag 
-                    : $"{notes} {correlationTag}";
+                    : $"{cleanedNotes} {correlationTag}";
 
                 // Create TaskCompletionSource for this operation
                 var tcs = new TaskCompletionSource<uint?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -578,7 +593,7 @@ namespace TicketSalesApp.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving schedules for date: {Date}", DateTimeOffset.FromUnixTimeSeconds((long)date).ToString());
+                _logger.LogError(ex, "Error retrieving schedules for date: {Date}", DateTimeOffset.FromUnixTimeMilliseconds((long)date).ToString());
                 throw;
             }
         }

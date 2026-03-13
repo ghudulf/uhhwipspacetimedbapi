@@ -109,7 +109,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
         
         var sanitizedPath = LogSanitizer.SanitizeForLog(TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength));
-        var sanitizedUserAgent = TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
+        var sanitizedUserAgent = LogSanitizer.SanitizeForLog(TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength));
         
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

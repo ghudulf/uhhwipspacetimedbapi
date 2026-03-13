@@ -234,7 +234,7 @@ public static class WebSocketEventStreamWriter
             logger.LogError(ex, "[WebSocketEventStreamWriter] JSON parse error: {Message}", ex.Message);
             await webSocket.CloseAsync(
                 WebSocketCloseStatus.InvalidPayloadData,
-                $"Invalid JSON: {ex.Message}",
+                "Invalid JSON payload",
                 CancellationToken.None);
             return null;
         }

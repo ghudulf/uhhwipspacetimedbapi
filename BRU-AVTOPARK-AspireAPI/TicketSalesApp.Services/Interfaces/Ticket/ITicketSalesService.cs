@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using SpacetimeDB.Types;
 
 namespace TicketSalesApp.Services.Interfaces
 {
@@ -42,12 +43,26 @@ namespace TicketSalesApp.Services.Interfaces
 
     public interface ITicketSalesService
     {
+        // Read operations
+        Task<List<Sale>> GetAllSalesAsync();
+        Task<Sale?> GetSaleByIdAsync(uint saleId);
+        Task<List<Sale>> GetSalesByTicketIdAsync(uint ticketId);
+        Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
+        
+        // Create/Update/Delete operations
+        Task<uint?> CreateSaleAsync(uint ticketId, string paymentMethod, string paymentStatus, string? paymentReference = null, string? notes = null);
+        Task<bool> UpdateSaleAsync(uint saleId, string? paymentMethod = null, string? paymentStatus = null, string? paymentReference = null, string? notes = null);
+        Task<bool> DeleteSaleAsync(uint saleId);
+        
+        // Reporting operations
         Task<decimal> GetTotalIncomeAsync(int year, int month);
         Task<List<TransportStatistic>> GetTopTransportsAsync(int year, int month);
         Task<SalesReport> GetMonthlyReportAsync(int year, int month);
         Task<List<SalesReport>> GetYearlyReportAsync(int year);
         Task<List<RoutePerformance>> GetRoutePerformanceAsync(DateTime startDate, DateTime endDate);
         Task<List<TransportUtilization>> GetTransportUtilizationAsync(DateTime startDate, DateTime endDate);
+        
+        // Export operations
         Task<byte[]> ExportToExcelAsync(DateTime startDate, DateTime endDate);
         Task<byte[]> ExportToPdfAsync(DateTime startDate, DateTime endDate);
         Task<byte[]> ExportToCsvAsync(DateTime startDate, DateTime endDate);

@@ -299,6 +299,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 return;
             }
 
+            // Set stopping flag to fail-fast concurrent operations
+            _stopping = true;
+
             _logger.LogInformation("[EventBus] Disposing event bus");
 
             // Complete the event channel

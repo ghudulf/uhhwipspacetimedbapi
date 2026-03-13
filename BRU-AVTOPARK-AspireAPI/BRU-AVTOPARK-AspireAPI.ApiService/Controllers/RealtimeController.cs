@@ -10,12 +10,12 @@ using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
 using SpacetimeDB.Types;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers;
-
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = "FlexibleApiAccess")]
+[AllowAnonymous]
 public sealed class RealtimeController : BaseController
 {
     private readonly IRealtimeEventBus _eventBus;
@@ -49,8 +49,6 @@ public sealed class RealtimeController : BaseController
             { "routes", new ResourceHandler(typeof(IRouteService), "routes") },
             { "routeschedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") },
             { "route-schedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") }, // Alias
-            // NOTE: tickets and ticket-sales are advertised but read operations return null (SpacetimeDB direct access only)
-            // TODO: Implement ITicketService.GetAllTicketsAsync() and ITicketSalesService.GetAllSalesAsync() or remove from handlers
             { "tickets", new ResourceHandler(typeof(ITicketService), "tickets") },
             { "ticketsales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") },
             { "ticket-sales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") }, // Alias
@@ -354,26 +352,32 @@ public sealed class RealtimeController : BaseController
             return;
         }
 
-        // Normalize resource to lowercase for consistent event channel matching
+        // Normalize resource to lowercase for consistent handler lookup
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
-        // CRITICAL: Check permissions for resource subscription (same pattern as individual controllers)
-        // Subscribe requires "view" permission for the resource
-        if (!await HasResourcePermissionAsync(normalizedResource, "view", validatedClaims))
+        // Resolve to handler and get canonical resource identifier
+        if (!_resourceHandlers.TryGetValue(normalizedResource, out var handler))
         {
-            var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
-            _logger.LogWarning("[{ConnectionId}] User {UserId} denied subscription to resource: {Resource} (insufficient permissions)", 
-                connectionId, userId, resource);
-            await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to view {normalizedResource}", sendLock, cancellationToken);
+            _logger.LogWarning("[{ConnectionId}] Unknown resource requested for subscription: {Resource}", 
+                connectionId, resource);
+            await SendErrorAsync(webSocket, requestId, $"Unknown resource: {resource}", sendLock, cancellationToken);
             return;
         }
         
-        // Resolve to canonical event channel via handler lookup
-        string eventChannel = normalizedResource;
-        if (_resourceHandlers.TryGetValue(normalizedResource, out var handler))
+        var canonicalResource = handler.EventChannel;
+        
+        // CRITICAL: Check permissions using canonical resource identifier
+        // Subscribe requires "view" permission for the resource
+        if (!await HasResourcePermissionAsync(canonicalResource, "view", validatedClaims))
         {
-            eventChannel = handler.EventChannel;
+            var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
+            _logger.LogWarning("[{ConnectionId}] User {UserId} denied subscription to resource: {Resource} (insufficient permissions)", 
+                connectionId, userId, canonicalResource);
+            await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to view {canonicalResource}", sendLock, cancellationToken);
+            return;
         }
+        
+        var eventChannel = canonicalResource;
 
         subscriptions.TryAdd(eventChannel, 0);
         _logger.LogInformation("[{ConnectionId}] Subscribed to resource: {Resource} (channel: {EventChannel})", 
@@ -691,11 +695,6 @@ public sealed class RealtimeController : BaseController
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
-        if (normalizedResource is "tickets" or "ticket-sales" or "ticketsales")
-        {
-            throw new NotSupportedException($"Read operations for '{resource}' are not supported via WebSocket. Use SpacetimeDB direct access.");
-        }
-        
         object? allData = normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetAllBusesAsync(),
@@ -706,6 +705,8 @@ public sealed class RealtimeController : BaseController
             "roles" => await ((IRoleService)service).GetAllRolesAsync(),
             "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
+            "tickets" => await ((ITicketService)service).GetAllTicketsAsync(),
+            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).GetAllSalesAsync(),
             "users" => await ((IUserService)service).GetAllUsersAsync(),
             _ => null
         };
@@ -738,11 +739,6 @@ public sealed class RealtimeController : BaseController
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
-        if (normalizedResource is "tickets" or "ticket-sales" or "ticketsales")
-        {
-            throw new NotSupportedException($"Read operations for '{resource}' are not supported via WebSocket. Use SpacetimeDB direct access.");
-        }
-        
         return normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetBusByIdAsync(id),
@@ -753,6 +749,8 @@ public sealed class RealtimeController : BaseController
             "roles" => await ((IRoleService)service).GetRoleByIdAsync(id),
             "routes" => await ((IRouteService)service).GetRouteByIdAsync(id),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetScheduleByIdAsync(id),
+            "tickets" => await ((ITicketService)service).GetTicketByIdAsync(id),
+            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).GetSaleByIdAsync(id),
             "users" => await ((IUserService)service).GetUserByIdAsync(id),
             _ => null
         };
@@ -773,6 +771,7 @@ public sealed class RealtimeController : BaseController
             "routes" => await CreateRouteAsync((IRouteService)service, payload, validatedClaims),
             "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload, validatedClaims),
             "tickets" => await CreateTicketAsync((ITicketService)service, payload, validatedClaims),
+            "ticket-sales" or "ticketsales" => await CreateSaleAsync((ITicketSalesService)service, payload, validatedClaims),
             "users" => await CreateUserAsync((IUserService)service, payload, validatedClaims),
             _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
         };
@@ -793,6 +792,7 @@ public sealed class RealtimeController : BaseController
             "routes" => await UpdateRouteAsync((IRouteService)service, id, payload),
             "route-schedules" or "routeschedules" => await UpdateRouteScheduleAsync((IRouteScheduleService)service, id, payload),
             "tickets" => await UpdateTicketAsync((ITicketService)service, id, payload),
+            "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload),
             "users" => await UpdateUserAsync((IUserService)service, id, payload),
             _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
         };
@@ -815,6 +815,7 @@ public sealed class RealtimeController : BaseController
             "routes" => await ((IRouteService)service).DeleteRouteAsync(id),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).DeleteScheduleAsync(id),
             "tickets" => await ((ITicketService)service).DeleteTicketAsync(id),
+            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id),
             "users" => await ((IUserService)service).DeleteUserAsync(id),
             _ => throw new NotSupportedException($"Delete not supported for resource: {resource}")
         };
@@ -1135,6 +1136,31 @@ public sealed class RealtimeController : BaseController
         var updatedBy = payload.TryGetProperty("updatedBy", out var byEl) ? byEl.GetString() : null;
         
         return await service.UpdateTicketAsync(id, routeId, ticketPrice, seatNumber, paymentMethod, isActive, updatedAt, updatedBy);
+    }
+
+    private async Task<object?> CreateSaleAsync(ITicketSalesService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    {
+        var ticketId = payload.TryGetProperty("ticketId", out var ticketEl) ? ticketEl.GetUInt32() : 0u;
+        var paymentMethod = payload.TryGetProperty("paymentMethod", out var methodEl) ? methodEl.GetString() : null;
+        var paymentStatus = payload.TryGetProperty("paymentStatus", out var statusEl) ? statusEl.GetString() : null;
+        var paymentReference = payload.TryGetProperty("paymentReference", out var refEl) ? refEl.GetString() : null;
+        var notes = payload.TryGetProperty("notes", out var notesEl) ? notesEl.GetString() : null;
+        
+        if (ticketId == 0 || string.IsNullOrEmpty(paymentMethod) || string.IsNullOrEmpty(paymentStatus))
+            throw new ArgumentException("TicketId, paymentMethod, and paymentStatus are required");
+        
+        var saleId = await service.CreateSaleAsync(ticketId, paymentMethod, paymentStatus, paymentReference, notes);
+        return saleId.HasValue ? new { saleId = saleId.Value, ticketId, paymentMethod, paymentStatus } : null;
+    }
+
+    private async Task<bool> UpdateSaleAsync(ITicketSalesService service, uint id, JsonElement payload)
+    {
+        var paymentMethod = payload.TryGetProperty("paymentMethod", out var methodEl) ? methodEl.GetString() : null;
+        var paymentStatus = payload.TryGetProperty("paymentStatus", out var statusEl) ? statusEl.GetString() : null;
+        var paymentReference = payload.TryGetProperty("paymentReference", out var refEl) ? refEl.GetString() : null;
+        var notes = payload.TryGetProperty("notes", out var notesEl) ? notesEl.GetString() : null;
+        
+        return await service.UpdateSaleAsync(id, paymentMethod, paymentStatus, paymentReference, notes);
     }
 
 
@@ -1482,6 +1508,9 @@ public sealed class RealtimeController : BaseController
                     $"\"{key}\":\"{redactedValue}\"",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             }
+            
+            // Strip control characters to prevent log injection
+            sanitized = LogSanitizer.SanitizeForLog(sanitized);
             
             // Apply truncation
             if (sanitized.Length > maxLength)

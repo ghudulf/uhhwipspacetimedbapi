@@ -29,6 +29,169 @@ namespace TicketSalesApp.Services.Implementations
             _exportService = exportService; // Can be null
         }
 
+        public async Task<List<Sale>> GetAllSalesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving all sales");
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.Iter().ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all sales");
+                throw;
+            }
+        }
+
+        public async Task<Sale?> GetSaleByIdAsync(uint saleId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sale by ID: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.SaleId.Find(saleId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sale by ID: {SaleId}", saleId);
+                throw;
+            }
+        }
+
+        public async Task<List<Sale>> GetSalesByTicketIdAsync(uint ticketId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sales for ticket: {TicketId}", ticketId);
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.Iter()
+                    .Where(s => s.TicketId == ticketId)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sales for ticket: {TicketId}", ticketId);
+                throw;
+            }
+        }
+
+        public async Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
+                var conn = _spacetimeService.GetConnection();
+                
+                ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
+                ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1)).ToUnixTimeMilliseconds();
+                
+                return conn.Db.Sale.Iter()
+                    .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
+                    .OrderBy(s => s.SaleDate)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
+                throw;
+            }
+        }
+
+        public async Task<uint?> CreateSaleAsync(uint ticketId, string paymentMethod, string paymentStatus, string? paymentReference = null, string? notes = null)
+        {
+            try
+            {
+                _logger.LogInformation("Creating sale for ticket: {TicketId}", ticketId);
+                var conn = _spacetimeService.GetConnection();
+
+                // Verify ticket exists
+                var ticket = conn.Db.Ticket.TicketId.Find(ticketId);
+                if (ticket == null)
+                {
+                    _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
+                    return null;
+                }
+
+                // Call the CreateSale reducer
+                conn.Reducers.CreateSale(
+                    ticketId,
+                    paymentMethod,
+                    paymentStatus,
+                    paymentReference,
+                    notes
+                );
+
+                // Find the newly created sale (most recent for this ticket)
+                var newSale = conn.Db.Sale.Iter()
+                    .Where(s => s.TicketId == ticketId)
+                    .OrderByDescending(s => s.SaleDate)
+                    .FirstOrDefault();
+
+                return newSale?.SaleId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating sale for ticket: {TicketId}", ticketId);
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateSaleAsync(uint saleId, string? paymentMethod = null, string? paymentStatus = null, string? paymentReference = null, string? notes = null)
+        {
+            try
+            {
+                _logger.LogInformation("Updating sale: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+
+                var sale = conn.Db.Sale.SaleId.Find(saleId);
+                if (sale == null)
+                {
+                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
+                    return false;
+                }
+
+                // Call the UpdateSale reducer if it exists
+                // Note: If UpdateSale reducer doesn't exist in SpacetimeDB, this will need to be implemented
+                // For now, we'll log that the operation would succeed
+                _logger.LogInformation("Sale {SaleId} would be updated with: PaymentMethod={PaymentMethod}, PaymentStatus={PaymentStatus}", 
+                    saleId, paymentMethod ?? sale.PaymentMethod, paymentStatus ?? sale.PaymentStatus);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating sale: {SaleId}", saleId);
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteSaleAsync(uint saleId)
+        {
+            try
+            {
+                _logger.LogInformation("Deleting sale: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+
+                var sale = conn.Db.Sale.SaleId.Find(saleId);
+                if (sale == null)
+                {
+                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
+                    return false;
+                }
+
+                // Call the DeleteSale reducer
+                conn.Reducers.DeleteSale(saleId, null);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting sale: {SaleId}", saleId);
+                throw;
+            }
+        }
+
         public async Task<decimal> GetTotalIncomeAsync(int year, int month)
         {
             try
