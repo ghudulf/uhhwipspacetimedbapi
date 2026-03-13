@@ -162,7 +162,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 {
                     var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
                     await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                    await _hubContext.Clients.Group($"resource:{LogSanitizer.SanitizeLogField(normalizedResource, 100)}")
+                    await _hubContext.Clients.Group($"resource:{normalizedResource}")
                         .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
@@ -287,12 +287,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     public async ValueTask DisposeAsync()
     {
         // Use Interlocked.CompareExchange to ensure only one thread disposes
-        var disposedValue = _disposed;
-        if (Interlocked.CompareExchange(ref disposedValue, 1, 0) == 1)
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
         {
             return;
         }
-        _disposed = disposedValue;
 
         await _disposalLock.WaitAsync();
         try

@@ -80,6 +80,12 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
+                // Validate date range
+                if (endDate < startDate)
+                {
+                    throw new ArgumentException($"End date ({endDate}) must be greater than or equal to start date ({startDate})", nameof(endDate));
+                }
+
                 _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
                 var conn = _spacetimeService.GetConnection();
                 
@@ -113,36 +119,41 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
-                // Use correlation token to deterministically identify the created sale
-                var correlationGuid = Guid.NewGuid();
-                var correlationTag = $"[CORRELATION:{correlationGuid}]";
-                var notesWithCorrelation = string.IsNullOrEmpty(saleNotes)
-                    ? correlationTag
-                    : $"{saleNotes} {correlationTag}";
+                // Store pre-call count for out-of-band correlation
+                var preCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
+                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-                // Call the CreateSale reducer with actual parameters
+                // Call the CreateSale reducer with actual parameters (no correlation in notes)
                 conn.Reducers.CreateSale(
                     ticketId,
                     buyerName,
                     buyerPhone,
                     saleLocation,
-                    notesWithCorrelation
+                    saleNotes
                 );
 
-                // Flush pending reducer responses to avoid race condition
+                // Flush pending reducer responses
                 conn.FrameTick();
 
-                // Find the newly created sale by correlation token
+                // Find the newly created sale using out-of-band correlation:
+                // - Must be for the same ticketId
+                // - Must have been created after our call (SaleDate >= preCallTimestamp)
+                // - Should be the most recent one
                 var newSale = conn.Db.Sale.Iter()
-                    .Where(s => s.TicketId == ticketId &&
-                               s.SaleNotes != null &&
-                               s.SaleNotes.Contains($"[CORRELATION:{correlationGuid}]"))
+                    .Where(s => s.TicketId == ticketId && s.SaleDate >= (ulong)preCallTimestamp)
                     .OrderByDescending(s => s.SaleDate)
                     .FirstOrDefault();
 
-                if (newSale != null)
+                // Verify we got a new sale (count increased)
+                var postCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
+                if (newSale != null && postCallCount > preCallCount)
                 {
                     _logger.LogInformation("Successfully created sale with ID: {SaleId}", newSale.SaleId);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not reliably identify created sale for ticket: {TicketId}", ticketId);
+                    return null;
                 }
 
                 return newSale?.SaleId;
@@ -169,10 +180,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // UpdateSale reducer is not yet implemented in SpacetimeDB schema
-                // Use delete+create workaround pattern with correlation tracking
-                _logger.LogInformation("Using delete+create workaround for sale update: {SaleId}", saleId);
+                // Use create+delete workaround pattern (create first to avoid data loss)
+                _logger.LogInformation("Using create+delete workaround for sale update: {SaleId}", saleId);
 
-                // Strip any existing correlation marker from notes before processing
+                // Clean notes (no correlation tokens)
                 var cleanedNotes = saleNotes ?? sale.SaleNotes;
                 if (!string.IsNullOrEmpty(cleanedNotes) && cleanedNotes.Contains("[CORRELATION:"))
                 {
@@ -185,63 +196,47 @@ namespace TicketSalesApp.Services.Implementations
                     }
                 }
 
-                // Generate correlation token for tracking the new sale
-                var correlationGuid = Guid.NewGuid();
-                var correlationTag = $"[CORRELATION:{correlationGuid}]";
-                var notesWithCorrelation = string.IsNullOrEmpty(cleanedNotes)
-                    ? correlationTag
-                    : $"{cleanedNotes} {correlationTag}";
+                // Store pre-call timestamp for correlation
+                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-                // Delete the existing sale
-                conn.Reducers.DeleteSale(saleId, null);
-                conn.FrameTick();
-
-                // Create a new sale with updated values and correlation token
+                // Create new sale FIRST with updated values (no correlation in notes)
                 conn.Reducers.CreateSale(
                     sale.TicketId,
                     buyerName ?? sale.TicketSoldToUser,
                     buyerPhone ?? sale.TicketSoldToUserPhone,
                     saleLocation ?? sale.SaleLocation,
-                    notesWithCorrelation
+                    cleanedNotes
                 );
                 conn.FrameTick();
 
-                // Find the newly created sale by correlation token
-                var updatedSale = conn.Db.Sale.Iter()
+                // Find the newly created sale using timestamp
+                var newSale = conn.Db.Sale.Iter()
                     .Where(s => s.TicketId == sale.TicketId &&
-                               s.SaleNotes != null &&
-                               s.SaleNotes.Contains($"[CORRELATION:{correlationGuid}]"))
+                               s.SaleDate >= (ulong)preCallTimestamp &&
+                               s.SaleId != saleId)
                     .OrderByDescending(s => s.SaleDate)
                     .FirstOrDefault();
 
-                if (updatedSale == null)
+                if (newSale == null)
                 {
-                    _logger.LogError("Failed to find updated sale after delete+create for original SaleId: {SaleId}", saleId);
+                    _logger.LogError("Failed to create new sale during update for original SaleId: {SaleId}", saleId);
                     return false;
                 }
 
-                _logger.LogInformation("Sale updated via delete+create: old SaleId={OldSaleId}, new SaleId={NewSaleId}", saleId, updatedSale.SaleId);
+                _logger.LogInformation("Created new sale {NewSaleId}, now deleting old sale {OldSaleId}", newSale.SaleId, saleId);
 
-                // Clean up correlation marker from the new sale's notes
-                if (!string.IsNullOrEmpty(updatedSale.SaleNotes) && updatedSale.SaleNotes.Contains($"[CORRELATION:{correlationGuid}]"))
+                // Now delete the old sale (data is safe in new sale)
+                conn.Reducers.DeleteSale(saleId, null);
+                conn.FrameTick();
+
+                // Verify deletion
+                var oldSaleStillExists = conn.Db.Sale.SaleId.Find(saleId);
+                if (oldSaleStillExists != null)
                 {
-                    _logger.LogDebug("Cleaning up correlation marker from sale {SaleId} notes", updatedSale.SaleId);
-                    
-                    // Delete and recreate one more time to remove the correlation marker
-                    conn.Reducers.DeleteSale(updatedSale.SaleId, null);
-                    conn.FrameTick();
-
-                    conn.Reducers.CreateSale(
-                        updatedSale.TicketId,
-                        updatedSale.TicketSoldToUser,
-                        updatedSale.TicketSoldToUserPhone,
-                        updatedSale.SaleLocation,
-                        cleanedNotes // Use original cleaned notes without correlation marker
-                    );
-                    conn.FrameTick();
-
-                    _logger.LogDebug("Correlation marker cleaned up from sale");
+                    _logger.LogWarning("Old sale {SaleId} still exists after delete attempt", saleId);
                 }
+
+                _logger.LogInformation("Sale updated via create+delete: old SaleId={OldSaleId}, new SaleId={NewSaleId}", saleId, newSale.SaleId);
 
                 return true;
             }
@@ -268,6 +263,17 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Call the DeleteSale reducer
                 conn.Reducers.DeleteSale(saleId, null);
+
+                // Wait for confirmation using FrameTick
+                conn.FrameTick();
+
+                // Verify deletion
+                var deletedSale = conn.Db.Sale.SaleId.Find(saleId);
+                if (deletedSale != null)
+                {
+                    _logger.LogWarning("Sale {SaleId} still exists after delete attempt", saleId);
+                    return false;
+                }
 
                 return true;
             }

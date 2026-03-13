@@ -3005,138 +3005,80 @@ import { node } from '@elysiajs/node'
 
 // Custom SpacetimeDB adapter for oidc-provider
 // This adapter connects Elysia DIRECTLY to SpacetimeDB for auth data storage
-import { SpacetimeDBClient } from '@clockworklabs/spacetimedb-sdk'
+import { DbConnection } from 'spacetimedb'
 
 class SpacetimeDBAdapter {
-  private spacetimeDB: SpacetimeDBClient
-  private useCSharpProxyForMigration = false // Set to true ONLY during migration
+  private spacetimeDB: DbConnection
 
   constructor(private name: string) {
-    // PRODUCTION: Direct SpacetimeDB connection
-    this.spacetimeDB = new SpacetimeDBClient({
-      host: process.env.SPACETIMEDB_HOST || 'localhost:3000',
-      name_or_address: process.env.SPACETIMEDB_MODULE || 'bru-avtopark',
-      auth_token: process.env.SPACETIMEDB_TOKEN
-    })
+    // PRODUCTION: Direct SpacetimeDB connection using new builder pattern
+    this.spacetimeDB = DbConnection.builder()
+      .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+      .withModuleName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+      .withToken(process.env.SPACETIMEDB_TOKEN)
+      .withLifecycleCallbacks({
+        onConnect: () => console.log('Connected to SpacetimeDB'),
+        onDisconnect: () => console.log('Disconnected from SpacetimeDB')
+      })
+      .build()
   }
 
   async upsert(id: string, payload: any, expiresIn: number) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      await fetch('http://csharp-backend:5000/api/oidc/store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: this.name,
-          id,
-          payload,
-          expiresAt: Date.now() + (expiresIn * 1000)
-        })
-      })
-    } else {
-      // PRODUCTION: Direct SpacetimeDB reducer call
-      await this.spacetimeDB.call('store_oidc_token', {
-        token_type: this.name,
-        token_id: id,
-        payload: JSON.stringify(payload),
-        expires_at: BigInt(Date.now() + (expiresIn * 1000))
-      })
-    }
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.store_oidc_token(
+      this.name,
+      id,
+      JSON.stringify(payload),
+      BigInt(Date.now() + (expiresIn * 1000))
+    )
   }
 
   async find(id: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      const response = await fetch(`http://csharp-backend:5000/api/oidc/find/${this.name}/${id}`)
-      if (!response.ok) return undefined
-      return await response.json()
-    } else {
-      // PRODUCTION: Direct SpacetimeDB table query
-      const tokens = this.spacetimeDB.db.OpenIddictSpacetimeToken.filter(
-        token => token.TokenType === this.name && token.TokenId === id
-      )
-      if (tokens.length === 0) return undefined
-      return JSON.parse(tokens[0].Payload)
-    }
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => token.TokenType === this.name && token.TokenId === id)
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
   }
 
   async findByUserCode(userCode: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUserCode/${userCode}`)
-      if (!response.ok) return undefined
-      return await response.json()
-    } else {
-      // PRODUCTION: Direct SpacetimeDB table query
-      const tokens = this.spacetimeDB.db.OpenIddictSpacetimeToken.filter(
-        token => {
-          const payload = JSON.parse(token.Payload)
-          return payload.userCode === userCode
-        }
-      )
-      if (tokens.length === 0) return undefined
-      return JSON.parse(tokens[0].Payload)
-    }
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => {
+        const payload = JSON.parse(token.Payload)
+        return payload.userCode === userCode
+      })
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
   }
 
   async findByUid(uid: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUid/${this.name}/${uid}`)
-      if (!response.ok) return undefined
-      return await response.json()
-    } else {
-      // PRODUCTION: Direct SpacetimeDB table query
-      const tokens = this.spacetimeDB.db.OpenIddictSpacetimeToken.filter(
-        token => token.TokenType === this.name && token.Uid === uid
-      )
-      if (tokens.length === 0) return undefined
-      return JSON.parse(tokens[0].Payload)
-    }
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => token.TokenType === this.name && token.Uid === uid)
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
   }
 
   async destroy(id: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      await fetch(`http://csharp-backend:5000/api/oidc/destroy/${this.name}/${id}`, {
-        method: 'DELETE'
-      })
-    } else {
-      // PRODUCTION: Direct SpacetimeDB reducer call
-      await this.spacetimeDB.call('delete_oidc_token', {
-        token_type: this.name,
-        token_id: id
-      })
-    }
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.delete_oidc_token(
+      this.name,
+      id
+    )
   }
 
   async revokeByGrantId(grantId: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      await fetch(`http://csharp-backend:5000/api/oidc/revokeByGrantId/${grantId}`, {
-        method: 'DELETE'
-      })
-    } else {
-      // PRODUCTION: Direct SpacetimeDB reducer call
-      await this.spacetimeDB.call('revoke_oidc_tokens_by_grant', {
-        grant_id: grantId
-      })
-    }
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.revoke_oidc_tokens_by_grant(grantId)
   }
 
   async consume(id: string) {
-    if (this.useCSharpProxyForMigration) {
-      // TEMPORARY: Proxy to C# backend during migration ONLY
-      await fetch(`http://csharp-backend:5000/api/oidc/consume/${this.name}/${id}`, {
-        method: 'POST'
-      })
-    } else {
-      // PRODUCTION: Direct SpacetimeDB reducer call
-      await this.spacetimeDB.call('consume_oidc_token', {
-        token_type: this.name,
-        token_id: id
-      })
-    }
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.consume_oidc_token(
+      this.name,
+      id
+    )
   }
 }
 
@@ -3176,13 +3118,14 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
   },
   findAccount: async (ctx, id) => {
     // PRODUCTION: Fetch user directly from SpacetimeDB
-    const spacetimeDB = new SpacetimeDBClient({
-      host: process.env.SPACETIMEDB_HOST || 'localhost:3000',
-      name_or_address: 'bru-avtopark',
-      auth_token: process.env.SPACETIMEDB_TOKEN
-    })
+    const spacetimeDB = DbConnection.builder()
+      .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+      .withModuleName('bru-avtopark')
+      .withToken(process.env.SPACETIMEDB_TOKEN)
+      .build()
 
-    const users = spacetimeDB.db.UserProfile.filter(user => user.UserId === parseInt(id))
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(user => user.UserId === parseInt(id))
     if (users.length === 0) return undefined
 
     const user = users[0]

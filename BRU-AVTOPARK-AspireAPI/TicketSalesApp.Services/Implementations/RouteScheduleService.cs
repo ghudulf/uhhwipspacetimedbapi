@@ -228,13 +228,13 @@ namespace TicketSalesApp.Services.Implementations
                 var originalCleanedNotes = cleanedNotes;
 
                 // Set up event handler to capture the created schedule ID
-                void OnScheduleCreated(ReducerEventContext ctx, uint routeIdParam, ulong departureTimeParam, 
-                    double priceParam, uint availableSeatsParam, List<string>? daysOfWeekParam, 
-                    string? startPointParam, string? endPointParam, List<string>? routeStopsParam, 
-                    ulong? arrivalTimeParam, uint? stopDurationMinutesParam, bool? isRecurringParam, 
+                async void OnScheduleCreated(ReducerEventContext ctx, uint routeIdParam, ulong departureTimeParam,
+                    double priceParam, uint availableSeatsParam, List<string>? daysOfWeekParam,
+                    string? startPointParam, string? endPointParam, List<string>? routeStopsParam,
+                    ulong? arrivalTimeParam, uint? stopDurationMinutesParam, bool? isRecurringParam,
                     List<string>? estimatedStopTimesParam, List<double>? stopDistancesParam, string? notesParam)
                 {
-                    _handlerLock.WaitAsync().GetAwaiter().GetResult();
+                    await _handlerLock.WaitAsync();
                     try
                     {
                         // Check if reducer succeeded
@@ -380,8 +380,7 @@ namespace TicketSalesApp.Services.Implementations
                     // Wait for reducer to complete with explicit timeout
                     try
                     {
-                        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                        return await tcs.Task;
+                        return await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     }
                     catch (TimeoutException)
                     {

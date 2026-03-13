@@ -48,6 +48,9 @@ public partial class MainWindow : Window
     private Button? _logoutAndExitButton;
     private Button? _helpButton;
 
+    // WebSocket debug window singleton
+    private WebSocketDebugWindow? _webSocketDebugWindow;
+
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
@@ -609,7 +612,15 @@ public partial class MainWindow : Window
 
     private void OpenWebSocketDebug_Click(object? sender, RoutedEventArgs e)
     {
-        var debugWindow = new WebSocketDebugWindow();
-        debugWindow.Show();
+        // Reuse existing window if it's still open
+        if (_webSocketDebugWindow == null || !_webSocketDebugWindow.IsVisible)
+        {
+            _webSocketDebugWindow = new WebSocketDebugWindow();
+            _webSocketDebugWindow.Owner = this;
+            _webSocketDebugWindow.Closed += (s, args) => _webSocketDebugWindow = null;
+        }
+
+        _webSocketDebugWindow.Show();
+        _webSocketDebugWindow.Activate();
     }
 }

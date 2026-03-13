@@ -265,10 +265,16 @@ public sealed class RealtimeController : BaseController
             using var doc = JsonDocument.Parse(messageJson);
             var root = doc.RootElement;
 
-            // Extract message type/command
-            var messageType = root.TryGetProperty("type", out var typeEl) ? typeEl.GetString() : null;
-            var command = root.TryGetProperty("command", out var cmdEl) ? cmdEl.GetString()?.ToLowerInvariant() : null;
-            var requestId = root.TryGetProperty("requestId", out var reqIdEl) ? reqIdEl.GetString() : Guid.NewGuid().ToString();
+            // Extract message type/command (case-insensitive property search)
+            var messageType = root.EnumerateObject()
+                .FirstOrDefault(p => p.Name.Equals("type", StringComparison.OrdinalIgnoreCase))
+                .Value.GetString();
+            var command = root.EnumerateObject()
+                .FirstOrDefault(p => p.Name.Equals("command", StringComparison.OrdinalIgnoreCase))
+                .Value.GetString()?.ToLowerInvariant();
+            var requestId = root.EnumerateObject()
+                .FirstOrDefault(p => p.Name.Equals("requestId", StringComparison.OrdinalIgnoreCase))
+                .Value.GetString() ?? Guid.NewGuid().ToString();
 
             _logger.LogInformation("[{ConnectionId}] Parsed - Type: {Type}, Command: {Command}, RequestId: {RequestId}", 
                 connectionId, messageType ?? "null", command ?? "null", requestId ?? "null");
@@ -518,7 +524,7 @@ public sealed class RealtimeController : BaseController
                 "goto_page" => "view",
                 "read" => "view",
                 "create" => "create",
-                "update" => "edit",
+                "update" => "update",
                 "delete" => "delete",
                 _ => "view" // Default to view for unknown commands
             };
@@ -1173,12 +1179,13 @@ public sealed class RealtimeController : BaseController
         CancellationToken cancellationToken)
     {
         var activeEnumerators = new ConcurrentDictionary<string, IAsyncEnumerator<ApiDomainEvent>>();
+        var pendingMoves = new ConcurrentDictionary<string, Task<bool>>();
         var subscriptionLock = new SemaphoreSlim(1, 1);
-        
+
         try
         {
             var previousSubscriptions = new HashSet<string>();
-            
+
             while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
             {
                 var currentSubscriptions = new HashSet<string>(subscriptions.Keys);
@@ -1233,29 +1240,41 @@ public sealed class RealtimeController : BaseController
                 if (activeEnumerators.Any())
                 {
                     var activeTasks = new Dictionary<string, Task<bool>>();
-                    
+
                     foreach (var kvp in activeEnumerators)
                     {
-                        activeTasks[kvp.Key] = kvp.Value.MoveNextAsync().AsTask();
+                        // Only start new MoveNextAsync if no pending task exists for this key
+                        if (!pendingMoves.TryGetValue(kvp.Key, out var pendingTask) || pendingTask.IsCompleted)
+                        {
+                            var task = kvp.Value.MoveNextAsync().AsTask();
+                            activeTasks[kvp.Key] = task;
+                            pendingMoves[kvp.Key] = task;
+                        }
+                        else
+                        {
+                            activeTasks[kvp.Key] = pendingTask;
+                        }
                     }
-                    
+
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
                     var timeoutTask = Task.Delay(Timeout.Infinite, timeoutCts.Token);
-                    
+
                     var allTasks = activeTasks.Values.Append(timeoutTask).ToArray();
                     var completedTask = await Task.WhenAny(allTasks);
-                    
+
                     if (completedTask == timeoutTask)
                     {
                         continue;
                     }
-                    
+
                     var completedChannel = activeTasks.FirstOrDefault(kvp => kvp.Value == completedTask).Key;
                     if (completedChannel != null && activeEnumerators.TryGetValue(completedChannel, out var enumerator))
                     {
                         try
                         {
                             var hasNext = await (Task<bool>)completedTask;
+                            // Remove completed task from pending moves
+                            pendingMoves.TryRemove(completedChannel, out _);
                             if (hasNext)
                             {
                                 var evt = enumerator.Current;
