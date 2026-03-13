@@ -153,8 +153,15 @@ public partial class WebSocketDebugViewModel : ObservableObject
                     return;
                 }
                 accessToken = tokens.AccessToken;
-                AccessToken = accessToken; // Normalize to non-null
             }
+            
+            // Normalize token: remove "Bearer " prefix if present (case-insensitive)
+            accessToken = accessToken.Trim();
+            if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                accessToken = accessToken.Substring(7).Trim();
+            }
+            AccessToken = accessToken; // Store normalized token
 
             _cts = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
@@ -379,34 +386,62 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 // Add to pending requests for correlation
                 _pendingRequests[requestId] = result;
 
-                await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
-                AddLog($"→ [{result.ControllerName}] Sent read_all via universal stream (RequestId: {requestId})");
-
-                result.Status = TestStatus.Testing;
-                result.Message = "Request sent via universal stream (awaiting response)";
-
-                // Wait for response with timeout using TaskCompletionSource
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
-                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-                
-                if (completedTask == tcs.Task)
+                try
                 {
-                    // Response received and processed
-                    AddLog($"✓ [{result.ControllerName}] Response received and processed");
-                }
-                else
-                {
-                    // Timeout
-                    if (_pendingRequests.TryRemove(requestId, out _))
+                    await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
+                    AddLog($"→ [{result.ControllerName}] Sent read_all via universal stream (RequestId: {requestId})");
+
+                    result.Status = TestStatus.Testing;
+                    result.Message = "Request sent via universal stream (awaiting response)";
+
+                    // Wait for response with timeout using TaskCompletionSource
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                    var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+                    
+                    if (completedTask == tcs.Task)
                     {
-                        result.Status = TestStatus.Failed;
-                        result.Message = "Timeout waiting for response";
-                        AddLog($"✗ [{result.ControllerName}] Timeout waiting for universal stream response (RequestId: {requestId})");
+                        // Check task outcome explicitly
+                        if (tcs.Task.IsCanceled)
+                        {
+                            AddLog($"⚠ [{result.ControllerName}] Request was canceled");
+                            result.Status = TestStatus.Failed;
+                            result.Message = "Request canceled";
+                        }
+                        else if (tcs.Task.IsFaulted)
+                        {
+                            AddLog($"✗ [{result.ControllerName}] Request faulted: {tcs.Task.Exception?.GetBaseException().Message}");
+                            result.Status = TestStatus.Failed;
+                            result.Message = $"Request failed: {tcs.Task.Exception?.GetBaseException().Message}";
+                        }
+                        else if (tcs.Task.IsCompletedSuccessfully)
+                        {
+                            // Response received and processed
+                            AddLog($"✓ [{result.ControllerName}] Response received and processed");
+                        }
+                    }
+                    else
+                    {
+                        // Timeout
+                        if (_pendingRequests.TryRemove(requestId, out _))
+                        {
+                            result.Status = TestStatus.Failed;
+                            result.Message = "Timeout waiting for response";
+                            AddLog($"✗ [{result.ControllerName}] Timeout waiting for universal stream response (RequestId: {requestId})");
+                        }
                     }
                 }
-                
-                // Cleanup
-                _pendingCompletions.TryRemove(requestId, out _);
+                catch (Exception ex)
+                {
+                    AddLog($"✗ [{result.ControllerName}] SendAsync failed: {ex.Message}");
+                    result.Status = TestStatus.Failed;
+                    result.Message = $"Send failed: {ex.Message}";
+                }
+                finally
+                {
+                    // Cleanup - ensure both dictionaries are cleaned up
+                    _pendingCompletions.TryRemove(requestId, out _);
+                    _pendingRequests.TryRemove(requestId, out _);
+                }
             }
             else
             {
@@ -555,37 +590,46 @@ public partial class WebSocketDebugViewModel : ObservableObject
             AddLog($"← [{result.ControllerName}] Response: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}...");
 
             // Parse response to check success
-            using var doc = JsonDocument.Parse(responseJson);
-            var success = false;
-            
-            if (doc.RootElement.TryGetProperty("operation", out var opElement) && 
-                opElement.GetString() == "read_all")
+            try
             {
-                success = true;
-            }
-            else if (doc.RootElement.ValueKind == JsonValueKind.Object)
-            {
-                // Check for data properties that indicate successful read_all
-                var hasData = doc.RootElement.EnumerateObject().Any(p => 
-                    p.Name.EndsWith("s") || // buses, employees, etc.
-                    p.Name == "schedules" ||
-                    p.Name == "sales" ||
-                    p.Name == "records");
-                success = hasData;
-            }
+                using var doc = JsonDocument.Parse(responseJson);
+                var success = false;
+                
+                if (doc.RootElement.TryGetProperty("operation", out var opElement) && 
+                    opElement.GetString() == "read_all")
+                {
+                    success = true;
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    // Check for data properties that indicate successful read_all
+                    var hasData = doc.RootElement.EnumerateObject().Any(p => 
+                        p.Name.EndsWith("s") || // buses, employees, etc.
+                        p.Name == "schedules" ||
+                        p.Name == "sales" ||
+                        p.Name == "records");
+                    success = hasData;
+                }
 
-            if (success)
-            {
-                result.Status = TestStatus.Passed;
-                result.Message = "✓ read_all command successful";
-                result.LastTested = DateTime.Now;
-                AddLog($"✓ [{result.ControllerName}] read_all command successful");
+                if (success)
+                {
+                    result.Status = TestStatus.Passed;
+                    result.Message = "✓ read_all command successful";
+                    result.LastTested = DateTime.Now;
+                    AddLog($"✓ [{result.ControllerName}] read_all command successful");
+                }
+                else
+                {
+                    result.Status = TestStatus.Failed;
+                    result.Message = "read_all command failed or returned unexpected format";
+                    AddLog($"✗ [{result.ControllerName}] read_all command failed");
+                }
             }
-            else
+            catch (JsonException jsonEx)
             {
                 result.Status = TestStatus.Failed;
-                result.Message = "read_all command failed or returned unexpected format";
-                AddLog($"✗ [{result.ControllerName}] read_all command failed");
+                result.Message = $"Invalid JSON response: {jsonEx.Message}";
+                AddLog($"✗ [{result.ControllerName}] JSON parsing failed: {jsonEx.Message}");
             }
 
             // Close connection
@@ -817,9 +861,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 AddLog($"← Received RAW: {json}");
 
                 // Parse and update test results if it's a response
-                using var doc = JsonDocument.Parse(json);
                 try
                 {
+                    using var doc = JsonDocument.Parse(json);
                     AddLog($"← JSON parsed successfully, root type: {doc.RootElement.ValueKind}");
                     
                     if (doc.RootElement.TryGetProperty("type", out var typeElement))

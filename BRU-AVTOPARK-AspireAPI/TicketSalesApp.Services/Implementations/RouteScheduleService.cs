@@ -183,7 +183,14 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
-                // Generate correlation ID and store in notes field
+                // WORKAROUND: SpacetimeDB lacks support for transient/internal correlation fields.
+                // We temporarily embed correlation ID in the user-facing Notes field with a clear marker.
+                // This is acceptable because:
+                // 1. Notes is optional and user-controlled
+                // 2. The correlation tag is clearly marked with [CORRELATION:guid] format
+                // 3. It's automatically cleaned up after the operation completes
+                // 4. A proper solution requires SpacetimeDB schema changes to add a dedicated correlation field
+                // TODO: Remove this workaround when SpacetimeDB supports transient fields or add a dedicated CorrelationId column
                 var correlationId = Guid.NewGuid();
                 var correlationTag = $"[CORRELATION:{correlationId}]";
                 var notesWithCorrelation = string.IsNullOrEmpty(notes) 
@@ -318,7 +325,12 @@ namespace TicketSalesApp.Services.Implementations
                     {
                         _logger.LogWarning("CreateScheduleAsync timed out waiting for reducer confirmation");
                         
-                        // Fallback: try to find the schedule by matching attributes
+                        // CRITICAL: Fallback uses non-unique fields which can match wrong schedule
+                        // TODO: Add dedicated CorrelationId column to RouteSchedule table in SpacetimeDB
+                        // or use a more unique combination (e.g., include millisecond timestamp in DepartureTime)
+                        // For now, log warning and attempt best-effort match
+                        _logger.LogWarning("Fallback schedule lookup uses non-unique fields - may return incorrect schedule");
+                        
                         var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
                         var newSchedule = allSchedules
                             .Where(s => s.RouteId == routeId &&

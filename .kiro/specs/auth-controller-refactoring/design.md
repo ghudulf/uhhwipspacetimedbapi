@@ -3954,7 +3954,72 @@ class SpacetimeDBAdapter {
   constructor(private name: string, private spacetimeClient: any) {}
   
   async upsert(id: string, payload: any, expiresIn: number) {
-    // Store in SpacetimeDB via C# backend or direct client
+    // PRODUCTION: Direct SpacetimeDB access via client
+    await this.spacetimeClient.call('StoreOidcToken', {
+      type: this.name,
+      id,
+      payload: JSON.stringify(payload),
+      expiresAt: Date.now() + (expiresIn * 1000)
+    })
+  }
+  
+  async find(id: string) {
+    // PRODUCTION: Direct SpacetimeDB query
+    const result = await this.spacetimeClient.query(`
+      SELECT * FROM OidcTokens WHERE type = ? AND id = ?
+    `, [this.name, id])
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+  
+  async findByUserCode(userCode: string) {
+    const result = await this.spacetimeClient.query(`
+      SELECT * FROM OidcTokens WHERE userCode = ?
+    `, [userCode])
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+  
+  async findByUid(uid: string) {
+    const result = await this.spacetimeClient.query(`
+      SELECT * FROM OidcTokens WHERE type = ? AND uid = ?
+    `, [this.name, uid])
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+  
+  async destroy(id: string) {
+    await this.spacetimeClient.call('DeleteOidcToken', {
+      type: this.name,
+      id
+    })
+  }
+  
+  async revokeByGrantId(grantId: string) {
+    await this.spacetimeClient.call('RevokeOidcTokensByGrantId', {
+      grantId
+    })
+  }
+  
+  async consume(id: string) {
+    await this.spacetimeClient.call('ConsumeOidcToken', {
+      type: this.name,
+      id
+    })
+  }
+}
+
+// ============================================================================
+// C# PROXY MIGRATION BRIDGE (Use only during migration from OpenIddict)
+// ============================================================================
+// This section shows how to use the C# backend as a proxy during migration.
+// Once migration is complete, use the direct SpacetimeDB implementation above.
+
+class SpacetimeDBAdapterWithCSharpProxy {
+  constructor(private name: string) {}
+  
+  async upsert(id: string, payload: any, expiresIn: number) {
+    // MIGRATION ONLY: Store via C# backend proxy
     await fetch('http://csharp-backend:5000/api/oidc/store', {
       method: 'POST',
       body: JSON.stringify({
@@ -3967,7 +4032,7 @@ class SpacetimeDBAdapter {
   }
   
   async find(id: string) {
-    // Retrieve from SpacetimeDB
+    // MIGRATION ONLY: Retrieve via C# backend proxy
     const response = await fetch(`http://csharp-backend:5000/api/oidc/find/${this.name}/${id}`)
     if (!response.ok) return undefined
     return await response.json()
@@ -4004,9 +4069,14 @@ class SpacetimeDBAdapter {
   }
 }
 
+// ============================================================================
+// END C# PROXY MIGRATION BRIDGE
+// ============================================================================
+
 // Configure oidc-provider
 const oidc = new Provider('http://localhost:3000', {
-  adapter: SpacetimeDBAdapter,
+  adapter: SpacetimeDBAdapter, // Use direct SpacetimeDB adapter (production)
+  // adapter: SpacetimeDBAdapterWithCSharpProxy, // Use C# proxy (migration only)
   clients: [
     {
       client_id: 'avalonia-client',
@@ -4027,19 +4097,21 @@ const oidc = new Provider('http://localhost:3000', {
     introspection: { enabled: true },
   },
   findAccount: async (ctx, id) => {
-    // Fetch user from SpacetimeDB via C# backend
-    const response = await fetch(`http://csharp-backend:5000/api/users/${id}`)
-    if (!response.ok) return undefined
+    // PRODUCTION: Fetch user directly from SpacetimeDB
+    const result = await spacetimeClient.query(`
+      SELECT * FROM Users WHERE UserId = ?
+    `, [id])
+    if (!result || result.length === 0) return undefined
     
-    const user = await response.json()
+    const user = result[0]
     return {
       accountId: id,
       async claims() {
         return {
           sub: id,
-          email: user.email,
-          name: user.login,
-          preferred_username: user.login,
+          email: user.Email,
+          name: user.Login,
+          preferred_username: user.Login,
         }
       },
     }
@@ -4051,10 +4123,56 @@ const oidc = new Provider('http://localhost:3000', {
 // integrated into Elysia route handlers. Use one of these integration patterns:
 //
 // ALLOWED Integration Patterns:
-// 1. Mount at server level via app.server?.node?.server (access underlying Node.js server)
-// 2. Use Fetch↔Node shim with http.createServer wrapper
+// Pattern A (RECOMMENDED): Elysia-first routing with Node.js shim inside handlers
+// Pattern B (Alternative): Server-level interception before Elysia
 //
-// Pattern 1: Mount at server level (recommended)
+// Pattern A: Elysia-first routing (RECOMMENDED)
+// All OIDC traffic flows through Elysia routes, and Fetch↔Node conversion
+// happens inside the OIDC handlers via handleOidcRequest helper.
+// This approach preserves Elysia middleware and features.
+const app = new Elysia()
+  .all('/oidc/*', async ({ request }) => {
+    // Convert Fetch Request to Node.js req/res inside Elysia handler
+    return await handleOidcRequest(request, oidc)
+  })
+  .listen(3000)
+
+async function handleOidcRequest(request: Request, oidc: Provider) {
+  // Construct Node-style req from Fetch Request
+  const nodeReq = {
+    method: request.method,
+    url: new URL(request.url).pathname + new URL(request.url).search,
+    headers: Object.fromEntries(request.headers.entries()),
+    body: await request.text(),
+    // ... other Node.js req properties
+  }
+  
+  // Construct Node-style res to collect response
+  const nodeRes = {
+    statusCode: 200,
+    headers: {},
+    body: '',
+    setHeader(name: string, value: string) { this.headers[name] = value },
+    writeHead(status: number) { this.statusCode = status },
+    write(chunk: string) { this.body += chunk },
+    end(chunk?: string) { if (chunk) this.body += chunk },
+  }
+  
+  // Call oidc.callback() with Node-style req/res
+  await new Promise((resolve) => {
+    oidc.callback()(nodeReq as any, nodeRes as any, resolve)
+  })
+  
+  // Convert Node-style res back to Fetch Response
+  return new Response(nodeRes.body, {
+    status: nodeRes.statusCode,
+    headers: nodeRes.headers
+  })
+}
+
+// Pattern B: Server-level interception (Alternative - bypasses Elysia middleware)
+// This pattern intercepts requests BEFORE Elysia, so Elysia middleware does NOT apply.
+// Use only if Pattern A is insufficient.
 const app = new Elysia()
   .get('/', () => 'Elysia + oidc-provider')
   .listen(3000, (server) => {
@@ -4073,25 +4191,6 @@ const app = new Elysia()
       })
     }
   })
-
-// Pattern 2: Fetch↔Node shim (alternative)
-import http from 'http'
-
-const oidcServer = http.createServer(oidc.callback())
-const app = new Elysia()
-  .all('/oidc/*', async ({ request }) => {
-    // Convert Fetch Request to Node.js req/res
-    const nodeReq = convertFetchToNode(request)
-    const nodeRes = createNodeResponse()
-    
-    await new Promise((resolve) => {
-      oidcServer.emit('request', nodeReq, nodeRes)
-      nodeRes.on('finish', resolve)
-    })
-    
-    return convertNodeToFetch(nodeRes)
-  })
-  .listen(3000)
 ```
 
 **Benefits over Current OpenIddict Implementation**:

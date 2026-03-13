@@ -187,6 +187,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     {
         _logger.LogInformation("[EventBus] Stopping event bus and cleaning up resources");
         
+        // Set disposed flag first so concurrent callers fail fast
+        _disposed = true;
+        
         // Complete the event channel to stop accepting new events
         _eventChannel.Writer.TryComplete();
         

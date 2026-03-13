@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers;
@@ -13,7 +14,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "FlexibleApiAccess")]
-public sealed class RealtimeController : ControllerBase
+public sealed class RealtimeController : BaseController
 {
     private readonly IRealtimeEventBus _eventBus;
     private readonly ILogger<RealtimeController> _logger;
@@ -21,7 +22,7 @@ public sealed class RealtimeController : ControllerBase
 
     // Map resource names to their service interfaces and event channels
     private readonly Dictionary<string, ResourceHandler> _resourceHandlers;
-    
+
     // Max message size to prevent OOM
     private const int MaxIncomingMessageSize = 1 * 1024 * 1024; // 1MB
 
@@ -46,6 +47,8 @@ public sealed class RealtimeController : ControllerBase
             { "routes", new ResourceHandler(typeof(IRouteService), "routes") },
             { "routeschedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") },
             { "route-schedules", new ResourceHandler(typeof(IRouteScheduleService), "route-schedules") }, // Alias
+            // NOTE: tickets and ticket-sales are advertised but read operations return null (SpacetimeDB direct access only)
+            // TODO: Implement ITicketService.GetAllTicketsAsync() and ITicketSalesService.GetAllSalesAsync() or remove from handlers
             { "tickets", new ResourceHandler(typeof(ITicketService), "tickets") },
             { "ticketsales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") },
             { "ticket-sales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") }, // Alias
@@ -110,9 +113,24 @@ public sealed class RealtimeController : ControllerBase
             return;
         }
 
+        // CRITICAL: Validate authentication BEFORE accepting WebSocket connection using BaseController's ValidateOAuthTokenAsync
+        var validatedClaims = await ValidateOAuthTokenAsync();
+        if (validatedClaims == null)
+        {
+            _logger.LogWarning("Unauthenticated WebSocket connection attempt from {IP} - token validation failed", 
+                HttpContext.Connection.RemoteIpAddress);
+            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await HttpContext.Response.WriteAsync("Unauthorized");
+            return;
+        }
+        
+        var userId = validatedClaims.TryGetValue("sub", out var subObj) ? subObj?.ToString() : null;
+        _logger.LogInformation("WebSocket connection authenticated for user: {UserId} with {ClaimCount} claims", 
+            userId, validatedClaims.Count);
+
         using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("bru.events.v1");
         var connectionId = Guid.NewGuid().ToString();
-        _logger.LogInformation("[{ConnectionId}] Universal stream WebSocket connection established", connectionId);
+        _logger.LogInformation("[{ConnectionId}] Universal stream WebSocket connection established for user: {UserId}", connectionId, userId);
 
         var buffer = new byte[8192];
         var subscriptions = new ConcurrentDictionary<string, byte>(); // Thread-safe subscription tracking
@@ -122,7 +140,7 @@ public sealed class RealtimeController : ControllerBase
         try
         {
             // Start event broadcasting task
-            var broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, sendLock, connectionId, linkedCts.Token);
+            var broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, sendLock, connectionId, validatedClaims, linkedCts.Token);
 
             while (webSocket.State == WebSocketState.Open && !linkedCts.Token.IsCancellationRequested)
             {
@@ -160,7 +178,7 @@ public sealed class RealtimeController : ControllerBase
                     var sanitizedMessage = SanitizeMessageForLogging(messageJson);
                     _logger.LogDebug("[{ConnectionId}] <<<< RECEIVED: {Message}", connectionId, sanitizedMessage);
 
-                    await HandleMessageAsync(webSocket, messageJson, subscriptions, sendLock, connectionId, linkedCts.Token);
+                    await HandleMessageAsync(webSocket, messageJson, subscriptions, sendLock, connectionId, validatedClaims, linkedCts.Token);
                 }
             }
 
@@ -202,6 +220,7 @@ public sealed class RealtimeController : ControllerBase
         ConcurrentDictionary<string, byte> subscriptions,
         SemaphoreSlim sendLock,
         string connectionId,
+        Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
         try
@@ -231,7 +250,7 @@ public sealed class RealtimeController : ControllerBase
             if (command == "subscribe")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling SUBSCRIBE", connectionId);
-                await HandleSubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, cancellationToken);
+                await HandleSubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, validatedClaims, cancellationToken);
                 return;
             }
 
@@ -246,7 +265,7 @@ public sealed class RealtimeController : ControllerBase
             if (IsCrudCommand(command))
             {
                 _logger.LogInformation("[{ConnectionId}] Handling CRUD command: {Command}", connectionId, command);
-                await HandleCrudAsync(webSocket, root, command, requestId ?? Guid.NewGuid().ToString(), sendLock, connectionId, cancellationToken);
+                await HandleCrudAsync(webSocket, root, command, requestId ?? Guid.NewGuid().ToString(), sendLock, connectionId, validatedClaims, cancellationToken);
                 return;
             }
 
@@ -287,6 +306,7 @@ public sealed class RealtimeController : ControllerBase
         ConcurrentDictionary<string, byte> subscriptions,
         SemaphoreSlim sendLock,
         string connectionId,
+        Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
         var resource = root.TryGetProperty("resource", out var resEl) ? resEl.GetString() : null;
@@ -297,18 +317,82 @@ public sealed class RealtimeController : ControllerBase
             return;
         }
 
-        subscriptions.TryAdd(resource, 0);
-        _logger.LogInformation("[{ConnectionId}] Subscribed to resource: {Resource}", connectionId, resource);
+        // Normalize resource to lowercase for consistent event channel matching
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        // CRITICAL: Check permissions for resource subscription (same pattern as individual controllers)
+        // Subscribe requires "view" permission for the resource
+        if (!await HasResourcePermissionAsync(normalizedResource, "view", validatedClaims))
+        {
+            var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
+            _logger.LogWarning("[{ConnectionId}] User {UserId} denied subscription to resource: {Resource} (insufficient permissions)", 
+                connectionId, userId, resource);
+            await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to view {normalizedResource}", sendLock, cancellationToken);
+            return;
+        }
+        
+        // Resolve to canonical event channel via handler lookup
+        string eventChannel = normalizedResource;
+        if (_resourceHandlers.TryGetValue(normalizedResource, out var handler))
+        {
+            eventChannel = handler.EventChannel;
+        }
+
+        subscriptions.TryAdd(eventChannel, 0);
+        _logger.LogInformation("[{ConnectionId}] Subscribed to resource: {Resource} (channel: {EventChannel})", 
+            connectionId, resource, eventChannel);
 
         var response = new
         {
             type = "subscribed",
             requestId,
-            resource,
+            resource = eventChannel, // Return canonical channel name
             timestamp = DateTimeOffset.UtcNow
         };
 
         await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Validates that the user is authenticated and has permission to access the specified resource.
+    /// Uses the same permission checking logic as individual controllers (BaseController pattern).
+    /// Follows exact pattern: if (!await IsAdminAsync() && !HasPermission("resource.action", claims))
+    /// </summary>
+    /// <param name="resource">The resource name (e.g., "buses", "users").</param>
+    /// <param name="action">The action being performed (e.g., "view", "create", "edit", "delete").</param>
+    /// <param name="validatedClaims">Pre-validated OAuth claims from ValidateOAuthTokenAsync.</param>
+    /// <returns>True if the user has permission; false otherwise.</returns>
+    private async Task<bool> HasResourcePermissionAsync(string resource, string action, Dictionary<string, object>? validatedClaims)
+    {
+        try
+        {
+            // Build permission name in SpacetimeDB format: "resource.action"
+            var permissionName = $"{resource}.{action}";
+            
+            // CRITICAL: Use exact pattern from individual controllers
+            // Pattern: if (!await IsAdminAsync() && !HasPermission("permission.name", claims))
+            // Admins bypass all permission checks
+            if (await IsAdminAsync())
+            {
+                _logger.LogDebug("User is admin, granting access to {Resource}.{Action}", resource, action);
+                return true;
+            }
+            
+            // Use BaseController's HasPermission method with validated claims
+            var hasPermission = HasPermission(permissionName, validatedClaims);
+            
+            if (!hasPermission)
+            {
+                _logger.LogWarning("User does not have permission {Permission}", permissionName);
+            }
+            
+            return hasPermission;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking resource permission for {Resource}.{Action}", resource, action);
+            return false;
+        }
     }
 
     private async Task HandleUnsubscribeAsync(
@@ -349,6 +433,7 @@ public sealed class RealtimeController : ControllerBase
         string requestId,
         SemaphoreSlim sendLock,
         string connectionId,
+        Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
         var resource = root.TryGetProperty("resource", out var resEl) ? resEl.GetString() : null;
@@ -370,11 +455,29 @@ public sealed class RealtimeController : ControllerBase
 
         try
         {
-            // Permission check: Verify user has access to this resource
-            var userId = User.FindFirst("sub")?.Value;
-            if (string.IsNullOrEmpty(userId))
+            // CRITICAL: Map CRUD command to permission action (same pattern as individual controllers)
+            var permissionAction = command switch
             {
-                await SendErrorAsync(webSocket, requestId, "Authentication required", sendLock, cancellationToken);
+                "read_all" => "view",
+                "next_page" => "view",
+                "prev_page" => "view",
+                "first_page" => "view",
+                "last_page" => "view",
+                "goto_page" => "view",
+                "read" => "view",
+                "create" => "create",
+                "update" => "edit",
+                "delete" => "delete",
+                _ => "view" // Default to view for unknown commands
+            };
+
+            // Check permission before executing command (same pattern as individual controllers)
+            if (!await HasResourcePermissionAsync(normalizedResource, permissionAction, validatedClaims))
+            {
+                var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
+                _logger.LogWarning("[{ConnectionId}] User {UserId} denied {Command} access to resource: {Resource}", 
+                    connectionId, userId, command, resource);
+                await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to {permissionAction} {normalizedResource}", sendLock, cancellationToken);
                 return;
             }
 
@@ -614,6 +717,7 @@ public sealed class RealtimeController : ControllerBase
         ConcurrentDictionary<string, byte> subscriptions,
         SemaphoreSlim sendLock,
         string connectionId,
+        Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
         try

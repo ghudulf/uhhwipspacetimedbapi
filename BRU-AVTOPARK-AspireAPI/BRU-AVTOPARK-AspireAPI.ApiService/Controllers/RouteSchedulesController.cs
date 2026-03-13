@@ -86,18 +86,34 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             
-            // Extract pagination parameters from payload
+            // Extract pagination parameters from payload OR root level
             int? page = null;
             int? pageSize = null;
             
+            // Try root-level properties first (for debug client compatibility)
             if (request.Payload.HasValue)
             {
                 try
                 {
-                    if (request.Payload.Value.TryGetProperty("page", out var pageEl))
+                    var rootElement = request.Payload.Value;
+                    
+                    // Check root level first
+                    if (rootElement.TryGetProperty("page", out var pageEl))
                         page = pageEl.GetInt32();
-                    if (request.Payload.Value.TryGetProperty("pageSize", out var pageSizeEl))
+                    if (rootElement.TryGetProperty("pageSize", out var pageSizeEl))
                         pageSize = pageSizeEl.GetInt32();
+                    
+                    // Fallback: check nested payload property (original behavior)
+                    if (!page.HasValue || !pageSize.HasValue)
+                    {
+                        if (rootElement.TryGetProperty("payload", out var nestedPayload))
+                        {
+                            if (!page.HasValue && nestedPayload.TryGetProperty("page", out var nestedPageEl))
+                                page = nestedPageEl.GetInt32();
+                            if (!pageSize.HasValue && nestedPayload.TryGetProperty("pageSize", out var nestedPageSizeEl))
+                                pageSize = nestedPageSizeEl.GetInt32();
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -668,6 +684,9 @@ namespace TicketSalesApp.AdminServer.Controllers
                     var totalAfterFilter = matchedList.Count;
                     var recurringAfterFilter = matchedList.Count(s => s.IsRecurring);
                     var nonRecurringAfterFilter = totalAfterFilter - recurringAfterFilter;
+                    
+                    // Use matchedList for all subsequent operations to avoid re-executing the query
+                    query = matchedList.AsQueryable();
                     
                     _logger.LogInformation("Schedules after date filter: {Total} total ({Recurring} recurring, {NonRecurring} non-recurring)", 
                         totalAfterFilter, recurringAfterFilter, nonRecurringAfterFilter);
