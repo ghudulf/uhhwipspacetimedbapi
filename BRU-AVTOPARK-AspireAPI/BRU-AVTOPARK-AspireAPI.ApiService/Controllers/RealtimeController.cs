@@ -138,11 +138,14 @@ public sealed class RealtimeController : BaseController
         var subscriptions = new ConcurrentDictionary<string, byte>(); // Thread-safe subscription tracking
         var sendLock = new SemaphoreSlim(1, 1); // Ensure only one send at a time
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+        
+        // Declare broadcastTask outside try block so it's accessible in finally
+        Task? broadcastTask = null;
 
         try
         {
             // Start event broadcasting task
-            var broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, sendLock, connectionId, validatedClaims, linkedCts.Token);
+            broadcastTask = BroadcastEventsAsync(webSocket, subscriptions, sendLock, connectionId, validatedClaims, linkedCts.Token);
 
             while (webSocket.State == WebSocketState.Open && !linkedCts.Token.IsCancellationRequested)
             {
@@ -224,6 +227,26 @@ public sealed class RealtimeController : BaseController
         }
         finally
         {
+            // Ensure broadcast task is cancelled and awaited regardless of which catch path was taken
+            linkedCts.Cancel();
+            
+            if (broadcastTask != null)
+            {
+                try
+                {
+                    await broadcastTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when canceling
+                    _logger.LogDebug("[{ConnectionId}] Broadcast task cancelled", connectionId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{ConnectionId}] Error in broadcast task during cleanup", connectionId);
+                }
+            }
+            
             sendLock.Dispose();
         }
     }

@@ -44,6 +44,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
     private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<string, ControllerTestResult> _pendingRequests = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCompletions = new();
+    private int _cleanupInProgress = 0;
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -242,6 +243,13 @@ public partial class WebSocketDebugViewModel : ObservableObject
 
     private async Task CleanupWebSocketAsync()
     {
+        // Prevent concurrent cleanup using Interlocked guard
+        if (Interlocked.Exchange(ref _cleanupInProgress, 1) == 1)
+        {
+            // Another cleanup is already in progress
+            return;
+        }
+        
         try
         {
             // Attempt polite close with short timeout
@@ -292,6 +300,11 @@ public partial class WebSocketDebugViewModel : ObservableObject
             AddLog($"Error during cleanup: {ex.Message}");
             IsConnected = false;
             StatusMessage = "Disconnected (with errors)";
+        }
+        finally
+        {
+            // Reset guard
+            Interlocked.Exchange(ref _cleanupInProgress, 0);
         }
     }
 
@@ -391,7 +404,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
 
                 try
                 {
-                    await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
+                    var socket = _webSocket ?? throw new InvalidOperationException("WebSocket is null");
+                    await SendAsyncWithLock(socket, bytes, _cts?.Token ?? CancellationToken.None);
                     AddLog($"→ [{result.ControllerName}] Sent read_all via universal stream (RequestId: {requestId})");
 
                     result.Status = TestStatus.Testing;
@@ -612,12 +626,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 }
                 else if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    // Check for data properties that indicate successful read_all
-                    var hasData = doc.RootElement.EnumerateObject().Any(p => 
-                        p.Name.EndsWith("s") || // buses, employees, etc.
-                        p.Name == "schedules" ||
-                        p.Name == "sales" ||
-                        p.Name == "records");
+                    // Check for expected data property based on controller name
+                    var expectedProp = GetExpectedReadAllProperty(result.ControllerName);
+                    var hasData = doc.RootElement.EnumerateObject().Any(p => p.Name == expectedProp);
                     success = hasData;
                 }
 
@@ -703,14 +714,24 @@ public partial class WebSocketDebugViewModel : ObservableObject
         }
     }
 
-    private async Task SendAsyncWithLock(byte[] bytes, CancellationToken cancellationToken)
+    private async Task SendAsyncWithLock(WebSocket socket, byte[] bytes, CancellationToken cancellationToken)
     {
+        if (socket == null || socket.State != WebSocketState.Open)
+        {
+            throw new InvalidOperationException($"WebSocket is not open (State: {socket?.State})");
+        }
+        
         await _sendSemaphore.WaitAsync(cancellationToken);
         try
         {
-            if (_webSocket?.State == WebSocketState.Open)
+            // Double-check state after acquiring semaphore
+            if (socket.State == WebSocketState.Open)
             {
-                await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+                await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+            }
+            else
+            {
+                throw new InvalidOperationException($"WebSocket state changed to {socket.State} after acquiring lock");
             }
         }
         finally
@@ -786,7 +807,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
+            var socket = _webSocket ?? throw new InvalidOperationException("WebSocket is null");
+            await SendAsyncWithLock(socket, bytes, _cts?.Token ?? CancellationToken.None);
             AddLog("🏓 Ping sent to universal stream");
         }
         catch (Exception ex)
@@ -825,7 +847,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
+            var socket = _webSocket ?? throw new InvalidOperationException("WebSocket is null");
+            await SendAsyncWithLock(socket, bytes, _cts?.Token ?? CancellationToken.None);
             AddLog($"📢 Subscribe request sent for resource: {resource}");
         }
         catch (Exception ex)
@@ -864,7 +887,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
             
             var bytes = Encoding.UTF8.GetBytes(json);
             
-            await SendAsyncWithLock(bytes, _cts?.Token ?? CancellationToken.None);
+            var socket = _webSocket ?? throw new InvalidOperationException("WebSocket is null");
+            await SendAsyncWithLock(socket, bytes, _cts?.Token ?? CancellationToken.None);
             AddLog($"📢 Unsubscribe request sent for resource: {resource}");
         }
         catch (Exception ex)
@@ -877,7 +901,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
     private void ClearLog()
     {
         EventLog.Clear();
-        AddLog("Log cleared");
+        StatusMessage = "Log cleared";
+        Log.Information("[WebSocketDebug] Log cleared by user");
     }
 
     [RelayCommand]
@@ -1104,6 +1129,28 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 EventLog.RemoveAt(0);
             }
         }
+    }
+    
+    /// <summary>
+    /// Returns the expected collection property name for a controller's read_all response.
+    /// </summary>
+    private static string GetExpectedReadAllProperty(string controllerName)
+    {
+        return controllerName.ToLowerInvariant() switch
+        {
+            "buses" => "buses",
+            "employees" => "employees",
+            "jobs" => "jobs",
+            "maintenance" => "records",
+            "permissions" => "permissions",
+            "roles" => "roles",
+            "routes" => "routes",
+            "routeschedules" => "schedules",
+            "tickets" => "tickets",
+            "ticketsales" => "sales",
+            "users" => "users",
+            _ => controllerName // Default to controller name
+        };
     }
 }
 

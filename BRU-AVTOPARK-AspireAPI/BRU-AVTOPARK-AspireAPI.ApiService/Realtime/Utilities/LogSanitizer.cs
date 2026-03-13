@@ -1,0 +1,52 @@
+namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
+
+/// <summary>
+/// Provides utility methods for sanitizing strings before logging to prevent log injection attacks.
+/// </summary>
+internal static class LogSanitizer
+{
+    /// <summary>
+    /// Sanitizes a string for safe logging by removing control characters to prevent log injection.
+    /// </summary>
+    /// <param name="value">The string to sanitize.</param>
+    /// <returns>A sanitized string safe for logging, or the original value if null/empty.</returns>
+    public static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value ?? string.Empty;
+        }
+        
+        return new string(value.Where(c => !char.IsControl(c)).ToArray());
+    }
+
+    /// <summary>
+    /// Sanitizes and truncates a log field to prevent log injection and excessive log growth.
+    /// </summary>
+    /// <param name="value">The value to sanitize.</param>
+    /// <param name="maxLength">Maximum length to truncate to.</param>
+    /// <returns>A sanitized and truncated string safe for logging.</returns>
+    public static string SanitizeLogField(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        // Remove newlines and control characters (including CR/LF and other non-printable chars) to prevent log injection
+        var sanitized = new string(value
+            .Where(c =>
+                // Allow common printable characters and space
+                !char.IsControl(c) ||
+                c == ' ')
+            .ToArray());
+
+        // Truncate if needed - ensure output never exceeds maxLength
+        if (sanitized.Length > maxLength)
+        {
+            return string.Concat(sanitized.AsSpan(0, maxLength - 3), "...");
+        }
+
+        return sanitized;
+    }
+}

@@ -1,10 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SpacetimeDB;
-using SpacetimeDB.ClientApi;
 using SpacetimeDB.Types;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,17 +9,28 @@ using TicketSalesApp.Services.Interfaces;
 
 namespace TicketSalesApp.Services.Implementations
 {
-    public class RouteScheduleService : IRouteScheduleService
+    public class RouteScheduleService(ISpacetimeDBService spacetimeDBService, ILogger<RouteScheduleService> logger) : IRouteScheduleService, IDisposable
     {
-        private readonly ISpacetimeDBService _spacetimeDBService;
-        private readonly ILogger<RouteScheduleService> _logger;
+        private readonly ISpacetimeDBService _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
+        private readonly ILogger<RouteScheduleService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         private readonly ConcurrentDictionary<Guid, TaskCompletionSource<uint?>> _pendingCreates = new();
         private readonly SemaphoreSlim _handlerLock = new(1, 1);
+        private bool _disposed;
 
-        public RouteScheduleService(ISpacetimeDBService spacetimeDBService, ILogger<RouteScheduleService> logger)
+        public void Dispose()
         {
-            _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            if (_disposed) return;
+            
+            _handlerLock?.Dispose();
+            
+            foreach (var pending in _pendingCreates.Values)
+            {
+                pending.TrySetCanceled();
+            }
+            _pendingCreates.Clear();
+            
+            _disposed = true;
+            GC.SuppressFinalize(this);
         }
 
         public async Task<List<RouteSchedule>> GetAllSchedulesAsync()
@@ -198,7 +206,7 @@ namespace TicketSalesApp.Services.Implementations
                     : $"{notes} {correlationTag}";
 
                 // Create TaskCompletionSource for this operation
-                var tcs = new TaskCompletionSource<uint?>();
+                var tcs = new TaskCompletionSource<uint?>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _pendingCreates[correlationId] = tcs;
 
                 // Set up event handler to capture the created schedule ID
@@ -217,17 +225,11 @@ namespace TicketSalesApp.Services.Implementations
                         {
                             _logger.LogError("CreateRouteSchedule reducer failed: {Reason}", reason);
                             
-                            // Try to extract correlation ID from notes
-                            if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
+                            if (TryExtractCorrelationId(notesParam, out var guid))
                             {
-                                var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                                var endIdx = notesParam.IndexOf(']', startIdx);
-                                if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
+                                if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                 {
-                                    if (_pendingCreates.TryRemove(guid, out var pendingTcs))
-                                    {
-                                        pendingTcs.TrySetException(new Exception(reason));
-                                    }
+                                    pendingTcs.TrySetException(new Exception(reason));
                                 }
                             }
                             return;
@@ -236,50 +238,40 @@ namespace TicketSalesApp.Services.Implementations
                         {
                             _logger.LogError("CreateRouteSchedule reducer out of energy");
                             
-                            if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
+                            if (TryExtractCorrelationId(notesParam, out var guid))
                             {
-                                var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                                var endIdx = notesParam.IndexOf(']', startIdx);
-                                if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
+                                if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                 {
-                                    if (_pendingCreates.TryRemove(guid, out var pendingTcs))
-                                    {
-                                        pendingTcs.TrySetException(new Exception("Out of energy"));
-                                    }
+                                    pendingTcs.TrySetException(new Exception("Out of energy"));
                                 }
                             }
                             return;
                         }
 
                         // Reducer succeeded - find the created schedule by correlation ID
-                        if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
+                        if (TryExtractCorrelationId(notesParam, out var correlationGuid))
                         {
-                            var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                            var endIdx = notesParam.IndexOf(']', startIdx);
-                            if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
+                            if (_pendingCreates.TryRemove(correlationGuid, out var pendingTcs))
                             {
-                                if (_pendingCreates.TryRemove(guid, out var pendingTcs))
+                                // Query database to find the created schedule
+                                var allSchedules = ctx.Db.RouteSchedule.Iter().ToList();
+                                var createdSchedule = allSchedules
+                                    .Where(s => s.RouteId == routeIdParam &&
+                                               s.DepartureTime == departureTimeParam &&
+                                               s.Notes != null &&
+                                               s.Notes.Contains($"[CORRELATION:{correlationGuid}]"))
+                                    .OrderByDescending(s => s.ScheduleId)
+                                    .FirstOrDefault();
+                                
+                                if (createdSchedule != null)
                                 {
-                                    // Query database to find the created schedule
-                                    var allSchedules = ctx.Db.RouteSchedule.Iter().ToList();
-                                    var createdSchedule = allSchedules
-                                        .Where(s => s.RouteId == routeIdParam &&
-                                                   s.DepartureTime == departureTimeParam &&
-                                                   s.Notes != null &&
-                                                   s.Notes.Contains($"[CORRELATION:{guid}]"))
-                                        .OrderByDescending(s => s.ScheduleId)
-                                        .FirstOrDefault();
-                                    
-                                    if (createdSchedule != null)
-                                    {
-                                        _logger.LogInformation("Successfully created schedule with ID: {ScheduleId}", createdSchedule.ScheduleId);
-                                        pendingTcs.TrySetResult(createdSchedule.ScheduleId);
-                                    }
-                                    else
-                                    {
-                                        _logger.LogWarning("Could not find created schedule with correlation ID: {CorrelationId}", guid);
-                                        pendingTcs.TrySetResult(null);
-                                    }
+                                    _logger.LogInformation("Successfully created schedule with ID: {ScheduleId}", createdSchedule.ScheduleId);
+                                    pendingTcs.TrySetResult(createdSchedule.ScheduleId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Could not find created schedule with correlation ID: {CorrelationId}", correlationGuid);
+                                    pendingTcs.TrySetResult(null);
                                 }
                             }
                         }
@@ -288,6 +280,22 @@ namespace TicketSalesApp.Services.Implementations
                     {
                         _handlerLock.Release();
                     }
+                }
+
+                // Helper method to extract correlation ID from notes
+                static bool TryExtractCorrelationId(string? notes, out Guid correlationId)
+                {
+                    correlationId = Guid.Empty;
+                    if (string.IsNullOrEmpty(notes) || !notes.Contains("[CORRELATION:"))
+                        return false;
+                    
+                    var startIdx = notes.IndexOf("[CORRELATION:") + 13;
+                    var endIdx = notes.IndexOf(']', startIdx);
+                    if (endIdx > startIdx && Guid.TryParse(notes.AsSpan(startIdx, endIdx - startIdx), out correlationId))
+                    {
+                        return true;
+                    }
+                    return false;
                 }
 
                 // Attach event handler
@@ -313,33 +321,23 @@ namespace TicketSalesApp.Services.Implementations
                         notesWithCorrelation
                     );
 
-                    // Wait for reducer to complete with timeout
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(-1, cts.Token));
-
-                    if (completedTask == tcs.Task)
+                    // Wait for reducer to complete with explicit timeout
+                    try
                     {
+                        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
                         return await tcs.Task;
                     }
-                    else
+                    catch (TimeoutException)
                     {
                         _logger.LogWarning("CreateScheduleAsync timed out waiting for reducer confirmation");
                         
-                        // CRITICAL: Fallback uses non-unique fields which can match wrong schedule
+                        // CRITICAL: Timeout fallback returns null instead of guessing with non-unique fields
+                        // The previous fallback used non-unique fields (RouteId, DepartureTime, StartPoint, EndPoint)
+                        // which could match the wrong schedule under concurrency.
                         // TODO: Add dedicated CorrelationId column to RouteSchedule table in SpacetimeDB
                         // or use a more unique combination (e.g., include millisecond timestamp in DepartureTime)
-                        // For now, log warning and attempt best-effort match
-                        _logger.LogWarning("Fallback schedule lookup uses non-unique fields - may return incorrect schedule");
-                        
-                        var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
-                        var newSchedule = allSchedules
-                            .Where(s => s.RouteId == routeId &&
-                                       s.DepartureTime == departureTime &&
-                                       s.StartPoint == route.StartPoint &&
-                                       s.EndPoint == route.EndPoint)
-                            .OrderByDescending(s => s.ScheduleId)
-                            .FirstOrDefault();
-                        return newSchedule?.ScheduleId;
+                        _logger.LogError("Cannot reliably identify created schedule after timeout - returning null");
+                        return null;
                     }
                 }
                 finally

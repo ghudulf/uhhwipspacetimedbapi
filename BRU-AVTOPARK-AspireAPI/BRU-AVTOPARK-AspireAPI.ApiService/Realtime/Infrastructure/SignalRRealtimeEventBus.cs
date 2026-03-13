@@ -5,6 +5,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Helpers;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Hubs;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Options;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
@@ -22,6 +23,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly RealtimeEventOptions _options;
     private readonly SemaphoreSlim _disposalLock = new(1, 1);
     private bool _disposed;
+    private bool _stopping;
 
     /// <summary>
     /// Initializes a SignalRRealtimeEventBus with the provided SignalR hub context, configuration options, and logger.
@@ -55,12 +57,15 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
     public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_stopping || _disposed)
+        {
+            throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
+        }
         
         // Sanitize and truncate event-derived fields to prevent log injection
-        var sanitizedEventName = SanitizeLogField(domainEvent.EventName, maxLength: 100);
-        var sanitizedResource = SanitizeLogField(domainEvent.Resource, maxLength: 100);
-        var sanitizedCorrelationId = SanitizeLogField(domainEvent.CorrelationId, maxLength: 100);
+        var sanitizedEventName = LogSanitizer.SanitizeLogField(domainEvent.EventName, maxLength: 100);
+        var sanitizedResource = LogSanitizer.SanitizeLogField(domainEvent.Resource, maxLength: 100);
+        var sanitizedCorrelationId = LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, maxLength: 100);
 
         _logger.LogInformation("[EventBus] Publishing event: {EventName} for resource: {Resource} (CorrelationId: {CorrelationId})",
             sanitizedEventName,
@@ -95,7 +100,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_stopping || _disposed)
+        {
+            throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
+        }
         
         var normalizedResource = ResourceNormalization.Normalize(resource);
         var subscriptionChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(256)
@@ -110,7 +118,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
 
         _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", 
-            subscriberId, SanitizeLogField(normalizedResource, 100));
+            subscriberId, LogSanitizer.SanitizeLogField(normalizedResource, 100));
 
         try
         {
@@ -125,22 +133,10 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             if (_subscribers.TryRemove(subscriberId, out var removedSubscriber))
             {
                 removedSubscriber.Channel.Writer.TryComplete();
-                var sanitizedResource = SanitizeForLog(normalizedResource);
+                var sanitizedResource = LogSanitizer.SanitizeForLog(normalizedResource);
                 _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, sanitizedResource);
             }
         }
-    }
-
-    /// <summary>
-    /// Sanitizes a string for safe logging by removing control characters to prevent log injection.
-    /// </summary>
-    private static string SanitizeForLog(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return value;
-        }
-        return new string(value.Where(c => !char.IsControl(c)).ToArray());
     }
 
     /// <summary>
@@ -166,20 +162,20 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 {
                     var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
                     await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                    await _hubContext.Clients.Group($"resource:{SanitizeLogField(normalizedResource, 100)}")
+                    await _hubContext.Clients.Group($"resource:{LogSanitizer.SanitizeLogField(normalizedResource, 100)}")
                         .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
                 {
                     _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
-                        SanitizeLogField(domainEvent.EventName, 100),
-                        SanitizeLogField(domainEvent.CorrelationId, 100));
+                        LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
+                        LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
-                        SanitizeLogField(domainEvent.EventName, 100),
-                        SanitizeLogField(domainEvent.CorrelationId, 100));
+                        LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
+                        LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
                 }
             }
         }
@@ -199,6 +195,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("[EventBus] Stopping event bus and cleaning up resources");
+        
+        // Set stopping flag first
+        _stopping = true;
         
         // Complete the event channel to stop accepting new events
         _eventChannel.Writer.TryComplete();
@@ -283,35 +282,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     }
 
     /// <summary>
-    /// Sanitizes and truncates a log field to prevent log injection and excessive log growth.
-    /// </summary>
-    /// <param name="value">The value to sanitize.</param>
-    /// <param name="maxLength">Maximum length to truncate to.</param>
-    /// <returns>A sanitized and truncated string safe for logging.</returns>
-    private static string SanitizeLogField(string? value, int maxLength)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        // Remove newlines and control characters (including CR/LF and other non-printable chars) to prevent log injection
-        var sanitized = new string(value
-            .Where(c =>
-                // Allow common printable characters and space
-                !char.IsControl(c) ||
-                c == ' ')
-            .ToArray());
-
-        // Truncate if needed - ensure output never exceeds maxLength
-        if (sanitized.Length > maxLength)
-        {
-            return sanitized.Substring(0, maxLength - 3) + "...";
-        }
-
-        return sanitized;
-    }
-
     /// <summary>
     /// Asynchronously disposes the event bus and all its resources.
     /// </summary>
