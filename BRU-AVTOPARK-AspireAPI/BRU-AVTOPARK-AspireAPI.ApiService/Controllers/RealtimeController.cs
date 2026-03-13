@@ -524,12 +524,12 @@ public sealed class RealtimeController : BaseController
             };
 
             // Check permission before executing command (same pattern as individual controllers)
-            if (!await HasResourcePermissionAsync(normalizedResource, permissionAction, validatedClaims))
+            if (!await HasResourcePermissionAsync(handler.EventChannel, permissionAction, validatedClaims))
             {
                 var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
-                _logger.LogWarning("[{ConnectionId}] User {UserId} denied {Command} access to resource: {Resource}", 
+                _logger.LogWarning("[{ConnectionId}] User {UserId} denied {Command} access to resource: {Resource}",
                     connectionId, userId, command, resource);
-                await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to {permissionAction} {normalizedResource}", sendLock, cancellationToken);
+                await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to {permissionAction} {handler.EventChannel}", sendLock, cancellationToken);
                 return;
             }
 
@@ -1340,74 +1340,6 @@ public sealed class RealtimeController : BaseController
         }
     }
 
-    private async IAsyncEnumerable<ApiDomainEvent> MergeEventStreams(
-        List<IAsyncEnumerable<ApiDomainEvent>> streams,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var enumerators = streams.Select(s => s.GetAsyncEnumerator(cancellationToken)).ToList();
-        var activeTasks = new Dictionary<IAsyncEnumerator<ApiDomainEvent>, Task<bool>>();
-        var disposedEnumerators = new HashSet<IAsyncEnumerator<ApiDomainEvent>>();
-
-        try
-        {
-            // Initialize all enumerators
-            foreach (var enumerator in enumerators)
-            {
-                var moveTask = enumerator.MoveNextAsync().AsTask();
-                activeTasks[enumerator] = moveTask;
-            }
-
-            while (activeTasks.Count > 0 && !cancellationToken.IsCancellationRequested)
-            {
-                var completed = await Task.WhenAny(activeTasks.Values);
-                var enumerator = activeTasks.Single(kv => kv.Value == completed).Key;
-                activeTasks.Remove(enumerator);
-
-                // Check task status before accessing Result
-                if (completed.IsFaulted)
-                {
-                    _logger.LogError(completed.Exception, "Enumerator MoveNextAsync faulted in MergeEventStreams");
-                    await enumerator.DisposeAsync();
-                    disposedEnumerators.Add(enumerator);
-                    continue;
-                }
-
-                if (completed.IsCanceled)
-                {
-                    _logger.LogDebug("Enumerator MoveNextAsync was canceled in MergeEventStreams");
-                    await enumerator.DisposeAsync();
-                    disposedEnumerators.Add(enumerator);
-                    continue;
-                }
-
-                // Safe to access Result now that we know it's completed successfully
-                if (completed.IsCompletedSuccessfully && completed.Result)
-                {
-                    yield return enumerator.Current;
-
-                    // Re-queue this enumerator with a new task
-                    var moveTask = enumerator.MoveNextAsync().AsTask();
-                    activeTasks[enumerator] = moveTask;
-                }
-                else
-                {
-                    // Enumerator completed (no more items)
-                    await enumerator.DisposeAsync();
-                    disposedEnumerators.Add(enumerator);
-                }
-            }
-        }
-        finally
-        {
-            foreach (var enumerator in enumerators)
-            {
-                if (!disposedEnumerators.Contains(enumerator))
-                {
-                    await enumerator.DisposeAsync();
-                }
-            }
-        }
-    }
 
     private async Task SendJsonAsync(WebSocket webSocket, object data, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {

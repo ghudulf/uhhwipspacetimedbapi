@@ -113,22 +113,30 @@ namespace TicketSalesApp.Services.Implementations
                     return null;
                 }
 
+                // Use correlation token to deterministically identify the created sale
+                var correlationGuid = Guid.NewGuid();
+                var correlationTag = $"[CORRELATION:{correlationGuid}]";
+                var notesWithCorrelation = string.IsNullOrEmpty(notes)
+                    ? correlationTag
+                    : $"{notes} {correlationTag}";
+
                 // Call the CreateSale reducer
                 conn.Reducers.CreateSale(
                     ticketId,
                     paymentMethod,
                     paymentStatus,
                     paymentReference,
-                    notes
+                    notesWithCorrelation
                 );
 
                 // Flush pending reducer responses to avoid race condition
                 conn.FrameTick();
 
-                // Find the newly created sale (most recent for this ticket)
+                // Find the newly created sale by correlation token
                 var newSale = conn.Db.Sale.Iter()
-                    .Where(s => s.TicketId == ticketId)
-                    .OrderByDescending(s => s.SaleDate)
+                    .Where(s => s.TicketId == ticketId &&
+                               s.Notes != null &&
+                               s.Notes.Contains($"[CORRELATION:{correlationGuid}]"))
                     .FirstOrDefault();
 
                 return newSale?.SaleId;
@@ -155,7 +163,25 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // UpdateSale reducer is not yet implemented in SpacetimeDB schema
-                throw new NotImplementedException("UpdateSale reducer is not available in the current SpacetimeDB schema. Add UpdateSale reducer to server/reducers or use DeleteSale + CreateSale as a workaround.");
+                // Use delete+create fallback pattern
+                _logger.LogInformation("Using delete+create fallback for sale update: {SaleId}", saleId);
+
+                // Delete the existing sale
+                conn.Reducers.DeleteSale(saleId);
+                conn.FrameTick();
+
+                // Create a new sale with updated values
+                conn.Reducers.CreateSale(
+                    sale.TicketId,
+                    paymentMethod ?? sale.PaymentMethod,
+                    paymentStatus ?? sale.PaymentStatus,
+                    paymentReference ?? sale.PaymentReference,
+                    notes ?? sale.Notes
+                );
+                conn.FrameTick();
+
+                _logger.LogInformation("Sale updated via delete+create: {SaleId}", saleId);
+                return true;
             }
             catch (Exception ex)
             {

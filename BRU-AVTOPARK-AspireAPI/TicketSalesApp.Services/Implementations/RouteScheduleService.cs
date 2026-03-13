@@ -284,12 +284,15 @@ namespace TicketSalesApp.Services.Implementations
                                 if (createdSchedule != null)
                                 {
                                     _logger.LogInformation("Successfully created schedule with ID: {ScheduleId}", createdSchedule.ScheduleId);
-                                    
+
+                                    // Set result immediately after finding the created schedule
+                                    pendingTcs.TrySetResult(createdSchedule.ScheduleId);
+
                                     // Clean up correlation marker from Notes field now that we have the ID
                                     if (!string.IsNullOrEmpty(createdSchedule.Notes) && createdSchedule.Notes.Contains($"[CORRELATION:{correlationGuid}]"))
                                     {
                                         _logger.LogDebug("Cleaning up correlation marker from schedule {ScheduleId} Notes field", createdSchedule.ScheduleId);
-                                        
+
                                         // Call UpdateRouteSchedule to remove correlation marker
                                         try
                                         {
@@ -320,8 +323,6 @@ namespace TicketSalesApp.Services.Implementations
                                             // Don't fail the operation - schedule was created successfully
                                         }
                                     }
-                                    
-                                    pendingTcs.TrySetResult(createdSchedule.ScheduleId);
                                 }
                                 else
                                 {
@@ -365,8 +366,8 @@ namespace TicketSalesApp.Services.Implementations
                         price ?? 0.0,
                         availableSeats ?? 0,
                         daysOfWeek?.ToList(),
-                        route.StartPoint,
-                        route.EndPoint,
+                        startPoint ?? route.StartPoint,
+                        endPoint ?? route.EndPoint,
                         routeStops?.ToList(),
                         arrivalTime ?? (departureTime ?? 0) + 3600000,
                         stopDurationMinutes,

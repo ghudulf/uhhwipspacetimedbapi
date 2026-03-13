@@ -22,7 +22,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly ILogger<SignalRRealtimeEventBus> _logger;
     private readonly RealtimeEventOptions _options;
     private readonly SemaphoreSlim _disposalLock = new(1, 1);
-    private bool _disposed;
+    private int _disposed;
     private bool _stopping;
 
     /// <summary>
@@ -57,7 +57,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>A ValueTask that completes when the event has been queued for dispatch; blocks if the channel is full to apply backpressure.</returns>
     public async ValueTask PublishAsync(ApiDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
-        if (_stopping || _disposed)
+        if (_stopping || _disposed != 0)
         {
             throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
         }
@@ -86,7 +86,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An array containing up to the requested number of most recent events in reverse chronological order.</returns>
     public IReadOnlyCollection<ApiDomainEvent> GetRecentEvents(int maxCount = 250)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposed != 0, this);
         
         var safeCount = Math.Clamp(maxCount, 1, Math.Max(1, _options.RecentEventLimit));
         return _recentEvents.Reverse().Take(safeCount).ToArray();
@@ -100,7 +100,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (_stopping || _disposed)
+        if (_stopping || _disposed != 0)
         {
             throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
         }
@@ -286,7 +286,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        // Use Interlocked.CompareExchange to ensure only one thread disposes
+        if (Interlocked.CompareExchange(ref _disposed != 0, 1, 0) == 1)
         {
             return;
         }
@@ -294,11 +295,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         await _disposalLock.WaitAsync();
         try
         {
-            if (_disposed)
-            {
-                return;
-            }
-
             // Set stopping flag to fail-fast concurrent operations
             _stopping = true;
 
@@ -313,7 +309,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             // Clear recent events
             _recentEvents.Clear();
 
-            _disposed = true;
             _logger.LogInformation("[EventBus] Event bus disposed successfully");
         }
         finally
@@ -327,12 +322,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
 
     public override void Dispose()
     {
-        if (!_disposed)
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
             _eventChannel.Writer.TryComplete();
-            _disposed = true;
         }
-        
+
         base.Dispose();
         GC.SuppressFinalize(this);
     }

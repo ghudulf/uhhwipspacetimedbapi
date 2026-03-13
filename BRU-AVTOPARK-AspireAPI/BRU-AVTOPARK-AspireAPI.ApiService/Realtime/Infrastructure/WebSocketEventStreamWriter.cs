@@ -225,8 +225,20 @@ public static class WebSocketEventStreamWriter
         try
         {
             var request = JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
-            logger.LogInformation("[WebSocketEventStreamWriter] Parsed request - Command: {Command}, RequestId: {RequestId}, Id: {Id}", 
+            logger.LogInformation("[WebSocketEventStreamWriter] Parsed request - Command: {Command}, RequestId: {RequestId}, Id: {Id}",
                 request?.Command, request?.RequestId, request?.Id);
+
+            // Validate the deserialized request
+            if (request == null || string.IsNullOrEmpty(request.Command))
+            {
+                logger.LogWarning("[WebSocketEventStreamWriter] Malformed envelope - null request or empty Command field");
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.InvalidPayloadData,
+                    "Malformed envelope: Command field is required",
+                    CancellationToken.None);
+                return null;
+            }
+
             return request;
         }
         catch (JsonException ex)

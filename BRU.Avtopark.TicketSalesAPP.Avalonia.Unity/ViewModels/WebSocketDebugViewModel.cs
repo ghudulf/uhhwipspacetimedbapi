@@ -590,13 +590,15 @@ public partial class WebSocketDebugViewModel : ObservableObject
             result.Message = "Connected, testing read_all...";
 
             // Test read_all command with pagination for routeschedules
+            string requestId;
             string json;
             if (result.ControllerName == "routeschedules")
             {
+                requestId = Guid.NewGuid().ToString();
                 var readAllRequest = new
                 {
                     command = "read_all",
-                    requestId = Guid.NewGuid().ToString(),
+                    requestId = requestId,
                     page = 1,
                     pageSize = 50
                 };
@@ -604,31 +606,73 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
             else
             {
+                requestId = Guid.NewGuid().ToString();
                 var readAllRequest = new
                 {
                     command = "read_all",
-                    requestId = Guid.NewGuid().ToString()
+                    requestId = requestId
                 };
                 json = JsonSerializer.Serialize(readAllRequest);
             }
 
             var bytes = Encoding.UTF8.GetBytes(json);
-            
-            AddLog($"→ [{result.ControllerName}] Sending read_all command");
+
+            AddLog($"→ [{result.ControllerName}] Sending read_all command with requestId: {requestId}");
             await ws.SendAsync(bytes, WebSocketMessageType.Text, true, cts.Token);
 
-            // Receive response
+            // Loop reading frames until we find a matching requestId with type=="result"
             var buffer = new byte[8192];
-            using var ms = new System.IO.MemoryStream();
-            WebSocketReceiveResult receiveResult;
+            string? responseJson = null;
+            var maxAttempts = 10;
+            var attempts = 0;
 
-            do
+            while (attempts < maxAttempts)
             {
-                receiveResult = await ws.ReceiveAsync(buffer, cts.Token);
-                ms.Write(buffer, 0, receiveResult.Count);
-            } while (!receiveResult.EndOfMessage);
+                using var ms = new System.IO.MemoryStream();
+                WebSocketReceiveResult receiveResult;
 
-            var responseJson = Encoding.UTF8.GetString(ms.ToArray());
+                do
+                {
+                    receiveResult = await ws.ReceiveAsync(buffer, cts.Token);
+                    ms.Write(buffer, 0, receiveResult.Count);
+                } while (!receiveResult.EndOfMessage);
+
+                var frameJson = Encoding.UTF8.GetString(ms.ToArray());
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(frameJson);
+                    var hasMatchingId = doc.RootElement.TryGetProperty("requestId", out var reqIdElement) &&
+                                       reqIdElement.GetString() == requestId;
+                    var isResultType = doc.RootElement.TryGetProperty("type", out var typeElement) &&
+                                      typeElement.GetString() == "result";
+
+                    if (hasMatchingId && isResultType)
+                    {
+                        responseJson = frameJson;
+                        break;
+                    }
+                    else
+                    {
+                        AddLog($"← [{result.ControllerName}] Skipping non-matching frame (attempt {attempts + 1})");
+                    }
+                }
+                catch
+                {
+                    // Ignore parsing errors and continue
+                }
+
+                attempts++;
+            }
+
+            if (responseJson == null)
+            {
+                result.Status = TestStatus.Failed;
+                result.Message = $"No matching response received after {maxAttempts} attempts";
+                AddLog($"✗ [{result.ControllerName}] No matching response received");
+                return result;
+            }
+
             AddLog($"← [{result.ControllerName}] Response: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}...");
 
             // Parse response to check success
@@ -636,8 +680,8 @@ public partial class WebSocketDebugViewModel : ObservableObject
             {
                 using var doc = JsonDocument.Parse(responseJson);
                 var success = false;
-                
-                if (doc.RootElement.TryGetProperty("operation", out var opElement) && 
+
+                if (doc.RootElement.TryGetProperty("operation", out var opElement) &&
                     opElement.GetString() == "read_all")
                 {
                     success = true;
@@ -809,22 +853,25 @@ public partial class WebSocketDebugViewModel : ObservableObject
         {
             var ping = new
             {
-                type = "ping",
+                command = "ping",
                 requestId = Guid.NewGuid().ToString(),
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                payload = new
+                {
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                }
             };
 
-            var options = new JsonSerializerOptions 
-            { 
+            var options = new JsonSerializerOptions
+            {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             };
-            
+
             var json = JsonSerializer.Serialize(ping, options);
             AddLog($"🏓 Sending ping JSON: {json}");
-            
+
             var bytes = Encoding.UTF8.GetBytes(json);
-            
+
             var socket = _webSocket ?? throw new InvalidOperationException("WebSocket is null");
             await SendAsyncWithLock(socket, bytes, _cts?.Token ?? CancellationToken.None);
             AddLog("🏓 Ping sent to universal stream");
