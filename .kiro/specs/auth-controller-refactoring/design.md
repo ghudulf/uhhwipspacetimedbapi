@@ -4012,62 +4012,207 @@ class SpacetimeDBAdapter {
 // ============================================================================
 // C# PROXY MIGRATION BRIDGE (Use only during migration from OpenIddict)
 // ============================================================================
-// This section shows how to use the C# backend as a proxy during migration.
+// This section shows how to call ACTUAL AuthController endpoints during migration.
 // Once migration is complete, use the direct SpacetimeDB implementation above.
+//
+// ACTUAL ENDPOINTS from AuthController.cs:
+// - POST /auth/login - Login with username/password
+// - POST /auth/register - Register new user
+// - GET  /auth/totp/setup - Get TOTP QR code
+// - POST /auth/totp/verify - Verify TOTP code
+// - POST /auth/totp/validate - Validate TOTP for login
+// - POST /auth/webauthn/register/options - Get WebAuthn registration options
+// - POST /auth/webauthn/register/complete - Complete WebAuthn registration
+// - POST /auth/webauthn/login/options - Get WebAuthn login options
+// - POST /auth/webauthn/login/complete - Complete WebAuthn login
+// - GET  /auth/qr/generate - Generate QR code for login
+// - POST /auth/qr/login - Login via QR code
+// - GET  ~/connect/authorize - OAuth authorization endpoint
+// - POST ~/connect/token - OAuth token endpoint
+// - GET  ~/connect/userinfo - Get user info from token
+// - GET  ~/connect/tokeninfo - Get token info
+// - POST /connect/registerclient - Register OAuth client
+// - PUT  /connect/update-client/{clientId} - Update OAuth client
+// - DELETE /connect/delete-client/{clientId} - Delete OAuth client
+// - GET  /connect/client/{clientId} - Get OAuth client details
+// - GET  /connect/clients - List all OAuth clients
+// - GET  /connect/scopes - List available OAuth scopes
 
-class SpacetimeDBAdapterWithCSharpProxy {
-  constructor(private name: string) {}
+class CSharpProxyAuthClient {
+  constructor(private baseUrl: string = 'http://localhost:5000') {}
   
-  async upsert(id: string, payload: any, expiresIn: number) {
-    // MIGRATION ONLY: Store via C# backend proxy
-    await fetch('http://csharp-backend:5000/api/oidc/store', {
+  // MIGRATION ONLY: Login via C# backend
+  async login(username: string, password: string) {
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
-      body: JSON.stringify({
-        type: this.name,
-        id,
-        payload,
-        expiresAt: Date.now() + (expiresIn * 1000)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    if (!response.ok) throw new Error('Login failed')
+    return await response.json() // Returns { token, userId, ... }
+  }
+  
+  // MIGRATION ONLY: Register via C# backend
+  async register(username: string, password: string, email: string) {
+    const response = await fetch(`${this.baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, email })
+    })
+    if (!response.ok) throw new Error('Registration failed')
+    return await response.json()
+  }
+  
+  // MIGRATION ONLY: OAuth authorization flow
+  async authorize(clientId: string, redirectUri: string, scope: string, state: string, codeChallenge: string) {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })
+    const response = await fetch(`${this.baseUrl}/connect/authorize?${params}`, {
+      method: 'GET',
+      credentials: 'include' // Include cookies for session
+    })
+    return response // Returns redirect or login page
+  }
+  
+  // MIGRATION ONLY: Exchange authorization code for token
+  async getToken(code: string, codeVerifier: string, clientId: string, redirectUri: string) {
+    const response = await fetch(`${this.baseUrl}/connect/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: codeVerifier,
+        client_id: clientId,
+        redirect_uri: redirectUri
       })
     })
+    if (!response.ok) throw new Error('Token exchange failed')
+    return await response.json() // Returns { access_token, refresh_token, ... }
   }
   
-  async find(id: string) {
-    // MIGRATION ONLY: Retrieve via C# backend proxy
-    const response = await fetch(`http://csharp-backend:5000/api/oidc/find/${this.name}/${id}`)
-    if (!response.ok) return undefined
+  // MIGRATION ONLY: Get user info from token
+  async getUserInfo(accessToken: string) {
+    const response = await fetch(`${this.baseUrl}/connect/userinfo`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
+    if (!response.ok) throw new Error('Failed to get user info')
     return await response.json()
   }
   
-  async findByUserCode(userCode: string) {
-    const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUserCode/${userCode}`)
-    if (!response.ok) return undefined
+  // MIGRATION ONLY: Register OAuth client
+  async registerClient(clientName: string, redirectUris: string[], scopes: string[]) {
+    const response = await fetch(`${this.baseUrl}/connect/registerclient`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientName,
+        redirectUris,
+        scopes
+      })
+    })
+    if (!response.ok) throw new Error('Client registration failed')
+    return await response.json() // Returns { clientId, clientSecret, ... }
+  }
+  
+  // MIGRATION ONLY: Setup TOTP
+  async setupTotp(token: string) {
+    const response = await fetch(`${this.baseUrl}/auth/totp/setup`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!response.ok) throw new Error('TOTP setup failed')
+    return await response.json() // Returns { qrCodeUri, secretKey }
+  }
+  
+  // MIGRATION ONLY: Verify TOTP
+  async verifyTotp(token: string, code: string) {
+    const response = await fetch(`${this.baseUrl}/auth/totp/verify`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code })
+    })
+    if (!response.ok) throw new Error('TOTP verification failed')
     return await response.json()
   }
   
-  async findByUid(uid: string) {
-    const response = await fetch(`http://csharp-backend:5000/api/oidc/findByUid/${this.name}/${uid}`)
-    if (!response.ok) return undefined
+  // MIGRATION ONLY: WebAuthn registration
+  async webAuthnRegisterOptions(token: string) {
+    const response = await fetch(`${this.baseUrl}/auth/webauthn/register/options`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!response.ok) throw new Error('WebAuthn options failed')
     return await response.json()
   }
   
-  async destroy(id: string) {
-    await fetch(`http://csharp-backend:5000/api/oidc/destroy/${this.name}/${id}`, {
-      method: 'DELETE'
+  async webAuthnRegisterComplete(token: string, credential: any) {
+    const response = await fetch(`${this.baseUrl}/auth/webauthn/register/complete`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(credential)
     })
+    if (!response.ok) throw new Error('WebAuthn registration failed')
+    return await response.json()
   }
   
-  async revokeByGrantId(grantId: string) {
-    await fetch(`http://csharp-backend:5000/api/oidc/revokeByGrantId/${grantId}`, {
-      method: 'DELETE'
+  // MIGRATION ONLY: QR code login
+  async generateQrCode() {
+    const response = await fetch(`${this.baseUrl}/auth/qr/generate`, {
+      method: 'GET'
     })
+    if (!response.ok) throw new Error('QR generation failed')
+    return await response.json() // Returns { qrCode, sessionId }
   }
   
-  async consume(id: string) {
-    await fetch(`http://csharp-backend:5000/api/oidc/consume/${this.name}/${id}`, {
-      method: 'POST'
+  async loginWithQr(sessionId: string, username: string, password: string) {
+    const response = await fetch(`${this.baseUrl}/auth/qr/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, username, password })
     })
+    if (!response.ok) throw new Error('QR login failed')
+    return await response.json()
   }
 }
+
+// Example usage during migration:
+const authClient = new CSharpProxyAuthClient('http://localhost:5000')
+
+// Login flow
+const loginResult = await authClient.login('user@example.com', 'password123')
+console.log('Logged in:', loginResult.token)
+
+// OAuth flow
+const authUrl = await authClient.authorize(
+  'avalonia-client',
+  'http://localhost:3000/callback',
+  'openid profile email',
+  'random-state',
+  'code-challenge-here'
+)
+// User completes login, gets authorization code
+const tokenResult = await authClient.getToken(
+  'auth-code',
+  'code-verifier',
+  'avalonia-client',
+  'http://localhost:3000/callback'
+)
+const userInfo = await authClient.getUserInfo(tokenResult.access_token)
 
 // ============================================================================
 // END C# PROXY MIGRATION BRIDGE
