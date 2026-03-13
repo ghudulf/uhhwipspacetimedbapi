@@ -616,7 +616,6 @@ public partial class MainWindow : Window
         if (_webSocketDebugWindow == null || !_webSocketDebugWindow.IsVisible)
         {
             _webSocketDebugWindow = new WebSocketDebugWindow();
-            _webSocketDebugWindow.Owner = this;
             _webSocketDebugWindow.Closed += (s, args) => _webSocketDebugWindow = null;
         }
 
