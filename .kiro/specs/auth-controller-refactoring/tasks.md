@@ -676,12 +676,13 @@ These tasks are performed AFTER successful deployment and gradual rollout:
   - Rollback instantly if issues detected
   - Iterate and improve based on production data
 
-- **Phase 7: Legacy Code Removal** (Weeks 20+, after full validation)
-  - Remove feature flag checks from AuthController
-  - Remove legacy code paths
-  - Remove duplicated helper methods
-  - Clean up and optimize
-  - Reduce AuthController from 8,293 lines to ~2,000 lines
+- **Phase 7: Legacy Code Cleanup** (Weeks 20+, after full validation)
+  - Delete legacy AuthController.cs file (8,293 lines)
+  - Rename AuthControllerRefactored.cs to AuthController.cs
+  - Remove routing infrastructure ([LegacyAction]/[RefactoredAction] attributes)
+  - KEEP feature flag infrastructure for operational flexibility
+  - Repurpose feature flags for endpoint availability control
+  - Final controller size: ~2,000-2,500 lines
 
 ## Success Criteria
 
@@ -689,7 +690,7 @@ These tasks are performed AFTER successful deployment and gradual rollout:
 - 100% of endpoints follow Controller → Orchestration → Services → Database pattern
 - Zero direct database access in AuthController
 - 100% orchestration layer coverage (50 methods)
-- AuthController reduced from 8,293 lines to ~2,000 lines (after Phase 7)
+- AuthController reduced from 8,293 lines to ~2,000-2,500 lines (after Phase 7 cleanup)
 
 **Quality Success Criteria**:
 - Zero breaking changes to API contracts
@@ -851,138 +852,213 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   - Ask the user if ready to proceed with legacy code removal
 
 
-### Phase 7: Legacy Code Removal (Weeks 20+) - Zero Risk
+### Phase 7: Legacy Code Cleanup (Weeks 20+) - Zero Risk
 
 **Note**: These tasks are performed AFTER all endpoints have been at 100% rollout for several weeks/months with stable operation.
 
-- [ ] 23. Remove feature flag infrastructure
-  - [ ] 23.1 Remove feature flag checks from AuthController
-    - Remove all `if (_featureFlags.Value.Enable*Refactoring)` checks
-    - Keep only the new code paths (orchestration service calls)
+**IMPORTANT**: Feature flag infrastructure is KEPT for operational flexibility. This allows instant rollback capability and A/B testing even after cleanup.
+
+- [ ] 23. Delete legacy AuthController.cs file
+  - [ ] 23.1 Verify all feature flags are enabled and stable
+    - Confirm all 56 endpoints have been at 100% rollout for at least 2-4 weeks
+    - Verify error rates, performance metrics are acceptable
+    - Confirm no production incidents related to refactored endpoints
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 23.2 Remove FeatureFlagOptions class
-    - Delete Options/FeatureFlagOptions.cs
-    - Remove configuration from appsettings.json
-    - Remove DI registration from Program.cs
-    - _Requirements: 1.5_
+  - [ ] 23.2 Delete Controllers/AuthController.cs
+    - Remove the entire 8,293-line legacy controller file
+    - This file contains all legacy implementations with [LegacyAction] attributes
+    - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 23.3 Update tests to remove feature flag logic
-    - Remove feature flag setup from integration tests
-    - Simplify test code to only test new code paths
+  - [ ] 23.3 Update integration tests to remove legacy controller tests
+    - Remove tests that specifically test legacy AuthController
+    - Keep tests for AuthControllerRefactored
+    - Remove feature flag toggle tests (no longer needed since only one controller exists)
     - _Requirements: 5.5_
 
-- [ ] 24. Remove legacy code paths from AuthController
-  - [ ] 24.1 Remove legacy Login implementation
-    - Delete all legacy code from Login endpoint
-    - Keep only orchestration service call
+- [ ] 24. Clean up AuthControllerRefactored.cs
+  - [ ] 24.1 Remove [RefactoredAction] attributes from all endpoints
+    - These attributes are no longer needed since legacy controller is deleted
+    - Keep all other attributes ([HttpPost], [Authorize], etc.)
+    - Location: Controllers/AuthControllerRefactored.cs
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 24.2 Remove legacy Register implementation
-    - Delete all legacy code from Register endpoint
-    - Keep only orchestration service call
+  - [ ] 24.2 Rename AuthControllerRefactored.cs to AuthController.cs
+    - This becomes the new primary AuthController
+    - Update class name from AuthControllerRefactored to AuthController
+    - Update constructor and all internal references
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 24.3 Remove legacy TOTP implementations
-    - Delete legacy code from all 4 TOTP endpoints
-    - Keep only orchestration service calls
-    - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
-  
-  - [ ] 24.4 Remove legacy WebAuthn implementations
-    - Delete legacy code from all 7 WebAuthn endpoints
-    - Keep only orchestration service calls
-    - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
-  
-  - [ ] 24.5 Remove legacy OAuth implementations
-    - Delete legacy code from all OAuth endpoints
-    - Keep only orchestration service calls
-    - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
-  
-  - [ ] 24.6 Remove legacy implementations from remaining endpoints
-    - Delete legacy code from QR, Magic Link, Profile, User management endpoints
-    - Keep only orchestration service calls
-    - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
+  - [ ] 24.3 Update route attribute to use token replacement
+    - Change `[Route("api/Auth")]` to `[Route("api/[controller]")]` for consistency with ASP.NET Core conventions
+    - This maintains the same route ("api/Auth") but uses standard token replacement pattern
+    - Verify all routes still match expected patterns after change
+    - Ensure backward compatibility with existing clients
+    - Location: Controllers/AuthController.cs (after rename from AuthControllerRefactored.cs)
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 25. Remove duplicated helper methods from AuthController
-  - [ ] 25.1 Remove IsAdmin method from AuthController
-    - Already exists in AuthOrchestrationService
-    - Update any remaining references to use orchestration service
-    - _Requirements: 3.1, 3.2, 3.5_
-  
-  - [ ] 25.2 Remove HasPermission method from AuthController
-    - Already exists in AuthOrchestrationService
-    - Update any remaining references to use orchestration service
-    - _Requirements: 3.1, 3.3, 3.5_
-  
-  - [ ] 25.3 Remove GenerateJwtToken method from AuthController
-    - Already exists in TokenService
-    - Update any remaining references to use TokenService
-    - _Requirements: 3.1, 3.5_
-  
-  - [ ] 25.4 Remove GetUserIdentity method from AuthController
-    - Already exists in IdentityService
-    - Update any remaining references to use IdentityService
-    - _Requirements: 3.1, 3.4, 3.5_
-  
-  - [ ] 25.5 Remove IsBrowserRequest method from AuthController
-    - Already exists in RequestDetector service
-    - Update any remaining references to use RequestDetector
-    - _Requirements: 3.1, 3.5_
-  
-  - [ ] 25.6 Remove GenerateRandomToken method from AuthController
-    - Already exists in TokenService
-    - Update any remaining references to use TokenService
-    - _Requirements: 3.1, 3.5_
-  
-  - [ ] 25.7 Remove manual JWT validation code from OAuth admin endpoints
-    - Use centralized validation from TokenService
-    - _Requirements: 3.1, 3.5_
-
-- [ ] 26. Verify AuthController line count reduction
-  - [ ] 26.1 Measure final AuthController line count
-    - Target: ~2,000 lines (down from 8,293 lines)
-    - 75% reduction achieved
+- [ ] 25. Clean up routing infrastructure
+  - [ ] 25.1 Delete FeatureFlagActionConstraint.cs
+    - Remove Routing/FeatureFlagActionConstraint.cs
+    - Remove RefactoredActionAttribute and LegacyActionAttribute classes
+    - No longer needed since only one controller exists
     - _Requirements: 1.5_
   
-  - [ ] 26.2 Verify all endpoints follow clean architecture
+  - [ ] 25.2 Delete FeatureFlagEndpointSelector.cs (if exists)
+    - Remove Routing/FeatureFlagEndpointSelector.cs
+    - Remove any endpoint selection logic
+    - _Requirements: 1.5_
+  
+  - [ ] 25.3 Delete FeatureFlagEndpointSelectorPolicy.cs (if exists)
+    - Remove Routing/FeatureFlagEndpointSelectorPolicy.cs
+    - Remove any policy-based routing logic
+    - _Requirements: 1.5_
+  
+  - [ ] 25.4 Remove routing middleware registration from Program.cs
+    - Remove FeatureFlagRoutingMiddleware registration (if exists)
+    - Remove any custom endpoint selector registration
+    - Keep standard ASP.NET Core routing
+    - _Requirements: 1.5_
+
+- [ ] 26. Update feature flag configuration (KEEP, but simplify)
+  - [ ] 26.1 Update FeatureFlagOptions.cs documentation
+    - Add comment: "Feature flags kept for operational flexibility and A/B testing"
+    - Add comment: "All flags default to true since legacy controller is removed"
+    - Document that flags can still be used to disable specific endpoints if needed
+    - Location: Options/FeatureFlagOptions.cs
+    - _Requirements: 6.1, 6.2, 6.3_
+  
+  - [ ] 26.2 Update appsettings.json default values
+    - Set all feature flags to true by default
+    - Add comment explaining flags are kept for operational flexibility
+    - Document that setting a flag to false will disable the endpoint entirely
+    - _Requirements: 6.1, 6.2, 6.3_
+  
+  - [ ] 26.3 Keep FeatureFlagService.cs unchanged
+    - Service remains functional for runtime flag management
+    - Admin UI continues to work for toggling endpoints on/off
+    - Useful for emergency endpoint disabling or A/B testing
+    - _Requirements: 6.1.3, 6.1.4, 6.1.6, 6.1.7, 6.1.8_
+  
+  - [ ] 26.4 Keep admin feature flag UI and API endpoints
+    - Keep /admin/feature-flags UI page
+    - Keep /api/admin/feature-flags/* API endpoints
+    - Update UI documentation to reflect new purpose (enable/disable endpoints, not switch implementations)
+    - _Requirements: 6.1.4, 6.1.5, 6.1.8, 6.1.9_
+
+- [ ] 27. Update AuthController to use feature flags for endpoint disabling
+  - [ ] 27.1 Add feature flag checks at start of each endpoint
+    - Check if endpoint's feature flag is enabled
+    - If disabled, return 503 Service Unavailable with message
+    - Example: `if (!_featureFlags.Value.EnableLoginRefactoring) return StatusCode(503, "Login endpoint temporarily disabled");`
+    - This provides operational control to disable problematic endpoints
+    - _Requirements: 6.1, 6.2, 6.3, 15.4_
+  
+  - [ ] 27.2 Add logging for disabled endpoint access attempts
+    - Log when users hit disabled endpoints
+    - Include endpoint name, user identity (if available), timestamp
+    - Helps track impact of endpoint disabling
+    - _Requirements: 6.5, 12.5_
+  
+  - [ ] 27.3 Document feature flag behavior in code comments
+    - Add XML comments explaining feature flag purpose
+    - Document that flags control endpoint availability, not implementation selection
+    - Provide examples of when to disable endpoints (security issues, performance problems, etc.)
+    - _Requirements: 11.1, 11.2_
+
+- [ ] 28. Remove duplicated helper methods from old AuthController locations
+  - [ ] 28.1 Verify no duplicated IsAdmin method exists
+    - Should only exist in AuthOrchestrationService
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.2, 3.5_
+  
+  - [ ] 28.2 Verify no duplicated HasPermission method exists
+    - Should only exist in AuthOrchestrationService
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.3, 3.5_
+  
+  - [ ] 28.3 Verify no duplicated GenerateJwtToken method exists
+    - Should only exist in TokenService
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.5_
+  
+  - [ ] 28.4 Verify no duplicated GetUserIdentity method exists
+    - Should only exist in IdentityService
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.4, 3.5_
+  
+  - [ ] 28.5 Verify no duplicated IsBrowserRequest method exists
+    - Should only exist in RequestDetector service
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.5_
+  
+  - [ ] 28.6 Verify no duplicated GenerateRandomToken method exists
+    - Should only exist in TokenService
+    - Remove from any other locations if found
+    - _Requirements: 3.1, 3.5_
+
+- [ ] 29. Verify controller line count reduction
+  - [ ] 29.1 Measure final AuthController.cs line count
+    - Target: ~2,000-2,500 lines (down from 8,293 lines)
+    - 70-75% reduction achieved
+    - Includes feature flag checks for endpoint disabling
+    - _Requirements: 1.5_
+  
+  - [ ] 29.2 Verify all endpoints follow clean architecture
     - All endpoints delegate to orchestration service
     - Zero direct database access
     - Zero duplicated helper methods
+    - Feature flags used only for endpoint availability control
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 27. Final testing and validation
-  - [ ] 27.1 Run full test suite
+- [ ] 30. Final testing and validation
+  - [ ] 30.1 Run full test suite
     - All unit tests passing
     - All integration tests passing
     - All performance tests passing
     - _Requirements: 5.5_
   
-  - [ ] 27.2 Perform security audit
+  - [ ] 30.2 Test feature flag endpoint disabling
+    - Disable each endpoint via feature flag
+    - Verify 503 Service Unavailable response
+    - Verify logging works correctly
+    - Re-enable and verify endpoint works again
+    - _Requirements: 6.1, 6.2, 6.3, 6.5_
+  
+  - [ ] 30.3 Perform security audit
     - Verify all authentication logic centralized
     - Verify all authorization logic centralized
     - Verify audit logging implemented
+    - Verify feature flag admin endpoints are properly secured
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 27.3 Update documentation
+  - [ ] 30.4 Update documentation
     - Update ARCHITECTURE.md to reflect final state
+    - Document feature flag purpose (endpoint availability control)
     - Update API documentation
-    - Remove migration-related documentation
+    - Document operational procedures for disabling endpoints
     - _Requirements: 11.1, 11.2, 11.4_
 
-- [ ] 28. Deploy legacy code removal to production
-  - [ ] 28.1 Deploy to staging environment
+- [ ] 31. Deploy cleanup to production
+  - [ ] 31.1 Deploy to staging environment
     - Run full test suite in staging
     - Perform manual testing
+    - Test feature flag endpoint disabling
     - _Requirements: 12.1, 12.2_
   
-  - [ ] 28.2 Deploy to production
+  - [ ] 31.2 Deploy to production
     - Monitor for 24 hours
     - Verify all endpoints functioning correctly
     - Verify performance metrics unchanged
+    - Verify feature flag admin UI works correctly
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 29. Final checkpoint - Refactoring complete
-  - AuthController reduced from 8,293 lines to ~2,000 lines
+- [ ] 32. Final checkpoint - Cleanup complete
+  - Legacy AuthController.cs deleted (8,293 lines removed)
+  - AuthControllerRefactored.cs renamed to AuthController.cs (~2,000-2,500 lines)
+  - Routing infrastructure cleaned up ([LegacyAction]/[RefactoredAction] attributes removed)
+  - Feature flag infrastructure KEPT for operational flexibility
+  - Feature flags repurposed for endpoint availability control
   - 100% clean architecture across all 56 endpoints
   - Zero direct database access
   - Zero code duplication
@@ -992,6 +1068,87 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 ## Future Vision: Frontend-Agnostic Authentication Service (6-12 Months Post-Refactoring)
 
 **Note**: These tasks represent the long-term evolution beyond the current refactoring. They transform the auth service into a pure JSON API backend that can serve any frontend (Next.js, React, Vue, mobile apps, etc.).
+
+**IMPORTANT**: This is ONE POSSIBLE path forward. There are multiple valid architectural approaches depending on your needs:
+
+### Path Options
+
+**Option 1: Keep Current Hybrid Approach (Recommended for Most Teams)**
+- Keep CSHTML views for browser-based authentication
+- Keep JSON API endpoints for programmatic access
+- Feature flags control endpoint availability (not implementation selection)
+- **Pros**: Simple, works well, no additional frontend work needed
+- **Cons**: Coupled to ASP.NET Core Razor engine
+- **Best for**: Teams that don't need a separate frontend framework
+
+**Option 2: Gradual Frontend Decoupling (Phases 8-11 below)**
+- Add JSON API support alongside HTML (Phase 8)
+- Extract rendering abstraction (Phase 9)
+- Build separate frontend (Next.js, React, etc.) (Phase 10)
+- Remove CSHTML entirely (Phase 11)
+- **Pros**: Complete separation of concerns, frontend flexibility
+- **Cons**: Significant additional work, requires frontend expertise
+- **Best for**: Teams building multi-platform apps (web + mobile + desktop)
+
+**Option 3: API-First Only (Skip Phases 9-11)**
+- Add JSON API support alongside HTML (Phase 8)
+- Keep CSHTML for browser clients indefinitely
+- Use JSON APIs for mobile/desktop apps
+- **Pros**: Flexibility without full decoupling, less work than Option 2
+- **Cons**: Still coupled to Razor engine
+- **Best for**: Teams adding mobile/desktop apps but keeping web as-is
+
+**Option 4: Immediate Frontend Replacement (Skip Phases 8-9)**
+- Build new frontend immediately (Next.js, React, etc.)
+- Remove CSHTML once new frontend is stable
+- **Pros**: Fastest path to frontend-agnostic architecture
+- **Cons**: High risk, no gradual migration
+- **Best for**: Teams with strong frontend expertise and appetite for risk
+
+**Option 5: Keep CSHTML Forever**
+- Don't do any of Phases 8-11
+- Use refactored controller with CSHTML views
+- Feature flags control endpoint availability only
+- **Pros**: Simplest, no additional work
+- **Cons**: Coupled to ASP.NET Core
+- **Best for**: Teams satisfied with current approach
+
+**Option 6: ElysiaJS as Authentication Gateway (Advanced)**
+- Replace ASP.NET Core auth layer with ElysiaJS (TypeScript/Bun)
+- ElysiaJS connects DIRECTLY to SpacetimeDB for auth data
+- C# backend becomes pure business logic API
+- Use oidc-provider for production-grade OIDC implementation
+- **Pros**: Modern TypeScript stack, better performance (~10k req/s), simpler SpacetimeDB integration (no ID mapping, no polling), native WebSocket support
+- **Cons**: Two runtimes (Bun + .NET), requires TypeScript expertise, significant migration effort
+- **Best for**: Teams with TypeScript expertise wanting to modernize auth stack and solve current OpenIddict/SpacetimeDB complexity
+
+**Option 7: ElysiaJS as OAuth Proxy (Compatibility Layer)**
+- Keep existing C# authentication system unchanged
+- ElysiaJS PROXIES OAuth/OIDC endpoints to JavaScript frontends
+- C# backend retains ALL authentication logic
+- **Pros**: Zero C# changes, minimal risk, enables JS clients
+- **Cons**: Two auth systems, limited benefit
+- **Best for**: Teams needing OAuth for JS clients but keeping C# auth system
+
+**Option 8: Hybrid ElysiaJS Approach (Gradual Migration)**
+- Use ElysiaJS for new features, keep C# for existing features
+- Incremental migration over time
+- **Pros**: Zero risk, best of both worlds
+- **Cons**: Operational complexity, unclear boundaries
+- **Best for**: Teams wanting to experiment with ElysiaJS without full commitment
+
+### Recommended Approach
+
+For most teams, we recommend **Option 1** (keep current hybrid approach) or **Option 3** (add JSON APIs but keep CSHTML). Only pursue full frontend decoupling (Option 2) or ElysiaJS migration (Options 6-8) if you have:
+- Strong frontend/TypeScript development expertise
+- Need for multi-platform apps (web + mobile + desktop)
+- Time and resources for 6-12 months of additional work
+- Business justification for the investment
+- (For ElysiaJS) Need to solve current OpenIddict/SpacetimeDB complexity
+
+The tasks below describe **Option 2** (full frontend decoupling with Next.js) as the most comprehensive path. For ElysiaJS options (6-8), see the design document for detailed implementation guidance.
+
+---
 
 ### Phase 8: API-First Endpoints (Months 1-2 Post-Refactoring)
 
@@ -1260,15 +1417,27 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   - Monitor error rates, performance, user feedback
   - Duration: 1-2 months
 
-- **Phase 7**: Legacy Code Removal (Weeks 20+) - Zero Risk
-  - Remove feature flags and legacy code
-  - Reduce AuthController from 8,293 lines to ~2,000 lines
+- **Phase 7**: Legacy Code Cleanup (Weeks 20+) - Zero Risk
+  - Delete legacy AuthController.cs file
+  - Rename AuthControllerRefactored.cs to AuthController.cs
+  - Clean up routing infrastructure
+  - KEEP feature flag infrastructure for operational flexibility
   - Duration: 2-3 weeks
   - **Prerequisite**: All endpoints at 100% rollout for several weeks/months with stable operation
 
 **Total Duration**: 3-4 months from start to legacy code removal
 
-### Future Vision (Phases 8-11)
+### Future Vision (Phases 8-11) - OPTIONAL
+
+**Note**: These phases are OPTIONAL and represent different paths forward. Choose based on your team's needs:
+
+- **Option 1 (Keep Current)**: Skip all future phases - use refactored controller with CSHTML
+- **Option 2 (Full Decoupling)**: Complete all phases 8-11 for frontend-agnostic architecture
+- **Option 3 (API-First Hybrid)**: Complete Phase 8 only, keep CSHTML for browsers
+- **Option 4 (Fast Replacement)**: Skip to Phase 10, build new frontend immediately
+- **Option 5 (Stay Simple)**: Skip all future phases, keep CSHTML forever
+
+**If pursuing Option 2 (Full Decoupling)**:
 - **Phase 8**: API-First Endpoints (Months 1-2 Post-Refactoring)
   - Add JSON API support alongside HTML
   - Duration: 2-3 weeks
@@ -1278,7 +1447,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   - Duration: 2-3 weeks
 
 - **Phase 10**: Frontend Decoupling (Months 5-8 Post-Refactoring)
-  - Build Next.js frontend
+  - Build Next.js frontend (or React, Vue, etc.)
   - Run side-by-side with CSHTML
   - Duration: 8-12 weeks
 
@@ -1287,7 +1456,9 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   - Pure JSON API backend
   - Duration: 2-3 weeks
 
-**Total Duration**: 12+ months for complete frontend-agnostic architecture
+**Total Duration (Option 2)**: 12+ months for complete frontend-agnostic architecture
+
+**Most teams should choose Option 1 or Option 3** - the refactored controller with CSHTML views works well for most use cases.
 
 ## Risk Assessment by Phase
 
@@ -1298,15 +1469,19 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 | 5 | **Zero** | Documentation only | N/A |
 | 6 | **Controlled** | Gradual rollout with monitoring | Instant rollback via feature flags |
 | 7 | **Zero** | Only after months of stable operation | Revert deployment |
-| 8-11 | **Low-Medium** | Gradual migration with dual-mode support | Keep CSHTML as fallback |
+| 8-11 | **Low-Medium (OPTIONAL)** | Gradual migration with dual-mode support | Keep CSHTML as fallback |
+
+**Note**: Phases 8-11 are optional. Most teams can stop after Phase 7 and use the refactored controller with CSHTML views.
 
 ## Dependencies Between Phases
 
 - **Phase 2** depends on **Phase 1**: Need TwoFactorService and SettingsService before orchestration
 - **Phase 4** depends on **Phases 1-3**: Need services, orchestration, and feature flags before controller modification
 - **Phase 6** depends on **Phases 1-5**: Need complete implementation before production rollout
-- **Phase 7** depends on **Phase 6**: Need stable production operation before legacy code removal
-- **Phases 8-11** depend on **Phase 7**: Need clean architecture before frontend decoupling
+- **Phase 7** depends on **Phase 6**: Need stable production operation before legacy code cleanup
+- **Phases 8-11** (OPTIONAL) depend on **Phase 7**: Need clean architecture before frontend decoupling
+
+**Note**: Phases 8-11 are optional. You can stop after Phase 7 and have a fully functional, refactored authentication system.
 
 ## Effort Estimation
 
@@ -1321,28 +1496,51 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 ### Post-Deployment (Phases 6-7)
 - **Phase 6**: 1-2 months (gradual rollout + monitoring)
-- **Phase 7**: 2-3 days (legacy code removal)
+- **Phase 7**: 2-3 days (legacy code cleanup - delete old controller, rename new one, clean up routing)
 
 **Total**: ~1-2 months with minimal active development
 
-### Future Vision (Phases 8-11)
+### Future Vision (Phases 8-11) - OPTIONAL
+
+**Note**: Only pursue these phases if you need frontend-agnostic architecture. Most teams can stop after Phase 7.
+
+**If pursuing Option 2 (Full Frontend Decoupling)**:
 - **Phase 8**: 2-3 weeks (JSON API endpoints)
 - **Phase 9**: 2-3 weeks (rendering abstraction)
-- **Phase 10**: 8-12 weeks (Next.js frontend)
+- **Phase 10**: 8-12 weeks (Next.js/React/Vue frontend)
 - **Phase 11**: 2-3 weeks (CSHTML deprecation)
 
-**Total**: ~4-6 months of development work
+**Total (Option 2)**: ~4-6 months of development work
+
+**If pursuing Option 3 (API-First Hybrid)**:
+- **Phase 8**: 2-3 weeks (JSON API endpoints)
+- Skip Phases 9-11
+
+**Total (Option 3)**: ~2-3 weeks of development work
+
+**If pursuing Option 1 or Option 5 (Keep Current)**:
+- Skip all future phases
+- **Total**: 0 additional work
 
 ## Key Milestones
 
+**Core Refactoring (Required)**:
 1. ✅ **Milestone 1**: Services created (End of Phase 1)
 2. ✅ **Milestone 2**: Orchestration complete (End of Phase 2)
 3. ✅ **Milestone 3**: Feature flags ready (End of Phase 3)
 4. ✅ **Milestone 4**: Controller modified (End of Phase 4)
 5. ✅ **Milestone 5**: Ready for deployment (End of Phase 5)
 6. ✅ **Milestone 6**: All endpoints at 100% rollout (End of Phase 6)
-7. ✅ **Milestone 7**: Legacy code removed (End of Phase 7)
-8. ✅ **Milestone 8**: JSON API complete (End of Phase 8)
-9. ✅ **Milestone 9**: Rendering abstracted (End of Phase 9)
-10. ✅ **Milestone 10**: Next.js frontend live (End of Phase 10)
-11. ✅ **Milestone 11**: Frontend-agnostic architecture complete (End of Phase 11)
+7. ✅ **Milestone 7**: Legacy code cleaned up (End of Phase 7) - **STOPPING POINT FOR MOST TEAMS**
+
+**Future Vision (Optional - Choose Your Path)**:
+8. ⭕ **Milestone 8**: JSON API complete (End of Phase 8) - *Option 2 or 3*
+9. ⭕ **Milestone 9**: Rendering abstracted (End of Phase 9) - *Option 2 only*
+10. ⭕ **Milestone 10**: New frontend live (End of Phase 10) - *Option 2 or 4*
+11. ⭕ **Milestone 11**: Frontend-agnostic architecture complete (End of Phase 11) - *Option 2 only*
+
+**Legend**:
+- ✅ = Required milestone (all teams should complete)
+- ⭕ = Optional milestone (choose based on your path)
+
+**Recommendation**: Most teams should stop at Milestone 7. The refactored controller with CSHTML views provides a clean, maintainable authentication system that works well for most use cases.

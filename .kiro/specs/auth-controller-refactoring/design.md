@@ -1727,15 +1727,24 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 - **Routing**: Dynamic selection based on feature flags
 - **Risk Level**: CONTROLLED - instant rollback available, both controllers coexist
 
-**Phase 6: Legacy Code Removal (After validation)** - Zero Risk
-- Remove feature flag checks and attributes
-- Delete legacy `AuthController.cs` file
+**Phase 6: Legacy Code Cleanup (After validation)** - Zero Risk
+- Delete legacy `AuthController.cs` file (8,293 lines removed)
 - Rename `AuthControllerRefactored.cs` to `AuthController.cs`
-- Remove `[RefactoredAction]` attributes (no longer needed)
-- Remove `FeatureFlagActionConstraint.cs` (no longer needed)
-- Clean up and optimize
-- **AuthController**: Simplified to ~2,000 lines (from 8,293)
+- Remove `[RefactoredAction]` and `[LegacyAction]` attributes (no longer needed)
+- Remove `FeatureFlagActionConstraint.cs` and related routing infrastructure
+- KEEP feature flag infrastructure for operational flexibility
+- Repurpose feature flags for endpoint availability control (enable/disable endpoints)
+- Add feature flag checks to control endpoint availability (503 if disabled)
+- **AuthController**: Simplified to ~2,000-2,500 lines (from 8,293)
+- **Feature Flags**: Repurposed for operational control (not implementation selection)
 - **Risk Level**: ZERO - new code already validated in production for weeks/months
+
+**Why Keep Feature Flags**:
+- Operational flexibility: Instantly disable problematic endpoints without deployment
+- A/B testing: Test endpoint changes with subset of users
+- Emergency response: Quick mitigation for security issues or performance problems
+- Gradual rollout: Enable new features incrementally
+- Monitoring: Track endpoint usage and performance per flag
 
 ### Timeline
 
@@ -1746,7 +1755,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 **Week 8**: Feature flag integration
 **Week 9-10**: Controller modification and testing
 **Week 11+**: Gradual production rollout (1-2 months)
-**Week 20+**: Legacy code removal (after full validation)
+**Week 20+**: Legacy code cleanup (after full validation) - delete old controller, rename new one, repurpose feature flags
 
 ### Risk Mitigation
 
