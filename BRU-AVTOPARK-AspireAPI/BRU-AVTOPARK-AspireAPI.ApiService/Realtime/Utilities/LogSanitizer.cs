@@ -33,12 +33,9 @@ internal static class LogSanitizer
             return string.Empty;
         }
 
-        // Remove newlines and control characters (including CR/LF and other non-printable chars) to prevent log injection
+        // Remove control characters to prevent log injection
         var sanitized = new string(value
-            .Where(c =>
-                // Allow common printable characters and space
-                !char.IsControl(c) ||
-                c == ' ')
+            .Where(c => !char.IsControl(c))
             .ToArray());
 
         // Truncate if needed - ensure output never exceeds maxLength

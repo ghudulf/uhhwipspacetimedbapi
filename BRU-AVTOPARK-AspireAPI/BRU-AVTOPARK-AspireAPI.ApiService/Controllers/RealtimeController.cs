@@ -689,8 +689,12 @@ public sealed class RealtimeController : BaseController
 
     private async Task<(object? Data, int TotalCount)> ExecuteReadAllAsync(object service, string resource, int page, int pageSize)
     {
-        // Normalize resource name for consistent switch matching
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        if (normalizedResource is "tickets" or "ticket-sales" or "ticketsales")
+        {
+            throw new NotSupportedException($"Read operations for '{resource}' are not supported via WebSocket. Use SpacetimeDB direct access.");
+        }
         
         object? allData = normalizedResource switch
         {
@@ -702,8 +706,6 @@ public sealed class RealtimeController : BaseController
             "roles" => await ((IRoleService)service).GetAllRolesAsync(),
             "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
-            "tickets" => null, // Tickets use SpacetimeDB directly
-            "ticket-sales" or "ticketsales" => null, // TicketSales use SpacetimeDB directly
             "users" => await ((IUserService)service).GetAllUsersAsync(),
             _ => null
         };
@@ -736,6 +738,11 @@ public sealed class RealtimeController : BaseController
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
+        if (normalizedResource is "tickets" or "ticket-sales" or "ticketsales")
+        {
+            throw new NotSupportedException($"Read operations for '{resource}' are not supported via WebSocket. Use SpacetimeDB direct access.");
+        }
+        
         return normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetBusByIdAsync(id),
@@ -746,8 +753,6 @@ public sealed class RealtimeController : BaseController
             "roles" => await ((IRoleService)service).GetRoleByIdAsync(id),
             "routes" => await ((IRouteService)service).GetRouteByIdAsync(id),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetScheduleByIdAsync(id),
-            "tickets" => null,
-            "ticket-sales" or "ticketsales" => null,
             "users" => await ((IUserService)service).GetUserByIdAsync(id),
             _ => null
         };
@@ -1141,73 +1146,53 @@ public sealed class RealtimeController : BaseController
         Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
-        // Track active channel subscriptions: EventChannel -> (IAsyncEnumerable, refCount)
-        var activeChannelSubscriptions = new ConcurrentDictionary<string, (IAsyncEnumerable<ApiDomainEvent> Stream, int RefCount)>();
+        var activeEnumerators = new ConcurrentDictionary<string, IAsyncEnumerator<ApiDomainEvent>>();
         var subscriptionLock = new SemaphoreSlim(1, 1);
         
         try
         {
-            // Monitor subscription changes and dynamically manage channel subscriptions
             var previousSubscriptions = new HashSet<string>();
             
             while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
             {
-                // Get current subscriptions snapshot
                 var currentSubscriptions = new HashSet<string>(subscriptions.Keys);
                 
-                // Determine which channels need to be subscribed/unsubscribed
                 await subscriptionLock.WaitAsync(cancellationToken);
                 try
                 {
-                    // Find new subscriptions
                     var newSubscriptions = currentSubscriptions.Except(previousSubscriptions).ToList();
                     foreach (var resource in newSubscriptions)
                     {
-                        // Find the event channel for this resource
                         if (_resourceHandlers.TryGetValue(resource, out var handler))
                         {
                             var channel = handler.EventChannel;
                             
-                            // Subscribe to channel if not already subscribed
-                            if (!activeChannelSubscriptions.ContainsKey(channel))
+                            if (!activeEnumerators.ContainsKey(channel))
                             {
                                 var stream = _eventBus.SubscribeAsync(channel, cancellationToken);
-                                activeChannelSubscriptions[channel] = (stream, 1);
-                                _logger.LogDebug("[{ConnectionId}] Subscribed to channel {Channel} for resource {Resource}", 
-                                    connectionId, channel, resource);
-                            }
-                            else
-                            {
-                                // Increment ref count
-                                var (stream, refCount) = activeChannelSubscriptions[channel];
-                                activeChannelSubscriptions[channel] = (stream, refCount + 1);
+                                var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+                                activeEnumerators[channel] = enumerator;
+                                _logger.LogDebug("[{ConnectionId}] Created persistent enumerator for channel {Channel}", 
+                                    connectionId, channel);
                             }
                         }
                     }
                     
-                    // Find removed subscriptions
                     var removedSubscriptions = previousSubscriptions.Except(currentSubscriptions).ToList();
                     foreach (var resource in removedSubscriptions)
                     {
-                        // Find the event channel for this resource
                         if (_resourceHandlers.TryGetValue(resource, out var handler))
                         {
                             var channel = handler.EventChannel;
                             
-                            // Decrement ref count and unsubscribe if no more resources use this channel
-                            if (activeChannelSubscriptions.TryGetValue(channel, out var entry))
+                            var stillNeeded = currentSubscriptions.Any(r => 
+                                _resourceHandlers.TryGetValue(r, out var h) && h.EventChannel == channel);
+                            
+                            if (!stillNeeded && activeEnumerators.TryRemove(channel, out var enumerator))
                             {
-                                var (stream, refCount) = entry;
-                                if (refCount <= 1)
-                                {
-                                    activeChannelSubscriptions.TryRemove(channel, out _);
-                                    _logger.LogDebug("[{ConnectionId}] Unsubscribed from channel {Channel} (no more resources)", 
-                                        connectionId, channel);
-                                }
-                                else
-                                {
-                                    activeChannelSubscriptions[channel] = (stream, refCount - 1);
-                                }
+                                await enumerator.DisposeAsync();
+                                _logger.LogDebug("[{ConnectionId}] Disposed enumerator for channel {Channel}", 
+                                    connectionId, channel);
                             }
                         }
                     }
@@ -1219,48 +1204,85 @@ public sealed class RealtimeController : BaseController
                     subscriptionLock.Release();
                 }
                 
-                // Read events from active channels
-                if (activeChannelSubscriptions.Any())
+                if (activeEnumerators.Any())
                 {
-                    var streams = activeChannelSubscriptions.Values.Select(v => v.Stream).ToList();
+                    var activeTasks = new Dictionary<string, Task<bool>>();
                     
-                    // Use a short timeout to periodically check for subscription changes
-                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(1));
-                    
-                    try
+                    foreach (var kvp in activeEnumerators)
                     {
-                        await foreach (var evt in MergeEventStreams(streams, timeoutCts.Token))
+                        activeTasks[kvp.Key] = kvp.Value.MoveNextAsync().AsTask();
+                    }
+                    
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                    var timeoutTask = Task.Delay(Timeout.Infinite, timeoutCts.Token);
+                    
+                    var allTasks = activeTasks.Values.Append(timeoutTask).ToArray();
+                    var completedTask = await Task.WhenAny(allTasks);
+                    
+                    if (completedTask == timeoutTask)
+                    {
+                        continue;
+                    }
+                    
+                    var completedChannel = activeTasks.FirstOrDefault(kvp => kvp.Value == completedTask).Key;
+                    if (completedChannel != null && activeEnumerators.TryGetValue(completedChannel, out var enumerator))
+                    {
+                        try
                         {
-                            // Only send events for subscribed resources (thread-safe check)
-                            if (subscriptions.ContainsKey(evt.Resource))
+                            var hasNext = await (Task<bool>)completedTask;
+                            if (hasNext)
                             {
-                                var eventMessage = new
+                                var evt = enumerator.Current;
+                                
+                                var matchingResources = currentSubscriptions.Where(r => 
+                                    _resourceHandlers.TryGetValue(r, out var h) && h.EventChannel == completedChannel).ToList();
+                                
+                                foreach (var resource in matchingResources)
                                 {
-                                    type = "event",
-                                    eventName = evt.EventName,
-                                    resource = evt.Resource,
-                                    timestamp = evt.OccurredAt,
-                                    metadata = evt.Metadata
-                                };
+                                    if (subscriptions.ContainsKey(resource))
+                                    {
+                                        var eventMessage = new
+                                        {
+                                            type = "event",
+                                            eventName = evt.EventName,
+                                            resource = evt.Resource,
+                                            timestamp = evt.OccurredAt,
+                                            metadata = evt.Metadata
+                                        };
 
-                                if (webSocket.State == WebSocketState.Open)
+                                        if (webSocket.State == WebSocketState.Open)
+                                        {
+                                            await SendJsonAsync(webSocket, eventMessage, sendLock, cancellationToken);
+                                            _logger.LogDebug("[{ConnectionId}] Broadcasted event {EventName} for {Resource}", 
+                                                connectionId, evt.EventName, evt.Resource);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (activeEnumerators.TryRemove(completedChannel, out var completedEnum))
                                 {
-                                    await SendJsonAsync(webSocket, eventMessage, sendLock, cancellationToken);
-                                    _logger.LogDebug("[{ConnectionId}] Broadcasted event {EventName} for {Resource}", 
-                                        connectionId, evt.EventName, evt.Resource);
+                                    await completedEnum.DisposeAsync();
+                                    _logger.LogDebug("[{ConnectionId}] Channel {Channel} stream completed", 
+                                        connectionId, completedChannel);
                                 }
                             }
                         }
-                    }
-                    catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-                    {
-                        // Timeout reached, loop will continue to check for subscription changes
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[{ConnectionId}] Error processing event from channel {Channel}", 
+                                connectionId, completedChannel);
+                            
+                            if (activeEnumerators.TryRemove(completedChannel, out var faultedEnum))
+                            {
+                                await faultedEnum.DisposeAsync();
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    // No active subscriptions, wait before checking again
                     await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
@@ -1275,6 +1297,19 @@ public sealed class RealtimeController : BaseController
         }
         finally
         {
+            foreach (var kvp in activeEnumerators)
+            {
+                try
+                {
+                    await kvp.Value.DisposeAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{ConnectionId}] Error disposing enumerator for channel {Channel}", 
+                        connectionId, kvp.Key);
+                }
+            }
+            activeEnumerators.Clear();
             subscriptionLock.Dispose();
         }
     }

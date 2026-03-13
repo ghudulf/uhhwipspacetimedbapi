@@ -282,7 +282,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     }
 
     /// <summary>
-    /// <summary>
     /// Asynchronously disposes the event bus and all its resources.
     /// </summary>
     public async ValueTask DisposeAsync()

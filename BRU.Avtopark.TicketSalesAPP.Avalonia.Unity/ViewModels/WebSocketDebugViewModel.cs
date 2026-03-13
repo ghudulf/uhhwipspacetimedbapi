@@ -120,6 +120,62 @@ public partial class WebSocketDebugViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Normalizes an access token by trimming whitespace and removing "Bearer " prefix if present.
+    /// </summary>
+    private static string NormalizeAccessToken(string token)
+    {
+        if (string.IsNullOrEmpty(token))
+            return string.Empty;
+        
+        token = token.Trim();
+        if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            token = token.Substring(7).Trim();
+        }
+        return token;
+    }
+
+    /// <summary>
+    /// Builds a WebSocket URI from an HTTP/HTTPS server URI with proper scheme selection.
+    /// Forces wss:// for non-loopback hosts, allows ws:// only for localhost/loopback.
+    /// </summary>
+    private static (bool success, Uri? wsUri, string? errorMessage) BuildWebSocketUri(Uri serverUri, string path)
+    {
+        string wsScheme;
+        if (serverUri.Scheme == "https")
+        {
+            wsScheme = "wss";
+        }
+        else if (serverUri.Scheme == "http")
+        {
+            // Only allow ws:// for localhost/loopback
+            if (serverUri.IsLoopback || 
+                serverUri.Host == "localhost" || 
+                serverUri.Host == "127.0.0.1" || 
+                serverUri.Host == "[::1]")
+            {
+                wsScheme = "ws";
+            }
+            else
+            {
+                wsScheme = "wss"; // Force secure for remote hosts
+            }
+        }
+        else
+        {
+            return (false, null, $"Unsupported URL scheme: {serverUri.Scheme}");
+        }
+
+        var wsUri = new UriBuilder(serverUri)
+        {
+            Scheme = wsScheme,
+            Path = path
+        }.Uri;
+
+        return (true, wsUri, null);
+    }
+
     [RelayCommand]
     private async Task ConnectWebSocket()
     {
@@ -158,39 +214,24 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
             
             // Normalize token: remove "Bearer " prefix if present (case-insensitive)
-            accessToken = accessToken.Trim();
-            if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            accessToken = NormalizeAccessToken(accessToken);
+            
+            // Validate token is not empty after normalization
+            if (string.IsNullOrEmpty(accessToken))
             {
-                accessToken = accessToken.Substring(7).Trim();
+                StatusMessage = "Invalid access token";
+                AddLog("✗ Access token is empty after normalization. Please login first.");
+                return;
             }
+            
             AccessToken = accessToken; // Store normalized token
 
             // Validate URL scheme BEFORE allocating resources
-            string wsScheme;
-            if (serverUri.Scheme == "https")
+            var buildResult = BuildWebSocketUri(serverUri, "/api/realtime/stream");
+            if (!buildResult.success)
             {
-                wsScheme = "wss";
-            }
-            else if (serverUri.Scheme == "http")
-            {
-                // Only allow ws:// for localhost/loopback
-                if (serverUri.IsLoopback || 
-                    serverUri.Host == "localhost" || 
-                    serverUri.Host == "127.0.0.1" || 
-                    serverUri.Host == "[::1]")
-                {
-                    wsScheme = "ws";
-                }
-                else
-                {
-                    wsScheme = "wss"; // Force secure for remote hosts
-                    AddLog("⚠ Forcing wss:// for non-loopback host");
-                }
-            }
-            else
-            {
-                StatusMessage = "Unsupported URL scheme";
-                AddLog($"✗ Unsupported URL scheme: {serverUri.Scheme}");
+                StatusMessage = buildResult.errorMessage ?? "Invalid URL";
+                AddLog($"✗ {buildResult.errorMessage}");
                 return;
             }
 
@@ -200,12 +241,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             _webSocket.Options.AddSubProtocol("bru.events.v1");
             _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
 
-            var wsUrl = new UriBuilder(serverUri)
-            {
-                Scheme = wsScheme,
-                Path = "/api/realtime/stream"
-            }.Uri;
-
+            var wsUrl = buildResult.wsUri!;
             AddLog($"Connecting to {wsUrl}...");
             await _webSocket.ConnectAsync(wsUrl, _cts.Token);
             IsConnected = true;
@@ -502,10 +538,15 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
             
             // Normalize token: trim whitespace and remove "Bearer " prefix if present
-            accessToken = accessToken.Trim();
-            if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            accessToken = NormalizeAccessToken(accessToken);
+            
+            // Validate token is not empty after normalization
+            if (string.IsNullOrEmpty(accessToken))
             {
-                accessToken = accessToken.Substring(7).Trim();
+                result.Status = TestStatus.Failed;
+                result.Message = "Invalid access token";
+                AddLog($"✗ {result.ControllerName}: Access token is empty after normalization");
+                return;
             }
 
             cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -523,39 +564,16 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 return;
             }
 
-            string wsScheme;
-            if (serverUri.Scheme == "https")
-            {
-                wsScheme = "wss";
-            }
-            else if (serverUri.Scheme == "http")
-            {
-                if (serverUri.IsLoopback || 
-                    serverUri.Host == "localhost" || 
-                    serverUri.Host == "127.0.0.1" || 
-                    serverUri.Host == "[::1]")
-                {
-                    wsScheme = "ws";
-                }
-                else
-                {
-                    wsScheme = "wss";
-                }
-            }
-            else
+            var buildResult = BuildWebSocketUri(serverUri, result.EndpointPath);
+            if (!buildResult.success)
             {
                 result.Status = TestStatus.Failed;
-                result.Message = "Unsupported URL scheme";
-                AddLog($"✗ {result.ControllerName}: Unsupported URL scheme");
+                result.Message = buildResult.errorMessage ?? "Invalid URL";
+                AddLog($"✗ {result.ControllerName}: {buildResult.errorMessage}");
                 return;
             }
 
-            var uri = new UriBuilder(serverUri)
-            {
-                Scheme = wsScheme,
-                Path = result.EndpointPath
-            }.Uri;
-
+            var uri = buildResult.wsUri!;
             AddLog($"→ [{result.ControllerName}] Connecting to {uri}");
             
             await ws.ConnectAsync(uri, cts.Token);

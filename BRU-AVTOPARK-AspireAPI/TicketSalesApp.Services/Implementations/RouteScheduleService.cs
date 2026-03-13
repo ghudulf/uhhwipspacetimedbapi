@@ -266,6 +266,44 @@ namespace TicketSalesApp.Services.Implementations
                                 if (createdSchedule != null)
                                 {
                                     _logger.LogInformation("Successfully created schedule with ID: {ScheduleId}", createdSchedule.ScheduleId);
+                                    
+                                    // Clean up correlation marker from Notes field now that we have the ID
+                                    var cleanedNotes = notes; // Original user-provided notes without correlation marker
+                                    if (!string.IsNullOrEmpty(createdSchedule.Notes) && createdSchedule.Notes.Contains($"[CORRELATION:{correlationGuid}]"))
+                                    {
+                                        _logger.LogDebug("Cleaning up correlation marker from schedule {ScheduleId} Notes field", createdSchedule.ScheduleId);
+                                        
+                                        // Call UpdateRouteSchedule to remove correlation marker
+                                        try
+                                        {
+                                            ctx.Reducers.UpdateRouteSchedule(
+                                                createdSchedule.ScheduleId,
+                                                createdSchedule.RouteId,
+                                                createdSchedule.StartPoint,
+                                                createdSchedule.EndPoint,
+                                                createdSchedule.RouteStops,
+                                                createdSchedule.DepartureTime,
+                                                createdSchedule.ArrivalTime,
+                                                createdSchedule.Price,
+                                                createdSchedule.AvailableSeats,
+                                                createdSchedule.DaysOfWeek,
+                                                createdSchedule.BusTypes,
+                                                createdSchedule.StopDurationMinutes,
+                                                createdSchedule.IsRecurring,
+                                                createdSchedule.EstimatedStopTimes,
+                                                createdSchedule.StopDistances,
+                                                cleanedNotes, // Use original notes without correlation marker
+                                                null // actingUser
+                                            );
+                                            _logger.LogDebug("Correlation marker cleaned up from schedule {ScheduleId}", createdSchedule.ScheduleId);
+                                        }
+                                        catch (Exception cleanupEx)
+                                        {
+                                            _logger.LogWarning(cleanupEx, "Failed to clean up correlation marker from schedule {ScheduleId} - marker will remain in Notes", createdSchedule.ScheduleId);
+                                            // Don't fail the operation - schedule was created successfully
+                                        }
+                                    }
+                                    
                                     pendingTcs.TrySetResult(createdSchedule.ScheduleId);
                                 }
                                 else
@@ -512,21 +550,22 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Retrieving schedules for date: {Date}", DateTimeOffset.FromUnixTimeSeconds((long)date).ToString());
+                // Treat date as milliseconds (consistent with DepartureTime storage)
+                _logger.LogInformation("Retrieving schedules for date: {Date}", DateTimeOffset.FromUnixTimeMilliseconds((long)date).ToString());
                 var connection = _spacetimeDBService.GetConnection();
 
-                var dayOfWeek = DateTimeOffset.FromUnixTimeSeconds((long)date).DayOfWeek.ToString();
+                var dayOfWeek = DateTimeOffset.FromUnixTimeMilliseconds((long)date).DayOfWeek.ToString();
                 
                 var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
                 
-                List<RouteSchedule> matchingSchedules = new List<RouteSchedule>();
+                List<RouteSchedule> matchingSchedules = [];
                 
                 foreach (var schedule in allSchedules)
                 {
                     if (schedule.DaysOfWeek != null && 
                         schedule.DaysOfWeek.Contains(dayOfWeek) &&
                         schedule.DepartureTime >= date &&
-                        schedule.DepartureTime < date + 86400000)
+                        schedule.DepartureTime < date + 86400000) // 86400000 ms = 24 hours
                     {
                         matchingSchedules.Add(schedule);
                     }
