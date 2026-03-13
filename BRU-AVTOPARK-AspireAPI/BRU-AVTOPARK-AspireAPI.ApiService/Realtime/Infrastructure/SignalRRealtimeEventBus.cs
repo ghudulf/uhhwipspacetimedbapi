@@ -125,9 +125,22 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             if (_subscribers.TryRemove(subscriberId, out var removedSubscriber))
             {
                 removedSubscriber.Channel.Writer.TryComplete();
-                _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, normalizedResource);
+                var sanitizedResource = SanitizeForLog(normalizedResource);
+                _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, sanitizedResource);
             }
         }
+    }
+
+    /// <summary>
+    /// Sanitizes a string for safe logging by removing control characters to prevent log injection.
+    /// </summary>
+    private static string SanitizeForLog(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+        return new string(value.Where(c => !char.IsControl(c)).ToArray());
     }
 
     /// <summary>
@@ -186,10 +199,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("[EventBus] Stopping event bus and cleaning up resources");
-        
-        // Set stopping flag (not disposed) so concurrent callers fail fast
-        // _disposed is only set in DisposeAsync after full cleanup
-        _disposed = true; // TODO: Replace with _stopping flag for cleaner separation
         
         // Complete the event channel to stop accepting new events
         _eventChannel.Writer.TryComplete();

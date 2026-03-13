@@ -107,7 +107,7 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             tenant = user.FindFirst(TenantClaimType)?.Value;
         }
         
-        var sanitizedPath = TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength);
+        var sanitizedPath = SanitizeForLog(TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength));
         var sanitizedUserAgent = TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
         
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -155,6 +155,18 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             return value;
         }
         return value.Substring(0, maxLength);
+    }
+
+    /// <summary>
+    /// Sanitizes a string for safe logging by removing control characters to prevent log injection.
+    /// </summary>
+    private static string SanitizeForLog(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+        return new string(value.Where(c => !char.IsControl(c)).ToArray());
     }
 
     /// <summary>

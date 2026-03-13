@@ -426,17 +426,25 @@ public sealed class RealtimeController : BaseController
             return;
         }
 
-        // Normalize resource name (same logic as HandleSubscribeAsync)
+        // Normalize resource name and resolve to canonical event channel (same logic as HandleSubscribeAsync)
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
-        subscriptions.TryRemove(normalizedResource, out _);
-        _logger.LogInformation("[{ConnectionId}] Unsubscribed from resource: {Resource}", connectionId, normalizedResource);
+        // Resolve to canonical event channel via handler lookup
+        string eventChannel = normalizedResource;
+        if (_resourceHandlers.TryGetValue(normalizedResource, out var handler))
+        {
+            eventChannel = handler.EventChannel;
+        }
+        
+        subscriptions.TryRemove(eventChannel, out _);
+        _logger.LogInformation("[{ConnectionId}] Unsubscribed from resource: {Resource} (channel: {EventChannel})", 
+            connectionId, resource, eventChannel);
 
         var response = new
         {
             type = "unsubscribed",
             requestId,
-            resource = normalizedResource,
+            resource = eventChannel,
             timestamp = DateTimeOffset.UtcNow
         };
 
