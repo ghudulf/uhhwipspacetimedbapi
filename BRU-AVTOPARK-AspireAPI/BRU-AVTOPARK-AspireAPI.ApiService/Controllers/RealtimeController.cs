@@ -258,6 +258,7 @@ public sealed class RealtimeController : BaseController
         Dictionary<string, object>? validatedClaims,
         CancellationToken cancellationToken)
     {
+        string? requestId = null;
         try
         {
             _logger.LogInformation("[{ConnectionId}] Parsing message...", connectionId);
@@ -272,7 +273,7 @@ public sealed class RealtimeController : BaseController
             var command = root.EnumerateObject()
                 .FirstOrDefault(p => p.Name.Equals("command", StringComparison.OrdinalIgnoreCase))
                 .Value.GetString()?.ToLowerInvariant();
-            var requestId = root.EnumerateObject()
+            requestId = root.EnumerateObject()
                 .FirstOrDefault(p => p.Name.Equals("requestId", StringComparison.OrdinalIgnoreCase))
                 .Value.GetString() ?? Guid.NewGuid().ToString();
 
@@ -283,7 +284,7 @@ public sealed class RealtimeController : BaseController
             if (messageType == "ping" || command == "ping")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling PING", connectionId);
-                await HandlePingAsync(webSocket, requestId ?? Guid.NewGuid().ToString(), sendLock, cancellationToken);
+                await HandlePingAsync(webSocket, requestId, sendLock, cancellationToken);
                 return;
             }
 
@@ -291,14 +292,14 @@ public sealed class RealtimeController : BaseController
             if (command == "subscribe")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling SUBSCRIBE", connectionId);
-                await HandleSubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, validatedClaims, cancellationToken);
+                await HandleSubscribeAsync(webSocket, root, requestId, subscriptions, sendLock, connectionId, validatedClaims, cancellationToken);
                 return;
             }
 
             if (command == "unsubscribe")
             {
                 _logger.LogInformation("[{ConnectionId}] Handling UNSUBSCRIBE", connectionId);
-                await HandleUnsubscribeAsync(webSocket, root, requestId ?? Guid.NewGuid().ToString(), subscriptions, sendLock, connectionId, cancellationToken);
+                await HandleUnsubscribeAsync(webSocket, root, requestId, subscriptions, sendLock, connectionId, cancellationToken);
                 return;
             }
 
@@ -306,7 +307,7 @@ public sealed class RealtimeController : BaseController
             if (IsCrudCommand(command))
             {
                 _logger.LogInformation("[{ConnectionId}] Handling CRUD command: {Command}", connectionId, command);
-                await HandleCrudAsync(webSocket, root, command, requestId ?? Guid.NewGuid().ToString(), sendLock, connectionId, validatedClaims, cancellationToken);
+                await HandleCrudAsync(webSocket, root, command, requestId, sendLock, connectionId, validatedClaims, cancellationToken);
                 return;
             }
 
@@ -316,13 +317,15 @@ public sealed class RealtimeController : BaseController
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[{ConnectionId}] JSON parsing error. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
-            await SendErrorAsync(webSocket, null, "Invalid JSON format", sendLock, cancellationToken);
+            _logger.LogError(ex, "[{ConnectionId}] JSON parsing error. Message length: {Length}, RequestId: {RequestId}", 
+                connectionId, messageJson?.Length ?? 0, requestId ?? "unknown");
+            await SendErrorAsync(webSocket, requestId, "Invalid JSON format", sendLock, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{ConnectionId}] Error handling message. Message length: {Length}", connectionId, messageJson?.Length ?? 0);
-            await SendErrorAsync(webSocket, null, "Error processing message", sendLock, cancellationToken);
+            _logger.LogError(ex, "[{ConnectionId}] Error handling message. Message length: {Length}, RequestId: {RequestId}", 
+                connectionId, messageJson?.Length ?? 0, requestId ?? "unknown");
+            await SendErrorAsync(webSocket, requestId, "Error processing message", sendLock, cancellationToken);
         }
     }
 
@@ -498,15 +501,30 @@ public sealed class RealtimeController : BaseController
 
         if (string.IsNullOrEmpty(resource))
         {
+            _logger.LogError("[{ConnectionId}] CRUD operation missing resource name. RequestId: {RequestId}", connectionId, requestId);
             await SendErrorAsync(webSocket, requestId, "Resource name required for CRUD operations", sendLock, cancellationToken);
             return;
         }
 
-        // Normalize resource name for consistent lookup
-        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        // Normalize resource name for consistent lookup (handle both underscore and hyphen)
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "").Replace("-", "");
 
-        if (!_resourceHandlers.TryGetValue(normalizedResource, out var handler))
+        // Try to find handler with normalized key
+        ResourceHandler? handler = null;
+        foreach (var kvp in _resourceHandlers)
         {
+            var normalizedKey = kvp.Key.ToLowerInvariant().Replace("_", "").Replace("-", "");
+            if (normalizedKey == normalizedResource)
+            {
+                handler = kvp.Value;
+                break;
+            }
+        }
+
+        if (handler == null)
+        {
+            _logger.LogError("[{ConnectionId}] Unknown resource: {Resource} (normalized: {NormalizedResource}). RequestId: {RequestId}", 
+                connectionId, resource, normalizedResource, requestId);
             await SendErrorAsync(webSocket, requestId, $"Unknown resource: {resource}", sendLock, cancellationToken);
             return;
         }
@@ -529,23 +547,34 @@ public sealed class RealtimeController : BaseController
                 _ => "view" // Default to view for unknown commands
             };
 
+            _logger.LogDebug("[{ConnectionId}] Checking permission: {PermissionAction} on {EventChannel}. RequestId: {RequestId}", 
+                connectionId, permissionAction, handler.EventChannel, requestId);
+
             // Check permission before executing command (same pattern as individual controllers)
             if (!await HasResourcePermissionAsync(handler.EventChannel, permissionAction, validatedClaims))
             {
                 var userId = validatedClaims?.TryGetValue("sub", out var subObj) == true ? subObj?.ToString() : null;
-                _logger.LogWarning("[{ConnectionId}] User {UserId} denied {Command} access to resource: {Resource}",
-                    connectionId, userId, command, resource);
+                _logger.LogWarning("[{ConnectionId}] User {UserId} denied {Command} access to resource: {Resource}. RequestId: {RequestId}",
+                    connectionId, userId, command, resource, requestId);
                 await SendErrorAsync(webSocket, requestId, $"Forbidden: You do not have permission to {permissionAction} {handler.EventChannel}", sendLock, cancellationToken);
                 return;
             }
+
+            _logger.LogDebug("[{ConnectionId}] Permission check passed, resolving service: {ServiceType}. RequestId: {RequestId}", 
+                connectionId, handler.ServiceType.Name, requestId);
 
             // Get the service instance
             var service = _serviceProvider.GetService(handler.ServiceType);
             if (service == null)
             {
+                _logger.LogError("[{ConnectionId}] Service not available for resource: {Resource}, ServiceType: {ServiceType}. RequestId: {RequestId}", 
+                    connectionId, resource, handler.ServiceType.Name, requestId);
                 await SendErrorAsync(webSocket, requestId, $"Service not available for resource: {resource}", sendLock, cancellationToken);
                 return;
             }
+
+            _logger.LogDebug("[{ConnectionId}] Service resolved successfully: {ServiceType}. RequestId: {RequestId}", 
+                connectionId, service.GetType().Name, requestId);
 
             object? result = null;
             var success = true;
@@ -688,12 +717,32 @@ public sealed class RealtimeController : BaseController
             };
 
             await SendJsonAsync(webSocket, response, sendLock, cancellationToken);
-            _logger.LogInformation("[{ConnectionId}] CRUD {Command} on {Resource} completed successfully", connectionId, command, resource);
+            _logger.LogInformation("[{ConnectionId}] CRUD {Command} on {Resource} completed successfully. RequestId: {RequestId}", 
+                connectionId, command, resource, requestId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "[{ConnectionId}] Unauthorized CRUD {Command} on {Resource}. RequestId: {RequestId}", 
+                connectionId, command, resource, requestId);
+            await SendErrorAsync(webSocket, requestId, "Unauthorized: Access denied", sendLock, cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "[{ConnectionId}] Invalid argument for CRUD {Command} on {Resource}. RequestId: {RequestId}", 
+                connectionId, command, resource, requestId);
+            await SendErrorAsync(webSocket, requestId, $"Invalid request: {ex.Message}", sendLock, cancellationToken);
+        }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex, "[{ConnectionId}] Unsupported CRUD {Command} on {Resource}. RequestId: {RequestId}", 
+                connectionId, command, resource, requestId);
+            await SendErrorAsync(webSocket, requestId, $"Unsupported operation: {ex.Message}", sendLock, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{ConnectionId}] Error executing CRUD {Command} on {Resource}", connectionId, command, resource);
-            await SendErrorAsync(webSocket, requestId, "Failed to execute command", sendLock, cancellationToken);
+            _logger.LogError(ex, "[{ConnectionId}] Error executing CRUD {Command} on {Resource}. RequestId: {RequestId}, ExceptionType: {ExceptionType}", 
+                connectionId, command, resource, requestId, ex.GetType().Name);
+            await SendErrorAsync(webSocket, requestId, $"Failed to execute command: {ex.Message}", sendLock, cancellationToken);
         }
     }
 
@@ -701,24 +750,41 @@ public sealed class RealtimeController : BaseController
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
-        object? allData = normalizedResource switch
+        _logger.LogDebug("ExecuteReadAllAsync - Resource: {Resource}, Normalized: {NormalizedResource}, ServiceType: {ServiceType}", 
+            resource, normalizedResource, service.GetType().Name);
+        
+        object? allData = null;
+        try
         {
-            "buses" => await ((IBusService)service).GetAllBusesAsync(),
-            "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
-            "jobs" => await ((IEmployeeService)service).GetAllJobsAsync(),
-            "maintenance" => await ((IMaintenanceService)service).GetAllMaintenanceRecordsAsync(),
-            "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
-            "roles" => await ((IRoleService)service).GetAllRolesAsync(),
-            "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
-            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
-            "tickets" => await ((ITicketService)service).GetAllTicketsAsync(),
-            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).GetAllSalesAsync(),
-            "users" => await ((IUserService)service).GetAllUsersAsync(),
-            _ => null
-        };
+            allData = normalizedResource switch
+            {
+                "buses" => await ((IBusService)service).GetAllBusesAsync(),
+                "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
+                "jobs" => await ((IEmployeeService)service).GetAllJobsAsync(),
+                "maintenance" => await ((IMaintenanceService)service).GetAllMaintenanceRecordsAsync(),
+                "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
+                "roles" => await ((IRoleService)service).GetAllRolesAsync(),
+                "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
+                "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
+                "tickets" => await ((ITicketService)service).GetAllTicketsAsync(),
+                "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).GetAllSalesAsync(),
+                "users" => await ((IUserService)service).GetAllUsersAsync(),
+                _ => throw new NotSupportedException($"Read all not supported for resource: {resource}")
+            };
+            
+            _logger.LogDebug("ExecuteReadAllAsync - Data retrieved successfully for {Resource}, Type: {DataType}", 
+                resource, allData?.GetType().Name ?? "null");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ExecuteReadAllAsync - Failed to retrieve data for {Resource}: {ErrorType}: {ErrorMessage}", 
+                resource, ex.GetType().Name, ex.Message);
+            throw;
+        }
 
         if (allData == null)
         {
+            _logger.LogWarning("ExecuteReadAllAsync - No data returned for {Resource}", resource);
             return (null, 0);
         }
 
@@ -731,6 +797,7 @@ public sealed class RealtimeController : BaseController
         };
         
         var totalCount = materializedList.Count;
+        _logger.LogDebug("ExecuteReadAllAsync - Materialized {Count} items for {Resource}", totalCount, resource);
         
         // Apply pagination
         var pagedData = materializedList
@@ -738,6 +805,9 @@ public sealed class RealtimeController : BaseController
             .Take(pageSize)
             .ToList();
 
+        _logger.LogDebug("ExecuteReadAllAsync - Returning page {Page} with {PagedCount} items (total: {TotalCount})", 
+            page, pagedData.Count, totalCount);
+        
         return (pagedData, totalCount);
     }
 
