@@ -49,7 +49,6 @@ internal static class LogSanitizer
         
         if (clampedLength <= 3)
         {
-            // Return truncated ellipsis if maxLength is too small
             return "...".Substring(0, Math.Min(clampedLength, 3));
         }
 
