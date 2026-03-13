@@ -786,11 +786,11 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 - [x] 18. Enable feature flags for Priority 2 endpoints (High)
   - [x] 18.1 Enable TOTP setup/enable/disable endpoints
-    - Follow gradual rollout pattern for each endpoint
+    - Toggle feature flags (binary on/off) for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 18.2 Enable WebAuthn register/credentials endpoints
-    - Follow gradual rollout pattern for each endpoint
+    - Toggle feature flags (binary on/off) for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 
 - [ ] 19. Enable feature flags for Priority 3 endpoints (Medium - OAuth)

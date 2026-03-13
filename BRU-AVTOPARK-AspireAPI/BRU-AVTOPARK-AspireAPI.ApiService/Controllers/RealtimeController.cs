@@ -49,7 +49,8 @@ public sealed class RealtimeController : ControllerBase
             { "tickets", new ResourceHandler(typeof(ITicketService), "tickets") },
             { "ticketsales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") },
             { "ticket-sales", new ResourceHandler(typeof(ITicketSalesService), "ticket-sales") }, // Alias
-            { "users", new ResourceHandler(typeof(IUserService), "users") }
+            { "users", new ResourceHandler(typeof(IUserService), "users") },
+            { "system", new ResourceHandler(typeof(IRealtimeEventBus), "system") } // For BroadcastTest
         };
     }
 
@@ -358,7 +359,10 @@ public sealed class RealtimeController : ControllerBase
             return;
         }
 
-        if (!_resourceHandlers.TryGetValue(resource, out var handler))
+        // Normalize resource name for consistent lookup
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+
+        if (!_resourceHandlers.TryGetValue(normalizedResource, out var handler))
         {
             await SendErrorAsync(webSocket, requestId, $"Unknown resource: {resource}", sendLock, cancellationToken);
             return;
@@ -366,6 +370,14 @@ public sealed class RealtimeController : ControllerBase
 
         try
         {
+            // Permission check: Verify user has access to this resource
+            var userId = User.FindFirst("sub")?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                await SendErrorAsync(webSocket, requestId, "Authentication required", sendLock, cancellationToken);
+                return;
+            }
+
             // Get the service instance
             var service = _serviceProvider.GetService(handler.ServiceType);
             if (service == null)
@@ -495,7 +507,10 @@ public sealed class RealtimeController : ControllerBase
 
     private async Task<(object? Data, int TotalCount)> ExecuteReadAllAsync(object service, string resource, int page, int pageSize)
     {
-        object? allData = resource.ToLowerInvariant() switch
+        // Normalize resource name for consistent switch matching
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        object? allData = normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetAllBusesAsync(),
             "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
@@ -504,9 +519,9 @@ public sealed class RealtimeController : ControllerBase
             "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
             "roles" => await ((IRoleService)service).GetAllRolesAsync(),
             "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
-            "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
+            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
             "tickets" => null, // Tickets use SpacetimeDB directly
-            "ticketsales" => null, // TicketSales use SpacetimeDB directly
+            "ticket-sales" or "ticketsales" => null, // TicketSales use SpacetimeDB directly
             "users" => await ((IUserService)service).GetAllUsersAsync(),
             _ => null
         };
@@ -537,7 +552,10 @@ public sealed class RealtimeController : ControllerBase
 
     private async Task<int> ExecuteCountAsync(object service, string resource)
     {
-        object? allData = resource.ToLowerInvariant() switch
+        // Normalize resource name for consistent switch matching
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        object? allData = normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetAllBusesAsync(),
             "employees" => await ((IEmployeeService)service).GetAllEmployeesAsync(),
@@ -546,9 +564,9 @@ public sealed class RealtimeController : ControllerBase
             "permissions" => await ((IPermissionService)service).GetAllPermissionsAsync(),
             "roles" => await ((IRoleService)service).GetAllRolesAsync(),
             "routes" => await ((IRouteService)service).GetAllRoutesAsync(),
-            "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
+            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetAllSchedulesAsync(),
             "tickets" => null,
-            "ticketsales" => null,
+            "ticket-sales" or "ticketsales" => null,
             "users" => await ((IUserService)service).GetAllUsersAsync(),
             _ => null
         };
@@ -571,7 +589,10 @@ public sealed class RealtimeController : ControllerBase
 
     private async Task<object?> ExecuteReadAsync(object service, string resource, uint id)
     {
-        return resource.ToLowerInvariant() switch
+        // Normalize resource name for consistent switch matching
+        var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
+        
+        return normalizedResource switch
         {
             "buses" => await ((IBusService)service).GetBusByIdAsync(id),
             "employees" => await ((IEmployeeService)service).GetEmployeeByIdAsync(id),
@@ -580,9 +601,9 @@ public sealed class RealtimeController : ControllerBase
             "permissions" => await ((IPermissionService)service).GetPermissionByIdAsync(id),
             "roles" => await ((IRoleService)service).GetRoleByIdAsync(id),
             "routes" => await ((IRouteService)service).GetRouteByIdAsync(id),
-            "routeschedules" => await ((IRouteScheduleService)service).GetScheduleByIdAsync(id),
+            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).GetScheduleByIdAsync(id),
             "tickets" => null, // Tickets use SpacetimeDB directly
-            "ticketsales" => null, // TicketSales use SpacetimeDB directly
+            "ticket-sales" or "ticketsales" => null, // TicketSales use SpacetimeDB directly
             "users" => await ((IUserService)service).GetUserByIdAsync(id),
             _ => null
         };

@@ -11,7 +11,7 @@ The WebSocket Debug Tool is a comprehensive testing utility for validating WebSo
 - Connect/disconnect to WebSocket endpoints
 - Support for Bearer token authentication
 - Real-time connection status indicator
-- Automatic reconnection handling
+- Manual reconnection via Connect button
 
 ### 🧪 Controller Testing
 
@@ -124,7 +124,11 @@ ws://[server]/api/realtime/stream
   "type": "event",
   "eventName": "bus.created",
   "resource": "buses",
-  "data": { ... }
+  "timestamp": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "userId": "user-123",
+    "correlationId": "abc-123"
+  }
 }
 ```
 

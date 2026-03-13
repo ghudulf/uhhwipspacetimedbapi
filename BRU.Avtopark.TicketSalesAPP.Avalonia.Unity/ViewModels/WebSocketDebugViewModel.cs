@@ -132,8 +132,18 @@ public partial class WebSocketDebugViewModel : ObservableObject
             StatusMessage = "Connecting...";
             AddLog("Attempting to connect to WebSocket...");
 
+            // Validate URL before allocating resources
+            Uri serverUri;
+            if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
+            {
+                StatusMessage = "Invalid server URL";
+                AddLog("✗ Invalid server URL format");
+                return;
+            }
+
             // Prefer existing AccessToken (textbox value) if non-empty, otherwise load from storage
-            if (string.IsNullOrEmpty(AccessToken))
+            string? accessToken = AccessToken;
+            if (string.IsNullOrEmpty(accessToken))
             {
                 var tokens = await _tokenStorage.GetTokensAsync();
                 if (tokens == null || string.IsNullOrEmpty(tokens.AccessToken))
@@ -142,22 +152,14 @@ public partial class WebSocketDebugViewModel : ObservableObject
                     AddLog("✗ No access token available. Please login first.");
                     return;
                 }
-                AccessToken = tokens.AccessToken;
+                accessToken = tokens.AccessToken;
+                AccessToken = accessToken; // Normalize to non-null
             }
 
             _cts = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
             _webSocket.Options.AddSubProtocol("bru.events.v1");
-            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {AccessToken}");
-
-            // Secure WebSocket URL construction
-            Uri serverUri;
-            if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
-            {
-                StatusMessage = "Invalid server URL";
-                AddLog("✗ Invalid server URL format");
-                return;
-            }
+            _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
 
             string wsScheme;
             if (serverUri.Scheme == "https")
@@ -268,7 +270,7 @@ public partial class WebSocketDebugViewModel : ObservableObject
             }
             _pendingCompletions.Clear();
 
-            // Cancel and clear pending requests
+            // Clear pending requests
             _pendingRequests.Clear();
 
             // Update UI state
@@ -815,9 +817,9 @@ public partial class WebSocketDebugViewModel : ObservableObject
                 AddLog($"← Received RAW: {json}");
 
                 // Parse and update test results if it's a response
+                using var doc = JsonDocument.Parse(json);
                 try
                 {
-                    var doc = JsonDocument.Parse(json);
                     AddLog($"← JSON parsed successfully, root type: {doc.RootElement.ValueKind}");
                     
                     if (doc.RootElement.TryGetProperty("type", out var typeElement))
@@ -994,15 +996,13 @@ public partial class WebSocketDebugViewModel : ObservableObject
     private void TrimEventLog()
     {
         // Keep log size manageable - remove oldest entries in bulk
-        if (EventLog.Count > 500)
+        const int maxLogSize = 500;
+        if (EventLog.Count > maxLogSize)
         {
-            var keepCount = 500;
-            var itemsToKeep = EventLog.Skip(EventLog.Count - keepCount).ToList();
-            
-            EventLog.Clear();
-            foreach (var item in itemsToKeep)
+            var itemsToRemove = EventLog.Count - maxLogSize;
+            for (int i = 0; i < itemsToRemove; i++)
             {
-                EventLog.Add(item);
+                EventLog.RemoveAt(0);
             }
         }
     }

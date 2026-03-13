@@ -214,8 +214,8 @@ namespace TicketSalesApp.Services.Implementations
                             if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
                             {
                                 var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                                var endIdx = notesParam.IndexOf("]", startIdx);
-                                if (endIdx > startIdx && Guid.TryParse(notesParam.Substring(startIdx, endIdx - startIdx), out var guid))
+                                var endIdx = notesParam.IndexOf(']', startIdx);
+                                if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
                                 {
                                     if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                     {
@@ -232,8 +232,8 @@ namespace TicketSalesApp.Services.Implementations
                             if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
                             {
                                 var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                                var endIdx = notesParam.IndexOf("]", startIdx);
-                                if (endIdx > startIdx && Guid.TryParse(notesParam.Substring(startIdx, endIdx - startIdx), out var guid))
+                                var endIdx = notesParam.IndexOf(']', startIdx);
+                                if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
                                 {
                                     if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                     {
@@ -248,8 +248,8 @@ namespace TicketSalesApp.Services.Implementations
                         if (!string.IsNullOrEmpty(notesParam) && notesParam.Contains("[CORRELATION:"))
                         {
                             var startIdx = notesParam.IndexOf("[CORRELATION:") + 13;
-                            var endIdx = notesParam.IndexOf("]", startIdx);
-                            if (endIdx > startIdx && Guid.TryParse(notesParam.Substring(startIdx, endIdx - startIdx), out var guid))
+                            var endIdx = notesParam.IndexOf(']', startIdx);
+                            if (endIdx > startIdx && Guid.TryParse(notesParam.AsSpan(startIdx, endIdx - startIdx), out var guid))
                             {
                                 if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                 {
@@ -317,7 +317,6 @@ namespace TicketSalesApp.Services.Implementations
                     else
                     {
                         _logger.LogWarning("CreateScheduleAsync timed out waiting for reducer confirmation");
-                        _pendingCreates.TryRemove(correlationId, out _);
                         
                         // Fallback: try to find the schedule by matching attributes
                         var allSchedules = connection.Db.RouteSchedule.Iter().ToList();
@@ -333,8 +332,9 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 finally
                 {
-                    // Clean up event handler
+                    // Clean up event handler and pending correlation
                     connection.Reducers.OnCreateRouteSchedule -= OnScheduleCreated;
+                    _pendingCreates.TryRemove(correlationId, out _);
                 }
             }
             catch (Exception ex)

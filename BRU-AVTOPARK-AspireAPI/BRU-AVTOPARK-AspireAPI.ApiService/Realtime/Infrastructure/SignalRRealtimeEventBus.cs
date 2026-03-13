@@ -153,7 +153,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 {
                     var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
                     await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                    await _hubContext.Clients.Group($"resource:{normalizedResource}")
+                    await _hubContext.Clients.Group($"resource:{SanitizeLogField(normalizedResource, 100)}")
                         .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)

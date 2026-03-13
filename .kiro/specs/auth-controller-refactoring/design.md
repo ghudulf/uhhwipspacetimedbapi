@@ -2774,6 +2774,7 @@ const app = new Elysia()
   })
 
   .post('/connect/authorize', async ({ request, body }) => {
+    const rawBody = await request.text()
     const response = await fetch('https://localhost:5001/connect/authorize', {
       method: 'POST',
       headers: {
@@ -2781,7 +2782,7 @@ const app = new Elysia()
         'Cookie': request.headers.get('cookie') || '',
         'Accept': 'text/html,application/xhtml+xml,application/xml'
       },
-      body: JSON.stringify(body),
+      body: rawBody,
       redirect: 'manual'
     })
 
@@ -2791,13 +2792,14 @@ const app = new Elysia()
   // Proxy OAuth authorization callback
   // C# endpoint: ~/connect/authorize/callback in AuthController.cs
   .post('/connect/authorize/callback', async ({ request, body }) => {
+    const rawBody = await request.text()
     const response = await fetch('https://localhost:5001/connect/authorize/callback', {
       method: 'POST',
       headers: {
         'Content-Type': request.headers.get('content-type') || 'application/x-www-form-urlencoded',
         'Cookie': request.headers.get('cookie') || ''
       },
-      body: JSON.stringify(body),
+      body: rawBody,
       redirect: 'manual'
     })
 
@@ -3546,18 +3548,23 @@ const app = new Elysia()
       return { error: 'Invalid token' }
     }
 
-    // Forward to C# backend with user context in headers
+    // Build safe headers - explicitly whitelist and set server-generated identity headers
+    const safeHeaders: Record<string, string> = {
+      'Content-Type': headers['content-type'] || 'application/json',
+      'Accept': headers['accept'] || '*/*',
+      // Server-generated identity headers from verified JWT
+      'X-User-Id': payload.sub,
+      'X-User-Username': payload.username,
+      'X-User-Email': payload.email,
+      'X-User-Roles': JSON.stringify(payload.roles),
+      'X-User-Permissions': JSON.stringify(payload.permissions),
+    }
+
+    // Forward to C# backend with safe headers only
     const url = new URL(request.url)
     const response = await fetch(`http://csharp-backend:5000${url.pathname}${url.search}`, {
       method: request.method,
-      headers: {
-        ...headers as HeadersInit,
-        'X-User-Id': payload.sub,
-        'X-User-Username': payload.username,
-        'X-User-Email': payload.email,
-        'X-User-Roles': JSON.stringify(payload.roles),
-        'X-User-Permissions': JSON.stringify(payload.permissions),
-      },
+      headers: safeHeaders,
       body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
     })
 
@@ -3658,18 +3665,15 @@ app.all('/oidc/*', async ({ request }) => {
 
 **Integration with SpacetimeDB**:
 
-The `SpacetimeDBAdapter` class shown above integrates oidc-provider with SpacetimeDB via the C# backend. All OIDC session data (authorization codes, access tokens, refresh tokens) is stored in SpacetimeDB tables and accessed through C# API endpoints.
+The `SpacetimeDBAdapter` class shown above demonstrates how oidc-provider integrates with SpacetimeDB. In the **production/standalone architecture** (Architecture Option 1), Elysia connects DIRECTLY to SpacetimeDB using the TypeScript SDK with no C# backend involvement for auth data. The adapter methods (`upsert`, `find`, `findByUserCode`, `findByUid`, `destroy`, `revokeByGrantId`, `consume`) call SpacetimeDB reducers and query tables directly.
 
-The adapter implements the required oidc-provider interface:
-- `upsert`: Store/update session data in SpacetimeDB
-- `find`: Retrieve session data by ID
-- `findByUserCode`: Support for device flow
-- `findByUid`: Support for grant lookups
-- `destroy`: Delete session data
-- `revokeByGrantId`: Revoke all tokens for a grant
-- `consume`: Mark authorization codes as used
+**IMPORTANT**: The C# backend proxy pattern shown in the adapter code (with `useCSharpProxyForMigration` flag) is ONLY for gradual migration scenarios. In production standalone mode, all adapter methods use direct SpacetimeDB access:
+- `upsert` → calls `spacetimeDB.call('store_oidc_token', ...)`
+- `find` → queries `spacetimeDB.db.OpenIddictSpacetimeToken.filter(...)`
+- `destroy` → calls `spacetimeDB.call('delete_oidc_token', ...)`
+- etc.
 
-This approach leverages the existing C# backend for SpacetimeDB access while using oidc-provider for OIDC protocol handling.
+The C# proxy approach is documented separately in the "Migration Bridge" appendix below for teams that need to migrate gradually from the current C# OpenIddict implementation.
 
 **Comparison with OpenIddict**:
 
@@ -3746,13 +3750,198 @@ app.post('/auth/login', async ({ body }) => {
 
 #### Integrating oidc-provider with Elysia
 
-Since oidc-provider is built for Node.js and expects `req`/`res` objects, it cannot be directly used as an Elysia plugin. There are two integration approaches:
+Since oidc-provider is built for Node.js and expects `req`/`res` objects, while Elysia uses modern Fetch API `Request`/`Response` objects, we need an integration layer. There are two approaches:
 
-**Approach 1: Server-level interception (recommended)**
-Mount oidc-provider on the underlying http.Server before Elysia's routing handles `/oidc/*` endpoints. Use `@elysiajs/node` adapter to access `app.server?.node?.server`.
+**Approach 1: Elysia Route Handlers with Node.js Shim** (Recommended)
 
-**Approach 2: Fetch↔Node.js request shim**
-Create a shim layer that converts Elysia's Fetch `Request` objects to Node.js `req`/`res` objects for oidc-provider compatibility.
+OIDC traffic flows through Elysia's Fetch-based routing. The Node.js compatibility shim intercepts at the server level to bridge oidc-provider's req/res expectations with Elysia's Fetch API, but the interception happens WITHIN Elysia's route handlers, allowing Elysia middleware and features to apply.
+
+**Architecture Flow**:
+```
+Client Request → Elysia Middleware (CORS, JWT, etc.) → Elysia Route Handler → 
+Node.js Shim (Fetch→req/res conversion) → oidc-provider → 
+Node.js Shim (res→Fetch conversion) → Elysia Response
+```
+
+**Key Point**: The Node.js shim does server-level interception magic to make oidc-provider compatible with Elysia, but it's invoked FROM WITHIN Elysia route handlers, so Elysia's middleware chain and features still apply to OIDC endpoints.
+
+**Benefits**:
+- ✅ Elysia middleware (CORS, JWT, rate limiting) applies to OIDC endpoints
+- ✅ Type safety across all routes
+- ✅ Single request flow through Elysia makes debugging easier
+- ✅ Can use Elysia features (hooks, guards, decorators) on OIDC endpoints
+- ✅ Unified logging and monitoring
+
+**Implementation**:
+
+```typescript
+import { Elysia } from 'elysia'
+import Provider from 'oidc-provider'
+import { Readable } from 'stream'
+
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter,
+  clients: [...],
+  // ... oidc-provider configuration
+})
+
+// Helper: Convert Elysia Request to Node.js req/res for oidc-provider
+async function handleOidcRequest(request: Request): Promise<Response> {
+  return new Promise((resolve) => {
+    // Create Node.js-compatible request object
+    const url = new URL(request.url)
+    const nodeReq = {
+      method: request.method,
+      url: url.pathname + url.search,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: request.body ? Readable.from(request.body) : undefined,
+    } as any
+
+    // Create Node.js-compatible response object
+    const chunks: Buffer[] = []
+    const nodeRes = {
+      statusCode: 200,
+      headers: {} as Record<string, string>,
+      setHeader(name: string, value: string | string[]) {
+        this.headers[name.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
+      },
+      getHeader(name: string) {
+        return this.headers[name.toLowerCase()]
+      },
+      write(chunk: any) {
+        chunks.push(Buffer.from(chunk))
+      },
+      end(chunk?: any) {
+        if (chunk) chunks.push(Buffer.from(chunk))
+        const body = Buffer.concat(chunks).toString()
+        
+        // Convert Node.js response back to Fetch Response
+        resolve(new Response(body, {
+          status: this.statusCode,
+          headers: this.headers
+        }))
+      }
+    } as any
+
+    // Call oidc-provider handler
+    oidc.callback()(nodeReq, nodeRes, (err: any) => {
+      if (err) {
+        resolve(new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }))
+      }
+    })
+  })
+}
+
+// Elysia application with OIDC routes
+const app = new Elysia()
+  .use(cors({ origin: '*', credentials: true }))
+  
+  // OIDC endpoints handled by Elysia routes, forwarded to oidc-provider via shim
+  .all('/.well-known/openid-configuration', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/auth', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/token', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/userinfo', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/interaction/:uid', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  // Regular Elysia routes for authentication
+  .post('/auth/login', async ({ body, jwt }) => {
+    // Direct SpacetimeDB access for authentication
+    // ...
+  })
+  
+  .listen(3000)
+```
+
+**Approach 2: Server-Level Interception Before Elysia** (Alternative)
+
+OIDC traffic is intercepted at the Node.js HTTP server level BEFORE reaching Elysia routing. This approach completely bypasses Elysia for OIDC endpoints.
+
+**Architecture Flow**:
+```
+Client Request → Node.js HTTP Server → 
+  [if /oidc/* → oidc-provider directly] OR 
+  [if other → Elysia Middleware → Elysia Handler]
+```
+
+**Key Difference**: The interception happens BEFORE Elysia sees the request, so Elysia middleware and features don't apply to OIDC endpoints.
+
+**Trade-offs**:
+- ✅ Simpler integration (no Fetch↔Node.js conversion needed)
+- ✅ Potentially better performance (one less conversion layer)
+- ⚠️ Bypasses Elysia middleware for OIDC endpoints (no CORS, no rate limiting, etc.)
+- ⚠️ No type safety for OIDC routes
+- ⚠️ Two separate request paths (harder to debug)
+- ⚠️ Cannot use Elysia features on OIDC endpoints
+
+**Implementation**:
+
+```typescript
+import { Elysia } from 'elysia'
+import Provider from 'oidc-provider'
+
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter,
+  clients: [...],
+})
+
+// Elysia application
+const app = new Elysia()
+  .use(cors({ origin: '*', credentials: true }))
+  
+  // Regular Elysia routes
+  .post('/auth/login', async ({ body, jwt }) => {
+    // Direct SpacetimeDB access
+  })
+  
+  .listen(3000, (server) => {
+    const httpServer = server.server as any
+
+    if (!httpServer) {
+      console.error('Could not access underlying Node.js server')
+      return
+    }
+
+    // Intercept requests BEFORE they reach Elysia routing
+    const originalListener = httpServer.listeners('request')[0]
+    httpServer.removeAllListeners('request')
+
+    httpServer.on('request', (req: any, res: any) => {
+      if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
+        // Route to oidc-provider (bypasses Elysia)
+        oidc.callback()(req, res, () => {
+          res.statusCode = 404
+          res.end('Not Found')
+        })
+      } else {
+        // Route to Elysia
+        originalListener(req, res)
+      }
+    })
+
+    console.log('🚀 Elysia Auth Server running on http://localhost:3000')
+  })
+```
+
+**Recommendation**: Use **Approach 1** (Elysia Route Handlers) for production. The unified middleware and type safety benefits outweigh the small performance overhead of the Fetch↔Node.js conversion. Use **Approach 2** only if you need maximum performance and don't require Elysia middleware on OIDC endpoints.
 
 **Full Integration Example**:
 
