@@ -2529,30 +2529,30 @@ Elysia is a fast, ergonomic TypeScript web framework built on Bun runtime with f
 #### Why Consider Elysia JS?
 
 **Current Pain Points** (Based on Actual Codebase):
-1. **OpenIddict + SpacetimeDB complexity**: 
+1. **OpenIddict + SpacetimeDB complexity**:
    - Custom stores (TokenStore, AuthorizationStore, ApplicationStore) with 3-tier ID mapping
    - ReferenceId → InternalId → DatabaseId mapping requires ConcurrentDictionary "safety nets"
    - AuthorizationStore permanently disabled due to SpacetimeDB validation bugs
    - PKCE data stored in token payload instead of authorization table
    - Polling-based confirmation (50 attempts × 100ms) after reducer calls
-   
+
 2. **SpacetimeDB reactive state challenges**:
    - "Lawn sync problem": Database updates not immediately visible to queries
    - Race conditions between reducer execution and query results
    - Manual cache management to work around reactive state issues
    - Example from TokenStore.cs: `_referenceIdToInternalId`, `_internalIdToReferenceId`, `_internalIdToDatabaseId` static dictionaries
-   
+
 3. **Data Protection key management**:
    - Persistent key storage required for PKCE decryption across requests
    - Keys stored in `DataProtectionKeys/` folder
    - Without stable keys, OpenIddict cannot decrypt authorization code payloads
-   
+
 4. **Mixed authentication schemes**:
    - JWT Bearer (custom tokens with SymmetricSecurityKey)
    - OpenIddict validation (for OAuth tokens)
    - Cookie authentication (for web pages)
    - Complex policy configuration to support all three
-   
+
 5. **WebSocket authentication limitations**:
    - Current implementation: Query parameter token passing (`?access_token=...`)
    - No OIDC-over-WebSocket support
@@ -3534,7 +3534,8 @@ const app = new Elysia()
   //===========================================
 
   // Proxy to C# backend for business logic
-  // C# backend trusts Elysia's JWT tokens
+  // C# backend accepts JWTs issued by Elysia after performing full validation
+  // (signature verification, claim checks, and expiration) or via mTLS + signed internal assertions
   .all('/api/*', async ({ request, headers, jwt, set }) => {
     const authHeader = headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {
