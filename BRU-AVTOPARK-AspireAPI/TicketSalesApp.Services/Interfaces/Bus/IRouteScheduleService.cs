@@ -17,6 +17,10 @@ namespace TicketSalesApp.Services.Interfaces
         /// and capped server-side against the configured maximum (RouteSchedule:MaxPageSize).
         /// Pass <see cref="ScheduleQuery.Empty"/> for an unfiltered page.
         /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when <paramref name="page"/> or <paramref name="pageSize"/> is less than 1,
+        /// or when <paramref name="pageSize"/> exceeds the configured maximum.
+        /// </exception>
         Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(
             int page, int pageSize, ScheduleQuery? query = null);
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);

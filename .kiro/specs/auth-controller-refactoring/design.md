@@ -3167,14 +3167,19 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
     },
   },
 })
+```
 
-// Elysia application with oidc-provider integration
+### Elysia Application Bootstrap
+
+Now that we have the OIDC provider configured, let's bootstrap the Elysia application:
+
+```typescript
+// SNIPPET: Elysia Application Bootstrap with SpacetimeDB
 // FULL STANDALONE AUTH SERVER - Handles ALL authentication
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { jwt } from '@elysiajs/jwt'
 import { DbConnection } from 'spacetimedb'
-import Provider from 'oidc-provider'
 
 // Initialize SpacetimeDB connection using official SDK
 const spacetimeDB = DbConnection.builder()
@@ -3194,8 +3199,8 @@ const app = new Elysia()
   }))
 
   // Health check
-  .get('/health', () => ({ 
-    status: 'ok', 
+  .get('/health', () => ({
+    status: 'ok',
     service: 'elysia-standalone-auth-server',
     spacetimedb: spacetimeDB.isConnected ? 'connected' : 'disconnected'
   }))
@@ -3503,20 +3508,20 @@ const app = new Elysia()
       return { error: 'Invalid token' }
     }
 
-    // Build safe headers - explicitly whitelist and set server-generated identity headers
-    // NOTE: The original Authorization header is intentionally NOT forwarded to the C# backend.
-    // The C# backend trusts the X-User-* headers set here (derived from the verified JWT),
-    // not the raw Bearer token from the client. This prevents token replay attacks.
+    // Build safe headers - forward original bearer token for independent validation
+    // The C# backend will independently validate the token, providing defense-in-depth.
+    // Additionally, include X-User-* headers as a convenience (derived from Elysia's JWT verification).
     const safeHeaders: Record<string, string> = {
       'Content-Type': headers['content-type'] || 'application/json',
       'Accept': headers['accept'] || '*/*',
-      // Server-generated identity headers from verified JWT
+      // Forward original Authorization header for C# backend to independently validate
+      'Authorization': authHeader,
+      // Convenience headers from verified JWT (C# backend should validate token independently)
       'X-User-Id': payload.sub,
       'X-User-Username': payload.username,
       'X-User-Email': payload.email,
       'X-User-Roles': JSON.stringify(payload.roles),
       'X-User-Permissions': JSON.stringify(payload.permissions),
-      // Allowlist: only the above headers are forwarded; all other client headers are dropped
     }
 
     // Forward to C# backend with safe headers only
@@ -3530,39 +3535,61 @@ const app = new Elysia()
     return response
   })
 
-// Mount oidc-provider at server level
-// Pattern: Server-level interception (Pattern B - fallback only, bypasses Elysia middleware)
-// RECOMMENDED: Use Pattern A (Elysia app.fetch + Fetch↔Node shim) instead.
-// See "Approach 1: Elysia app.fetch + Fetch↔Node Shim" section below for the canonical pattern.
-app.listen(3000, (server) => {
-  const httpServer = server.server as any
+// OIDC Integration - Canonical Pattern (Elysia app.fetch + Fetch↔Node Shim)
+// This is the RECOMMENDED approach for production environments.
+// OIDC traffic flows through Elysia routes, allowing middleware to apply.
 
-  if (!httpServer) {
-    console.error('Could not access underlying Node.js server')
-    return
-  }
+// Helper: Convert Elysia Request to Node.js req/res for oidc-provider
+async function handleOidcRequest(request: Request): Promise<Response> {
+  return new Promise((resolve) => {
+    const url = new URL(request.url)
+    const nodeReq = {
+      method: request.method,
+      url: url.pathname + url.search,
+      headers: Object.fromEntries(request.headers.entries()),
+    } as any
 
-  // Intercept requests BEFORE they reach Elysia routing
-  const originalListener = httpServer.listeners('request')[0]
-  httpServer.removeAllListeners('request')
+    const chunks: Buffer[] = []
+    const nodeRes = {
+      statusCode: 200,
+      headers: {} as Record<string, string>,
+      setHeader(name: string, value: string | string[]) {
+        this.headers[name.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
+      },
+      write(chunk: any) {
+        chunks.push(Buffer.from(chunk))
+      },
+      end(chunk?: any) {
+        if (chunk) chunks.push(Buffer.from(chunk))
+        const body = Buffer.concat(chunks).toString()
+        resolve(new Response(body, {
+          status: this.statusCode,
+          headers: this.headers
+        }))
+      }
+    } as any
 
-  httpServer.on('request', (req: any, res: any) => {
-    if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
-      // Route to oidc-provider
-      oidc.callback()(req, res, (err: any) => {
-        if (err) {
-          res.statusCode = 500
-          res.end(JSON.stringify({ error: err.message }))
-        } else {
-          res.statusCode = 404
-          res.end('Not Found')
-        }
-      })
-    } else {
-      // Route to Elysia
-      originalListener(req, res)
-    }
+    oidc.callback()(nodeReq, nodeRes, (err: any) => {
+      if (err) {
+        resolve(new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }))
+      }
+    })
   })
+}
+
+// Add OIDC routes to Elysia (allows middleware to apply)
+app.all('/.well-known/openid-configuration', async ({ request }) => {
+  return await handleOidcRequest(request)
+})
+.all('/oidc/*', async ({ request }) => {
+  return await handleOidcRequest(request)
+})
+
+// Start server
+app.listen(3000, (server) => {
 
   console.log('🚀 Elysia Standalone Auth Server running on http://localhost:3000')
   console.log('📊 SpacetimeDB:', spacetimeDB.isConnected ? 'Connected' : 'Disconnected')
@@ -3585,6 +3612,45 @@ app.listen(3000, (server) => {
   console.log('')
   console.log('🔄 Business API Proxy: /api/* → C# Backend')
 })
+
+// FALLBACK PATTERN: Server-level interception (use only if app.fetch approach doesn't work)
+// WARNING: This bypasses Elysia middleware - CORS, JWT, etc. won't apply to OIDC endpoints
+// Only use this if you absolutely need maximum performance or encounter compatibility issues.
+/*
+app.listen(3000, (server) => {
+  const httpServer = server.server as any
+
+  if (!httpServer) {
+    console.error('Could not access underlying Node.js server')
+    return
+  }
+
+  // Intercept requests BEFORE they reach Elysia routing
+  const originalListener = httpServer.listeners('request')[0]
+  httpServer.removeAllListeners('request')
+
+  httpServer.on('request', (req: any, res: any) => {
+    if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
+      // Route to oidc-provider (bypasses Elysia middleware!)
+      oidc.callback()(req, res, (err: any) => {
+        if (err) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: err.message }))
+        } else {
+          res.statusCode = 404
+          res.end('Not Found')
+        }
+      })
+    } else {
+      // Route to Elysia
+      originalListener(req, res)
+    }
+  })
+
+  console.log('🚀 Elysia Standalone Auth Server running on http://localhost:3000')
+  console.log('⚠️  WARNING: Using server-level OIDC interception - Elysia middleware bypassed')
+})
+*/
 
 // Helper function for TOTP verification
 async function verifyTOTP(secret: string, code: string): Promise<boolean> {

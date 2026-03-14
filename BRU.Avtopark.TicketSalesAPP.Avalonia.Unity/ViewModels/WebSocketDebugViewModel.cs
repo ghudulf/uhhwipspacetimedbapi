@@ -33,11 +33,27 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     [ObservableProperty]
     private bool _isInteractiveConnected;
 
+    /// <summary>
+    /// Indicates whether either WebSocket connection is active.
+    /// </summary>
+    public bool IsAnyConnected => IsConnected || IsInteractiveConnected;
+
     [ObservableProperty]
     private string _statusMessage = "Ready";
 
     [ObservableProperty]
     private ObservableCollection<ControllerTestResult> _testResults = new();
+
+    // Notify IsAnyConnected when either connection state changes
+    partial void OnIsConnectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsAnyConnected));
+    }
+
+    partial void OnIsInteractiveConnectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsAnyConnected));
+    }
 
     [ObservableProperty]
     private ObservableCollection<string> _eventLog = new();
@@ -303,7 +319,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
                 try
                 {
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "User disconnect", closeCts.Token);
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "User disconnect", closeCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -1495,6 +1511,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
+        _interactiveReceiveLock?.Dispose();
 
         _sendSemaphore?.Dispose();
         _cts?.Dispose();
@@ -1510,6 +1527,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
+        _interactiveReceiveLock?.Dispose();
 
         _sendSemaphore?.Dispose();
         _cts?.Dispose();

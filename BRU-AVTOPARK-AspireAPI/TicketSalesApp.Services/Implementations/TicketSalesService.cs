@@ -88,9 +88,10 @@ namespace TicketSalesApp.Services.Implementations
 
                 _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
                 var conn = _spacetimeService.GetConnection();
-                
-                ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
-                ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1)).ToUnixTimeMilliseconds();
+
+                // Use UTC-explicit conversions to avoid ambiguous local time interpretation
+                ulong startTimestamp = (ulong)new DateTimeOffset(DateTime.SpecifyKind(startDate, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
+                ulong endTimestamp = (ulong)new DateTimeOffset(DateTime.SpecifyKind(endDate.AddDays(1).AddTicks(-1), DateTimeKind.Utc)).ToUnixTimeMilliseconds();
                 
                 return conn.Db.Sale.Iter()
                     .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)

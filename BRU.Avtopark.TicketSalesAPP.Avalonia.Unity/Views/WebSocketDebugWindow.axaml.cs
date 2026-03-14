@@ -43,18 +43,36 @@ public partial class WebSocketDebugWindow : Window
             collection.CollectionChanged -= EventLog_CollectionChanged;
         }
         
-        // Clean up WebSocket resources with proper error handling
-        var disconnectTask = _viewModel.DisconnectWebSocketCommand.ExecuteAsync(null);
-        disconnectTask.ContinueWith(t =>
+        // Clean up WebSocket resources with proper async shutdown
+        _ = Task.Run(async () =>
         {
-            if (t.IsFaulted && t.Exception != null)
+            try
+            {
+                await ShutdownAsync();
+            }
+            catch (Exception ex)
             {
                 // Log the exception (in production, use proper logging)
-                System.Diagnostics.Debug.WriteLine($"Error during WebSocket disconnect: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error during async shutdown: {ex.Message}");
             }
-        }, TaskContinuationOptions.OnlyOnFaulted);
-        
+        });
+
         _viewModel.Dispose();
+    }
+
+    /// <summary>
+    /// Async shutdown method that closes both WebSocket pairs before teardown.
+    /// </summary>
+    private async Task ShutdownAsync()
+    {
+        // Disconnect main WebSocket
+        await _viewModel.DisconnectWebSocketCommand.ExecuteAsync(null);
+
+        // Disconnect interactive WebSocket if connected
+        if (_viewModel.IsInteractiveConnected)
+        {
+            await _viewModel.DisconnectInteractiveCommand.ExecuteAsync(null);
+        }
     }
 
     private void EventLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

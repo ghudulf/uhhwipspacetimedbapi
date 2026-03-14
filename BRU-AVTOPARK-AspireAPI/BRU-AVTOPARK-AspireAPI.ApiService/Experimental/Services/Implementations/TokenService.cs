@@ -132,12 +132,17 @@ public class TokenService : ITokenService
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        
-        _logger.LogInformation(
+
+        _logger.LogDebug(
             "Generated JWT token from payload for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
             payload.Username, payload.Roles.Count, payload.Permissions.Count,
             expires.ToString("o"), notBefore.ToString("o"));
-        
+
+        _logger.LogInformation(
+            "Generated JWT token from payload with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
+            payload.Roles.Count, payload.Permissions.Count,
+            expires.ToString("o"), notBefore.ToString("o"));
+
         return tokenHandler.WriteToken(token);
     }
 
@@ -253,15 +258,11 @@ public class TokenService : ITokenService
                 ValidateAudience = _jwtSettings.ValidateAudience,
                 ValidAudience    = _jwtSettings.Audience,
 
-                ValidateLifetime      = _jwtSettings.RequireExpiration || _jwtSettings.ValidateNbf,
+                ValidateLifetime      = _jwtSettings.RequireExpiration,
                 RequireExpirationTime = _jwtSettings.RequireExpiration,
 
-                // Honor the ValidateNbf toggle: when false, skip not-before enforcement
-                // by setting a large negative clock skew so nbf is never in the future.
-                // When true, use the configured clock skew for normal nbf validation.
-                ClockSkew = _jwtSettings.ValidateNbf
-                    ? TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes)
-                    : TimeSpan.MaxValue,
+                // Always use configured clock skew value
+                ClockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes),
 
                 RequireSignedTokens = true,
             }, out _);
@@ -352,4 +353,3 @@ public class TokenService : ITokenService
         return Convert.ToBase64String(bytes);
     }
 }
-

@@ -1036,8 +1036,9 @@ namespace TicketSalesApp.AdminServer.Controllers
                     : sanitized;
                 return result;
             }
-            catch
+            catch (JsonException ex)
             {
+                _logger.LogWarning(ex, "Failed to parse JSON payload for sanitization");
                 return "[invalid JSON]";
             }
         }

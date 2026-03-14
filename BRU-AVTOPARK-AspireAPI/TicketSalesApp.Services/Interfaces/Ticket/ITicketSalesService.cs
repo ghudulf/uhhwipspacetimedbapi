@@ -48,6 +48,17 @@ namespace TicketSalesApp.Services.Interfaces
         Task<Sale?> GetSaleByIdAsync(uint saleId);
         Task<List<Sale>> GetSalesByTicketIdAsync(uint ticketId);
         Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
+
+        /// <summary>
+        /// Returns a single page of sales.
+        /// </summary>
+        /// <param name="page">1-based page number.</param>
+        /// <param name="pageSize">Number of items per page.</param>
+        /// <returns>A tuple containing the list of sales for the page and the total count of all sales.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when <paramref name="page"/> or <paramref name="pageSize"/> is less than 1.
+        /// </exception>
+        Task<(List<Sale> items, int totalCount)> GetSalesPagedAsync(int page, int pageSize);
         
         // Create/Update/Delete operations
         Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null);

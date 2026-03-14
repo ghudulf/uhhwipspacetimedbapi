@@ -69,8 +69,8 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Border Classes="status-panel" Padding="12,6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Ellipse Width="12" Height="12" 
-                                     Fill="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"/>
+                            <Ellipse Width="12" Height="12"
+                                     Fill="{Binding IsAnyConnected, Converter={StaticResource BoolToColorConverter}}"/>
                             <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>

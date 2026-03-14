@@ -1442,7 +1442,13 @@ public sealed class RealtimeController : BaseController
             return result;
         }
 
-        return success ? await ExecuteReadAsync(service, resource, id) : null;
+        if (!success)
+        {
+            return null;
+        }
+
+        var finalResult = await ExecuteReadAsync(service, resource, id);
+        return finalResult; // null means NotFound, which is handled by caller
     }
 
     private async Task ExecuteDeleteAsync(object service, string resource, uint id, CancellationToken cancellationToken)

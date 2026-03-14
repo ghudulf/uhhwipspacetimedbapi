@@ -1422,7 +1422,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
   - Rename AuthControllerRefactored.cs to AuthController.cs
   - Clean up routing infrastructure
   - KEEP feature flag infrastructure for operational flexibility
-  - Duration: 2-3 weeks
+  - Duration: 2-3 days
   - **Prerequisite**: All endpoints at 100% rollout for several weeks/months with stable operation
 
 **Total Duration**: 3-4 months from start to legacy code removal

@@ -489,28 +489,36 @@ namespace TicketSalesApp.Services.Implementations
                                 cleanedNotesAfterTimeout = null;
                             }
                             
-                            // Update schedule to remove correlation tag
-                            connection.Reducers.UpdateRouteSchedule(
-                                scheduleWithTag.ScheduleId,
-                                scheduleWithTag.RouteId,
-                                scheduleWithTag.StartPoint,
-                                scheduleWithTag.EndPoint,
-                                scheduleWithTag.RouteStops,
-                                scheduleWithTag.DepartureTime,
-                                scheduleWithTag.ArrivalTime,
-                                scheduleWithTag.Price,
-                                scheduleWithTag.AvailableSeats,
-                                scheduleWithTag.DaysOfWeek,
-                                scheduleWithTag.BusTypes,
-                                scheduleWithTag.StopDurationMinutes,
-                                scheduleWithTag.IsRecurring,
-                                scheduleWithTag.EstimatedStopTimes,
-                                scheduleWithTag.StopDistances,
-                                cleanedNotesAfterTimeout,
-                                null
-                            );
-                            connection.FrameTick();
-                            
+                            // Best-effort cleanup: try to remove correlation tag
+                            try
+                            {
+                                connection.Reducers.UpdateRouteSchedule(
+                                    scheduleWithTag.ScheduleId,
+                                    scheduleWithTag.RouteId,
+                                    scheduleWithTag.StartPoint,
+                                    scheduleWithTag.EndPoint,
+                                    scheduleWithTag.RouteStops,
+                                    scheduleWithTag.DepartureTime,
+                                    scheduleWithTag.ArrivalTime,
+                                    scheduleWithTag.Price,
+                                    scheduleWithTag.AvailableSeats,
+                                    scheduleWithTag.DaysOfWeek,
+                                    scheduleWithTag.BusTypes,
+                                    scheduleWithTag.StopDurationMinutes,
+                                    scheduleWithTag.IsRecurring,
+                                    scheduleWithTag.EstimatedStopTimes,
+                                    scheduleWithTag.StopDistances,
+                                    cleanedNotesAfterTimeout,
+                                    null
+                                );
+                                connection.FrameTick();
+                            }
+                            catch (Exception cleanupEx)
+                            {
+                                _logger.LogWarning(cleanupEx, "Failed to clean correlation tag from schedule {ScheduleId} - tag will remain", scheduleWithTag.ScheduleId);
+                                // Continue anyway - we found the schedule
+                            }
+
                             return scheduleWithTag.ScheduleId;
                         }
                         
