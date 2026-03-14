@@ -229,6 +229,10 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationSe
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
 
+// Configure JwtSettings options from appsettings.json
+builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>(
+    builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName));
+
 // Add Routing Diagnostics Service for debugging controller discovery issues
 builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();
 

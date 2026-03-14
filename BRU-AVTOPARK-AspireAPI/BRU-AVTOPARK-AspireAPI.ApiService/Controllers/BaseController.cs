@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using TicketSalesApp.AdminServer.Configuration;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -1065,7 +1067,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Validates a plain JWT locally using the symmetric signing key from configuration.
         /// Enforces signature, lifetime (exp + nbf), and optionally issuer/audience when
         /// the corresponding configuration keys are present.
-        /// Clock skew tolerance is 5 minutes (matching the existing ValidateOAuthTokenAsync).
+        /// All validation toggles are driven by <see cref="JwtSettings"/> so they can be
+        /// changed in appsettings.json without recompiling.
         /// </summary>
         private Task<Dictionary<string, object>?> ValidateJwtLocalAsync(
             string token,
@@ -1078,53 +1081,60 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return Task.FromResult<Dictionary<string, object>?>(null);
             }
 
-            var config = HttpContext.RequestServices.GetService<IConfiguration>();
-            var jwtSecret = config?["JwtSettings:Secret"];
-            if (string.IsNullOrEmpty(jwtSecret))
+            // Prefer the strongly-typed options; fall back to raw config for backward compat.
+            var jwtOptions = HttpContext.RequestServices.GetService<IOptions<JwtSettings>>()?.Value;
+            var config     = HttpContext.RequestServices.GetService<IConfiguration>();
+
+            var secret = jwtOptions?.Secret
+                ?? config?["JwtSettings:Secret"];
+
+            if (string.IsNullOrEmpty(secret))
             {
                 Log.Error("ValidateJwtLocalAsync - JwtSettings:Secret not configured; cannot validate JWT");
                 return Task.FromResult<Dictionary<string, object>?>(null);
             }
 
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secret));
 
-            // Read optional issuer / audience from configuration for stricter validation.
-            var validIssuer   = config?["JwtSettings:Issuer"];
-            var validAudience = config?["JwtSettings:Audience"];
+            // Resolve validation toggles from options (with safe defaults when options absent).
+            var validateIssuer   = jwtOptions?.ValidateIssuer   ?? !string.IsNullOrEmpty(jwtOptions?.Issuer   ?? config?["JwtSettings:Issuer"]);
+            var validateAudience = jwtOptions?.ValidateAudience ?? !string.IsNullOrEmpty(jwtOptions?.Audience ?? config?["JwtSettings:Audience"]);
+            var requireExp       = jwtOptions?.RequireExpiration ?? true;
+            var validateNbf      = jwtOptions?.ValidateNbf       ?? true;
+            var clockSkew        = TimeSpan.FromMinutes(jwtOptions?.ClockSkewMinutes ?? 5);
+            var validIssuer      = jwtOptions?.Issuer   ?? config?["JwtSettings:Issuer"];
+            var validAudience    = jwtOptions?.Audience ?? config?["JwtSettings:Audience"];
 
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey         = key,
 
-                // Validate issuer only when explicitly configured.
-                ValidateIssuer = !string.IsNullOrEmpty(validIssuer),
-                ValidIssuer    = validIssuer,
+                ValidateIssuer   = validateIssuer && !string.IsNullOrEmpty(validIssuer),
+                ValidIssuer      = validIssuer,
 
-                // Validate audience only when explicitly configured.
-                ValidateAudience = !string.IsNullOrEmpty(validAudience),
+                ValidateAudience = validateAudience && !string.IsNullOrEmpty(validAudience),
                 ValidAudience    = validAudience,
 
-                // Enforce exp AND nbf.
-                ValidateLifetime = true,
-                RequireExpirationTime = true,
-                ClockSkew = TimeSpan.FromMinutes(5)
+                ValidateLifetime      = requireExp,
+                RequireExpirationTime = requireExp,
+                RequireSignedTokens   = true,
+                ClockSkew             = clockSkew
             };
 
             try
             {
                 var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
 
-                // Extra guard: ensure the validated token is a JwtSecurityToken (not some other type).
                 if (validatedToken is not JwtSecurityToken jwt)
                 {
                     Log.Warning("ValidateJwtLocalAsync - Validated token is not a JwtSecurityToken");
                     return Task.FromResult<Dictionary<string, object>?>(null);
                 }
 
-                // Explicit nbf check (TokenValidationParameters.ValidateLifetime covers exp;
-                // nbf is also checked by the handler but we log it explicitly for auditability).
-                if (jwt.ValidFrom > DateTimeOffset.UtcNow.Add(validationParameters.ClockSkew))
+                // Explicit nbf check when the toggle is on (defence-in-depth; the handler
+                // also checks nbf when ValidateLifetime is true, but we log it explicitly).
+                if (validateNbf && jwt.ValidFrom > DateTimeOffset.UtcNow.Add(clockSkew))
                 {
                     Log.Warning("ValidateJwtLocalAsync - Token not yet valid (nbf={Nbf}, now={Now})",
                         jwt.ValidFrom, DateTimeOffset.UtcNow);
@@ -1147,8 +1157,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     }
                 }
 
-                Log.Debug("ValidateJwtLocalAsync - JWT validated successfully with {ClaimCount} claims (alg={Alg})",
-                    claims.Count, jwt.Header.Alg);
+                Log.Debug("ValidateJwtLocalAsync - JWT validated successfully with {ClaimCount} claims (alg={Alg}, validateIssuer={VI}, validateAudience={VA}, requireExp={RE}, validateNbf={VN})",
+                    claims.Count, jwt.Header.Alg, validateIssuer, validateAudience, requireExp, validateNbf);
                 return Task.FromResult<Dictionary<string, object>?>(claims);
             }
             catch (SecurityTokenExpiredException ex)

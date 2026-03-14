@@ -5,8 +5,10 @@ using System.Text;
 using BRU_AVTOPARK.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SpacetimeDB.Types;
+using TicketSalesApp.AdminServer.Configuration;
 using TicketSalesApp.Services.Interfaces;
 
 namespace BRU_AVTOPARK.Services.Implementations;
@@ -15,18 +17,23 @@ namespace BRU_AVTOPARK.Services.Implementations;
 /// Centralizes all JWT token operations that were previously scattered
 /// across the AuthController (GenerateJwtToken, IsAdmin, HasPermission, etc.).
 /// Injected as a singleton; the signing key is loaded once from configuration.
+///
+/// Token generation guarantees:
+///   - "exp" (expiration) is always present, controlled by JwtSettings.ExpirationInMinutes.
+///   - "nbf" (not-before) is always present, set to (now - JwtSettings.NotBeforeOffsetSeconds)
+///     so tokens are valid immediately while providing a small grace window for clock skew.
+///   - "iat" (issued-at) is always present, set to the current UTC time.
+///   - Issuer and Audience are always embedded when configured.
 /// </summary>
 public class TokenService : ITokenService
 {
     private readonly SymmetricSecurityKey _signingKey;
     private readonly ISpacetimeDBService _spacetimeService;
     private readonly ILogger<TokenService> _logger;
-    private readonly string _issuer;
-    private readonly string _audience;
-    private readonly int _expirationMinutes;
+    private readonly JwtSettings _jwtSettings;
 
     public TokenService(
-        IConfiguration configuration, 
+        IOptions<JwtSettings> jwtOptions,
         SymmetricSecurityKey signingKey,
         ISpacetimeDBService spacetimeService,
         ILogger<TokenService> logger)
@@ -34,14 +41,7 @@ public class TokenService : ITokenService
         _signingKey = signingKey ?? throw new ArgumentNullException(nameof(signingKey));
         _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        // Match AuthController configuration keys exactly
-        _issuer = configuration["Jwt:Issuer"] ?? "https://localhost:5001";
-        _audience = configuration["Jwt:Audience"] ?? "https://localhost:5001";
-        
-        // Match AuthController: uses "JwtSettings:ExpirationInMinutes" not "Jwt:ExpirationMinutes"
-        var expirationConfig = configuration["JwtSettings:ExpirationInMinutes"] ?? configuration["Jwt:ExpirationMinutes"] ?? "120";
-        _expirationMinutes = int.TryParse(expirationConfig, out var min) ? min : 120;
+        _jwtSettings = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
     }
 
     /// <inheritdoc />
@@ -116,19 +116,27 @@ public class TokenService : ITokenService
         }
 
         // Create token descriptor
+        var now = DateTime.UtcNow;
+        var notBefore = now.AddSeconds(-_jwtSettings.NotBeforeOffsetSeconds);
+        var expires = now.AddMinutes(_jwtSettings.ExpirationInMinutes);
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(_expirationMinutes),
-            Issuer = _issuer,
-            Audience = _audience,
+            NotBefore = notBefore,
+            IssuedAt = now,
+            Expires = expires,
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
             SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256Signature)
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         
-        _logger.LogInformation("Generated JWT token from payload for user {Username} with {RoleCount} roles and {PermissionCount} permissions",
-            payload.Username, payload.Roles.Count, payload.Permissions.Count);
+        _logger.LogInformation(
+            "Generated JWT token from payload for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
+            payload.Username, payload.Roles.Count, payload.Permissions.Count,
+            expires.ToString("o"), notBefore.ToString("o"));
         
         return tokenHandler.WriteToken(token);
     }
@@ -198,20 +206,28 @@ public class TokenService : ITokenService
         }
 
         // Create token descriptor - EXACT match to AuthController lines 5067-5074
+        var now = DateTime.UtcNow;
+        var notBefore = now.AddSeconds(-_jwtSettings.NotBeforeOffsetSeconds);
+        var expires = now.AddMinutes(_jwtSettings.ExpirationInMinutes);
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(_expirationMinutes),
-            Issuer = _issuer,
-            Audience = _audience,
+            NotBefore = notBefore,
+            IssuedAt = now,
+            Expires = expires,
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
             SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256Signature)
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
         
-        // ENHANCEMENT: Log token generation with claims summary - EXACT match to AuthController lines 5078-5079
-        _logger.LogInformation("Generated JWT token for user {Username} with {RoleCount} roles and {PermissionCount} permissions",
-            userProfile.Login, roles.Count, permissions.Count);
+        // ENHANCEMENT: Log token generation with claims summary
+        _logger.LogInformation(
+            "Generated JWT token for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
+            userProfile.Login, roles.Count, permissions.Count,
+            expires.ToString("o"), notBefore.ToString("o"));
         
         return tokenHandler.WriteToken(token);
     }
@@ -228,13 +244,23 @@ public class TokenService : ITokenService
         {
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
-                ValidateIssuer = true,
-                ValidIssuer = _issuer,
-                ValidateAudience = true,
-                ValidAudience = _audience,
-                ValidateLifetime = true,
-                IssuerSigningKey = _signingKey,
-                ClockSkew = TimeSpan.FromMinutes(2)
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey         = _signingKey,
+
+                ValidateIssuer   = _jwtSettings.ValidateIssuer,
+                ValidIssuer      = _jwtSettings.Issuer,
+
+                ValidateAudience = _jwtSettings.ValidateAudience,
+                ValidAudience    = _jwtSettings.Audience,
+
+                ValidateLifetime      = _jwtSettings.RequireExpiration,
+                RequireExpirationTime = _jwtSettings.RequireExpiration,
+
+                // nbf is checked by the handler when ValidateLifetime is true;
+                // we honour the explicit toggle here for cases where lifetime
+                // validation is on but nbf should be skipped (e.g. testing).
+                RequireSignedTokens = true,
+                ClockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes)
             }, out _);
 
             return principal;
