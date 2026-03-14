@@ -3590,7 +3590,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 // ValidateTokenDirectAsync routes JWEs to /connect/tokeninfo and JWTs to local
                 // signature validation, matching the behaviour of ValidateOAuthTokenAsync without
                 // relying on HttpContext headers.
-                claims = await ValidateTokenDirectAsync(inlineToken);
+                claims = await ValidateTokenDirectAsync(inlineToken, cancellationToken);
             }
             else
             {
