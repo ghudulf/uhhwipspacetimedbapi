@@ -482,8 +482,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 var query = new TicketSalesApp.Services.Models.ScheduleQuery { IsActive = isActive };
                 var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, pageSize, query);
                 
-                _logger.LogInformation("Retrieved {TotalCount} total schedules from database", totalCount);
-                
                 var result = paged.Select(ProjectScheduleForList).ToList();
                 var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
 
@@ -496,6 +494,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 Response.Headers["X-Total-Pages"] = totalPages.ToString();
                 
                 return Ok(result);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _logger.LogWarning(ex, "Invalid pagination parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+                return BadRequest($"Invalid pagination parameter: {ex.ParamName}. {ex.Message}");
             }
             catch (Exception ex)
             {

@@ -253,14 +253,17 @@ public class TokenService : ITokenService
                 ValidateAudience = _jwtSettings.ValidateAudience,
                 ValidAudience    = _jwtSettings.Audience,
 
-                ValidateLifetime      = _jwtSettings.RequireExpiration,
+                ValidateLifetime      = _jwtSettings.RequireExpiration || _jwtSettings.ValidateNbf,
                 RequireExpirationTime = _jwtSettings.RequireExpiration,
 
-                // nbf is checked by the handler when ValidateLifetime is true;
-                // we honour the explicit toggle here for cases where lifetime
-                // validation is on but nbf should be skipped (e.g. testing).
+                // Honor the ValidateNbf toggle: when false, skip not-before enforcement
+                // by setting a large negative clock skew so nbf is never in the future.
+                // When true, use the configured clock skew for normal nbf validation.
+                ClockSkew = _jwtSettings.ValidateNbf
+                    ? TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes)
+                    : TimeSpan.MaxValue,
+
                 RequireSignedTokens = true,
-                ClockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes)
             }, out _);
 
             return principal;

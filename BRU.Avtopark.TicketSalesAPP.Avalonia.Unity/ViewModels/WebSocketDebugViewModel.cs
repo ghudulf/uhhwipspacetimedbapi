@@ -16,7 +16,7 @@ using Serilog;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
-public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
+public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IAsyncDisposable
 {
     private readonly ApiClientService _apiClient;
     private readonly TokenStorageService _tokenStorage;
@@ -29,6 +29,9 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isConnected;
+
+    [ObservableProperty]
+    private bool _isInteractiveConnected;
 
     [ObservableProperty]
     private string _statusMessage = "Ready";
@@ -50,6 +53,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
     private ClientWebSocket? _interactiveWebSocket;
     private CancellationTokenSource? _interactiveCts;
     private readonly SemaphoreSlim _interactiveSendLock = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _interactiveReceiveLock = new SemaphoreSlim(1, 1);
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -996,6 +1000,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
         _interactiveCts?.Cancel();
         _interactiveCts?.Dispose();
         _interactiveWebSocket?.Dispose();
+        IsInteractiveConnected = false;
 
         string? accessToken = AccessToken;
         if (string.IsNullOrEmpty(accessToken))
@@ -1036,6 +1041,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
 
         await _interactiveWebSocket.ConnectAsync(buildResult.wsUri!, _interactiveCts.Token);
         AddLog($"✅ Connected to interactive endpoint: {buildResult.wsUri}");
+        IsInteractiveConnected = true;
 
         // Drain the welcome frame in background so it doesn't block sends
         _ = Task.Run(async () =>
@@ -1043,9 +1049,17 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
             var buf = new byte[4096];
             try
             {
-                var result = await _interactiveWebSocket.ReceiveAsync(buf, _interactiveCts.Token);
-                var welcome = Encoding.UTF8.GetString(buf, 0, result.Count);
-                AddLog($"📨 Welcome: {welcome}");
+                await _interactiveReceiveLock.WaitAsync(_interactiveCts.Token);
+                try
+                {
+                    var result = await _interactiveWebSocket.ReceiveAsync(buf, _interactiveCts.Token);
+                    var welcome = Encoding.UTF8.GetString(buf, 0, result.Count);
+                    AddLog($"📨 Welcome: {welcome}");
+                }
+                finally
+                {
+                    _interactiveReceiveLock.Release();
+                }
             }
             catch { /* connection may close before welcome arrives */ }
         });
@@ -1099,9 +1113,17 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
                 {
                     using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_interactiveCts.Token);
                     timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
-                    var result = await ws.ReceiveAsync(buf, timeoutCts.Token);
-                    var response = Encoding.UTF8.GetString(buf, 0, result.Count);
-                    AddLog($"📨 {commandType} response: {response}");
+                    await _interactiveReceiveLock.WaitAsync(timeoutCts.Token);
+                    try
+                    {
+                        var result = await ws.ReceiveAsync(buf, timeoutCts.Token);
+                        var response = Encoding.UTF8.GetString(buf, 0, result.Count);
+                        AddLog($"📨 {commandType} response: {response}");
+                    }
+                    finally
+                    {
+                        _interactiveReceiveLock.Release();
+                    }
                 }
                 catch (OperationCanceledException) { AddLog($"⚠ {commandType} response timed out"); }
                 catch (Exception ex) { AddLog($"⚠ {commandType} receive error: {ex.Message}"); }
@@ -1465,12 +1487,28 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
     
     public void Dispose()
     {
-        // Ensure cleanup completes before disposing resources to prevent race conditions
-        CleanupWebSocketAsync().GetAwaiter().GetResult();
+        // Use fire-and-forget with ConfigureAwait(false) to avoid deadlocking the UI thread
+        Task.Run(async () => await CleanupWebSocketAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
 
         _interactiveCts?.Cancel();
         _interactiveCts?.Dispose();
         _interactiveWebSocket?.Dispose();
+        IsInteractiveConnected = false;
+        _interactiveSendLock?.Dispose();
+
+        _sendSemaphore?.Dispose();
+        _cts?.Dispose();
+        _webSocket?.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await CleanupWebSocketAsync().ConfigureAwait(false);
+
+        _interactiveCts?.Cancel();
+        _interactiveCts?.Dispose();
+        _interactiveWebSocket?.Dispose();
+        IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
 
         _sendSemaphore?.Dispose();

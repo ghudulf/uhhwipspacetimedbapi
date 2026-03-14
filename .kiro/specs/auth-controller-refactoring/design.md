@@ -3023,7 +3023,7 @@ class SpacetimeDBAdapter {
     // PRODUCTION: Direct SpacetimeDB connection using new builder pattern
     this.spacetimeDB = DbConnection.builder()
       .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
-      .withModuleName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+      .withDatabaseName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
       .withToken(process.env.SPACETIMEDB_TOKEN)
       .withLifecycleCallbacks({
         onConnect: () => console.log('Connected to SpacetimeDB'),
@@ -3129,7 +3129,7 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
     // PRODUCTION: Fetch user directly from SpacetimeDB
     const spacetimeDB = DbConnection.builder()
       .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
-      .withModuleName('bru-avtopark')
+      .withDatabaseName('bru-avtopark')
       .withToken(process.env.SPACETIMEDB_TOKEN)
       .build()
 
@@ -3504,6 +3504,9 @@ const app = new Elysia()
     }
 
     // Build safe headers - explicitly whitelist and set server-generated identity headers
+    // NOTE: The original Authorization header is intentionally NOT forwarded to the C# backend.
+    // The C# backend trusts the X-User-* headers set here (derived from the verified JWT),
+    // not the raw Bearer token from the client. This prevents token replay attacks.
     const safeHeaders: Record<string, string> = {
       'Content-Type': headers['content-type'] || 'application/json',
       'Accept': headers['accept'] || '*/*',
@@ -3513,6 +3516,7 @@ const app = new Elysia()
       'X-User-Email': payload.email,
       'X-User-Roles': JSON.stringify(payload.roles),
       'X-User-Permissions': JSON.stringify(payload.permissions),
+      // Allowlist: only the above headers are forwarded; all other client headers are dropped
     }
 
     // Forward to C# backend with safe headers only
@@ -3527,7 +3531,9 @@ const app = new Elysia()
   })
 
 // Mount oidc-provider at server level
-// Pattern: Server-level interception
+// Pattern: Server-level interception (Pattern B - fallback only, bypasses Elysia middleware)
+// RECOMMENDED: Use Pattern A (Elysia app.fetch + Fetch↔Node shim) instead.
+// See "Approach 1: Elysia app.fetch + Fetch↔Node Shim" section below for the canonical pattern.
 app.listen(3000, (server) => {
   const httpServer = server.server as any
 
@@ -3543,9 +3549,14 @@ app.listen(3000, (server) => {
   httpServer.on('request', (req: any, res: any) => {
     if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
       // Route to oidc-provider
-      oidc.callback()(req, res, () => {
-        res.statusCode = 404
-        res.end('Not Found')
+      oidc.callback()(req, res, (err: any) => {
+        if (err) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: err.message }))
+        } else {
+          res.statusCode = 404
+          res.end('Not Found')
+        }
       })
     } else {
       // Route to Elysia
@@ -3669,7 +3680,7 @@ import { DbConnection } from 'spacetimedb'
 // Initialize SpacetimeDB connection using canonical builder pattern
 const spacetimeDB = DbConnection.builder()
   .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
-  .withModuleName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+  .withDatabaseName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
   .withToken(process.env.SPACETIMEDB_TOKEN)
   .withLifecycleCallbacks({
     onConnect: () => console.log('Connected to SpacetimeDB'),

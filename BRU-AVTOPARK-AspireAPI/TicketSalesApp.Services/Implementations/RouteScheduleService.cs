@@ -319,7 +319,7 @@ namespace TicketSalesApp.Services.Implementations
                         {
                             _logger.LogError("CreateRouteSchedule reducer failed: {Reason}", reason);
                             
-                            if (TryExtractCorrelationId(notesParam, out var guid))
+                            if (TryExtractCorrelationId(notesParam, out var guid) && guid == correlationId)
                             {
                                 if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                 {
@@ -332,7 +332,7 @@ namespace TicketSalesApp.Services.Implementations
                         {
                             _logger.LogError("CreateRouteSchedule reducer out of energy");
                             
-                            if (TryExtractCorrelationId(notesParam, out var guid))
+                            if (TryExtractCorrelationId(notesParam, out var guid) && guid == correlationId)
                             {
                                 if (_pendingCreates.TryRemove(guid, out var pendingTcs))
                                 {
@@ -343,7 +343,7 @@ namespace TicketSalesApp.Services.Implementations
                         }
 
                         // Reducer succeeded - find the created schedule by correlation ID
-                        if (TryExtractCorrelationId(notesParam, out var correlationGuid))
+                        if (TryExtractCorrelationId(notesParam, out var correlationGuid) && correlationGuid == correlationId)
                         {
                             // Guard: only proceed if this correlation ID belongs to a pending create on this instance
                             if (!_pendingCreates.TryGetValue(correlationGuid, out _))
@@ -430,7 +430,9 @@ namespace TicketSalesApp.Services.Implementations
                     if (string.IsNullOrEmpty(notes) || !notes.Contains("[CORRELATION:"))
                         return false;
                     
-                    var startIdx = notes.IndexOf("[CORRELATION:") + 13;
+                    // Use LastIndexOf to pick up the last marker, avoiding user-supplied earlier markers
+                    var startIdx = notes.LastIndexOf("[CORRELATION:") + 13;
+                    if (startIdx < 13) return false; // LastIndexOf returned -1
                     var endIdx = notes.IndexOf(']', startIdx);
                     if (endIdx > startIdx && Guid.TryParse(notes.AsSpan(startIdx, endIdx - startIdx), out correlationId))
                     {
@@ -717,11 +719,11 @@ namespace TicketSalesApp.Services.Implementations
 
                 foreach (var schedule in allSchedules)
                 {
-                    // Allow both recurring schedules (with DaysOfWeek) and one-off schedules (DaysOfWeek == null)
-                    bool matchesDay = schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek);
+                    // Use IsRecurring to distinguish recurring vs one-off schedules
+                    bool matchesDay = !schedule.IsRecurring || schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek);
 
                     bool matchesTimeWindow;
-                    if (schedule.DaysOfWeek == null)
+                    if (!schedule.IsRecurring)
                     {
                         // One-off schedule: use exact timestamp matching within the target day
                         matchesTimeWindow = schedule.DepartureTime >= date && schedule.DepartureTime < date + 86400000; // 86400000 ms = 24 hours

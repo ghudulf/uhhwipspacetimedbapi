@@ -3474,11 +3474,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             finally
             {
                 cts.Cancel();
-                // Cancel all QR polling tasks
+                // Cancel all QR polling tasks – only cancel here; each poller's finally block
+                // is responsible for disposing its own subCts to avoid double-dispose races.
                 foreach (var sub in qrSubscriptions.Values)
                 {
                     sub.Cancel();
-                    sub.Dispose();
                 }
                 sendLock.Dispose();
                 _logger.LogInformation("[AuthWS:{ConnId}] Connection closed", connectionId);
@@ -3519,11 +3519,31 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         break;
 
                     case "auth:refresh":
+                        if (claimsHolder.Claims == null)
+                        {
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:error",
+                                requestId,
+                                error = "Authentication required for auth:refresh"
+                            }, sendLock, cts.Token);
+                            break;
+                        }
                         await HandleWsRefreshAsync(webSocket, root, requestId, sendLock,
                             connectionId, claimsHolder.Claims, cts.Token);
                         break;
 
                     case "auth:qr-status":
+                        if (claimsHolder.Claims == null)
+                        {
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:error",
+                                requestId,
+                                error = "Authentication required for auth:qr-status"
+                            }, sendLock, cts.Token);
+                            break;
+                        }
                         await HandleWsQrStatusAsync(webSocket, root, requestId, sendLock,
                             connectionId, claimsHolder.Claims, qrSubscriptions, cts);
                         break;

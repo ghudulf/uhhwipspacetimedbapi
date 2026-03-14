@@ -239,7 +239,7 @@ public static class WebSocketEventStreamWriter
                 sanitizedCommand, sanitizedRequestId, sanitizedId);
 
             // Validate the deserialized request
-            if (request == null || string.IsNullOrEmpty(request.Command))
+            if (request == null || string.IsNullOrWhiteSpace(request.Command))
             {
                 logger.LogWarning("[WebSocketEventStreamWriter] Malformed envelope - null request or empty Command field");
                 await webSocket.CloseAsync(

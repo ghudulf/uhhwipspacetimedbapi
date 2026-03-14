@@ -1043,7 +1043,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase.ToUriComponent()}";
             var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
 
             Log.Debug("ValidateJweViaTokenInfoAsync - GET {Url}", tokeninfoUrl);
@@ -1163,7 +1163,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ValidateAudience = validateAudience && !string.IsNullOrEmpty(validAudience),
                 ValidAudience    = validAudience,
 
-                ValidateLifetime      = requireExp,
+                ValidateLifetime      = true,
                 RequireExpirationTime = requireExp,
                 RequireSignedTokens   = true,
                 ClockSkew             = clockSkew
