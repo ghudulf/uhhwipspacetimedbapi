@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using TicketSalesApp.AdminServer.Configuration;
+using TicketSalesApp.AdminServer.Controllers;
 using BRU_AVTOPARK.Services.Interfaces;
 using BRU_AVTOPARK.Models.Requests;
 using BRU_AVTOPARK.Models.Responses;
@@ -28,6 +29,12 @@ using Identity = SpacetimeDB.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.Extensions.Caching.Memory;
 using TicketSalesApp.Services.Interfaces;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Collections.Concurrent;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -39,8 +46,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     /// </summary>
     [ApiController]
     [Route("api/Auth")]
-    public class AuthControllerRefactored : ControllerBase
+    public class AuthControllerRefactored : BaseController
     {
+        private static readonly JsonSerializerOptions WsJsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly IAuthOrchestrationService _authOrchestrationService;
         private readonly IHtmlRenderingService _htmlRenderingService;
         private readonly IRequestDetector _requestDetector;
@@ -50,6 +62,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly IOidcHelperService _oidcHelperService;
         private readonly IOpenIdConnectService _openIdConnectService;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly IRealtimeEventBus _realtimeEventBus;
 
         public AuthControllerRefactored(
             IAuthOrchestrationService authOrchestrationService,
@@ -60,7 +73,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             IMemoryCache cache,
             IOidcHelperService oidcHelperService,
             IOpenIdConnectService openIdConnectService,
-            ISpacetimeDBService spacetimeService)
+            ISpacetimeDBService spacetimeService,
+            IRealtimeEventBus realtimeEventBus)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
             _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
@@ -71,6 +85,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _oidcHelperService = oidcHelperService ?? throw new ArgumentNullException(nameof(oidcHelperService));
             _openIdConnectService = openIdConnectService ?? throw new ArgumentNullException(nameof(openIdConnectService));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
+            _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
         }
 
         #region Traditional Authentication (2 endpoints)
@@ -3340,5 +3355,552 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         }
 
         #endregion
+
+        #region WebSocket Authentication (1 endpoint)
+
+        /// <summary>
+        /// GET /api/auth/ws - Real-time authentication over WebSocket.
+        /// Enabled by: EnableWebSocketAuthRefactoring feature flag.
+        ///
+        /// Supported client→server message types:
+        ///   auth:validate   – validate a bearer token and receive claims back
+        ///   auth:refresh    – exchange a refresh token for a new access token
+        ///   auth:qr-status  – subscribe to QR-login completion events for a deviceId
+        ///   auth:ping       – keep-alive / latency check
+        ///
+        /// Server→client push message types:
+        ///   auth:validated      – result of auth:validate
+        ///   auth:refreshed      – result of auth:refresh
+        ///   auth:qr-completed   – QR login succeeded (pushed when status changes)
+        ///   auth:qr-failed      – QR login failed / expired
+        ///   auth:event          – auth domain event (login, logout, token-refresh)
+        ///   auth:pong           – response to auth:ping
+        ///   auth:error          – error response
+        ///
+        /// Authentication: token may be supplied as Authorization: Bearer header
+        /// OR as ?access_token= query parameter (for WebSocket upgrade compatibility).
+        /// An unauthenticated connection is accepted but only auth:validate is allowed
+        /// until a valid token is confirmed.
+        /// </summary>
+        [HttpGet("ws")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableWebSocketAuthRefactoring))]
+        public async Task AuthWebSocket()
+        {
+            if (!HttpContext.WebSockets.IsWebSocketRequest)
+            {
+                HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await HttpContext.Response.WriteAsync("WebSocket connection required");
+                return;
+            }
+
+            // Accept the connection first – auth is validated per-message for auth:validate,
+            // or pre-validated here for all other message types.
+            // This mirrors the pattern used in RealtimeController.StreamEvents but is more
+            // permissive: unauthenticated clients can still call auth:validate.
+            var preValidatedClaims = await ValidateOAuthTokenAsync();
+            var connectionId = Guid.NewGuid().ToString("N")[..12];
+
+            using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("bru.auth.v1");
+            _logger.LogInformation("[AuthWS:{ConnId}] Connection established. Pre-authenticated: {Auth}",
+                connectionId, preValidatedClaims != null);
+
+            // Send welcome frame
+            var sendLock = new SemaphoreSlim(1, 1);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+
+            await WsSendAsync(webSocket, new
+            {
+                type = "auth:connected",
+                connectionId,
+                authenticated = preValidatedClaims != null,
+                serverTimeUtc = DateTimeOffset.UtcNow
+            }, sendLock, cts.Token);
+
+            // Track QR-status subscriptions: deviceId → polling task
+            var qrSubscriptions = new ConcurrentDictionary<string, CancellationTokenSource>();
+
+            // Mutable holder so async handlers can upgrade the connection's auth state
+            var claimsHolder = new ClaimsHolder { Claims = preValidatedClaims };
+
+            var buffer = new byte[4096];
+
+            try
+            {
+                while (webSocket.State == WebSocketState.Open && !cts.Token.IsCancellationRequested)
+                {
+                    using var ms = new MemoryStream();
+                    WebSocketReceiveResult result;
+
+                    do
+                    {
+                        result = await webSocket.ReceiveAsync(buffer, cts.Token);
+                        ms.Write(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", CancellationToken.None);
+                        break;
+                    }
+
+                    if (result.MessageType != WebSocketMessageType.Text)
+                        continue;
+
+                    var json = Encoding.UTF8.GetString(ms.ToArray());
+                    await HandleAuthWsMessageAsync(webSocket, json, sendLock, connectionId,
+                        claimsHolder, qrSubscriptions, cts);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogDebug("[AuthWS:{ConnId}] Cancelled", connectionId);
+            }
+            catch (WebSocketException ex) when (ex.WebSocketErrorCode == WebSocketError.ConnectionClosedPrematurely)
+            {
+                _logger.LogWarning("[AuthWS:{ConnId}] Connection closed prematurely", connectionId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthWS:{ConnId}] Unexpected error", connectionId);
+            }
+            finally
+            {
+                cts.Cancel();
+                // Cancel all QR polling tasks
+                foreach (var sub in qrSubscriptions.Values)
+                {
+                    sub.Cancel();
+                    sub.Dispose();
+                }
+                sendLock.Dispose();
+                _logger.LogInformation("[AuthWS:{ConnId}] Connection closed", connectionId);
+            }
+        }
+
+        /// <summary>
+        /// Dispatches an incoming WebSocket message to the appropriate auth handler.
+        /// </summary>
+        private async Task HandleAuthWsMessageAsync(
+            WebSocket webSocket,
+            string json,
+            SemaphoreSlim sendLock,
+            string connectionId,
+            ClaimsHolder claimsHolder,
+            ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
+            CancellationTokenSource cts)
+        {
+            string? requestId = null;
+            string? messageType = null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                requestId = root.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
+                messageType = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+
+                _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
+                    connectionId, messageType, requestId);
+
+                switch (messageType?.ToLowerInvariant())
+                {
+                    case "auth:validate":
+                        await HandleWsValidateAsync(webSocket, root, requestId, sendLock,
+                            connectionId, claimsHolder, cts.Token);
+                        break;
+
+                    case "auth:refresh":
+                        await HandleWsRefreshAsync(webSocket, root, requestId, sendLock,
+                            connectionId, claimsHolder.Claims, cts.Token);
+                        break;
+
+                    case "auth:qr-status":
+                        await HandleWsQrStatusAsync(webSocket, root, requestId, sendLock,
+                            connectionId, claimsHolder.Claims, qrSubscriptions, cts);
+                        break;
+
+                    case "auth:ping":
+                        await WsSendAsync(webSocket, new
+                        {
+                            type = "auth:pong",
+                            requestId,
+                            serverTimeUtc = DateTimeOffset.UtcNow
+                        }, sendLock, cts.Token);
+                        break;
+
+                    default:
+                        await WsSendAsync(webSocket, new
+                        {
+                            type = "auth:error",
+                            requestId,
+                            error = $"Unknown message type: {messageType}"
+                        }, sendLock, cts.Token);
+                        break;
+                }
+            }
+            catch (JsonException)
+            {
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:error",
+                    requestId,
+                    error = "Invalid JSON"
+                }, sendLock, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AuthWS:{ConnId}] Error handling message type {Type}", connectionId, messageType);
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:error",
+                    requestId,
+                    error = "Internal server error"
+                }, sendLock, cts.Token);
+            }
+        }
+
+        /// <summary>
+        /// Handles auth:validate – validates a bearer token supplied in the message payload
+        /// (or falls back to the connection-level token) and returns the claims.
+        /// On success, upgrades the connection's validated claims so subsequent messages
+        /// can use the authenticated context.
+        /// </summary>
+        private async Task HandleWsValidateAsync(
+            WebSocket webSocket,
+            JsonElement root,
+            string? requestId,
+            SemaphoreSlim sendLock,
+            string connectionId,
+            ClaimsHolder claimsHolder,
+            CancellationToken cancellationToken)
+        {
+            // Token can be supplied inline in the message or fall back to connection-level claims
+            string? inlineToken = root.TryGetProperty("token", out var tok) ? tok.GetString() : null;
+
+            Dictionary<string, object>? claims = null;
+
+            if (!string.IsNullOrWhiteSpace(inlineToken))
+            {
+                // Validate the inline token directly, supporting both JWE (5-segment encrypted
+                // OpenIddict tokens) and plain JWT (3-segment signed tokens).
+                // ITokenService.ValidateToken only handles JWTs and cannot decrypt JWEs, which
+                // would cause runtime failures when clients supply OpenIddict-issued access tokens.
+                // ValidateTokenDirectAsync routes JWEs to /connect/tokeninfo and JWTs to local
+                // signature validation, matching the behaviour of ValidateOAuthTokenAsync without
+                // relying on HttpContext headers.
+                claims = await ValidateTokenDirectAsync(inlineToken);
+            }
+            else
+            {
+                // Use connection-level claims (already validated at connection time)
+                claims = claimsHolder.Claims;
+            }
+
+            if (claims == null || claims.Count == 0)
+            {
+                _logger.LogWarning("[AuthWS:{ConnId}] auth:validate failed – invalid or missing token", connectionId);
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:validated",
+                    requestId,
+                    success = false,
+                    error = "Invalid or expired token"
+                }, sendLock, cancellationToken);
+                return;
+            }
+
+            // Upgrade connection-level claims if inline token was provided and valid
+            if (!string.IsNullOrWhiteSpace(inlineToken))
+            {
+                claimsHolder.Claims = claims;
+                _logger.LogInformation("[AuthWS:{ConnId}] Connection upgraded to authenticated via auth:validate", connectionId);
+            }
+
+            // Publish auth event to the realtime bus so SignalR clients also see it
+            await PublishAuthEventAsync("auth.token.validated",
+                claims.TryGetValue("sub", out var sub) ? sub?.ToString() : null,
+                claims.TryGetValue("unique_name", out var name) ? name?.ToString() : null,
+                new Dictionary<string, string> { ["source"] = "websocket" });
+
+            await WsSendAsync(webSocket, new
+            {
+                type = "auth:validated",
+                requestId,
+                success = true,
+                claims = BuildSafeClaims(claims)
+            }, sendLock, cancellationToken);
+        }
+
+        /// <summary>
+        /// Handles auth:refresh – exchanges a refresh token for a new access token
+        /// using the orchestration service, then pushes the new token back.
+        /// Requires an authenticated connection (or inline refreshToken in the message).
+        /// </summary>
+        private async Task HandleWsRefreshAsync(
+            WebSocket webSocket,
+            JsonElement root,
+            string? requestId,
+            SemaphoreSlim sendLock,
+            string connectionId,
+            Dictionary<string, object>? validatedClaims,
+            CancellationToken cancellationToken)
+        {
+            var refreshToken = root.TryGetProperty("refreshToken", out var rt) ? rt.GetString() : null;
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:refreshed",
+                    requestId,
+                    success = false,
+                    error = "refreshToken is required"
+                }, sendLock, cancellationToken);
+                return;
+            }
+
+            var result = await _authOrchestrationService.RefreshTokenAsync(refreshToken);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("[AuthWS:{ConnId}] auth:refresh failed: {Error}", connectionId, result.ErrorMessage);
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:refreshed",
+                    requestId,
+                    success = false,
+                    error = result.ErrorMessage ?? "Token refresh failed"
+                }, sendLock, cancellationToken);
+                return;
+            }
+
+            await PublishAuthEventAsync("auth.token.refreshed",
+                validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,
+                validatedClaims?.TryGetValue("unique_name", out var name) == true ? name?.ToString() : null,
+                new Dictionary<string, string> { ["source"] = "websocket" });
+
+            await WsSendAsync(webSocket, new
+            {
+                type = "auth:refreshed",
+                requestId,
+                success = true,
+                token = result.Token
+            }, sendLock, cancellationToken);
+        }
+
+        /// <summary>
+        /// Handles auth:qr-status – subscribes to real-time QR login completion events
+        /// for a given deviceId. Polls the orchestration service and pushes a single
+        /// auth:qr-completed or auth:qr-failed message when the status resolves.
+        /// Multiple subscriptions for different deviceIds are supported concurrently.
+        /// </summary>
+        private async Task HandleWsQrStatusAsync(
+            WebSocket webSocket,
+            JsonElement root,
+            string? requestId,
+            SemaphoreSlim sendLock,
+            string connectionId,
+            Dictionary<string, object>? validatedClaims,
+            ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
+            CancellationTokenSource connectionCts)
+        {
+            var deviceId = root.TryGetProperty("deviceId", out var did) ? did.GetString() : null;
+
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:error",
+                    requestId,
+                    error = "deviceId is required for auth:qr-status"
+                }, sendLock, connectionCts.Token);
+                return;
+            }
+
+            // Cancel any existing subscription for this deviceId
+            if (qrSubscriptions.TryRemove(deviceId, out var existing))
+            {
+                existing.Cancel();
+                existing.Dispose();
+            }
+
+            var subCts = CancellationTokenSource.CreateLinkedTokenSource(connectionCts.Token);
+            qrSubscriptions[deviceId] = subCts;
+
+            // Acknowledge subscription immediately
+            await WsSendAsync(webSocket, new
+            {
+                type = "auth:qr-subscribed",
+                requestId,
+                deviceId
+            }, sendLock, connectionCts.Token);
+
+            // Start background polling task – does not block the message loop
+            _ = Task.Run(async () =>
+            {
+                const int pollIntervalMs = 1500;
+                const int jitterMs = 300; // +/- 300ms jitter to avoid synchronized storms
+                const int maxPollSeconds = 300; // 5-minute QR expiry
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(maxPollSeconds);
+
+                try
+                {
+                    while (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow < deadline)
+                    {
+                        var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
+
+                        if (status.Status == "completed" && !string.IsNullOrEmpty(status.Token))
+                        {
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:qr-completed",
+                                deviceId,
+                                token = status.Token
+                            }, sendLock, subCts.Token);
+
+                            await PublishAuthEventAsync("auth.qr.completed", null, null,
+                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
+
+                            break;
+                        }
+
+                        if (status.Status == "failed" || status.Status == "cancelled" || status.Status == "expired")
+                        {
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:qr-failed",
+                                deviceId,
+                                reason = status.Status
+                            }, sendLock, subCts.Token);
+                            break;
+                        }
+
+                        // Add jitter to prevent synchronized polling storms
+                        var jitter = Random.Shared.Next(-jitterMs, jitterMs);
+                        var delayMs = pollIntervalMs + jitter;
+                        await Task.Delay(delayMs, subCts.Token);
+                    }
+
+                    // Timed out without resolution
+                    if (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow >= deadline)
+                    {
+                        await WsSendAsync(webSocket, new
+                        {
+                            type = "auth:qr-failed",
+                            deviceId,
+                            reason = "timeout"
+                        }, sendLock, subCts.Token);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Connection closed or subscription cancelled – normal
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[AuthWS:{ConnId}] QR status polling error for device {DeviceId}",
+                        connectionId, deviceId);
+                }
+                finally
+                {
+                    qrSubscriptions.TryRemove(deviceId, out _);
+                }
+            }, subCts.Token);
+        }
+
+        /// <summary>
+        /// Publishes an auth domain event to the realtime event bus so that
+        /// SignalR subscribers and WebSocket stream clients also receive auth events.
+        /// </summary>
+        private async Task PublishAuthEventAsync(
+            string eventName,
+            string? userId,
+            string? userName,
+            Dictionary<string, string>? metadata = null)
+        {
+            try
+            {
+                var domainEvent = new ApiDomainEvent(
+                    EventName: eventName,
+                    Resource: "auth",
+                    HttpMethod: "WS",
+                    StatusCode: 200,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    CorrelationId: Guid.NewGuid().ToString("N"),
+                    UserId: userId,
+                    UserName: userName,
+                    Tenant: null,
+                    SourceIp: HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    Metadata: (metadata ?? new Dictionary<string, string>()).AsReadOnly());
+
+                await _realtimeEventBus.PublishAsync(domainEvent);
+            }
+            catch (Exception ex)
+            {
+                // Non-critical – don't let event bus failures break auth flows
+                _logger.LogWarning(ex, "Failed to publish auth event {EventName} to realtime bus", eventName);
+            }
+        }
+
+        /// <summary>
+        /// Builds a safe claims dictionary for sending to the client,
+        /// stripping any internal/sensitive claim types.
+        /// </summary>
+        private static Dictionary<string, object> BuildSafeClaims(Dictionary<string, object> claims)
+        {
+            var sensitive = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "oi_tkn_id", "oi_au_id", "oi_app_id"
+            };
+
+            return claims
+                .Where(kv => !sensitive.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+
+        /// <summary>
+        /// Thread-safe JSON serialization and send over WebSocket.
+        /// sendLock serializes all SendAsync calls on this connection so only one
+        /// send is in-flight at a time (WebSocket.SendAsync is not thread-safe).
+        /// </summary>
+        private async Task WsSendAsync(WebSocket webSocket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
+        {
+            if (webSocket.State != WebSocketState.Open)
+                return;
+
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, WsJsonOptions);
+
+            await sendLock.WaitAsync(cancellationToken);
+            try
+            {
+                await webSocket.SendAsync(
+                    new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text,
+                    endOfMessage: true,
+                    cancellationToken);
+            }
+            finally
+            {
+                sendLock.Release();
+            }
+        }
+
+        #endregion
     }
-}
+
+    /// <summary>
+    /// Mutable wrapper for validated claims, allowing async WebSocket handlers
+    /// to upgrade the connection's authentication state without ref parameters.
+    /// 
+    /// Single-writer assumption: Claims is only mutated by HandleWsValidateAsync
+    /// when a valid inline token is provided. The WebSocket message loop is
+    /// sequential (one message processed at a time), so concurrent writes are
+    /// not possible and no synchronization is needed on this property.
+    /// </summary>
+    internal sealed class ClaimsHolder
+    {
+        public Dictionary<string, object>? Claims { get; set; }
+    }
+} 

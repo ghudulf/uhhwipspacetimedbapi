@@ -774,6 +774,182 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
+        /// Validates a token supplied directly as a string, supporting both JWE (encrypted,
+        /// 5-segment) and JWT (signed, 3-segment) formats.
+        ///
+        /// Unlike <see cref="ValidateOAuthTokenAsync"/>, this method does not read from or
+        /// write to the per-request <see cref="HttpContext.Items"/> cache, and does not
+        /// extract the token from the request headers or query string.  It is intended for
+        /// inline token validation inside WebSocket message handlers where the token arrives
+        /// in the message payload rather than in the HTTP upgrade request.
+        ///
+        /// JWE tokens are validated by forwarding the token to the <c>/connect/tokeninfo</c>
+        /// endpoint on the same host (the same path used by <see cref="ValidateOAuthTokenAsync"/>).
+        /// JWT tokens are validated locally using the symmetric signing key from configuration.
+        /// </summary>
+        /// <param name="token">The raw token string to validate.</param>
+        /// <returns>
+        /// A claims dictionary on success, or <c>null</c> if the token is invalid, expired,
+        /// or cannot be validated.
+        /// </returns>
+        protected async Task<Dictionary<string, object>?> ValidateTokenDirectAsync(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            try
+            {
+                var tokenParts = token.Split('.');
+
+                if (tokenParts.Length == 5)
+                {
+                    // JWE (encrypted OpenIddict token) – delegate to /connect/tokeninfo
+                    Log.Information("ValidateTokenDirectAsync - Token has 5 segments (JWE), calling tokeninfo endpoint");
+
+                    var httpClientFactory = HttpContext.RequestServices.GetService<IHttpClientFactory>();
+                    if (httpClientFactory == null)
+                    {
+                        Log.Error("ValidateTokenDirectAsync - IHttpClientFactory not available");
+                        return null;
+                    }
+
+                    var httpClient = httpClientFactory.CreateClient("TokenInfo");
+                    httpClient.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                    var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
+
+                    Log.Debug("ValidateTokenDirectAsync - Calling {Url}", tokeninfoUrl);
+
+                    var response = await httpClient.GetAsync(tokeninfoUrl);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        Log.Warning("ValidateTokenDirectAsync - Token validation failed with status {StatusCode}: {Error}",
+                            response.StatusCode, errorContent);
+                        return null;
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+
+                    if (!tokenInfo.TryGetProperty("claims", out var claimsElement))
+                    {
+                        Log.Warning("ValidateTokenDirectAsync - No claims property found in tokeninfo response");
+                        return null;
+                    }
+
+                    var claims = new Dictionary<string, object>();
+                    foreach (var claim in claimsElement.EnumerateObject())
+                    {
+                        if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            var values = new List<string>();
+                            foreach (var item in claim.Value.EnumerateArray())
+                                values.Add(item.GetString() ?? "");
+                            claims[claim.Name] = values;
+                        }
+                        else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        {
+                            if (claim.Value.TryGetProperty("$values", out var valuesArray))
+                            {
+                                var values = new List<string>();
+                                foreach (var item in valuesArray.EnumerateArray())
+                                    values.Add(item.GetString() ?? "");
+                                claims[claim.Name] = values;
+                            }
+                            else
+                            {
+                                claims[claim.Name] = claim.Value.ToString();
+                            }
+                        }
+                        else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            claims[claim.Name] = claim.Value.GetString() ?? "";
+                        }
+                        else
+                        {
+                            claims[claim.Name] = claim.Value.ToString();
+                        }
+                    }
+
+                    Log.Information("ValidateTokenDirectAsync - Successfully extracted {ClaimCount} claims from JWE tokeninfo", claims.Count);
+                    return claims;
+                }
+
+                if (tokenParts.Length == 3)
+                {
+                    // Standard JWT – validate locally with the symmetric signing key
+                    Log.Debug("ValidateTokenDirectAsync - Token has 3 segments (JWT), performing local validation");
+
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    if (!tokenHandler.CanReadToken(token))
+                    {
+                        Log.Warning("ValidateTokenDirectAsync - Token cannot be read by JwtSecurityTokenHandler");
+                        return null;
+                    }
+
+                    var jwtSecret = HttpContext.RequestServices.GetService<IConfiguration>()?["JwtSettings:Secret"];
+                    if (string.IsNullOrEmpty(jwtSecret))
+                    {
+                        Log.Error("ValidateTokenDirectAsync - JWT secret not configured");
+                        return null;
+                    }
+
+                    var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+                    var validationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = key,
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromMinutes(5)
+                    };
+
+                    try
+                    {
+                        var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+
+                        var claims = new Dictionary<string, object>();
+                        foreach (var claim in principal.Claims)
+                        {
+                            if (claims.ContainsKey(claim.Type))
+                            {
+                                if (claims[claim.Type] is List<string> list)
+                                    list.Add(claim.Value);
+                                else
+                                    claims[claim.Type] = new List<string> { claims[claim.Type].ToString()!, claim.Value };
+                            }
+                            else
+                            {
+                                claims[claim.Type] = claim.Value;
+                            }
+                        }
+
+                        Log.Debug("ValidateTokenDirectAsync - JWT validated with {ClaimCount} claims", claims.Count);
+                        return claims;
+                    }
+                    catch (SecurityTokenException ex)
+                    {
+                        Log.Warning(ex, "ValidateTokenDirectAsync - JWT validation failed: {Message}", ex.Message);
+                        return null;
+                    }
+                }
+
+                Log.Warning("ValidateTokenDirectAsync - Invalid token format (expected 3 or 5 segments, got {Count})", tokenParts.Length);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "ValidateTokenDirectAsync - Unexpected error validating token: {Message}", ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Retrieve the XUID claim for the current request's user from ASP.NET Core claims or from validated OAuth token.
         /// </summary>
         /// <returns>The XUID string if present; otherwise null.</returns>
