@@ -3355,6 +3355,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpDelete("webauthn/credentials/{id}")]
         [Authorize]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableWebAuthnCredentialDeleteRefactoring))]
         public async Task<ActionResult<WebAuthnRemoveCredentialResponse>> RemoveWebAuthnCredential(string id)
         {
             try

@@ -794,35 +794,33 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Toggle feature flags (binary on/off) for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 
-- [ ] 19. Enable feature flags for Priority 3 endpoints (Medium - OAuth)
-  - [ ] 19.1 Enable OAuth authorize endpoint
+- [x] 19. Enable feature flags for Priority 3 endpoints (Medium - OAuth)
+  - [x] 19.1 Enable OAuth authorize endpoint
     - Follow gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 19.2 Enable OAuth token endpoint
+  - [x] 19.2 Enable OAuth token endpoint
     - Follow gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 19.3 Enable OAuth userinfo endpoint
+  - [x] 19.3 Enable OAuth userinfo endpoint
     - Follow gradual rollout pattern
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 19.4 Enable OAuth client management endpoints
+  - [x] 19.4 Enable OAuth client management endpoints
     - Follow gradual rollout pattern for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 
-- [ ] 20. Enable feature flags for Priority 4 endpoints (Low - Already Clean)
-  - [ ] 20.1 Enable QR authentication endpoints
+- [x] 20. Enable feature flags for Priority 4 endpoints (Low - Already Clean)
+  - [x] 20.1 Enable QR authentication endpoints
     - Follow gradual rollout pattern for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 20.2 Enable Magic Link endpoints
+  - [x] 20.2 Enable Magic Link endpoints
     - Follow gradual rollout pattern for each endpoint
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
-  - [ ] 20.3 Enable remaining user management endpoints
-    - Follow gradual rollout pattern for each endpoint
-    - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
+  
 
 - [ ] 21. Monitor and validate production rollout
   - [ ] 21.1 Monitor error rates across all enabled endpoints
