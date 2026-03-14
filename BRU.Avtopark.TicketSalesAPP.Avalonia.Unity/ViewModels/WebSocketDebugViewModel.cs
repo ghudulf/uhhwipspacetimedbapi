@@ -46,6 +46,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCompletions = new();
     private int _cleanupInProgress = 0;
 
+    // Dedicated socket for /api/realtime/interactive commands (echo, time, stats, help, calculate, stream:*)
+    private ClientWebSocket? _interactiveWebSocket;
+    private CancellationTokenSource? _interactiveCts;
+    private readonly SemaphoreSlim _interactiveSendLock = new SemaphoreSlim(1, 1);
+
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
         { "buses", "/api/buses/realtime/ws" },
@@ -978,15 +983,74 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
         StatusMessage = "Tests reset";
     }
 
+    /// <summary>
+    /// Ensures a persistent connection to /api/realtime/interactive exists and returns it.
+    /// Creates a new connection if none exists or the existing one is closed.
+    /// </summary>
+    private async Task<ClientWebSocket?> GetOrConnectInteractiveSocketAsync()
+    {
+        if (_interactiveWebSocket?.State == WebSocketState.Open)
+            return _interactiveWebSocket;
+
+        // Dispose stale socket
+        _interactiveCts?.Cancel();
+        _interactiveCts?.Dispose();
+        _interactiveWebSocket?.Dispose();
+
+        string? accessToken = AccessToken;
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            var tokens = await _tokenStorage.GetTokensAsync();
+            accessToken = tokens?.AccessToken;
+        }
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            AddLog("❌ No access token available for interactive socket.");
+            return null;
+        }
+        accessToken = NormalizeAccessToken(accessToken);
+
+        Uri serverUri;
+        if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
+        {
+            AddLog("❌ Invalid server URL for interactive socket.");
+            return null;
+        }
+
+        var buildResult = BuildWebSocketUri(serverUri, "/api/realtime/interactive");
+        if (!buildResult.success)
+        {
+            AddLog($"❌ Cannot build interactive WebSocket URI: {buildResult.errorMessage}");
+            return null;
+        }
+
+        _interactiveCts = new CancellationTokenSource();
+        _interactiveWebSocket = new ClientWebSocket();
+        _interactiveWebSocket.Options.AddSubProtocol("bru.interactive.v1");
+        _interactiveWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+
+        await _interactiveWebSocket.ConnectAsync(buildResult.wsUri!, _interactiveCts.Token);
+        AddLog($"✅ Connected to interactive endpoint: {buildResult.wsUri}");
+
+        // Drain the welcome frame in background so it doesn't block sends
+        _ = Task.Run(async () =>
+        {
+            var buf = new byte[4096];
+            try
+            {
+                var result = await _interactiveWebSocket.ReceiveAsync(buf, _interactiveCts.Token);
+                var welcome = Encoding.UTF8.GetString(buf, 0, result.Count);
+                AddLog($"📨 Welcome: {welcome}");
+            }
+            catch { /* connection may close before welcome arrives */ }
+        });
+
+        return _interactiveWebSocket;
+    }
+
     [RelayCommand]
     private async Task SendInteractiveCommand(string? commandType)
     {
-        if (!IsConnected || _webSocket == null)
-        {
-            AddLog("❌ Not connected. Please connect first.");
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(commandType))
         {
             AddLog("❌ Command type is required.");
@@ -995,65 +1059,48 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
 
         try
         {
+            var ws = await GetOrConnectInteractiveSocketAsync();
+            if (ws == null || ws.State != WebSocketState.Open)
+            {
+                AddLog("❌ Could not connect to interactive endpoint.");
+                return;
+            }
+
             var requestId = Guid.NewGuid().ToString("N")[..8];
             object message = commandType.ToLowerInvariant() switch
             {
-                "echo" => new
-                {
-                    command = "echo",
-                    requestId,
-                    data = $"Hello from Avalonia at {DateTime.Now:HH:mm:ss}"
-                },
-                "time" => new
-                {
-                    command = "time",
-                    requestId
-                },
-                "stats" => new
-                {
-                    command = "stats",
-                    requestId
-                },
-                "ping" => new
-                {
-                    command = "ping",
-                    requestId
-                },
-                "help" => new
-                {
-                    command = "help",
-                    requestId
-                },
-                "calculate" => new
-                {
-                    command = "calculate",
-                    requestId,
-                    expression = "2+2*3"
-                },
-                "stream:buses" => new
-                {
-                    command = "stream:start",
-                    requestId,
-                    resource = "buses"
-                },
-                "stream:routes" => new
-                {
-                    command = "stream:start",
-                    requestId,
-                    resource = "routes"
-                },
-                _ => new
-                {
-                    command = commandType,
-                    requestId
-                }
+                "echo" => new { command = "echo", requestId, data = $"Test from Avalonia" },
+                "time" => new { command = "time", requestId },
+                "stats" => new { command = "stats", requestId },
+                "ping" => new { command = "ping", requestId },
+                "help" => new { command = "help", requestId },
+                "calculate" => new { command = "calculate", requestId, expression = "2+2*3" },
+                "stream:buses" => new { command = "stream:start", requestId, resource = "buses" },
+                "stream:routes" => new { command = "stream:start", requestId, resource = "routes" },
+                _ => (object)new { command = commandType, requestId }
             };
 
-            var json = JsonSerializer.Serialize(message);
-            var bytes = Encoding.UTF8.GetBytes(json);
+            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message, options));
 
-            await SendAsyncWithLock(_webSocket, bytes, _cts!.Token);
+            await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
             AddLog($"📤 Sent {commandType} command (ID: {requestId})");
+
+            // Read the response (single message, with timeout)
+            _ = Task.Run(async () =>
+            {
+                var buf = new byte[8192];
+                try
+                {
+                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_interactiveCts.Token);
+                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+                    var result = await ws.ReceiveAsync(buf, timeoutCts.Token);
+                    var response = Encoding.UTF8.GetString(buf, 0, result.Count);
+                    AddLog($"📨 {commandType} response: {response}");
+                }
+                catch (OperationCanceledException) { AddLog($"⚠ {commandType} response timed out"); }
+                catch (Exception ex) { AddLog($"⚠ {commandType} receive error: {ex.Message}"); }
+            });
         }
         catch (Exception ex)
         {
@@ -1415,6 +1462,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
     {
         // Ensure cleanup completes before disposing resources to prevent race conditions
         CleanupWebSocketAsync().GetAwaiter().GetResult();
+
+        _interactiveCts?.Cancel();
+        _interactiveCts?.Dispose();
+        _interactiveWebSocket?.Dispose();
+        _interactiveSendLock?.Dispose();
 
         _sendSemaphore?.Dispose();
         _cts?.Dispose();
