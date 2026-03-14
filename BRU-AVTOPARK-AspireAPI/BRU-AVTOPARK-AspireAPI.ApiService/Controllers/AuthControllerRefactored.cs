@@ -3583,30 +3583,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (!string.IsNullOrWhiteSpace(inlineToken))
             {
-                // Validate the inline token using the same logic as BaseController
-                // We temporarily override the Authorization header in HttpContext.Items cache
-                // by calling the orchestration service's token validation path.
-                // Since we can't call ValidateOAuthTokenAsync with an arbitrary token directly
-                // (it reads from HttpContext), we use ITokenService which is available via DI.
-                var tokenService = HttpContext.RequestServices.GetService<ITokenService>();
-                if (tokenService != null)
-                {
-                    var principal = tokenService.ValidateToken(inlineToken);
-                    if (principal != null)
-                    {
-                        claims = principal.Claims
-                            .GroupBy(c => c.Type)
-                            .ToDictionary(
-                                g => g.Key,
-                                g => g.Count() == 1
-                                    ? (object)g.First().Value
-                                    : (object)g.Select(c => c.Value).ToList());
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("ITokenService not resolved from DI container - inline token validation skipped");
-                }
+                // Validate the inline token directly, supporting both JWE (5-segment encrypted
+                // OpenIddict tokens) and plain JWT (3-segment signed tokens).
+                // ITokenService.ValidateToken only handles JWTs and cannot decrypt JWEs, which
+                // would cause runtime failures when clients supply OpenIddict-issued access tokens.
+                // ValidateTokenDirectAsync routes JWEs to /connect/tokeninfo and JWTs to local
+                // signature validation, matching the behaviour of ValidateOAuthTokenAsync without
+                // relying on HttpContext headers.
+                claims = await ValidateTokenDirectAsync(inlineToken);
             }
             else
             {
