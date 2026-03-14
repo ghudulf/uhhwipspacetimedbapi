@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketSalesApp.Services.Interfaces;
+using TicketSalesApp.Services.Models;
 
 namespace TicketSalesApp.Services.Implementations
 {
@@ -57,11 +58,16 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(int page, int pageSize)
-        {
+        public async Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(
+            int page, int pageSize, ScheduleQuery? query = null)
+         {
+            query ??= ScheduleQuery.Empty;
             try
             {
-                _logger.LogInformation("Retrieving schedules page {Page} with page size {PageSize}", page, pageSize);
+                 _logger.LogInformation(
+                    "Retrieving schedules page {Page} with page size {PageSize} (filters: routeId={RouteId} isActive={IsActive} start={Start} end={End} text={Text})",
+                    page, pageSize,
+                    query.RouteId, query.IsActive, query.StartDate, query.EndDate, query.SearchText);
 
                 // Validate paging parameters first
                 if (page < 1)
@@ -76,13 +82,34 @@ namespace TicketSalesApp.Services.Implementations
 
                 var connection = _spacetimeDBService.GetConnection();
 
-                // Calculate skip and take for pagination
-                var skip = (page - 1) * pageSize;
+                // Apply server-side filters before counting / slicing – single enumeration.
+               IEnumerable<RouteSchedule> filtered = connection.Db.RouteSchedule.Iter();
 
-                // Single iteration: materialize items and count efficiently
-                var allItems = connection.Db.RouteSchedule.Iter().ToList();
-                var totalCount = allItems.Count;
-                var items = allItems.Skip(skip).Take(pageSize).ToList();
+              if (query.RouteId.HasValue)
+                 filtered = filtered.Where(s => s.RouteId == query.RouteId.Value);
+
+               if (query.IsActive.HasValue)
+                   filtered = filtered.Where(s => s.IsActive == query.IsActive.Value);
+               if (query.StartDate.HasValue)
+                  filtered = filtered.Where(s => s.DepartureTime >= query.StartDate.Value);
+
+                if (query.EndDate.HasValue)
+                    filtered = filtered.Where(s => s.DepartureTime <= query.EndDate.Value);
+
+               if (!string.IsNullOrWhiteSpace(query.SearchText))
+                {
+                   var text = query.SearchText.Trim().ToLowerInvariant();
+                   filtered = filtered.Where(s =>
+                       (s.StartPoint ?? "").ToLowerInvariant().Contains(text) ||
+                       (s.EndPoint   ?? "").ToLowerInvariant().Contains(text));
+                }
+
+                var materialised = filtered.ToList();   // single enumeration
+                var totalCount   = materialised.Count;
+                var items        = materialised
+                                       .Skip((page - 1) * pageSize)
+                                       .Take(pageSize)
+                                       .ToList();
 
                 _logger.LogInformation("Retrieved {ItemCount} schedules out of {TotalCount} total", items.Count, totalCount);
                 return (items, totalCount);
