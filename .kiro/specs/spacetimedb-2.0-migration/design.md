@@ -69,7 +69,7 @@ The API stores all auth data in SpacetimeDB tables (UserProfile, Role, Permissio
 - SpacetimeDB stores user data and roles
 - Custom identity generation via HTTP endpoint
 - Reducer callbacks broadcast to all subscribers
-- `WithDatabaseName()` for connection
+- `WithModuleName()` for connection
 - Light mode to suppress reducer events
 - `CallReducerFlags` for fine-grained control
 - Reducer arguments exposed to subscribers
@@ -249,7 +249,7 @@ public async Task<ActionResult> RegisterUser([FromBody] RegisterModel model) {
 - Password hashing (PBKDF2 with SHA-256)
 
 **What Changes**:
-- SpacetimeDB SDK API calls (`WithDatabaseName` → `WithDatabaseName`)
+- SpacetimeDB SDK API calls (`WithModuleName` → `WithDatabaseName`)
 - Event handling (remove reducer callbacks, add event tables)
 - Subscription patterns (explicit event table subscriptions)
 
@@ -462,7 +462,7 @@ public static void ProcessScheduledTask(ReducerContext ctx, ScheduledTask task) 
 ```csharp
 _connection = DbConnection.Builder()
     .WithUri(host)
-    .WithDatabaseName(moduleName)  // OLD API
+    .WithModuleName(moduleName)  // OLD API
     .WithToken(AuthToken.Token)
     .WithLightMode(true)  // REMOVED in 2.0
     .OnConnect(OnConnected)
@@ -485,7 +485,7 @@ _connection = DbConnection.Builder()
 ```
 
 **Key Changes:**
-- `WithDatabaseName()` → `WithDatabaseName()`
+- `WithModuleName()` → `WithDatabaseName()`
 - Remove `WithLightMode()` (no longer needed)
 - Add `WithConfirmedReads()` if you want to opt out of confirmed reads
 
@@ -953,7 +953,7 @@ A property is a characteristic or behavior that should hold true across all vali
 
 **Connection Failures:**
 - **Error**: `DbConnection.Build()` throws exception
-- **Cause**: Using old API (`WithDatabaseName`) or incorrect database name
+- **Cause**: Using old API (`WithModuleName`) or incorrect database name
 - **Solution**: Update to `WithDatabaseName()` and verify database name is correct
 
 **Subscription Errors:**
@@ -1002,7 +1002,7 @@ A property is a characteristic or behavior that should hold true across all vali
 Unit tests will verify specific migration steps and code patterns:
 
 1. **Package Version Test**: Verify `.csproj` files reference SpacetimeDB.Runtime 2.0.x
-2. **API Usage Tests**: Verify code uses `WithDatabaseName()` instead of `WithDatabaseName()`
+2. **API Usage Tests**: Verify code uses `WithDatabaseName()` instead of `WithModuleName()`
 3. **Event Table Definition Tests**: Verify event tables have `Event = true` attribute
 4. **Reducer Event Publishing Tests**: Verify reducers insert into event tables
 5. **Callback Registration Tests**: Verify no old-style reducer callbacks (`OnReducerName`)
@@ -1048,7 +1048,7 @@ Integration tests will verify end-to-end functionality:
 
 These tests verify the migration was successful:
 
-1. **No Old API Usage**: Grep codebase for `WithDatabaseName`, `WithLightMode`, `SetReducerFlags`, `OnReducerName` patterns
+1. **No Old API Usage**: Grep codebase for `WithModuleName`, `WithLightMode`, `SetReducerFlags`, `OnReducerName` patterns
 2. **Event Tables Defined**: Verify all necessary event tables are defined with `Event = true`
 3. **Event Subscriptions**: Verify all event tables have explicit subscriptions
 4. **Reducer Event Publishing**: Verify reducers publish events at appropriate points
@@ -1065,7 +1065,7 @@ The migration should be performed in this order to minimize issues:
 1. **Update Package References**: Update all `.csproj` files to SpacetimeDB.Runtime 2.0.x
 2. **Define Event Tables**: Add event table definitions to the module
 3. **Update Reducers**: Add event publishing to reducers
-4. **Update Client Connection**: Change `WithDatabaseName` to `WithDatabaseName`, remove `WithLightMode`
+4. **Update Client Connection**: Change `WithModuleName` to `WithDatabaseName`, remove `WithLightMode`
 5. **Remove Old Callbacks**: Remove all `OnReducerName` callback registrations
 6. **Add Event Subscriptions**: Add explicit subscriptions for event tables
 7. **Add Event Handlers**: Add `OnInsert` handlers for event tables
