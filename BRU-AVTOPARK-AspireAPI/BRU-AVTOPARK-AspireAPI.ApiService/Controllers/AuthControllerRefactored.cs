@@ -3401,16 +3401,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 connectionId, preValidatedClaims != null);
 
             // Send welcome frame
+            var sendLock = new SemaphoreSlim(1, 1);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+
             await WsSendAsync(webSocket, new
             {
                 type = "auth:connected",
                 connectionId,
                 authenticated = preValidatedClaims != null,
                 serverTimeUtc = DateTimeOffset.UtcNow
-            }, CancellationToken.None);
-
-            var sendLock = new SemaphoreSlim(1, 1);
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+            }, sendLock, cts.Token);
 
             // Track QR-status subscriptions: deviceId → polling task
             var qrSubscriptions = new ConcurrentDictionary<string, CancellationTokenSource>();
@@ -3522,7 +3522,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             type = "auth:pong",
                             requestId,
                             serverTimeUtc = DateTimeOffset.UtcNow
-                        }, cts.Token);
+                        }, sendLock, cts.Token);
                         break;
 
                     default:
@@ -3531,7 +3531,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             type = "auth:error",
                             requestId,
                             error = $"Unknown message type: {messageType}"
-                        }, cts.Token);
+                        }, sendLock, cts.Token);
                         break;
                 }
             }
@@ -3542,7 +3542,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     type = "auth:error",
                     requestId,
                     error = "Invalid JSON"
-                }, cts.Token);
+                }, sendLock, cts.Token);
             }
             catch (Exception ex)
             {
@@ -3552,7 +3552,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     type = "auth:error",
                     requestId,
                     error = "Internal server error"
-                }, cts.Token);
+                }, sendLock, cts.Token);
             }
         }
 
@@ -3614,7 +3614,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     requestId,
                     success = false,
                     error = "Invalid or expired token"
-                }, cancellationToken);
+                }, sendLock, cancellationToken);
                 return;
             }
 
@@ -3637,7 +3637,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 requestId,
                 success = true,
                 claims = BuildSafeClaims(claims)
-            }, cancellationToken);
+            }, sendLock, cancellationToken);
         }
 
         /// <summary>
@@ -3664,7 +3664,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     requestId,
                     success = false,
                     error = "refreshToken is required"
-                }, cancellationToken);
+                }, sendLock, cancellationToken);
                 return;
             }
 
@@ -3679,7 +3679,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     requestId,
                     success = false,
                     error = result.ErrorMessage ?? "Token refresh failed"
-                }, cancellationToken);
+                }, sendLock, cancellationToken);
                 return;
             }
 
@@ -3694,7 +3694,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 requestId,
                 success = true,
                 token = result.Token
-            }, cancellationToken);
+            }, sendLock, cancellationToken);
         }
 
         /// <summary>
@@ -3722,7 +3722,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     type = "auth:error",
                     requestId,
                     error = "deviceId is required for auth:qr-status"
-                }, connectionCts.Token);
+                }, sendLock, connectionCts.Token);
                 return;
             }
 
@@ -3742,7 +3742,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 type = "auth:qr-subscribed",
                 requestId,
                 deviceId
-            }, connectionCts.Token);
+            }, sendLock, connectionCts.Token);
 
             // Start background polling task – does not block the message loop
             _ = Task.Run(async () =>
@@ -3764,7 +3764,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 type = "auth:qr-completed",
                                 deviceId,
                                 token = status.Token
-                            }, CancellationToken.None);
+                            }, sendLock, subCts.Token);
 
                             await PublishAuthEventAsync("auth.qr.completed", null, null,
                                 new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
@@ -3779,7 +3779,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 type = "auth:qr-failed",
                                 deviceId,
                                 reason = status.Status
-                            }, CancellationToken.None);
+                            }, sendLock, subCts.Token);
                             break;
                         }
 
@@ -3794,7 +3794,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             type = "auth:qr-failed",
                             deviceId,
                             reason = "timeout"
-                        }, CancellationToken.None);
+                        }, sendLock, subCts.Token);
                     }
                 }
                 catch (OperationCanceledException)
@@ -3865,8 +3865,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// Thread-safe JSON serialization and send over WebSocket.
+        /// sendLock serializes all SendAsync calls on this connection so only one
+        /// send is in-flight at a time (WebSocket.SendAsync is not thread-safe).
         /// </summary>
-        private async Task WsSendAsync(WebSocket webSocket, object payload, CancellationToken cancellationToken)
+        private async Task WsSendAsync(WebSocket webSocket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
         {
             if (webSocket.State != WebSocketState.Open)
                 return;
@@ -3876,11 +3878,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            await webSocket.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                endOfMessage: true,
-                cancellationToken);
+            await sendLock.WaitAsync(cancellationToken);
+            try
+            {
+                await webSocket.SendAsync(
+                    new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text,
+                    endOfMessage: true,
+                    cancellationToken);
+            }
+            finally
+            {
+                sendLock.Release();
+            }
         }
 
         #endregion
@@ -3889,6 +3899,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     /// <summary>
     /// Mutable wrapper for validated claims, allowing async WebSocket handlers
     /// to upgrade the connection's authentication state without ref parameters.
+    /// 
+    /// Single-writer assumption: Claims is only mutated by HandleWsValidateAsync
+    /// when a valid inline token is provided. The WebSocket message loop is
+    /// sequential (one message processed at a time), so concurrent writes are
+    /// not possible and no synchronization is needed on this property.
     /// </summary>
     internal sealed class ClaimsHolder
     {
