@@ -37,6 +37,7 @@ Open `SpacetimeDB-BRU-AVTOPARK-avtobusov.sln` in Visual Studio. The SpacetimeDB 
 
 - .NET 8.0 SDK
 - WASI workload: `dotnet workload install wasi-experimental`
+  - **Note**: This command must run in a .NET 8.0 SDK context. Navigate to the `server/` subdirectory (which contains `global.json` pinning to .NET 8.0) before running the workload install command.
 
 ## Manual Build Commands
 
@@ -78,4 +79,3 @@ Make sure you're using the correct SDK version:
 - Other projects require .NET 9 SDK
 
 The `global.json` file ensures .NET 9 SDK is used by default, but the SpacetimeDB module explicitly requires .NET 8.
-

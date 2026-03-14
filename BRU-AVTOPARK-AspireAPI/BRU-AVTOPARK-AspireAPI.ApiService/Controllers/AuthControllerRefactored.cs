@@ -48,6 +48,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     [Route("api/Auth")]
     public class AuthControllerRefactored : BaseController
     {
+        private static readonly JsonSerializerOptions WsJsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly IAuthOrchestrationService _authOrchestrationService;
         private readonly IHtmlRenderingService _htmlRenderingService;
         private readonly IRequestDetector _requestDetector;
@@ -3598,6 +3603,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                     : (object)g.Select(c => c.Value).ToList());
                     }
                 }
+                else
+                {
+                    _logger.LogWarning("ITokenService not resolved from DI container - inline token validation skipped");
+                }
             }
             else
             {
@@ -3748,6 +3757,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _ = Task.Run(async () =>
             {
                 const int pollIntervalMs = 1500;
+                const int jitterMs = 300; // +/- 300ms jitter to avoid synchronized storms
                 const int maxPollSeconds = 300; // 5-minute QR expiry
                 var deadline = DateTimeOffset.UtcNow.AddSeconds(maxPollSeconds);
 
@@ -3783,7 +3793,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             break;
                         }
 
-                        await Task.Delay(pollIntervalMs, subCts.Token);
+                        // Add jitter to prevent synchronized polling storms
+                        var jitter = Random.Shared.Next(-jitterMs, jitterMs);
+                        var delayMs = pollIntervalMs + jitter;
+                        await Task.Delay(delayMs, subCts.Token);
                     }
 
                     // Timed out without resolution
@@ -3873,10 +3886,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             if (webSocket.State != WebSocketState.Open)
                 return;
 
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, WsJsonOptions);
 
             await sendLock.WaitAsync(cancellationToken);
             try

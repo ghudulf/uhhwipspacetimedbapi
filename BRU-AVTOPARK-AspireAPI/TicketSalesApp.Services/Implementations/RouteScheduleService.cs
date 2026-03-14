@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using System.Collections.Concurrent;
@@ -9,13 +10,21 @@ using TicketSalesApp.Services.Interfaces;
 
 namespace TicketSalesApp.Services.Implementations
 {
-    public class RouteScheduleService(ISpacetimeDBService spacetimeDBService, ILogger<RouteScheduleService> logger) : IRouteScheduleService, IDisposable
+    public class RouteScheduleService : IRouteScheduleService, IDisposable
     {
-        private readonly ISpacetimeDBService _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
-        private readonly ILogger<RouteScheduleService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private readonly ISpacetimeDBService _spacetimeDBService;
+        private readonly ILogger<RouteScheduleService> _logger;
+        private readonly IConfiguration _configuration;
         private readonly ConcurrentDictionary<Guid, TaskCompletionSource<uint?>> _pendingCreates = new();
         private readonly SemaphoreSlim _handlerLock = new(1, 1);
         private bool _disposed;
+
+        public RouteScheduleService(ISpacetimeDBService spacetimeDBService, ILogger<RouteScheduleService> logger, IConfiguration configuration)
+        {
+            _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        }
 
         public void Dispose()
         {
@@ -53,32 +62,27 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving schedules page {Page} with page size {PageSize}", page, pageSize);
-                var connection = _spacetimeDBService.GetConnection();
 
-                // Count total items using iterator
-                var iterator = connection.Db.RouteSchedule.Iter();
-                var totalCount = 0;
-                foreach (var _ in iterator)
-                {
-                    totalCount++;
-                }
-
-                // Validate paging parameters
+                // Validate paging parameters first
                 if (page < 1)
                     throw new ArgumentOutOfRangeException(nameof(page), "Page must be >= 1");
                 if (pageSize < 1)
                     throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize must be >= 1");
-                if (pageSize > 1000)
-                    throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize cannot exceed 1000");
+
+                // Get configurable max page size (default 5000)
+                var maxPageSize = _configuration.GetValue<int>("RouteSchedule:MaxPageSize", 5000);
+                if (pageSize > maxPageSize)
+                    throw new ArgumentOutOfRangeException(nameof(pageSize), $"PageSize cannot exceed {maxPageSize}");
+
+                var connection = _spacetimeDBService.GetConnection();
 
                 // Calculate skip and take for pagination
                 var skip = (page - 1) * pageSize;
 
-                // Get paginated items using iterator with Skip/Take
-                var items = connection.Db.RouteSchedule.Iter()
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToList();
+                // Single iteration: materialize items and count efficiently
+                var allItems = connection.Db.RouteSchedule.Iter().ToList();
+                var totalCount = allItems.Count;
+                var items = allItems.Skip(skip).Take(pageSize).ToList();
 
                 _logger.LogInformation("Retrieved {ItemCount} schedules out of {TotalCount} total", items.Count, totalCount);
                 return (items, totalCount);
@@ -276,9 +280,11 @@ namespace TicketSalesApp.Services.Implementations
                     ulong? arrivalTimeParam, uint? stopDurationMinutesParam, bool? isRecurringParam,
                     List<string>? estimatedStopTimesParam, List<double>? stopDistancesParam, string? notesParam)
                 {
-                    await _handlerLock.WaitAsync();
                     try
                     {
+                        await _handlerLock.WaitAsync();
+                        try
+                        {
                         // Check if reducer succeeded
                         var status = ctx.Event.Status;
                         if (status is Status.Failed(var reason))
@@ -373,10 +379,15 @@ namespace TicketSalesApp.Services.Implementations
                                 }
                             }
                         }
+                        }
+                        finally
+                        {
+                            _handlerLock.Release();
+                        }
                     }
-                    finally
+                    catch (Exception handlerEx)
                     {
-                        _handlerLock.Release();
+                        _logger.LogError(handlerEx, "Unhandled exception in OnScheduleCreated async void handler - preventing crash");
                     }
                 }
 

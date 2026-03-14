@@ -285,8 +285,10 @@ public static class WebSocketEventStreamWriter
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[WebSocketEventStreamWriter] Send error: {ErrorType}: {Message}", 
-                ex.GetType().Name, ex.Message);
+            // Sanitize exception message to prevent log injection
+            var sanitizedMessage = ex.Message?.Replace("\r", "").Replace("\n", " ").Substring(0, Math.Min(200, ex.Message?.Length ?? 0));
+            logger.LogError(ex, "[WebSocketEventStreamWriter] Send error: {ErrorType}: {Message}",
+                ex.GetType().Name, sanitizedMessage);
             throw;
         }
         finally

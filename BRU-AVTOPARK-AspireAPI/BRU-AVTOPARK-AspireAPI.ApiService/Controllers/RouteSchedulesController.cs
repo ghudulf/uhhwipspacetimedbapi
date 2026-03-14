@@ -155,10 +155,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         private async Task<object> HandleNavigationCommandAsync(string command, int? page, int? pageSize)
         {
-            // Calculate page size
+            // Calculate page size (enforcement deferred to service layer)
             var currentPageSize = pageSize ?? 100;
             if (currentPageSize < 1) currentPageSize = 100;
-            if (currentPageSize > 500) currentPageSize = 500;
 
             // Normalize initial page value
             var initialPage = Math.Max(1, page ?? 1);

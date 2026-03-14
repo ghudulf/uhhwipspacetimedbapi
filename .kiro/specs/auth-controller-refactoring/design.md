@@ -2638,8 +2638,8 @@ Replace ASP.NET Core authentication layer with Elysia JS, keep C# for business l
 3. Elysia generates JWT token and returns to client
 4. Client → Elysia JS `/api/buses` with JWT token
 5. Elysia validates JWT, extracts user context
-6. Elysia proxies request to C# backend with user context in headers
-7. C# backend processes business logic (trusts Elysia's user context) and returns response
+6. Elysia proxies request to C# backend with JWT token or signed assertion in headers
+7. C# backend independently validates JWT/signed assertion (signature, issuer, audience, expiry) before processing business logic and returns response
 8. Elysia returns response to client
 
 **Benefits**:

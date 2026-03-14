@@ -1121,6 +1121,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
             }
 
             using var testSocket = new ClientWebSocket();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             testSocket.Options.AddSubProtocol("bru.interactive.v1");
 
             if (!string.IsNullOrWhiteSpace(AccessToken))
@@ -1129,36 +1130,36 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
                 testSocket.Options.SetRequestHeader("Authorization", $"Bearer {normalizedToken}");
             }
 
-            await testSocket.ConnectAsync(wsUri, CancellationToken.None);
+            await testSocket.ConnectAsync(wsUri, cts.Token);
             AddLog($"✅ Connected to interactive endpoint: {wsUri}");
 
             // Receive welcome message
             var buffer = new byte[8192];
-            var result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
             var welcomeMsg = Encoding.UTF8.GetString(buffer, 0, result.Count);
             AddLog($"📨 Welcome: {welcomeMsg}");
 
             // Test echo command
             var echoCmd = new { command = "echo", requestId = "test-1", data = "Test from Avalonia" };
             var echoJson = JsonSerializer.Serialize(echoCmd);
-            await testSocket.SendAsync(Encoding.UTF8.GetBytes(echoJson), WebSocketMessageType.Text, true, CancellationToken.None);
+            await testSocket.SendAsync(Encoding.UTF8.GetBytes(echoJson), WebSocketMessageType.Text, true, cts.Token);
             AddLog($"📤 Sent echo command");
 
-            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
             var echoResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
             AddLog($"📨 Echo response: {echoResponse}");
 
             // Test time command
             var timeCmd = new { command = "time", requestId = "test-2" };
             var timeJson = JsonSerializer.Serialize(timeCmd);
-            await testSocket.SendAsync(Encoding.UTF8.GetBytes(timeJson), WebSocketMessageType.Text, true, CancellationToken.None);
+            await testSocket.SendAsync(Encoding.UTF8.GetBytes(timeJson), WebSocketMessageType.Text, true, cts.Token);
             AddLog($"📤 Sent time command");
 
-            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
             var timeResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
             AddLog($"📨 Time response: {timeResponse}");
 
-            await testSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
+            await testSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", cts.Token);
             AddLog("✅ Interactive endpoint test completed successfully");
         }
         catch (Exception ex)
