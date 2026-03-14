@@ -103,14 +103,83 @@ using Microsoft.AspNetCore.Authorization;
             {
                 var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
-                return command switch
+                switch (command)
                 {
-                    "read_all" => new { sales = BuildSalesSnapshot() },
-                    "read" => new { sale = BuildSaleById(_spacetimeService.GetConnection(), request.Id ?? throw new InvalidOperationException("id is required for read")) },
-                    "create" => await HandleCreateCommandAsync(request),
-                    "update" => new { operation = "update", success = false, message = "Update operation is not implemented in SpacetimeDB module" },
-                    "delete" => new { operation = "delete", success = false, message = "Delete operation is not implemented in SpacetimeDB module" },
-                    _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+                    case "read_all":
+                    case "next_page":
+                    case "prev_page":
+                    case "first_page":
+                    case "last_page":
+                    case "goto_page":
+                        return await HandlePageNavigationAsync(command, request.Page, request.PageSize);
+
+                    case "read":
+                        return new { sale = BuildSaleById(_spacetimeService.GetConnection(), request.Id ?? throw new InvalidOperationException("id is required for read")) };
+
+                    case "create":
+                        return await HandleCreateCommandAsync(request);
+
+                    case "update":
+                        return new { operation = "update", success = false, message = "Update operation is not implemented in SpacetimeDB module" };
+
+                    case "delete":
+                        return new { operation = "delete", success = false, message = "Delete operation is not implemented in SpacetimeDB module" };
+
+                    default:
+                        throw new InvalidOperationException($"Unsupported command '{request.Command}'");
+                }
+            }
+
+            private async Task<object> HandlePageNavigationAsync(string command, int? requestedPage, int? requestedPageSize)
+            {
+                var currentPageSize = Math.Max(1, requestedPageSize ?? 100);
+                if (currentPageSize > 500) currentPageSize = 500;
+
+                var initialPage = Math.Max(1, requestedPage ?? 1);
+
+                var (initialItems, totalCount) = await _ticketSalesService.GetSalesPageAsync(initialPage, currentPageSize);
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
+
+                var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));
+
+                switch (command)
+                {
+                    case "next_page":
+                        currentPage = Math.Min(currentPage + 1, totalPages);
+                        break;
+                    case "prev_page":
+                        currentPage = Math.Max(currentPage - 1, 1);
+                        break;
+                    case "first_page":
+                        currentPage = 1;
+                        break;
+                    case "last_page":
+                        currentPage = totalPages;
+                        break;
+                }
+
+                _logger.LogInformation("TicketSales WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
+                    command, currentPage, totalPages, currentPageSize, totalCount);
+
+                var items = (currentPage == initialPage)
+                    ? initialItems
+                    : (await _ticketSalesService.GetSalesPageAsync(currentPage, currentPageSize)).items;
+
+                var conn = _spacetimeService.GetConnection();
+                var sales = items.Select(s => BuildSaleView(conn, s)).ToList<object>();
+
+                return new
+                {
+                    sales,
+                    pagination = new
+                    {
+                        page = currentPage,
+                        pageSize = currentPageSize,
+                        totalCount,
+                        totalPages,
+                        hasNextPage = currentPage < totalPages,
+                        hasPreviousPage = currentPage > 1
+                    }
                 };
             }
 
@@ -200,20 +269,6 @@ using Microsoft.AspNetCore.Authorization;
             }
 
             /// <summary>
-            /// Builds a snapshot list of all ticket sales with their detailed sale, ticket, and route information.
-            /// </summary>
-            /// <returns>A list of objects where each item represents a sale with related ticket and route details; sales that cannot be resolved are omitted.</returns>
-            private List<object> BuildSalesSnapshot()
-            {
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter()
-                    .Select(s => BuildSaleById(conn, s.SaleId))
-                    .Where(s => s != null)
-                    .Cast<object>()
-                    .ToList();
-            }
-
-            /// <summary>
             /// Creates a sale for the specified ticket after validation and returns the created sale representation.
             /// </summary>
             /// <param name="model">Model containing sale data (TicketId, SaleDate, TicketSoldToUser, TicketSoldToUserPhone).</param>
@@ -273,57 +328,43 @@ using Microsoft.AspNetCore.Authorization;
             }
 
             /// <summary>
-            /// Retrieves all ticket sales and their related ticket and route details.
+            /// Retrieves a paginated list of ticket sales with their related ticket and route details.
             /// </summary>
+            /// <param name="page">Page number (1-based, default 1).</param>
+            /// <param name="pageSize">Number of items per page (default 100, max 500).</param>
             /// <returns>
-            /// An OK response containing a list of sales where each item includes:
-            /// SaleId, SaleDate, TicketId, TicketSoldToUser, TicketSoldToUserPhone, SellerId,
-            /// and an optional nested Ticket object (TicketId, RouteId, TicketPrice) with an optional Route (RouteId, StartPoint, EndPoint).
+            /// An OK response containing a paged list of sales. Pagination metadata is included in
+            /// response headers: X-Total-Count, X-Page, X-Page-Size, X-Total-Pages.
             /// Returns a 500 status with an error message if an exception occurs.
             /// </returns>
             [HttpGet]
-            public ActionResult<IEnumerable<dynamic>> GetTicketSales()
+            public async Task<ActionResult<IEnumerable<dynamic>>> GetTicketSales(
+                [FromQuery] int page = 1,
+                [FromQuery] int pageSize = 100)
             {
                 try
                 {
-                    Log.Information("Fetching all ticket sales");
-                    
+                    const int MaxPageSize = 500;
+                    if (page < 1) page = 1;
+                    if (pageSize < 1) pageSize = 1;
+                    if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+
+                    Log.Information("Fetching ticket sales - Page: {Page}, PageSize: {PageSize}", page, pageSize);
+
+                    var (sales, totalCount) = await _ticketSalesService.GetSalesPageAsync(page, pageSize);
+                    Log.Information("Retrieved {Count} sales (page {Page}, total {TotalCount})", sales.Count, page, totalCount);
+
                     var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully");
-                    
-                    // Get all sales from SpacetimeDB
-                    var sales = conn.Db.Sale.Iter().ToList();
-                    Log.Information("Retrieved {Count} sales from database", sales.Count);
-                    
-                    // Convert to a list of dynamic objects with necessary properties
-                    var result = sales.Select(s => {
-                        var ticket = conn.Db.Ticket.TicketId.Find(s.TicketId);
-                        Log.Debug("Found ticket for sale {SaleId}", s.SaleId);
-                        
-                        var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-                        Log.Debug("Found route for ticket {TicketId}", ticket?.TicketId);
-                        
-                        return new {
-                            SaleId = s.SaleId,
-                            SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).DateTime,
-                            TicketId = s.TicketId,
-                            TicketSoldToUser = s.TicketSoldToUser,
-                            TicketSoldToUserPhone = s.TicketSoldToUserPhone,
-                            SellerId = s.SellerId?.ToString(),
-                            Ticket = ticket != null ? new {
-                                TicketId = ticket.TicketId,
-                                RouteId = ticket.RouteId,
-                                TicketPrice = ticket.TicketPrice,
-                                Route = route != null ? new {
-                                    RouteId = route.RouteId,
-                                    StartPoint = route.StartPoint,
-                                    EndPoint = route.EndPoint
-                                } : null
-                            } : null
-                        };
-                    }).ToList();
-                    
-                    Log.Debug("Retrieved {SalesCount} ticket sales with full details", result.Count);
+                    var result = sales.Select(s => BuildSaleView(conn, s)).ToList();
+
+                    var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+
+                    Response.Headers["X-Total-Count"] = totalCount.ToString();
+                    Response.Headers["X-Page"] = page.ToString();
+                    Response.Headers["X-Page-Size"] = pageSize.ToString();
+                    Response.Headers["X-Total-Pages"] = totalPages.ToString();
+
+                    Log.Debug("Returning {Count} ticket sales (page {Page}/{TotalPages})", result.Count, page, totalPages);
                     return Ok(result);
                 }
                 catch (Exception ex)
@@ -331,6 +372,28 @@ using Microsoft.AspNetCore.Authorization;
                     Log.Error(ex, "Error retrieving ticket sales: {ErrorMessage}", ex.Message);
                     return StatusCode(500, new { message = "An error occurred while retrieving ticket sales" });
                 }
+            }
+
+            private object BuildSaleView(DbConnection conn, Sale s)
+            {
+                var ticket = conn.Db.Ticket.TicketId.Find(s.TicketId);
+                var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
+                return new
+                {
+                    SaleId = s.SaleId,
+                    SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).DateTime,
+                    TicketId = s.TicketId,
+                    TicketSoldToUser = s.TicketSoldToUser,
+                    TicketSoldToUserPhone = s.TicketSoldToUserPhone,
+                    SellerId = s.SellerId?.ToString(),
+                    Ticket = ticket != null ? new
+                    {
+                        TicketId = ticket.TicketId,
+                        RouteId = ticket.RouteId,
+                        TicketPrice = ticket.TicketPrice,
+                        Route = route != null ? new { route.RouteId, route.StartPoint, route.EndPoint } : null
+                    } : null
+                };
             }
 
             [HttpGet("{id}")]
