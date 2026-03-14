@@ -599,61 +599,44 @@ namespace TicketSalesApp.AdminServer.Controllers
                     
                     var content = await response.Content.ReadAsStringAsync();
                     Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
-                    
-                    var tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
-                    
+
+                    System.Text.Json.JsonElement tokenInfo;
+                    try
+                    {
+                        tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                    }
+                    catch (System.Text.Json.JsonException ex)
+                    {
+                        Log.Warning(ex, "ValidateOAuthTokenAsync - Failed to parse tokeninfo JSON response");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
+
                     if (tokenInfo.TryGetProperty("claims", out var claimsElement))
                     {
-                        var claims = new Dictionary<string, object>();
-                        
-                        foreach (var claim in claimsElement.EnumerateObject())
+                        var claims = ExtractClaimsFromJsonElement(claimsElement);
+
+                        // Defence-in-depth: verify exp even though tokeninfo should already reject expired tokens.
+                        if (claims.TryGetValue("exp", out var expObj) &&
+                            long.TryParse(expObj?.ToString(), out var expUnix))
                         {
-                            // Handle different JSON value types
-                            if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            var expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix);
+                            if (expiry < DateTimeOffset.UtcNow)
                             {
-                                // Direct array
-                                var values = new List<string>();
-                                foreach (var item in claim.Value.EnumerateArray())
-                                {
-                                    values.Add(item.GetString() ?? "");
-                                }
-                                claims[claim.Name] = values;
-                            }
-                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.Object)
-                            {
-                                // Check if it's a JSON.NET reference object with $values array
-                                if (claim.Value.TryGetProperty("$values", out var valuesArray))
-                                {
-                                    var values = new List<string>();
-                                    foreach (var item in valuesArray.EnumerateArray())
-                                    {
-                                        values.Add(item.GetString() ?? "");
-                                    }
-                                    claims[claim.Name] = values;
-                                }
-                                else
-                                {
-                                    // It's a regular object, convert to string
-                                    claims[claim.Name] = claim.Value.ToString();
-                                }
-                            }
-                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.String)
-                            {
-                                claims[claim.Name] = claim.Value.GetString() ?? "";
-                            }
-                            else
-                            {
-                                // For numbers, booleans, etc., convert to string
-                                claims[claim.Name] = claim.Value.ToString();
+                                Log.Warning("ValidateOAuthTokenAsync - JWE exp claim indicates expiry at {Expiry} (now {Now})",
+                                    expiry, DateTimeOffset.UtcNow);
+                                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                                return null;
                             }
                         }
-                        
+
                         Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
                         HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
                         return claims;
                     }
                     
-                    Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response");
+                    Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response; keys present: {Keys}",
+                        string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
                     HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                     return null;
                 }
@@ -665,60 +648,111 @@ namespace TicketSalesApp.AdminServer.Controllers
                     if (tokenHandler.CanReadToken(token))
                     {
                         Log.Debug("ValidateOAuthTokenAsync - Token has 3 segments (JWT), performing local signature validation");
-                        
-                        // Get JWT secret from configuration
-                        var jwtSecret = HttpContext.RequestServices.GetService<IConfiguration>()?["JwtSettings:Secret"];
+
+                        // Resolve settings: prefer strongly-typed options, fall back to raw config.
+                        var jwtOptions = HttpContext.RequestServices.GetService<IOptions<JwtSettings>>()?.Value;
+                        var cfg        = HttpContext.RequestServices.GetService<IConfiguration>();
+
+                        var jwtSecret = jwtOptions?.Secret ?? cfg?["JwtSettings:Secret"];
                         if (string.IsNullOrEmpty(jwtSecret))
                         {
                             Log.Error("ValidateOAuthTokenAsync - JWT secret not configured");
                             HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                             return null;
                         }
-                        
+
                         var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+
+                        var validateIssuer   = jwtOptions?.ValidateIssuer   ?? false;
+                        var validateAudience = jwtOptions?.ValidateAudience ?? false;
+                        var requireExp       = jwtOptions?.RequireExpiration ?? true;
+                        var validateNbf      = jwtOptions?.ValidateNbf       ?? true;
+                        var clockSkew        = TimeSpan.FromMinutes(jwtOptions?.ClockSkewMinutes ?? 5);
+                        var validIssuer      = jwtOptions?.Issuer   ?? cfg?["JwtSettings:Issuer"];
+                        var validAudience    = jwtOptions?.Audience ?? cfg?["JwtSettings:Audience"];
+
                         var validationParameters = new TokenValidationParameters
                         {
                             ValidateIssuerSigningKey = true,
-                            IssuerSigningKey = key,
-                            ValidateIssuer = false, // Set to true if you have a specific issuer
-                            ValidateAudience = false, // Set to true if you have a specific audience
-                            ValidateLifetime = true,
-                            ClockSkew = TimeSpan.FromMinutes(5)
+                            IssuerSigningKey         = key,
+
+                            ValidateIssuer   = validateIssuer && !string.IsNullOrEmpty(validIssuer),
+                            ValidIssuer      = validIssuer,
+
+                            ValidateAudience = validateAudience && !string.IsNullOrEmpty(validAudience),
+                            ValidAudience    = validAudience,
+
+                            ValidateLifetime      = requireExp,
+                            RequireExpirationTime = requireExp,
+                            RequireSignedTokens   = true,
+                            ClockSkew             = clockSkew
                         };
-                        
+
                         try
                         {
                             var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
-                            
-                            // Extract claims from validated token
+
+                            // Type guard – ensures we have a proper JWT, not some other token type.
+                            if (validatedToken is not JwtSecurityToken jwt)
+                            {
+                                Log.Warning("ValidateOAuthTokenAsync - Validated token is not a JwtSecurityToken");
+                                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                                return null;
+                            }
+
+                            // Explicit nbf check when the toggle is on (defence-in-depth).
+                            if (validateNbf && jwt.ValidFrom > DateTimeOffset.UtcNow.Add(clockSkew))
+                            {
+                                Log.Warning("ValidateOAuthTokenAsync - Token not yet valid (nbf={Nbf}, now={Now})",
+                                    jwt.ValidFrom, DateTimeOffset.UtcNow);
+                                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                                return null;
+                            }
+
+                            // Extract claims, merging duplicates into List<string>.
                             var claims = new Dictionary<string, object>();
                             foreach (var claim in principal.Claims)
                             {
-                                if (claims.ContainsKey(claim.Type))
+                                if (claims.TryGetValue(claim.Type, out var existing))
                                 {
-                                    if (claims[claim.Type] is List<string> list)
-                                    {
+                                    if (existing is List<string> list)
                                         list.Add(claim.Value);
-                                    }
                                     else
-                                    {
-                                        var existingValue = claims[claim.Type].ToString();
-                                        claims[claim.Type] = new List<string> { existingValue!, claim.Value };
-                                    }
+                                        claims[claim.Type] = new List<string> { existing.ToString()!, claim.Value };
                                 }
                                 else
                                 {
                                     claims[claim.Type] = claim.Value;
                                 }
                             }
-                            
-                            Log.Debug("ValidateOAuthTokenAsync - Successfully validated JWT with {ClaimCount} claims", claims.Count);
+
+                            Log.Debug("ValidateOAuthTokenAsync - Successfully validated JWT with {ClaimCount} claims (alg={Alg}, validateIssuer={VI}, validateAudience={VA}, requireExp={RE}, validateNbf={VN})",
+                                claims.Count, jwt.Header.Alg, validateIssuer, validateAudience, requireExp, validateNbf);
                             HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
                             return claims;
                         }
+                        catch (SecurityTokenExpiredException ex)
+                        {
+                            Log.Warning("ValidateOAuthTokenAsync - Token expired at {Expiry}: {Message}", ex.Expires, ex.Message);
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
+                        catch (SecurityTokenNotYetValidException ex)
+                        {
+                            Log.Warning("ValidateOAuthTokenAsync - Token not yet valid (nbf={Nbf}): {Message}", ex.NotBefore, ex.Message);
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
+                        catch (SecurityTokenInvalidSignatureException ex)
+                        {
+                            Log.Warning("ValidateOAuthTokenAsync - Invalid signature: {Message}", ex.Message);
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
                         catch (SecurityTokenException ex)
                         {
-                            Log.Warning(ex, "ValidateOAuthTokenAsync - JWT signature validation failed: {Message}", ex.Message);
+                            Log.Warning(ex, "ValidateOAuthTokenAsync - JWT validation failed ({ExType}): {Message}",
+                                ex.GetType().Name, ex.Message);
                             HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                             return null;
                         }
