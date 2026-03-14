@@ -870,7 +870,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   
   - [ ] 23.3 Update integration tests for post-cleanup behavior
     - Remove tests that specifically test legacy AuthController implementations
-    - Keep tests for AuthControllerRefactored
+    - Keep tests for AuthController
     - Keep/rewrite feature flag toggle tests to validate endpoint-disable semantics (503 responses when disabled)
     - Remove only legacy-controller-specific test logic, not toggle validation assertions
     - _Requirements: 5.5_

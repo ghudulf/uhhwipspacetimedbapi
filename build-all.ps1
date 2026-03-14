@@ -6,7 +6,7 @@ Write-Host ""
 
 # Step 1: Build SpacetimeDB module separately (requires .NET 8 SDK with WASI workload)
 Write-Host "Step 1: Building SpacetimeDB module (net8.0 + wasi-wasm)..." -ForegroundColor Yellow
-Push-Location server
+Push-Location (Join-Path $PSScriptRoot "server")
 try {
     # Check if .NET 8 SDK is available
     $dotnet8 = dotnet --list-sdks | Select-String "8\."

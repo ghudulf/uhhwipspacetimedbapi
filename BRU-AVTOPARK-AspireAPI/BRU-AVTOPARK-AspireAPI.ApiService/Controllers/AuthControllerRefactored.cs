@@ -3401,7 +3401,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             var preValidatedClaims = await ValidateOAuthTokenAsync();
             var connectionId = Guid.NewGuid().ToString("N")[..12];
 
-            using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("bru.auth.v1");
+            using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
             _logger.LogInformation("[AuthWS:{ConnId}] Connection established. Pre-authenticated: {Auth}",
                 connectionId, preValidatedClaims != null);
 
@@ -3732,7 +3732,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             if (qrSubscriptions.TryRemove(deviceId, out var existing))
             {
                 existing.Cancel();
-                existing.Dispose();
             }
 
             var subCts = CancellationTokenSource.CreateLinkedTokenSource(connectionCts.Token);

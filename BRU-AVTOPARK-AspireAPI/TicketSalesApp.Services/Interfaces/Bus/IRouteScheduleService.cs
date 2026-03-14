@@ -11,14 +11,14 @@ namespace TicketSalesApp.Services.Interfaces
     public interface IRouteScheduleService
     {
         Task<List<RouteSchedule>> GetAllSchedulesAsync();
-         /// <summary>
-       /// Returns a single page of schedules that match <paramref name="query"/>.
+        /// <summary>
+        /// Returns a single page of schedules that match <paramref name="query"/>.
         /// <paramref name="page"/> is 1-based; both page and pageSize are validated
         /// and capped server-side against the configured maximum (RouteSchedule:MaxPageSize).
         /// Pass <see cref="ScheduleQuery.Empty"/> for an unfiltered page.
-  /// </summary>
- Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(
-           int page, int pageSize, ScheduleQuery? query = null);
+        /// </summary>
+        Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(
+            int page, int pageSize, ScheduleQuery? query = null);
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);
         Task<List<RouteSchedule>> GetSchedulesByRouteIdAsync(uint routeId);
         Task<uint?> CreateScheduleAsync(

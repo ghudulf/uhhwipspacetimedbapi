@@ -1061,13 +1061,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
                 Log.Warning("ValidateJweViaTokenInfoAsync - tokeninfo returned {StatusCode}: {Body}",
                     (int)response.StatusCode, errorBody);
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
 
             System.Text.Json.JsonElement tokenInfo;
             try

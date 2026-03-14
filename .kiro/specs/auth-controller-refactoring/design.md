@@ -3092,7 +3092,7 @@ class SpacetimeDBAdapter {
 }
 
 // Configure oidc-provider with SpacetimeDB adapter
-const oidc = new Provider('https://auth.bru-avtopark.com', {
+const oidcA = new ProviderA('https://auth.bru-avtopark.com', {
   adapter: SpacetimeDBAdapter,
   clients: [
     {
@@ -3127,13 +3127,13 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
   },
   findAccount: async (ctx, id) => {
     // PRODUCTION: Fetch user directly from SpacetimeDB
-    const spacetimeDB = DbConnection.builder()
+    const spacetimeDBFind = DbConnectionA.builder()
       .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
       .withModuleName('bru-avtopark')
       .withToken(process.env.SPACETIMEDB_TOKEN)
       .build()
 
-    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+    const users = Array.from(spacetimeDBFind.db.UserProfile.iter())
       .filter(user => user.UserId === parseInt(id))
     if (users.length === 0) return undefined
 
@@ -3167,37 +3167,35 @@ const oidc = new Provider('https://auth.bru-avtopark.com', {
     },
   },
 })
-
-// Elysia application with oidc-provider integration
 // FULL STANDALONE AUTH SERVER - Handles ALL authentication
-import { Elysia } from 'elysia'
-import { cors } from '@elysiajs/cors'
-import { jwt } from '@elysiajs/jwt'
-import { DbConnection } from 'spacetimedb'
-import Provider from 'oidc-provider'
+import { Elysia as ElysiaA } from 'elysia'
+import { cors as corsA } from '@elysiajs/cors'
+import { jwt as jwtA } from '@elysiajs/jwt'
+import { DbConnection as DbConnectionA } from 'spacetimedb'
+import Provider as ProviderA from 'oidc-provider'
 
 // Initialize SpacetimeDB connection using official SDK
-const spacetimeDB = DbConnection.builder()
+const spacetimeDBA = DbConnectionA.builder()
   .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
   .withDatabaseName('bru-avtopark')
   .withToken(process.env.SPACETIMEDB_TOKEN)
   .build()
 
-const app = new Elysia()
-  .use(cors({
+const appA = new ElysiaA()
+  .use(corsA({
     origin: ['https://app.bru-avtopark.com', 'http://localhost:5000'],
     credentials: true
   }))
-  .use(jwt({
+  .use(jwtA({
     name: 'jwt',
     secret: process.env.JWT_SECRET!
   }))
 
   // Health check
-  .get('/health', () => ({ 
-    status: 'ok', 
+  .get('/health', () => ({
+    status: 'ok',
     service: 'elysia-standalone-auth-server',
-    spacetimedb: spacetimeDB.isConnected ? 'connected' : 'disconnected'
+    spacetimedb: spacetimeDBA.isConnected ? 'connected' : 'disconnected'
   }))
 
   //===========================================
@@ -3207,16 +3205,16 @@ const app = new Elysia()
   // Login with username/password
   .post('/auth/login', async ({ body, jwt, set }) => {
     const { username, password } = body as { username: string; password: string }
-    
+
     // Query SpacetimeDB directly for user
-    const users = spacetimeDB.db.UserProfile.filter(u => u.Login === username)
+    const users = spacetimeDBA.db.UserProfile.filter(u => u.Login === username)
     if (users.length === 0) {
       set.status = 401
       return { error: 'Invalid credentials' }
     }
 
     const user = users[0]
-    
+
     // Verify password using Bun's built-in bcrypt
     const isValid = await Bun.password.verify(password, user.PasswordHash)
     if (!isValid) {
@@ -3254,7 +3252,7 @@ const app = new Elysia()
     })
 
     // Log authentication event to SpacetimeDB
-    await spacetimeDB.call('log_auth_event', {
+    await spacetimeDBA.call('log_auth_event', {
       user_id: user.UserId,
       event_type: 'login',
       success: true,
@@ -3278,7 +3276,7 @@ const app = new Elysia()
   // Verify TOTP code
   .post('/auth/totp/verify', async ({ body, jwt, set }) => {
     const { challenge_token, code } = body as { challenge_token: string; code: string }
-    
+
     // Verify challenge token
     const challenge = await jwt.verify(challenge_token)
     if (!challenge || challenge.type !== '2fa_challenge') {
@@ -3287,16 +3285,16 @@ const app = new Elysia()
     }
 
     const userId = parseInt(challenge.sub)
-    
+
     // Get user's TOTP secret from SpacetimeDB
-    const users = spacetimeDB.db.UserProfile.filter(u => u.UserId === userId)
+    const users = spacetimeDBA.db.UserProfile.filter(u => u.UserId === userId)
     if (users.length === 0) {
       set.status = 401
       return { error: 'User not found' }
     }
 
     const user = users[0]
-    
+
     // Verify TOTP code (implement TOTP verification logic)
     const isValid = await verifyTOTP(user.TotpSecret, code)
     if (!isValid) {
@@ -3324,7 +3322,7 @@ const app = new Elysia()
   // WebAuthn authentication challenge
   .post('/auth/webauthn/challenge', async ({ body, jwt, set }) => {
     const { challenge_token } = body as { challenge_token: string }
-    
+
     const challenge = await jwt.verify(challenge_token)
     if (!challenge || challenge.type !== '2fa_challenge') {
       set.status = 401
@@ -3332,15 +3330,15 @@ const app = new Elysia()
     }
 
     const userId = parseInt(challenge.sub)
-    
+
     // Get user's WebAuthn credentials from SpacetimeDB
-    const credentials = spacetimeDB.db.WebAuthnCredential.filter(c => c.UserId === userId)
-    
+    const credentials = spacetimeDBA.db.WebAuthnCredential.filter(c => c.UserId === userId)
+
     // Generate WebAuthn challenge
     const webauthnChallenge = crypto.randomUUID()
-    
+
     // Store challenge in SpacetimeDB
-    await spacetimeDB.call('store_webauthn_challenge', {
+    await spacetimeDBA.call('store_webauthn_challenge', {
       user_id: userId,
       challenge: webauthnChallenge,
       expires_at: BigInt(Date.now() + (5 * 60 * 1000))
@@ -3383,9 +3381,9 @@ const app = new Elysia()
   .post('/auth/qr/generate', async ({ jwt }) => {
     // Generate unique QR session ID
     const sessionId = crypto.randomUUID()
-    
+
     // Store QR session in SpacetimeDB
-    await spacetimeDB.call('create_qr_session', {
+    await spacetimeDBA.call('create_qr_session', {
       session_id: sessionId,
       status: 'pending',
       expires_at: BigInt(Date.now() + (5 * 60 * 1000)) // 5 minutes
@@ -3401,19 +3399,19 @@ const app = new Elysia()
   // QR Code authentication - Poll status
   .get('/auth/qr/status/:sessionId', async ({ params, jwt, set }) => {
     const { sessionId } = params
-    
+
     // Query QR session from SpacetimeDB
-    const sessions = spacetimeDB.db.QRAuthSession.filter(s => s.SessionId === sessionId)
+    const sessions = spacetimeDBA.db.QRAuthSession.filter(s => s.SessionId === sessionId)
     if (sessions.length === 0) {
       set.status = 404
       return { error: 'Session not found' }
     }
 
     const session = sessions[0]
-    
+
     if (session.Status === 'approved' && session.UserId) {
       // Get user details
-      const users = spacetimeDB.db.UserProfile.filter(u => u.UserId === session.UserId)
+      const users = spacetimeDBA.db.UserProfile.filter(u => u.UserId === session.UserId)
       if (users.length === 0) {
         set.status = 404
         return { error: 'User not found' }
@@ -3453,7 +3451,7 @@ const app = new Elysia()
     }
 
     // Check if user already exists
-    const existingUsers = spacetimeDB.db.UserProfile.filter(
+    const existingUsers = spacetimeDBA.db.UserProfile.filter(
       u => u.Login === username || u.Email === email
     )
     if (existingUsers.length > 0) {
@@ -3465,7 +3463,7 @@ const app = new Elysia()
     const passwordHash = await Bun.password.hash(password)
 
     // Create user in SpacetimeDB
-    await spacetimeDB.call('register_user', {
+    await spacetimeDBA.call('register_user', {
       login: username,
       email: email,
       password_hash: passwordHash,
@@ -3528,7 +3526,7 @@ const app = new Elysia()
 
 // Mount oidc-provider at server level
 // Pattern: Server-level interception
-app.listen(3000, (server) => {
+appA.listen(3000, (server) => {
   const httpServer = server.server as any
 
   if (!httpServer) {
@@ -3543,7 +3541,7 @@ app.listen(3000, (server) => {
   httpServer.on('request', (req: any, res: any) => {
     if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
       // Route to oidc-provider
-      oidc.callback()(req, res, () => {
+      oidcA.callback()(req, res, () => {
         res.statusCode = 404
         res.end('Not Found')
       })
@@ -3554,7 +3552,7 @@ app.listen(3000, (server) => {
   })
 
   console.log('🚀 Elysia Standalone Auth Server running on http://localhost:3000')
-  console.log('📊 SpacetimeDB:', spacetimeDB.isConnected ? 'Connected' : 'Disconnected')
+  console.log('📊 SpacetimeDB:', spacetimeDBA.isConnected ? 'Connected' : 'Disconnected')
   console.log('')
   console.log('🔐 Authentication Endpoints:')
   console.log('   - POST /auth/login')
@@ -3581,32 +3579,109 @@ async function verifyTOTP(secret: string, code: string): Promise<boolean> {
   // This is a placeholder
   return true
 }
-       
+```
 
-// Alternative approach 2: Fetch-based shim (simpler but adds overhead)
-// Convert Elysia Request ↔ Node.js req/res for oidc-provider compatibility
-/*
-app.all('/oidc/*', async ({ request }) => {
-  // Create Node.js-like req/res objects from Fetch Request
-  const { toNodeRequest, toFetchResponse } = await import('./node-shim')
+### Pattern B: Elysia app delegating to external oidc-provider
 
-  return new Promise((resolve) => {
-    const nodeReq = toNodeRequest(request)
-    const nodeRes = {
-      statusCode: 200,
-      headers: {},
-      setHeader(name: string, value: string) {
-        this.headers[name] = value
+This pattern shows an Elysia app that proxies OIDC requests to an external oidc-provider instance, useful when the OIDC provider runs as a separate service.
+
+```typescript
+// PATTERN B: Elysia application delegating to external oidc-provider
+import { Elysia as ElysiaB } from 'elysia'
+import { cors as corsB } from '@elysiajs/cors'
+import { jwt as jwtB } from '@elysiajs/jwt'
+
+const appB = new ElysiaB()
+  .use(corsB({
+    origin: ['https://app.bru-avtopark.com', 'http://localhost:5000'],
+    credentials: true
+  }))
+  .use(jwtB({
+    name: 'jwt',
+    secret: process.env.JWT_SECRET!
+  }))
+
+  // Health check
+  .get('/health', () => ({
+    status: 'ok',
+    service: 'elysia-api-gateway'
+  }))
+
+  // Proxy OIDC requests to external provider
+  .all('/oidc/*', async ({ request }) => {
+    const oidcProviderUrl = process.env.OIDC_PROVIDER_URL || 'http://localhost:3001'
+    const url = new URL(request.url)
+    const targetUrl = `${oidcProviderUrl}${url.pathname}${url.search}`
+
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers: {
+        'Content-Type': request.headers.get('content-type') || 'application/json',
+        'Accept': request.headers.get('accept') || '*/*',
       },
-      end(body: string) {
-        resolve(toFetchResponse(this.statusCode, this.headers, body))
-      }
+      body: request.method !== 'GET' && request.method !== 'HEAD'
+        ? await request.text()
+        : undefined
+    })
+
+    return response
+  })
+
+  // Proxy .well-known endpoints to external provider
+  .get('/.well-known/openid-configuration', async ({ request }) => {
+    const oidcProviderUrl = process.env.OIDC_PROVIDER_URL || 'http://localhost:3001'
+    const response = await fetch(`${oidcProviderUrl}/.well-known/openid-configuration`)
+    return response
+  })
+
+  // Business logic endpoints
+  .all('/api/*', async ({ request, headers, jwt, set }) => {
+    const authHeader = headers.authorization
+    if (!authHeader?.startsWith('Bearer ')) {
+      set.status = 401
+      return { error: 'Unauthorized' }
     }
 
-    oidc.callback()(nodeReq, nodeRes)
+    // Verify JWT token
+    const token = authHeader.substring(7)
+    const payload = await jwt.verify(token)
+    if (!payload) {
+      set.status = 401
+      return { error: 'Invalid token' }
+    }
+
+    // Forward to backend with user context
+    const safeHeaders: Record<string, string> = {
+      'Content-Type': headers['content-type'] || 'application/json',
+      'Accept': headers['accept'] || '*/*',
+      'X-User-Id': payload.sub,
+      'X-User-Username': payload.username,
+      'X-User-Email': payload.email,
+      'X-User-Roles': JSON.stringify(payload.roles),
+    }
+
+    const url = new URL(request.url)
+    const response = await fetch(`http://backend:5000${url.pathname}${url.search}`, {
+      method: request.method,
+      headers: safeHeaders,
+      body: request.method !== 'GET' && request.method !== 'HEAD'
+        ? await request.text()
+        : undefined
+    })
+
+    return response
   })
+
+appB.listen(3000, () => {
+  console.log('🚀 Elysia API Gateway running on http://localhost:3000')
+  console.log('🔐 OIDC Provider: ' + (process.env.OIDC_PROVIDER_URL || 'http://localhost:3001'))
+  console.log('')
+  console.log('📋 Proxied OIDC Endpoints:')
+  console.log('   - GET  /.well-known/openid-configuration → external provider')
+  console.log('   - ALL  /oidc/* → external provider')
+  console.log('')
+  console.log('🔄 Business API: /api/* → Backend')
 })
-*/
 ```
 
 **Key Features of oidc-provider**:
