@@ -117,7 +117,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
+                    _logger.LogDebug(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
                         SanitizePayloadForLogging(request.Payload.Value));
                 }
             }
@@ -473,44 +473,27 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                // Clamp pagination parameters to safe bounds
-                const int MAX_PAGE_SIZE = 500;
                 if (pageSize < 1) pageSize = 1;
-                if (pageSize > MAX_PAGE_SIZE) pageSize = MAX_PAGE_SIZE;
                 if (page < 1) page = 1;
                 
                 _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
                     page, pageSize, isActive);
                 
-                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+                var query = new TicketSalesApp.Services.Models.ScheduleQuery { IsActive = isActive };
+                var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, pageSize, query);
                 
-                _logger.LogInformation("Retrieved {TotalCount} total schedules from database", schedules.Count());
+                _logger.LogInformation("Retrieved {TotalCount} total schedules from database", totalCount);
                 
-                // Filter by IsActive if specified
-                var filtered = schedules.AsEnumerable();
-                if (isActive.HasValue)
-                {
-                    filtered = filtered.Where(s => s.IsActive == isActive.Value);
-                    _logger.LogDebug("Filtered to {Count} schedules with IsActive={IsActive}", filtered.Count(), isActive.Value);
-                }
-                
-                // Apply pagination
-                var totalCount = filtered.Count();
-                var paged = filtered
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize);
-                
-                // Map using centralized projection helper
                 var result = paged.Select(ProjectScheduleForList).ToList();
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
 
                 _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
-                    result.Count, page, (int)Math.Ceiling(totalCount / (double)pageSize), totalCount);
+                    result.Count, page, totalPages, totalCount);
                 
-                // Add pagination metadata to response headers
                 Response.Headers["X-Total-Count"] = totalCount.ToString();
                 Response.Headers["X-Page"] = page.ToString();
                 Response.Headers["X-Page-Size"] = pageSize.ToString();
-                Response.Headers["X-Total-Pages"] = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize)).ToString();
+                Response.Headers["X-Total-Pages"] = totalPages.ToString();
                 
                 return Ok(result);
             }

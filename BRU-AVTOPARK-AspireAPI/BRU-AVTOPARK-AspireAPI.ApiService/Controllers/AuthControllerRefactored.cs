@@ -3424,6 +3424,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             var claimsHolder = new ClaimsHolder { Claims = preValidatedClaims };
 
             var buffer = new byte[4096];
+            const int MaxMessageBytes = 64 * 1024; // 64 KB per message
 
             try
             {
@@ -3435,6 +3436,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     do
                     {
                         result = await webSocket.ReceiveAsync(buffer, cts.Token);
+                        if (ms.Length + result.Count > MaxMessageBytes)
+                        {
+                            _logger.LogWarning("[AuthWS:{ConnId}] Message exceeds max size ({Max} bytes), closing", connectionId, MaxMessageBytes);
+                            await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Message too large", CancellationToken.None);
+                            return;
+                        }
                         ms.Write(buffer, 0, result.Count);
                     } while (!result.EndOfMessage);
 
@@ -3686,7 +3693,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 type = "auth:refreshed",
                 requestId,
                 success = true,
-                token = result.Token
+                token = result.Token,
+                refreshToken = result.RefreshToken,
+                expiresAt = result.ExpiresAt
             }, sendLock, cancellationToken);
         }
 
@@ -3805,7 +3814,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
                 finally
                 {
-                    qrSubscriptions.TryRemove(deviceId, out _);
+                    if (qrSubscriptions.TryGetValue(deviceId, out var current) && ReferenceEquals(current, subCts))
+                        qrSubscriptions.TryRemove(deviceId, out _);
+                    subCts?.Dispose();
                 }
             }, subCts.Token);
         }

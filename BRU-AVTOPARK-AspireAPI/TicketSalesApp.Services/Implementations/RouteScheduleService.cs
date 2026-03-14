@@ -16,20 +16,23 @@ namespace TicketSalesApp.Services.Implementations
         private readonly ISpacetimeDBService _spacetimeDBService;
         private readonly ILogger<RouteScheduleService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly int _maxPageSize;
         private readonly ConcurrentDictionary<Guid, TaskCompletionSource<uint?>> _pendingCreates = new();
         private readonly SemaphoreSlim _handlerLock = new(1, 1);
-        private bool _disposed;
+        private int _disposedFlag;
 
         public RouteScheduleService(ISpacetimeDBService spacetimeDBService, ILogger<RouteScheduleService> logger, IConfiguration configuration)
         {
             _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _maxPageSize = configuration.GetValue<int>("RouteSchedule:MaxPageSize", 5000);
+            if (_maxPageSize < 1) _maxPageSize = 5000;
         }
 
         public void Dispose()
         {
-            if (_disposed) return;
+            if (Interlocked.Exchange(ref _disposedFlag, 1) != 0) return;
             
             _handlerLock?.Dispose();
             
@@ -39,7 +42,6 @@ namespace TicketSalesApp.Services.Implementations
             }
             _pendingCreates.Clear();
             
-            _disposed = true;
             GC.SuppressFinalize(this);
         }
 
@@ -76,9 +78,8 @@ namespace TicketSalesApp.Services.Implementations
                     throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize must be >= 1");
 
                 // Get configurable max page size (default 5000)
-                var maxPageSize = _configuration.GetValue<int>("RouteSchedule:MaxPageSize", 5000);
-                if (pageSize > maxPageSize)
-                    throw new ArgumentOutOfRangeException(nameof(pageSize), $"PageSize cannot exceed {maxPageSize}");
+                if (pageSize > _maxPageSize)
+                    throw new ArgumentOutOfRangeException(nameof(pageSize), $"PageSize cannot exceed {_maxPageSize}");
 
                 var connection = _spacetimeDBService.GetConnection();
 
@@ -344,6 +345,10 @@ namespace TicketSalesApp.Services.Implementations
                         // Reducer succeeded - find the created schedule by correlation ID
                         if (TryExtractCorrelationId(notesParam, out var correlationGuid))
                         {
+                            // Guard: only proceed if this correlation ID belongs to a pending create on this instance
+                            if (!_pendingCreates.TryGetValue(correlationGuid, out _))
+                                return;
+
                             if (_pendingCreates.TryRemove(correlationGuid, out var pendingTcs))
                             {
                                 // Query database to find the created schedule

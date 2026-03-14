@@ -16,9 +16,12 @@ try {
         Write-Host "  dotnet workload install wasi-experimental" -ForegroundColor Yellow
     } else {
         # Try to build with .NET 8
+        $previousRollForward = $env:DOTNET_ROLL_FORWARD
         $env:DOTNET_ROLL_FORWARD = "Major"
         dotnet build StdbModule.csproj
-        if ($LASTEXITCODE -ne 0) {
+        $stdbExitCode = $LASTEXITCODE
+        $env:DOTNET_ROLL_FORWARD = $previousRollForward
+        if ($stdbExitCode -ne 0) {
             Write-Host "WARNING: SpacetimeDB module build failed. This may be due to missing WASI workload." -ForegroundColor Red
             Write-Host "Install with: dotnet workload install wasi-experimental" -ForegroundColor Yellow
         } else {

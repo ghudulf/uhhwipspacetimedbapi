@@ -9,7 +9,7 @@ internal static class LogSanitizer
     /// Sanitizes a string for safe logging by removing control characters to prevent log injection.
     /// </summary>
     /// <param name="value">The string to sanitize.</param>
-    /// <returns>A sanitized string safe for logging, or the original value if null/empty.</returns>
+    /// <returns>A sanitized string safe for logging. Returns <see cref="string.Empty"/> when the input is null or empty.</returns>
     public static string SanitizeForLog(string? value)
     {
         if (string.IsNullOrEmpty(value))

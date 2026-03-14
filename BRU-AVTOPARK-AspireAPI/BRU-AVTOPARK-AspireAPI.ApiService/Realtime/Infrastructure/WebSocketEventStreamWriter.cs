@@ -253,7 +253,8 @@ public static class WebSocketEventStreamWriter
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "[WebSocketEventStreamWriter] JSON parse error: {Message}", ex.Message);
+            var sanitizedJsonError = LogSanitizer.SanitizeLogField(ex.Message ?? string.Empty, 200);
+            logger.LogError(ex, "[WebSocketEventStreamWriter] JSON parse error: {Message}", sanitizedJsonError);
             await webSocket.CloseAsync(
                 WebSocketCloseStatus.InvalidPayloadData,
                 "Invalid JSON payload",
@@ -286,7 +287,9 @@ public static class WebSocketEventStreamWriter
         catch (Exception ex)
         {
             // Sanitize exception message to prevent log injection
-            var sanitizedMessage = ex.Message?.Replace("\r", "").Replace("\n", " ").Substring(0, Math.Min(200, ex.Message?.Length ?? 0));
+            var raw = ex.Message ?? string.Empty;
+            var sanitized = raw.Replace("\r", "").Replace("\n", " ");
+            var sanitizedMessage = sanitized.Substring(0, Math.Min(200, sanitized.Length));
             logger.LogError(ex, "[WebSocketEventStreamWriter] Send error: {ErrorType}: {Message}",
                 ex.GetType().Name, sanitizedMessage);
             throw;

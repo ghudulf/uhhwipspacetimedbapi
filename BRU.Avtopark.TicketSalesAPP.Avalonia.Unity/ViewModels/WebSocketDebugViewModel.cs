@@ -1009,6 +1009,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable
             return null;
         }
         accessToken = NormalizeAccessToken(accessToken);
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            AddLog("❌ Normalized access token is empty. Aborting interactive socket connection.");
+            return null;
+        }
 
         Uri serverUri;
         if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))

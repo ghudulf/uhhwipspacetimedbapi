@@ -3,14 +3,16 @@
 
 Write-Information "Building .NET 9 projects only..." -InformationAction Continue
 
-# Create a filtered solution
-$tempSln = "Net9Projects.sln"
+# Use absolute paths based on script location to work regardless of caller's working directory
+$tempSln = Join-Path $PSScriptRoot "Net9Projects.sln"
+$sourceSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln"
+$stdbProject = Join-Path $PSScriptRoot "server\StdbModule.csproj"
 
 # Copy original solution
-Copy-Item "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln" $tempSln -Force
+Copy-Item $sourceSln $tempSln -Force
 
 # Remove SpacetimeDB module
-dotnet sln $tempSln remove server\StdbModule.csproj 2>$null | Out-Null
+dotnet sln $tempSln remove $stdbProject 2>$null | Out-Null
 
 # Check if removal succeeded
 if ($LASTEXITCODE -ne 0) {

@@ -64,7 +64,8 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         
         // Sanitize and truncate event-derived fields to prevent log injection
         var sanitizedEventName = LogSanitizer.SanitizeLogField(domainEvent.EventName, maxLength: 100);
-        var sanitizedResource = LogSanitizer.SanitizeLogField(domainEvent.Resource, maxLength: 100);
+        var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
+        var sanitizedResource = LogSanitizer.SanitizeLogField(normalizedResource, maxLength: 100);
         var sanitizedCorrelationId = LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, maxLength: 100);
 
         _logger.LogInformation("[EventBus] Publishing event: {EventName} for resource: {Resource} (CorrelationId: {CorrelationId})",
@@ -167,9 +168,13 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 }
                 catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
                 {
-                    _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
-                        LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
-                        LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
+                    if (timeoutCts.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
+                            LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
+                            LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
+                    }
+                    // else: shutdown cancellation – swallow silently
                 }
                 catch (Exception ex)
                 {

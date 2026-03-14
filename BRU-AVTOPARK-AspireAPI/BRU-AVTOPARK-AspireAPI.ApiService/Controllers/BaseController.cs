@@ -580,24 +580,37 @@ namespace TicketSalesApp.AdminServer.Controllers
                     httpClient.DefaultRequestHeaders.Authorization = 
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                     
-                    // Use the same base URL as the current request
-                    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                    // Use the same base URL as the current request (preserve reverse-proxy prefix)
+                    var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase.ToUriComponent()}";
                     var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
                     
                     Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
                     
-                    var response = await httpClient.GetAsync(tokeninfoUrl);
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, timeoutCts.Token);
+                    
+                    System.Net.Http.HttpResponseMessage response;
+                    try
+                    {
+                        response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Warning("ValidateOAuthTokenAsync - Request cancelled or timed out calling tokeninfo");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
                     
                     if (!response.IsSuccessStatusCode)
                     {
-                        var errorContent = await response.Content.ReadAsStringAsync();
+                        var errorContent = await response.Content.ReadAsStringAsync(linkedCts.Token);
                         Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}", 
                             response.StatusCode, errorContent);
                         HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                         return null;
                     }
                     
-                    var content = await response.Content.ReadAsStringAsync();
+                    var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
                     Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
 
                     System.Text.Json.JsonElement tokenInfo;
@@ -682,7 +695,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                             ValidateAudience = validateAudience && !string.IsNullOrEmpty(validAudience),
                             ValidAudience    = validAudience,
 
-                            ValidateLifetime      = requireExp,
+                            ValidateLifetime      = true,
                             RequireExpirationTime = requireExp,
                             RequireSignedTokens   = true,
                             ClockSkew             = clockSkew
