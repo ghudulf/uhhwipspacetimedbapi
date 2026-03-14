@@ -73,11 +73,14 @@ builder.Host.UseSerilog();
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
-// Configure logging - Serilog is already configured via UseSerilog()
+// Configure logging first
 builder.Services.AddLogging(loggingBuilder =>
 {
+    loggingBuilder.ClearProviders();
+    loggingBuilder.AddConsole();
+    loggingBuilder.AddDebug();
     loggingBuilder.SetMinimumLevel(LogLevel.Debug);
-
+    
     // Suppress Windows Event Log to avoid permission errors
     loggingBuilder.AddFilter("Microsoft.Extensions.Logging.EventLog", LogLevel.None);
 });
@@ -87,6 +90,7 @@ builder.Services.AddProblemDetails();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSerilog();
 
 // Configure Swagger
 builder.Services.AddSwaggerGen(c =>
