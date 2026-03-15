@@ -115,8 +115,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             tenant = user.FindFirst(TenantClaimType)?.Value;
         }
         
-        var sanitizedPath = LogSanitizer.SanitizeForLog(TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength));
-        var sanitizedUserAgent = LogSanitizer.SanitizeForLog(TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength));
+        var sanitizedPath = LogSanitizer.SanitizeLogField(request.Path.ToString(), MaxMetadataStringLength);
+        var sanitizedUserAgent = LogSanitizer.SanitizeLogField(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
         
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

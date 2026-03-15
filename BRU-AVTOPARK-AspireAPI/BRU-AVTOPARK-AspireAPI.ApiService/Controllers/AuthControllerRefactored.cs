@@ -3800,26 +3800,32 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
                             if (status == null)
                             {
-                                await WsSendAsync(webSocket, new
+                                if (qrSubscriptions.TryGetValue(deviceId, out var cur1) && ReferenceEquals(cur1, subCts))
                                 {
-                                    type = "auth:qr-error",
-                                    deviceId,
-                                    reason = "QR status check returned null"
-                                }, sendLock, subCts.Token);
-                                await PublishAuthEventAsync("auth.qr.error", null, null,
-                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
+                                    await WsSendAsync(webSocket, new
+                                    {
+                                        type = "auth:qr-error",
+                                        deviceId,
+                                        reason = "QR status check returned null"
+                                    }, sendLock, subCts.Token);
+                                    await PublishAuthEventAsync("auth.qr.error", null, null,
+                                        new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
+                                }
                                 break;
                             }
                             if (!status.Success)
                             {
-                                await WsSendAsync(webSocket, new
+                                if (qrSubscriptions.TryGetValue(deviceId, out var cur2) && ReferenceEquals(cur2, subCts))
                                 {
-                                    type = "auth:qr-error",
-                                    deviceId,
-                                    reason = "QR status check indicated failure"
-                                }, sendLock, subCts.Token);
-                                await PublishAuthEventAsync("auth.qr.error", null, null,
-                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "status_not_success" });
+                                    await WsSendAsync(webSocket, new
+                                    {
+                                        type = "auth:qr-error",
+                                        deviceId,
+                                        reason = "QR status check indicated failure"
+                                    }, sendLock, subCts.Token);
+                                    await PublishAuthEventAsync("auth.qr.error", null, null,
+                                        new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "status_not_success" });
+                                }
                                 break;
                             }
                             pollStatus = status.Status;
@@ -3828,40 +3834,48 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         catch (Exception pollEx)
                         {
                             _logger.LogError(pollEx, "[AuthWS:{ConnId}] QR poll exception for device {DeviceId}", connectionId, deviceId);
-                            await WsSendAsync(webSocket, new
+                            if (qrSubscriptions.TryGetValue(deviceId, out var cur3) && ReferenceEquals(cur3, subCts))
                             {
-                                type = "auth:qr-error",
-                                deviceId,
-                                reason = "Internal error during QR status check"
-                            }, sendLock, subCts.Token);
-                            await PublishAuthEventAsync("auth.qr.error", null, null,
-                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "poll_exception" });
+                                await WsSendAsync(webSocket, new
+                                {
+                                    type = "auth:qr-error",
+                                    deviceId,
+                                    reason = "Internal error during QR status check"
+                                }, sendLock, subCts.Token);
+                                await PublishAuthEventAsync("auth.qr.error", null, null,
+                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "poll_exception" });
+                            }
                             break;
                         }
 
                         if (pollStatus == "completed" && !string.IsNullOrEmpty(pollToken))
                         {
-                            await WsSendAsync(webSocket, new
+                            if (qrSubscriptions.TryGetValue(deviceId, out var cur4) && ReferenceEquals(cur4, subCts))
                             {
-                                type = "auth:qr-completed",
-                                deviceId,
-                                token = pollToken
-                            }, sendLock, subCts.Token);
+                                await WsSendAsync(webSocket, new
+                                {
+                                    type = "auth:qr-completed",
+                                    deviceId,
+                                    token = pollToken
+                                }, sendLock, subCts.Token);
 
-                            await PublishAuthEventAsync("auth.qr.completed", null, null,
-                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
-
+                                await PublishAuthEventAsync("auth.qr.completed", null, null,
+                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
+                            }
                             break;
                         }
 
                         if (pollStatus == "failed" || pollStatus == "cancelled" || pollStatus == "expired")
                         {
-                            await WsSendAsync(webSocket, new
+                            if (qrSubscriptions.TryGetValue(deviceId, out var cur5) && ReferenceEquals(cur5, subCts))
                             {
-                                type = "auth:qr-failed",
-                                deviceId,
-                                reason = pollStatus
-                            }, sendLock, subCts.Token);
+                                await WsSendAsync(webSocket, new
+                                {
+                                    type = "auth:qr-failed",
+                                    deviceId,
+                                    reason = pollStatus
+                                }, sendLock, subCts.Token);
+                            }
                             break;
                         }
 
@@ -3874,12 +3888,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     // Timed out without resolution
                     if (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow >= deadline)
                     {
-                        await WsSendAsync(webSocket, new
+                        if (qrSubscriptions.TryGetValue(deviceId, out var cur6) && ReferenceEquals(cur6, subCts))
                         {
-                            type = "auth:qr-failed",
-                            deviceId,
-                            reason = "timeout"
-                        }, sendLock, subCts.Token);
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:qr-failed",
+                                deviceId,
+                                reason = "timeout"
+                            }, sendLock, subCts.Token);
+                        }
                     }
                 }
                 catch (OperationCanceledException)

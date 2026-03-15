@@ -68,7 +68,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             catch (Exception ex)
             {
                 _log.Error(ex, "UserMapper.MapToSafeUserDto unexpected error for UserId={UserId}", user.UserId);
-                throw new ArgumentException($"Failed to map UserProfile to SafeUserDto: {ex.Message}", nameof(user), ex);
+                throw new ArgumentException("Failed to map UserProfile to SafeUserDto.", nameof(user), ex);
             }
         }
 
@@ -78,7 +78,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             return value;
         }
 
-        private static T DefaultBool<T>(string fieldName, T fallback, List<string> defaults)
+        private static bool DefaultBool(string fieldName, bool fallback, List<string> defaults)
         {
             defaults.Add(fieldName);
             return fallback;

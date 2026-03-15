@@ -242,6 +242,8 @@ public class TokenService : ITokenService
 
         try
         {
+            var clockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes);
+
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -253,27 +255,37 @@ public class TokenService : ITokenService
                 ValidateAudience = _jwtSettings.ValidateAudience,
                 ValidAudience    = _jwtSettings.Audience,
 
-                ValidateLifetime      = _jwtSettings.RequireExpiration,
+                // Disable the built-in lifetime check; all exp/nbf logic is handled
+                // by the custom LifetimeValidator below so the two concerns stay independent.
+                ValidateLifetime      = false,
                 RequireExpirationTime = _jwtSettings.RequireExpiration,
 
-                // Always apply the configured clock skew for lifetime validation.
-                // When ValidateNbf is true, an explicit nbf check is performed below.
-                ClockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes),
+                ClockSkew = TimeSpan.Zero, // handled inside LifetimeValidator
 
                 RequireSignedTokens = true,
-            }, out var validatedToken);
 
-            // Explicit nbf check when ValidateNbf is enabled.
-            // The JWT library's built-in nbf enforcement is tied to ValidateLifetime; doing it
-            // explicitly here keeps the two concerns independent.
-            if (_jwtSettings.ValidateNbf && validatedToken is JwtSecurityToken jwt)
-            {
-                var clockSkew = TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes);
-                if (jwt.ValidFrom > DateTimeOffset.UtcNow.Add(clockSkew))
+                LifetimeValidator = (notBefore, expires, securityToken, parameters) =>
                 {
-                    return null; // token not yet valid
-                }
-            }
+                    var now = DateTimeOffset.UtcNow;
+
+                    // (a) exp presence check
+                    if (_jwtSettings.RequireExpiration && expires == null)
+                        return false;
+
+                    // (b) exp validity check
+                    if (expires != null && now > new DateTimeOffset(expires.Value) + clockSkew)
+                        return false;
+
+                    // (c) nbf enforcement
+                    if (_jwtSettings.ValidateNbf && notBefore != null)
+                    {
+                        if (new DateTimeOffset(notBefore.Value) - clockSkew > now)
+                            return false;
+                    }
+
+                    return true;
+                },
+            }, out _);
 
             return principal;
         }

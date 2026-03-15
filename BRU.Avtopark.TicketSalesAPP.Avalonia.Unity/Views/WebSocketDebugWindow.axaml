@@ -173,7 +173,6 @@
                                         CommandParameter="echo"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="0,0,4,4">
                                     <TextBlock Text="💬 Echo"/>
                                 </Button>
@@ -183,7 +182,6 @@
                                         CommandParameter="time"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="4,0,0,4">
                                     <TextBlock Text="🕐 Time"/>
                                 </Button>
@@ -193,7 +191,6 @@
                                         CommandParameter="stats"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="0,0,4,4">
                                     <TextBlock Text="📊 Stats"/>
                                 </Button>
@@ -203,7 +200,6 @@
                                         CommandParameter="ping"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="4,0,0,4">
                                     <TextBlock Text="🏓 Ping"/>
                                 </Button>
@@ -213,7 +209,6 @@
                                         CommandParameter="calculate"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="0,0,4,4">
                                     <TextBlock Text="🔢 Calculate"/>
                                 </Button>
@@ -223,7 +218,6 @@
                                         CommandParameter="help"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="4,0,0,4">
                                     <TextBlock Text="❓ Help"/>
                                 </Button>
@@ -233,7 +227,6 @@
                                         CommandParameter="stream:buses"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="0,0,4,0">
                                     <TextBlock Text="🚌 Stream Buses"/>
                                 </Button>
@@ -243,7 +236,6 @@
                                         CommandParameter="stream:routes"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
-                                        IsEnabled="{Binding IsInteractiveConnected}"
                                         Margin="4,0,0,0">
                                     <TextBlock Text="🛣️ Stream Routes"/>
                                 </Button>

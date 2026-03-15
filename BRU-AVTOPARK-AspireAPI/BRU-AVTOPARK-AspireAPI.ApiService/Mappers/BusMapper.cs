@@ -33,8 +33,23 @@ namespace TicketSalesApp.AdminServer.Mappers
             {
                 // --- required (non-nullable in SpacetimeDB schema) ---
                 uint  busId    = bus.BusId;
-                string model   = bus.Model   ?? string.Empty;
-                string busType = bus.BusType ?? string.Empty;
+                string? modelRaw   = bus.Model;
+                string? busTypeRaw = bus.BusType;
+
+                // Fail-fast on required string fields that must never be null/empty.
+                if (string.IsNullOrEmpty(modelRaw))
+                {
+                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'Model' is null or empty", busId);
+                    throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'Model' field.", nameof(bus));
+                }
+                if (string.IsNullOrEmpty(busTypeRaw))
+                {
+                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'BusType' is null or empty", busId);
+                    throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'BusType' field.", nameof(bus));
+                }
+
+                string model   = modelRaw;
+                string busType = busTypeRaw;
                 uint  capacity = bus.Capacity;
                 uint  year     = bus.Year;
                 bool  isActive = bus.IsActive;
@@ -101,7 +116,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             catch (Exception ex) when (ex is not ArgumentNullException && ex is not ArgumentException)
             {
                 _log.Error(ex, "BusMapper.ToDto unexpected error — bus entity type: {Type}", bus?.GetType()?.FullName ?? "null");
-                throw new ArgumentException($"Failed to map bus entity to DTO: {ex.Message}", nameof(bus), ex);
+                throw new InvalidOperationException("BusMapper.ToDto failed due to an unexpected internal error.", ex);
             }
         }
 

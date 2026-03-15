@@ -102,9 +102,12 @@ namespace TicketSalesApp.Services.Implementations
 
                 var materialised = filtered.ToList();   // single enumeration
                 var totalCount   = materialised.Count;
+                // Use 64-bit arithmetic to avoid int overflow on large page/pageSize combinations.
+                var skipLong = ((long)page - 1) * pageSize;
+                if (skipLong < 0) skipLong = 0;
+                var skip = skipLong > int.MaxValue ? int.MaxValue : (int)skipLong;
                 var items        = materialised
-                                       .Skip((page - 1) * pageSize)
-                                       .Take(pageSize)
+                                       .Skip(skip).Take(pageSize)
                                        .ToList();
 
                 _logger.LogInformation("Retrieved {ItemCount} schedules out of {TotalCount} total", items.Count, totalCount);

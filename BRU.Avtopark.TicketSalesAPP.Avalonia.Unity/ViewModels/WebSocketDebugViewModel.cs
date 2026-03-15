@@ -71,7 +71,8 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private ClientWebSocket? _interactiveWebSocket;
     private CancellationTokenSource? _interactiveCts;
     private readonly SemaphoreSlim _interactiveSendLock = new SemaphoreSlim(1, 1);
-    private readonly SemaphoreSlim _interactiveReceiveLock = new SemaphoreSlim(1, 1);
+    // Single background receive loop dispatches frames to per-request TCS objects.
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _interactivePending = new();
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -1104,25 +1105,58 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         AddLog($"✅ Connected to interactive endpoint: {buildResult.wsUri}");
         IsInteractiveConnected = true;
 
-        // Drain the welcome frame in background so it doesn't block sends
+        // Start a single background receive loop that reads all frames and dispatches
+        // them to the matching pending TCS, or logs unmatched frames.
+        var loopCts = _interactiveCts;
+        var loopWs  = _interactiveWebSocket;
         _ = Task.Run(async () =>
         {
-            var buf = new byte[4096];
+            var buf = new byte[8192];
             try
             {
-                await _interactiveReceiveLock.WaitAsync(_interactiveCts.Token);
-                try
+                while (!loopCts.Token.IsCancellationRequested && loopWs.State == WebSocketState.Open)
                 {
-                    var result = await _interactiveWebSocket.ReceiveAsync(buf, _interactiveCts.Token);
-                    var welcome = Encoding.UTF8.GetString(buf, 0, result.Count);
-                    AddLog($"📨 Welcome: {welcome}");
-                }
-                finally
-                {
-                    _interactiveReceiveLock.Release();
+                    WebSocketReceiveResult result;
+                    try
+                    {
+                        result = await loopWs.ReceiveAsync(buf, loopCts.Token);
+                    }
+                    catch (OperationCanceledException) { break; }
+                    catch { break; }
+
+                    if (result.MessageType == WebSocketMessageType.Close) break;
+
+                    var frame = Encoding.UTF8.GetString(buf, 0, result.Count);
+
+                    // Try to extract requestId and dispatch to the waiting TCS.
+                    string? rid = null;
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(frame);
+                        if (doc.RootElement.TryGetProperty("requestId", out var ridEl))
+                            rid = ridEl.GetString();
+                    }
+                    catch { /* non-JSON frame */ }
+
+                    if (rid != null && _interactivePending.TryRemove(rid, out var tcs))
+                    {
+                        tcs.TrySetResult(frame);
+                    }
+                    else
+                    {
+                        // Welcome frame or unsolicited push — just log it.
+                        AddLog($"📨 Server push: {frame}");
+                    }
                 }
             }
-            catch { /* connection may close before welcome arrives */ }
+            finally
+            {
+                // Cancel all pending requests when the loop exits.
+                foreach (var kv in _interactivePending)
+                    kv.Value.TrySetCanceled();
+                _interactivePending.Clear();
+                IsInteractiveConnected = false;
+            }
         });
 
         return _interactiveWebSocket;
@@ -1166,56 +1200,24 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
             AddLog($"📤 Sent {commandType} command (ID: {requestId})");
 
-            // Read the response – loop until a frame matching our requestId arrives (or timeout).
+            // Register a TCS for this requestId; the shared receive loop will complete it.
+            var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _interactivePending[requestId] = tcs;
+
             _ = Task.Run(async () =>
             {
-                var buf = new byte[8192];
                 try
                 {
                     using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_interactiveCts.Token);
                     timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
-
-                    while (!timeoutCts.Token.IsCancellationRequested)
-                    {
-                        await _interactiveReceiveLock.WaitAsync(timeoutCts.Token);
-                        WebSocketReceiveResult result;
-                        string response;
-                        try
-                        {
-                            result = await ws.ReceiveAsync(buf, timeoutCts.Token);
-                            if (result.MessageType == WebSocketMessageType.Close) break;
-                            response = Encoding.UTF8.GetString(buf, 0, result.Count);
-                        }
-                        finally
-                        {
-                            _interactiveReceiveLock.Release();
-                        }
-
-                        // Check if this frame belongs to our request
-                        bool isMatch = false;
-                        try
-                        {
-                            using var doc = JsonDocument.Parse(response);
-                            if (doc.RootElement.TryGetProperty("requestId", out var rid) &&
-                                rid.GetString() == requestId)
-                            {
-                                isMatch = true;
-                            }
-                        }
-                        catch { /* non-JSON frame – keep looping */ }
-
-                        if (isMatch)
-                        {
-                            AddLog($"📨 {commandType} response: {response}");
-                            break;
-                        }
-                        else
-                        {
-                            AddLog($"⏭ Skipped non-matching frame: {response[..Math.Min(80, response.Length)]}…");
-                        }
-                    }
+                    var response = await tcs.Task.WaitAsync(timeoutCts.Token);
+                    AddLog($"📨 {commandType} response: {response}");
                 }
-                catch (OperationCanceledException) { AddLog($"⚠ {commandType} response timed out"); }
+                catch (OperationCanceledException)
+                {
+                    _interactivePending.TryRemove(requestId, out _);
+                    AddLog($"⚠ {commandType} response timed out");
+                }
                 catch (Exception ex) { AddLog($"⚠ {commandType} receive error: {ex.Message}"); }
             });
         }
@@ -1588,11 +1590,13 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
-        _interactiveReceiveLock?.Dispose();
+        foreach (var kv in _interactivePending) kv.Value.TrySetCanceled();
+        _interactivePending.Clear();
 
         _sendSemaphore?.Dispose();
         _cts?.Dispose();
         _webSocket?.Dispose();
+        _lifecycleLock?.Dispose();
     }
 
     public async ValueTask DisposeAsync()
@@ -1604,11 +1608,13 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
-        _interactiveReceiveLock?.Dispose();
+        foreach (var kv in _interactivePending) kv.Value.TrySetCanceled();
+        _interactivePending.Clear();
 
         _sendSemaphore?.Dispose();
         _cts?.Dispose();
         _webSocket?.Dispose();
+        _lifecycleLock?.Dispose();
     }
 }
 

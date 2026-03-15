@@ -782,7 +782,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // Get total count before pagination
                 var totalCount = query.Count();
-                
+
+                // Validate and normalize pagination to avoid divide-by-zero and 500s.
+                if (pageSize <= 0) pageSize = 50;
+                if (page < 1) page = 1;
+                var totalPages = totalCount > 0 ? (int)Math.Ceiling(totalCount / (double)pageSize) : 1;
+                if (page > totalPages) page = totalPages;
+
                 // Apply pagination
                 var paged = query
                     .Skip((page - 1) * pageSize)
@@ -795,8 +801,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     s.StartPoint,
                     s.EndPoint,
                     s.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).UtcDateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).UtcDateTime,
                     s.Price,
                     s.AvailableSeats,
                     s.DaysOfWeek,
@@ -809,7 +815,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }).ToList();
 
                 // Add pagination metadata to response headers
-                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
                 var metadata = new
                 {
                     TotalCount = totalCount,
@@ -888,7 +893,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 _logger.LogInformation("Successfully created route schedule {ScheduleId}", schedule.ScheduleId);
-                return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, schedule);
+                return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, ProjectScheduleForList(schedule));
             }
             catch (Exception ex)
             {
@@ -1044,7 +1049,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to parse JSON payload for sanitization");
+                _logger.LogDebug(ex, "Failed to parse JSON payload for sanitization");
                 return "[invalid JSON]";
             }
         }

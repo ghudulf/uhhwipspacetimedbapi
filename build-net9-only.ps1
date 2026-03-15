@@ -6,7 +6,7 @@ Write-Information "Building .NET 9 projects only..." -InformationAction Continue
 # Use absolute paths based on script location to work regardless of caller's working directory
 $tempSln = Join-Path $PSScriptRoot "Net9Projects.sln"
 $sourceSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln"
-$stdbProject = Join-Path $PSScriptRoot "server\StdbModule.csproj"
+$stdbProject = Join-Path $PSScriptRoot "server" "StdbModule.csproj"
 
 # Copy original solution
 Copy-Item $sourceSln $tempSln -Force

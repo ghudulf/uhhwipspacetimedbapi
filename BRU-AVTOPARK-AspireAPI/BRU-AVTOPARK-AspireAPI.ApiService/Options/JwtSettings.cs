@@ -10,8 +10,9 @@ namespace TicketSalesApp.AdminServer.Configuration
     /// tokens issued by <see cref="BRU_AVTOPARK.Services.Implementations.TokenService"/>.
     ///
     /// Validation toggles (RequireExpiration, ValidateNbf, ValidateIssuer, ValidateAudience)
-    /// apply only to <see cref="TicketSalesApp.AdminServer.Controllers.BaseController.ValidateJwtLocalAsync"/>.
-    /// They do NOT affect the JWT bearer middleware unless explicitly wired in Program.cs.
+    /// apply to all local JWT validators: <see cref="TicketSalesApp.AdminServer.Controllers.BaseController"/>
+    /// (<c>ValidateJwtLocalAsync</c>) and <see cref="BRU_AVTOPARK.Services.Implementations.TokenService"/>
+    /// (<c>ValidateToken</c>). They do NOT affect the JWT bearer middleware unless explicitly wired in Program.cs.
     /// </summary>
     public class JwtSettings
     {
