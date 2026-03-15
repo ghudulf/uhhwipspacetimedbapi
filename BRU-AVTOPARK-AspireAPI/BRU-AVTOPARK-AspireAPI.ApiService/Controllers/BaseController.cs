@@ -1258,13 +1258,17 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     System.Text.Json.JsonValueKind.Array => claim.Value
                         .EnumerateArray()
-                        .Select(i => i.GetString() ?? "")
+                        .Select(i => i.ValueKind == System.Text.Json.JsonValueKind.String
+                            ? i.GetString() ?? ""
+                            : i.ToString())
                         .ToList<string>() as object,
 
                     System.Text.Json.JsonValueKind.Object when
                         claim.Value.TryGetProperty("$values", out var valuesArray) =>
                         valuesArray.EnumerateArray()
-                            .Select(i => i.GetString() ?? "")
+                            .Select(i => i.ValueKind == System.Text.Json.JsonValueKind.String
+                                ? i.GetString() ?? ""
+                                : i.ToString())
                             .ToList<string>() as object,
 
                     System.Text.Json.JsonValueKind.String =>

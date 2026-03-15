@@ -612,8 +612,8 @@ public partial class MainWindow : Window
 
     private void OpenWebSocketDebug_Click(object? sender, RoutedEventArgs e)
     {
-        // Reuse existing window if it's still open
-        if (_webSocketDebugWindow == null || !_webSocketDebugWindow.IsVisible)
+        // Reuse existing window if it's still open (including minimized state)
+        if (_webSocketDebugWindow == null)
         {
             _webSocketDebugWindow = new WebSocketDebugWindow();
             _webSocketDebugWindow.Closed += (s, args) => _webSocketDebugWindow = null;

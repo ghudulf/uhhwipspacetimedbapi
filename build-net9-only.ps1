@@ -12,11 +12,14 @@ $stdbProject = Join-Path $PSScriptRoot "server" "StdbModule.csproj"
 Copy-Item $sourceSln $tempSln -Force
 
 # Remove SpacetimeDB module
-dotnet sln $tempSln remove $stdbProject 2>$null | Out-Null
+$removeOutput = dotnet sln $tempSln remove $stdbProject 2>&1
 
 # Check if removal succeeded
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to remove server\StdbModule.csproj from solution"
+    if ($removeOutput) {
+        Write-Error "Error details: $removeOutput"
+    }
     Remove-Item $tempSln -ErrorAction SilentlyContinue
     exit $LASTEXITCODE
 }

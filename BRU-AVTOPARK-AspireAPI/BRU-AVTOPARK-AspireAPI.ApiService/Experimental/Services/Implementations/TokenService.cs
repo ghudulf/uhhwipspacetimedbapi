@@ -115,29 +115,14 @@ public class TokenService : ITokenService
             claims.Add(new Claim("primary_role", payload.PrimaryRole.ToString()));
         }
 
-        // Create token descriptor
-        var now = DateTime.UtcNow;
-        var notBefore = now.AddSeconds(-_jwtSettings.NotBeforeOffsetSeconds);
-        var expires = now.AddMinutes(_jwtSettings.ExpirationInMinutes);
+        // Create and sign token using centralized helper
+        var (token, expires, notBefore) = CreateSignedToken(tokenHandler, claims);
 
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            NotBefore = notBefore,
-            IssuedAt = now,
-            Expires = expires,
-            Issuer = _jwtSettings.Issuer,
-            Audience = _jwtSettings.Audience,
-            SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        
         _logger.LogInformation(
             "Generated JWT token from payload for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
             payload.Username, payload.Roles.Count, payload.Permissions.Count,
             expires.ToString("o"), notBefore.ToString("o"));
-        
+
         return tokenHandler.WriteToken(token);
     }
 
@@ -205,7 +190,26 @@ public class TokenService : ITokenService
             claims.Add(new Claim("primary_role", highestPriorityRole.LegacyRoleId.ToString()));
         }
 
-        // Create token descriptor - EXACT match to AuthController lines 5067-5074
+        // Create and sign token using centralized helper
+        var (token, expires, notBefore) = CreateSignedToken(tokenHandler, claims);
+
+        // ENHANCEMENT: Log token generation with claims summary
+        _logger.LogInformation(
+            "Generated JWT token for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
+            userProfile.Login, roles.Count, permissions.Count,
+            expires.ToString("o"), notBefore.ToString("o"));
+
+        return tokenHandler.WriteToken(token);
+    }
+
+    /// <summary>
+    /// Centralizes token descriptor creation and signing logic.
+    /// Ensures consistent timing (exp, nbf, iat) and credentials across all token generation paths.
+    /// </summary>
+    private (SecurityToken token, DateTime expires, DateTime notBefore) CreateSignedToken(
+        JwtSecurityTokenHandler tokenHandler,
+        List<Claim> claims)
+    {
         var now = DateTime.UtcNow;
         var notBefore = now.AddSeconds(-_jwtSettings.NotBeforeOffsetSeconds);
         var expires = now.AddMinutes(_jwtSettings.ExpirationInMinutes);
@@ -222,14 +226,7 @@ public class TokenService : ITokenService
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        
-        // ENHANCEMENT: Log token generation with claims summary
-        _logger.LogInformation(
-            "Generated JWT token for user {Username} with {RoleCount} roles and {PermissionCount} permissions (exp={Exp}, nbf={Nbf})",
-            userProfile.Login, roles.Count, permissions.Count,
-            expires.ToString("o"), notBefore.ToString("o"));
-        
-        return tokenHandler.WriteToken(token);
+        return (token, expires, notBefore);
     }
 
     /// <inheritdoc />
@@ -272,11 +269,15 @@ public class TokenService : ITokenService
                     if (_jwtSettings.RequireExpiration && expires == null)
                         return false;
 
-                    // (b) exp validity check
+                    // (b) reject tokens where nbf is after exp (malformed)
+                    if (notBefore.HasValue && expires.HasValue && notBefore.Value > expires.Value)
+                        return false;
+
+                    // (c) exp validity check
                     if (expires != null && now > new DateTimeOffset(expires.Value) + clockSkew)
                         return false;
 
-                    // (c) nbf enforcement
+                    // (d) nbf enforcement
                     if (_jwtSettings.ValidateNbf && notBefore != null)
                     {
                         if (new DateTimeOffset(notBefore.Value) - clockSkew > now)

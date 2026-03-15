@@ -18,10 +18,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         HttpMethods.Delete
     };
 
-    private static readonly HashSet<string> AllowedHttpMethods = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
-    };
+    private static readonly HashSet<string> AllowedHttpMethods = new(
+        MutationMethods.Concat(new[] { "GET", "HEAD", "OPTIONS" }),
+        StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {

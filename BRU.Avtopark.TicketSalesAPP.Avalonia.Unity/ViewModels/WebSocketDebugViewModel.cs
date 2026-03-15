@@ -1197,12 +1197,12 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
             var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message, options));
 
-            await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
-            AddLog($"📤 Sent {commandType} command (ID: {requestId})");
-
-            // Register a TCS for this requestId; the shared receive loop will complete it.
+            // Register a TCS for this requestId BEFORE sending to avoid race conditions
             var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
             _interactivePending[requestId] = tcs;
+
+            await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
+            AddLog($"📤 Sent {commandType} command (ID: {requestId})");
 
             _ = Task.Run(async () =>
             {

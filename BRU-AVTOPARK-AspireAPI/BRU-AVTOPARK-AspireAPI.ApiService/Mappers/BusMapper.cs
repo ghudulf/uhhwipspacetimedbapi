@@ -128,12 +128,7 @@ namespace TicketSalesApp.AdminServer.Mappers
                 defaults.Add(fieldName);
                 return fallback;
             }
-            try { return (T)value; }
-            catch
-            {
-                defaults.Add($"{fieldName}(cast-failed)");
-                return fallback;
-            }
+            return (T)value;
         }
     }
 }

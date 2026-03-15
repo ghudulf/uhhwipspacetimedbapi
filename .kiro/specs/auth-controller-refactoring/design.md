@@ -3550,13 +3550,29 @@ const app = new Elysia()
 
 // Helper: Convert Elysia Request to Node.js req/res for oidc-provider
 async function handleOidcRequest(request: Request): Promise<Response> {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     const url = new URL(request.url)
     const nodeReq = {
       method: request.method,
       url: url.pathname + url.search,
       headers: Object.fromEntries(request.headers.entries()),
     } as any
+
+    // Convert Web ReadableStream to Node.js Readable for POST/PUT/PATCH requests
+    if (request.body && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+      const { Readable } = await import('stream')
+      const reader = request.body.getReader()
+      nodeReq.body = new Readable({
+        async read() {
+          const { done, value } = await reader.read()
+          if (done) {
+            this.push(null)
+          } else {
+            this.push(Buffer.from(value))
+          }
+        }
+      })
+    }
 
     const chunks: Buffer[] = []
     const nodeRes = {
