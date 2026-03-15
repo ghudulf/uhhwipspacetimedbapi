@@ -163,7 +163,18 @@ namespace TicketSalesApp.AdminServer.Controllers
             var initialPage = Math.Max(1, page ?? 1);
 
             // Get first page to determine total count and pages
-            var (initialItems, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
+            (List<RouteSchedule> initialItems, int totalCount) firstResult;
+            try
+            {
+                firstResult = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch initial page", command);
+                return new { error = "Failed to retrieve schedules", command };
+            }
+
+            var (initialItems, totalCount) = firstResult;
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
 
             // Normalize page within bounds
@@ -193,7 +204,23 @@ namespace TicketSalesApp.AdminServer.Controllers
                 command, currentPage, totalPages, currentPageSize, totalCount);
 
             // Reuse initialItems if page didn't change, otherwise fetch the new page
-            var schedules = (currentPage == initialPage) ? initialItems : (await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize)).Item1;
+            List<RouteSchedule> schedules;
+            if (currentPage == initialPage)
+            {
+                schedules = initialItems;
+            }
+            else
+            {
+                try
+                {
+                    schedules = (await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize)).Item1;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch page {Page}", command, currentPage);
+                    return new { error = "Failed to retrieve schedules page", command, page = currentPage };
+                }
+            }
 
             // Project schedules and return with pagination metadata
             var result = schedules.Select(ProjectScheduleForList).ToList();
@@ -359,29 +386,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
             var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
 
-            // Project entity to match REST endpoint shape
-            object? projectedEntity = null;
-            if (schedule != null)
-            {
-                projectedEntity = new {
-                    schedule.ScheduleId,
-                    schedule.RouteId,
-                    schedule.StartPoint,
-                    schedule.EndPoint,
-                    schedule.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
-                    schedule.Price,
-                    schedule.AvailableSeats,
-                    schedule.DaysOfWeek,
-                    schedule.BusTypes,
-                    schedule.StopDurationMinutes,
-                    schedule.IsRecurring,
-                    schedule.EstimatedStopTimes,
-                    schedule.StopDistances,
-                    schedule.Notes
-                };
-            }
+            // Project entity using the shared helper to ensure consistent shape and UtcDateTime usage
+            object? projectedEntity = schedule != null ? ProjectScheduleForList(schedule) : null;
 
             var result = new { operation = "update", success, entity = projectedEntity };
 

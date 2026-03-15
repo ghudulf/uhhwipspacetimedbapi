@@ -3375,7 +3375,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         ///   auth:qr-failed      – QR login failed / expired
         ///   auth:event          – auth domain event (login, logout, token-refresh)
         ///   auth:pong           – response to auth:ping
-        ///   auth:error          – error response
+        ///   auth:error          – error response (general / message-level errors)
+        ///   auth:qr-error       – error specific to QR login polling (null status, poll exception)
         ///
         /// Authentication: token may be supplied as Authorization: Bearer header
         /// OR as ?access_token= query parameter (for WebSocket upgrade compatibility).
@@ -3806,6 +3807,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 }, sendLock, subCts.Token);
                                 await PublishAuthEventAsync("auth.qr.error", null, null,
                                     new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
+                                break;
+                            }
+                            if (!status.Success)
+                            {
+                                await WsSendAsync(webSocket, new
+                                {
+                                    type = "auth:qr-error",
+                                    deviceId,
+                                    reason = "QR status check indicated failure"
+                                }, sendLock, subCts.Token);
+                                await PublishAuthEventAsync("auth.qr.error", null, null,
+                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "status_not_success" });
                                 break;
                             }
                             pollStatus = status.Status;

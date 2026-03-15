@@ -64,6 +64,8 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private readonly ConcurrentDictionary<string, ControllerTestResult> _pendingRequests = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCompletions = new();
     private int _cleanupInProgress = 0;
+    // Serializes connect and cleanup paths to prevent _cts/_webSocket mutation races.
+    private readonly SemaphoreSlim _lifecycleLock = new SemaphoreSlim(1, 1);
 
     // Dedicated socket for /api/realtime/interactive commands (echo, time, stats, help, calculate, stream:*)
     private ClientWebSocket? _interactiveWebSocket;
@@ -260,11 +262,20 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 return;
             }
 
-            // Now allocate resources after validation passed
+            // Now allocate resources after validation passed — hold lifecycle lock to prevent
+            // a concurrent CleanupWebSocketAsync from disposing _cts/_webSocket mid-creation.
+            await _lifecycleLock.WaitAsync();
+            try
+            {
             _cts = new CancellationTokenSource();
             _webSocket = new ClientWebSocket();
             _webSocket.Options.AddSubProtocol("bru.events.v1");
             _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+            }
+            finally
+            {
+                _lifecycleLock.Release();
+            }
 
             var wsUrl = buildResult.wsUri!;
             AddLog($"Connecting to {wsUrl}...");
@@ -334,13 +345,21 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             }
 
             // Cancel and dispose cancellation token source
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
+            await _lifecycleLock.WaitAsync();
+            try
+            {
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _cts = null;
 
-            // Dispose WebSocket
-            _webSocket?.Dispose();
-            _webSocket = null;
+                // Dispose WebSocket
+                _webSocket?.Dispose();
+                _webSocket = null;
+            }
+            finally
+            {
+                _lifecycleLock.Release();
+            }
 
             // Cancel and clear pending completions
             foreach (var kvp in _pendingCompletions)
@@ -1141,7 +1160,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
             AddLog($"📤 Sent {commandType} command (ID: {requestId})");
 
-            // Read the response (single message, with timeout)
+            // Read the response – loop until a frame matching our requestId arrives (or timeout).
             _ = Task.Run(async () =>
             {
                 var buf = new byte[8192];
@@ -1149,16 +1168,45 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 {
                     using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_interactiveCts.Token);
                     timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
-                    await _interactiveReceiveLock.WaitAsync(timeoutCts.Token);
-                    try
+
+                    while (!timeoutCts.Token.IsCancellationRequested)
                     {
-                        var result = await ws.ReceiveAsync(buf, timeoutCts.Token);
-                        var response = Encoding.UTF8.GetString(buf, 0, result.Count);
-                        AddLog($"📨 {commandType} response: {response}");
-                    }
-                    finally
-                    {
-                        _interactiveReceiveLock.Release();
+                        await _interactiveReceiveLock.WaitAsync(timeoutCts.Token);
+                        WebSocketReceiveResult result;
+                        string response;
+                        try
+                        {
+                            result = await ws.ReceiveAsync(buf, timeoutCts.Token);
+                            if (result.MessageType == WebSocketMessageType.Close) break;
+                            response = Encoding.UTF8.GetString(buf, 0, result.Count);
+                        }
+                        finally
+                        {
+                            _interactiveReceiveLock.Release();
+                        }
+
+                        // Check if this frame belongs to our request
+                        bool isMatch = false;
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(response);
+                            if (doc.RootElement.TryGetProperty("requestId", out var rid) &&
+                                rid.GetString() == requestId)
+                            {
+                                isMatch = true;
+                            }
+                        }
+                        catch { /* non-JSON frame – keep looping */ }
+
+                        if (isMatch)
+                        {
+                            AddLog($"📨 {commandType} response: {response}");
+                            break;
+                        }
+                        else
+                        {
+                            AddLog($"⏭ Skipped non-matching frame: {response[..Math.Min(80, response.Length)]}…");
+                        }
                     }
                 }
                 catch (OperationCanceledException) { AddLog($"⚠ {commandType} response timed out"); }

@@ -1060,6 +1060,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
 
+            using (response)
+            {
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
@@ -1109,6 +1111,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             Log.Information("ValidateJweViaTokenInfoAsync - Successfully extracted {ClaimCount} claims from JWE tokeninfo",
                 claims.Count);
             return claims;
+            } // end using response
         }
 
         /// <summary>

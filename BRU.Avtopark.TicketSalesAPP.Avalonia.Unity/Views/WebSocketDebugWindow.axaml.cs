@@ -44,6 +44,7 @@ public partial class WebSocketDebugWindow : Window
         }
         
         // Clean up WebSocket resources with proper async shutdown
+        // Dispose only after ShutdownAsync completes to avoid a race condition.
         _ = Task.Run(async () =>
         {
             try
@@ -55,9 +56,11 @@ public partial class WebSocketDebugWindow : Window
                 // Log the exception (in production, use proper logging)
                 System.Diagnostics.Debug.WriteLine($"Error during async shutdown: {ex.Message}");
             }
+            finally
+            {
+                _viewModel.Dispose();
+            }
         });
-
-        _viewModel.Dispose();
     }
 
     /// <summary>
@@ -67,12 +70,7 @@ public partial class WebSocketDebugWindow : Window
     {
         // Disconnect main WebSocket
         await _viewModel.DisconnectWebSocketCommand.ExecuteAsync(null);
-
-        // Disconnect interactive WebSocket if connected
-        if (_viewModel.IsInteractiveConnected)
-        {
-            await _viewModel.DisconnectInteractiveCommand.ExecuteAsync(null);
-        }
+ 
     }
 
     private void EventLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

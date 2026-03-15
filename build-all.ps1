@@ -51,7 +51,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
- 
 
 # Build the temp solution
 dotnet build $tempSln --configuration Release

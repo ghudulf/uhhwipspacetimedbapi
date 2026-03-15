@@ -284,6 +284,12 @@ public static class WebSocketEventStreamWriter
             await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
             logger.LogDebug("[WebSocketEventStreamWriter] Message sent successfully ({ByteCount} bytes)", bytes.Length);
         }
+        catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
+        {
+            // Cancellation is expected during shutdown – log at Debug level and rethrow
+            logger.LogDebug("[WebSocketEventStreamWriter] Send cancelled: {ErrorType}", ex.GetType().Name);
+            throw;
+        }
         catch (Exception ex)
         {
             // Sanitize exception message to prevent log injection

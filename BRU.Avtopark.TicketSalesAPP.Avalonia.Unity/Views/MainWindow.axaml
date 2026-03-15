@@ -472,7 +472,7 @@
                             <Button Classes="UtilityButton" x:Name="WebSocketDebugButton">
 						<StackPanel>
 							<icons:MaterialIcon Kind="Web"/>
-                                    <TextBlock Classes="ButtonTitle" Text="WebSocket Debug"/>
+                                    <TextBlock Classes="ButtonTitle" Text="Отладка WebSocket"/>
                                     <TextBlock Classes="ButtonSubtitle" Text="Тестирование WebSocket"/>
 						</StackPanel>
 					</Button>

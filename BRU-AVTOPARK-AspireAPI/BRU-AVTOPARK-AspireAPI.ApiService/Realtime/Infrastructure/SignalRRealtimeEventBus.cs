@@ -328,7 +328,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         finally
         {
             _disposalLock.Release();
-            _disposalLock.Dispose();
+            // Do NOT dispose _disposalLock here – Dispose() may still need it.
         }
 
         Dispose();
@@ -348,6 +348,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             finally
             {
                 _disposalLock.Release();
+                // Dispose the semaphore exactly once, here, after all paths have finished.
                 _disposalLock.Dispose();
             }
         }

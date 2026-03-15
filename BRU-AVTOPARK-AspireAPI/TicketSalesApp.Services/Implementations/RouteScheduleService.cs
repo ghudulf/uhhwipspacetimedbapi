@@ -71,13 +71,7 @@ namespace TicketSalesApp.Services.Implementations
                     page, pageSize,
                     query.RouteId, query.IsActive, query.StartDate, query.EndDate, query.SearchText);
 
-                // Validate paging parameters first
-                if (page < 1)
-                    throw new ArgumentOutOfRangeException(nameof(page), "Page must be >= 1");
-                if (pageSize < 1)
-                    throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize must be >= 1");
-
-                // Clamp page and pageSize to valid ranges instead of throwing.
+                // Clamp page and pageSize to valid ranges (lenient – never throw).
                 // page < 1 is treated as page 1; pageSize is clamped to [1, _maxPageSize].
                 page = Math.Max(1, page);
                 pageSize = Math.Clamp(pageSize, 1, _maxPageSize);

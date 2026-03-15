@@ -6,6 +6,7 @@
             "command": "pwsh",
             "type": "process",
             "args": [
+                "-NoProfile",
                 "-File",
                 "${workspaceFolder}/build-all.ps1"
             ],
