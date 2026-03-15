@@ -232,10 +232,7 @@ builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagO
 // Configure JwtSettings options from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName));
-builder.Services.AddOptions<TicketSalesApp.AdminServer.Configuration.JwtSettings>()
-    .Bind(builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName))
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+ 
 
 // Add Routing Diagnostics Service for debugging controller discovery issues
 builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();

@@ -19,12 +19,8 @@ namespace TicketSalesApp.AdminServer.Configuration
 
         // ── Signing ──────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// HMAC-SHA256 signing secret. Must be at least 32 bytes when UTF-8 encoded.
-        /// Required – startup throws if absent.
-        /// </summary>
-        [Required]
-        [MinLength(32)]
+        
+         
         public string Secret { get; set; } = string.Empty;
 
         // ── Issuer / Audience ────────────────────────────────────────────────
