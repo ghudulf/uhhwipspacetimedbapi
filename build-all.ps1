@@ -38,11 +38,13 @@ Write-Host ""
 Write-Host "Step 2: Building .NET 9 projects..." -ForegroundColor Yellow
 
 # Create a temporary solution without the SpacetimeDB module
-$tempSln = "SpacetimeDB-BRU-AVTOPARK-avtobusov.temp.sln"
-Copy-Item "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln" $tempSln
+$tempSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.temp.sln"
+$sourceSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln"
+$stdbModule = Join-Path $PSScriptRoot "server\StdbModule.csproj"
+Copy-Item $sourceSln $tempSln
 
 # Remove SpacetimeDB module from temp solution
-dotnet sln $tempSln remove server\StdbModule.csproj 2>$null
+dotnet sln $tempSln remove $stdbModule 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "✗ Failed to remove SpacetimeDB module from temporary solution" -ForegroundColor Red
     Remove-Item $tempSln -ErrorAction SilentlyContinue

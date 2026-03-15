@@ -589,10 +589,21 @@ namespace TicketSalesApp.AdminServer.Controllers
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, timeoutCts.Token);
 
-                    using System.Net.Http.HttpResponseMessage response;
+                    string content;
+                    int statusCode;
                     try
                     {
-                        response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
+                        using var response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
+                        statusCode = (int)response.StatusCode;
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var errorContent = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                            Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}",
+                                response.StatusCode, errorContent);
+                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                            return null;
+                        }
+                        content = await response.Content.ReadAsStringAsync(linkedCts.Token);
                     }
                     catch (OperationCanceledException)
                     {
@@ -601,16 +612,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                         return null;
                     }
 
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync(linkedCts.Token);
-                        Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}",
-                            response.StatusCode, errorContent);
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-
-                    var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
                     Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
 
                     System.Text.Json.JsonElement tokenInfo;

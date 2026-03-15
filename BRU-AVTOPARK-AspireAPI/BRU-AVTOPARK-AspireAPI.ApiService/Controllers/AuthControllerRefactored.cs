@@ -3754,6 +3754,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 existing.Cancel();
             }
 
+            // Cap concurrent QR subscriptions to prevent task amplification
+            const int MaxQrSubscriptions = 50;
+            if (qrSubscriptions.Count >= MaxQrSubscriptions)
+            {
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:qr-error",
+                    requestId,
+                    deviceId,
+                    reason = "Too many concurrent QR subscriptions. Please try again later."
+                }, sendLock, connectionCts.Token);
+                return;
+            }
+
             var subCts = CancellationTokenSource.CreateLinkedTokenSource(connectionCts.Token);
             qrSubscriptions[deviceId] = subCts;
 
@@ -3777,15 +3791,47 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     while (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow < deadline)
                     {
-                        var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
+                        string? pollStatus;
+                        string? pollToken;
+                        try
+                        {
+                            var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
+                            if (status == null)
+                            {
+                                await WsSendAsync(webSocket, new
+                                {
+                                    type = "auth:qr-error",
+                                    deviceId,
+                                    reason = "QR status check returned null"
+                                }, sendLock, subCts.Token);
+                                await PublishAuthEventAsync("auth.qr.error", null, null,
+                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
+                                break;
+                            }
+                            pollStatus = status.Status;
+                            pollToken = status.Token;
+                        }
+                        catch (Exception pollEx)
+                        {
+                            _logger.LogError(pollEx, "[AuthWS:{ConnId}] QR poll exception for device {DeviceId}", connectionId, deviceId);
+                            await WsSendAsync(webSocket, new
+                            {
+                                type = "auth:qr-error",
+                                deviceId,
+                                reason = "Internal error during QR status check"
+                            }, sendLock, subCts.Token);
+                            await PublishAuthEventAsync("auth.qr.error", null, null,
+                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "poll_exception" });
+                            break;
+                        }
 
-                        if (status.Status == "completed" && !string.IsNullOrEmpty(status.Token))
+                        if (pollStatus == "completed" && !string.IsNullOrEmpty(pollToken))
                         {
                             await WsSendAsync(webSocket, new
                             {
                                 type = "auth:qr-completed",
                                 deviceId,
-                                token = status.Token
+                                token = pollToken
                             }, sendLock, subCts.Token);
 
                             await PublishAuthEventAsync("auth.qr.completed", null, null,
@@ -3794,13 +3840,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             break;
                         }
 
-                        if (status.Status == "failed" || status.Status == "cancelled" || status.Status == "expired")
+                        if (pollStatus == "failed" || pollStatus == "cancelled" || pollStatus == "expired")
                         {
                             await WsSendAsync(webSocket, new
                             {
                                 type = "auth:qr-failed",
                                 deviceId,
-                                reason = status.Status
+                                reason = pollStatus
                             }, sendLock, subCts.Token);
                             break;
                         }

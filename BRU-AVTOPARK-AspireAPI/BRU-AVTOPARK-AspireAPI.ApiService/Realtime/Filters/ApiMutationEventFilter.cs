@@ -18,6 +18,11 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         HttpMethods.Delete
     };
 
+    private static readonly HashSet<string> AllowedHttpMethods = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
+    };
+
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Auth",
@@ -55,8 +60,10 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             return;
         }
 
-        // Normalize HTTP method to prevent log forging and ensure consistent event naming
-        var sanitizedMethod = request.Method?.ToUpperInvariant().Trim() ?? "UNKNOWN";
+        // Normalize HTTP method against allowlist to prevent log forging.
+        // Only recognized methods pass through; anything else is normalized to "UNKNOWN".
+        var rawMethod = request.Method?.ToUpperInvariant().Trim() ?? string.Empty;
+        var sanitizedMethod = AllowedHttpMethods.Contains(rawMethod) ? rawMethod : "UNKNOWN";
 
         var statusCode = ResolveStatusCode(executedContext.Result, context.HttpContext.Response.StatusCode);
         if (statusCode is < 200 or >= 400)

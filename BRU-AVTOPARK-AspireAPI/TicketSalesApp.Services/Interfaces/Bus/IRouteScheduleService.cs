@@ -13,14 +13,10 @@ namespace TicketSalesApp.Services.Interfaces
         Task<List<RouteSchedule>> GetAllSchedulesAsync();
         /// <summary>
         /// Returns a single page of schedules that match <paramref name="query"/>.
-        /// <paramref name="page"/> is 1-based; both page and pageSize are validated
-        /// and capped server-side against the configured maximum (RouteSchedule:MaxPageSize).
+        /// <paramref name="page"/> is 1-based; values below 1 are treated as 1.
+        /// <paramref name="pageSize"/> is clamped to [1, MaxPageSize] server-side.
         /// Pass <see cref="ScheduleQuery.Empty"/> for an unfiltered page.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when <paramref name="page"/> or <paramref name="pageSize"/> is less than 1,
-        /// or when <paramref name="pageSize"/> exceeds the configured maximum.
-        /// </exception>
         Task<(List<RouteSchedule> items, int totalCount)> GetSchedulesPageAsync(
             int page, int pageSize, ScheduleQuery? query = null);
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);

@@ -796,28 +796,34 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 - [x] 19. Enable feature flags for Priority 3 endpoints (Medium - OAuth)
   - [x] 19.1 Enable OAuth authorize endpoint
-    - Follow gradual rollout pattern
+    - Toggle `FeatureFlags:UseRefactoredOAuthAuthorize` to `true` in `appsettings.json`
+    - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.2 Enable OAuth token endpoint
-    - Follow gradual rollout pattern
+    - Toggle `FeatureFlags:UseRefactoredOAuthToken` to `true` in `appsettings.json`
+    - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.3 Enable OAuth userinfo endpoint
-    - Follow gradual rollout pattern
+    - Toggle `FeatureFlags:UseRefactoredOAuthUserinfo` to `true` in `appsettings.json`
+    - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.4 Enable OAuth client management endpoints
-    - Follow gradual rollout pattern for each endpoint
+    - Toggle the relevant `FeatureFlags:UseRefactoredOAuthClient*` flags to `true` in `appsettings.json`
+    - Smoke test each endpoint, monitor logs for errors, roll back individual flags if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 
 - [x] 20. Enable feature flags for Priority 4 endpoints (Low - Already Clean)
   - [x] 20.1 Enable QR authentication endpoints
-    - Follow gradual rollout pattern for each endpoint
+    - Toggle `FeatureFlags:UseRefactoredQrAuth` to `true` in `appsettings.json`
+    - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 20.2 Enable Magic Link endpoints
-    - Follow gradual rollout pattern for each endpoint
+    - Toggle `FeatureFlags:UseRefactoredMagicLink` to `true` in `appsettings.json`
+    - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   

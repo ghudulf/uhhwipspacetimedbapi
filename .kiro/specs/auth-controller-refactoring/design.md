@@ -2884,9 +2884,18 @@ const app = new Elysia()
   // Proxy all other API requests to C# backend
   .all('/api/*', async ({ request }) => {
     const url = new URL(request.url)
+    // Build an explicit header allowlist to avoid forwarding hop-by-hop or sensitive headers.
+    const allowedHeaders: Record<string, string> = {}
+    const hopByHop = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
+      'te', 'trailers', 'transfer-encoding', 'upgrade'])
+    for (const [key, value] of request.headers.entries()) {
+      if (!hopByHop.has(key.toLowerCase())) {
+        allowedHeaders[key] = value
+      }
+    }
     const response = await fetch(`https://localhost:5001${url.pathname}${url.search}`, {
       method: request.method,
-      headers: request.headers as HeadersInit,
+      headers: allowedHeaders,
       body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
     })
 
@@ -4318,7 +4327,7 @@ const oidc = new Provider('http://localhost:3000', {
 // All OIDC traffic flows through Elysia routes, and Fetch↔Node conversion
 // happens inside the OIDC handlers via handleOidcRequest helper.
 // This approach preserves Elysia middleware and features.
-const app = new Elysia()
+const appA = new Elysia()
   .all('/oidc/*', async ({ request }) => {
     // Convert Fetch Request to Node.js req/res inside Elysia handler
     return await handleOidcRequest(request, oidc)
@@ -4361,7 +4370,7 @@ async function handleOidcRequest(request: Request, oidc: Provider) {
 // Pattern B: Server-level interception (Alternative - bypasses Elysia middleware)
 // This pattern intercepts requests BEFORE Elysia, so Elysia middleware does NOT apply.
 // Use only if Pattern A is insufficient.
-const app = new Elysia()
+const appB = new Elysia()
   .get('/', () => 'Elysia + oidc-provider')
   .listen(3000, (server) => {
     // Access underlying Node.js server and mount oidc-provider
@@ -4444,7 +4453,7 @@ options.Events = new JwtBearerEvents
 4. **Limited metadata**: Cannot send additional auth context
 
 **OIDC-over-WebSocket Benefits**:
-1. **Secure**: Tokens in headers, not query parameters
+1. **Secure (desktop/native clients)**: Header-based Authorization during WebSocket handshake — tokens are not exposed in URLs, logs, or browser history. Note: browser clients cannot set arbitrary headers on WebSocket handshakes; see "Client-Specific WebSocket Authentication Strategies" below for browser alternatives.
 2. **Token refresh**: Automatic token refresh over WebSocket
 3. **Revocation**: Server can close connection on token revocation
 4. **Better UX**: No reconnection needed for token refresh

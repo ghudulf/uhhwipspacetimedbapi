@@ -706,17 +706,37 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 using var doc = JsonDocument.Parse(responseJson);
                 var success = false;
 
-                if (doc.RootElement.TryGetProperty("operation", out var opElement) &&
-                    opElement.GetString() == "read_all")
+                // First check the root `ok` boolean if present
+                if (doc.RootElement.TryGetProperty("ok", out var okElement))
                 {
+                    if (okElement.ValueKind == JsonValueKind.False)
+                    {
+                        var errorMsg = doc.RootElement.TryGetProperty("error", out var errEl)
+                            ? errEl.GetString() ?? "unknown error"
+                            : "server returned ok=false";
+                        result.Status = TestStatus.Failed;
+                        result.Message = $"read_all command failed: {errorMsg}";
+                        AddLog($"✗ [{result.ControllerName}] read_all failed (ok=false): {errorMsg}");
+                        return;
+                    }
+                    // ok=true — confirm with operation/property check below
                     success = true;
                 }
-                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+
+                if (!success)
                 {
-                    // Check for expected data property based on controller name
-                    var expectedProp = GetExpectedReadAllProperty(result.ControllerName);
-                    var hasData = doc.RootElement.EnumerateObject().Any(p => p.Name == expectedProp);
-                    success = hasData;
+                    if (doc.RootElement.TryGetProperty("operation", out var opElement) &&
+                        opElement.GetString() == "read_all")
+                    {
+                        success = true;
+                    }
+                    else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    {
+                        // Check for expected data property based on controller name
+                        var expectedProp = GetExpectedReadAllProperty(result.ControllerName);
+                        var hasData = doc.RootElement.EnumerateObject().Any(p => p.Name == expectedProp);
+                        success = hasData;
+                    }
                 }
 
                 if (success)
@@ -1217,7 +1237,10 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             if (!string.IsNullOrWhiteSpace(AccessToken))
             {
                 var normalizedToken = NormalizeAccessToken(AccessToken);
-                testSocket.Options.SetRequestHeader("Authorization", $"Bearer {normalizedToken}");
+                if (!string.IsNullOrWhiteSpace(normalizedToken))
+                {
+                    testSocket.Options.SetRequestHeader("Authorization", $"Bearer {normalizedToken}");
+                }
             }
 
             await testSocket.ConnectAsync(wsUri, cts.Token);

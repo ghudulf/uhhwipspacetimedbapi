@@ -48,6 +48,12 @@ namespace TicketSalesApp.Services.Interfaces
         Task<Sale?> GetSaleByIdAsync(uint saleId);
         Task<List<Sale>> GetSalesByTicketIdAsync(uint ticketId);
         Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate);
+        /// <summary>
+        /// Returns a paged slice of sales ordered by SaleDate ascending.
+        /// <paramref name="page"/> is 1-based; values below 1 are treated as 1.
+        /// <paramref name="pageSize"/> is clamped to [1, 1000].
+        /// </summary>
+        Task<(List<Sale> items, int totalCount)> GetPagedSalesAsync(int page, int pageSize);
 
         
         // Create/Update/Delete operations

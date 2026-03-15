@@ -77,9 +77,10 @@ namespace TicketSalesApp.Services.Implementations
                 if (pageSize < 1)
                     throw new ArgumentOutOfRangeException(nameof(pageSize), "PageSize must be >= 1");
 
-                // Get configurable max page size (default 5000)
-                if (pageSize > _maxPageSize)
-                    throw new ArgumentOutOfRangeException(nameof(pageSize), $"PageSize cannot exceed {_maxPageSize}");
+                // Clamp page and pageSize to valid ranges instead of throwing.
+                // page < 1 is treated as page 1; pageSize is clamped to [1, _maxPageSize].
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, _maxPageSize);
 
                 var connection = _spacetimeDBService.GetConnection();
 
@@ -275,11 +276,13 @@ namespace TicketSalesApp.Services.Implementations
                 // TODO: Remove this workaround when SpacetimeDB supports transient fields or add a dedicated CorrelationId column
                 
                 // Check for existing correlation marker and strip it to avoid collisions
+                // Use LastIndexOf to avoid accidentally removing legitimate user text that
+                // happens to contain the marker pattern earlier in the string.
                 var cleanedNotes = notes;
                 if (!string.IsNullOrEmpty(notes) && notes.Contains("[CORRELATION:"))
                 {
-                    // Strip existing correlation marker
-                    var startIdx = notes.IndexOf("[CORRELATION:");
+                    // Strip the LAST correlation marker only
+                    var startIdx = notes.LastIndexOf("[CORRELATION:");
                     var endIdx = notes.IndexOf(']', startIdx);
                     if (endIdx > startIdx)
                     {
@@ -728,7 +731,8 @@ namespace TicketSalesApp.Services.Implementations
                 foreach (var schedule in allSchedules)
                 {
                     // Use IsRecurring to distinguish recurring vs one-off schedules
-                    bool matchesDay = !schedule.IsRecurring || schedule.DaysOfWeek == null || schedule.DaysOfWeek.Contains(dayOfWeek);
+                    // A recurring schedule with null DaysOfWeek is malformed — do NOT match every day.
+                    bool matchesDay = !schedule.IsRecurring || (schedule.IsRecurring && schedule.DaysOfWeek != null && schedule.DaysOfWeek.Contains(dayOfWeek));
 
                     bool matchesTimeWindow;
                     if (!schedule.IsRecurring)

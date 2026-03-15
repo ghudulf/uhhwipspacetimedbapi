@@ -257,11 +257,11 @@ public class TokenService : ITokenService
                 RequireExpirationTime = _jwtSettings.RequireExpiration,
 
                 // Honor the ValidateNbf toggle: when false, skip not-before enforcement
-                // by setting a large negative clock skew so nbf is never in the future.
+                // by setting zero clock skew so nbf is never artificially extended.
                 // When true, use the configured clock skew for normal nbf validation.
                 ClockSkew = _jwtSettings.ValidateNbf
                     ? TimeSpan.FromMinutes(_jwtSettings.ClockSkewMinutes)
-                    : TimeSpan.MaxValue,
+                    : TimeSpan.Zero,
 
                 RequireSignedTokens = true,
             }, out _);

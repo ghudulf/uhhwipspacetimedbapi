@@ -44,6 +44,25 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        public async Task<(List<Sale> items, int totalCount)> GetPagedSalesAsync(int page, int pageSize)
+        {
+            try
+            {
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
+                _logger.LogInformation("Retrieving sales page {Page} (size {PageSize})", page, pageSize);
+                var conn = _spacetimeService.GetConnection();
+                var all = conn.Db.Sale.Iter().OrderBy(s => s.SaleDate).ToList();
+                var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+                return (items, all.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paged sales");
+                throw;
+            }
+        }
+
         public async Task<Sale?> GetSaleByIdAsync(uint saleId)
         {
             try
@@ -89,9 +108,9 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
                 var conn = _spacetimeService.GetConnection();
 
-                // Use UTC-explicit conversions to avoid ambiguous local time interpretation
-                ulong startTimestamp = (ulong)new DateTimeOffset(DateTime.SpecifyKind(startDate, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
-                ulong endTimestamp = (ulong)new DateTimeOffset(DateTime.SpecifyKind(endDate.AddDays(1).AddTicks(-1), DateTimeKind.Utc)).ToUnixTimeMilliseconds();
+                // Convert to UTC before creating DateTimeOffset to avoid relabeling local time as UTC.
+                ulong startTimestamp = (ulong)new DateTimeOffset(startDate.ToUniversalTime()).ToUnixTimeMilliseconds();
+                ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1).ToUniversalTime()).ToUnixTimeMilliseconds();
                 
                 return conn.Db.Sale.Iter()
                     .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
