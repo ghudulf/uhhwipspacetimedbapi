@@ -42,25 +42,18 @@ public partial class WebSocketDebugWindow : Window
         {
             collection.CollectionChanged -= EventLog_CollectionChanged;
         }
-        
+
         // Clean up WebSocket resources with proper async shutdown
         // Dispose only after ShutdownAsync completes to avoid a race condition.
-        _ = Task.Run(async () =>
+        ShutdownAsync().ContinueWith(t =>
         {
-            try
-            {
-                await ShutdownAsync();
-            }
-            catch (Exception ex)
+            if (t.IsFaulted && t.Exception != null)
             {
                 // Log the exception (in production, use proper logging)
-                System.Diagnostics.Debug.WriteLine($"Error during async shutdown: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error during async shutdown: {t.Exception.Message}");
             }
-            finally
-            {
-                _viewModel.Dispose();
-            }
-        });
+            _viewModel.Dispose();
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>
@@ -70,7 +63,7 @@ public partial class WebSocketDebugWindow : Window
     {
         // Disconnect main WebSocket
         await _viewModel.DisconnectWebSocketCommand.ExecuteAsync(null);
- 
+
     }
 
     private void EventLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

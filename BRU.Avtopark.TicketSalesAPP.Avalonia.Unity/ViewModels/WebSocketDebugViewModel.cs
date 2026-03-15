@@ -92,9 +92,15 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     {
         _apiClient = ApiClientService.Instance;
         _tokenStorage = new TokenStorageService();
-        
+
         InitializeTestResults();
-        _ = LoadAuthenticationData();
+        LoadAuthenticationData().ContinueWith(t =>
+        {
+            if (t.IsFaulted && t.Exception != null)
+            {
+                Log.Error(t.Exception, "Failed to load authentication data in WebSocketDebugViewModel");
+            }
+        }, TaskScheduler.Default);
     }
 
     private async Task LoadAuthenticationData()

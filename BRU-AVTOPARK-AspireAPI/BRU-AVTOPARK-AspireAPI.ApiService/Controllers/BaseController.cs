@@ -1062,55 +1062,55 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             using (response)
             {
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
-                Log.Warning("ValidateJweViaTokenInfoAsync - tokeninfo returned {StatusCode}: {Body}",
-                    (int)response.StatusCode, errorBody);
-                return null;
-            }
-
-            var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
-
-            System.Text.Json.JsonElement tokenInfo;
-            try
-            {
-                tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
-            }
-            catch (System.Text.Json.JsonException ex)
-            {
-                Log.Warning(ex, "ValidateJweViaTokenInfoAsync - Failed to parse tokeninfo JSON response");
-                return null;
-            }
-
-            // The tokeninfo endpoint wraps claims under a "claims" property.
-            if (!tokenInfo.TryGetProperty("claims", out var claimsElement))
-            {
-                Log.Warning("ValidateJweViaTokenInfoAsync - Response has no 'claims' property; keys present: {Keys}",
-                    string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
-                return null;
-            }
-
-            var claims = ExtractClaimsFromJsonElement(claimsElement);
-
-            // Post-validation: ensure the token is not expired according to the returned claims.
-            // The tokeninfo endpoint should already reject expired tokens, but we double-check
-            // here as a defence-in-depth measure.
-            if (claims.TryGetValue("exp", out var expObj) &&
-                long.TryParse(expObj?.ToString(), out var expUnix))
-            {
-                var expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix);
-                if (expiry < DateTimeOffset.UtcNow)
+                if (!response.IsSuccessStatusCode)
                 {
-                    Log.Warning("ValidateJweViaTokenInfoAsync - Token exp claim indicates expiry at {Expiry} (now {Now})",
-                        expiry, DateTimeOffset.UtcNow);
+                    var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                    Log.Warning("ValidateJweViaTokenInfoAsync - tokeninfo returned {StatusCode}: {Body}",
+                        (int)response.StatusCode, errorBody);
                     return null;
                 }
-            }
 
-            Log.Information("ValidateJweViaTokenInfoAsync - Successfully extracted {ClaimCount} claims from JWE tokeninfo",
-                claims.Count);
-            return claims;
+                var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
+
+                System.Text.Json.JsonElement tokenInfo;
+                try
+                {
+                    tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    Log.Warning(ex, "ValidateJweViaTokenInfoAsync - Failed to parse tokeninfo JSON response");
+                    return null;
+                }
+
+                // The tokeninfo endpoint wraps claims under a "claims" property.
+                if (!tokenInfo.TryGetProperty("claims", out var claimsElement))
+                {
+                    Log.Warning("ValidateJweViaTokenInfoAsync - Response has no 'claims' property; keys present: {Keys}",
+                        string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
+                    return null;
+                }
+
+                var claims = ExtractClaimsFromJsonElement(claimsElement);
+
+                // Post-validation: ensure the token is not expired according to the returned claims.
+                // The tokeninfo endpoint should already reject expired tokens, but we double-check
+                // here as a defence-in-depth measure.
+                if (claims.TryGetValue("exp", out var expObj) &&
+                    long.TryParse(expObj?.ToString(), out var expUnix))
+                {
+                    var expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix);
+                    if (expiry < DateTimeOffset.UtcNow)
+                    {
+                        Log.Warning("ValidateJweViaTokenInfoAsync - Token exp claim indicates expiry at {Expiry} (now {Now})",
+                            expiry, DateTimeOffset.UtcNow);
+                        return null;
+                    }
+                }
+
+                Log.Information("ValidateJweViaTokenInfoAsync - Successfully extracted {ClaimCount} claims from JWE tokeninfo",
+                    claims.Count);
+                return claims;
             } // end using response
         }
 

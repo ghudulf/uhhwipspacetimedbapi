@@ -279,7 +279,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     totalCount = totalCount,
                     totalPages = totalPages,
                     hasNextPage = currentPage < totalPages,
-                    hasPrevPage = currentPage > 1
+                    hasPreviousPage = currentPage > 1
                 }
             };
         }

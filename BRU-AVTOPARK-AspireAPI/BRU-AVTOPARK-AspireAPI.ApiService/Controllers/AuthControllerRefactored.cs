@@ -3373,6 +3373,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         ///   auth:refreshed      – result of auth:refresh
         ///   auth:qr-completed   – QR login succeeded (pushed when status changes)
         ///   auth:qr-failed      – QR login failed / expired
+        ///   auth:qr-subscribed  – QR polling subscription acknowledged
         ///   auth:event          – auth domain event (login, logout, token-refresh)
         ///   auth:pong           – response to auth:ping
         ///   auth:error          – error response (general / message-level errors)

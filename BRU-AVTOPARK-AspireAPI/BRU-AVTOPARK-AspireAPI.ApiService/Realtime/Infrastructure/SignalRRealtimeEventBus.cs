@@ -252,19 +252,19 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <summary>
     /// Disposes all active subscriptions and completes their channels.
     /// </summary>
-    private async Task DisposeAllSubscriptionsCoreAsync()
+    private void DisposeAllSubscriptionsCoreAsync()
     {
         var subscriberCount = _subscribers.Count;
         if (subscriberCount > 0)
         {
             _logger.LogInformation("[EventBus] Disposing {Count} active subscriptions", subscriberCount);
-            
+
             foreach (var (subscriberId, subscriber) in _subscribers)
             {
                 subscriber.Channel.Writer.TryComplete();
                 _logger.LogDebug("[EventBus] Completed channel for subscription: {SubscriberId}", subscriberId);
             }
-            
+
             _subscribers.Clear();
             _logger.LogInformation("[EventBus] All subscriptions disposed");
         }
@@ -278,7 +278,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         await _disposalLock.WaitAsync();
         try
         {
-            await DisposeAllSubscriptionsCoreAsync();
+            DisposeAllSubscriptionsCoreAsync();
         }
         finally
         {
@@ -323,15 +323,16 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             DisposeCoreLogic();
 
             // Dispose all subscriptions (call core method directly since we already hold the lock)
-            await DisposeAllSubscriptionsCoreAsync();
+            DisposeAllSubscriptionsCoreAsync();
         }
         finally
         {
             _disposalLock.Release();
-            // Do NOT dispose _disposalLock here – Dispose() may still need it.
+            _disposalLock.Dispose();
         }
 
-        Dispose();
+        base.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public override void Dispose()
@@ -343,12 +344,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             try
             {
                 DisposeCoreLogic();
-                DisposeAllSubscriptionsCoreAsync().GetAwaiter().GetResult();
+                DisposeAllSubscriptionsCoreAsync();
             }
             finally
             {
                 _disposalLock.Release();
-                // Dispose the semaphore exactly once, here, after all paths have finished.
                 _disposalLock.Dispose();
             }
         }

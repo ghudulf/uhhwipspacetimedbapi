@@ -5,14 +5,16 @@
     - All other projects (net9.0)
   -->
   
-  <Target Name="ValidateSpacetimeDBModuleBuild" 
-          BeforeTargets="Build" 
+  <Target Name="ValidateSpacetimeDBModuleBuild"
+          BeforeTargets="Build"
           Condition="'$(IsSpacetimeDBModule)' == 'true'">
     <Message Text="Building SpacetimeDB module with .NET 8.0 and WASI-WASM runtime" Importance="high" />
     <Error Text="SpacetimeDB module requires TargetFramework=net8.0 but got '$(TargetFramework)'"
            Condition="'$(TargetFramework)' != 'net8.0'" />
     <Error Text="SpacetimeDB module requires RuntimeIdentifier=wasi-wasm but got '$(RuntimeIdentifier)'"
            Condition="'$(RuntimeIdentifier)' != 'wasi-wasm'" />
+    <Error Text="SpacetimeDB module requires .NET SDK major version 8, but got '$(NETCoreSdkVersion)'"
+           Condition="!$(NETCoreSdkVersion.StartsWith('8.'))" />
   </Target>
   
   <Target Name="ValidateStandardProjectBuild" 

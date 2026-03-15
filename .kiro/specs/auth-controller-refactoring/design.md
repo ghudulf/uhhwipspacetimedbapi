@@ -2577,7 +2577,7 @@ Elysia is a fast, ergonomic TypeScript web framework built on Bun runtime with f
 
 **Note on OAuth packages**:
 - `elysia-oauth2` (v2+) is for **consuming** third-party OAuth2 providers (e.g., login with Google/GitHub), not for implementing your own OAuth server
-- For implementing a full OIDC provider, use `oidc-provider` (v9.x) mounted on http.Server before Elysia's routing for `/oidc/*` endpoints
+- For implementing a full OIDC provider, the **preferred integration** is to forward OIDC traffic through Elysia's `app.fetch` and handle it via a Fetch↔Node conversion shim with `oidc-provider` (v9.x). This keeps all traffic in the same HTTP pipeline. As an alternate fallback, you can mount `oidc-provider` directly on http.Server before Elysia's routing for `/oidc/*` endpoints
 
 #### Architecture Option 1: Elysia as Authentication Gateway
 

@@ -18,7 +18,7 @@ try {
         # Try to build with .NET 8
         $previousRollForward = $env:DOTNET_ROLL_FORWARD
         $env:DOTNET_ROLL_FORWARD = "Major"
-        dotnet build StdbModule.csproj
+        dotnet build StdbModule.csproj -c Release
         $stdbExitCode = $LASTEXITCODE
         $env:DOTNET_ROLL_FORWARD = $previousRollForward
         if ($stdbExitCode -ne 0) {

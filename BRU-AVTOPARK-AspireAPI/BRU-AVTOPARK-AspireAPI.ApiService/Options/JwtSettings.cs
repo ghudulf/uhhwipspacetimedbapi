@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TicketSalesApp.AdminServer.Configuration
 {
     /// <summary>
@@ -7,9 +9,9 @@ namespace TicketSalesApp.AdminServer.Configuration
     /// Generation settings control what claims and lifetimes are embedded in
     /// tokens issued by <see cref="BRU_AVTOPARK.Services.Implementations.TokenService"/>.
     ///
-    /// Validation settings control which checks are enforced by
-    /// <see cref="TicketSalesApp.AdminServer.Controllers.BaseController.ValidateJwtLocalAsync"/>
-    /// and the ASP.NET Core JWT bearer middleware registered in Program.cs.
+    /// Validation toggles (RequireExpiration, ValidateNbf, ValidateIssuer, ValidateAudience)
+    /// apply only to <see cref="TicketSalesApp.AdminServer.Controllers.BaseController.ValidateJwtLocalAsync"/>.
+    /// They do NOT affect the JWT bearer middleware unless explicitly wired in Program.cs.
     /// </summary>
     public class JwtSettings
     {
@@ -21,6 +23,8 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// HMAC-SHA256 signing secret. Must be at least 32 bytes when UTF-8 encoded.
         /// Required – startup throws if absent.
         /// </summary>
+        [Required]
+        [MinLength(32)]
         public string Secret { get; set; } = string.Empty;
 
         // ── Issuer / Audience ────────────────────────────────────────────────
