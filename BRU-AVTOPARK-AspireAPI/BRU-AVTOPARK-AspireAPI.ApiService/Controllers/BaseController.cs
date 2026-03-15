@@ -587,23 +587,24 @@ namespace TicketSalesApp.AdminServer.Controllers
                     Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
                     
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, timeoutCts.Token);
+                    // Use only the standalone timeout; do not link HttpContext.RequestAborted so that
+                    // a client disconnect cannot abort the auth check mid-flight.
 
                     string content;
                     int statusCode;
                     try
                     {
-                        using var response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
+                        using var response = await httpClient.GetAsync(tokeninfoUrl, timeoutCts.Token);
                         statusCode = (int)response.StatusCode;
                         if (!response.IsSuccessStatusCode)
                         {
-                            var errorContent = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                            var errorContent = await response.Content.ReadAsStringAsync(timeoutCts.Token);
                             Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}",
                                 response.StatusCode, errorContent);
                             HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                             return null;
                         }
-                        content = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                        content = await response.Content.ReadAsStringAsync(timeoutCts.Token);
                     }
                     catch (OperationCanceledException)
                     {
