@@ -150,21 +150,6 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
     }
 
     /// <summary>
-    /// Truncates a string to the specified maximum length if it exceeds that length.
-    /// </summary>
-    /// <param name="value">The string to truncate.</param>
-    /// <param name="maxLength">The maximum allowed length.</param>
-    /// <returns>The original string if it's within the limit, otherwise a truncated version.</returns>
-    private static string TruncateIfNeeded(string value, int maxLength)
-    {
-        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
-        {
-            return value;
-        }
-        return value.Substring(0, maxLength);
-    }
-
-    /// <summary>
     /// Determine the HTTP status code represented by an <see cref="IActionResult"/>, using the provided fallback when the result does not expose a status code.
     /// </summary>
     /// <param name="result">The action result to inspect; may be null.</param>

@@ -153,7 +153,7 @@ public static class WebSocketEventStreamWriter
             catch (Exception ex)
             {
                 // Log unexpected exceptions from event pump (e.g., from WithCancellation or SendJsonAsync)
-                logger.LogError(ex, "Event pump task faulted with unexpected exception: {Message}", ex.Message);
+                logger.LogError(ex, "Event pump task faulted with unexpected exception");
             }
 
             if (webSocket.State == WebSocketState.Open)

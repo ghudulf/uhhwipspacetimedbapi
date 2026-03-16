@@ -1,5 +1,3 @@
-using System;
-
 namespace TicketSalesApp.Services.Models
 {
     /// <summary>

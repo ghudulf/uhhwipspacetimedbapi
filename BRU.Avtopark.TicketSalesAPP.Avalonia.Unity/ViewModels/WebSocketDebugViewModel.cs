@@ -67,6 +67,9 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     // Serializes connect and cleanup paths to prevent _cts/_webSocket mutation races.
     private readonly SemaphoreSlim _lifecycleLock = new SemaphoreSlim(1, 1);
 
+    // Shared handshake timeout used for all ConnectAsync calls.
+    private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(1000);
+
     // Dedicated socket for /api/realtime/interactive commands (echo, time, stats, help, calculate, stream:*)
     private ClientWebSocket? _interactiveWebSocket;
     private CancellationTokenSource? _interactiveCts;
@@ -286,7 +289,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             AddLog($"Connecting to {wsUrl}...");
 
             // Add timeout to prevent indefinite hangs
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1000));
+            using var timeoutCts = new CancellationTokenSource(HandshakeTimeout);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
             await _webSocket.ConnectAsync(wsUrl, linkedCts.Token);
 
@@ -1120,7 +1123,9 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket.Options.AddSubProtocol("bru.interactive.v1");
         _interactiveWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
 
-        await _interactiveWebSocket.ConnectAsync(buildResult.wsUri!, _interactiveCts.Token);
+        using var interactiveTimeoutCts = new CancellationTokenSource(HandshakeTimeout);
+        using var interactiveLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(_interactiveCts.Token, interactiveTimeoutCts.Token);
+        await _interactiveWebSocket.ConnectAsync(buildResult.wsUri!, interactiveLinkedCts.Token);
         AddLog($"✅ Connected to interactive endpoint: {buildResult.wsUri}");
         IsInteractiveConnected = true;
 

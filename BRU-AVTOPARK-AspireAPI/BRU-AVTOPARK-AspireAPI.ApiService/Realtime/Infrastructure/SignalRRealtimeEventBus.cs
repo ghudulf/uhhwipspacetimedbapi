@@ -268,7 +268,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <summary>
     /// Disposes all active subscriptions and completes their channels.
     /// </summary>
-    private void DisposeAllSubscriptionsCoreAsync()
+    private void DisposeAllSubscriptionsCore()
     {
         var subscriberCount = _subscribers.Count;
         if (subscriberCount > 0)
@@ -294,7 +294,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         await _disposalLock.WaitAsync();
         try
         {
-            DisposeAllSubscriptionsCoreAsync();
+            DisposeAllSubscriptionsCore();
         }
         finally
         {
@@ -339,7 +339,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             DisposeCoreLogic();
 
             // Dispose all subscriptions (call core method directly since we already hold the lock)
-            DisposeAllSubscriptionsCoreAsync();
+            DisposeAllSubscriptionsCore();
         }
         finally
         {
@@ -360,7 +360,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             try
             {
                 DisposeCoreLogic();
-                DisposeAllSubscriptionsCoreAsync();
+                DisposeAllSubscriptionsCore();
             }
             finally
             {
