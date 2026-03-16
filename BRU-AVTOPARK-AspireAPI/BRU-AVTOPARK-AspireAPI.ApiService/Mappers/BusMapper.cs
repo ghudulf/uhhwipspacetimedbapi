@@ -110,8 +110,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             {
                 _log.Error(ex, "BusMapper.ToDto RuntimeBinderException — bus entity type: {Type}, message: {Message}",
                     bus?.GetType()?.FullName ?? "null", ex.Message);
-                throw new ArgumentException(
-                    $"Failed to map bus entity to DTO. Missing or invalid property: {ex.Message}", nameof(bus), ex);
+                throw new ArgumentException("Failed to map bus entity to DTO.", nameof(bus), ex);
             }
             catch (Exception ex) when (ex is not ArgumentNullException && ex is not ArgumentException)
             {

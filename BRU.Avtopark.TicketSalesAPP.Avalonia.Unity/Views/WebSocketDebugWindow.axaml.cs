@@ -44,16 +44,8 @@ public partial class WebSocketDebugWindow : Window
         }
 
         // Clean up WebSocket resources with proper async shutdown
-        // Dispose only after ShutdownAsync completes to avoid a race condition.
-        ShutdownAsync().ContinueWith(t =>
-        {
-            if (t.IsFaulted && t.Exception != null)
-            {
-                // Log the exception (in production, use proper logging)
-                System.Diagnostics.Debug.WriteLine($"Error during async shutdown: {t.Exception.Message}");
-            }
-            _viewModel.Dispose();
-        }, TaskScheduler.FromCurrentSynchronizationContext());
+        // Use a single async helper to ensure all cleanup runs on the UI thread with exception handling
+        _ = ShutdownAndDisposeAsync();
     }
 
     /// <summary>
@@ -64,6 +56,23 @@ public partial class WebSocketDebugWindow : Window
         // Disconnect main WebSocket
         await _viewModel.DisconnectWebSocketCommand.ExecuteAsync(null);
 
+    }
+
+    /// <summary>
+    /// Async helper that performs shutdown and disposal with full exception handling on the UI thread.
+    /// </summary>
+    private async Task ShutdownAndDisposeAsync()
+    {
+        try
+        {
+            await ShutdownAsync();
+            await _viewModel.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log the exception (in production, use proper logging)
+            System.Diagnostics.Debug.WriteLine($"Error during shutdown and dispose: {ex.Message}");
+        }
     }
 
     private void EventLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

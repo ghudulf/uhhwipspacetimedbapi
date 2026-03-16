@@ -3485,9 +3485,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     sub.Cancel();
                 }
                 // Await all pollers so they finish using sendLock before we dispose it.
+                // Capture a snapshot of all current tasks to await every tracked poller.
                 if (qrPollerTasks.Count > 0)
                 {
-                    try { await Task.WhenAll(qrPollerTasks.Values); }
+                    var allPollerTasks = qrPollerTasks.Values.ToArray();
+                    try { await Task.WhenAll(allPollerTasks); }
                     catch { /* individual poller exceptions are already logged */ }
                 }
                 sendLock.Dispose();
@@ -3792,6 +3794,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }, sendLock, connectionCts.Token);
 
             // Start background polling task – does not block the message loop
+            // Use unique key (deviceId + Guid) to track multiple concurrent pollers for the same device
+            var pollerKey = $"{deviceId}_{Guid.NewGuid():N}";
             var pollerTask = Task.Run(async () =>
             {
                 const int pollIntervalMs = 1500;
@@ -3923,9 +3927,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     if (qrSubscriptions.TryGetValue(deviceId, out var current) && ReferenceEquals(current, subCts))
                         qrSubscriptions.TryRemove(deviceId, out _);
                     subCts?.Dispose();
+                    // Remove this poller from the tracked tasks
+                    qrPollerTasks.TryRemove(pollerKey, out _);
                 }
             });
-            qrPollerTasks[deviceId] = pollerTask;
+            qrPollerTasks[pollerKey] = pollerTask;
         }
 
         /// <summary>

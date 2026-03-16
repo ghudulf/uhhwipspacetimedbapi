@@ -68,7 +68,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             catch (Exception ex)
             {
                 _log.Error(ex, "UserMapper.MapToSafeUserDto unexpected error for UserId={UserId}", user.UserId);
-                throw new ArgumentException("Failed to map UserProfile to SafeUserDto.", nameof(user), ex);
+                throw new InvalidOperationException("Failed to map UserProfile to SafeUserDto.", ex);
             }
         }
 

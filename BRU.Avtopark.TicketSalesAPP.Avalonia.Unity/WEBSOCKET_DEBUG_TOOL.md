@@ -87,13 +87,27 @@ Click "📡 Send Broadcast Test" to trigger a system broadcast event.
 
 ## WebSocket Protocol
 
-The tool uses the `bru.events.v1` subprotocol and communicates with:
+The tool supports two WebSocket channels, each with its own subprotocol:
 
-### Endpoint
+### Endpoints
+
+#### Stream Channel (Event Subscriptions)
 
 ```text
 ws[s]://[server]/api/realtime/stream
+Subprotocol: bru.events.v1
 ```
+
+This channel is used for subscribing to resource events and receiving real-time updates.
+
+#### Interactive Channel (Request-Response)
+
+```text
+ws[s]://[server]/api/realtime/interactive
+Subprotocol: bru.interactive.v1
+```
+
+This channel is used for interactive request-response communication.
 
 ### Message Format
 
@@ -266,4 +280,3 @@ For issues or questions:
 ## License
 
 Part of the BRU Avtopark system.
-

@@ -273,6 +273,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
 
             // Now allocate resources after validation passed — hold lifecycle lock to prevent
             // a concurrent CleanupWebSocketAsync from disposing _cts/_webSocket mid-creation.
+            // Keep lock held until after ConnectAsync completes.
             await _lifecycleLock.WaitAsync();
             try
             {
@@ -280,11 +281,6 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             _webSocket = new ClientWebSocket();
             _webSocket.Options.AddSubProtocol("bru.events.v1");
             _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-            }
-            finally
-            {
-                _lifecycleLock.Release();
-            }
 
             var wsUrl = buildResult.wsUri!;
             AddLog($"Connecting to {wsUrl}...");
@@ -292,6 +288,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             IsConnected = true;
             StatusMessage = "Connected";
             AddLog($"✓ Connected successfully");
+            }
+            finally
+            {
+                _lifecycleLock.Release();
+            }
 
             // Start receiving messages with explicit exception handling
             _ = Task.Run(async () =>
@@ -1168,11 +1169,16 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             }
             finally
             {
-                // Cancel all pending requests when the loop exits.
-                foreach (var kv in _interactivePending)
-                    kv.Value.TrySetCanceled();
-                _interactivePending.Clear();
-                IsInteractiveConnected = false;
+                // Only clear state if this loop still owns the connection
+                // (prevents old loop from clobbering state after reconnect)
+                if (ReferenceEquals(_interactiveCts, loopCts) && ReferenceEquals(_interactiveWebSocket, loopWs))
+                {
+                    // Cancel all pending requests when the loop exits.
+                    foreach (var kv in _interactivePending)
+                        kv.Value.TrySetCanceled();
+                    _interactivePending.Clear();
+                    IsInteractiveConnected = false;
+                }
             }
         });
 

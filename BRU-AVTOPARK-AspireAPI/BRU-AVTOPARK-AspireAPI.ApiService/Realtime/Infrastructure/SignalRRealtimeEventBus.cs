@@ -146,7 +146,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             {
                 removedSubscriber.Channel.Writer.TryComplete();
                 var sanitizedResource = LogSanitizer.SanitizeForLog(normalizedResource);
-                _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, sanitizedResource);
+                const int maxLogLength = 200;
+                var boundedSanitizedResource = sanitizedResource.Length <= maxLogLength
+                    ? sanitizedResource
+                    : sanitizedResource.Substring(0, maxLogLength) + "…(truncated)";
+                _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, boundedSanitizedResource);
             }
         }
     }
@@ -214,16 +218,21 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         
         // Set stopping flag first
         _stopping = true;
-        
+
         // Complete the event channel to stop accepting new events
         _eventChannel.Writer.TryComplete();
-        
+
         // Wait for background processing to complete
-        await base.StopAsync(cancellationToken);
-        
-        // Dispose all active subscriptions
-        await DisposeAllSubscriptionsAsync();
-        
+        try
+        {
+            await base.StopAsync(cancellationToken);
+        }
+        finally
+        {
+            // Dispose all active subscriptions even if base.StopAsync throws or is canceled
+            await DisposeAllSubscriptionsAsync();
+        }
+
         _logger.LogInformation("[EventBus] Event bus stopped successfully");
     }
 

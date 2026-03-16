@@ -171,7 +171,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch initial page", command);
-                return new { error = "Failed to retrieve schedules", command };
+                throw;
             }
 
             var (initialItems, totalCount) = firstResult;
@@ -218,7 +218,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch page {Page}", command, currentPage);
-                    return new { error = "Failed to retrieve schedules page", command, page = currentPage };
+                    throw;
                 }
             }
 
@@ -482,23 +482,38 @@ namespace TicketSalesApp.AdminServer.Controllers
                 if (pageSize < 1) pageSize = 1;
                 if (page < 1) page = 1;
                 
-                _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
+                _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}",
                     page, pageSize, isActive);
-                
+
                 var query = new TicketSalesApp.Services.Models.ScheduleQuery { IsActive = isActive };
                 var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, pageSize, query);
-                
-                var result = paged.Select(ProjectScheduleForList).ToList();
+
                 var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
 
-                _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
-                    result.Count, page, totalPages, totalCount);
-                
+                // Clamp page to valid range
+                var normalizedPage = Math.Max(1, Math.Min(page, totalPages));
+
+                // If page was out of bounds, re-fetch with normalized page
+                List<RouteSchedule> finalPaged;
+                if (normalizedPage != page)
+                {
+                    (finalPaged, _) = await _routeScheduleService.GetSchedulesPageAsync(normalizedPage, pageSize, query);
+                }
+                else
+                {
+                    finalPaged = paged;
+                }
+
+                var result = finalPaged.Select(ProjectScheduleForList).ToList();
+
+                _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})",
+                    result.Count, normalizedPage, totalPages, totalCount);
+
                 Response.Headers["X-Total-Count"] = totalCount.ToString();
-                Response.Headers["X-Page"] = page.ToString();
+                Response.Headers["X-Page"] = normalizedPage.ToString();
                 Response.Headers["X-Page-Size"] = pageSize.ToString();
                 Response.Headers["X-Total-Pages"] = totalPages.ToString();
-                
+
                 return Ok(result);
             }
             catch (ArgumentOutOfRangeException ex)

@@ -54,7 +54,13 @@ namespace TicketSalesApp.Services.Implementations
                 var conn = _spacetimeService.GetConnection();
 
                 // Single-pass scan: count total and collect only the requested page slice.
-                int skip = (page - 1) * pageSize;
+                // Use safe long calculation to avoid overflow
+                long skipLong = ((long)page - 1) * (long)pageSize;
+                if (skipLong > int.MaxValue)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(page), "Page number is too large and would cause overflow.");
+                }
+                int skip = (int)skipLong;
                 int totalCount = 0;
                 int collected = 0;
                 var items = new List<Sale>(pageSize);
