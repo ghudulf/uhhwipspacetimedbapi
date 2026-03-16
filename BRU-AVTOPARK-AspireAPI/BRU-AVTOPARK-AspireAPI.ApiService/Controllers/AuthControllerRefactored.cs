@@ -3490,7 +3490,15 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 if (qrPollerTasks.Count > 0)
                 {
                     var allPollerTasks = qrPollerTasks.Values.ToArray();
-                    try { await Task.WhenAll(allPollerTasks); }
+                    try
+                    {
+                        // Give pollers up to 5 s to finish; abandon any that are still running after that.
+                        using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        await Task.WhenAny(Task.WhenAll(allPollerTasks), Task.Delay(Timeout.Infinite, shutdownCts.Token));
+                        if (allPollerTasks.Any(t => !t.IsCompleted))
+                            _logger.LogWarning("[AuthWS:{ConnId}] {Count} QR poller task(s) did not finish within shutdown timeout; abandoning.",
+                                connectionId, allPollerTasks.Count(t => !t.IsCompleted));
+                    }
                     catch { /* individual poller exceptions are already logged */ }
                 }
                 sendLock.Dispose();

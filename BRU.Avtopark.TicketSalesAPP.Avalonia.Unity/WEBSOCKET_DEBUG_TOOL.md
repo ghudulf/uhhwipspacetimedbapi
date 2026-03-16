@@ -180,7 +180,8 @@ This channel is used for interactive request-response communication.
 
 1. API server running on `http://localhost:5000`
 2. Valid authentication token (if required)
-3. WebSocket endpoint enabled at `/api/realtime/stream`
+3. WebSocket stream channel enabled at `/api/realtime/stream`
+4. Interactive channel enabled at `/api/realtime/interactive`
 
 ### Test Scenarios
 
@@ -251,9 +252,11 @@ This tool was created to test WebSocket functionality added in the realtime even
 ### Key Features Tested
 
 - WebSocket connection establishment
-- Subprotocol negotiation (`bru.events.v1`)
+- Subprotocol negotiation (`bru.events.v1`, `bru.interactive.v1`)
 - CRUD request handling
-- Event streaming
+- Event streaming (stream channel: `/api/realtime/stream`)
+- Interactive commands (interactive channel: `/api/realtime/interactive`)
+- Stream start/stop via `stream:start` / `stream:stop` commands
 - Error handling
 - Connection lifecycle management
 

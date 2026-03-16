@@ -40,11 +40,9 @@ namespace TicketSalesApp.AdminServer.Mappers
             string? legacyGuid  = CoerceString(user.LegacyGuid,  null,   nameof(user.LegacyGuid),  defaults);
             bool emailConfirmed = user.EmailConfirmed ?? DefaultBool(nameof(user.EmailConfirmed), false, defaults);
 
-            if (defaults.Count > 0)
+            if (defaults.Count > 0 && _log.IsEnabled(Serilog.Events.LogEventLevel.Debug))
                 _log.Debug("UserMapper.MapToSafeUserDto UserId={UserId}: {Count} nullable field(s) defaulted: {Fields}",
                     user.UserId, defaults.Count, string.Join(", ", defaults));
-            else
-                _log.Debug("UserMapper.MapToSafeUserDto UserId={UserId}: all fields present", user.UserId);
 
             try
             {

@@ -367,9 +367,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 _disposalLock.Release();
                 _disposalLock.Dispose();
             }
-        }
 
-        base.Dispose();
-        GC.SuppressFinalize(this);
+            base.Dispose();
+            GC.SuppressFinalize(this);
+        }
     }
 }

@@ -65,7 +65,7 @@ namespace TicketSalesApp.Services.Implementations
                 int collected = 0;
                 var items = new List<Sale>(pageSize);
 
-                foreach (var s in conn.Db.Sale.Iter().OrderBy(s => s.SaleDate))
+                foreach (var s in conn.Db.Sale.Iter().OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId))
                 {
                     totalCount++;
                     if (totalCount > skip && collected < pageSize)

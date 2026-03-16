@@ -1061,7 +1061,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // Parse and mask sensitive fields
                 using var doc = JsonDocument.Parse(payloadStr);
-                var sanitized = SanitizeJsonElement(doc.RootElement, sensitiveFields);
+                var sanitized = JsonSerializer.Serialize(SanitizeJsonElement(doc.RootElement, sensitiveFields));
                 var result = sanitized.Length > MaxLength
                     ? sanitized.Substring(0, MaxLength) + "... [truncated]"
                     : sanitized;
@@ -1074,7 +1074,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
-        private string SanitizeJsonElement(JsonElement element, string[] sensitiveFields)
+        private object SanitizeJsonElement(JsonElement element, string[] sensitiveFields)
         {
             if (element.ValueKind == JsonValueKind.Object)
             {
@@ -1097,7 +1097,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         sanitizedObj[key] = prop.Value.ToString();
                     }
                 }
-                return JsonSerializer.Serialize(sanitizedObj);
+                return sanitizedObj;
             }
             else if (element.ValueKind == JsonValueKind.Array)
             {
@@ -1106,7 +1106,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     sanitizedArray.Add(SanitizeJsonElement(item, sensitiveFields));
                 }
-                return JsonSerializer.Serialize(sanitizedArray);
+                return sanitizedArray;
             }
 
             return element.ToString();

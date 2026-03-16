@@ -39,13 +39,13 @@ namespace TicketSalesApp.AdminServer.Mappers
                 // Fail-fast on required string fields that must never be null/empty.
                 if (string.IsNullOrWhiteSpace(modelRaw))
                 {
-                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'Model' is null or empty", busId);
-                    throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'Model' field.", nameof(bus));
+                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'Model' is null, empty, or whitespace", busId);
+                    throw new ArgumentException($"Bus entity BusId={busId} has a null, empty, or whitespace 'Model' field.", nameof(bus));
                 }
                 if (string.IsNullOrWhiteSpace(busTypeRaw))
                 {
-                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'BusType' is null or empty", busId);
-                    throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'BusType' field.", nameof(bus));
+                    _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'BusType' is null, empty, or whitespace", busId);
+                    throw new ArgumentException($"Bus entity BusId={busId} has a null, empty, or whitespace 'BusType' field.", nameof(bus));
                 }
 
                 string model   = modelRaw;
@@ -110,7 +110,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             {
                 _log.Error(ex, "BusMapper.ToDto RuntimeBinderException — bus entity type: {Type}, message: {Message}",
                     bus?.GetType()?.FullName ?? "null", ex.Message);
-                throw new ArgumentException("Failed to map bus entity to DTO.", nameof(bus), ex);
+                throw new InvalidOperationException("Failed to map bus entity to DTO due to a runtime binding error.", ex);
             }
             catch (Exception ex) when (ex is not ArgumentNullException && ex is not ArgumentException)
             {

@@ -1550,3 +1550,4 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 - ⭕ = Optional milestone (choose based on your path)
 
 **Recommendation**: Most teams should stop at Milestone 7. The refactored controller with CSHTML views provides a clean, maintainable authentication system that works well for most use cases.
+
