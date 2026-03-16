@@ -74,14 +74,15 @@ builder.Host.UseSerilog();
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 // Configure logging first
-builder.Services.AddLogging(builder =>
+builder.Services.AddLogging(loggingBuilder =>
 {
-    builder.ClearProviders();
-    builder.AddConsole();
-    builder.AddDebug();
-
-    builder.SetMinimumLevel(LogLevel.Debug);
-
+    loggingBuilder.ClearProviders();
+    loggingBuilder.AddConsole();
+    loggingBuilder.AddDebug();
+    loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+    
+    // Suppress Windows Event Log to avoid permission errors
+    loggingBuilder.AddFilter("Microsoft.Extensions.Logging.EventLog", LogLevel.None);
 });
 
 // Add services to the container.
@@ -227,6 +228,11 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationSe
 // Configure FeatureFlagOptions from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
+
+// Configure JwtSettings options from appsettings.json
+builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>(
+    builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName));
+ 
 
 // Add Routing Diagnostics Service for debugging controller discovery issues
 builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();
