@@ -3223,7 +3223,8 @@ const app = new Elysia()
     const { username, password } = body as { username: string; password: string }
     
     // Query SpacetimeDB directly for user
-    const users = spacetimeDB.db.UserProfile.filter(u => u.Login === username)
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.Login === username)
     if (users.length === 0) {
       set.status = 401
       return { error: 'Invalid credentials' }
@@ -3268,13 +3269,13 @@ const app = new Elysia()
     })
 
     // Log authentication event to SpacetimeDB
-    await spacetimeDB.call('log_auth_event', {
-      user_id: user.UserId,
-      event_type: 'login',
-      success: true,
-      ip_address: '', // Extract from request
-      user_agent: ''  // Extract from request
-    })
+    await spacetimeDB.reducers.logAuthEvent(
+      user.UserId,
+      'login',
+      true,
+      '', // Extract from request
+      ''  // Extract from request
+    )
 
     return {
       access_token: accessToken,
@@ -3303,7 +3304,8 @@ const app = new Elysia()
     const userId = parseInt(challenge.sub)
     
     // Get user's TOTP secret from SpacetimeDB
-    const users = spacetimeDB.db.UserProfile.filter(u => u.UserId === userId)
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.UserId === userId)
     if (users.length === 0) {
       set.status = 401
       return { error: 'User not found' }
@@ -3348,17 +3350,18 @@ const app = new Elysia()
     const userId = parseInt(challenge.sub)
     
     // Get user's WebAuthn credentials from SpacetimeDB
-    const credentials = spacetimeDB.db.WebAuthnCredential.filter(c => c.UserId === userId)
+    const credentials = Array.from(spacetimeDB.db.WebAuthnCredential.iter())
+      .filter(c => c.UserId === userId)
     
     // Generate WebAuthn challenge
     const webauthnChallenge = crypto.randomUUID()
     
     // Store challenge in SpacetimeDB
-    await spacetimeDB.call('store_webauthn_challenge', {
-      user_id: userId,
-      challenge: webauthnChallenge,
-      expires_at: BigInt(Date.now() + (5 * 60 * 1000))
-    })
+    await spacetimeDB.reducers.storeWebauthnChallenge(
+      userId,
+      webauthnChallenge,
+      BigInt(Date.now() + (5 * 60 * 1000))
+    )
 
     return {
       challenge: webauthnChallenge,
@@ -3399,11 +3402,11 @@ const app = new Elysia()
     const sessionId = crypto.randomUUID()
     
     // Store QR session in SpacetimeDB
-    await spacetimeDB.call('create_qr_session', {
-      session_id: sessionId,
-      status: 'pending',
-      expires_at: BigInt(Date.now() + (5 * 60 * 1000)) // 5 minutes
-    })
+    await spacetimeDB.reducers.createQrSession(
+      sessionId,
+      'pending',
+      BigInt(Date.now() + (5 * 60 * 1000)) // 5 minutes
+    )
 
     return {
       session_id: sessionId,
@@ -3417,7 +3420,8 @@ const app = new Elysia()
     const { sessionId } = params
     
     // Query QR session from SpacetimeDB
-    const sessions = spacetimeDB.db.QRAuthSession.filter(s => s.SessionId === sessionId)
+    const sessions = Array.from(spacetimeDB.db.QRAuthSession.iter())
+      .filter(s => s.SessionId === sessionId)
     if (sessions.length === 0) {
       set.status = 404
       return { error: 'Session not found' }
@@ -3427,7 +3431,8 @@ const app = new Elysia()
     
     if (session.Status === 'approved' && session.UserId) {
       // Get user details
-      const users = spacetimeDB.db.UserProfile.filter(u => u.UserId === session.UserId)
+      const users = Array.from(spacetimeDB.db.UserProfile.iter())
+        .filter(u => u.UserId === session.UserId)
       if (users.length === 0) {
         set.status = 404
         return { error: 'User not found' }
@@ -3467,9 +3472,8 @@ const app = new Elysia()
     }
 
     // Check if user already exists
-    const existingUsers = spacetimeDB.db.UserProfile.filter(
-      u => u.Login === username || u.Email === email
-    )
+    const existingUsers = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.Login === username || u.Email === email)
     if (existingUsers.length > 0) {
       set.status = 409
       return { error: 'User already exists' }
@@ -3479,15 +3483,15 @@ const app = new Elysia()
     const passwordHash = await Bun.password.hash(password)
 
     // Create user in SpacetimeDB
-    await spacetimeDB.call('register_user', {
-      login: username,
-      email: email,
-      password_hash: passwordHash,
-      full_name: fullName || username,
-      phone_number: null,
-      roles: ['user'], // Default role
-      permissions: []
-    })
+    await spacetimeDB.reducers.registerUser(
+      username,
+      email,
+      passwordHash,
+      fullName || username,
+      null,
+      ['user'], // Default role
+      []
+    )
 
     return {
       success: true,
@@ -3526,11 +3530,11 @@ const app = new Elysia()
       // Forward original Authorization header for C# backend to independently validate
       'Authorization': authHeader,
       // Convenience headers from verified JWT (C# backend should validate token independently)
-      'X-User-Id': payload.sub,
-      'X-User-Username': payload.username,
-      'X-User-Email': payload.email,
-      'X-User-Roles': JSON.stringify(payload.roles),
-      'X-User-Permissions': JSON.stringify(payload.permissions),
+      'X-User-Id': String(payload.sub || ''),
+      'X-User-Username': String(payload.username || ''),
+      'X-User-Email': String(payload.email || ''),
+      'X-User-Roles': JSON.stringify(payload.roles || []),
+      'X-User-Permissions': JSON.stringify(payload.permissions || []),
     }
 
     // Forward to C# backend with safe headers only
@@ -3550,49 +3554,64 @@ const app = new Elysia()
 
 // Helper: Convert Elysia Request to Node.js req/res for oidc-provider
 async function handleOidcRequest(request: Request): Promise<Response> {
-  return new Promise(async (resolve) => {
-    const url = new URL(request.url)
-    const nodeReq = {
-      method: request.method,
-      url: url.pathname + url.search,
-      headers: Object.fromEntries(request.headers.entries()),
-    } as any
+  const { Readable, Writable } = await import('stream')
+  const { IncomingMessage, ServerResponse } = await import('http')
+  const { Socket } = await import('net')
 
-    // Convert Web ReadableStream to Node.js Readable for POST/PUT/PATCH requests
-    if (request.body && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
-      const { Readable } = await import('stream')
-      const reader = request.body.getReader()
-      nodeReq.body = new Readable({
-        async read() {
-          const { done, value } = await reader.read()
-          if (done) {
-            this.push(null)
-          } else {
-            this.push(Buffer.from(value))
-          }
-        }
-      })
-    }
+  const url = new URL(request.url)
+  const headersObj = Object.fromEntries(request.headers.entries())
 
-    const chunks: Buffer[] = []
-    const nodeRes = {
-      statusCode: 200,
-      headers: {} as Record<string, string>,
-      setHeader(name: string, value: string | string[]) {
-        this.headers[name.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
-      },
-      write(chunk: any) {
-        chunks.push(Buffer.from(chunk))
-      },
-      end(chunk?: any) {
-        if (chunk) chunks.push(Buffer.from(chunk))
-        const body = Buffer.concat(chunks).toString()
-        resolve(new Response(body, {
-          status: this.statusCode,
-          headers: this.headers
-        }))
+  // Build a proper IncomingMessage-compatible Readable so oidc-provider can
+  // read the body via stream semantics (not a .body property).
+  const socket = new Socket()
+  const nodeReq = new IncomingMessage(socket)
+  nodeReq.method = request.method
+  nodeReq.url = url.pathname + url.search
+  nodeReq.headers = headersObj
+  // rawHeaders: flat [name, value, name, value, ...] array
+  nodeReq.rawHeaders = Object.entries(headersObj).flatMap(([k, v]) => [k, v])
+  nodeReq.httpVersion = '1.1'
+  nodeReq.httpVersionMajor = 1
+  nodeReq.httpVersionMinor = 1
+
+  // Push body bytes into the IncomingMessage stream
+  if (request.body && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+    const reader = request.body.getReader()
+    const pushBody = async () => {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) { nodeReq.push(null); break }
+        nodeReq.push(Buffer.from(value))
       }
-    } as any
+    }
+    pushBody().catch(() => nodeReq.push(null))
+  } else {
+    // No body — signal end-of-stream immediately
+    process.nextTick(() => nodeReq.push(null))
+  }
+
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+
+    // Build a minimal ServerResponse-compatible object.
+    // ServerResponse requires an IncomingMessage in its constructor.
+    const nodeRes = new ServerResponse(nodeReq)
+    const sink = new Writable({
+      write(chunk, _enc, cb) { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)); cb() }
+    })
+    // Redirect ServerResponse output into our sink so we can capture it.
+    nodeRes.assignSocket(sink as any)
+
+    nodeRes.on('finish', () => {
+      const body = Buffer.concat(chunks)
+      const status = nodeRes.statusCode ?? 200
+      const headers: Record<string, string> = {}
+      const raw = nodeRes.getHeaders()
+      for (const [k, v] of Object.entries(raw)) {
+        if (v !== undefined) headers[k.toLowerCase()] = Array.isArray(v) ? v.join(', ') : String(v)
+      }
+      resolve(new Response(body, { status, headers }))
+    })
 
     oidc.callback()(nodeReq, nodeRes, (err: any) => {
       if (err) {
