@@ -30,7 +30,7 @@ namespace TicketSalesApp.AdminServer.Mappers
             if (string.IsNullOrWhiteSpace(user.Login))
             {
                 _log.Warning("UserMapper.MapToSafeUserDto: Login is null/empty for UserId={UserId}", user.UserId);
-                throw new ArgumentException("User Login cannot be null or empty", nameof(user));
+                throw new ArgumentException("User Login cannot be null or empty", nameof(user.Login));
             }
 
             var defaults = new List<string>();

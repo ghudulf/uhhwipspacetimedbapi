@@ -1159,45 +1159,36 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             // Custom lifetime validator centralises exp + nbf logic so we don't duplicate
             // the nbf check after ValidateToken (which would be redundant and could diverge).
-            LifetimeValidator? lifetimeValidator = requireExp || validateNbf
-                ? (notBefore, expires, secToken, parameters) =>
+            LifetimeValidator lifetimeValidator = (notBefore, expires, secToken, parameters) =>
+            {
+                var now = DateTimeOffset.UtcNow;
+                var skew = parameters.ClockSkew;
+
+                // Always check expiration if present
+                if (expires != null)
                 {
-                    var now = DateTimeOffset.UtcNow;
-                    var skew = parameters.ClockSkew;
-
-                    if (requireExp)
+                    if (now > expires.Value.Add(skew))
                     {
-                        if (expires == null)
-                        {
-                            Log.Warning("ValidateJwtLocalAsync - Token has no expiry (exp claim missing)");
-                            return false;
-                        }
-                        if (now > expires.Value.Add(skew))
-                        {
-                            Log.Warning("ValidateJwtLocalAsync - Token expired at {Expiry}", expires.Value);
-                            return false;
-                        }
-                    }
-                    else if (expires != null)
-                    {
-                        // Even when RequireExpiration is false, reject tokens with expired exp claims
-                        if (now > expires.Value.Add(skew))
-                        {
-                            Log.Warning("ValidateJwtLocalAsync - Token expired at {Expiry}", expires.Value);
-                            return false;
-                        }
-                    }
-
-                    if (validateNbf && notBefore != null && now.Add(skew) < notBefore.Value)
-                    {
-                        Log.Warning("ValidateJwtLocalAsync - Token not yet valid (nbf={Nbf}, now={Now})",
-                            notBefore.Value, now);
+                        Log.Warning("ValidateJwtLocalAsync - Token expired at {Expiry}", expires.Value);
                         return false;
                     }
-
-                    return true;
                 }
-                : null;
+                // If requireExp is true, also reject when expires is null
+                else if (requireExp)
+                {
+                    Log.Warning("ValidateJwtLocalAsync - Token has no expiry (exp claim missing)");
+                    return false;
+                }
+
+                if (validateNbf && notBefore != null && now.Add(skew) < notBefore.Value)
+                {
+                    Log.Warning("ValidateJwtLocalAsync - Token not yet valid (nbf={Nbf}, now={Now})",
+                        notBefore.Value, now);
+                    return false;
+                }
+
+                return true;
+            };
 
             var validationParameters = new TokenValidationParameters
             {

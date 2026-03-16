@@ -336,9 +336,12 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             // Another cleanup is already in progress
             return;
         }
-        
+
         try
         {
+            // Cancel _cts early so ConnectAsync can be interrupted
+            _cts?.Cancel();
+
             // Attempt polite close with short timeout
             if (_webSocket?.State == WebSocketState.Open)
             {
@@ -359,11 +362,10 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 }
             }
 
-            // Cancel and dispose cancellation token source
+            // Dispose cancellation token source and WebSocket
             await _lifecycleLock.WaitAsync();
             try
             {
-                _cts?.Cancel();
                 _cts?.Dispose();
                 _cts = null;
 
@@ -1346,9 +1348,18 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
 
             // Receive welcome message
             var buffer = new byte[8192];
-            var result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
-            var welcomeMsg = Encoding.UTF8.GetString(buffer, 0, result.Count);
-            AddLog($"📨 Welcome: {welcomeMsg}");
+            using (var ms = new System.IO.MemoryStream())
+            {
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                    ms.Write(buffer, 0, result.Count);
+                } while (!result.EndOfMessage);
+
+                var welcomeMsg = Encoding.UTF8.GetString(ms.ToArray());
+                AddLog($"📨 Welcome: {welcomeMsg}");
+            }
 
             // Test echo command
             var echoCmd = new { command = "echo", requestId = "test-1", data = "Test from Avalonia" };
@@ -1356,9 +1367,18 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             await testSocket.SendAsync(Encoding.UTF8.GetBytes(echoJson), WebSocketMessageType.Text, true, cts.Token);
             AddLog($"📤 Sent echo command");
 
-            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
-            var echoResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
-            AddLog($"📨 Echo response: {echoResponse}");
+            using (var ms = new System.IO.MemoryStream())
+            {
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                    ms.Write(buffer, 0, result.Count);
+                } while (!result.EndOfMessage);
+
+                var echoResponse = Encoding.UTF8.GetString(ms.ToArray());
+                AddLog($"📨 Echo response: {echoResponse}");
+            }
 
             // Test time command
             var timeCmd = new { command = "time", requestId = "test-2" };
@@ -1366,9 +1386,18 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             await testSocket.SendAsync(Encoding.UTF8.GetBytes(timeJson), WebSocketMessageType.Text, true, cts.Token);
             AddLog($"📤 Sent time command");
 
-            result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
-            var timeResponse = Encoding.UTF8.GetString(buffer, 0, result.Count);
-            AddLog($"📨 Time response: {timeResponse}");
+            using (var ms = new System.IO.MemoryStream())
+            {
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await testSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                    ms.Write(buffer, 0, result.Count);
+                } while (!result.EndOfMessage);
+
+                var timeResponse = Encoding.UTF8.GetString(ms.ToArray());
+                AddLog($"📨 Time response: {timeResponse}");
+            }
 
             await testSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", cts.Token);
             AddLog("✅ Interactive endpoint test completed successfully");

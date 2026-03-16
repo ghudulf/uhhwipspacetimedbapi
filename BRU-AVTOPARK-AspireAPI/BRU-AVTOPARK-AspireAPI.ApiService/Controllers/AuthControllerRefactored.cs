@@ -3369,6 +3369,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         ///   auth:ping       – keep-alive / latency check
         ///
         /// Server→client push message types:
+        ///   auth:connected      – connection acknowledged / client connected
         ///   auth:validated      – result of auth:validate
         ///   auth:refreshed      – result of auth:refresh
         ///   auth:qr-completed   – QR login succeeded (pushed when status changes)

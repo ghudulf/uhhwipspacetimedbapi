@@ -219,7 +219,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch page {Page}", command, currentPage);
-                    throw;
+                    return new { error = ex.Message, command };
                 }
             }
 

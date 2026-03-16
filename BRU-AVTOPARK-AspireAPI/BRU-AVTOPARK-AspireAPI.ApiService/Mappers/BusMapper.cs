@@ -37,12 +37,12 @@ namespace TicketSalesApp.AdminServer.Mappers
                 string? busTypeRaw = bus.BusType;
 
                 // Fail-fast on required string fields that must never be null/empty.
-                if (string.IsNullOrEmpty(modelRaw))
+                if (string.IsNullOrWhiteSpace(modelRaw))
                 {
                     _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'Model' is null or empty", busId);
                     throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'Model' field.", nameof(bus));
                 }
-                if (string.IsNullOrEmpty(busTypeRaw))
+                if (string.IsNullOrWhiteSpace(busTypeRaw))
                 {
                     _log.Warning("BusMapper.ToDto BusId={BusId}: required field 'BusType' is null or empty", busId);
                     throw new ArgumentException($"Bus entity BusId={busId} has a null or empty 'BusType' field.", nameof(bus));
