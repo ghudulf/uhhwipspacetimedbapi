@@ -286,7 +286,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             AddLog($"Connecting to {wsUrl}...");
 
             // Add timeout to prevent indefinite hangs
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1000));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
             await _webSocket.ConnectAsync(wsUrl, linkedCts.Token);
 
