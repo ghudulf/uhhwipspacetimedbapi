@@ -19,10 +19,37 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private bool _isResetting = false; // Prevent retry during reset
 
         /// <summary>
-        /// Set to true by LogoutAsync() so the next OAuthLoginWindow knows to clear
-        /// WebView session cookies. Consumed (reset to false) once the window reads it.
+        /// Path to the persistent logout-pending marker file.
+        /// Survives app restarts so the WebView session is cleared even after a crash/restart.
         /// </summary>
-        public static bool ClearWebViewSessionOnNextLogin { get; private set; } = false;
+        private static readonly string _logoutFlagPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BRU.Avtopark.TicketSalesApp",
+            "logout_pending");
+
+        /// <summary>
+        /// Set to true by LogoutAsync() so the next OAuthLoginWindow knows to clear
+        /// WebView session cookies. Persisted to disk so it survives app restarts.
+        /// Consumed (deleted) once the window reads it.
+        /// </summary>
+        public static bool ClearWebViewSessionOnNextLogin
+        {
+            get => File.Exists(_logoutFlagPath);
+            private set
+            {
+                if (value)
+                {
+                    // Ensure directory exists before writing
+                    Directory.CreateDirectory(Path.GetDirectoryName(_logoutFlagPath)!);
+                    File.WriteAllText(_logoutFlagPath, "1");
+                }
+                else
+                {
+                    if (File.Exists(_logoutFlagPath))
+                        File.Delete(_logoutFlagPath);
+                }
+            }
+        }
 
         /// <summary>
         /// Called by OAuthLoginWindow after reading the flag to reset it, so subsequent
@@ -309,6 +336,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             ApiClientService.Instance.UserRole = null;
             Log.Information("LOGOUT: Cleared cached user data");
             
+            // Clean up any state files that may have been written to disk
+            await CleanupStateFilesAsync();
+            
             // Notify listeners
             AuthenticationStateChanged?.Invoke(this, false);
             Log.Information("LOGOUT: Notified authentication state changed");
@@ -327,6 +357,65 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Removes any state files the app may have written to disk — both in the
+        /// %LocalAppData% app folder and next to the executable (bin folder), where
+        /// AvaloniaWebView / WebView2 can drop its user-data directory at runtime.
+        /// Called on every explicit logout so a fresh restart starts clean.
+        /// </summary>
+        private static async Task CleanupStateFilesAsync()
+        {
+            await Task.Run(() =>
+            {
+                // 1. %LocalAppData%\BRU.Avtopark.TicketSalesApp — oauth_* temp files
+                try
+                {
+                    var appDataFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "BRU.Avtopark.TicketSalesApp");
+
+                    if (Directory.Exists(appDataFolder))
+                    {
+                        foreach (var file in Directory.GetFiles(appDataFolder, "oauth_*"))
+                        {
+                            TryDelete(file);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "CleanupStateFiles: error sweeping LocalAppData folder");
+                }
+
+                // 2. Bin / working directory — WebView2 / EBWebView user-data folders
+                //    AvaloniaWebView (WebView2 backend) creates these next to the exe.
+                var baseDir = AppContext.BaseDirectory;
+                var webViewDataDirs = new[] { "EBWebView", "WebView2", ".webview" };
+                foreach (var dirName in webViewDataDirs)
+                {
+                    try
+                    {
+                        var path = Path.Combine(baseDir, dirName);
+                        if (Directory.Exists(path))
+                        {
+                            Directory.Delete(path, recursive: true);
+                            Log.Information("CleanupStateFiles: deleted WebView data dir {Dir}", path);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", dirName);
+                    }
+                }
+            });
+        }
+
+        private static void TryDelete(string path)
+        {
+            try { File.Delete(path); }
+            catch (Exception ex) { Log.Warning(ex, "CleanupStateFiles: could not delete {File}", path); }
         }
 
         /// <summary>
