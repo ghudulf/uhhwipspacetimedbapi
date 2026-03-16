@@ -389,25 +389,39 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Log.Warning(ex, "CleanupStateFiles: error sweeping LocalAppData folder");
                 }
 
-                // 2. Bin / working directory — WebView2 / EBWebView user-data folders
-                //    AvaloniaWebView (WebView2 backend) creates these next to the exe.
+                // 2. Bin / working directory — WebView2 user-data folder
+                //    AvaloniaWebView (WebView2 backend) creates "<exename>.WebView2\EBWebView"
+                //    next to the executable. Delete the whole "<exename>.WebView2" tree.
                 var baseDir = AppContext.BaseDirectory;
-                var webViewDataDirs = new[] { "EBWebView", "WebView2", ".webview" };
-                foreach (var dirName in webViewDataDirs)
+                try
                 {
-                    try
+                    // Match any directory ending in ".WebView2" next to the exe
+                    foreach (var dir in Directory.GetDirectories(baseDir, "*.WebView2"))
+                    {
+                        try
+                        {
+                            Directory.Delete(dir, recursive: true);
+                            Log.Information("CleanupStateFiles: deleted WebView2 data dir {Dir}", dir);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", dir);
+                        }
+                    }
+                    // Also sweep legacy names just in case
+                    foreach (var dirName in new[] { "EBWebView", "WebView2", ".webview" })
                     {
                         var path = Path.Combine(baseDir, dirName);
                         if (Directory.Exists(path))
                         {
-                            Directory.Delete(path, recursive: true);
-                            Log.Information("CleanupStateFiles: deleted WebView data dir {Dir}", path);
+                            try { Directory.Delete(path, recursive: true); Log.Information("CleanupStateFiles: deleted {Dir}", path); }
+                            catch (Exception ex) { Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", path); }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", dirName);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "CleanupStateFiles: error sweeping bin directory");
                 }
             });
         }
