@@ -1665,9 +1665,13 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         if (EventLog.Count > maxLogSize)
         {
             var itemsToRemove = EventLog.Count - maxLogSize;
-            // Assign a new collection to raise a single PropertyChanged/CollectionChanged
+            // Remove in bulk by creating new collection from remaining items to avoid O(n²)
             var remaining = EventLog.Skip(itemsToRemove).ToList();
-            EventLog = new ObservableCollection<string>(remaining);
+            EventLog.Clear();
+            foreach (var item in remaining)
+            {
+                EventLog.Add(item);
+            }
         }
     }
     
