@@ -52,9 +52,24 @@ namespace TicketSalesApp.Services.Implementations
                 pageSize = Math.Clamp(pageSize, 1, 1000);
                 _logger.LogInformation("Retrieving sales page {Page} (size {PageSize})", page, pageSize);
                 var conn = _spacetimeService.GetConnection();
-                var all = conn.Db.Sale.Iter().OrderBy(s => s.SaleDate).ToList();
-                var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-                return (items, all.Count);
+
+                // Single-pass scan: count total and collect only the requested page slice.
+                int skip = (page - 1) * pageSize;
+                int totalCount = 0;
+                int collected = 0;
+                var items = new List<Sale>(pageSize);
+
+                foreach (var s in conn.Db.Sale.Iter().OrderBy(s => s.SaleDate))
+                {
+                    totalCount++;
+                    if (totalCount > skip && collected < pageSize)
+                    {
+                        items.Add(s);
+                        collected++;
+                    }
+                }
+
+                return (items, totalCount);
             }
             catch (Exception ex)
             {

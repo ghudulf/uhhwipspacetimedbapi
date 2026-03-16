@@ -101,11 +101,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <returns>An asynchronous sequence of <see cref="ApiDomainEvent"/> instances that match the requested resource.</returns>
     public async IAsyncEnumerable<ApiDomainEvent> SubscribeAsync(string resource, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (_stopping || _disposed != 0)
-        {
-            throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
-        }
-        
         var normalizedResource = ResourceNormalization.Normalize(resource);
         var subscriptionChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(256)
         {
@@ -116,7 +111,23 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         });
 
         var subscriberId = Guid.NewGuid();
-        _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
+
+        // Atomically check the shutdown gate and register the subscriber so that
+        // a concurrent StopAsync/DisposeAsync cannot miss this subscriber between
+        // the check and the add (TOCTOU).
+        await _disposalLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_stopping || _disposed != 0)
+            {
+                throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
+            }
+            _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
+        }
+        finally
+        {
+            _disposalLock.Release();
+        }
 
         _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", 
             subscriberId, LogSanitizer.SanitizeLogField(normalizedResource, 100));

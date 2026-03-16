@@ -1157,6 +1157,39 @@ namespace TicketSalesApp.AdminServer.Controllers
             var validIssuer      = jwtOptions?.Issuer   ?? config?["JwtSettings:Issuer"];
             var validAudience    = jwtOptions?.Audience ?? config?["JwtSettings:Audience"];
 
+            // Custom lifetime validator centralises exp + nbf logic so we don't duplicate
+            // the nbf check after ValidateToken (which would be redundant and could diverge).
+            LifetimeValidator? lifetimeValidator = requireExp || validateNbf
+                ? (notBefore, expires, secToken, parameters) =>
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var skew = parameters.ClockSkew;
+
+                    if (requireExp)
+                    {
+                        if (expires == null)
+                        {
+                            Log.Warning("ValidateJwtLocalAsync - Token has no expiry (exp claim missing)");
+                            return false;
+                        }
+                        if (now > expires.Value.Add(skew))
+                        {
+                            Log.Warning("ValidateJwtLocalAsync - Token expired at {Expiry}", expires.Value);
+                            return false;
+                        }
+                    }
+
+                    if (validateNbf && notBefore != null && now.Add(skew) < notBefore.Value)
+                    {
+                        Log.Warning("ValidateJwtLocalAsync - Token not yet valid (nbf={Nbf}, now={Now})",
+                            notBefore.Value, now);
+                        return false;
+                    }
+
+                    return true;
+                }
+                : null;
+
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -1168,7 +1201,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ValidateAudience = validateAudience && !string.IsNullOrEmpty(validAudience),
                 ValidAudience    = validAudience,
 
-                ValidateLifetime      = true,
+                // Delegate lifetime/nbf to the custom validator above so both checks
+                // are centralised and consistent with TokenService.ValidateToken.
+                ValidateLifetime      = lifetimeValidator != null,
+                LifetimeValidator     = lifetimeValidator,
                 RequireExpirationTime = requireExp,
                 RequireSignedTokens   = true,
                 ClockSkew             = clockSkew
@@ -1181,15 +1217,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 if (validatedToken is not JwtSecurityToken jwt)
                 {
                     Log.Warning("ValidateJwtLocalAsync - Validated token is not a JwtSecurityToken");
-                    return Task.FromResult<Dictionary<string, object>?>(null);
-                }
-
-                // Explicit nbf check when the toggle is on (defence-in-depth; the handler
-                // also checks nbf when ValidateLifetime is true, but we log it explicitly).
-                if (validateNbf && jwt.ValidFrom > DateTimeOffset.UtcNow.Add(clockSkew))
-                {
-                    Log.Warning("ValidateJwtLocalAsync - Token not yet valid (nbf={Nbf}, now={Now})",
-                        jwt.ValidFrom, DateTimeOffset.UtcNow);
                     return Task.FromResult<Dictionary<string, object>?>(null);
                 }
 

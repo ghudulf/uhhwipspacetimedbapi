@@ -71,6 +71,8 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private ClientWebSocket? _interactiveWebSocket;
     private CancellationTokenSource? _interactiveCts;
     private readonly SemaphoreSlim _interactiveSendLock = new SemaphoreSlim(1, 1);
+    // Serializes concurrent calls to GetOrConnectInteractiveSocketAsync.
+    private readonly SemaphoreSlim _interactiveLock = new SemaphoreSlim(1, 1);
     // Single background receive loop dispatches frames to per-request TCS objects.
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _interactivePending = new();
 
@@ -849,12 +851,17 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
 
     private async Task SendAsyncWithLock(WebSocket socket, byte[] bytes, CancellationToken cancellationToken)
     {
+        await SendAsyncWithLock(socket, bytes, _sendSemaphore, cancellationToken);
+    }
+
+    private static async Task SendAsyncWithLock(WebSocket socket, byte[] bytes, SemaphoreSlim semaphore, CancellationToken cancellationToken)
+    {
         if (socket == null || socket.State != WebSocketState.Open)
         {
             throw new InvalidOperationException($"WebSocket is not open (State: {socket?.State})");
         }
-        
-        await _sendSemaphore.WaitAsync(cancellationToken);
+
+        await semaphore.WaitAsync(cancellationToken);
         try
         {
             // Double-check state after acquiring semaphore
@@ -869,7 +876,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         }
         finally
         {
-            _sendSemaphore.Release();
+            semaphore.Release();
         }
     }
 
@@ -1055,6 +1062,10 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     /// </summary>
     private async Task<ClientWebSocket?> GetOrConnectInteractiveSocketAsync()
     {
+        // Serialize concurrent callers so only one connect/dispose cycle runs at a time.
+        await _interactiveLock.WaitAsync();
+        try
+        {
         if (_interactiveWebSocket?.State == WebSocketState.Open)
             return _interactiveWebSocket;
 
@@ -1116,17 +1127,23 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             {
                 while (!loopCts.Token.IsCancellationRequested && loopWs.State == WebSocketState.Open)
                 {
+                    // Accumulate fragments until EndOfMessage to handle fragmented frames.
+                    using var ms = new System.IO.MemoryStream();
                     WebSocketReceiveResult result;
                     try
                     {
-                        result = await loopWs.ReceiveAsync(buf, loopCts.Token);
+                        do
+                        {
+                            result = await loopWs.ReceiveAsync(buf, loopCts.Token);
+                            ms.Write(buf, 0, result.Count);
+                        } while (!result.EndOfMessage);
                     }
                     catch (OperationCanceledException) { break; }
                     catch { break; }
 
                     if (result.MessageType == WebSocketMessageType.Close) break;
 
-                    var frame = Encoding.UTF8.GetString(buf, 0, result.Count);
+                    var frame = Encoding.UTF8.GetString(ms.ToArray());
 
                     // Try to extract requestId and dispatch to the waiting TCS.
                     string? rid = null;
@@ -1160,6 +1177,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         });
 
         return _interactiveWebSocket;
+        } // end try
+        finally
+        {
+            _interactiveLock.Release();
+        }
     }
 
     [RelayCommand]
@@ -1201,7 +1223,16 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
             var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
             _interactivePending[requestId] = tcs;
 
-            await SendAsyncWithLock(ws, bytes, _interactiveCts!.Token);
+            try
+            {
+                await SendAsyncWithLock(ws, bytes, _interactiveSendLock, _interactiveCts!.Token);
+            }
+            catch
+            {
+                // If send fails, clean up the TCS so the background loop doesn't leak it.
+                _interactivePending.TryRemove(requestId, out _);
+                throw;
+            }
             AddLog($"📤 Sent {commandType} command (ID: {requestId})");
 
             _ = Task.Run(async () =>
@@ -1590,6 +1621,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
+        _interactiveLock?.Dispose();
         foreach (var kv in _interactivePending) kv.Value.TrySetCanceled();
         _interactivePending.Clear();
 
@@ -1608,6 +1640,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         _interactiveWebSocket?.Dispose();
         IsInteractiveConnected = false;
         _interactiveSendLock?.Dispose();
+        _interactiveLock?.Dispose();
         foreach (var kv in _interactivePending) kv.Value.TrySetCanceled();
         _interactivePending.Clear();
 

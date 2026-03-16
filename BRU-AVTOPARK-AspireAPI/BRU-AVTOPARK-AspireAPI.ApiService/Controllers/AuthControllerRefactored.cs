@@ -3381,7 +3381,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         ///
         /// Authentication: token may be supplied as Authorization: Bearer header
         /// OR as ?access_token= query parameter (for WebSocket upgrade compatibility).
-        /// An unauthenticated connection is accepted but only auth:validate is allowed
+        /// An unauthenticated connection is accepted but only auth:validate and auth:ping are allowed
         /// until a valid token is confirmed.
         /// </summary>
         [HttpGet("ws")]
@@ -3421,6 +3421,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             // Track QR-status subscriptions: deviceId → polling task
             var qrSubscriptions = new ConcurrentDictionary<string, CancellationTokenSource>();
+            // Track the actual poller Task objects so we can await them before disposing sendLock.
+            var qrPollerTasks = new ConcurrentDictionary<string, Task>();
 
             // Mutable holder so async handlers can upgrade the connection's auth state
             var claimsHolder = new ClaimsHolder { Claims = preValidatedClaims };
@@ -3458,7 +3460,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                     var json = Encoding.UTF8.GetString(ms.ToArray());
                     await HandleAuthWsMessageAsync(webSocket, json, sendLock, connectionId,
-                        claimsHolder, qrSubscriptions, cts);
+                        claimsHolder, qrSubscriptions, qrPollerTasks, cts);
                 }
             }
             catch (OperationCanceledException)
@@ -3482,6 +3484,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     sub.Cancel();
                 }
+                // Await all pollers so they finish using sendLock before we dispose it.
+                if (qrPollerTasks.Count > 0)
+                {
+                    try { await Task.WhenAll(qrPollerTasks.Values); }
+                    catch { /* individual poller exceptions are already logged */ }
+                }
                 sendLock.Dispose();
                 _logger.LogInformation("[AuthWS:{ConnId}] Connection closed", connectionId);
             }
@@ -3497,6 +3505,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             string connectionId,
             ClaimsHolder claimsHolder,
             ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
+            ConcurrentDictionary<string, Task> qrPollerTasks,
             CancellationTokenSource cts)
         {
             string? requestId = null;
@@ -3547,7 +3556,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             break;
                         }
                         await HandleWsQrStatusAsync(webSocket, root, requestId, sendLock,
-                            connectionId, claimsHolder.Claims, qrSubscriptions, cts);
+                            connectionId, claimsHolder.Claims, qrSubscriptions, qrPollerTasks, cts);
                         break;
 
                     case "auth:ping":
@@ -3735,6 +3744,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             string connectionId,
             Dictionary<string, object>? validatedClaims,
             ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
+            ConcurrentDictionary<string, Task> qrPollerTasks,
             CancellationTokenSource connectionCts)
         {
             var deviceId = root.TryGetProperty("deviceId", out var did) ? did.GetString() : null;
@@ -3782,7 +3792,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }, sendLock, connectionCts.Token);
 
             // Start background polling task – does not block the message loop
-            _ = Task.Run(async () =>
+            var pollerTask = Task.Run(async () =>
             {
                 const int pollIntervalMs = 1500;
                 const int jitterMs = 300; // +/- 300ms jitter to avoid synchronized storms
@@ -3914,7 +3924,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         qrSubscriptions.TryRemove(deviceId, out _);
                     subCts?.Dispose();
                 }
-            }, subCts.Token);
+            });
+            qrPollerTasks[deviceId] = pollerTask;
         }
 
         /// <summary>

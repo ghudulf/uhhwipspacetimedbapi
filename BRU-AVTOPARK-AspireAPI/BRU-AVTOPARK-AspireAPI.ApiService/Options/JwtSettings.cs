@@ -20,8 +20,11 @@ namespace TicketSalesApp.AdminServer.Configuration
 
         // ── Signing ──────────────────────────────────────────────────────────
 
-        
-         
+        /// <summary>
+        /// HMAC-SHA256 signing secret. Must be at least 16 characters.
+        /// </summary>
+        [Required]
+        [MinLength(16)]
         public string Secret { get; set; } = string.Empty;
 
         // ── Issuer / Audience ────────────────────────────────────────────────
@@ -46,6 +49,7 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// Access-token lifetime in minutes. Written as the "exp" claim.
         /// Defaults to 120 minutes (2 hours).
         /// </summary>
+        [Range(1, 10080)]
         public int ExpirationInMinutes { get; set; } = 120;
 
         /// <summary>
@@ -55,6 +59,7 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// between the issuer and consumers that check nbf strictly.
         /// Defaults to 0.
         /// </summary>
+        [Range(0, 300)]
         public int NotBeforeOffsetSeconds { get; set; } = 0;
 
         // ── Validation toggles ───────────────────────────────────────────────
@@ -91,6 +96,7 @@ namespace TicketSalesApp.AdminServer.Configuration
         /// Clock-skew tolerance applied to exp/nbf checks, in minutes.
         /// Defaults to 5 minutes.
         /// </summary>
+        [Range(0, 60)]
         public int ClockSkewMinutes { get; set; } = 5;
     }
 }

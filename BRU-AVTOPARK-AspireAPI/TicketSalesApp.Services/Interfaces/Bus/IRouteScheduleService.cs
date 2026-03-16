@@ -22,6 +22,15 @@ namespace TicketSalesApp.Services.Interfaces
             int page, int pageSize, ScheduleQuery? query = null);
         Task<RouteSchedule?> GetScheduleByIdAsync(uint scheduleId);
         Task<List<RouteSchedule>> GetSchedulesByRouteIdAsync(uint routeId);
+        /// <summary>
+        /// Creates a new route schedule with the supplied parameters.
+        /// </summary>
+        /// <returns>
+        /// The <c>uint</c> ID of the newly created schedule on success,
+        /// or <see langword="null"/> if the underlying SpacetimeDB reducer did not return an ID
+        /// (e.g. the reducer completed but the row was not yet visible in the local snapshot).
+        /// Throws on network failure, reducer rejection, or invalid arguments.
+        /// </returns>
         Task<uint?> CreateScheduleAsync(
             uint? routeId = null,
             string? startPoint = null,

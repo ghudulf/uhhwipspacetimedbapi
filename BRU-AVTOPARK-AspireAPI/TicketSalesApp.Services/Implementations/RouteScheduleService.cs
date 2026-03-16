@@ -742,6 +742,12 @@ namespace TicketSalesApp.Services.Implementations
                         // Recurring schedule: match by time-of-day (DepartureTime % 86400000)
                         var timeOfDay = schedule.DepartureTime % 86400000;
                         matchesTimeWindow = timeOfDay >= 0 && timeOfDay < 86400000; // Always true for recurring, just sanity check
+
+                        // Enforce validity window: skip if the queried date falls outside [ValidFrom, ValidUntil].
+                        if (date < schedule.ValidFrom)
+                            matchesTimeWindow = false;
+                        if (schedule.ValidUntil.HasValue && date > schedule.ValidUntil.Value)
+                            matchesTimeWindow = false;
                     }
 
                     if (matchesDay && matchesTimeWindow)

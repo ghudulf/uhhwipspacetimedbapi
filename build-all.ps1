@@ -1,19 +1,19 @@
 #!/usr/bin/env pwsh
 # Build script that handles both .NET 9 projects and SpacetimeDB module
 
-Write-Host "Building solution with mixed SDK versions..." -ForegroundColor Cyan
-Write-Host ""
+Write-Information "Building solution with mixed SDK versions..." -InformationAction Continue
+Write-Information "" -InformationAction Continue
 
 # Step 1: Build SpacetimeDB module separately (requires .NET 8 SDK with WASI workload)
-Write-Host "Step 1: Building SpacetimeDB module (net8.0 + wasi-wasm)..." -ForegroundColor Yellow
+Write-Information "Step 1: Building SpacetimeDB module (net8.0 + wasi-wasm)..." -InformationAction Continue
 Push-Location (Join-Path $PSScriptRoot "server")
 try {
     # Check if .NET 8 SDK is available
     $dotnet8 = dotnet --list-sdks | Select-String "8\."
     if (-not $dotnet8) {
-        Write-Host "WARNING: .NET 8 SDK not found. Skipping SpacetimeDB module build." -ForegroundColor Red
-        Write-Host "Install .NET 8 SDK and WASI workload with:" -ForegroundColor Yellow
-        Write-Host "  dotnet workload install wasi-experimental" -ForegroundColor Yellow
+        Write-Information "WARNING: .NET 8 SDK not found. Skipping SpacetimeDB module build." -InformationAction Continue
+        Write-Information "Install .NET 8 SDK and WASI workload with:" -InformationAction Continue
+        Write-Information "  dotnet workload install wasi-experimental" -InformationAction Continue
     } else {
         # Try to build with .NET 8
         $previousRollForward = $env:DOTNET_ROLL_FORWARD
@@ -22,20 +22,20 @@ try {
         $stdbExitCode = $LASTEXITCODE
         $env:DOTNET_ROLL_FORWARD = $previousRollForward
         if ($stdbExitCode -ne 0) {
-            Write-Host "WARNING: SpacetimeDB module build failed. This may be due to missing WASI workload." -ForegroundColor Red
-            Write-Host "Install with: dotnet workload install wasi-experimental" -ForegroundColor Yellow
+            Write-Information "WARNING: SpacetimeDB module build failed. This may be due to missing WASI workload." -InformationAction Continue
+            Write-Information "Install with: dotnet workload install wasi-experimental" -InformationAction Continue
         } else {
-            Write-Host "✓ SpacetimeDB module built successfully" -ForegroundColor Green
+            Write-Information "✓ SpacetimeDB module built successfully" -InformationAction Continue
         }
     }
 } finally {
     Pop-Location
 }
 
-Write-Host ""
+Write-Information "" -InformationAction Continue
 
 # Step 2: Build all .NET 9 projects (excluding SpacetimeDB module)
-Write-Host "Step 2: Building .NET 9 projects..." -ForegroundColor Yellow
+Write-Information "Step 2: Building .NET 9 projects..." -InformationAction Continue
 
 # Create a temporary solution without the SpacetimeDB module
 $tempSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.temp.sln"
@@ -46,7 +46,7 @@ Copy-Item $sourceSln $tempSln
 # Remove SpacetimeDB module from temp solution
 dotnet sln $tempSln remove $stdbModule 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "✗ Failed to remove SpacetimeDB module from temporary solution" -ForegroundColor Red
+    Write-Information "✗ Failed to remove SpacetimeDB module from temporary solution" -InformationAction Continue
     Remove-Item $tempSln -ErrorAction SilentlyContinue
     exit 1
 }
@@ -55,9 +55,9 @@ if ($LASTEXITCODE -ne 0) {
 dotnet build $tempSln --configuration Release
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✓ All .NET 9 projects built successfully" -ForegroundColor Green
+    Write-Information "✓ All .NET 9 projects built successfully" -InformationAction Continue
 } else {
-    Write-Host "✗ Build failed for .NET 9 projects" -ForegroundColor Red
+    Write-Information "✗ Build failed for .NET 9 projects" -InformationAction Continue
     Remove-Item $tempSln -ErrorAction SilentlyContinue
     exit 1
 }
@@ -65,8 +65,8 @@ if ($LASTEXITCODE -eq 0) {
 # Clean up temp solution
 Remove-Item $tempSln -ErrorAction SilentlyContinue
 
-Write-Host ""
-Write-Host "Build completed!" -ForegroundColor Green
-Write-Host ""
-Write-Host "Note: To build SpacetimeDB module separately, use:" -ForegroundColor Cyan
-Write-Host "  cd server && dotnet build" -ForegroundColor White
+Write-Information "" -InformationAction Continue
+Write-Information "Build completed!" -InformationAction Continue
+Write-Information "" -InformationAction Continue
+Write-Information "Note: To build SpacetimeDB module separately, use:" -InformationAction Continue
+Write-Information "  cd server && dotnet build" -InformationAction Continue

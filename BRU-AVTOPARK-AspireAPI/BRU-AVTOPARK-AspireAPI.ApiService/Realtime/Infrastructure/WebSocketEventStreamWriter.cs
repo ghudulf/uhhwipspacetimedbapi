@@ -104,6 +104,12 @@ public static class WebSocketEventStreamWriter
                         data
                     };
                 }
+                catch (OperationCanceledException)
+                {
+                    // Cancellation is expected (client disconnect or server shutdown) — propagate
+                    // so the outer loop exits cleanly without building an error payload.
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     var sanitizedCommand = LogSanitizer.SanitizeLogField(request.Command ?? "", 100);
