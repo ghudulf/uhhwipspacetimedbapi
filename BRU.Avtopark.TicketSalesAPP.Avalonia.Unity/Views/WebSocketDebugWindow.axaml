@@ -240,6 +240,18 @@
                                     <TextBlock Text="🛣️ Stream Routes"/>
                                 </Button>
                             </Grid>
+
+                            <!-- Stop all active streams -->
+                            <Button Command="{Binding StopAllStreamsCommand}"
+                                    Classes="danger"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,6,0,0"
+                                    IsEnabled="{Binding HasActiveStreams}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="⏹" FontSize="14"/>
+                                    <TextBlock Text="Stop All Streams" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
 
                         <Separator Background="#3F3F46" Height="1"/>

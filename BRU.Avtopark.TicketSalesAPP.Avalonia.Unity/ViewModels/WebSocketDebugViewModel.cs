@@ -78,6 +78,8 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private readonly SemaphoreSlim _interactiveLock = new SemaphoreSlim(1, 1);
     // Single background receive loop dispatches frames to per-request TCS objects.
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _interactivePending = new();
+    // Tracks active stream IDs returned by stream:started responses so the UI can stop them.
+    private readonly ConcurrentDictionary<string, string> _activeStreamIds = new(); // streamId -> resource
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -1189,7 +1191,9 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                     foreach (var kv in _interactivePending)
                         kv.Value.TrySetCanceled();
                     _interactivePending.Clear();
+                    _activeStreamIds.Clear();
                     IsInteractiveConnected = false;
+                    OnPropertyChanged(nameof(HasActiveStreams));
                 }
             }
         });
@@ -1261,6 +1265,28 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                     timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
                     var response = await tcs.Task.WaitAsync(timeoutCts.Token);
                     AddLog($"📨 {commandType} response: {response}");
+
+                    // Track stream IDs so the UI can stop them later.
+                    if (commandType.StartsWith("stream:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(response);
+                            if (doc.RootElement.TryGetProperty("streamId", out var sidEl))
+                            {
+                                var sid = sidEl.GetString();
+                                if (!string.IsNullOrEmpty(sid))
+                                {
+                                    var resource = doc.RootElement.TryGetProperty("resource", out var resEl)
+                                        ? resEl.GetString() ?? commandType : commandType;
+                                    _activeStreamIds[sid] = resource;
+                                    OnPropertyChanged(nameof(HasActiveStreams));
+                                    AddLog($"▶ Stream started: {sid} ({resource})");
+                                }
+                            }
+                        }
+                        catch { /* ignore parse errors */ }
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -1279,12 +1305,6 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     [RelayCommand]
     private async Task StopStream(string? streamId)
     {
-        if (!IsConnected || _webSocket == null)
-        {
-            AddLog("❌ Not connected. Please connect first.");
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(streamId))
         {
             AddLog("❌ Stream ID is required.");
@@ -1293,24 +1313,45 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
 
         try
         {
-            var requestId = Guid.NewGuid().ToString("N")[..8];
-            var message = new
+            var ws = await GetOrConnectInteractiveSocketAsync();
+            if (ws == null || ws.State != WebSocketState.Open)
             {
-                command = "stream:stop",
-                requestId,
-                streamId
-            };
+                AddLog("❌ Not connected to interactive endpoint.");
+                return;
+            }
 
-            var json = JsonSerializer.Serialize(message);
-            var bytes = Encoding.UTF8.GetBytes(json);
+            var requestId = Guid.NewGuid().ToString("N")[..8];
+            var message = new { command = "stream:stop", requestId, streamId };
+            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
 
-            await SendAsyncWithLock(_webSocket, bytes, _cts!.Token);
-            AddLog($"📤 Sent stop stream command for {streamId} (ID: {requestId})");
+            await SendAsyncWithLock(ws, bytes, _interactiveSendLock, _interactiveCts!.Token);
+            _activeStreamIds.TryRemove(streamId, out _);
+            OnPropertyChanged(nameof(HasActiveStreams));
+            AddLog($"⏹ Sent stream:stop for {streamId}");
         }
         catch (Exception ex)
         {
             AddLog($"❌ Error stopping stream: {ex.Message}");
         }
+    }
+
+    /// <summary>True when at least one interactive stream is active.</summary>
+    public bool HasActiveStreams => !_activeStreamIds.IsEmpty;
+
+    [RelayCommand]
+    private async Task StopAllStreams()
+    {
+        if (_activeStreamIds.IsEmpty)
+        {
+            AddLog("⚠ No active streams to stop.");
+            return;
+        }
+
+        var ids = _activeStreamIds.Keys.ToList();
+        foreach (var sid in ids)
+            await StopStream(sid);
+
+        AddLog($"⏹ Stopped {ids.Count} stream(s).");
     }
 
     [RelayCommand]
