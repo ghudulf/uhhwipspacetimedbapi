@@ -29,8 +29,8 @@ namespace TicketSalesApp.Services.Interfaces
         /// The <c>uint</c> ID of the newly created schedule on success,
         /// or <see langword="null"/> if the underlying SpacetimeDB reducer did not return an ID
         /// (e.g. the reducer completed but the row was not yet visible in the local snapshot).
-        /// Throws on network failure, reducer rejection, or invalid arguments.
         /// </returns>
+        /// <exception cref="System.Exception">Thrown on network failure, reducer rejection, or invalid arguments.</exception>
         Task<uint?> CreateScheduleAsync(
             uint? routeId = null,
             string? startPoint = null,

@@ -35,6 +35,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// (e.g., 30 seconds) to prevent long-running requests from blocking the application.
         /// </summary>
         private const int TokenInfoTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Timeout in seconds for tokeninfo calls in WebSocket message handling.
+        /// Intentionally shorter than TokenInfoTimeoutSeconds for faster failure in WS loops.
+        /// </summary>
+        private const int TokenInfoTimeoutSecondsWs = 10;
         
         /// <summary>
         /// Asynchronously validates if the current request is authenticated.
@@ -1069,7 +1075,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var httpClient = httpClientFactory.CreateClient("TokenInfo");
 
             // Enforce a hard timeout so a slow/hung tokeninfo call cannot block the WS loop.
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TokenInfoTimeoutSecondsWs));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             httpClient.DefaultRequestHeaders.Authorization =

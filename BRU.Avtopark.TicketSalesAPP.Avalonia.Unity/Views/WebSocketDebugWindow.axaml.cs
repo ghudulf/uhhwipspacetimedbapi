@@ -63,15 +63,35 @@ public partial class WebSocketDebugWindow : Window
     /// </summary>
     private async Task ShutdownAndDisposeAsync()
     {
+        Exception? shutdownException = null;
+        Exception? disposeException = null;
+
         try
         {
             await ShutdownAsync();
-            await _viewModel.DisposeAsync();
         }
         catch (Exception ex)
         {
-            // Log the exception (in production, use proper logging)
-            System.Diagnostics.Debug.WriteLine($"Error during shutdown and dispose: {ex}");
+            shutdownException = ex;
+            System.Diagnostics.Debug.WriteLine($"Error during shutdown: {ex}");
+        }
+        finally
+        {
+            try
+            {
+                await _viewModel.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                disposeException = ex;
+                System.Diagnostics.Debug.WriteLine($"Error during dispose: {ex}");
+            }
+        }
+
+        // If both failed, log a combined message
+        if (shutdownException != null && disposeException != null)
+        {
+            System.Diagnostics.Debug.WriteLine("Both shutdown and dispose failed");
         }
     }
 

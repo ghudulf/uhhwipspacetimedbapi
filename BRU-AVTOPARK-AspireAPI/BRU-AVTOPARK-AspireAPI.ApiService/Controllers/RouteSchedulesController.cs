@@ -817,6 +817,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // Validate and normalize pagination to avoid divide-by-zero and 500s.
                 if (pageSize <= 0) pageSize = 50;
+                var maxPageSize = _configuration.GetValue<int>("RouteSchedule:MaxPageSize", 100);
+                pageSize = Math.Min(pageSize, maxPageSize);
                 if (page < 1) page = 1;
                 var totalPages = totalCount > 0 ? (int)Math.Ceiling(totalCount / (double)pageSize) : 1;
                 if (page > totalPages) page = totalPages;

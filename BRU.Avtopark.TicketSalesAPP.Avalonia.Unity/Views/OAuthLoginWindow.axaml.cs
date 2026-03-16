@@ -111,8 +111,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 // Consume the logout flag: clear WebView session only when the user explicitly
                 // logged out. Normal app-start / token-expiry flows keep the session so
                 // auto-sign-in works without re-entering credentials.
-                bool clearSession = AuthenticationManager.ClearWebViewSessionOnNextLogin;
-                AuthenticationManager.ConsumeClearWebViewSessionFlag();
+                bool clearSession = AuthenticationManager.ConsumeClearWebViewSessionFlag();
                 if (clearSession)
                     Log.Information("Post-logout flag detected — WebView session will be cleared");
                 else

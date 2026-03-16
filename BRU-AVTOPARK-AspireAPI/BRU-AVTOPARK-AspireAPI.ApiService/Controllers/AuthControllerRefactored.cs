@@ -3817,7 +3817,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             // Pre-create a placeholder to avoid race where the task completes before assignment
             var tcs = new TaskCompletionSource<Task>();
-            qrPollerTasks[pollerKey] = tcs.Task;
+            qrPollerTasks[pollerKey] = tcs.Task.Unwrap();
 
             var pollerTask = Task.Run(async () =>
             {
