@@ -40,7 +40,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Timeout in seconds for tokeninfo calls in WebSocket message handling.
         /// Intentionally shorter than TokenInfoTimeoutSeconds for faster failure in WS loops.
         /// </summary>
-        private const int TokenInfoTimeoutSecondsWs = 10;
+        private const int TokenInfoTimeoutSecondsWs = 30;
         
         /// <summary>
         /// Asynchronously validates if the current request is authenticated.
