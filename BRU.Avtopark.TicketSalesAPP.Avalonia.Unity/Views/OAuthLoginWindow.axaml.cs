@@ -13,6 +13,7 @@ using WebViewCore.Events;
 using System.Collections.Generic;
 using Avalonia.Threading;
 using AvaloniaWebView;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 {
@@ -106,11 +107,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 }
                 
                 Log.Information("Authorization URL validation passed, proceeding with OAuth flow");
-                _ = LoadAuthorizationPageAsync();
+                
+                // Consume the logout flag: clear WebView session only when the user explicitly
+                // logged out. Normal app-start / token-expiry flows keep the session so
+                // auto-sign-in works without re-entering credentials.
+                bool clearSession = AuthenticationManager.ClearWebViewSessionOnNextLogin;
+                AuthenticationManager.ConsumeClearWebViewSessionFlag();
+                if (clearSession)
+                    Log.Information("Post-logout flag detected — WebView session will be cleared");
+                else
+                    Log.Information("Normal login flow — WebView session preserved for auto-sign-in");
+                
+                _ = LoadAuthorizationPageAsync(clearSession);
             }
         }
 
-        private async Task LoadAuthorizationPageAsync()
+        private async Task LoadAuthorizationPageAsync(bool clearSession = false)
         {
             try
             {
@@ -121,7 +133,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 {
                     try
                     {
-                        await LoadWithWebViewAsync();
+                        await LoadWithWebViewAsync(clearSession);
                     }
                     catch (Exception webViewEx)
                     {
@@ -143,7 +155,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             }
         }
 
-        private async Task LoadWithWebViewAsync()
+        private async Task LoadWithWebViewAsync(bool clearSession = false)
         {
             Log.Information("Attempting to load with embedded WebView");
             
@@ -169,6 +181,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 _webViewContainer.Children.Clear();
                 _webViewContainer.Children.Add(_webView);
                 Log.Debug("WebView added to container");
+            }
+
+            // CRITICAL: Clear WebView session/cookies before navigating so a logged-out user
+            // is not silently re-authenticated by a persisted server-side session cookie.
+            if (clearSession)
+            {
+                Log.Information("Clearing WebView session data before OAuth navigation (post-logout clean slate)");
+                await ClearWebViewDataAsync(_webView);
             }
 
             // For local development with self-signed certificates, we need to use HTTP instead of HTTPS

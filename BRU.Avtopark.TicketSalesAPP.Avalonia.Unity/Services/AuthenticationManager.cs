@@ -18,6 +18,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private static readonly object _lock = new object();
         private bool _isResetting = false; // Prevent retry during reset
 
+        /// <summary>
+        /// Set to true by LogoutAsync() so the next OAuthLoginWindow knows to clear
+        /// WebView session cookies. Consumed (reset to false) once the window reads it.
+        /// </summary>
+        public static bool ClearWebViewSessionOnNextLogin { get; private set; } = false;
+
+        /// <summary>
+        /// Called by OAuthLoginWindow after reading the flag to reset it, so subsequent
+        /// logins (e.g. token refresh flows) don't unnecessarily clear the session.
+        /// </summary>
+        public static void ConsumeClearWebViewSessionFlag()
+        {
+            ClearWebViewSessionOnNextLogin = false;
+        }
+
         public static AuthenticationManager Instance
         {
             get
@@ -273,6 +288,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public async Task LogoutAsync()
         {
             Log.Information("=== LOGOUT: Starting logout process ===");
+            
+            // Signal that the next OAuth window must clear WebView session cookies
+            ClearWebViewSessionOnNextLogin = true;
+            Log.Information("LOGOUT: WebView session clear flag set");
             
             // Clear OAuth tokens from storage
             await _oauthService.LogoutAsync();

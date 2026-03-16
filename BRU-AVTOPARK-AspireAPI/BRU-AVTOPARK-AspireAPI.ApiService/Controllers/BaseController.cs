@@ -7,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using TicketSalesApp.AdminServer.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
@@ -547,9 +548,34 @@ namespace TicketSalesApp.AdminServer.Controllers
                     Log.Debug("ValidateOAuthTokenAsync - Using access_token from query parameter");
                     authHeader = $"Bearer {accessToken}";
                 }
-
                 var token = authHeader.Substring("Bearer ".Length);
-                
+
+                // Cross-request IMemoryCache: prevents thundering-herd on startup when
+                // ~15 parallel requests all carry the same JWE token and each would
+                // independently call /connect/tokeninfo.
+                var memoryCache = HttpContext.RequestServices.GetService<IMemoryCache>();
+                string? tokenCacheKey = null;
+                if (memoryCache != null)
+                {
+                    // Key = SHA-256 of the raw token bytes (never store the token itself as a key)
+                    var hashBytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+                    tokenCacheKey = "tok:" + Convert.ToBase64String(hashBytes);
+
+                    if (memoryCache.TryGetValue(tokenCacheKey, out object? cachedValue))
+                    {
+                        if (cachedValue is Dictionary<string, object> cachedClaims)
+                        {
+                            Log.Debug("ValidateOAuthTokenAsync - Cross-request cache HIT (success)");
+                            HttpContext.Items[ValidatedOAuthClaimsKey] = cachedClaims;
+                            return cachedClaims;
+                        }
+                        // null sentinel = previously failed
+                        Log.Debug("ValidateOAuthTokenAsync - Cross-request cache HIT (failure)");
+                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                        return null;
+                    }
+                }
+
                 // CRITICAL: Route based on token structure (dot-separated segment count)
                 // 5 segments = JWE (encrypted token) -> call tokeninfo endpoint
                 // 3 segments = JWT (signed token) -> validate locally
@@ -580,7 +606,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     
                     Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
                     
-                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1000));  // 1000 SECONDS - AROUND 18 MINS - SAFE 
                     // Use only the standalone timeout; do not link HttpContext.RequestAborted so that
                     // a client disconnect cannot abort the auth check mid-flight.
 
@@ -595,6 +621,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                             var errorContent = await response.Content.ReadAsStringAsync(timeoutCts.Token);
                             Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}",
                                 response.StatusCode, errorContent);
+                            memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
                             HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                             return null;
                         }
@@ -603,6 +630,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     catch (OperationCanceledException)
                     {
                         Log.Warning("ValidateOAuthTokenAsync - Request cancelled or timed out calling tokeninfo");
+                        memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
                         HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                         return null;
                     }
@@ -640,12 +668,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
 
                         Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
+                        memoryCache?.Set(tokenCacheKey!, (object)claims, TimeSpan.FromSeconds(30));
                         HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
                         return claims;
                     }
                     
                     Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response; keys present: {Keys}",
                         string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
+                    memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
                     HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
                     return null;
                 }
