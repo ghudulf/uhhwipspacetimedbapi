@@ -20,7 +20,8 @@ namespace TicketSalesApp.AdminServer.Mappers
         /// <param name="user">The UserProfile entity to convert.</param>
         /// <returns>A SafeUserDto containing safe user properties with UserId normalized to string.</returns>
         /// <exception cref="ArgumentNullException">Thrown when user is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when Login is missing or mapping fails.</exception>
+        /// <exception cref="ArgumentException">Thrown when Login is missing.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when mapping fails due to unexpected errors.</exception>
         public static SafeUserDto MapToSafeUserDto(UserProfile user)
         {
             if (user == null)

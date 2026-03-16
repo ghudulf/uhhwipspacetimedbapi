@@ -71,7 +71,7 @@ public partial class WebSocketDebugWindow : Window
         catch (Exception ex)
         {
             // Log the exception (in production, use proper logging)
-            System.Diagnostics.Debug.WriteLine($"Error during shutdown and dispose: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Error during shutdown and dispose: {ex}");
         }
     }
 

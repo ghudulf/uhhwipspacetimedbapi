@@ -41,7 +41,14 @@ Write-Information "Step 2: Building .NET 9 projects..." -InformationAction Conti
 $tempSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.temp.sln"
 $sourceSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln"
 $stdbModule = Join-Path $PSScriptRoot "server" "StdbModule.csproj"
-Copy-Item $sourceSln $tempSln
+
+# Remove existing temp solution if it exists
+if (Test-Path $tempSln) {
+    Remove-Item $tempSln -Force -ErrorAction Stop
+}
+
+# Copy with fail-fast behavior
+Copy-Item $sourceSln $tempSln -Force -ErrorAction Stop
 
 # Remove SpacetimeDB module from temp solution
 dotnet sln $tempSln remove $stdbModule 2>$null

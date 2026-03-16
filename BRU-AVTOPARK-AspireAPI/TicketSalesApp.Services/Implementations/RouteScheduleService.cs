@@ -729,7 +729,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     // Use IsRecurring to distinguish recurring vs one-off schedules
                     // A recurring schedule with null DaysOfWeek is malformed — do NOT match every day.
-                    bool matchesDay = !schedule.IsRecurring || (schedule.IsRecurring && schedule.DaysOfWeek != null && schedule.DaysOfWeek.Contains(dayOfWeek));
+                    bool matchesDay = !schedule.IsRecurring || (schedule.IsRecurring && schedule.DaysOfWeek != null && schedule.DaysOfWeek.Contains(dayOfWeek, StringComparer.OrdinalIgnoreCase));
 
                     bool matchesTimeWindow;
                     if (!schedule.IsRecurring)

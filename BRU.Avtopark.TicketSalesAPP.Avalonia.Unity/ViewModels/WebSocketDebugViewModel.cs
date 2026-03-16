@@ -284,7 +284,12 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
 
             var wsUrl = buildResult.wsUri!;
             AddLog($"Connecting to {wsUrl}...");
-            await _webSocket.ConnectAsync(wsUrl, _cts.Token);
+
+            // Add timeout to prevent indefinite hangs
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+            await _webSocket.ConnectAsync(wsUrl, linkedCts.Token);
+
             IsConnected = true;
             StatusMessage = "Connected";
             AddLog($"✓ Connected successfully");

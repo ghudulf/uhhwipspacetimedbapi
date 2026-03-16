@@ -482,14 +482,18 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 if (pageSize < 1) pageSize = 1;
                 if (page < 1) page = 1;
-                
+
+                // Clamp pageSize to match server-side clamping in RouteScheduleService
+                const int MaxPageSize = 5000; // Must match RouteSchedule:MaxPageSize configuration
+                var effectivePageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
                 _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}",
-                    page, pageSize, isActive);
+                    page, effectivePageSize, isActive);
 
                 var query = new TicketSalesApp.Services.Models.ScheduleQuery { IsActive = isActive };
-                var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, pageSize, query);
+                var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, effectivePageSize, query);
 
-                var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)effectivePageSize));
 
                 // Clamp page to valid range
                 var normalizedPage = Math.Max(1, Math.Min(page, totalPages));
@@ -498,7 +502,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 List<RouteSchedule> finalPaged;
                 if (normalizedPage != page)
                 {
-                    (finalPaged, _) = await _routeScheduleService.GetSchedulesPageAsync(normalizedPage, pageSize, query);
+                    (finalPaged, _) = await _routeScheduleService.GetSchedulesPageAsync(normalizedPage, effectivePageSize, query);
                 }
                 else
                 {
@@ -512,7 +516,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 Response.Headers["X-Total-Count"] = totalCount.ToString();
                 Response.Headers["X-Page"] = normalizedPage.ToString();
-                Response.Headers["X-Page-Size"] = pageSize.ToString();
+                Response.Headers["X-Page-Size"] = effectivePageSize.ToString();
                 Response.Headers["X-Total-Pages"] = totalPages.ToString();
 
                 return Ok(result);

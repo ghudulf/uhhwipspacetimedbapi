@@ -3770,7 +3770,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             // Cap concurrent QR subscriptions to prevent task amplification
             const int MaxQrSubscriptions = 50;
-            if (qrSubscriptions.Count >= MaxQrSubscriptions)
+            if (qrPollerTasks.Count >= MaxQrSubscriptions)
             {
                 await WsSendAsync(webSocket, new
                 {

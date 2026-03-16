@@ -145,11 +145,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             if (_subscribers.TryRemove(subscriberId, out var removedSubscriber))
             {
                 removedSubscriber.Channel.Writer.TryComplete();
-                var sanitizedResource = LogSanitizer.SanitizeForLog(normalizedResource);
-                const int maxLogLength = 200;
-                var boundedSanitizedResource = sanitizedResource.Length <= maxLogLength
-                    ? sanitizedResource
-                    : sanitizedResource.Substring(0, maxLogLength) + "…(truncated)";
+                var boundedSanitizedResource = LogSanitizer.SanitizeLogField(normalizedResource, 200);
                 _logger.LogInformation("[EventBus] Subscription disposed: {SubscriberId} for resource: {Resource}", subscriberId, boundedSanitizedResource);
             }
         }

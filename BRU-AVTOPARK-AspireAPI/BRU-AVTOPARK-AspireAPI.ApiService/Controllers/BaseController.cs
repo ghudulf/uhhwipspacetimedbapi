@@ -1178,6 +1178,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                             return false;
                         }
                     }
+                    else if (expires != null)
+                    {
+                        // Even when RequireExpiration is false, reject tokens with expired exp claims
+                        if (now > expires.Value.Add(skew))
+                        {
+                            Log.Warning("ValidateJwtLocalAsync - Token expired at {Expiry}", expires.Value);
+                            return false;
+                        }
+                    }
 
                     if (validateNbf && notBefore != null && now.Add(skew) < notBefore.Value)
                     {
