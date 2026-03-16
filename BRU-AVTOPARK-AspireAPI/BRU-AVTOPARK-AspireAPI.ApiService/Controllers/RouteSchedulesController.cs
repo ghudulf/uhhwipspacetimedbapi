@@ -23,8 +23,8 @@ namespace TicketSalesApp.AdminServer.Controllers
     {
         private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
-
         private readonly IRealtimeEventBus _realtimeEventBus;
+        private readonly IConfiguration _configuration;
 
         /// <summary>
         /// Initializes a new instance of <see cref="RouteSchedulesController"/> with its required services.
@@ -32,15 +32,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="routeScheduleService">Service for managing route schedules.</param>
         /// <param name="logger">Logger for controller operations.</param>
         /// <param name="realtimeEventBus">Event bus used to publish and subscribe realtime schedule events.</param>
+        /// <param name="configuration">Application configuration for reading runtime settings.</param>
         /// <exception cref="ArgumentNullException">Thrown when any of the provided dependencies is null.</exception>
         public RouteSchedulesController(
             IRouteScheduleService routeScheduleService,
             ILogger<RouteSchedulesController> logger,
-            IRealtimeEventBus realtimeEventBus)
+            IRealtimeEventBus realtimeEventBus,
+            IConfiguration configuration)
         {
             _routeScheduleService = routeScheduleService ?? throw new ArgumentNullException(nameof(routeScheduleService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
        
@@ -483,9 +486,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                 if (pageSize < 1) pageSize = 1;
                 if (page < 1) page = 1;
 
-                // Clamp pageSize to match server-side clamping in RouteScheduleService
-                const int MaxPageSize = 5000; // Must match RouteSchedule:MaxPageSize configuration
-                var effectivePageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+                // Read max page size from configuration; fall back to 5000 if missing or invalid
+                var maxPageSize = _configuration.GetValue<int?>("RouteSchedule:MaxPageSize") ?? 5000;
+                if (maxPageSize < 1) maxPageSize = 5000;
+                var effectivePageSize = Math.Clamp(pageSize, 1, maxPageSize);
 
                 _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}",
                     page, effectivePageSize, isActive);
@@ -1070,6 +1074,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             catch (JsonException ex)
             {
                 _logger.LogDebug(ex, "Failed to parse JSON payload for sanitization");
+                return "[invalid JSON]";
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                _logger.LogDebug(ex, "Failed to parse JSON payload for sanitization (unexpected exception)");
                 return "[invalid JSON]";
             }
         }

@@ -88,7 +88,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     public IReadOnlyCollection<ApiDomainEvent> GetRecentEvents(int maxCount = 250)
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
-        
+        if (_stopping)
+            throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
+
         var safeCount = Math.Clamp(maxCount, 1, Math.Max(1, _options.RecentEventLimit));
         return _recentEvents.Reverse().Take(safeCount).ToArray();
     }

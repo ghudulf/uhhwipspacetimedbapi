@@ -796,22 +796,22 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 - [x] 19. Enable feature flags for Priority 3 endpoints (Medium - OAuth)
   - [x] 19.1 Enable OAuth authorize endpoint
-    - Toggle `FeatureFlags:UseRefactoredOAuthAuthorize` to `true` in `appsettings.json`
+    - Toggle `FeatureFlags:EnableOAuthAuthorizeRefactoring` to `true` in `appsettings.json`
     - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.2 Enable OAuth token endpoint
-    - Toggle `FeatureFlags:UseRefactoredOAuthToken` to `true` in `appsettings.json`
+    - Toggle `FeatureFlags:EnableOAuthTokenRefactoring` to `true` in `appsettings.json`
     - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.3 Enable OAuth userinfo endpoint
-    - Toggle `FeatureFlags:UseRefactoredOAuthUserinfo` to `true` in `appsettings.json`
+    - Toggle `FeatureFlags:EnableOAuthUserinfoRefactoring` to `true` in `appsettings.json`
     - Smoke test the endpoint, monitor logs for errors, roll back by setting flag to `false` if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
   
   - [x] 19.4 Enable OAuth client management endpoints
-    - Toggle the relevant `FeatureFlags:UseRefactoredOAuthClient*` flags to `true` in `appsettings.json`
+    - Toggle the relevant `FeatureFlags:EnableOAuthClient*Refactoring` flags to `true` in `appsettings.json`
     - Smoke test each endpoint, monitor logs for errors, roll back individual flags if issues arise
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 12.1, 12.2, 12.4_
 
@@ -927,7 +927,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 - [ ] 26. Update feature flag configuration (KEEP, but simplify)
   - [ ] 26.1 Update FeatureFlagOptions.cs documentation
-    - Add comment: "Feature flags kept for operational flexibility and A/B testing"
+    - Add comment: "Feature flags kept for operational disablement and endpoint control"
     - Add comment: "All flags default to true since legacy controller is removed"
     - Document that flags can still be used to disable specific endpoints if needed
     - Location: Options/FeatureFlagOptions.cs
@@ -942,7 +942,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
   - [ ] 26.3 Keep FeatureFlagService.cs unchanged
     - Service remains functional for runtime flag management
     - Admin UI continues to work for toggling endpoints on/off
-    - Useful for emergency endpoint disabling or A/B testing
+    - Useful for emergency endpoint disabling or per-endpoint operational control
     - _Requirements: 6.1.3, 6.1.4, 6.1.6, 6.1.7, 6.1.8_
   
   - [ ] 26.4 Keep admin feature flag UI and API endpoints

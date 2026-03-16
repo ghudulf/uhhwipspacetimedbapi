@@ -3530,8 +3530,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 requestId = root.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
                 messageType = root.TryGetProperty("type", out var t) ? t.GetString() : null;
 
+                // Sanitize client-controlled values before logging to prevent log forging
+                var safeRequestId = SanitizeLogValue(requestId);
+                var safeMessageType = SanitizeLogValue(messageType);
+
                 _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
-                    connectionId, messageType, requestId);
+                    connectionId, safeMessageType, safeRequestId);
 
                 switch (messageType?.ToLowerInvariant())
                 {
@@ -3820,6 +3824,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                         string? pollToken;
                         try
                         {
+                           // using var pollCts = CancellationTokenSource.CreateLinkedTokenSource(subCts.Token);
+                           // pollCts.CancelAfter(TimeSpan.FromSeconds(10));
                             var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
                             if (status == null)
                             {
@@ -3991,6 +3997,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             return claims
                 .Where(kv => !sensitive.Contains(kv.Key))
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+
+        /// <summary>
+        /// Sanitizes a client-controlled string value before use in log messages to prevent log forging.
+        /// Trims whitespace, strips control characters and newlines, enforces max length, and returns a
+        /// safe placeholder for null/empty values.
+        /// </summary>
+        private static string SanitizeLogValue(string? value, int maxLength = 100)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "(none)";
+            // Strip control characters (including CR/LF) to prevent log injection
+            var sanitized = new string(value.Where(c => !char.IsControl(c)).ToArray()).Trim();
+            if (sanitized.Length == 0) return "(none)";
+            return sanitized.Length > maxLength ? sanitized[..maxLength] + "…" : sanitized;
         }
 
         /// <summary>

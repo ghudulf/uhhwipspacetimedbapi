@@ -770,6 +770,10 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<List<RouteSchedule>> GetSchedulesByDateRangeAsync(ulong startDate, ulong endDate)
         {
+            // NOTE: This method performs pure timestamp-based filtering — it matches schedules whose
+            // stored DepartureTime falls within [startDate, endDate]. Recurring RouteSchedule entries
+            // whose DepartureTime is outside the range but have DaysOfWeek occurrences inside the range
+            // are NOT included. Use GetSchedulesByDateAsync for occurrence-aware (recurring) filtering.
             try
             {
                 _logger.LogInformation("Retrieving schedules between {StartDate} and {EndDate}",

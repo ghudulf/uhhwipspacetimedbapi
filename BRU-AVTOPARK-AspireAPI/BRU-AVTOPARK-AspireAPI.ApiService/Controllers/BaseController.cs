@@ -370,12 +370,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
         /// <returns>True if the user has the specified permission; false otherwise.</returns>
-        /// <summary>
-        /// Asynchronously checks if the current user has a specific permission by inspecting validated claims.
-        /// This method properly handles both ASP.NET Core authenticated principals and OAuth tokens (including JWE).
-        /// </summary>
-        /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
-        /// <returns>True if the user has the specified permission; false otherwise.</returns>
         protected async Task<bool> HasPermissionAsync(string permissionName)
         {
             try
@@ -678,8 +672,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                         var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
 
-                        var validateIssuer   = jwtOptions?.ValidateIssuer   ?? false;
-                        var validateAudience = jwtOptions?.ValidateAudience ?? false;
+                        var validateIssuer   = jwtOptions?.ValidateIssuer   ?? !string.IsNullOrEmpty(cfg?["JwtSettings:Issuer"]);
+                        var validateAudience = jwtOptions?.ValidateAudience ?? !string.IsNullOrEmpty(cfg?["JwtSettings:Audience"]);
                         var requireExp       = jwtOptions?.RequireExpiration ?? true;
                         var validateNbf      = jwtOptions?.ValidateNbf       ?? true;
                         var clockSkew        = TimeSpan.FromMinutes(jwtOptions?.ClockSkewMinutes ?? 5);

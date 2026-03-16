@@ -2583,7 +2583,7 @@ Elysia is a fast, ergonomic TypeScript web framework built on Bun runtime with f
 
 Replace ASP.NET Core authentication layer with Elysia JS, keep C# for business logic.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  Elysia JS Authentication Gateway (Port 3000)               │
 │  ┌──────────────────────────────────────────────────────┐  │
@@ -2888,8 +2888,11 @@ const app = new Elysia()
     const allowedHeaders: Record<string, string> = {}
     const hopByHop = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
       'te', 'trailers', 'transfer-encoding', 'upgrade'])
+    // Also exclude caller-controlled identity and internal headers to prevent spoofing downstream.
+    const sensitiveHeaders = new Set(['authorization', 'cookie', 'x-forwarded-for'])
     for (const [key, value] of request.headers.entries()) {
-      if (!hopByHop.has(key.toLowerCase())) {
+      const lk = key.toLowerCase()
+      if (!hopByHop.has(lk) && !sensitiveHeaders.has(lk) && !lk.startsWith('x-user-') && !lk.startsWith('x-internal-')) {
         allowedHeaders[key] = value
       }
     }
@@ -3815,9 +3818,12 @@ app.post('/auth/login', async ({ body, spacetimeDB }) => {
 })
 ```
 
-**Option 2: Proxy to C# Backend**
+**Migration Bridge: C# Proxy (temporary — not part of Elysia future-state)**
+
 ```typescript
-// Elysia delegates to C# backend for all SpacetimeDB operations
+// Elysia delegates to C# backend for all SpacetimeDB operations.
+// This is a TEMPORARY migration bridge only. The long-term architecture
+// is standalone Elysia with direct SpacetimeDB access (Option 1 above).
 app.post('/auth/login', async ({ body }) => {
   const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
     method: 'POST',
@@ -4041,8 +4047,8 @@ class SpacetimeDBAdapter {
   constructor(private name: string, private spacetimeClient: any) {}
   
   async upsert(id: string, payload: any, expiresIn: number) {
-    // PRODUCTION: Direct SpacetimeDB access via client
-    await this.spacetimeClient.call('StoreOidcToken', {
+    // PRODUCTION: Direct SpacetimeDB access via generated reducer binding
+    await conn.reducers.StoreOidcToken({
       type: this.name,
       id,
       payload: JSON.stringify(payload),
@@ -4051,10 +4057,10 @@ class SpacetimeDBAdapter {
   }
   
   async find(id: string) {
-    // PRODUCTION: Direct SpacetimeDB query
-    const result = await this.spacetimeClient.query(`
-      SELECT * FROM OidcTokens WHERE type = ? AND id = ?
-    `, [this.name, id])
+    // PRODUCTION: Direct SpacetimeDB query via generated DB accessor
+    const result = Array.from(conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.type === this.name && t.id === id
+    )
     if (!result || result.length === 0) return undefined
     return JSON.parse(result[0].payload)
   }
