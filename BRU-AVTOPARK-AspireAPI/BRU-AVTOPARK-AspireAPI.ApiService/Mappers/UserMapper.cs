@@ -35,9 +35,9 @@ namespace TicketSalesApp.AdminServer.Mappers
 
             var defaults = new List<string>();
 
-            string? email       = CoerceString(user.Email,       null,   nameof(user.Email),       defaults);
-            string? phoneNumber = CoerceString(user.PhoneNumber, null,   nameof(user.PhoneNumber), defaults);
-            string? legacyGuid  = CoerceString(user.LegacyGuid,  null,   nameof(user.LegacyGuid),  defaults);
+            string? email       = CoerceString(user.Email,       nameof(user.Email),       defaults);
+            string? phoneNumber = CoerceString(user.PhoneNumber, nameof(user.PhoneNumber), defaults);
+            string? legacyGuid  = CoerceString(user.LegacyGuid,  nameof(user.LegacyGuid),  defaults);
             bool emailConfirmed = user.EmailConfirmed ?? DefaultBool(nameof(user.EmailConfirmed), false, defaults);
 
             if (defaults.Count > 0 && _log.IsEnabled(Serilog.Events.LogEventLevel.Debug))
@@ -71,9 +71,9 @@ namespace TicketSalesApp.AdminServer.Mappers
             }
         }
 
-        private static string? CoerceString(string? value, string? fallback, string fieldName, List<string> defaults)
+        private static string? CoerceString(string? value, string fieldName, List<string> defaults)
         {
-            if (value is null) { defaults.Add(fieldName); return fallback; }
+            if (value is null) { defaults.Add(fieldName); return null; }
             return value;
         }
 

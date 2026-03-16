@@ -3814,6 +3814,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             // Start background polling task – does not block the message loop
             // Use unique key (deviceId + Guid) to track multiple concurrent pollers for the same device
             var pollerKey = $"{deviceId}_{Guid.NewGuid():N}";
+
+            // Pre-create a placeholder to avoid race where the task completes before assignment
+            var tcs = new TaskCompletionSource<Task>();
+            qrPollerTasks[pollerKey] = tcs.Task;
+
             var pollerTask = Task.Run(async () =>
             {
                 const int pollIntervalMs = 1500;
@@ -3951,7 +3956,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     qrPollerTasks.TryRemove(pollerKey, out _);
                 }
             });
-            qrPollerTasks[pollerKey] = pollerTask;
+
+            // Complete the placeholder with the actual task
+            tcs.SetResult(pollerTask);
         }
 
         /// <summary>

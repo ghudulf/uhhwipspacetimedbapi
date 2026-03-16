@@ -229,9 +229,11 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationSe
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
 
-// Configure JwtSettings options from appsettings.json
-builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>(
-    builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName));
+// Configure JwtSettings options from appsettings.json with validation
+builder.Services.AddOptions<TicketSalesApp.AdminServer.Configuration.JwtSettings>()
+    .Bind(builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.JwtSettings.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
  
 
 // Add Routing Diagnostics Service for debugging controller discovery issues

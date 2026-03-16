@@ -28,9 +28,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         /// Called by OAuthLoginWindow after reading the flag to reset it, so subsequent
         /// logins (e.g. token refresh flows) don't unnecessarily clear the session.
         /// </summary>
-        public static void ConsumeClearWebViewSessionFlag()
+        /// <returns>True if the flag was set and has been consumed, false otherwise.</returns>
+        public static bool ConsumeClearWebViewSessionFlag()
         {
+            var wasSet = ClearWebViewSessionOnNextLogin;
             ClearWebViewSessionOnNextLogin = false;
+            return wasSet;
         }
 
         public static AuthenticationManager Instance

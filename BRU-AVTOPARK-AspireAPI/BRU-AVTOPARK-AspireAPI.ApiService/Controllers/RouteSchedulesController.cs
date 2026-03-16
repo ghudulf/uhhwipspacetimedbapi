@@ -179,8 +179,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var (initialItems, totalCount) = firstResult;
-            var effectivePageSize = initialItems.Count > 0 ? initialItems.Count : currentPageSize;
-            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)effectivePageSize));
+            // If we got fewer items than requested, we're on the last page
+            var effectivePageSize = (initialItems.Count > 0 && initialItems.Count < currentPageSize)
+                ? initialItems.Count
+                : currentPageSize;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
 
             // Normalize page within bounds
             var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));

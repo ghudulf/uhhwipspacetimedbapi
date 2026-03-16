@@ -252,9 +252,9 @@ public class TokenService : ITokenService
                 ValidateAudience = _jwtSettings.ValidateAudience,
                 ValidAudience    = _jwtSettings.Audience,
 
-                // Disable the built-in lifetime check; all exp/nbf logic is handled
-                // by the custom LifetimeValidator below so the two concerns stay independent.
-                ValidateLifetime      = false,
+                // Enable lifetime validation; all exp/nbf logic is handled by the custom
+                // LifetimeValidator below which provides enhanced clock-skew and nbf checking.
+                ValidateLifetime      = true,
                 RequireExpirationTime = _jwtSettings.RequireExpiration,
 
                 ClockSkew = TimeSpan.Zero, // handled inside LifetimeValidator

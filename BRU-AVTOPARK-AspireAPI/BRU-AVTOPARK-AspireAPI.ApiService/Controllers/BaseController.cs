@@ -24,11 +24,17 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Cache key for storing validated OAuth claims in HttpContext.Items
         /// </summary>
         private const string ValidatedOAuthClaimsKey = "_validatedOAuthClaims";
-        
+
         /// <summary>
         /// Cache key for storing failed OAuth validation sentinel in HttpContext.Items
         /// </summary>
         private const string ValidatedOAuthClaimsFailedKey = "_validatedOAuthClaimsFailed";
+
+        /// <summary>
+        /// Timeout in seconds for external tokeninfo calls. Should be kept reasonably low
+        /// (e.g., 30 seconds) to prevent long-running requests from blocking the application.
+        /// </summary>
+        private const int TokenInfoTimeoutSeconds = 30;
         
         /// <summary>
         /// Asynchronously validates if the current request is authenticated.
@@ -603,10 +609,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                     // Use the same base URL as the current request (preserve reverse-proxy prefix)
                     var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase.ToUriComponent()}";
                     var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
-                    
+
                     Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
-                    
-                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(1000));  // 1000 SECONDS - AROUND 18 MINS - SAFE 
+
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TokenInfoTimeoutSeconds));
                     // Use only the standalone timeout; do not link HttpContext.RequestAborted so that
                     // a client disconnect cannot abort the auth check mid-flight.
 

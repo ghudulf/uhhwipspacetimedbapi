@@ -1294,10 +1294,17 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 }
                 catch (OperationCanceledException)
                 {
-                    _interactivePending.TryRemove(requestId, out _);
                     AddLog($"⚠ {commandType} response timed out");
                 }
-                catch (Exception ex) { AddLog($"⚠ {commandType} receive error: {ex.Message}"); }
+                catch (Exception ex)
+                {
+                    AddLog($"⚠ {commandType} receive error: {ex.Message}");
+                }
+                finally
+                {
+                    // Ensure requestId is removed from _interactivePending in all paths
+                    _interactivePending.TryRemove(requestId, out _);
+                }
             });
         }
         catch (Exception ex)
