@@ -171,7 +171,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch initial page", command);
-                throw;
+                // throw; NO THROWS HERE - WE DONT WANT RUNTIME CRASHES 
+                   return new { error = "Failed to retrieve schedules", command };
             }
 
             var (initialItems, totalCount) = firstResult;
