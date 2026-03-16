@@ -884,7 +884,8 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 - [ ] 24. Clean up AuthControllerRefactored.cs
   - [ ] 24.1 Remove [RefactoredAction] attributes from all endpoints
     - These attributes are no longer needed since legacy controller is deleted
-    - Keep all other attributes ([HttpPost], [Authorize], etc.)
+    - Keep [AllowAnonymous], [HttpPost], [HttpGet], etc. attributes
+    - NOTE: Authentication is handled manually in BaseController via hybrid auth model, NOT via [Authorize] attribute
     - Location: Controllers/AuthControllerRefactored.cs
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
@@ -1120,9 +1121,8 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 - **Best for**: Teams satisfied with current approach
 
 **Option 6: ElysiaJS as Authentication Gateway (Advanced)**
-- Replace ASP.NET Core auth layer with ElysiaJS (TypeScript/Bun)
-- ElysiaJS connects DIRECTLY to SpacetimeDB for auth data
-- C# backend becomes pure business logic API
+- ElysiaJS is a STANDALONE authentication server with direct SpacetimeDB access (TypeScript/Bun)
+- C# backend integrates INTO Elysia as a downstream business logic service
 - Use oidc-provider for production-grade OIDC implementation
 - **Pros**: Modern TypeScript stack, better performance (~10k req/s), simpler SpacetimeDB integration (no ID mapping, no polling), native WebSocket support
 - **Cons**: Two runtimes (Bun + .NET), requires TypeScript expertise, significant migration effort
@@ -1550,4 +1550,3 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 - ⭕ = Optional milestone (choose based on your path)
 
 **Recommendation**: Most teams should stop at Milestone 7. The refactored controller with CSHTML views provides a clean, maintainable authentication system that works well for most use cases.
-

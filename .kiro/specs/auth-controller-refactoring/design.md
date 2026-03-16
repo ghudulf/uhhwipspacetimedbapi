@@ -2884,16 +2884,19 @@ const app = new Elysia()
   // Proxy all other API requests to C# backend
   .all('/api/*', async ({ request }) => {
     const url = new URL(request.url)
-    // Build an explicit header allowlist to avoid forwarding hop-by-hop or sensitive headers.
+    // Build an explicit header allowlist to avoid forwarding hop-by-hop headers.
     const allowedHeaders: Record<string, string> = {}
     const hopByHop = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
       'te', 'trailers', 'transfer-encoding', 'upgrade'])
-    // Also exclude caller-controlled identity and internal headers to prevent spoofing downstream.
-    const sensitiveHeaders = new Set(['authorization', 'cookie', 'x-forwarded-for'])
+    // Exclude caller-controlled identity and internal headers to prevent spoofing downstream.
+    // NOTE: Authorization header IS forwarded (normalized to lowercase) for API authentication.
+    const sensitiveHeaders = new Set(['cookie', 'x-forwarded-for'])
     for (const [key, value] of request.headers.entries()) {
       const lk = key.toLowerCase()
       if (!hopByHop.has(lk) && !sensitiveHeaders.has(lk) && !lk.startsWith('x-user-') && !lk.startsWith('x-internal-')) {
-        allowedHeaders[key] = value
+        // Normalize Authorization header to lowercase for consistency
+        const headerKey = lk === 'authorization' ? 'authorization' : key
+        allowedHeaders[headerKey] = value
       }
     }
     const response = await fetch(`https://localhost:5001${url.pathname}${url.search}`, {
@@ -3557,7 +3560,7 @@ const app = new Elysia()
 
 // Helper: Convert Elysia Request to Node.js req/res for oidc-provider
 async function handleOidcRequest(request: Request): Promise<Response> {
-  const { Readable, Writable } = await import('stream')
+  const { Duplex } = await import('stream')
   const { IncomingMessage, ServerResponse } = await import('http')
   const { Socket } = await import('net')
 
@@ -3599,11 +3602,25 @@ async function handleOidcRequest(request: Request): Promise<Response> {
     // Build a minimal ServerResponse-compatible object.
     // ServerResponse requires an IncomingMessage in its constructor.
     const nodeRes = new ServerResponse(nodeReq)
-    const sink = new Writable({
-      write(chunk, _enc, cb) { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)); cb() }
+
+    // Create a proper Duplex stream that implements both readable and writable sides
+    // This is required by ServerResponse.assignSocket which expects a socket-like object
+    const duplexSink = new Duplex({
+      read() {}, // No-op for read side since we're only capturing writes
+      write(chunk, _enc, cb) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        cb()
+      }
     })
-    // Redirect ServerResponse output into our sink so we can capture it.
-    nodeRes.assignSocket(sink as any)
+
+    // Emit socket events expected by ServerResponse
+    process.nextTick(() => {
+      duplexSink.emit('connect')
+      duplexSink.emit('ready')
+    })
+
+    // Redirect ServerResponse output into our duplex sink so we can capture it.
+    nodeRes.assignSocket(duplexSink as any)
 
     nodeRes.on('finish', () => {
       const body = Buffer.concat(chunks)
@@ -3746,10 +3763,10 @@ app.all('/oidc/*', async ({ request }) => {
 
 The `SpacetimeDBAdapter` class shown above demonstrates how oidc-provider integrates with SpacetimeDB. In the **production/standalone architecture** (Architecture Option 1), Elysia connects DIRECTLY to SpacetimeDB using the TypeScript SDK with no C# backend involvement for auth data. The adapter methods (`upsert`, `find`, `findByUserCode`, `findByUid`, `destroy`, `revokeByGrantId`, `consume`) call SpacetimeDB reducers and query tables directly.
 
-**IMPORTANT**: The C# backend proxy pattern shown in the adapter code (with `useCSharpProxyForMigration` flag) is ONLY for gradual migration scenarios. In production standalone mode, all adapter methods use direct SpacetimeDB access:
-- `upsert` → calls `spacetimeDB.call('store_oidc_token', ...)`
-- `find` → queries `spacetimeDB.db.OpenIddictSpacetimeToken.filter(...)`
-- `destroy` → calls `spacetimeDB.call('delete_oidc_token', ...)`
+**IMPORTANT**: The C# backend proxy pattern shown in the adapter code (with `useCSharpProxyForMigration` flag) is ONLY for gradual migration scenarios. In production standalone mode, all adapter methods use direct SpacetimeDB access via the canonical v2 SDK:
+- `upsert` → calls `conn.reducers.StoreOidcToken(...)`
+- `find` → queries `Array.from(conn.db.OpenIddictSpacetimeToken.iter()).filter(...)`
+- `destroy` → calls `conn.reducers.DeleteOidcToken(...)`
 - etc.
 
 The C# proxy approach is documented separately in the "Migration Bridge" appendix below for teams that need to migrate gradually from the current C# OpenIddict implementation.

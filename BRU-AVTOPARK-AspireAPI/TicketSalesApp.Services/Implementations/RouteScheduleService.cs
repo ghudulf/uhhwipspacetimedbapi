@@ -301,6 +301,11 @@ namespace TicketSalesApp.Services.Implementations
                 // Capture the original cleaned notes before the event handler to avoid closure bug
                 var originalCleanedNotes = cleanedNotes;
 
+                // TODO: Replace per-request OnCreateRouteSchedule subscription with a single long-lived handler
+                // registered at service initialization. Use correlationId to resolve TaskCompletionSource.
+                // This avoids creating/destroying event handlers on every request which can leak memory.
+                // See: https://github.com/your-org/repo/issues/NNN
+
                 // Set up event handler to capture the created schedule ID
                 async void OnScheduleCreated(ReducerEventContext ctx, uint routeIdParam, ulong departureTimeParam,
                     double priceParam, uint availableSeatsParam, List<string>? daysOfWeekParam,

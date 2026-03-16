@@ -14,9 +14,9 @@ internal static class LogSanitizer
     {
         if (string.IsNullOrEmpty(value))
         {
-            return value ?? string.Empty;
+            return string.Empty;
         }
-        
+
         return new string(value.Where(c => !char.IsControl(c)).ToArray());
     }
 

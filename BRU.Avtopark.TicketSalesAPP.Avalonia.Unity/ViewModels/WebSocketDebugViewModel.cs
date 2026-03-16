@@ -304,12 +304,16 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                 _lifecycleLock.Release();
             }
 
+            // Capture _webSocket and _cts to prevent old tasks from tearing down new connections
+            var capturedWebSocket = _webSocket;
+            var capturedCts = _cts;
+
             // Start receiving messages with explicit exception handling
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await ReceiveMessagesAsync();
+                    await ReceiveMessagesAsync(capturedWebSocket, capturedCts);
                 }
                 catch (Exception ex)
                 {
@@ -1454,20 +1458,27 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         }
     }
 
-    private async Task ReceiveMessagesAsync()
+    private async Task ReceiveMessagesAsync(ClientWebSocket? webSocket, CancellationTokenSource? cts)
     {
+        // Use captured locals instead of instance fields to prevent old tasks from interfering with new connections
+        if (webSocket == null || cts == null)
+        {
+            AddLog("✗ ReceiveMessagesAsync: webSocket or cts is null");
+            return;
+        }
+
         var buffer = new byte[8192];
 
         try
         {
-            while (_webSocket?.State == WebSocketState.Open && !(_cts?.Token.IsCancellationRequested ?? true))
+            while (webSocket.State == WebSocketState.Open && !cts.Token.IsCancellationRequested)
             {
                 using var ms = new System.IO.MemoryStream();
                 WebSocketReceiveResult result;
 
                 do
                 {
-                    result = await _webSocket.ReceiveAsync(buffer, _cts?.Token ?? CancellationToken.None);
+                    result = await webSocket.ReceiveAsync(buffer, cts.Token);
                     ms.Write(buffer, 0, result.Count);
                 } while (!result.EndOfMessage);
 

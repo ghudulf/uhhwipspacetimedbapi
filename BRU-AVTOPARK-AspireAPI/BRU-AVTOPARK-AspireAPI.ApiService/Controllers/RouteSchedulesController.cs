@@ -179,7 +179,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var (initialItems, totalCount) = firstResult;
-            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
+            var effectivePageSize = initialItems.Count > 0 ? initialItems.Count : currentPageSize;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)effectivePageSize));
 
             // Normalize page within bounds
             var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));
@@ -235,7 +236,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 pagination = new
                 {
                     page = currentPage,
-                    pageSize = currentPageSize,
+                    pageSize = effectivePageSize,
                     totalCount = totalCount,
                     totalPages = totalPages,
                     hasNextPage = currentPage < totalPages,
@@ -251,6 +252,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
         /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
         /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
+        /// <remarks>
+        /// TODO: Refactor to use centralized pagination config and derive effectivePageSize from actual returned items count
+        /// to match the pattern used in HandleNavigationCommandAsync. Currently uses hardcoded defaults and requested pageSize.
+        /// </remarks>
         private object ApplyPaginationAndProject(IReadOnlyList<RouteSchedule> schedules, int? page, int? pageSize)
         {
             // Apply defaults and validation

@@ -21,6 +21,7 @@ namespace TicketSalesApp.AdminServer.Mappers
         /// <returns>A BusDto with all fields populated.</returns>
         /// <exception cref="ArgumentNullException">Thrown when bus is null.</exception>
         /// <exception cref="ArgumentException">Thrown when a required non-nullable field cannot be read.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the mapping fails due to runtime binding errors or unexpected internal errors.</exception>
         public static BusDto ToDto(dynamic bus)
         {
             if (bus == null)

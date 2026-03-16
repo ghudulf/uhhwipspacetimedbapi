@@ -3675,6 +3675,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             await PublishAuthEventAsync("auth.token.validated",
                 claims.TryGetValue("sub", out var sub) ? sub?.ToString() : null,
                 claims.TryGetValue("unique_name", out var name) ? name?.ToString() : null,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
                 new Dictionary<string, string> { ["source"] = "websocket" });
 
             await WsSendAsync(webSocket, new
@@ -3732,6 +3733,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             await PublishAuthEventAsync("auth.token.refreshed",
                 validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,
                 validatedClaims?.TryGetValue("unique_name", out var name) == true ? name?.ToString() : null,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
                 new Dictionary<string, string> { ["source"] = "websocket" });
 
             await WsSendAsync(webSocket, new
@@ -3806,6 +3808,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 deviceId
             }, sendLock, connectionCts.Token);
 
+            // Capture IP address before background task to avoid accessing HttpContext from background thread
+            var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
             // Start background polling task – does not block the message loop
             // Use unique key (deviceId + Guid) to track multiple concurrent pollers for the same device
             var pollerKey = $"{deviceId}_{Guid.NewGuid():N}";
@@ -3837,7 +3842,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                         deviceId,
                                         reason = "QR status check returned null"
                                     }, sendLock, subCts.Token);
-                                    await PublishAuthEventAsync("auth.qr.error", null, null,
+                                    await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
                                         new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
                                 }
                                 break;
@@ -3852,7 +3857,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                         deviceId,
                                         reason = "QR status check indicated failure"
                                     }, sendLock, subCts.Token);
-                                    await PublishAuthEventAsync("auth.qr.error", null, null,
+                                    await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
                                         new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "status_not_success" });
                                 }
                                 break;
@@ -3871,7 +3876,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                     deviceId,
                                     reason = "Internal error during QR status check"
                                 }, sendLock, subCts.Token);
-                                await PublishAuthEventAsync("auth.qr.error", null, null,
+                                await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
                                     new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "poll_exception" });
                             }
                             break;
@@ -3888,7 +3893,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                     token = pollToken
                                 }, sendLock, subCts.Token);
 
-                                await PublishAuthEventAsync("auth.qr.completed", null, null,
+                                await PublishAuthEventAsync("auth.qr.completed", null, null, sourceIp,
                                     new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
                             }
                             break;
@@ -3953,10 +3958,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Publishes an auth domain event to the realtime event bus so that
         /// SignalR subscribers and WebSocket stream clients also receive auth events.
         /// </summary>
+        /// <param name="eventName">The name of the event.</param>
+        /// <param name="userId">Optional user ID associated with the event.</param>
+        /// <param name="userName">Optional user name associated with the event.</param>
+        /// <param name="sourceIp">The source IP address. Must be captured before background task execution.</param>
+        /// <param name="metadata">Optional metadata dictionary.</param>
         private async Task PublishAuthEventAsync(
             string eventName,
             string? userId,
             string? userName,
+            string? sourceIp,
             Dictionary<string, string>? metadata = null)
         {
             try
@@ -3971,7 +3982,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     UserId: userId,
                     UserName: userName,
                     Tenant: null,
-                    SourceIp: HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    SourceIp: sourceIp ?? "unknown",
                     Metadata: (metadata ?? new Dictionary<string, string>()).AsReadOnly());
 
                 await _realtimeEventBus.PublishAsync(domainEvent);
