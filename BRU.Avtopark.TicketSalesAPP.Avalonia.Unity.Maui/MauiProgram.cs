@@ -11,6 +11,9 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
 
+        // Set MAUI_HOST flag for App.axaml.cs to detect MAUI-hosted mode
+        AppContext.SetData("MAUI_HOST", true);
+
         builder
             .UseMauiApp<App>()                    // MAUI App.cs defined in this project
             .UseAvaloniaApp()                     // Full hosting: Avalonia replaces MAUI rendering

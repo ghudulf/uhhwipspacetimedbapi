@@ -296,7 +296,8 @@
                  COL 1  Navigation list panel
                  ───────────────────────────────────────── -->
             <Border Grid.Column="1" Background="#16161B"
-                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
+                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0"
+                    IsVisible="{Binding IsNavPaneOpen}">
                 <DockPanel Margin="0,16,0,16">
 
                     <!-- Search -->

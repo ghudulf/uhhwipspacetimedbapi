@@ -17,6 +17,11 @@
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <converters:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
         <converters:StatusToBorderBrushConverter x:Key="StatusToBorderBrushConverter"/>
+
+        <!-- BRU Design System Colors -->
+        <SolidColorBrush x:Key="BgElevated">#1E1E28</SolidColorBrush>
+        <SolidColorBrush x:Key="TextFaint">#3A3A48</SolidColorBrush>
+        <SolidColorBrush x:Key="TextMuted">#4A4A58</SolidColorBrush>
     </Application.Resources>
 
     

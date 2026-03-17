@@ -22,7 +22,8 @@
     <ApplicationVersion>1</ApplicationVersion>
 
     <!-- DESKTOP constant for platform guards in shared Unity library -->
-    <DefineConstants Condition="'$(TargetFramework)' == 'net10.0'">$(DefineConstants);DESKTOP</DefineConstants>
+    <!-- MAUI_HOST constant to distinguish MAUI-hosted desktop from standalone desktop -->
+    <DefineConstants Condition="'$(TargetFramework)' == 'net10.0'">$(DefineConstants);DESKTOP;MAUI_HOST</DefineConstants>
   </PropertyGroup>
 
   <!-- Android-specific properties -->
@@ -52,6 +53,11 @@
     <!-- Raw assets -->
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)"/>
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- MAUI version property -->
+    <MauiVersion>10.0.0</MauiVersion>
+  </PropertyGroup>
 
   <ItemGroup>
   <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />

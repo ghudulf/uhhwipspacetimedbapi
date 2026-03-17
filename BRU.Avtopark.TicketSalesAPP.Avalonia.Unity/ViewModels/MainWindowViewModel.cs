@@ -9,22 +9,9 @@ using Avalonia.Controls;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
-public class MainWindowViewModel : IDisposable
+public class MainWindowViewModel
 {
-
-   
-
     public MainWindowViewModel()
     {
-         
-
-       
-    }
-
- 
-
-    public void Dispose()
-    {
-         
     }
 }

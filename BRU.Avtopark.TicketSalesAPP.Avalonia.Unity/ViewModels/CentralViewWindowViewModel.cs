@@ -90,14 +90,30 @@ public partial class CentralViewWindowViewModel : ObservableObject
     [RelayCommand]
     private void Refresh()
     {
-        // Re-navigate to the current view to refresh its content
-        var title = CurrentSectionTitle;
-        var subtitle = CurrentSectionSubtitle;
-        var view = CurrentView;
-        CurrentView = null;
-        CurrentView = view;
-        CurrentSectionTitle = title;
-        CurrentSectionSubtitle = subtitle;
+        // Check if current view or its DataContext implements IRefreshable
+        var refreshable = (CurrentView as IRefreshable) ??
+                         ((CurrentView as Control)?.DataContext as IRefreshable);
+
+        if (refreshable != null)
+        {
+            // View supports refresh interface - use it
+            refreshable.Refresh();
+        }
+        else
+        {
+            // Fallback: re-create view instance to refresh content
+            var title = CurrentSectionTitle;
+            var subtitle = CurrentSectionSubtitle;
+            var viewType = CurrentView?.GetType();
+
+            if (viewType != null)
+            {
+                CurrentView = null;
+                CurrentView = Activator.CreateInstance(viewType);
+                CurrentSectionTitle = title;
+                CurrentSectionSubtitle = subtitle;
+            }
+        }
     }
 
     [RelayCommand]

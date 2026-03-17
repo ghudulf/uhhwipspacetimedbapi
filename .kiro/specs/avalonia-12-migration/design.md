@@ -345,7 +345,7 @@ The following packages need Avalonia 12-compatible versions. Exact version numbe
 | `ReDocking.Avalonia` | 1.0.3 | Upgrade or assess compatibility |
 | `Dock.Model.Mvvm` | 11.0.0.5 | Upgrade to Avalonia 12-compatible release |
 | `MessageBox.Avalonia` | 3.2.0 | Upgrade to Avalonia 12-compatible release |
-| `WebView.Avalonia` | 11.0.0.1 | Upgrade to Avalonia 12-compatible release |
+| `WebView.Avalonia.Desktop` | 11.0.0.1 | ⚠️ Only supports Avalonia 11.x. Must be replaced with `Avalonia.Controls.WebView` (12.0.0-preview2+) which exposes `NativeWebView` |
 | `LiveChartsCore.SkiaSharpView.Avalonia` | 2.0.0-rc2 | Upgrade to stable Avalonia 12-compatible release |
 | `FluentAvalonia.ProgressRing` | 1.69.2 | Upgrade or assess compatibility |
 
@@ -469,30 +469,45 @@ Two changes are needed in `App.axaml.cs` when MAUI integration is adopted:
 
 **1. `RegisterServices()` — guard the desktop WebView initializer**
 
-`AvaloniaWebViewBuilder.Initialize(default)` is a desktop-only call. It must be wrapped so it does not execute on MAUI targets:
+`AvaloniaWebViewBuilder.Initialize(default)` is a desktop-only call specific to the legacy `WebView.Avalonia` package (Avalonia 11.x). It must be wrapped so it does not execute on MAUI targets:
 
 ```csharp
 public override void RegisterServices()
 {
     base.RegisterServices();
-#if DESKTOP
+#if DESKTOP && LEGACY_WEBVIEW
     AvaloniaWebViewBuilder.Initialize(default);
     Log.Information("WebView.Avalonia initialized");
 #endif
 }
 ```
 
-**2. `OnFrameworkInitializationCompleted()` — add Android lifetime branch**
+**Migration Note**: With `Avalonia.Controls.WebView` 12.0.0-preview2+, `AvaloniaWebViewBuilder.Initialize()` is no longer required. The entire `RegisterServices()` override can be removed once migrated to the new WebView package.
 
-The `IClassicDesktopStyleApplicationLifetime` branch contains the full desktop startup flow (`ShowSplashScreenAndInitialize`, `BackGroundWindow`, `LoginMethodSelectorWindow`, `MainWindow`, `UnderConstructionWindow`) — this is desktop-only and must remain entirely inside that branch. The `ISingleViewApplicationLifetime` branch already sets `MainView`, which is the correct hook for MAUI single-view targets (Browser/WASM, iOS). Add `IActivityApplicationLifetime` for Android:
+**2. `OnFrameworkInitializationCompleted()` — add Android lifetime branch and MAUI_HOST detection**
+
+The `IClassicDesktopStyleApplicationLifetime` branch contains the full desktop startup flow (`ShowSplashScreenAndInitialize`, `BackGroundWindow`, `LoginMethodSelectorWindow`, `MainWindow`, `UnderConstructionWindow`) — this is desktop-only and must remain entirely inside that branch. The `ISingleViewApplicationLifetime` branch already sets `MainView`, which is the correct hook for MAUI single-view targets (Browser/WASM, iOS). Add `IActivityApplicationLifetime` for Android.
+
+**MAUI_HOST Flag Pattern**: To distinguish between standalone desktop and MAUI-hosted desktop modes, set `AppContext.SetData("MAUI_HOST", true)` in `MauiProgram.cs` before calling `UseAvaloniaApp()`, then read it in `App.axaml.cs`:
 
 ```csharp
 public override void OnFrameworkInitializationCompleted()
 {
+    // Detect if running under MAUI host
+    var isMauiHost = AppContext.GetData("MAUI_HOST") as bool? ?? false;
+
     if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
     {
-        // Desktop-only: splash screen, multi-window management, etc.
-        // (existing ShowSplashScreenAndInitialize flow — unchanged)
+        if (isMauiHost)
+        {
+            // MAUI-hosted desktop: simplified initialization
+            desktop.MainWindow = new MainWindow { DataContext = new MainViewModel() };
+        }
+        else
+        {
+            // Standalone desktop: full splash screen, multi-window management
+            ShowSplashScreenAndInitialize(desktop);
+        }
     }
     else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
     {
@@ -626,7 +641,14 @@ With `AvaloniaUseCompiledBindingsByDefault=false`, binding errors are runtime wa
 
 ### WebView Compatibility
 
-`WebView.Avalonia` wraps a native WebView component. If the Avalonia 12-compatible version changes the `AvaloniaWebViewBuilder.Initialize` API or the `UseDesktopWebView()` extension, `App.axaml.cs` and `Program.cs` must be updated accordingly. The `RegisterServices` override in `App.axaml.cs` is the correct place for `AvaloniaWebViewBuilder.Initialize`.
+**Breaking Change**: `Avalonia.Controls.WebView` 12.0.0-preview2+ removes both `UseDesktopWebView()` and `AvaloniaWebViewBuilder.Initialize()`. The new package exposes `NativeWebView` as a standard Avalonia control with no special initialization required.
+
+**Migration Steps**:
+1. Replace `WebView.Avalonia.Desktop` package reference with `Avalonia.Controls.WebView` (12.0.0-preview2+)
+2. Remove `AvaloniaWebViewBuilder.Initialize(default)` call from `App.axaml.cs` `RegisterServices()` override
+3. Remove `UseDesktopWebView()` call from `Program.cs` if present
+4. Update XAML: replace `<webview:WebView>` with `<NativeWebView>` control
+5. Update namespaces: `xmlns:webview="using:WebView.Avalonia"` → `xmlns="https://github.com/avaloniaui"` (NativeWebView is in core namespace)
 
 ---
 

@@ -86,11 +86,11 @@
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Динамика продаж" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <Border Background="#1E1E28" CornerRadius="8" Padding="16" MinHeight="250">
+                                <Border Background="{DynamicResource BgElevated}" CornerRadius="8" Padding="16" MinHeight="250">
                                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
-                                        <icons:MaterialIcon Kind="ChartLine" Width="48" Height="48" Foreground="#3A3A48" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="График недоступен" FontSize="14" Foreground="#4A4A58" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="#3A3A48" HorizontalAlignment="Center"/>
+                                        <icons:MaterialIcon Kind="ChartLine" Width="48" Height="48" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="График недоступен" FontSize="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>

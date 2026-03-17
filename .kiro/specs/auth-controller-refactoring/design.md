@@ -3605,6 +3605,11 @@ async function handleOidcRequest(request: Request): Promise<Response> {
 
     // Create a proper Duplex stream that implements both readable and writable sides
     // This is required by ServerResponse.assignSocket which expects a socket-like object
+    //
+    // ⚠️  WARNING: This shim relies on Node.js internals (ServerResponse.assignSocket,
+    //    Duplex stream cast to 'any') and may break across Node.js versions. This is
+    //    NOT production-ready copy-paste code. For vetted reference implementations, see:
+    //    https://github.com/honojs/node-server or similar established adapters.
     const duplexSink = new Duplex({
       read() {}, // No-op for read side since we're only capturing writes
       write(chunk, _enc, cb) {
@@ -4060,11 +4065,14 @@ import { Elysia } from 'elysia'
 import Provider from 'oidc-provider'
 
 // Custom SpacetimeDB adapter for oidc-provider
+// Connection sourced from module-level client closure
 class SpacetimeDBAdapter {
-  private conn: any;
+  public name: string;
+  private conn: any; // SpacetimeDB connection from closure/module-level client
 
-  constructor(private name: string, private spacetimeClient: any, connection: any) {
-    this.conn = connection;
+  constructor(modelName: string) {
+    this.name = modelName;
+    this.conn = client; // Source connection from module-level client
   }
 
   async upsert(id: string, payload: any, expiresIn: number) {
@@ -4085,19 +4093,21 @@ class SpacetimeDBAdapter {
     if (!result || result.length === 0) return undefined
     return JSON.parse(result[0].payload)
   }
-  
+
   async findByUserCode(userCode: string) {
-    const result = await this.spacetimeClient.query(`
-      SELECT * FROM OidcTokens WHERE userCode = ?
-    `, [userCode])
+    // Use this.conn.db.*.iter() pattern instead of spacetimeClient.query()
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.userCode === userCode
+    )
     if (!result || result.length === 0) return undefined
     return JSON.parse(result[0].payload)
   }
-  
+
   async findByUid(uid: string) {
-    const result = await this.spacetimeClient.query(`
-      SELECT * FROM OidcTokens WHERE type = ? AND uid = ?
-    `, [this.name, uid])
+    // Use this.conn.db.*.iter() pattern instead of spacetimeClient.query()
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.type === this.name && t.uid === uid
+    )
     if (!result || result.length === 0) return undefined
     return JSON.parse(result[0].payload)
   }
