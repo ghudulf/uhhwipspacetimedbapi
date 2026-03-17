@@ -118,7 +118,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="8,1"/>
+            <Setter Property="Margin" Value="10,1"/>
         </Style>
         <Style Selector="Button.NavItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#1C1C24"/>
@@ -212,7 +212,7 @@
                  ───────────────────────────────────────── -->
             <Border Grid.Column="0" Background="#111116"
                     BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
-                <DockPanel Margin="0,10,0,10">
+                <DockPanel Margin="0,14,0,14">
 
                     <!-- FAB at top -->
                     <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,2,0,14">
@@ -297,10 +297,10 @@
                  ───────────────────────────────────────── -->
             <Border Grid.Column="1" Background="#16161B"
                     BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
-                <DockPanel Margin="0,14,0,14">
+                <DockPanel Margin="0,16,0,16">
 
                     <!-- Search -->
-                    <Border DockPanel.Dock="Top" Margin="12,0,12,10"
+                    <Border DockPanel.Dock="Top" Margin="14,0,14,12"
                             Background="#1C1C24" CornerRadius="10" Padding="12,0"
                             BorderBrush="#2A2A35" BorderThickness="1">
                         <Grid ColumnDefinitions="Auto,*" Height="36">
@@ -317,7 +317,7 @@
 
                     <!-- Section tabs -->
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
-                                Margin="12,0,12,0" Spacing="2">
+                                Margin="14,0,14,0" Spacing="2">
                         <Button Classes="TabBtn">
                             <TextBlock Text="Все разделы" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBF5"/>
                         </Button>
@@ -330,7 +330,7 @@
                     </StackPanel>
 
                     <!-- Active tab underline -->
-                    <Border DockPanel.Dock="Top" Height="2" Margin="22,4,0,10"
+                    <Border DockPanel.Dock="Top" Height="2" Margin="24,4,0,12"
                             HorizontalAlignment="Left" Width="72"
                             Background="#FF6B35" CornerRadius="1"/>
 
@@ -340,7 +340,7 @@
 
                             <!-- ТРАНСПОРТ group -->
                             <TextBlock Text="ТРАНСПОРТ" FontSize="10" FontWeight="Medium"
-                                       Foreground="#3A3A48" Margin="22,4,0,6" LetterSpacing="1"/>
+                                       Foreground="#3A3A48" Margin="24,6,0,6" LetterSpacing="1"/>
 
                             <Button Classes="NavItem" Command="{Binding ShowBusManagementCommand}">
                                 <Grid ColumnDefinitions="38,*,Auto">
@@ -420,7 +420,7 @@
 
                             <!-- ПРОДАЖИ group -->
                             <TextBlock Text="ПРОДАЖИ" FontSize="10" FontWeight="Medium"
-                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
                             <Button Classes="NavItem" Command="{Binding ShowTicketManagementCommand}">
                                 <Grid ColumnDefinitions="38,*,Auto">
@@ -500,7 +500,7 @@
 
                             <!-- ПЕРСОНАЛ group -->
                             <TextBlock Text="ПЕРСОНАЛ" FontSize="10" FontWeight="Medium"
-                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
                             <Button Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}">
                                 <Grid ColumnDefinitions="38,*,Auto">
@@ -561,7 +561,7 @@
 
                             <!-- СИСТЕМА group -->
                             <TextBlock Text="СИСТЕМА" FontSize="10" FontWeight="Medium"
-                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
                             <Button Classes="NavItem" Command="{Binding ShowWebSocketDebugCommand}">
                                 <Grid ColumnDefinitions="38,*,Auto">
@@ -601,24 +601,7 @@
                                 </Grid>
                             </Button>
 
-                            <!-- Exit item — separated with extra margin -->
-                            <Border Classes="Separator" Margin="16,8"/>
-
-                            <Button Classes="NavItem" Command="{Binding ExitCommand}" Margin="8,2,8,8">
-                                <Grid ColumnDefinitions="38,*">
-                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
-                                            Background="#2A1A1A" VerticalAlignment="Center">
-                                        <icons:MaterialIcon Kind="ExitToApp" Width="18" Height="18"
-                                                            Foreground="#FF453A"
-                                                            HorizontalAlignment="Center"
-                                                            VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="Выход" FontSize="13" FontWeight="SemiBold" Foreground="#FF453A"/>
-                                        <TextBlock Text="Завершить сеанс" FontSize="11" Foreground="#4A4A58"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Button>
+                             
 
                         </StackPanel>
                     </ScrollViewer>
@@ -685,12 +668,12 @@
                 <ContentControl Grid.Row="1"
                                 Content="{Binding CurrentView}"
                                 Background="#111116"
-                                Margin="0"/>
+                                Margin="20,16,20,16"/>
 
                 <!-- Status bar — bottom info strip -->
                 <Border Grid.Row="2" Background="#111116"
                         BorderBrush="#1E1E28" BorderThickness="0,1,0,0"
-                        Padding="16,5,16,5">
+                        Padding="20,6,20,6">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <Border Width="8" Height="8" CornerRadius="4" Background="#34C759"/>
