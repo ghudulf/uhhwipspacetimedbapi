@@ -9,8 +9,6 @@ using Serilog;
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using AvaloniaWebView;
-
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 
 public partial class App : Application
@@ -25,10 +23,6 @@ public partial class App : Application
     public override void RegisterServices()
     {
         base.RegisterServices();
-        
-        // Initialize WebView.Avalonia
-        AvaloniaWebViewBuilder.Initialize(default);
-        Log.Information("WebView.Avalonia initialized");
     }
 
 

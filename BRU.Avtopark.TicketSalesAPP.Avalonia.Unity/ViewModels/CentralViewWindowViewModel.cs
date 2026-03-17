@@ -9,11 +9,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
 public partial class CentralViewWindowViewModel : ObservableObject
 {
-    [ObservableProperty]
-    private object? _currentView;
-
-    [ObservableProperty]
-    private bool _isNavPaneOpen = false;
+    [ObservableProperty] private object? _currentView;
+    [ObservableProperty] private bool _isNavPaneOpen = false;
+    [ObservableProperty] private string _currentSectionTitle = "Автобусы";
+    [ObservableProperty] private string _currentSectionSubtitle = "Парк транспортных средств";
 
     public CentralViewWindowViewModel()
     {
@@ -23,103 +22,82 @@ public partial class CentralViewWindowViewModel : ObservableObject
     [RelayCommand]
     private void ToggleNavPane() => IsNavPaneOpen = !IsNavPaneOpen;
 
-    [RelayCommand]
-    private void ShowBusManagement()
+    private void Navigate(object view, string title, string subtitle)
     {
-        CurrentView = new BusManagementToolWindow();
+        CurrentView = view;
+        CurrentSectionTitle = title;
+        CurrentSectionSubtitle = subtitle;
         IsNavPaneOpen = false;
     }
 
     [RelayCommand]
-    private void ShowRouteSchedules()
-    {
-        CurrentView = new RouteSchedulesManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowBusManagement() =>
+        Navigate(new BusManagementToolWindow(), "Автобусы", "Парк транспортных средств");
 
     [RelayCommand]
-    private void ShowTicketManagement()
-    {
-        CurrentView = new TicketManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowRouteSchedules() =>
+        Navigate(new RouteSchedulesManagementToolWindow(), "Расписание", "Расписание маршрутов");
 
     [RelayCommand]
-    private void ShowUserManagement()
-    {
-        CurrentView = new UserManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowTicketManagement() =>
+        Navigate(new TicketManagementToolWindow(), "Билеты", "Управление билетами");
 
     [RelayCommand]
-    private void ShowSalesStatistics()
-    {
-        CurrentView = new SalesStatisticsToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowUserManagement() =>
+        Navigate(new UserManagementToolWindow(), "Пользователи", "Права доступа");
 
     [RelayCommand]
-    private void ShowSalesManagement()
-    {
-        CurrentView = new SalesManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowSalesStatistics() =>
+        Navigate(new SalesStatisticsToolWindow(), "Статистика", "Аналитика продаж");
 
     [RelayCommand]
-    private void ShowRouteManagement()
-    {
-        CurrentView = new RouteManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowSalesManagement() =>
+        Navigate(new SalesManagementToolWindow(), "Продажи", "Кассовые операции");
 
     [RelayCommand]
-    private void ShowEmployeeManagement()
-    {
-        CurrentView = new EmployeeManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowRouteManagement() =>
+        Navigate(new RouteManagementToolWindow(), "Маршруты", "Управление маршрутами");
 
     [RelayCommand]
-    private void ShowJobManagement()
-    {
-        CurrentView = new JobManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowEmployeeManagement() =>
+        Navigate(new EmployeeManagementToolWindow(), "Сотрудники", "Кадровый учёт");
 
     [RelayCommand]
-    private void ShowMaintenanceManagement()
-    {
-        CurrentView = new MaintenanceManagementToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowJobManagement() =>
+        Navigate(new JobManagementToolWindow(), "Должности", "Штатное расписание");
 
     [RelayCommand]
-    private void ShowIncomeReport()
-    {
-        CurrentView = new IncomeReportToolWindow();
-        IsNavPaneOpen = false;
-    }
+    private void ShowMaintenanceManagement() =>
+        Navigate(new MaintenanceManagementToolWindow(), "Обслуживание", "ТО и ремонт");
+
+    [RelayCommand]
+    private void ShowIncomeReport() =>
+        Navigate(new IncomeReportToolWindow(), "Доходы", "Финансовые отчёты");
 
     [RelayCommand]
     private void ShowWebSocketDebug()
     {
         var win = new WebSocketDebugWindow();
         win.Show();
-        IsNavPaneOpen = false;
     }
 
     [RelayCommand]
-    private void OpenAbout()
-    {
-        var win = new AboutWindow();
-        win.Show();
-    }
+    private void OpenAbout() => new AboutWindow().Show();
 
     [RelayCommand]
-    private void OpenHelp()
+    private void OpenHelp() => new HelpWindow().Show();
+
+    [RelayCommand]
+    private void Refresh()
     {
-        var win = new HelpWindow();
-        win.Show();
+        // Re-navigate to the current view to refresh its content
+        var title = CurrentSectionTitle;
+        var subtitle = CurrentSectionSubtitle;
+        var view = CurrentView;
+        CurrentView = null;
+        CurrentView = view;
+        CurrentSectionTitle = title;
+        CurrentSectionSubtitle = subtitle;
     }
 
     [RelayCommand]

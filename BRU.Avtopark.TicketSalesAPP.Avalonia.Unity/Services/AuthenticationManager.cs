@@ -544,13 +544,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                                 var values = new List<string>();
                                 foreach (var item in claim.Value.EnumerateArray())
                                 {
-                                    values.Add(item.GetString() ?? "");
+                                    values.Add(item.GetString() ?? item.GetRawText());
                                 }
                                 Log.Information("  {ClaimType}: [{Values}]", claim.Name, string.Join(", ", values));
                             }
-                            else
+                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.String)
                             {
                                 Log.Information("  {ClaimType}: {Value}", claim.Name, claim.Value.GetString());
+                            }
+                            else
+                            {
+                                Log.Information("  {ClaimType}: {Value}", claim.Name, claim.Value.GetRawText());
                             }
                         }
                     }

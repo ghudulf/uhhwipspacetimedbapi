@@ -377,7 +377,7 @@
                         <!-- Use WrapPanel for left alignment -->
                         <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
                             <!-- Employee Management -->
-                            <Button Classes="UtilityButton" x:Name="RunEmployeeManagementButton">
+                            <Button Classes="UtilityButton" x:Name="RunEmployeeManagementButton" Click="RunEmployeeManagement_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="AccountGroup"/>
                                     <TextBlock Classes="ButtonTitle" Text="Управление Персоналом"/>
@@ -386,7 +386,7 @@
 					</Button>
 
                             <!-- Bus Management -->
-                            <Button Classes="UtilityButton" x:Name="RunBusManagementButton">
+                            <Button Classes="UtilityButton" x:Name="RunBusManagementButton" Click="RunBusManagement_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="Bus"/>
                                     <TextBlock Classes="ButtonTitle" Text="Управление Автобусами"/>
@@ -395,7 +395,7 @@
 					</Button>
 
                             <!-- Route Management -->
-                            <Button Classes="UtilityButton" x:Name="RunRouteManagementButton">
+                            <Button Classes="UtilityButton" x:Name="RunRouteManagementButton" Click="RunRouteManagement_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="MapMarkerPath"/>
                                     <TextBlock Classes="ButtonTitle" Text="Управление Маршрутами"/>
@@ -404,7 +404,7 @@
 					</Button>
 
                             <!-- Ticket Sales (POS) -->
-                            <Button Classes="UtilityButton" x:Name="RunTicketSalesButton">
+                            <Button Classes="UtilityButton" x:Name="RunTicketSalesButton" Click="RunTicketSales_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="TicketPercent"/>
                                     <TextBlock Classes="ButtonTitle" Text="Продажа Билетов"/>
@@ -413,7 +413,7 @@
 					</Button>
 
                             <!-- Maintenance -->
-                            <Button Classes="UtilityButton" x:Name="RunMaintenanceButton">
+                            <Button Classes="UtilityButton" x:Name="RunMaintenanceButton" Click="RunMaintenance_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="Wrench"/>
                                     <TextBlock Classes="ButtonTitle" Text="Тех. Обслуживание"/>
@@ -422,7 +422,7 @@
 					</Button>
 
                             <!-- Reports and Statistics -->
-                            <Button Classes="UtilityButton" x:Name="RunReportsButton">
+                            <Button Classes="UtilityButton" x:Name="RunReportsButton" Click="RunReports_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="ChartBar"/>
                                     <TextBlock Classes="ButtonTitle" Text="Отчеты и Статистика"/>
@@ -431,7 +431,7 @@
 					</Button>
 
                             <!-- Central View (ReDocking) -->
-                            <Button Classes="UtilityButton" x:Name="OpenCentralViewButton">
+                            <Button Classes="UtilityButton" x:Name="OpenCentralViewButton" Click="OpenCentralView_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="ViewDashboard"/>
                                     <TextBlock Classes="ButtonTitle" Text="Центральный Монитор"/>
@@ -440,7 +440,7 @@
 					</Button>
 
                             <!-- System Settings -->
-                            <Button Classes="UtilityButton" x:Name="SystemSettingsButton">
+                            <Button Classes="UtilityButton" x:Name="SystemSettingsButton" Click="SystemSettings_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="Cog"/>
                                     <TextBlock Classes="ButtonTitle" Text="Настройки Системы"/>
@@ -449,7 +449,7 @@
 					</Button>
 
                             <!-- Backup -->
-                            <Button Classes="UtilityButton" x:Name="CreateBackupButton">
+                            <Button Classes="UtilityButton" x:Name="CreateBackupButton" Click="CreateBackup_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="DatabaseArrowDown"/>
                                     <TextBlock Classes="ButtonTitle" Text="Резервное Копирование"/>
@@ -458,7 +458,7 @@
 					</Button>
 
                             <!-- Test Token (Debug) -->
-                            <Button Classes="UtilityButton" x:Name="TestTokenButton">
+                            <Button Classes="UtilityButton" x:Name="TestTokenButton" Click="TestToken_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="ShieldKey"/>
                                     <TextBlock Classes="ButtonTitle" Text="Тест Токена"/>
@@ -467,7 +467,7 @@
 					</Button>
 
                             <!-- WebSocket Debug -->
-                            <Button Classes="UtilityButton" x:Name="WebSocketDebugButton">
+                            <Button Classes="UtilityButton" x:Name="WebSocketDebugButton" Click="OpenWebSocketDebug_Click">
 						<StackPanel>
 							<icons:MaterialIcon Kind="Web"/>
                                     <TextBlock Classes="ButtonTitle" Text="Отладка WebSocket"/>
@@ -492,10 +492,10 @@
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="OKButton" Classes="CommandButton" Content="OK"/>
-                    <Button x:Name="LogoutAndExitButton" Classes="CommandButton" Content="Выйти из системы"/>
-                    <Button x:Name="ExitButton" Classes="CommandButton" Content="Выход"/>
-                    <Button x:Name="HelpButton" Classes="CommandButton" Content="Помощь"/>
+                    <Button x:Name="OKButton" Classes="CommandButton" Content="OK" Click="OKButton_Click"/>
+                    <Button x:Name="LogoutAndExitButton" Classes="CommandButton" Content="Выйти из системы" Click="LogoutAndExitButton_Click"/>
+                    <Button x:Name="ExitButton" Classes="CommandButton" Content="Выход" Click="ExitButton_Click"/>
+                    <Button x:Name="HelpButton" Classes="CommandButton" Content="Помощь" Click="HelpButton_Click"/>
 			</StackPanel>
             </Grid>
 		</Border>

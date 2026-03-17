@@ -20,16 +20,16 @@
     <PackageReference Include="ReactiveUI.Avalonia" Version="11.4.12" />
     <!-- NOTE: Avalonia.ReactiveUI is deprecated. Replaced with ReactiveUI.Avalonia 11.4.12 (latest). No Avalonia 12-specific release yet. -->
 	<PackageReference Include="ReactiveProperty" Version="9.7.0" />
-	<PackageReference Include="ReDocking.Avalonia" Version="1.0.3" />
+ 
     <!-- INCOMPATIBILITY NOTE: ReDocking.Avalonia 1.0.3 is the latest available version.
          No Avalonia 12-compatible release exists. Pinned at current version for testing. -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-rc6.1" />
     <!-- NOTE: LiveChartsCore.SkiaSharpView.Avalonia 2.0.0-rc6.1 is the latest available (still RC, no stable release). -->
     <PackageReference Include="Semi.Avalonia" Version="12.0.0-preview2" />
-    <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7.3" />
+    
     <!-- INCOMPATIBILITY NOTE: Semi.Avalonia.DataGrid has no preview2 release. Pinned at 11.3.7.3 for testing. -->
-    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.0" />
+    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.0-avalonia12" />
     <!--Condition below is needed to remove AvaloniaUI.DiagnosticsSupport package from build output in Release configuration.-->
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.1.1">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
@@ -52,22 +52,18 @@
     <PackageReference Include="R3" Version="1.2.9" />
     <PackageReference Include="System.Text.Json" Version="9.0.1" />
     <PackageReference Include="PropertyChanged.SourceGenerator" Version="1.1.0" />
-    <PackageReference Include="Dock.Model.Mvvm" Version="11.3.0.2" />
+   
     <!-- NOTE: Dock.Model.Mvvm 11.3.0.2 is the latest available. No Avalonia 12-compatible release yet. -->
-    <PackageReference Include="Avalonia.Labs.Controls" Version="11.3.1" />
+   
     <!-- NOTE: Avalonia.Labs.Controls 11.3.1 is the latest available. No Avalonia 12-compatible release yet. -->
-    <PackageReference Include="Classic.Avalonia.Theme" Version="11.3.0.3" />
-    <!-- NOTE: Classic.Avalonia.Theme 11.3.0.3 is the latest available. No Avalonia 12-compatible release yet. Pinned for testing. -->
-    <PackageReference Include="Classic.CommonControls.Avalonia" Version="11.3.0.3" />
-    <!-- NOTE: Classic.CommonControls.Avalonia 11.3.0.3 is the latest available. No Avalonia 12-compatible release yet. -->
-	<PackageReference Include="SukiUI" Version="6.0.3" />
-    <PackageReference Include="FluentAvalonia.ProgressRing" Version="1.69.2" />
+    <!-- Classic.Avalonia.Theme and Classic.CommonControls.Avalonia removed: incompatible with Avalonia 12.
+         DynamicResourceExtension.ProvideValue return type changed; pre-compiled XAML in these packages crashes at runtime.
+         No Avalonia 12-compatible release available. Resolution: removed. -->
+ 
+    
     <!-- INCOMPATIBILITY NOTE: FluentAvalonia.ProgressRing 1.69.2 is the latest available version.
          No newer release exists. Pinned at current version for testing. -->
-    <PackageReference Include="WebView.Avalonia" Version="11.0.0.1" />
-    <!-- INCOMPATIBILITY NOTE: WebView.Avalonia 11.0.0.1 is the latest available version.
-         No Avalonia 12-compatible release exists. Pinned at current version for testing. -->
-         <PackageReference Include="WebView.Avalonia.Desktop" Version="11.0.0.1" />
+    <PackageReference Include="Avalonia.Controls.WebView" Version="12.0.0-preview2" />
   </ItemGroup>
 
   <ItemGroup>

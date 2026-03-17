@@ -4,7 +4,7 @@
              xmlns:local="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
               xmlns:views="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views"
 			 xmlns:toolviews="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews"
-			 xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
+			  
 			xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
              xmlns:materialIcons="using:Material.Icons.Avalonia"
              xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
@@ -24,8 +24,8 @@
     <Application.Styles>
 		<FluentTheme/>
 		
-        
-        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml"/>
+         
+          <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <materialIcons:MaterialIconStyles />
      </Application.Styles>
 

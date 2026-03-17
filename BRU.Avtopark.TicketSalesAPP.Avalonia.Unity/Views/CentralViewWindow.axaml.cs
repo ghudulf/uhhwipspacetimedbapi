@@ -9,6 +9,7 @@ public partial class CentralViewWindow : Window
     public CentralViewWindow()
     {
         InitializeComponent();
+        DataContext ??= new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel();
     }
 
     private void TitleBarDragArea_PointerPressed(object? sender, PointerPressedEventArgs e)

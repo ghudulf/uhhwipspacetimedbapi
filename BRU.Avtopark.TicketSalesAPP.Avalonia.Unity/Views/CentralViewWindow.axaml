@@ -1,21 +1,47 @@
-﻿<Window x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.CentralViewWindow"
+<Window x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.CentralViewWindow"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
         xmlns:icons="using:Material.Icons.Avalonia"
         mc:Ignorable="d"
-        d:DesignWidth="1100" d:DesignHeight="700"
-        x:DataType="viewModels:CentralViewWindowViewModel"
+        d:DesignWidth="1200" d:DesignHeight="760"
+        x:DataType="vm:CentralViewWindowViewModel"
         Title="БРУ Автопарк — Система Управления"
         WindowStartupLocation="CenterScreen"
-        CanResize="True" MinWidth="800" MinHeight="550"
+        CanResize="True" MinWidth="960" MinHeight="620"
         WindowDecorations="None"
-        Background="#1C1C1E">
+        Background="#111116">
 
     <Window.Styles>
-        <!-- Window control buttons -->
+
+        <!-- ══════════════════════════════════════════
+             DESIGN TOKENS  (from bru-design-system.css)
+             ══════════════════════════════════════════ -->
+        <!--
+            bg-base:        #111116
+            bg-surface:     #16161B
+            bg-elevated:    #1C1C24
+            bg-hover:       #22222C
+            border-subtle:  #1E1E28
+            border-default: #2A2A35
+            primary:        #FF6B35
+            primary-dark:   #E55A25
+            primary-glow:   rgba(255,107,53,0.12)
+            text-primary:   #EBEBF5
+            text-secondary: #8E8E9A
+            text-muted:     #636370
+            text-faint:     #3A3A48
+            accent-green:   #2E7D32 / #34C759
+            accent-yellow:  #FFCC02
+            accent-red:     #FF453A / #C42B1C
+            radius-sm:      8px
+            radius-md:      10px
+            radius-lg:      14px
+        -->
+
+        <!-- ── Window chrome buttons ── -->
         <Style Selector="Button.WinBtn">
             <Setter Property="Width" Value="46"/>
             <Setter Property="Height" Value="32"/>
@@ -26,313 +52,662 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.WinBtn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#3A3A3C"/>
+            <Setter Property="Background" Value="#22222C"/>
         </Style>
         <Style Selector="Button#CloseBtn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E81123"/>
+            <Setter Property="Background" Value="#C42B1C"/>
         </Style>
         <Style Selector="Button.WinBtn icons|MaterialIcon">
             <Setter Property="Width" Value="14"/>
             <Setter Property="Height" Value="14"/>
-            <Setter Property="Foreground" Value="#EBEBF5"/>
+            <Setter Property="Foreground" Value="#8E8E9A"/>
         </Style>
 
-        <!-- Nav item buttons inside the drawer -->
+        <!-- ── Icon rail buttons ── -->
+        <Style Selector="Button.RailBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="Button.RailBtn:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.RailBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style Selector="Button.RailBtn.Active">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.RailBtn.Active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <!-- ── FAB / compose button ── -->
+        <Style Selector="Button.FabBtn">
+            <Setter Property="Background" Value="#FF6B35"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.FabBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E55A25"/>
+            <Setter Property="CornerRadius" Value="12"/>
+        </Style>
+
+        <!-- ── Nav list items (column 2) ── -->
         <Style Selector="Button.NavItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Padding" Value="14,10"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="6,2"/>
+            <Setter Property="Margin" Value="8,1"/>
         </Style>
         <Style Selector="Button.NavItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#3A3A3C"/>
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style Selector="Button.NavItem.Active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <!-- ── Header action pill buttons ── -->
+        <Style Selector="Button.ActionPill">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#2A2A35"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#8E8E9A"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.ActionPill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="BorderBrush" Value="#FF6B35"/>
             <Setter Property="CornerRadius" Value="8"/>
         </Style>
+        <Style Selector="Button.ActionPill:pointerover">
+            <Setter Property="Foreground" Value="#EBEBF5"/>
+        </Style>
+
+        <!-- ── Tab filter buttons ── -->
+        <Style Selector="Button.TabBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.TabBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <!-- ── Separator line ── -->
+        <Style Selector="Border.Separator">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Background" Value="#1E1E28"/>
+            <Setter Property="Margin" Value="10,6"/>
+        </Style>
+
     </Window.Styles>
 
-    <Grid RowDefinitions="32,*">
+    <Grid RowDefinitions="36,*">
 
-        <!-- CUSTOM TITLE BAR -->
-        <Grid Grid.Row="0" Background="#1C1C1E" ColumnDefinitions="*,Auto">
-            <Border Grid.Column="0"
-                    Background="Transparent"
+        <!-- ══════════════════════════════════════════
+             TITLE BAR  
+             ══════════════════════════════════════════ -->
+        <Grid Grid.Row="0" Background="#111116" ColumnDefinitions="Auto,*,Auto">
+
+         
+            <!-- Draggable title area -->
+            <Border Grid.Column="1" Background="Transparent"
                     PointerPressed="TitleBarDragArea_PointerPressed"
                     DoubleTapped="TitleBarDragArea_DoubleTapped">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8" Margin="12,0,0,0">
-                    <icons:MaterialIcon Kind="Bus" Width="16" Height="16" Foreground="#636366"/>
-                    <TextBlock Text="БРУ Автопарк — Система Управления"
-                               FontSize="12" FontWeight="Medium"
-                               Foreground="#EBEBF5"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
+                <TextBlock Text="БРУ Автопарк — Система Управления"
+                           FontSize="12" Foreground="#4A4A58" FontWeight="Medium"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button x:Name="MinimizeBtn" Classes="WinBtn" Click="MinimizeButton_Click" ToolTip.Tip="Свернуть">
+
+            <!-- Window chrome buttons -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button x:Name="MinimizeBtn" Classes="WinBtn" Click="MinimizeButton_Click">
                     <icons:MaterialIcon Kind="WindowMinimize"/>
                 </Button>
-                <Button x:Name="MaximizeBtn" Classes="WinBtn" Click="MaximizeButton_Click" ToolTip.Tip="Развернуть">
+                <Button x:Name="MaximizeBtn" Classes="WinBtn" Click="MaximizeButton_Click">
                     <icons:MaterialIcon Kind="WindowMaximize"/>
                 </Button>
-                <Button x:Name="CloseBtn" Classes="WinBtn" Click="CloseButton_Click" ToolTip.Tip="Закрыть">
+                <Button x:Name="CloseBtn" Classes="WinBtn" Click="CloseButton_Click">
                     <icons:MaterialIcon Kind="WindowClose"/>
                 </Button>
             </StackPanel>
         </Grid>
 
-        <!-- DRAWER PAGE — compact navigation rail that expands to full nav list -->
-        <DrawerPage Grid.Row="1"
-                    IsOpen="{Binding IsNavPaneOpen}"
-                    DrawerLayoutBehavior="CompactInline"
-                    CompactDrawerLength="52"
-                    DrawerLength="272"
-                    DrawerBackground="#1C1C1E"
-                    DrawerBehavior="Auto"
-                    Background="#1C1C1E">
+        <!-- ══════════════════════════════════════════
+             3-COLUMN BODY
+             ══════════════════════════════════════════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="62,240,*">
 
-            <!-- Drawer content: icon rail + expanded nav list -->
-            <DrawerPage.Drawer>
-                <Grid ColumnDefinitions="52,220">
+            <!-- ─────────────────────────────────────────
+                 COL 0  Icon rail
+                 ───────────────────────────────────────── -->
+            <Border Grid.Column="0" Background="#111116"
+                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
+                <DockPanel Margin="0,10,0,10">
 
-                    <!-- Icon rail (always visible) -->
-                    <Border Grid.Column="0" Background="#1C1C1E"
-                            BorderBrush="#2C2C2E" BorderThickness="0,0,1,0">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="0,8,0,0">
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowBusManagementCommand}"
-                                        ToolTip.Tip="Автобусы" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="Bus" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowRouteManagementCommand}"
-                                        ToolTip.Tip="Маршруты" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="MapMarkerPath" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowRouteSchedulesCommand}"
-                                        ToolTip.Tip="Расписание" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="CalendarClock" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowTicketManagementCommand}"
-                                        ToolTip.Tip="Билеты" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="Ticket" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowSalesManagementCommand}"
-                                        ToolTip.Tip="Продажи" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="CashRegister" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowSalesStatisticsCommand}"
-                                        ToolTip.Tip="Статистика" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="ChartBar" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowEmployeeManagementCommand}"
-                                        ToolTip.Tip="Сотрудники" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="AccountGroup" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowJobManagementCommand}"
-                                        ToolTip.Tip="Должности" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="Briefcase" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowMaintenanceManagementCommand}"
-                                        ToolTip.Tip="Обслуживание" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="Wrench" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowUserManagementCommand}"
-                                        ToolTip.Tip="Пользователи" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="ShieldAccount" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowIncomeReportCommand}"
-                                        ToolTip.Tip="Доходы" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="CurrencyRub" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                            </StackPanel>
-                            <StackPanel DockPanel.Dock="Bottom" Spacing="2" Margin="0,0,0,8">
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ShowWebSocketDebugCommand}"
-                                        ToolTip.Tip="WebSocket Debug" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="Bug" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding OpenHelpCommand}"
-                                        ToolTip.Tip="Справка" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="HelpCircle" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding OpenAboutCommand}"
-                                        ToolTip.Tip="О программе" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="InformationOutline" Width="22" Height="22" Foreground="#8E8E93"/>
-                                </Button>
-                                <Button Classes="NavItem" Padding="0" Width="52" Height="52"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ExitCommand}"
-                                        ToolTip.Tip="Выход" ToolTip.Placement="Right">
-                                    <icons:MaterialIcon Kind="ExitToApp" Width="22" Height="22" Foreground="#FF453A"/>
-                                </Button>
-                            </StackPanel>
-                        </DockPanel>
+                    <!-- FAB at top -->
+                    <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,2,0,14">
+                        <Button Classes="FabBtn" Command="{Binding ToggleNavPaneCommand}"
+                                ToolTip.Tip="Меню" ToolTip.Placement="Right">
+                            <Panel>
+                                <icons:MaterialIcon Kind="PencilOutline" Width="18" Height="18" Foreground="White"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- User avatar at bottom -->
+                    <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,4">
+                        <Border Width="36" Height="36" CornerRadius="18"
+                                Background="#2E7D32" Cursor="Hand"
+                                ToolTip.Tip="Профиль" ToolTip.Placement="Right">
+                            <TextBlock Text="MJ" FontSize="11" FontWeight="Bold" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Nav icons -->
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel HorizontalAlignment="Center" Spacing="0">
+
+                            <TextBlock Text="МЕНЮ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,0,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowBusManagementCommand}"
+                                    ToolTip.Tip="Автобусы" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Bus" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowSalesStatisticsCommand}"
+                                    ToolTip.Tip="Статистика" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="ChartBar" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                            <Border Classes="Separator" Margin="8,8"/>
+
+                            <TextBlock Text="ГРУППЫ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,4,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowEmployeeManagementCommand}"
+                                    ToolTip.Tip="Сотрудники" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="AccountGroup" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowRouteManagementCommand}"
+                                    ToolTip.Tip="Маршруты" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="MapMarkerPath" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowJobManagementCommand}"
+                                    ToolTip.Tip="Должности" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Briefcase" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                            <Border Classes="Separator" Margin="8,8"/>
+
+                            <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,4,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowTicketManagementCommand}"
+                                    ToolTip.Tip="Билеты" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Ticket" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowUserManagementCommand}"
+                                    ToolTip.Tip="Пользователи" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="AppsBox" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowWebSocketDebugCommand}"
+                                    ToolTip.Tip="WebSocket Debug" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Bug" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+
+            <!-- ─────────────────────────────────────────
+                 COL 1  Navigation list panel
+                 ───────────────────────────────────────── -->
+            <Border Grid.Column="1" Background="#16161B"
+                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
+                <DockPanel Margin="0,14,0,14">
+
+                    <!-- Search -->
+                    <Border DockPanel.Dock="Top" Margin="12,0,12,10"
+                            Background="#1C1C24" CornerRadius="10" Padding="12,0"
+                            BorderBrush="#2A2A35" BorderThickness="1">
+                        <Grid ColumnDefinitions="Auto,*" Height="36">
+                            <icons:MaterialIcon Grid.Column="0" Kind="Magnify"
+                                               Width="16" Height="16" Foreground="#4A4A58"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1"
+                                     Watermark="Поиск..."
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#8E8E9A" FontSize="13"
+                                     VerticalContentAlignment="Center"/>
+                        </Grid>
                     </Border>
 
-                    <!-- Expanded nav list (visible when drawer is open) -->
-                    <Border Grid.Column="1" Background="#2C2C2E"
-                            BorderBrush="#3A3A3C" BorderThickness="0,0,1,0">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Top"
-                                    Padding="16,14,16,10"
-                                    BorderBrush="#3A3A3C" BorderThickness="0,0,0,1">
-                                <TextBlock Text="Управление"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           Foreground="#EBEBF5"/>
+                    <!-- Section tabs -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
+                                Margin="12,0,12,0" Spacing="2">
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Все разделы" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                        </Button>
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Транспорт" FontSize="12" Foreground="#636370"/>
+                        </Button>
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Продажи" FontSize="12" Foreground="#636370"/>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Active tab underline -->
+                    <Border DockPanel.Dock="Top" Height="2" Margin="22,4,0,10"
+                            HorizontalAlignment="Left" Width="72"
+                            Background="#FF6B35" CornerRadius="1"/>
+
+                    <!-- Nav items list -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="0">
+
+                            <!-- ТРАНСПОРТ group -->
+                            <TextBlock Text="ТРАНСПОРТ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="22,4,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowBusManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A3C" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Bus" Width="18" Height="18"
+                                                            Foreground="#4A9EFF"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Автобусы" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Парк транспортных средств" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowRouteManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A3A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="MapMarkerPath" Width="18" Height="18"
+                                                            Foreground="#4ACA7A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Маршруты" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Управление маршрутами" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowRouteSchedulesCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CalendarClock" Width="18" Height="18"
+                                                            Foreground="#CAAA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Расписание" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Расписание маршрутов" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowMaintenanceManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Wrench" Width="18" Height="18"
+                                                            Foreground="#CA6A4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Обслуживание" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="ТО и ремонт" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- ПРОДАЖИ group -->
+                            <TextBlock Text="ПРОДАЖИ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowTicketManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Ticket" Width="18" Height="18"
+                                                            Foreground="#AA6ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Билеты" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Управление билетами" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowSalesManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CashRegister" Width="18" Height="18"
+                                                            Foreground="#4ACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Продажи" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Кассовые операции" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowSalesStatisticsCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A1A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="ChartBar" Width="18" Height="18"
+                                                            Foreground="#4A6ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Статистика" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Аналитика продаж" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowIncomeReportCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CurrencyRub" Width="18" Height="18"
+                                                            Foreground="#4ACACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Доходы" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Финансовые отчёты" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- ПЕРСОНАЛ group -->
+                            <TextBlock Text="ПЕРСОНАЛ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="AccountGroup" Width="18" Height="18"
+                                                            Foreground="#CA4ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Сотрудники" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Кадровый учёт" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowJobManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Briefcase" Width="18" Height="18"
+                                                            Foreground="#CACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Должности" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Штатное расписание" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowUserManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="ShieldAccount" Width="18" Height="18"
+                                                            Foreground="#4A8ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Пользователи" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Права доступа" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- СИСТЕМА group -->
+                            <TextBlock Text="СИСТЕМА" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="22,14,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowWebSocketDebugCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Bug" Width="18" Height="18"
+                                                            Foreground="#4ACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="WS Debug" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="WebSocket отладка" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding OpenAboutCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1C1C24" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="InformationOutline" Width="18" Height="18"
+                                                            Foreground="#8E8E9A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="О программе" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Версия и лицензия" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Exit item — separated with extra margin -->
+                            <Border Classes="Separator" Margin="16,8"/>
+
+                            <Button Classes="NavItem" Command="{Binding ExitCommand}" Margin="8,2,8,8">
+                                <Grid ColumnDefinitions="38,*">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="ExitToApp" Width="18" Height="18"
+                                                            Foreground="#FF453A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Выход" FontSize="13" FontWeight="SemiBold" Foreground="#FF453A"/>
+                                        <TextBlock Text="Завершить сеанс" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+
+            <!-- ─────────────────────────────────────────
+                 COL 2  Main content area
+                 ───────────────────────────────────────── -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" Background="#111116">
+
+                <!-- Content header bar — inspired by email client action row -->
+                <Border Grid.Row="0" Background="#16161B"
+                        BorderBrush="#1E1E28" BorderThickness="0,0,0,1"
+                        Padding="24,12,24,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentSectionTitle}"
+                                       FontSize="17" FontWeight="Bold"
+                                       Foreground="#EBEBF5"
+                                       VerticalAlignment="Center"/>
+                            <Border Background="#1C1C24" CornerRadius="6" Padding="10,4"
+                                    BorderBrush="#2A2A35" BorderThickness="1"
+                                    IsVisible="{Binding CurrentSectionSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="{Binding CurrentSectionSubtitle}"
+                                           FontSize="11" Foreground="#636370"/>
                             </Border>
-                            <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-                                <StackPanel Margin="0,6,0,6">
+                        </StackPanel>
 
-                                    <TextBlock Text="ТРАНСПОРТ" FontSize="10" FontWeight="Medium"
-                                               Foreground="#636366" Margin="18,8,0,4"/>
-                                    <Button Classes="NavItem" Command="{Binding ShowBusManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="Bus" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Автобусы" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Парк транспортных средств" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowRouteManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="MapMarkerPath" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Маршруты" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Управление маршрутами" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowRouteSchedulesCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="CalendarClock" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Расписание" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Расписание маршрутов" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowMaintenanceManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="Wrench" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Обслуживание" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="ТО и ремонт" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <TextBlock Text="ПРОДАЖИ" FontSize="10" FontWeight="Medium"
-                                               Foreground="#636366" Margin="18,12,0,4"/>
-                                    <Button Classes="NavItem" Command="{Binding ShowTicketManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="Ticket" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Билеты" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Управление билетами" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowSalesManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="CashRegister" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Продажи" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Кассовые операции" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowSalesStatisticsCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="ChartBar" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Статистика" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Аналитика продаж" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowIncomeReportCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="CurrencyRub" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Доходы" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Финансовые отчёты" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <TextBlock Text="ПЕРСОНАЛ" FontSize="10" FontWeight="Medium"
-                                               Foreground="#636366" Margin="18,12,0,4"/>
-                                    <Button Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="AccountGroup" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Сотрудники" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Кадровый учёт" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowJobManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="Briefcase" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Должности" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Штатное расписание" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Classes="NavItem" Command="{Binding ShowUserManagementCommand}">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <icons:MaterialIcon Kind="ShieldAccount" Width="18" Height="18" Foreground="#8E8E93"/>
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Пользователи" FontSize="13" Foreground="#EBEBF5"/>
-                                                <TextBlock Text="Права доступа" FontSize="11" Foreground="#636366"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-
+                        <!-- Action buttons — pill style like Reply/Forward in reference -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="ActionPill"
+                                    Command="{Binding RefreshCommand}"
+                                    ToolTip.Tip="Обновить">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <icons:MaterialIcon Kind="Refresh" Width="14" Height="14" Foreground="#8E8E9A"/>
+                                    <TextBlock Text="Обновить" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
                                 </StackPanel>
-                            </ScrollViewer>
-                        </DockPanel>
-                    </Border>
+                            </Button>
+                            <Button Classes="ActionPill"
+                                    Command="{Binding OpenHelpCommand}"
+                                    ToolTip.Tip="Справка">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <icons:MaterialIcon Kind="HelpCircleOutline" Width="14" Height="14" Foreground="#8E8E9A"/>
+                                    <TextBlock Text="Справка" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="RailBtn" Width="34" Height="34"
+                                    Command="{Binding OpenAboutCommand}"
+                                    ToolTip.Tip="О программе">
+                                <icons:MaterialIcon Kind="InformationOutline" Width="16" Height="16" Foreground="#636370"/>
+                            </Button>
+                            <Button Classes="RailBtn" Width="34" Height="34"
+                                    Command="{Binding ToggleNavPaneCommand}"
+                                    ToolTip.Tip="Настройки">
+                                <icons:MaterialIcon Kind="CogOutline" Width="16" Height="16" Foreground="#636370"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                </Grid>
-            </DrawerPage.Drawer>
+                <!-- Tool window content — renders the actual management views -->
+                <ContentControl Grid.Row="1"
+                                Content="{Binding CurrentView}"
+                                Background="#111116"
+                                Margin="0"/>
 
-            <!-- Main content area -->
-            <ContentControl Content="{Binding CurrentView}" Background="#1C1C1E"/>
+                <!-- Status bar — bottom info strip -->
+                <Border Grid.Row="2" Background="#111116"
+                        BorderBrush="#1E1E28" BorderThickness="0,1,0,0"
+                        Padding="16,5,16,5">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="8" Height="8" CornerRadius="4" Background="#34C759"/>
+                            <TextBlock Text="Подключено к серверу" FontSize="11" Foreground="#4A4A58"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="БРУ Автопарк v3.0"
+                                   FontSize="11" Foreground="#2A2A35"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
 
-        </DrawerPage>
+            </Grid>
+
+        </Grid>
+        <!-- end 3-column -->
 
     </Grid>
+    <!-- end root -->
 
 </Window>

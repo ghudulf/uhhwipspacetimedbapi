@@ -9,10 +9,8 @@ using Avalonia.Layout;
 using System.Threading.Tasks;
 using System.Web;
 using Serilog;
-using WebViewCore.Events;
 using System.Collections.Generic;
 using Avalonia.Threading;
-using AvaloniaWebView;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
@@ -27,7 +25,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         private TaskCompletionSource<OAuthResult>? _completionSource;
         private Panel? _webViewContainer;
         private Panel? _loadingPanel;
-        private WebView? _webView;
+        private NativeWebView? _webView;
         private bool _useWebView = true;
         private System.Threading.CancellationTokenSource? _navigationTimeoutCts;
         private int _retryAttempts = 0;
@@ -164,15 +162,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 _loadingPanel.IsVisible = true;
             }
 
-            // Create WebView programmatically
-            _webView = new WebView
+            // Create NativeWebView programmatically
+            _webView = new NativeWebView
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch
             };
 
             // Subscribe to navigation events
-            _webView.NavigationStarting += OnWebViewNavigationStarting;
+            _webView.NavigationStarted += OnWebViewNavigationStarting;
             _webView.NavigationCompleted += OnWebViewNavigationCompleted;
 
             // Add WebView to container
@@ -229,8 +227,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             Log.Information("=== STARTING WEBVIEW NAVIGATION ===");
             
             // Navigate to authorization URL
-            Log.Debug("Navigating WebView to authorization URL");
-            _webView.Url = new Uri(navigationUrl);
+            Log.Debug("Navigating NativeWebView to authorization URL");
+            _webView.Source = new Uri(navigationUrl);
             
             // Start navigation timeout (30 seconds)
             _navigationTimeoutCts = new System.Threading.CancellationTokenSource();
@@ -262,11 +260,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 
         
 
-        private void OnWebViewNavigationStarting(object? sender, WebViewUrlLoadingEventArg e)
+        private void OnWebViewNavigationStarting(object? sender, WebViewNavigationStartingEventArgs e)
         {
-            Log.Debug("WebView navigation starting to: {Url}", e.Url);
+            Log.Debug("WebView navigation starting to: {Url}", e.Request);
 
-            var url = e.Url?.ToString() ?? "";
+            var url = e.Request?.ToString() ?? "";
             
             // Check if this is a redirect to our callback URL
             if (url.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
@@ -523,12 +521,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 {
                     try
                     {
-                        var opened = _webView.OpenDevToolsWindow();
-                        Log.Information("DevTools window opened: {Success}", opened);
-                        if (!opened)
-                        {
-                            Log.Warning("Failed to open DevTools window");
-                        }
+                        // NativeWebView does not expose OpenDevToolsWindow; use Avalonia DevTools instead
+                        Log.Information("DevTools: use F12 or Avalonia DevTools (attached via DevToolsHelper)");
                     }
                     catch (Exception ex)
                     {
@@ -571,7 +565,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             Log.Debug("Authorization error dialog displayed");
         }
 
-        private void OnWebViewNavigationCompleted(object? sender, WebViewUrlLoadedEventArg e)
+        private void OnWebViewNavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
         {
             Log.Information("=== WEBVIEW NAVIGATION COMPLETED ===");
             Log.Information("Navigation Success: {Success}", e.IsSuccess);
@@ -587,9 +581,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             }
             
             // Check URL after navigation completes
-            if (_webView?.Url != null)
+            if (_webView?.Source != null)
             {
-                var currentUrl = _webView.Url.ToString();
+                var currentUrl = _webView.Source.ToString();
                 
                 Log.Information("Current URL after navigation: {Url}", currentUrl);
                 
@@ -627,9 +621,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 Log.Warning("WebView reported navigation as unsuccessful, but checking if page loaded anyway");
                 
                 // Only treat as error if we're not on the authorization or callback page
-                if (_webView?.Url != null)
+                if (_webView?.Source != null)
                 {
-                    var currentUrl = _webView.Url.ToString();
+                    var currentUrl = _webView.Source.ToString();
                     
                     // If we're on the authorization endpoint or callback, consider it success
                     if (currentUrl.Contains("/connect/authorize", StringComparison.OrdinalIgnoreCase) ||
@@ -806,12 +800,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 {
                     try
                     {
-                        var opened = _webView.OpenDevToolsWindow();
-                        Log.Information("DevTools window opened: {Success}", opened);
-                        if (!opened)
-                        {
-                            Log.Warning("Failed to open DevTools window");
-                        }
+                        // NativeWebView does not expose OpenDevToolsWindow; use Avalonia DevTools instead
+                        Log.Information("DevTools: use F12 or Avalonia DevTools (attached via DevToolsHelper)");
                     }
                     catch (Exception ex)
                     {
@@ -881,7 +871,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 {
                     try
                     {
-                        _webView.NavigationStarting -= OnWebViewNavigationStarting;
+                        _webView.NavigationStarted -= OnWebViewNavigationStarting;
                         _webView.NavigationCompleted -= OnWebViewNavigationCompleted;
                         
                         // Clear WebView cookies and storage
@@ -917,7 +907,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         /// Clears WebView cookies, cache, and local storage.
         /// This ensures a clean state for retry attempts.
         /// </summary>
-        private async Task ClearWebViewDataAsync(WebView webView)
+        private async Task ClearWebViewDataAsync(NativeWebView webView)
         {
             try
             {
@@ -1277,7 +1267,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             {
                 try
                 {
-                    _webView.NavigationStarting -= OnWebViewNavigationStarting;
+                    _webView.NavigationStarted -= OnWebViewNavigationStarting;
                     _webView.NavigationCompleted -= OnWebViewNavigationCompleted;
                 }
                 catch (Exception ex)

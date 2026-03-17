@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
-using ReactiveUI.Avalonia;
-using Avalonia.WebView.Desktop;
+  
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.File;
@@ -64,9 +63,9 @@ class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace()
-            .UseReactiveUI(_ => { })
-            .UseDesktopWebView();
+            .LogToTrace();
+             
+             
 
     private static void SilenceConsole()
     {
