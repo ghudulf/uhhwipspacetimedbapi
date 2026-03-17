@@ -58,15 +58,32 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+#if DESKTOP
         WindowDecorations = WindowDecorations.None;
+#else
+        // On MAUI mobile/browser targets, hide the custom titlebar row at runtime
+        // since #if guards cannot be used in .axaml files.
+        this.Loaded += (_, _) =>
+        {
+            var titleBarGrid = this.FindControl<Grid>("TitleBarGrid");
+            if (titleBarGrid != null)
+                titleBarGrid.IsVisible = false;
+
+            var rootGrid = this.FindControl<Grid>("RootGrid");
+            if (rootGrid?.RowDefinitions.Count > 0)
+                rootGrid.RowDefinitions[0].Height = new GridLength(0);
+        };
+#endif
         _viewModel = new MainWindowViewModel();
         
         DataContext = _viewModel;
 
         InitializeComponent();
-        
+
+#if DESKTOP
         // Setup title bar after components are initialized
         SetupTitleBar();
+#endif
         
         SubscribeToWindowState();
     }
@@ -100,7 +117,9 @@ public partial class MainWindow : Window
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
+#if DESKTOP
             BeginMoveDrag(e);
+#endif
         }
     }
 

@@ -308,9 +308,9 @@
 	</Window.Styles>
 
     <!-- Main Layout Grid -->
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto,Auto,*,Auto,Auto">
 		<!-- Custom Title Bar -->
-        <Grid Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35"> <!-- Adjusted Height -->
+        <Grid x:Name="TitleBarGrid" Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35"> <!-- Adjusted Height -->
             <Grid x:Name="TitleBarDragArea" ColumnDefinitions="*,Auto">
                 <!-- Title -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center">

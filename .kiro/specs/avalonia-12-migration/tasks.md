@@ -93,28 +93,35 @@
   - [x] 11.1 Confirm `Program.cs` in the Desktop project retains `UsePlatformDetect()` (valid in Avalonia 12)
   - [x] 11.2 Confirm `UseDesktopWebView()` extension is available from the updated `WebView.Avalonia` desktop package; update the call if the extension method was renamed
 
-- [-] 12. Build and runtime verification
+- [x] 12. Build and runtime verification
   - [x] 12.1 Run `dotnet build -c Release` on the solution and confirm zero compiler errors
   - [x] 12.2 Confirm build output contains no `CS0618` (obsolete) or `AVL*` Avalonia-specific warnings related to migrated APIs
   - [x] 12.3 Confirm `.csproj` contains `<TargetFramework>net10.0</TargetFramework>` and `<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>`
   - [x] 12.4 Confirm `.csproj` contains `AvaloniaUI.DiagnosticsSupport` and does NOT contain `Avalonia.Diagnostics`
-  - [ ] 12.5 Launch the app in Debug mode and verify DevTools opens with F12
-  - [ ] 12.6 Navigate through the login flow (OAuth and traditional) and verify no runtime exceptions
-  - [ ] 12.7 Open the main window and verify window chrome renders correctly (no OS title bar overlap)
-  - [ ] 12.8 Open AboutWindow and use the "Copy Info" button — verify clipboard write succeeds
-  - [ ] 12.9 Open a management tool window and verify placeholder text appears in search/input fields
-  - [ ] 12.10 Attempt a drag-and-drop operation in MainWindow or CentralViewWindow and verify it completes without exceptions
-  - [ ] 12.11 Verify SplashScreen, BackGroundWindow, and AuthWindow render without OS decorations
+  - [x] 12.5 Launch the app in Debug mode and verify DevTools opens with F12
+  - [x] 12.6 Navigate through the login flow (OAuth and traditional) and verify no runtime exceptions
+  - [x] 12.7 Open the main window and verify window chrome renders correctly (no OS title bar overlap)
+  - [x] 12.8 Open AboutWindow and use the "Copy Info" button — verify clipboard write succeeds
+  - [x] 12.9 Open a management tool window and verify placeholder text appears in search/input fields
+  - [x] 12.10 Attempt a drag-and-drop operation in MainWindow or CentralViewWindow and verify it completes without exceptions
+  - [x] 12.11 Verify SplashScreen, BackGroundWindow, and AuthWindow render without OS decorations
 
-- [ ]* 13. Avalonia.Controls.Maui integration (optional)
-  - [ ]* 13.1 Create the new project directory `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui/` and its `.csproj` with MAUI workload TFMs (`net10.0-android`, `net10.0-ios`, `net10.0` — do NOT include `net10.0-windows`, WinUI path is not production-ready), a `<ProjectReference>` to `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj`, and package references to `Avalonia.Controls.Maui` plus optional `Avalonia.Controls.Maui.Essentials`, `Avalonia.Controls.Maui.Compatibility`, `Avalonia.Controls.Maui.SkiaSharp.Views` as needed
-  - [ ]* 13.2 Create `MauiProgram.cs` in the new project: call `UseMauiApp<MauiShellApp>()` (the MAUI App.cs in this project), then `UseAvaloniaApp()` for full hosting mode (or `UseAvaloniaEmbedding<App>()` for embedding mode); `UseAvaloniaApp` must come before any optional extensions; for Browser/WASM pass `useSingleViewLifetime: true`; chain `UseAvaloniaEssentials()` and `ConfigureFonts(...)` as needed
-  - [ ]* 13.3 Create a MAUI `App.cs` in the new project (deriving from `Microsoft.Maui.Controls.Application`) as the MAUI shell entry point — this is the class passed to `UseMauiApp<T>()` and is entirely separate from the Avalonia `App.axaml.cs` in the Unity library
-  - [ ]* 13.4 Create platform-specific entry point files under `Platforms/` as required by the MAUI workload (e.g., `Android/MainApplication.cs`, `iOS/AppDelegate.cs`)
-  - [ ]* 13.5 Register fonts via `ConfigureFonts` in `MauiProgram.cs`; place font files in `Resources/Fonts/` with `MauiFont` build action — at build time they are converted to Avalonia embedded resources under `Assets/Fonts/`; register images with `MauiImage` and raw assets with `MauiAsset` build actions
-  - [ ]* 13.6 In `App.axaml.cs` `RegisterServices()`, wrap `AvaloniaWebViewBuilder.Initialize(default)` in a `#if DESKTOP` guard so it is not invoked on MAUI targets where the desktop WebView is unavailable
-  - [ ]* 13.7 In `App.axaml.cs` `OnFrameworkInitializationCompleted()`, add an `IActivityApplicationLifetime` branch for Android alongside the existing `IClassicDesktopStyleApplicationLifetime` and `ISingleViewApplicationLifetime` branches; confirm the full desktop startup flow (`ShowSplashScreenAndInitialize`, `BackGroundWindow`, `LoginMethodSelectorWindow`, `MainWindow`, `UnderConstructionWindow`) remains entirely inside the `IClassicDesktopStyleApplicationLifetime` branch
-  - [ ]* 13.8 Register any custom control handlers via `ConfigureMauiHandlers` after `UseAvaloniaApp` in `MauiProgram.cs` — registrations after `UseAvaloniaApp` take precedence over the defaults
-  - [ ]* 13.9 Audit desktop-specific APIs for platform incompatibility — `DragDrop.DoDragDropAsync`, `BeginMoveDrag`, `Window.WindowDecorations` — and wrap each in `#if DESKTOP` guards where needed for mobile/browser targets
-  - [ ]* 13.10 Add the new MAUI project to `SpacetimeDB-BRU-AVTOPARK-avtobusov.sln` so it participates in solution-level builds
-  - [ ]* 13.11 Verify the existing `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj` and `Program.cs` are unchanged and the desktop build still produces a working executable
+- [x] 13. Avalonia.Controls.Maui integration (optional)
+  - [x] 13.1 Create the new project directory `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui/` and its `.csproj` with MAUI workload TFMs (`net10.0-android`, `net10.0-ios`, `net10.0` — do NOT include `net10.0-windows`, WinUI path is not production-ready), a `<ProjectReference>` to `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj`, and package references to `Avalonia.Controls.Maui` plus optional `Avalonia.Controls.Maui.Essentials`, `Avalonia.Controls.Maui.Compatibility`, `Avalonia.Controls.Maui.SkiaSharp.Views` as needed
+  - [x] 13.2 Create `MauiProgram.cs` in the new project: call `UseMauiApp<MauiShellApp>()` (the MAUI App.cs in this project), then `UseAvaloniaApp()` for full hosting mode (or `UseAvaloniaEmbedding<App>()` for embedding mode); `UseAvaloniaApp` must come before any optional extensions; for Browser/WASM pass `useSingleViewLifetime: true`; chain `UseAvaloniaEssentials()` and `ConfigureFonts(...)` as needed
+  - [x] 13.3 Create a MAUI `App.cs` in the new project (deriving from `Microsoft.Maui.Controls.Application`) as the MAUI shell entry point — this is the class passed to `UseMauiApp<T>()` and is entirely separate from the Avalonia `App.axaml.cs` in the Unity library
+  - [x] 13.4 Create platform-specific entry point files under `Platforms/` as required by the MAUI workload (e.g., `Android/MainApplication.cs`, `iOS/AppDelegate.cs`)
+  - [x] 13.5 Register fonts via `ConfigureFonts` in `MauiProgram.cs`; place font files in `Resources/Fonts/` with `MauiFont` build action — at build time they are converted to Avalonia embedded resources under `Assets/Fonts/`; register images with `MauiImage` and raw assets with `MauiAsset` build actions
+  - [x] 13.6 In `App.axaml.cs` `RegisterServices()`, wrap `AvaloniaWebViewBuilder.Initialize(default)` in a `#if DESKTOP` guard so it is not invoked on MAUI targets where the desktop WebView is unavailable
+  - [x] 13.7 In `App.axaml.cs` `OnFrameworkInitializationCompleted()`, add an `IActivityApplicationLifetime` branch for Android alongside the existing `IClassicDesktopStyleApplicationLifetime` and `ISingleViewApplicationLifetime` branches; confirm the full desktop startup flow (`ShowSplashScreenAndInitialize`, `BackGroundWindow`, `LoginMethodSelectorWindow`, `MainWindow`, `UnderConstructionWindow`) remains entirely inside the `IClassicDesktopStyleApplicationLifetime` branch
+  - [x] 13.8 Register any custom control handlers via `ConfigureMauiHandlers` after `UseAvaloniaApp` in `MauiProgram.cs` — registrations after `UseAvaloniaApp` take precedence over the defaults
+  - [x] 13.9 Audit desktop-specific APIs for platform incompatibility — `DragDrop.DoDragDropAsync`, `BeginMoveDrag`, `Window.WindowDecorations` — and wrap each in `#if DESKTOP` guards where needed for mobile/browser targets
+  - [x] 13.10 When running under MAUI, disable custom titlebars and restore OS window decorations. AXAML is compiled at build time so `#if` guards cannot be used in `.axaml` files — visibility must be controlled at runtime from code-behind:
+      - `MainWindow.axaml`: add `x:Name="TitleBarGrid"` to the custom titlebar `<Grid Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35">` so it can be referenced from code-behind
+      - `MainWindow.axaml.cs`: in the constructor, wrap `WindowDecorations = WindowDecorations.None` and the `SetupTitleBar()` call in `#if DESKTOP`; add a `#if !DESKTOP` block that sets `this.FindControl<Grid>("TitleBarGrid")!.IsVisible = false` and updates the root grid's first `RowDefinition.Height` to `new GridLength(0)` so the collapsed row leaves no dead space
+      - `CentralViewWindow.axaml`: add `x:Name="TitleBarGrid"` to the titlebar `<Grid Grid.Row="0" Background="#111116" ...>` (the 36px row with `MinimizeBtn`, `MaximizeBtn`, `CloseBtn`)
+      - `CentralViewWindow.axaml.cs`: in the constructor, add a `#if !DESKTOP` block that sets `this.FindControl<Grid>("TitleBarGrid")!.IsVisible = false` and sets the root grid's first `RowDefinition.Height` to `new GridLength(0)`; the `WindowDecorations` assignment is already absent from this constructor so no guard is needed there
+      - For both windows, wrap `BeginMoveDrag(e)` inside `TitleBarDragArea_PointerPressed` in `#if DESKTOP` since the method does not exist on MAUI targets
+      - `AuthWindow.axaml.cs`: wrap `BeginMoveDrag(e)` in its pointer-pressed handler in `#if DESKTOP`; also guard the `WindowDecorations` assignments inside `ApplyClassicWindowStyle` and `ApplyModernWindowStyle` with `#if DESKTOP`
+  - [x] 13.11 Add the new MAUI project to `SpacetimeDB-BRU-AVTOPARK-avtobusov.sln` so it participates in solution-level builds
+  - [x] 13.12 Verify the existing `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj` and `Program.cs` are unchanged and the desktop build still produces a working executable

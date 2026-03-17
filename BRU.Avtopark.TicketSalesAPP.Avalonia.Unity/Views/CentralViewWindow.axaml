@@ -171,12 +171,12 @@
 
     </Window.Styles>
 
-    <Grid RowDefinitions="36,*">
+    <Grid x:Name="RootGrid" RowDefinitions="36,*">
 
         <!-- ══════════════════════════════════════════
              TITLE BAR  
              ══════════════════════════════════════════ -->
-        <Grid Grid.Row="0" Background="#111116" ColumnDefinitions="Auto,*,Auto">
+        <Grid x:Name="TitleBarGrid" Grid.Row="0" Background="#111116" ColumnDefinitions="Auto,*,Auto">
 
          
             <!-- Draggable title area -->

@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0</TargetFrameworks>
+    <RootNamespace>BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Display name -->
+    <ApplicationTitle>BRU Avtopark</ApplicationTitle>
+
+    <!-- App Identifier -->
+    <ApplicationId>com.bru.avtopark.ticketsales</ApplicationId>
+
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- DESKTOP constant for platform guards in shared Unity library -->
+    <DefineConstants Condition="'$(TargetFramework)' == 'net10.0'">$(DefineConstants);DESKTOP</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Android-specific properties -->
+  <PropertyGroup Condition="$(TargetFramework.StartsWith('net10.0-android'))">
+    <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>21.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <!-- iOS-specific properties -->
+  <PropertyGroup Condition="$(TargetFramework.StartsWith('net10.0-ios'))">
+    <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App icon (standard MAUI template resource) -->
+    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#512BD4"/>
+
+    <!-- Splash screen -->
+    <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#512BD4" BaseSize="128,128"/>
+
+    <!-- Images -->
+    <MauiImage Include="Resources/Images/*"/>
+
+    <!-- Fonts -->
+    <MauiFont Include="Resources/Fonts/*"/>
+
+    <!-- Raw assets -->
+    <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Avalonia.Controls.Maui: replaces MAUI rendering pipeline with Avalonia/Skia -->
+    <PackageReference Include="Avalonia.Controls.Maui" Version="12.0.0-preview2"/>
+    <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="12.0.0-preview2"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the shared Avalonia Unity library -->
+    <ProjectReference Include="..\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity\BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj"/>
+  </ItemGroup>
+
+</Project>
