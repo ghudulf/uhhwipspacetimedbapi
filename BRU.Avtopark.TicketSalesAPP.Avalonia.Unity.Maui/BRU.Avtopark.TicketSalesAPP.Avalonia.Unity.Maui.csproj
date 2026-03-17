@@ -51,6 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
+  <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <!-- Avalonia.Controls.Maui: replaces MAUI rendering pipeline with Avalonia/Skia -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="12.0.0-preview2"/>
     <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
