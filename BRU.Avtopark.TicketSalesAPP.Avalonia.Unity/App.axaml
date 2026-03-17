@@ -4,7 +4,6 @@
              xmlns:local="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
               xmlns:views="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views"
 			 xmlns:toolviews="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews"
-             xmlns:sty="using:FluentAvalonia.Styling"   
 			 xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
 			xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
              xmlns:materialIcons="using:Material.Icons.Avalonia"
@@ -25,15 +24,10 @@
     <Application.Styles>
 		<FluentTheme/>
 		
-		<StyleInclude Source="avares://Classic.CommonControls.Avalonia/Themes/Fluent.axaml" />
-		
-		<StyleInclude Source="avares://ReDocking/Styles.axaml" />
         
         <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml"/>
         <materialIcons:MaterialIconStyles />
-		<sty:FluentAvaloniaTheme />
-		 <StyleInclude Source="avares://FluentAvalonia.ProgressRing/Styling/Controls/ProgressRing.axaml" />
-    </Application.Styles>
+     </Application.Styles>
 
 	<Application.DataTemplates>
 		<DataTemplate x:DataType="viewModels:ExplorerViewModel">

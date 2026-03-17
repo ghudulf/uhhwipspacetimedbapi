@@ -9,8 +9,7 @@
         Height="350"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        WindowDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent">
 

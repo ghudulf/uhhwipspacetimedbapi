@@ -5,8 +5,6 @@ using Avalonia.Markup.Xaml;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
-using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Serilog;
 using System;
 using System.Threading.Tasks;
@@ -189,20 +187,6 @@ public partial class App : Application
         
     
 
-    private void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
-    }
-
-
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -224,7 +208,8 @@ public partial class App : Application
 #else
                 Log.Debug("Creating splash screen");
                 // Create and show the splash screen directly in release mode
-                await ShowSplashScreenAndInitialize(desktop);
+                // Fire-and-forget: OnFrameworkInitializationCompleted cannot be async
+                _ = ShowSplashScreenAndInitialize(desktop);
 #endif
 
             }

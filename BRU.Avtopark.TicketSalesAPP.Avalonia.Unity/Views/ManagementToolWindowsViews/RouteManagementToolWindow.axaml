@@ -11,7 +11,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0" 
                      Text="{Binding SearchText}"
-                     Watermark="Поиск по начальной точке, конечной точке, модели автобуса или водителю..."
+                     PlaceholderText="Поиск по начальной точке, конечной точке, модели автобуса или водителю..."
                      Margin="0,0,10,0"/>
             <Button Grid.Column="1" 
                     Command="{Binding AddCommand}"
@@ -30,40 +30,40 @@
                   Margin="0,0,0,10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" 
-                                  Binding="{Binding RouteId}"
+                                  Binding="{ReflectionBinding RouteId}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Номер" 
-                                  Binding="{Binding RouteNumber}"
+                                  Binding="{ReflectionBinding RouteNumber}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Начальная точка" 
-                                  Binding="{Binding StartPoint}"
+                                  Binding="{ReflectionBinding StartPoint}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Конечная точка" 
-                                  Binding="{Binding EndPoint}"
+                                  Binding="{ReflectionBinding EndPoint}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Время в пути" 
-                                  Binding="{Binding TravelTime}"
+                                  Binding="{ReflectionBinding TravelTime}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Автобус" 
-                                  Binding="{Binding BusModel}"
+                                  Binding="{ReflectionBinding BusModel}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Водитель" 
-                                  Binding="{Binding DriverName}"
+                                  Binding="{ReflectionBinding DriverName}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Билеты" 
-                                  Binding="{Binding TicketCount}"
+                                  Binding="{ReflectionBinding TicketCount}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Остановки" 
-                                  Binding="{Binding StopCount}"
+                                  Binding="{ReflectionBinding StopCount}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Длина (км)" 
-                                  Binding="{Binding RouteLengthDisplay}"
+                                  Binding="{ReflectionBinding RouteLengthDisplay}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Тип" 
-                                  Binding="{Binding RouteType}"
+                                  Binding="{ReflectionBinding RouteType}"
                                   Width="Auto"/>
                 <DataGridCheckBoxColumn Header="Активен" 
-                                  Binding="{Binding IsActive}"
+                                  Binding="{ReflectionBinding IsActive}"
                                   Width="Auto"/>
             </DataGrid.Columns>
         </DataGrid>

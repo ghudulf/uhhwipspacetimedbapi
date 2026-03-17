@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using Avalonia.Threading;
 using AvaloniaWebView;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 {
@@ -59,7 +60,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             Log.Debug("Expected state: {State}", expectedState);
 
 #if DEBUG
-            this.AttachDevTools();
+            DevToolsHelper.AttachOnce();
 #endif
         }
 
@@ -1035,7 +1036,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
             var urlTextBox = new TextBox
             {
-                Watermark = "http://localhost:5000/callback?code=...",
+                PlaceholderText = "http://localhost:5000/callback?code=...",
                 Width = 600,
                 Margin = new Thickness(20, 10, 20, 10),
                 HorizontalAlignment = HorizontalAlignment.Center,

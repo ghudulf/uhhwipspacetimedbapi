@@ -573,7 +573,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Values = routeValues,
                         Name = "Маршруты",
-                        DataLabelsFormatter = point => $"{routeNames[point.Index]}\n{point.PrimaryValue:N0} продаж",
+                        DataLabelsFormatter = point => $"{routeNames[point.Index]}\n{point.Coordinate.PrimaryValue:N0} продаж",
                         DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
                         DataLabelsSize = 10,
                         InnerRadius = 40,

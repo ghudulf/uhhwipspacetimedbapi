@@ -23,6 +23,7 @@ using System.ComponentModel;
 using Avalonia.Threading;
 using System.Diagnostics;
 using System.Linq;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 {
@@ -40,7 +41,7 @@ public partial class AuthWindow : Window
         Log.Information("AuthWindow constructor started");
         InitializeComponent();
 #if DEBUG
-            this.AttachDevTools();
+            DevToolsHelper.AttachOnce();
             Log.Debug("DEBUG: DevTools attached to AuthWindow");
 #endif
             _disposables = new CompositeDisposable();
@@ -268,9 +269,9 @@ public partial class AuthWindow : Window
             Log.Debug("ApplyClassicWindowStyle called");
             
             // Ensure window has the correct style
-            var oldDecorations = SystemDecorations;
-            SystemDecorations = SystemDecorations.BorderOnly;
-            Log.Debug("SystemDecorations changed from {Old} to {New}", oldDecorations, SystemDecorations);
+            var oldDecorations = WindowDecorations;
+            WindowDecorations = WindowDecorations.BorderOnly;
+            Log.Debug("WindowDecorations changed from {Old} to {New}", oldDecorations, WindowDecorations);
             
             // Find the main panels and ensure they have the correct styles
             var centralPanel = this.FindControl<ContentControl>("StepContentArea");
@@ -499,10 +500,10 @@ public partial class AuthWindow : Window
             // Username TextBox
             var usernameTextBox = new TextBox
             {
-                Watermark = "Логин",
+                PlaceholderText = "Логин",
                 Margin = new Thickness(0, 0, 0, 12),
                 Classes = { "ClassicTextBox" },
-                [!TextBox.TextProperty] = new Binding("Username", BindingMode.TwoWay)
+                [!TextBox.TextProperty] = new Binding("Username") { Mode = BindingMode.TwoWay }
             };
             Grid.SetRow(usernameTextBox, 2);
             panel.Children.Add(usernameTextBox);
@@ -522,11 +523,11 @@ public partial class AuthWindow : Window
             // Password TextBox
             var passwordTextBox = new TextBox
             {
-                Watermark = "Пароль",
+                PlaceholderText = "Пароль",
                 PasswordChar = '•',
                 Margin = new Thickness(0, 0, 0, 15),
                 Classes = { "ClassicTextBox" },
-                [!TextBox.TextProperty] = new Binding("Password", BindingMode.TwoWay)
+                [!TextBox.TextProperty] = new Binding("Password") { Mode = BindingMode.TwoWay }
             };
             Grid.SetRow(passwordTextBox, 4);
             panel.Children.Add(passwordTextBox);
@@ -774,12 +775,12 @@ public partial class AuthWindow : Window
             
             var codeBox = new TextBox
             {
-                Watermark = "Код TOTP",
+                PlaceholderText = "Код TOTP",
                 MaxLength = 6,
                 Width = 150,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Classes = { "ClassicTextBox" },
-                [!TextBox.TextProperty] = new Binding("TotpCode", BindingMode.TwoWay)
+                [!TextBox.TextProperty] = new Binding("TotpCode") { Mode = BindingMode.TwoWay }
             };
             Log.Debug("Created TextBox for TOTP code with TwoWay binding to TotpCode property");
             panel.Children.Add(codeBox);

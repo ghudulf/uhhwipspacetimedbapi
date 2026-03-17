@@ -19,13 +19,13 @@
   
   <Target Name="ValidateStandardProjectBuild" 
           BeforeTargets="Build" 
-          Condition="'$(IsSpacetimeDBModule)' != 'true' AND '$(TargetFramework)' == 'net9.0'">
-    <Message Text="Building $(MSBuildProjectName) with .NET 9.0" Importance="normal" />
+          Condition="'$(IsSpacetimeDBModule)' != 'true' AND ('$(TargetFramework)' == 'net9.0' OR '$(TargetFramework)' == 'net10.0')">
+    <Message Text="Building $(MSBuildProjectName) with $(TargetFramework)" Importance="normal" />
   </Target>
 
   <Target Name="ValidateStandardProjectFramework"
           BeforeTargets="Build"
-          Condition="'$(IsSpacetimeDBModule)' != 'true' AND '$(TargetFramework)' != '' AND '$(TargetFramework)' != 'net9.0'">
-    <Error Text="Non-SpacetimeDB project '$(MSBuildProjectName)' must target net9.0 but targets '$(TargetFramework)'" />
+          Condition="'$(IsSpacetimeDBModule)' != 'true' AND '$(TargetFramework)' != '' AND '$(TargetFramework)' != 'net9.0' AND '$(TargetFramework)' != 'net10.0'">
+    <Error Text="Non-SpacetimeDB project '$(MSBuildProjectName)' must target net9.0 or net10.0 but targets '$(TargetFramework)'" />
   </Target>
 </Project>

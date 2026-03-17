@@ -18,7 +18,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0" 
                      Text="{Binding SearchText}"
-                     Watermark="Поиск пользователей..."
+                     PlaceholderText="Поиск пользователей..."
                      Margin="0,0,10,0"/>
             <Button Grid.Column="1" 
                     Command="{Binding AddCommand}"
@@ -52,25 +52,25 @@
                          BorderBrush="Gray">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" 
-                                          Binding="{Binding LegacyUserId}"
+                                          Binding="{ReflectionBinding LegacyUserId}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Логин" 
-                                          Binding="{Binding Login}"
+                                          Binding="{ReflectionBinding Login}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Email" 
-                                          Binding="{Binding Email}"
+                                          Binding="{ReflectionBinding Email}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Телефон" 
-                                          Binding="{Binding PhoneNumber}"
+                                          Binding="{ReflectionBinding PhoneNumber}"
                                           Width="*"/>
                         <DataGridCheckBoxColumn Header="Активен" 
-                                              Binding="{Binding IsActive}"
+                                              Binding="{ReflectionBinding IsActive}"
                                               Width="Auto"/>
                         <DataGridTextColumn Header="Создан" 
-                                          Binding="{Binding CreatedAtDisplay}"
+                                          Binding="{ReflectionBinding CreatedAtDisplay}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Последний вход" 
-                                          Binding="{Binding LastLoginAtDisplay}"
+                                          Binding="{ReflectionBinding LastLoginAtDisplay}"
                                           Width="Auto"/>
                     </DataGrid.Columns>
                 </DataGrid>
@@ -101,25 +101,25 @@
                          BorderBrush="Gray">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Название" 
-                                          Binding="{Binding Name}"
+                                          Binding="{ReflectionBinding Name}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Описание" 
-                                          Binding="{Binding Description}"
+                                          Binding="{ReflectionBinding Description}"
                                           Width="*"/>
                         <DataGridTextColumn Header="ID" 
-                                          Binding="{Binding RoleId}"
+                                          Binding="{ReflectionBinding RoleId}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Legacy ID" 
-                                          Binding="{Binding LegacyRoleId}"
+                                          Binding="{ReflectionBinding LegacyRoleId}"
                                           Width="Auto"/>
                         <DataGridCheckBoxColumn Header="Активна" 
-                                              Binding="{Binding IsActive}"
+                                              Binding="{ReflectionBinding IsActive}"
                                               Width="Auto"/>
                         <DataGridTextColumn Header="Приоритет" 
-                                          Binding="{Binding Priority}"
+                                          Binding="{ReflectionBinding Priority}"
                                           Width="Auto"/>
                         <DataGridCheckBoxColumn Header="Системная" 
-                                              Binding="{Binding IsSystem}"
+                                              Binding="{ReflectionBinding IsSystem}"
                                               Width="Auto"/>
                     </DataGrid.Columns>
                 </DataGrid>
@@ -162,19 +162,19 @@
                           BorderBrush="Gray">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" 
-                                          Binding="{Binding PermissionId}"
+                                          Binding="{ReflectionBinding PermissionId}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Название" 
-                                          Binding="{Binding Name}"
+                                          Binding="{ReflectionBinding Name}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Описание" 
-                                          Binding="{Binding Description}"
+                                          Binding="{ReflectionBinding Description}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Категория" 
-                                          Binding="{Binding Category}"
+                                          Binding="{ReflectionBinding Category}"
                                           Width="Auto"/>
                         <DataGridCheckBoxColumn Header="Активно" 
-                                              Binding="{Binding IsActive}"
+                                              Binding="{ReflectionBinding IsActive}"
                                               Width="Auto"/>
                     </DataGrid.Columns>
                 </DataGrid>
@@ -195,19 +195,19 @@
                           BorderBrush="Gray">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" 
-                                          Binding="{Binding PermissionId}"
+                                          Binding="{ReflectionBinding PermissionId}"
                                           Width="Auto"/>
                         <DataGridTextColumn Header="Название" 
-                                          Binding="{Binding Name}"
+                                          Binding="{ReflectionBinding Name}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Описание" 
-                                          Binding="{Binding Description}"
+                                          Binding="{ReflectionBinding Description}"
                                           Width="*"/>
                         <DataGridTextColumn Header="Категория" 
-                                          Binding="{Binding Category}"
+                                          Binding="{ReflectionBinding Category}"
                                           Width="Auto"/>
                         <DataGridCheckBoxColumn Header="Активно" 
-                                              Binding="{Binding IsActive}"
+                                              Binding="{ReflectionBinding IsActive}"
                                               Width="Auto"/>
                     </DataGrid.Columns>
                 </DataGrid>

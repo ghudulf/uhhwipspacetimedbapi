@@ -10,10 +10,7 @@
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/avalonia-logo.ico"
         CanResize="True"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="36"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="{DynamicResource SystemBackground}">
 
     <Window.Resources>

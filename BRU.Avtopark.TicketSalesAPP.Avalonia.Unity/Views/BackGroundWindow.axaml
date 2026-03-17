@@ -6,7 +6,7 @@
         x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.BackGroundWindow"
         Title="SmartStart-Автопарк автобусов - Загрузка системы"
         WindowState="FullScreen" 
-        SystemDecorations="None" 
+        WindowDecorations="None" 
        
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SystemBackground}">

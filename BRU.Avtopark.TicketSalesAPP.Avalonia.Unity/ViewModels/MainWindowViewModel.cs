@@ -6,16 +6,11 @@ using System.Linq;
 using System.Reactive.Linq;
 
 using Avalonia.Controls;
-using Avalonia.Layout;
-using FluentAvalonia.UI.Controls;
-using System.Collections.ObjectModel;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
 public class MainWindowViewModel : IDisposable
 {
-    private TabView? _mainTabView;
-    private ObservableCollection<TabViewItem> _tabItems = new();
 
    
 

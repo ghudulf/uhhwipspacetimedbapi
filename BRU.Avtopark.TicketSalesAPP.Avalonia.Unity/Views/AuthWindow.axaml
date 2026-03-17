@@ -12,7 +12,7 @@
         MaxWidth="750" MaxHeight="550"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
-        SystemDecorations="BorderOnly"
+        WindowDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="False"
         Background="{DynamicResource SystemBackground}"
         x:DataType="vm:AuthViewModel">

@@ -1,6 +1,6 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
 using Avalonia.WebView.Desktop;
 using Serilog;
 using Serilog.Events;
@@ -53,12 +53,19 @@ class Program
 
 
     // Avalonia configuration, don't remove; also used by visual designer.
+    // NOTE (Avalonia 12 migration): UsePlatformDetect() is valid in Avalonia 12 — no change needed.
+    // NOTE (Avalonia 12 migration): UseDesktopWebView() comes from WebView.Avalonia.Desktop (pinned at 11.0.0.1).
+    //   No Avalonia 12-compatible release of WebView.Avalonia.Desktop exists as of migration time.
+    //   The method name UseDesktopWebView() has not been renamed; the incompatibility is at the package level.
+    //   Resolution: pin-and-test — if the package fails to resolve against Avalonia 12, remove .UseDesktopWebView()
+    //   and guard AvaloniaWebViewBuilder.Initialize(default) in App.axaml.cs with #if DESKTOP until a
+    //   compatible release is available. See task 10.10 for the package-level tracking.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
-            .UseReactiveUI()
+            .UseReactiveUI(_ => { })
             .UseDesktopWebView();
 
     private static void SilenceConsole()

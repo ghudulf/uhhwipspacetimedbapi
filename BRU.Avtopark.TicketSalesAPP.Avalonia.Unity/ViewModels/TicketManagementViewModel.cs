@@ -330,7 +330,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var priceBox = new NumericUpDown
                 {
-                    Watermark = "Цена билета (BYN)",
+                    PlaceholderText = "Цена билета (BYN)",
                     FormatString = "C2",
                     Increment = 0.5M,
                     Minimum = 0,
@@ -339,7 +339,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var seatBox = new NumericUpDown
                 {
-                    Watermark = "Номер места",
+                    PlaceholderText = "Номер места",
                     Increment = 1,
                     Minimum = 1,
                     Maximum = 100,
@@ -471,7 +471,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var priceBox = new NumericUpDown
                 {
                     Value = (decimal)ticketToEdit.TicketPrice,
-                    Watermark = "Цена билета (BYN)",
+                    PlaceholderText = "Цена билета (BYN)",
                     FormatString = "C2",
                     Increment = 0.5M,
                     Minimum = 0,
@@ -481,7 +481,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var seatBox = new NumericUpDown
                 {
                     Value = ticketToEdit.SeatNumber,
-                    Watermark = "Номер места",
+                    PlaceholderText = "Номер места",
                     Increment = 1,
                     Minimum = 1,
                     Maximum = 100,

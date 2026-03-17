@@ -5,9 +5,9 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Classic.CommonControls.Dialogs;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
@@ -98,7 +98,7 @@ public partial class AboutWindow : Window
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard != null)
         {
-            await clipboard.SetTextAsync(info.ToString());
+            await ClipboardExtensions.SetTextAsync(clipboard, info.ToString());
             
             var dialog = new ModalDialog
             {

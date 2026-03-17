@@ -120,11 +120,11 @@
                                         MaxHeight="400"
                                         HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Месяц" Binding="{Binding Month}"/>
-                                        <DataGridTextColumn Header="Год" Binding="{Binding Year}"/>
-                                        <DataGridTextColumn Header="Доход" Binding="{Binding TotalIncome, StringFormat={}{0:C}}"/>
-                                        <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{Binding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Месяц" Binding="{ReflectionBinding Month}"/>
+                                        <DataGridTextColumn Header="Год" Binding="{ReflectionBinding Year}"/>
+                                        <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
@@ -142,10 +142,10 @@
                                         MaxHeight="400"
                                         HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
-                                        <DataGridTextColumn Header="Доход" Binding="{Binding TotalIncome, StringFormat={}{0:C}}"/>
-                                        <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{Binding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
+                                        <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

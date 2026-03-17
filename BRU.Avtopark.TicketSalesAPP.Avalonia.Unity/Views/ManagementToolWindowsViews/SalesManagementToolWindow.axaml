@@ -65,22 +65,22 @@
                      Margin="10">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="№" 
-                                      Binding="{Binding SaleId}"
+                                      Binding="{ReflectionBinding SaleId}"
                                       Width="60"/>
                     <DataGridTextColumn Header="Дата"
-                                      Binding="{Binding SaleDate, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                      Binding="{ReflectionBinding SaleDate, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
                                       Width="150"/>
                     <DataGridTextColumn Header="ID Билета" 
-                                      Binding="{Binding TicketId}"
+                                      Binding="{ReflectionBinding TicketId}"
                                       Width="80"/>
                     <DataGridTextColumn Header="Покупатель"
-                                      Binding="{Binding TicketSoldToUser}"
+                                      Binding="{ReflectionBinding TicketSoldToUser}"
                                       Width="150"/>
                     <DataGridTextColumn Header="Телефон"
-                                      Binding="{Binding TicketSoldToUserPhone}"
+                                      Binding="{ReflectionBinding TicketSoldToUserPhone}"
                                       Width="150"/>
                     <DataGridTextColumn Header="ID Продавца" 
-                                      Binding="{Binding SellerId}"
+                                      Binding="{ReflectionBinding SellerId}"
                                       Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>

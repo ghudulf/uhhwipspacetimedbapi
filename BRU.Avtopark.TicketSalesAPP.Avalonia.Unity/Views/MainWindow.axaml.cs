@@ -58,10 +58,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        ExtendClientAreaChromeHints =
-            ExtendClientAreaChromeHints.SystemChrome | ExtendClientAreaChromeHints.OSXThickTitleBar;
-        ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaTitleBarHeightHint = 22;
+        WindowDecorations = WindowDecorations.None;
         _viewModel = new MainWindowViewModel();
         _viewModel.FloatingWindows.CollectionChanged += FloatingWindowsOnCollectionChanged;
         DataContext = _viewModel;
@@ -262,7 +259,7 @@ public partial class MainWindow : Window
 
     private void DragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.Contains(DataFormats.Text))
+        if (e.DataTransfer.Contains(DataFormat.Text))
         {
             e.DragEffects = DragDropEffects.Move;
         }
@@ -270,22 +267,11 @@ public partial class MainWindow : Window
 
     private void Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.Contains(DataFormats.Text))
+        if (e.DataTransfer.Contains(DataFormat.Text))
         {
-            var window = e.Data.Get(DataFormats.Text) as Window;
-            if (window != null)
-            {
-                var vm = DataContext as BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.MainWindowViewModel;
-                if (vm != null)
-                {
-                    // Extract content and create tab
-                    var content = window.Content as Control;
-                    window.Content = null;
-                    window.Hide();
-
-                    
-                }
-            }
+            var text = e.DataTransfer.TryGetText();
+            // Drag-and-drop text handling placeholder
+            _ = text;
         }
     }
 

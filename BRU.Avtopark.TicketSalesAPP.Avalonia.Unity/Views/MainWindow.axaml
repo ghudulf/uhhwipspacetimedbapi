@@ -11,9 +11,7 @@
         Title="БРУ Автопарк - Система Управления"
         WindowStartupLocation="CenterScreen"
         CanResize="True" MinWidth="750" MinHeight="550"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="36"
+        WindowDecorations="None"
         Background="{DynamicResource SystemBackground}">
 
     <Window.Resources>

@@ -375,13 +375,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var sp = new StackPanel { Spacing = 10 };
 
                 // Input Fields based on Bus model and CreateBusModel
-                var modelBox = new TextBox { Watermark = "Модель" };
-                var regNumBox = new TextBox { Watermark = "Регистрационный номер (необязательно)" };
-                var capacityBox = new NumericUpDown { Watermark = "Вместимость", Minimum = 0, Increment = 1 };
-                var busTypeBox = new TextBox { Watermark = "Тип автобуса (Городской, Троллейбус...)" };
-                var yearBox = new NumericUpDown { Watermark = "Год выпуска", Minimum = 1950, Maximum = DateTime.Now.Year + 1, Increment = 1 };
-                var vinBox = new TextBox { Watermark = "VIN (необязательно)" };
-                var plateBox = new TextBox { Watermark = "Гос. номер (необязательно)" };
+                var modelBox = new TextBox { PlaceholderText = "Модель" };
+                var regNumBox = new TextBox { PlaceholderText = "Регистрационный номер (необязательно)" };
+                var capacityBox = new NumericUpDown { PlaceholderText = "Вместимость", Minimum = 0, Increment = 1 };
+                var busTypeBox = new TextBox { PlaceholderText = "Тип автобуса (Городской, Троллейбус...)" };
+                var yearBox = new NumericUpDown { PlaceholderText = "Год выпуска", Minimum = 1950, Maximum = DateTime.Now.Year + 1, Increment = 1 };
+                var vinBox = new TextBox { PlaceholderText = "VIN (необязательно)" };
+                var plateBox = new TextBox { PlaceholderText = "Гос. номер (необязательно)" };
                 var statusBox = new ComboBox
                 {
                     PlaceholderText = "Текущий статус",
@@ -543,13 +543,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var sp = new StackPanel { Spacing = 10 };
 
                 // Pre-populate fields from busToEdit
-                var modelBox = new TextBox { Text = busToEdit.Model, Watermark = "Модель" };
-                var regNumBox = new TextBox { Text = busToEdit.RegistrationNumber, Watermark = "Регистрационный номер" };
-                var capacityBox = new NumericUpDown { Value = busToEdit.Capacity, Watermark = "Вместимость", Minimum = 0, Increment = 1 };
-                var busTypeBox = new TextBox { Text = busToEdit.BusType, Watermark = "Тип автобуса" };
-                var yearBox = new NumericUpDown { Value = busToEdit.Year, Watermark = "Год выпуска", Minimum = 1950, Maximum = DateTime.Now.Year + 1, Increment = 1 };
-                var vinBox = new TextBox { Text = busToEdit.Vin, Watermark = "VIN" };
-                var plateBox = new TextBox { Text = busToEdit.LicensePlate, Watermark = "Гос. номер" };
+                var modelBox = new TextBox { Text = busToEdit.Model, PlaceholderText = "Модель" };
+                var regNumBox = new TextBox { Text = busToEdit.RegistrationNumber, PlaceholderText = "Регистрационный номер" };
+                var capacityBox = new NumericUpDown { Value = busToEdit.Capacity, PlaceholderText = "Вместимость", Minimum = 0, Increment = 1 };
+                var busTypeBox = new TextBox { Text = busToEdit.BusType, PlaceholderText = "Тип автобуса" };
+                var yearBox = new NumericUpDown { Value = busToEdit.Year, PlaceholderText = "Год выпуска", Minimum = 1950, Maximum = DateTime.Now.Year + 1, Increment = 1 };
+                var vinBox = new TextBox { Text = busToEdit.Vin, PlaceholderText = "VIN" };
+                var plateBox = new TextBox { Text = busToEdit.LicensePlate, PlaceholderText = "Гос. номер" };
                 var statusComboBox = new ComboBox
                 {
                     PlaceholderText = "Текущий статус",

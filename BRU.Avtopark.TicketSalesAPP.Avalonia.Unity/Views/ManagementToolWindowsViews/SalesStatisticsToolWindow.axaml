@@ -120,10 +120,10 @@
                                     MaxHeight="400"
                                     HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Рост" Binding="{Binding GrowthRate, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Дата" Binding="{ReflectionBinding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Рост" Binding="{ReflectionBinding GrowthRate, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -141,10 +141,10 @@
                                     MaxHeight="400"
                                     HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Доля" Binding="{Binding SalesPercentage, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Доля" Binding="{ReflectionBinding SalesPercentage, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>

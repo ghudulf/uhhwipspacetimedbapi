@@ -90,14 +90,14 @@
                             
                             <TextBlock Text="Server URL:" Foreground="#CCCCCC" FontSize="12"/>
                             <TextBox Text="{Binding ServerUrl}" 
-                                     Watermark="http://localhost:5000"
+                                     PlaceholderText="http://localhost:5000"
                                      Background="#3E3E42" 
                                      Foreground="White"
                                      BorderBrush="#555555"/>
 
                             <TextBlock Text="Access Token (Optional):" Foreground="#CCCCCC" FontSize="12" Margin="0,8,0,0"/>
                             <TextBox Text="{Binding AccessToken}" 
-                                     Watermark="Bearer token..."
+                                     PlaceholderText="Bearer token..."
                                      PasswordChar="•"
                                      Background="#3E3E42" 
                                      Foreground="White"
