@@ -4,7 +4,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
 {
     /// <summary>
     /// Ensures AttachDeveloperTools is only called once per application lifetime.
-    /// Calling it more than once throws InvalidOperationException.
+    /// Calling AttachOnce multiple times is safe; subsequent calls are no-op and do not throw.
     /// </summary>
     internal static class DevToolsHelper
     {

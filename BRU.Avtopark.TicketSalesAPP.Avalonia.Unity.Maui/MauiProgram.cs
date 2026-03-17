@@ -12,7 +12,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
 
         builder
-            .UseMauiApp<MauiShellApp>()          // MAUI shell App.cs defined in this project
+            .UseMauiApp<App>()                    // MAUI App.cs defined in this project
             .UseAvaloniaApp()                     // Full hosting: Avalonia replaces MAUI rendering
                                                   // For Browser/WASM use: .UseAvaloniaApp(useSingleViewLifetime: true)
             .UseAvaloniaEssentials()              // Avalonia implementations of Essentials APIs

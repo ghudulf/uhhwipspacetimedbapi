@@ -11,6 +11,8 @@ The WebSocket Debug Tool is a comprehensive testing utility for validating WebSo
 - Connect/disconnect to WebSocket endpoints
 - Support for Bearer token authentication
 - Real-time connection status indicator
+- Automatic reconnection with exponential backoff (up to 5 retries, delays from 1s to 30s)
+- Automatic reconnection is disabled on manual disconnect
 - Manual reconnection via Connect button
 
 ### 🧪 Controller Testing

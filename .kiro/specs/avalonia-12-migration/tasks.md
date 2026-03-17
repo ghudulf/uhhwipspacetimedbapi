@@ -91,7 +91,7 @@
 
 - [x] 11. Verify Desktop project AppBuilder chain
   - [x] 11.1 Confirm `Program.cs` in the Desktop project retains `UsePlatformDetect()` (valid in Avalonia 12)
-  - [x] 11.2 Confirm `UseDesktopWebView()` extension is available from the updated `WebView.Avalonia` desktop package; update the call if the extension method was renamed
+  - [x] 11.2 Confirm the project uses `Avalonia.Controls.WebView` (version 12.0.0-preview2 or later) and the `NativeWebView` control pattern instead of the deprecated `UseDesktopWebView()` extension method from `WebView.Avalonia`
 
 - [x] 12. Build and runtime verification
   - [x] 12.1 Run `dotnet build -c Release` on the solution and confirm zero compiler errors

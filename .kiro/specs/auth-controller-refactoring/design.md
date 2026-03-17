@@ -4061,21 +4061,25 @@ import Provider from 'oidc-provider'
 
 // Custom SpacetimeDB adapter for oidc-provider
 class SpacetimeDBAdapter {
-  constructor(private name: string, private spacetimeClient: any) {}
-  
+  private conn: any;
+
+  constructor(private name: string, private spacetimeClient: any, connection: any) {
+    this.conn = connection;
+  }
+
   async upsert(id: string, payload: any, expiresIn: number) {
     // PRODUCTION: Direct SpacetimeDB access via generated reducer binding
-    await conn.reducers.StoreOidcToken({
+    await this.conn.reducers.StoreOidcToken({
       type: this.name,
       id,
       payload: JSON.stringify(payload),
       expiresAt: Date.now() + (expiresIn * 1000)
     })
   }
-  
+
   async find(id: string) {
     // PRODUCTION: Direct SpacetimeDB query via generated DB accessor
-    const result = Array.from(conn.db.OidcTokens.iter()).filter(
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
       (t: any) => t.type === this.name && t.id === id
     )
     if (!result || result.length === 0) return undefined

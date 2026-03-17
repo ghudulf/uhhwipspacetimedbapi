@@ -565,13 +565,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     {
                         Values = routeValues,
                         Name = "Маршруты",
-                        DataLabelsFormatter = point => $"{routeNames[Math.Min(point.Index, routeNames.Length - 1)]}\n{point.Coordinate.PrimaryValue:C0}",
+                        DataLabelsFormatter = point => routeNames.Length > 0
+                            ? $"{routeNames[Math.Min(point.Index, routeNames.Length - 1)]}\n{point.Coordinate.PrimaryValue:C0}"
+                            : $"{point.Coordinate.PrimaryValue:C0}",
                         DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
                         DataLabelsSize = 10,
                         InnerRadius = 40,
                         MaxRadialColumnWidth = 15,
                         DataLabelsRotation = 0,
-                        
+
                     }
                 };
             }

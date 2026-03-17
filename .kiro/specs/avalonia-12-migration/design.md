@@ -358,7 +358,7 @@ Each incompatible package must be documented with its status and chosen resoluti
 
 ### 11. Desktop Project — Program.cs
 
-`Program.cs` in the Desktop project uses `UseDesktopWebView()` from `Avalonia.WebView.Desktop`. This extension method must remain available in the updated `WebView.Avalonia` package. The `UsePlatformDetect()` call is valid in Avalonia 12 (HarfBuzz is included by default). No other changes to the AppBuilder chain are expected.
+`Program.cs` in the Desktop project previously used `UseDesktopWebView()` from `WebView.Avalonia.Desktop`, which is now deprecated. In Avalonia 12, replace this with the official `Avalonia.Controls.WebView` package (version 12.0.0-preview2 or later). Remove `UseDesktopWebView()` and `AvaloniaWebViewBuilder.Initialize()` calls. Instead, add the `Avalonia.Controls.WebView` NuGet package and use the `NativeWebView` control in XAML (with `.Source` property for navigation, and `NavigationRequested`/`NavigationCompleted` event handlers for lifecycle hooks). The `UsePlatformDetect()` call remains valid in Avalonia 12 (HarfBuzz is included by default). No other changes to the AppBuilder chain are expected.
 
 ### 12. MAUI Integration (Optional)
 

@@ -66,10 +66,19 @@ namespace TicketSalesApp.Services.Implementations
             query ??= ScheduleQuery.Empty;
             try
             {
+                 // Sanitize SearchText for logging: strip control chars, collapse whitespace, limit to 200 chars
+                 var sanitizedSearchText = query.SearchText == null ? null :
+                     new string(query.SearchText
+                         .Where(c => !char.IsControl(c))
+                         .ToArray())
+                     .Trim()
+                     .Replace("  ", " ")
+                     .Substring(0, Math.Min(query.SearchText.Length, 200));
+
                  _logger.LogInformation(
                     "Retrieving schedules page {Page} with page size {PageSize} (filters: routeId={RouteId} isActive={IsActive} start={Start} end={End} text={Text})",
                     page, pageSize,
-                    query.RouteId, query.IsActive, query.StartDate, query.EndDate, query.SearchText);
+                    query.RouteId, query.IsActive, query.StartDate, query.EndDate, sanitizedSearchText);
 
                 // Clamp page and pageSize to valid ranges (lenient – never throw).
                 // page < 1 is treated as page 1; pageSize is clamped to [1, _maxPageSize].

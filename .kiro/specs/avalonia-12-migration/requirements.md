@@ -188,7 +188,7 @@ This document defines the requirements for migrating the BRU Avtopark Ticket Sal
 7. THE Project_File SHALL reference an Avalonia 12-compatible version of ReDocking.Avalonia.
 8. THE Project_File SHALL reference an Avalonia 12-compatible version of Dock.Model.Mvvm.
 9. THE Project_File SHALL reference an Avalonia 12-compatible version of MessageBox.Avalonia.
-10. THE Project_File SHALL reference an Avalonia 12-compatible version of WebView.Avalonia.
+10. THE Project_File SHALL reference Avalonia.Controls.WebView (version 12.0.0-preview2 or later) and use the NativeWebView/NativeWebDialog control pattern instead of the deprecated WebView.Avalonia package and UseDesktopWebView() extension method.
 11. THE Project_File SHALL reference an Avalonia 12-compatible version of LiveChartsCore.SkiaSharpView.Avalonia.
 12. THE Project_File SHALL reference an Avalonia 12-compatible version of FluentAvalonia.ProgressRing.
 13. IF an Avalonia 12-compatible version of a Third_Party_Package does not exist at migration time, THEN THE Migration_Tool SHALL document the incompatible package and propose a replacement or removal strategy.

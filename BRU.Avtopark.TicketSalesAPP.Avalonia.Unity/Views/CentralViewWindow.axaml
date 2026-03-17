@@ -308,7 +308,7 @@
                                                Width="16" Height="16" Foreground="#4A4A58"
                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <TextBox Grid.Column="1"
-                                     Watermark="Поиск..."
+                                     PlaceholderText="Поиск..."
                                      Background="Transparent" BorderThickness="0"
                                      Foreground="#8E8E9A" FontSize="13"
                                      VerticalContentAlignment="Center"/>

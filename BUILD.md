@@ -3,7 +3,8 @@
 This solution contains projects targeting different .NET versions:
 
 - **SpacetimeDB Module** (`server/`): .NET 8.0 with WASI-WASM runtime
-- **All other projects**: .NET 9.0
+- **API/service projects**: .NET 9.0
+- **Avalonia client projects**: .NET 10.0+ (required for Avalonia 12 compatibility)
 
 ## Quick Start
 
