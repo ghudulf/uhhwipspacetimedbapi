@@ -13,6 +13,14 @@ public partial class CentralViewWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isNavPaneOpen = false;
     [ObservableProperty] private string _currentSectionTitle = "Автобусы";
     [ObservableProperty] private string _currentSectionSubtitle = "Парк транспортных средств";
+    [ObservableProperty] private string _userInitials = string.Empty;
+    [ObservableProperty] private bool _isConnected = true;
+    [ObservableProperty] private string _connectionStatus = "Подключено к серверу";
+
+    partial void OnIsConnectedChanged(bool value)
+    {
+        ConnectionStatus = value ? "Подключено к серверу" : "Отключено";
+    }
 
     public CentralViewWindowViewModel()
     {

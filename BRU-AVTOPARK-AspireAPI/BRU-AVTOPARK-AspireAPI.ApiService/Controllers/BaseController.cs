@@ -38,7 +38,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         /// <summary>
         /// Timeout in seconds for tokeninfo calls in WebSocket message handling.
-        /// Intentionally shorter than TokenInfoTimeoutSeconds for faster failure in WS loops.
+        /// Same as TokenInfoTimeoutSeconds (30 s); kept as a separate constant so
+        /// WebSocket loops can be tuned independently if needed.
         /// </summary>
         private const int TokenInfoTimeoutSecondsWs = 30;
         

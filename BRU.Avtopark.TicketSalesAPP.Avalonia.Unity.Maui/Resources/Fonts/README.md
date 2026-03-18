@@ -3,6 +3,7 @@
 Place `.ttf` or `.otf` font files here.
 
 The `.csproj` includes them via:
+
 ```xml
 <MauiFont Include="Resources/Fonts/*"/>
 ```
@@ -15,6 +16,7 @@ fonts.AddFont("Inter-Regular.ttf", "InterRegular");
 ```
 
 Then reference in AXAML:
+
 ```xml
 <TextBlock FontFamily="{StaticResource InterRegular}" .../>
 ```

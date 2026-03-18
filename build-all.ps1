@@ -14,6 +14,7 @@ try {
         Write-Information "WARNING: .NET 8 SDK not found. Skipping SpacetimeDB module build." -InformationAction Continue
         Write-Information "Install .NET 8 SDK and WASI workload with:" -InformationAction Continue
         Write-Information "  dotnet workload install wasi-experimental" -InformationAction Continue
+        exit 1
     } else {
         # Try to build with .NET 8
         $previousRollForward = $env:DOTNET_ROLL_FORWARD
@@ -24,6 +25,7 @@ try {
         if ($stdbExitCode -ne 0) {
             Write-Information "WARNING: SpacetimeDB module build failed. This may be due to missing WASI workload." -InformationAction Continue
             Write-Information "Install with: dotnet workload install wasi-experimental" -InformationAction Continue
+            exit $stdbExitCode
         } else {
             Write-Information "✓ SpacetimeDB module built successfully" -InformationAction Continue
         }

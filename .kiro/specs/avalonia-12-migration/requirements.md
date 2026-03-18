@@ -216,9 +216,9 @@ This document defines the requirements for migrating the BRU Avtopark Ticket Sal
 
 #### Acceptance Criteria
 
-1. THE Desktop_Project_File SHALL reference Avalonia 12-compatible versions of `Avalonia.Desktop`, `Avalonia.ReactiveUI`, and `WebView.Avalonia` (desktop variant).
+1. THE Desktop_Project_File SHALL reference Avalonia 12-compatible versions of `Avalonia.Desktop`, `Avalonia.ReactiveUI`, and `Avalonia.Controls.WebView` (12.0.0-preview2).
 2. THE Code_File `Program.cs` in the Desktop project SHALL retain the `UsePlatformDetect()` call, which remains valid in Avalonia 12 and includes HarfBuzz by default.
-3. THE Code_File `Program.cs` in the Desktop project SHALL use an Avalonia 12-compatible `UseDesktopWebView()` extension from the updated `Avalonia.WebView.Desktop` package.
+3. THE Code_File `Program.cs` in the Desktop project SHALL use `NativeWebView` from `Avalonia.Controls.WebView` instead of the removed `UseDesktopWebView()` extension.
 4. WHEN the Desktop project is built after package updates, THE Desktop_Project_File SHALL compile without errors related to missing or incompatible Avalonia package versions.
 5. WHEN the App is launched via the Desktop entry point after migration, THE App SHALL start successfully and reach the main window without runtime exceptions.
 

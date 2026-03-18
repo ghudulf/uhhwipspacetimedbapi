@@ -4,7 +4,7 @@
 
 - [x] 1. Update project files to Avalonia 12
   - [x] 1.1 Update `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.csproj`: change `TargetFramework` from `net9.0` to `net10.0`, bump all `Avalonia.*` core package versions to `12.x.x`, replace `Avalonia.Diagnostics` conditional reference with `AvaloniaUI.DiagnosticsSupport`, and add `<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>`
-  - [x] 1.2 Update `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj`: change `TargetFramework` to `net10.0`, bump `Avalonia.Desktop`, `Avalonia.ReactiveUI`, and `WebView.Avalonia` desktop variant to Avalonia 12-compatible versions
+  - [x] 1.2 Update `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj`: change `TargetFramework` to `net10.0`, bump `Avalonia.Desktop`, `Avalonia.ReactiveUI`, and replace `WebView.Avalonia` with `Avalonia.Controls.WebView` (12.0.0-preview2); use `NativeWebView` instead of `UseDesktopWebView()`
 
 - [x] 2. Remove obsolete data validation code
   - [x] 2.1 Delete the `DisableAvaloniaDataAnnotationValidation()` method and its call site from `App.axaml.cs`

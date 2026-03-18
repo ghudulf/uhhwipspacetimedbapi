@@ -16,13 +16,13 @@ This solution contains projects targeting different .NET versions:
 
 This script builds the SpacetimeDB module first (if .NET 8 SDK is available), then builds all .NET 9 projects.
 
-### Option 2: Build .NET 9 Projects Only
+### Option 2: Build API/Service Projects (net9) Only
 
 ```powershell
 .\build-net9-only.ps1
 ```
 
-Use this when you only need to build the API, services, and Avalonia client.
+Use this when you only need to build the API and services. Note: the Avalonia client targets net10.0+ and requires the .NET 10 SDK — it is not built by this script.
 
 ### Option 3: Build from Visual Studio
 

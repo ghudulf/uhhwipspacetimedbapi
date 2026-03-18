@@ -68,52 +68,8 @@ public class TokenService : ITokenService
     {
         ArgumentNullException.ThrowIfNull(payload);
 
-        // For modular architecture: generate token from pre-computed payload without DB queries
         var tokenHandler = new JwtSecurityTokenHandler();
-        
-        // Create claims from payload
-        var claims = new List<Claim>
-        {
-            new Claim("unique_name", payload.Username),
-            new Claim(ClaimTypes.Name, payload.Username),
-            new Claim("sub", payload.UserId),
-            new Claim("identity", payload.UserId),
-            new Claim("token_usage", "access_token"),
-            new Claim("oi_tkn_id", Guid.NewGuid().ToString())
-        };
-
-        // Add email if present
-        if (!string.IsNullOrEmpty(payload.Email))
-        {
-            claims.Add(new Claim(ClaimTypes.Email, payload.Email));
-        }
-
-        // Add phone if present
-        if (!string.IsNullOrEmpty(payload.PhoneNumber))
-        {
-            claims.Add(new Claim("phone_number", payload.PhoneNumber));
-        }
-
-        // Add xuid (use UserId as fallback)
-        claims.Add(new Claim("xuid", payload.UserId));
-
-        // Add role claims
-        foreach (var role in payload.Roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-
-        // Add permission claims
-        foreach (var permission in payload.Permissions)
-        {
-            claims.Add(new Claim("permission", permission));
-        }
-
-        // Add primary role
-        if (payload.PrimaryRole > 0)
-        {
-            claims.Add(new Claim("primary_role", payload.PrimaryRole.ToString()));
-        }
+        var claims = BuildAuthControllerCompatibleClaims(payload);
 
         // Create and sign token using centralized helper
         var (token, expires, notBefore) = CreateSignedToken(tokenHandler, claims);
@@ -124,6 +80,52 @@ public class TokenService : ITokenService
             expires.ToString("o"), notBefore.ToString("o"));
 
         return tokenHandler.WriteToken(token);
+    }
+
+    /// <summary>
+    /// Builds a claim set that is compatible with AuthController's GenerateTokenForUser output.
+    /// Includes sub, identity, xuid, jti, iat, legacy role claims, and permission claims.
+    /// </summary>
+    private List<Claim> BuildAuthControllerCompatibleClaims(UserTokenPayload payload)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim("unique_name", payload.Username),
+            new Claim(ClaimTypes.Name, payload.Username),
+            new Claim("sub", payload.LegacyUserId ?? payload.Identity ?? payload.UserId),
+            new Claim("identity", payload.Identity ?? payload.UserId),
+            new Claim("xuid", payload.Xuid ?? payload.LegacyUserId ?? payload.UserId),
+            new Claim("token_usage", "access_token"),
+            new Claim("oi_tkn_id", Guid.NewGuid().ToString()),
+            new Claim("jti", Guid.NewGuid().ToString()),
+            new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+        // Add email if present
+        if (!string.IsNullOrEmpty(payload.Email))
+            claims.Add(new Claim(ClaimTypes.Email, payload.Email));
+
+        // Add phone if present
+        if (!string.IsNullOrEmpty(payload.PhoneNumber))
+            claims.Add(new Claim("phone_number", payload.PhoneNumber));
+
+        // Add role name claims
+        foreach (var role in payload.Roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
+        // Add legacy numeric role ID claims (matches GenerateTokenForUser behavior)
+        foreach (var roleId in payload.RoleIds)
+            claims.Add(new Claim("role", roleId));
+
+        // Add permission claims
+        foreach (var permission in payload.Permissions)
+            claims.Add(new Claim("permission", permission));
+
+        // Add primary role
+        if (payload.PrimaryRole > 0)
+            claims.Add(new Claim("primary_role", payload.PrimaryRole.ToString()));
+
+        return claims;
     }
 
     /// <summary>

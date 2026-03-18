@@ -61,10 +61,11 @@
 
   <ItemGroup>
   <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <!-- Avalonia.Controls.Maui: replaces MAUI rendering pipeline with Avalonia/Skia -->
-    <PackageReference Include="Avalonia.Controls.Maui" Version="12.0.0-preview2"/>
+    <!-- Avalonia.Controls.Maui - WHILE IT USES AVALONIA 12 - ITS VERSION FOR SOME REASON IS SET AS 11.0 - NOT A ISSUE - THATS THE ONLY NUGET VERSION AVAILABLE RELEASED 2 DAYS AGO: replaces MAUI rendering pipeline with Avalonia/Skia -->
+    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-preview.2.26075.1512" />
     <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
-    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="12.0.0-preview2"/>
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-preview.2.26075.1512" />
+
   </ItemGroup>
 
   <ItemGroup>

@@ -72,8 +72,9 @@ namespace TicketSalesApp.Services.Implementations
                          .Where(c => !char.IsControl(c))
                          .ToArray())
                      .Trim()
-                     .Replace("  ", " ")
-                     .Substring(0, Math.Min(query.SearchText.Length, 200));
+                     .Replace("  ", " ");
+                 if (sanitizedSearchText != null)
+                     sanitizedSearchText = sanitizedSearchText.Substring(0, Math.Min(sanitizedSearchText.Length, 200));
 
                  _logger.LogInformation(
                     "Retrieving schedules page {Page} with page size {PageSize} (filters: routeId={RouteId} isActive={IsActive} start={Start} end={End} text={Text})",

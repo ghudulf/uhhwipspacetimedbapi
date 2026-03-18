@@ -16,7 +16,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
             lock (_lock)
             {
                 if (_attached) return;
-                Application.Current?.AttachDeveloperTools();
+                if (Application.Current == null) return;
+                Application.Current.AttachDeveloperTools();
                 _attached = true;
             }
         }

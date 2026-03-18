@@ -193,7 +193,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        var isMauiHost = AppContext.GetData("MAUI_HOST") as bool? == true;
+
+        if (!isMauiHost && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
           try
             {

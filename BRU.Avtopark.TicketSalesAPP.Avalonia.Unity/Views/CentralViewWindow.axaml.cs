@@ -26,6 +26,11 @@ public partial class CentralViewWindow : Window
 #endif
     }
 
+    public CentralViewWindow(BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel viewModel) : this()
+    {
+        DataContext = viewModel;
+    }
+
     private void TitleBarDragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)

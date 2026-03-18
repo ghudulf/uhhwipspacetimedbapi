@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
         xmlns:icons="using:Material.Icons.Avalonia"
+        xmlns:converters="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
         mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="760"
         x:DataType="vm:CentralViewWindowViewModel"
@@ -13,6 +14,10 @@
         CanResize="True" MinWidth="960" MinHeight="620"
         WindowDecorations="None"
         Background="#111116">
+
+    <Window.Resources>
+        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+    </Window.Resources>
 
     <Window.Styles>
 
@@ -228,8 +233,9 @@
                     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,4">
                         <Border Width="36" Height="36" CornerRadius="18"
                                 Background="#2E7D32" Cursor="Hand"
+                                IsVisible="{Binding UserInitials, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                 ToolTip.Tip="Профиль" ToolTip.Placement="Right">
-                            <TextBlock Text="MJ" FontSize="11" FontWeight="Bold" Foreground="White"
+                            <TextBlock Text="{Binding UserInitials, FallbackValue='?'}" FontSize="11" FontWeight="Bold" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </StackPanel>
@@ -677,8 +683,8 @@
                         Padding="20,6,20,6">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Border Width="8" Height="8" CornerRadius="4" Background="#34C759"/>
-                            <TextBlock Text="Подключено к серверу" FontSize="11" Foreground="#4A4A58"/>
+                            <Border Width="8" Height="8" CornerRadius="4" Background="{Binding IsConnected, Converter={StaticResource BoolToBrushConverter}}"/>
+                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="11" Foreground="#4A4A58"/>
                         </StackPanel>
                         <TextBlock Grid.Column="2" Text="БРУ Автопарк v3.0"
                                    FontSize="11" Foreground="#2A2A35"

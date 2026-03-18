@@ -66,12 +66,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             // Allow connection for mutation-only users; permission checks enforced per-command
             // Use pre-validated claims instead of re-calling IsAdminAsync()/HasPermissionAsync()
             var isAdmin = claims.ContainsKey("primary_role") && claims["primary_role"]?.ToString() == "admin";
-            var hasViewPermission = claims.ContainsKey("permission") &&
-                (claims["permission"] is IEnumerable<object> perms
-                    ? perms.Any(p => p?.ToString() == "employees.view")
-                    : claims["permission"]?.ToString() == "employees.view");
 
-            var eventsSource = (isAdmin || hasViewPermission)
+            var eventsSource = (isAdmin || HasPermission("employees.view", claims))
                 ? _realtimeEventBus.SubscribeAsync("employees", cancellationToken)
                 : EmptyAsyncEnumerable();
 

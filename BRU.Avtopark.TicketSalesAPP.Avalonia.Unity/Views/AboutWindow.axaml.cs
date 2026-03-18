@@ -98,7 +98,7 @@ public partial class AboutWindow : Window
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard != null)
         {
-            await ClipboardExtensions.SetTextAsync(clipboard, info.ToString());
+            await clipboard.SetTextAsync(info.ToString());
             
             var dialog = new ModalDialog
             {

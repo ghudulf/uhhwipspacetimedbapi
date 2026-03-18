@@ -27,6 +27,24 @@ public class BoolToColorConverter : IValueConverter
     }
 }
 
+/// <summary>
+/// Converts a bool to a SolidColorBrush: true → #34C759 (green), false → #FF453A (red).
+/// Used for connection status indicators.
+/// </summary>
+public class BoolToBrushConverter : IValueConverter
+{
+    public static readonly BoolToBrushConverter Instance = new();
+
+    private static readonly SolidColorBrush TrueBrush  = new SolidColorBrush(Color.Parse("#34C759"));
+    private static readonly SolidColorBrush FalseBrush = new SolidColorBrush(Color.Parse("#FF453A"));
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is bool b ? (b ? TrueBrush : FalseBrush) : FalseBrush;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
 public class BoolToConnectTextConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

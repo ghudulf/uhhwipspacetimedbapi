@@ -20,8 +20,8 @@ namespace TicketSalesApp.AdminServer.Mappers
         /// <param name="bus">The bus entity to convert (dynamic SpacetimeDB type).</param>
         /// <returns>A BusDto with all fields populated.</returns>
         /// <exception cref="ArgumentNullException">Thrown when bus is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when a required field value fails validation (e.g., empty string, out-of-range number).</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the mapping fails due to runtime binding errors or unexpected internal errors during dynamic member access.</exception>
+        /// <exception cref="ArgumentException">Thrown when a required string field (Model or BusType) is null, empty, or whitespace.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the mapping fails due to numeric conversion, format, overflow errors, runtime binding failures, or other unexpected internal errors during dynamic member access.</exception>
         public static BusDto ToDto(dynamic bus)
         {
             if (bus == null)
@@ -77,8 +77,6 @@ namespace TicketSalesApp.AdminServer.Mappers
                 if (defaults.Count > 0)
                     _log.Debug("BusMapper.ToDto BusId={BusId}: {Count} nullable field(s) defaulted: {Fields}",
                         busId, defaults.Count, string.Join(", ", defaults));
-                else
-                    _log.Debug("BusMapper.ToDto BusId={BusId}: all fields present", busId);
 
                 return new BusDto
                 {

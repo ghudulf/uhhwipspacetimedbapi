@@ -81,7 +81,7 @@ Changes required:
 Changes required:
 - `<TargetFramework>net9.0</TargetFramework>` → `net10.0`
 - `Avalonia.Desktop`, `Avalonia.ReactiveUI` → Avalonia 12 versions
-- `WebView.Avalonia` desktop variant → Avalonia 12-compatible version
+- `Avalonia.Controls.WebView` (12.0.0-preview2) replaces the old `WebView.Avalonia` package; use `NativeWebView` instead of `UseDesktopWebView()`
 
 ### 2. App.axaml.cs — Remove Data Validation Code
 
@@ -100,7 +100,7 @@ private void DisableAvaloniaDataAnnotationValidation()
 
 Also remove the `using Avalonia.Data.Core.Plugins;` and `using System.Linq;` imports if they become unused.
 
-### 3. DevTools Attachment — 7 Files
+### 3. DevTools Attachment — 6 Files
 
 `AttachDevTools()` is renamed to `AttachDeveloperTools()`. All occurrences are inside `#if DEBUG` guards. The grep search found the following files:
 
@@ -718,7 +718,9 @@ void NoDirectClipboardCalls(string[] csFiles)
 void AllAvaloniaPackagesAreVersion12(XDocument csproj)
 {
     var avaloniaPackages = csproj.Descendants("PackageReference")
-        .Where(r => r.Attribute("Include")?.Value.StartsWith("Avalonia") == true);
+        .Where(r => r.Attribute("Include")?.Value.StartsWith("Avalonia") == true
+                 || r.Attribute("Include")?.Value.Contains(".Avalonia") == true
+                 || r.Attribute("Include")?.Value == "LiveChartsCore.SkiaSharpView.Avalonia");
     foreach (var pkg in avaloniaPackages)
     {
         var version = pkg.Attribute("Version")?.Value ?? "";

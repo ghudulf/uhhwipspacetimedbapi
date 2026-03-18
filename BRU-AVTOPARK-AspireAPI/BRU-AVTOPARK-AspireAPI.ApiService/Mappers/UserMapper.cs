@@ -60,10 +60,6 @@ namespace TicketSalesApp.AdminServer.Mappers
                     EmailConfirmed = emailConfirmed
                 };
             }
-            catch (ArgumentException)
-            {
-                throw;
-            }
             catch (Exception ex)
             {
                 _log.Error(ex, "UserMapper.MapToSafeUserDto unexpected error for UserId={UserId}", user.UserId);

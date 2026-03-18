@@ -173,11 +173,6 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-
-    }  
 
     private async void AboutButton_Click(object? sender, RoutedEventArgs e)
     {
@@ -232,10 +227,10 @@ public partial class MainWindow : Window
     private void OpenCentralView_Click(object? sender, RoutedEventArgs e)
     {
         // Create and show the Central View window
-        var centralViewWindow = new CentralViewWindow
+        var centralViewWindow = new CentralViewWindow(
+            new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel())
         {
-            WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            DataContext = new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel()
+            WindowStartupLocation = WindowStartupLocation.CenterScreen
         };
         
         centralViewWindow.Show();

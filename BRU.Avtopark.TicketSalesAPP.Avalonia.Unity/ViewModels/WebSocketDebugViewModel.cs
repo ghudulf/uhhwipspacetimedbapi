@@ -1536,12 +1536,23 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
                                 if (!string.IsNullOrEmpty(requestId) && _pendingRequests.TryRemove(requestId, out var testResult))
                                 {
                                     AddLog($"📬 Found matching pending request for {testResult.ControllerName}");
-                                    
+
+                                    // Prefer context from the pending request when parsed values are unknown
+                                    var resolvedCommand = (command == "unknown" || string.IsNullOrEmpty(command)) ? testResult.Command : command;
+                                    var resolvedResource = (resource == "unknown" || string.IsNullOrEmpty(resource)) ? (testResult.Resource ?? testResult.ControllerName) : resource;
+
+                                    // Extract error detail from response JSON if present
+                                    string? errorDetail = null;
+                                    if (!ok && doc.RootElement.TryGetProperty("error", out var errEl))
+                                        errorDetail = errEl.GetString();
+
                                     // Update observable properties on UI thread
                                     Dispatcher.UIThread.Post(() =>
                                     {
                                         testResult.Status = ok ? TestStatus.Passed : TestStatus.Failed;
-                                        testResult.Message = ok ? $"✓ {command} via universal stream successful" : $"✗ {command} via universal stream failed";
+                                        testResult.Message = ok
+                                            ? $"✓ {resolvedCommand} via universal stream successful"
+                                            : $"✗ {resolvedCommand} via universal stream failed{(errorDetail != null ? $": {errorDetail}" : string.Empty)}";
                                         testResult.LastTested = DateTime.Now;
                                         AddLog($"📬 Updated test result for {testResult.ControllerName}: {testResult.Status}");
                                     });
@@ -1771,6 +1782,12 @@ public partial class ControllerTestResult : ObservableObject
 
     [ObservableProperty]
     private DateTime? _lastTested;
+
+    /// <summary>The CRUD command sent with this request (e.g. "read_all", "create").</summary>
+    public string? Command { get; set; }
+
+    /// <summary>The resource/controller name from the request context.</summary>
+    public string? Resource { get; set; }
 }
 
 public enum TestStatus

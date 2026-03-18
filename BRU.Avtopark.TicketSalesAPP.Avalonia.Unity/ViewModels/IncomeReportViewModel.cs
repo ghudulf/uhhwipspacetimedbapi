@@ -566,7 +566,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         Values = routeValues,
                         Name = "Маршруты",
                         DataLabelsFormatter = point => routeNames.Length > 0
-                            ? $"{routeNames[Math.Min(point.Index, routeNames.Length - 1)]}\n{point.Coordinate.PrimaryValue:C0}"
+                            ? $"{routeNames[Math.Clamp(point.Index, 0, routeNames.Length - 1)]}\n{point.Coordinate.PrimaryValue:C0}"
                             : $"{point.Coordinate.PrimaryValue:C0}",
                         DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
                         DataLabelsSize = 10,

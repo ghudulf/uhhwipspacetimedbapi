@@ -263,11 +263,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             // Apply defaults and validation
             var currentPage = page ?? 1;
-            var currentPageSize = pageSize ?? 100;
+            var maxPageSize = _configuration.GetValue<int?>("RouteSchedule:MaxPageSize") ?? 5000;
+            if (maxPageSize < 1) maxPageSize = 5000;
+            var currentPageSize = Math.Clamp(pageSize ?? 100, 1, maxPageSize);
 
             if (currentPage < 1) currentPage = 1;
-            if (currentPageSize < 1) currentPageSize = 100;
-            if (currentPageSize > 500) currentPageSize = 500;
 
             var totalCount = schedules.Count;
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
@@ -347,7 +347,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.create");
             var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var scheduleId = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), (ulong)new DateTimeOffset(m.DepartureTime).ToUnixTimeMilliseconds(), (ulong)new DateTimeOffset(m.ArrivalTime).ToUnixTimeMilliseconds(), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
+            var scheduleId = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
             var success = scheduleId.HasValue;
             var result = new { operation = "create", success, scheduleId };
 
@@ -395,7 +395,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
+            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, ToUnixMsUtc(m.ValidUntil));
             var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
 
             // Project entity using the shared helper to ensure consistent shape and UtcDateTime usage
@@ -898,8 +898,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     startPoint: model.StartPoint,
                     endPoint: model.EndPoint,
                     routeStops: model.RouteStops?.ToList(),
-                    departureTime: (ulong)new DateTimeOffset(model.DepartureTime).ToUnixTimeMilliseconds(),
-                    arrivalTime: (ulong)new DateTimeOffset(model.ArrivalTime).ToUnixTimeMilliseconds(),
+                    departureTime: ToUnixMsUtc(model.DepartureTime),
+                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
                     price: model.Price,
                     availableSeats: model.AvailableSeats,
                     daysOfWeek: model.DaysOfWeek?.ToList(),
@@ -955,8 +955,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     startPoint: model.StartPoint,
                     endPoint: model.EndPoint,
                     routeStops: model.RouteStops?.ToList(),
-                    departureTime: model.DepartureTime.HasValue ? (ulong)new DateTimeOffset(model.DepartureTime.Value).ToUnixTimeMilliseconds() : null,
-                    arrivalTime: model.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(model.ArrivalTime.Value).ToUnixTimeMilliseconds() : null,
+                    departureTime: ToUnixMsUtc(model.DepartureTime),
+                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
                     price: model.Price,
                     availableSeats: model.AvailableSeats,
                     daysOfWeek: model.DaysOfWeek?.ToList(),
@@ -1018,6 +1018,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Projects a RouteSchedule entity to an anonymous object for list responses.
         /// Centralizes the projection logic to avoid duplication across multiple methods.
         /// </summary>
+        private static ulong ToUnixMsUtc(DateTime dt)
+        {
+            DateTime utc = dt.Kind == DateTimeKind.Utc ? dt
+                         : dt.Kind == DateTimeKind.Local ? dt.ToUniversalTime()
+                         : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            return (ulong)new DateTimeOffset(utc).ToUnixTimeMilliseconds();
+        }
+
+        private static ulong? ToUnixMsUtc(DateTime? dt)
+        {
+            if (!dt.HasValue) return null;
+            return ToUnixMsUtc(dt.Value);
+        }
+
         private static object ProjectScheduleForList(RouteSchedule s)
         {
             return new

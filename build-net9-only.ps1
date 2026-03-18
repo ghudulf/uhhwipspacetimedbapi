@@ -4,7 +4,7 @@
 Write-Information "Building .NET 9 projects only..." -InformationAction Continue
 
 # Use absolute paths based on script location to work regardless of caller's working directory
-$tempSln = Join-Path $PSScriptRoot "Net9Projects.sln"
+$tempSln = Join-Path $PSScriptRoot "Net9Projects_$(([System.Guid]::NewGuid().ToString('N'))).sln"
 $sourceSln = Join-Path $PSScriptRoot "SpacetimeDB-BRU-AVTOPARK-avtobusov.sln"
 $stdbProject = Join-Path -Path $PSScriptRoot -ChildPath "server" -AdditionalChildPath "StdbModule.csproj"
 

@@ -15,6 +15,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         private Border? _errorPanel;
         private TextBlock? _errorMessage;
         private Ellipse?[] _dots = Array.Empty<Ellipse?>();
+        private EventHandler? _dotTickHandler;
         private DispatcherTimer? _dotTimer;
         private int _dotIndex = 0;
 
@@ -33,12 +34,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             };
 
             StartDotAnimation();
+            Closed += (_, _) => StopDotAnimation();
         }
 
         private void StartDotAnimation()
         {
             _dotTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
-            _dotTimer.Tick += (_, _) =>
+            _dotTickHandler = (_, _) =>
             {
                 for (int i = 0; i < _dots.Length; i++)
                 {
@@ -47,10 +49,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 }
                 _dotIndex = (_dotIndex + 1) % _dots.Length;
             };
+            _dotTimer.Tick += _dotTickHandler;
             _dotTimer.Start();
         }
 
-        public void StopDotAnimation() => _dotTimer?.Stop();
+        public void StopDotAnimation()
+        {
+            _dotTimer?.Stop();
+            if (_dotTimer != null && _dotTickHandler != null)
+                _dotTimer.Tick -= _dotTickHandler;
+            _dotTimer = null;
+            _dotTickHandler = null;
+        }
 
         public void SetStatus(string text)
         {
@@ -64,18 +74,63 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             try
             {
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                var response = await client.GetAsync($"{AdminServerUrl}/swagger");
-                if (response.IsSuccessStatusCode)
+
+                // Try health endpoint first, fall back to swagger
+                foreach (var path in new[] { "/health", "/healthz", "/swagger" })
                 {
-                    SetStatus("Подключено");
-                    if (_errorPanel != null) _errorPanel.IsVisible = false;
-                    return true;
+                    try
+                    {
+                        var response = await client.GetAsync($"{AdminServerUrl}{path}");
+                        if (response.IsSuccessStatusCode)
+                        {
+                            SetStatus("Подключено");
+                            if (_errorPanel != null) _errorPanel.IsVisible = false;
+                            return true;
+                        }
+                        // Non-success but server responded — show status code
+                        SetStatus($"Ошибка подключения (HTTP {(int)response.StatusCode})");
+                        if (_errorPanel != null) _errorPanel.IsVisible = true;
+                        if (_errorMessage != null) _errorMessage.Text =
+                            $"Сервер вернул HTTP {(int)response.StatusCode}. Убедитесь, что TicketSalesApp.AdminServer запущен.";
+                        return false;
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // Timeout on this path — try next
+                    }
+                    catch (HttpRequestException)
+                    {
+                        // Connection refused on this path — try next
+                    }
                 }
             }
-            catch { }
+            catch (TaskCanceledException)
+            {
+                SetStatus("Ошибка подключения (таймаут)");
+                if (_errorPanel != null) _errorPanel.IsVisible = true;
+                if (_errorMessage != null) _errorMessage.Text =
+                    "Превышено время ожидания. Убедитесь, что TicketSalesApp.AdminServer запущен.";
+                return false;
+            }
+            catch (HttpRequestException ex)
+            {
+                SetStatus("Ошибка подключения (отказ)");
+                if (_errorPanel != null) _errorPanel.IsVisible = true;
+                if (_errorMessage != null) _errorMessage.Text =
+                    $"Соединение отклонено: {ex.Message}. Убедитесь, что TicketSalesApp.AdminServer запущен.";
+                return false;
+            }
+            catch (Exception ex)
+            {
+                SetStatus("Ошибка подключения");
+                if (_errorPanel != null) _errorPanel.IsVisible = true;
+                if (_errorMessage != null) _errorMessage.Text =
+                    $"Сервер недоступен: {ex.Message}";
+                return false;
+            }
 
             SetStatus("Ошибка подключения");
-            if (_errorPanel != null)  _errorPanel.IsVisible = true;
+            if (_errorPanel != null) _errorPanel.IsVisible = true;
             if (_errorMessage != null) _errorMessage.Text =
                 "Сервер недоступен. Убедитесь, что TicketSalesApp.AdminServer запущен.";
             return false;
