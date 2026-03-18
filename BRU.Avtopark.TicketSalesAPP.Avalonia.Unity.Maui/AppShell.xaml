@@ -4,47 +4,76 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:pages="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages"
-    Title="BRU Avtopark">
+    Title="BRU Avtopark"
+    Shell.NavBarIsVisible="False">
 
     <!--
-        Unauthenticated flow:
-          //splash  → SplashPage  (checks token, routes to //login or //main)
-          //login   → LoginSelectorPage  (OAuth vs Traditional)
-          oauth-login        → OAuthLoginPage        (Avalonia OAuthLoginControl via AvaloniaView)
-          traditional-login  → TraditionalLoginPage  (Avalonia TraditionalLoginControl via AvaloniaView)
+        Shell.TabBarIsVisible is controlled from code-behind:
+          - False during unauthenticated flow (splash / login pages)
+          - True once the user reaches //main (authenticated TabBar)
 
-        Authenticated flow:
-          //main   → MainContentPage
+        Unauthenticated routes live outside the TabBar so they never show tabs.
+        Authenticated routes live inside a TabBar that is enabled on navigation.
     -->
 
-    <!-- Splash — initial route -->
+    <!-- ── Unauthenticated flow ─────────────────────────────────────── -->
+
     <ShellContent
         Route="splash"
         ContentTemplate="{DataTemplate pages:SplashPage}"
-        Shell.NavBarIsVisible="False" />
+        Shell.NavBarIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
-    <!-- Login selector -->
     <ShellContent
         Route="login"
         ContentTemplate="{DataTemplate pages:LoginSelectorPage}"
-        Shell.NavBarIsVisible="False" />
+        Shell.NavBarIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
-    <!-- OAuth login (Avalonia WebView embedded) -->
     <ShellContent
         Route="oauth-login"
         ContentTemplate="{DataTemplate pages:OAuthLoginPage}"
-        Shell.NavBarIsVisible="False" />
+        Shell.NavBarIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
-    <!-- Traditional login (Avalonia wizard embedded) -->
     <ShellContent
         Route="traditional-login"
         ContentTemplate="{DataTemplate pages:TraditionalLoginPage}"
-        Shell.NavBarIsVisible="False" />
+        Shell.NavBarIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
-    <!-- Main authenticated content -->
-    <ShellContent
-        Route="main"
-        ContentTemplate="{DataTemplate pages:MainContentPage}"
-        Shell.NavBarIsVisible="False" />
+    <!-- ── Authenticated TabBar ─────────────────────────────────────── -->
+
+    <TabBar x:Name="MainTabBar" Route="main" Shell.NavBarIsVisible="False">
+
+        <Tab Title="Главная" Route="dashboard">
+            <ShellContent
+                Route="dashboard"
+                ContentTemplate="{DataTemplate pages:MainContentPage}"
+                Shell.NavBarIsVisible="False" />
+        </Tab>
+
+        <Tab Title="Маршруты" Route="routes">
+            <ShellContent
+                Route="routes"
+                ContentTemplate="{DataTemplate pages:RoutesPage}"
+                Shell.NavBarIsVisible="False" />
+        </Tab>
+
+        <Tab Title="Билеты" Route="tickets">
+            <ShellContent
+                Route="tickets"
+                ContentTemplate="{DataTemplate pages:TicketsPage}"
+                Shell.NavBarIsVisible="False" />
+        </Tab>
+
+        <Tab Title="Профиль" Route="profile">
+            <ShellContent
+                Route="profile"
+                ContentTemplate="{DataTemplate pages:ProfilePage}"
+                Shell.NavBarIsVisible="False" />
+        </Tab>
+
+    </TabBar>
 
 </Shell>

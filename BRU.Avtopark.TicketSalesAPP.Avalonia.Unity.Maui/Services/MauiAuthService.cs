@@ -67,6 +67,19 @@ public sealed class MauiAuthService
     }
 
     /// <summary>
+    /// Synchronous check — uses the in-memory ApiClientService token as a fast path.
+    /// Suitable for UI refresh calls that must not block.
+    /// </summary>
+    public bool HasValidTokenSync()
+        => !string.IsNullOrEmpty(ApiClientService.Instance.AuthToken);
+
+    /// <summary>
+    /// Expiry time of the currently cached token, or MinValue if none.
+    /// Loaded lazily from the last successful exchange.
+    /// </summary>
+    public DateTime TokenExpiresAt { get; private set; } = DateTime.MinValue;
+
+    /// <summary>
     /// Exchanges an authorization code for tokens, persists them, and sets the
     /// access token on <see cref="ApiClientService.Instance"/> so API calls work.
     /// Returns the token response on success, null on failure.
@@ -84,6 +97,7 @@ public sealed class MauiAuthService
             if (tokens is not null && !string.IsNullOrEmpty(tokens.AccessToken))
             {
                 ApiClientService.Instance.AuthToken = tokens.AccessToken;
+                TokenExpiresAt = tokens.ExpiresAt;
                 Log.Information("[MauiAuthService] Token exchange OK — expires {ExpiresAt:u}", tokens.ExpiresAt);
                 Console.WriteLine($"[MauiAuthService] Token exchange OK — expires {tokens.ExpiresAt:u}");
                 return tokens;

@@ -6,18 +6,315 @@
     BackgroundColor="#1E1E2E"
     Shell.NavBarIsVisible="False">
 
-    <!--
-        TODO: Replace this placeholder with <maui:AvaloniaView> embedding the
-        Avalonia Unity content once the AvaloniaView MAUI control is wired up.
-        For UseAvaloniaApp() full-hosting mode, the Avalonia window takes over
-        the entire window surface — this page acts as the authenticated shell entry.
-    -->
     <Grid>
-        <Label
-            Text="Главная страница"
-            FontSize="20"
-            TextColor="White"
-            HorizontalOptions="Center"
-            VerticalOptions="Center" />
+
+        <!-- Full-page gradient backdrop -->
+        <BoxView InputTransparent="True">
+            <BoxView.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#2D2D5E" Offset="0.0" />
+                    <GradientStop Color="#1E1E2E" Offset="0.6" />
+                </LinearGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+
+        <ScrollView VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Spacing="0" Padding="0,0,0,24">
+
+                <!-- ── Header ──────────────────────────────────────────── -->
+                <Grid Padding="20,52,20,20" ColumnDefinitions="*,Auto">
+
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="Добро пожаловать"
+                               FontSize="13"
+                               TextColor="#8080A0" />
+                        <Label x:Name="WelcomeLabel"
+                               Text="BRU Авторпарк"
+                               FontSize="22"
+                               FontAttributes="Bold"
+                               TextColor="White" />
+                    </VerticalStackLayout>
+
+                    <!-- Profile avatar button -->
+                    <Border Grid.Column="1"
+                            BackgroundColor="#3D3D5C"
+                            StrokeShape="RoundRectangle 20"
+                            Stroke="Transparent"
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            VerticalOptions="Center">
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,2" Radius="8" Opacity="0.4" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnProfileTapped" />
+                        </Border.GestureRecognizers>
+                        <Label Text="👤"
+                               FontSize="18"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                </Grid>
+
+                <!-- ── Quick Stats ─────────────────────────────────────── -->
+                <Grid Margin="16,0,16,20"
+                      ColumnDefinitions="*,*,*"
+                      ColumnSpacing="10">
+
+                    <!-- Маршруты -->
+                    <Border StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#2A2A42"
+                            Stroke="Transparent"
+                            Padding="0">
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,4" Radius="12" Opacity="0.4" />
+                        </Border.Shadow>
+                        <Grid RowDefinitions="4,*">
+                            <BoxView Color="#7C7CFF" HeightRequest="4" VerticalOptions="Start">
+                                <BoxView.Clip>
+                                    <RoundRectangleGeometry CornerRadius="16,16,0,0" Rect="0,0,200,4" />
+                                </BoxView.Clip>
+                            </BoxView>
+                            <VerticalStackLayout Grid.Row="1" Spacing="2"
+                                                 HorizontalOptions="Center"
+                                                 Padding="0,12,0,14">
+                                <Label x:Name="RoutesCountLabel"
+                                       Text="—"
+                                       FontSize="26"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center" />
+                                <Label Text="Маршруты"
+                                       FontSize="10"
+                                       FontAttributes="Bold"
+                                       TextColor="#7C7CFF"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Автобусы -->
+                    <Border Grid.Column="1"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#2A2A42"
+                            Stroke="Transparent"
+                            Padding="0">
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,4" Radius="12" Opacity="0.4" />
+                        </Border.Shadow>
+                        <Grid RowDefinitions="4,*">
+                            <BoxView Color="#4FC3F7" HeightRequest="4" VerticalOptions="Start">
+                                <BoxView.Clip>
+                                    <RoundRectangleGeometry CornerRadius="16,16,0,0" Rect="0,0,200,4" />
+                                </BoxView.Clip>
+                            </BoxView>
+                            <VerticalStackLayout Grid.Row="1" Spacing="2"
+                                                 HorizontalOptions="Center"
+                                                 Padding="0,12,0,14">
+                                <Label x:Name="BusesCountLabel"
+                                       Text="—"
+                                       FontSize="26"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center" />
+                                <Label Text="Автобусы"
+                                       FontSize="10"
+                                       FontAttributes="Bold"
+                                       TextColor="#4FC3F7"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Билеты сегодня -->
+                    <Border Grid.Column="2"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#2A2A42"
+                            Stroke="Transparent"
+                            Padding="0">
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,4" Radius="12" Opacity="0.4" />
+                        </Border.Shadow>
+                        <Grid RowDefinitions="4,*">
+                            <BoxView Color="#66BB6A" HeightRequest="4" VerticalOptions="Start">
+                                <BoxView.Clip>
+                                    <RoundRectangleGeometry CornerRadius="16,16,0,0" Rect="0,0,200,4" />
+                                </BoxView.Clip>
+                            </BoxView>
+                            <VerticalStackLayout Grid.Row="1" Spacing="2"
+                                                 HorizontalOptions="Center"
+                                                 Padding="0,12,0,14">
+                                <Label x:Name="TicketsTodayLabel"
+                                       Text="—"
+                                       FontSize="26"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center" />
+                                <Label Text="Сегодня"
+                                       FontSize="10"
+                                       FontAttributes="Bold"
+                                       TextColor="#66BB6A"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                </Grid>
+
+                <!-- ── Status banner ──────────────────────────────────── -->
+                <Border Margin="16,0,16,20"
+                        StrokeShape="RoundRectangle 16"
+                        Stroke="Transparent"
+                        Padding="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0.6">
+                            <GradientStop Color="#2D1B69" Offset="0.0" />
+                            <GradientStop Color="#1A237E" Offset="0.6" />
+                            <GradientStop Color="#283593" Offset="1.0" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="4,*">
+                        <BoxView BackgroundColor="#7C7CFF" VerticalOptions="Fill" InputTransparent="True">
+                            <BoxView.Shadow>
+                                <Shadow Brush="#7C7CFF" Offset="3,0" Radius="10" Opacity="0.4" />
+                            </BoxView.Shadow>
+                        </BoxView>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,14,14,14">
+                            <Label Text="Система активна"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#D0BCFF" />
+                            <Label x:Name="StatusLabel"
+                                   Text="Подключение к серверу..."
+                                   FontSize="12"
+                                   TextColor="#9090C0"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- ── Quick Actions ──────────────────────────────────── -->
+                <Label Text="Быстрые действия"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="#C0C0D8"
+                       Padding="20,0,20,12" />
+
+                <VerticalStackLayout Padding="16,0,16,0" Spacing="12">
+
+                    <!-- Продать билет -->
+                    <Border StrokeShape="RoundRectangle 20"
+                            StrokeThickness="1"
+                            Padding="0">
+                        <Border.BackgroundColor>#252540</Border.BackgroundColor>
+                        <Border.Stroke>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                                <GradientStop Color="#10FFFFFF" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Stroke>
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,6" Radius="20" Opacity="0.5" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSellTicketTapped" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="4,*,Auto" Padding="0,16,16,16">
+                            <BoxView BackgroundColor="#66BB6A" VerticalOptions="Fill"
+                                     Margin="0,8,0,8" Opacity="0.8" InputTransparent="True" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,0,0,0">
+                                <Label Text="Продать билет"
+                                       FontSize="17"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <Label Text="Оформить новый билет на маршрут"
+                                       FontSize="12"
+                                       TextColor="#8080A0" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="›"
+                                   FontSize="22"
+                                   TextColor="#8080A0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Маршруты -->
+                    <Border StrokeShape="RoundRectangle 20"
+                            StrokeThickness="1"
+                            Padding="0">
+                        <Border.BackgroundColor>#252540</Border.BackgroundColor>
+                        <Border.Stroke>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                                <GradientStop Color="#10FFFFFF" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Stroke>
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,6" Radius="20" Opacity="0.5" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRoutesTapped" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="4,*,Auto" Padding="0,16,16,16">
+                            <BoxView BackgroundColor="#7C7CFF" VerticalOptions="Fill"
+                                     Margin="0,8,0,8" Opacity="0.8" InputTransparent="True" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,0,0,0">
+                                <Label Text="Маршруты"
+                                       FontSize="17"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <Label Text="Просмотр и управление маршрутами"
+                                       FontSize="12"
+                                       TextColor="#8080A0" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="›"
+                                   FontSize="22"
+                                   TextColor="#8080A0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Расписание -->
+                    <Border StrokeShape="RoundRectangle 20"
+                            StrokeThickness="1"
+                            Padding="0">
+                        <Border.BackgroundColor>#252540</Border.BackgroundColor>
+                        <Border.Stroke>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                                <GradientStop Color="#10FFFFFF" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Stroke>
+                        <Border.Shadow>
+                            <Shadow Brush="#40000000" Offset="0,6" Radius="20" Opacity="0.5" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnScheduleTapped" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="4,*,Auto" Padding="0,16,16,16">
+                            <BoxView BackgroundColor="#4FC3F7" VerticalOptions="Fill"
+                                     Margin="0,8,0,8" Opacity="0.8" InputTransparent="True" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,0,0,0">
+                                <Label Text="Расписание"
+                                       FontSize="17"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <Label Text="Расписание рейсов на сегодня"
+                                       FontSize="12"
+                                       TextColor="#8080A0" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="›"
+                                   FontSize="22"
+                                   TextColor="#8080A0"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
     </Grid>
 </ContentPage>

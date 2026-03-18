@@ -111,6 +111,7 @@ public partial class OAuthLoginPage : ContentPage
             // Avalonia.Controls.Maui desktop backend (MainThread.* is broken there).
             Dispatcher.Dispatch(() =>
             {
+                ErrorLabel.IsVisible    = false;  // hide any previous error
                 LoadingOverlay.IsVisible = true;
             });
         }

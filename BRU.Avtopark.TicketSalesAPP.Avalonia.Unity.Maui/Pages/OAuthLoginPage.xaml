@@ -8,88 +8,98 @@
     BackgroundColor="#1E1E2E"
     Shell.NavBarIsVisible="False">
 
-    <!-- Outer Grid: rows for header / content / footer -->
-    <Grid RowDefinitions="Auto,*,Auto">
+    <!--
+        Root Grid — all layers stacked here so the loading overlay can cover
+        the entire page surface (header + webview + footer) with no bleed-through.
+    -->
+    <Grid>
 
-        <!-- Header bar -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="#2D2D44">
-            <Button Grid.Column="0"
-                    Text="← Назад"
-                    BackgroundColor="Transparent"
-                    TextColor="#A0A0B0"
-                    FontSize="14"
-                    Padding="0"
-                    Clicked="OnBackClicked" />
-            <Label Grid.Column="1"
-                   Text="OAuth авторизация"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center"
-                   VerticalOptions="Center" />
-        </Grid>
+        <!-- ── Page content (rows: header / webview / error footer) ── -->
+        <Grid RowDefinitions="Auto,*,Auto">
 
-        <!--
-            Content area: AvaloniaView + loading overlay stacked in the same cell.
-            The overlay sits on top (declared last) and is hidden by default.
-        -->
-        <Grid Grid.Row="1">
+            <!-- Header bar -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="#2D2D44">
+                <Button Grid.Column="0"
+                        Text="← Назад"
+                        BackgroundColor="Transparent"
+                        TextColor="#A0A0B0"
+                        FontSize="14"
+                        Padding="0"
+                        Clicked="OnBackClicked" />
+                <Label Grid.Column="1"
+                       Text="OAuth авторизация"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Grid>
 
             <!-- Avalonia OAuthLoginControl embedded via AvaloniaView -->
             <maui:AvaloniaView
                 x:Name="OAuthAvaloniaView"
+                Grid.Row="1"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill">
                 <controls:OAuthLoginControl
                     x:Name="OAuthControl" />
             </maui:AvaloniaView>
 
-            <!--
-                Loading overlay — shown as soon as the auth code is received.
-                Covers the WebView so the user never sees the "navigation failed"
-                error that appears when the callback URL is intercepted.
-            -->
-            <Grid x:Name="LoadingOverlay"
-                  IsVisible="False"
-                  HorizontalOptions="Fill"
-                  VerticalOptions="Fill">
-
-                <!-- Semi-transparent dark backdrop -->
-                <BoxView Color="#CC1E1E2E"
-                         HorizontalOptions="Fill"
-                         VerticalOptions="Fill" />
-
-                <!-- Centred spinner + label -->
-                <VerticalStackLayout
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center"
-                    Spacing="20">
-
-                    <ActivityIndicator
-                        IsRunning="True"
-                        Color="#7C7CFF"
-                        WidthRequest="48"
-                        HeightRequest="48"
-                        HorizontalOptions="Center" />
-
-                    <Label Text="Выполняется авторизация..."
-                           TextColor="White"
-                           FontSize="16"
-                           HorizontalOptions="Center" />
-
-                </VerticalStackLayout>
-            </Grid>
+            <!-- Error / status footer — hidden while loading overlay is active -->
+            <Label x:Name="ErrorLabel"
+                   Grid.Row="2"
+                   Text=""
+                   TextColor="#FF6B6B"
+                   FontSize="13"
+                   HorizontalOptions="Center"
+                   Margin="16,8"
+                   IsVisible="False" />
 
         </Grid>
 
-        <!-- Error / status footer -->
-        <Label x:Name="ErrorLabel"
-               Grid.Row="2"
-               Text=""
-               TextColor="#FF6B6B"
-               FontSize="13"
-               HorizontalOptions="Center"
-               Margin="16,8"
-               IsVisible="False" />
+        <!--
+            Loading overlay — declared AFTER the content grid so it renders on top.
+            Covers the full page (header + webview + footer) with a fully-opaque
+            background so no WebView "navigation failed" text bleeds through.
+            Hidden by default; shown the instant AuthCompleted fires with success=True.
+        -->
+        <Grid x:Name="LoadingOverlay"
+              IsVisible="False"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill"
+              InputTransparent="False">
+
+            <!-- Fully opaque backdrop — same colour as page background -->
+            <BoxView Color="#1E1E2E"
+                     HorizontalOptions="Fill"
+                     VerticalOptions="Fill" />
+
+            <!-- Centred spinner + label -->
+            <VerticalStackLayout
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Spacing="24">
+
+                <ActivityIndicator
+                    IsRunning="True"
+                    Color="#7C7CFF"
+                    WidthRequest="56"
+                    HeightRequest="56"
+                    HorizontalOptions="Center" />
+
+                <Label Text="Выполняется авторизация..."
+                       TextColor="White"
+                       FontSize="17"
+                       HorizontalOptions="Center" />
+
+                <Label Text="Пожалуйста, подождите"
+                       TextColor="#8080A0"
+                       FontSize="13"
+                       HorizontalOptions="Center" />
+
+            </VerticalStackLayout>
+
+        </Grid>
+
     </Grid>
 </ContentPage>
