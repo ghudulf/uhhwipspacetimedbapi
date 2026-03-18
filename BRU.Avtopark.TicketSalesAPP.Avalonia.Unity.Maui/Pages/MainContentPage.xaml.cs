@@ -30,14 +30,14 @@ public partial class MainContentPage : ContentPage
     }
 
     private async void OnProfileTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/profile");
+        => await Shell.Current.GoToAsync("//main/profile_tab/profile");
 
     private async void OnSellTicketTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/tickets");
+        => await Shell.Current.GoToAsync("//main/tickets_tab/tickets");
 
     private async void OnRoutesTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/routes");
+        => await Shell.Current.GoToAsync("//main/routes_tab/routes");
 
     private async void OnScheduleTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/routes");
+        => await Shell.Current.GoToAsync("//main/routes_tab/routes");
 }
