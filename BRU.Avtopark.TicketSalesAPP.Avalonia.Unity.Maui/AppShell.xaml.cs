@@ -104,15 +104,24 @@ public partial class AppShell : Shell
             try
             {
                 ClearAllPendingNavigations();
+
+                if (neededRetry)
+                {
+                    // Before attempt 2: wait for _mainContentControl to be fully
+                    // attached to the visual tree (VisualRoot != null, _presenter2 != null),
+                    // then disable the CrossFade so UpdateContent calls HideOldPresenter()
+                    // synchronously instead of starting a 250ms animation.
+                    await WaitForMainContentControlReadyAsync();
+                    await DisableMainContentTransitionAsync();
+                }
+
                 await GoToAsync(route);
                 Log.Debug("[AppShell] SafeGoToAsync succeeded: {Route} (attempt {A})", route, attempt + 1);
 
                 if (neededRetry)
                 {
-                    // Attempt 1 partially ran ShellItemHandler.ConnectHandler which left
-                    // the Avalonia visual tree in a stale state. Force the handler to
-                    // re-sync CurrentItem so the correct page is actually displayed.
-                    await ForceHandlerResyncAsync(route);
+                    // Restore the transition after navigation completes
+                    await RestoreMainContentTransitionAsync();
                 }
                 return;
             }
@@ -137,388 +146,162 @@ public partial class AppShell : Shell
         }
     }
 
-    private async Task ForceHandlerResyncAsync(string targetRoute)
-    {
-        // Root cause (confirmed from Avalonia source + logs):
-        //
-        // ShellHandler.CreatePlatformView() builds:
-        //   ContentPage → DrawerPage → DockPanel → _mainContentControl (TransitioningContentControl)
-        // This ContentPage is placed into the Avalonia NavigationPage stack by StackNavigationManager.
-        //
-        // ShellItemHandler.CreatePlatformElement() builds:
-        //   _contentControl (TransitioningContentControl) — single section case
-        // ShellHandler.UpdateCurrentItem sets _mainContentControl.Content = ShellItemHandler.PlatformView
-        //
-        // After attempt 1 partially ran ConnectHandler, the NavigationPage stack has the Shell's
-        // ContentPage wrapper. _mainContentControl.Content IS being set correctly (logs confirm:
-        // "Content = TransitioningContentControl"). But the screen still shows SplashPage because
-        // the ShellItemHandler._contentControl (inner TCC) has its own stale presenter state from
-        // the aborted attempt 1 transition — the CrossFade left PART_PresentingContent showing
-        // SplashPage's NavigationPage content on top.
-        //
-        // Fix: after UpdateValue creates a fresh ShellItemHandler with a fresh _contentControl,
-        // cycle _mainContentControl.Content (null → value) with PageTransition=null to force
-        // TransitioningContentControl to swap presenters synchronously without animation.
-        // This clears any stale presenter state from the aborted attempt 1.
-        try
-        {
-            Log.Debug("[AppShell] ForceHandlerResync: starting for {Route}", targetRoute);
-            await Task.Delay(100);
-
-            var shellHandler = Handler;
-            if (shellHandler == null)
-            {
-                Log.Warning("[AppShell] ForceHandlerResync: Handler is null, skipping");
-                return;
-            }
-
-            // Step 1: Clear TCS
-            ClearAllPendingNavigations();
-
-            // Step 2: Disconnect cached ShellItemHandler so ToHandler creates a fresh one
-            TryDisconnectCurrentItemHandler(shellHandler);
-
-            // Step 3: Null _currentItemHandler so UpdateCurrentItem doesn't short-circuit
-            TryClearShellHandlerCurrentItem(shellHandler);
-
-            // Step 4: Null _mainContentControl.Content to release stale platform view
-            TryClearMainContentControl(shellHandler);
-
-            // Step 5: Clear TCS again before UpdateValue
-            ClearAllPendingNavigations();
-            Log.Debug("[AppShell] ForceHandlerResync: state cleared, calling UpdateValue");
-
-            // Step 6: Trigger MapCurrentItem → UpdateCurrentItem → fresh ShellItemHandler
-            shellHandler.UpdateValue(nameof(CurrentItem));
-            Log.Debug("[AppShell] ForceHandlerResync: UpdateValue(CurrentItem) called");
-
-            // Step 7: Let the handler settle, then clear TCS
-            await Task.Delay(30);
-            ClearAllPendingNavigations();
-
-            // Step 8: Log state + force-cycle _mainContentControl to flush stale TCC presenter
-            TryLogMainContentControlState(shellHandler);
-            await TryForceTransitioningContentControlRefreshAsync(shellHandler);
-
-            // Step 9: Nudge layout
-            try { InvalidateMeasure(); } catch { /* non-fatal */ }
-
-            Log.Debug("[AppShell] ForceHandlerResync: complete");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] ForceHandlerResync failed (non-fatal)");
-        }
-    }
-
     /// <summary>
-    /// Forces <see cref="TransitioningContentControl"/> (_mainContentControl on ShellHandler)
-    /// to swap its internal presenters by cycling Content: null → value with PageTransition
-    /// temporarily nulled. We await a dispatcher yield between null and restore so the TCC's
-    /// async transition machinery (which posts to UIThread) actually processes the null before
-    /// we set the real content — otherwise the synchronous null+set is a no-op from TCC's POV.
+    /// Polls until the outer TransitioningContentControl (_mainContentControl) on the
+    /// ShellHandler is fully attached to the visual tree AND its internal _presenter2
+    /// field is non-null (i.e. the ControlTemplate has been applied).
+    ///
+    /// Without this guard, attempt 2 of SafeGoToAsync fires UpdateContent while
+    /// _presenter2 is still null, causing the TCC to silently no-op and leaving
+    /// the splash content permanently on screen.
     /// </summary>
-    private static async Task TryForceTransitioningContentControlRefreshAsync(IElementHandler shellHandler)
+    private async Task WaitForMainContentControlReadyAsync()
     {
+        // VisualRoot is permanently null on _mainContentControl — the field exists but
+        // the object is never attached to the Avalonia visual tree (it may be a
+        // detached/shadow instance). Skip the poll and just do a fixed delay so
+        // Avalonia has time to finish its layout pass before attempt 2 fires.
+        // The DisableMainContentTransition + null PageTransition approach handles
+        // the actual rendering fix; this method just provides the timing gap.
         try
         {
-            var handlerType = shellHandler.GetType();
-            var field = FindField(handlerType, "_mainContentControl");
-            if (field == null)
+            var shellHandler = Handler;
+
+            // One-time diagnostic: dump ShellHandler fields so we can identify
+            // the correct field name if _mainContentControl is wrong
+            if (shellHandler != null)
             {
-                Log.Debug("[AppShell] TCC-Refresh: _mainContentControl field not found");
-                return;
-            }
-
-            var tcc = field.GetValue(shellHandler);
-            if (tcc == null)
-            {
-                Log.Debug("[AppShell] TCC-Refresh: _mainContentControl is null");
-                return;
-            }
-
-            var tccType = tcc.GetType();
-
-            var contentProp = tccType.GetProperty("Content", BindingFlags.Instance | BindingFlags.Public);
-            if (contentProp == null)
-            {
-                Log.Debug("[AppShell] TCC-Refresh: Content property not found on {Type}", tccType.Name);
-                return;
-            }
-
-            var currentContent = contentProp.GetValue(tcc);
-            if (currentContent == null)
-            {
-                Log.Debug("[AppShell] TCC-Refresh: Content is null, nothing to cycle");
-                return;
-            }
-
-            var transitionProp = tccType.GetProperty("PageTransition", BindingFlags.Instance | BindingFlags.Public);
-            var savedTransition = transitionProp?.GetValue(tcc);
-
-            Log.Debug("[AppShell] TCC-Refresh: cycling Content on {Type} (PageTransition={T})",
-                tccType.Name, savedTransition?.GetType().Name ?? "null");
-
-            // Diagnose: is the TCC actually in the visual tree?
-            try
-            {
-                var visualRootProp = tccType.GetProperty("VisualRoot",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var visualRoot = visualRootProp?.GetValue(tcc);
-                Log.Debug("[AppShell] TCC-Refresh: TCC.VisualRoot={VR}", visualRoot?.GetType().Name ?? "null");
-            }
-            catch { /* non-fatal */ }
-
-            // Null PageTransition so no CrossFade fires during the cycle
-            transitionProp?.SetValue(tcc, null);
-
-            // Set null — TCC queues its transition work on UIThread.Post
-            contentProp.SetValue(tcc, null);
-
-            // Yield to the UI thread so TCC's posted work runs and presenters reset
-            await Task.Delay(50);
-
-            // Now set the real content — TCC will show it instantly (no transition)
-            contentProp.SetValue(tcc, currentContent);
-
-            // Another yield so the content render pass completes before we restore transition
-            await Task.Delay(50);
-
-            // Restore PageTransition for future navigations
-            transitionProp?.SetValue(tcc, savedTransition);
-
-            // Verify content is still set after cycle
-            var contentAfter = contentProp.GetValue(tcc);
-            Log.Debug("[AppShell] TCC-Refresh: Content after cycle = {Type}", contentAfter?.GetType().Name ?? "null");
-
-            // Also try to force-invalidate the inner ShellItemHandler._contentControl
-            // The outer TCC holds ShellItemHandler.PlatformView as its content.
-            // ShellItemHandler.PlatformView is itself a TransitioningContentControl (_contentControl).
-            // We need to also cycle THAT inner TCC to flush its presenter state.
-            if (contentAfter != null)
-            {
-                TryRefreshInnerShellItemTcc(contentAfter);
-            }
-
-            Log.Debug("[AppShell] TCC-Refresh: Content cycled, PageTransition restored");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] TCC-Refresh failed (non-fatal)");
-        }
-    }
-
-    private static void TryRefreshInnerShellItemTcc(object outerContent)
-    {
-        // outerContent = ShellItemHandler.PlatformView
-        // For single-section Shell items this is ShellItemHandler._contentControl (a TCC).
-        // For multi-section it's a TabbedPage — skip.
-        try
-        {
-            var type = outerContent.GetType();
-            var typeName = type.Name;
-            Log.Debug("[AppShell] InnerTCC: outerContent type = {T}", typeName);
-
-            // Single-section: PlatformView IS the _contentControl (TransitioningContentControl)
-            // Multi-section: PlatformView is TabbedPage — has no Content property to cycle
-            var contentProp = type.GetProperty("Content", BindingFlags.Instance | BindingFlags.Public);
-            if (contentProp == null)
-            {
-                Log.Debug("[AppShell] InnerTCC: no Content property on {T}, skipping", typeName);
-                return;
-            }
-
-            var innerContent = contentProp.GetValue(outerContent);
-            Log.Debug("[AppShell] InnerTCC: inner Content = {T}", innerContent?.GetType().Name ?? "null");
-
-            if (innerContent == null) return;
-
-            var transitionProp = type.GetProperty("PageTransition", BindingFlags.Instance | BindingFlags.Public);
-            var savedTransition = transitionProp?.GetValue(outerContent);
-
-            // Cycle with no transition
-            transitionProp?.SetValue(outerContent, null);
-            contentProp.SetValue(outerContent, null);
-            contentProp.SetValue(outerContent, innerContent);
-            transitionProp?.SetValue(outerContent, savedTransition);
-
-            Log.Debug("[AppShell] InnerTCC: cycled inner Content ({T})", innerContent.GetType().Name);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] InnerTCC: failed (non-fatal)");
-        }
-    }
-
-    private static void TryDisconnectCurrentItemHandler(IElementHandler shellHandler)
-    {
-        try
-        {
-            // Get the cached ShellItemHandler from ShellHandler._currentItemHandler
-            // OR directly from CurrentItem.Handler — whichever is set.
-            // We need to call DisconnectHandler on it so MAUI clears the handler cache
-            // on the ShellItem element, forcing ToHandler to create a fresh one.
-            var handlerType = shellHandler.GetType();
-            var field = FindField(handlerType, "_currentItemHandler");
-            object? existingItemHandler = field?.GetValue(shellHandler);
-
-            if (existingItemHandler == null)
-            {
-                // Try getting it directly from the ShellItem's Handler property
-                if (shellHandler is IElementHandler eh && eh.VirtualView is Shell shell && shell.CurrentItem?.Handler != null)
-                    existingItemHandler = shell.CurrentItem.Handler;
-            }
-
-            if (existingItemHandler is IElementHandler itemHandler)
-            {
-                Log.Debug("[AppShell] ForceHandlerResync: disconnecting existing ShellItemHandler ({Type})", existingItemHandler.GetType().Name);
-                try { itemHandler.DisconnectHandler(); }
-                catch (Exception ex) { Log.Warning(ex, "[AppShell] ForceHandlerResync: DisconnectHandler on ShellItemHandler threw (non-fatal)"); }
-            }
-            else
-            {
-                Log.Debug("[AppShell] ForceHandlerResync: no existing ShellItemHandler to disconnect");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] ForceHandlerResync: TryDisconnectCurrentItemHandler failed (non-fatal)");
-        }
-    }
-
-    private static bool TryClearShellHandlerCurrentItem(IElementHandler handler)
-    {
-        try
-        {
-            // ShellHandler (Avalonia.Controls.Maui.Handlers.Shell.ShellHandler) has:
-            //   internal ShellItemHandler? _currentItemHandler
-            // Nulling it forces UpdateCurrentItem to create a fresh handler and
-            // set _mainContentControl.Content to the correct platform view.
-            var handlerType = handler.GetType();
-            var field = FindField(handlerType, "_currentItemHandler");
-            if (field == null)
-            {
-                Log.Warning("[AppShell] ForceHandlerResync: _currentItemHandler field not found on {Type}", handlerType.Name);
-                // Log all fields for diagnosis
-                var fields = handlerType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Select(f => $"{f.FieldType.Name} {f.Name}");
-                Log.Debug("[AppShell] ForceHandlerResync: {Type} fields: {Fields}", handlerType.Name, string.Join(", ", fields));
-                return false;
-            }
-
-            var existing = field.GetValue(handler);
-            if (existing != null)
-            {
-                field.SetValue(handler, null);
-                Log.Debug("[AppShell] ForceHandlerResync: cleared _currentItemHandler (was {Type})", existing.GetType().Name);
-            }
-            else
-            {
-                Log.Debug("[AppShell] ForceHandlerResync: _currentItemHandler was already null");
-            }
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] ForceHandlerResync: TryClearShellHandlerCurrentItem failed (non-fatal)");
-            return false;
-        }
-    }
-
-    private static void TryClearMainContentControl(IElementHandler handler)
-    {
-        try
-        {
-            // ShellHandler._mainContentControl is a TransitioningContentControl.
-            // Null its Content so the stale platform view is released before
-            // the new ShellItemHandler sets its own content via UpdateCurrentItem.
-            var handlerType = handler.GetType();
-            var field = FindField(handlerType, "_mainContentControl");
-            if (field == null)
-            {
-                Log.Debug("[AppShell] ForceHandlerResync: _mainContentControl field not found (non-fatal)");
-                return;
-            }
-            var contentControl = field.GetValue(handler);
-            if (contentControl == null) return;
-
-            // TransitioningContentControl has a Content property — set it to null
-            var contentProp = contentControl.GetType().GetProperty("Content",
-                BindingFlags.Instance | BindingFlags.Public);
-            if (contentProp != null)
-            {
-                contentProp.SetValue(contentControl, null);
-                Log.Debug("[AppShell] ForceHandlerResync: _mainContentControl.Content cleared");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] ForceHandlerResync: TryClearMainContentControl failed (non-fatal)");
-        }
-    }
-
-    private static void TryLogMainContentControlState(IElementHandler handler)
-    {
-        try
-        {
-            var handlerType = handler.GetType();
-            var field = FindField(handlerType, "_mainContentControl");
-            if (field == null) { Log.Debug("[AppShell] Diag: _mainContentControl field not found"); return; }
-            var contentControl = field.GetValue(handler);
-            if (contentControl == null) { Log.Debug("[AppShell] Diag: _mainContentControl is null"); return; }
-
-            var contentProp = contentControl.GetType().GetProperty("Content", BindingFlags.Instance | BindingFlags.Public);
-            var content = contentProp?.GetValue(contentControl);
-            Log.Debug("[AppShell] Diag: _mainContentControl.Content = {Type}", content?.GetType().Name ?? "null");
-
-            // Also log _currentItemHandler after UpdateValue
-            var itemHandlerField = FindField(handlerType, "_currentItemHandler");
-            var itemHandler = itemHandlerField?.GetValue(handler);
-            Log.Debug("[AppShell] Diag: _currentItemHandler after UpdateValue = {Type}", itemHandler?.GetType().Name ?? "null");
-
-            // If content is still null after UpdateValue, try to set it directly
-            // by getting the platform view from the new _currentItemHandler
-            if (content == null && itemHandler != null)
-            {
-                Log.Warning("[AppShell] Diag: _mainContentControl.Content still null after UpdateValue — forcing direct set");
-                TryForceSetMainContent(contentControl, contentProp, itemHandler);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[AppShell] Diag: TryLogMainContentControlState failed (non-fatal)");
-        }
-    }
-
-    private static void TryForceSetMainContent(object contentControl, System.Reflection.PropertyInfo? contentProp, object itemHandler)
-    {
-        try
-        {
-            // Get the platform view from the ShellItemHandler
-            var platformViewProp = itemHandler.GetType().GetProperty("PlatformView",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (platformViewProp == null)
-            {
-                // Try base type
-                var t = itemHandler.GetType().BaseType;
-                while (t != null && platformViewProp == null)
+                await Dispatcher.DispatchAsync(() =>
                 {
-                    platformViewProp = t.GetProperty("PlatformView", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    t = t.BaseType;
-                }
-            }
-            var platformView = platformViewProp?.GetValue(itemHandler);
-            Log.Debug("[AppShell] Diag: ShellItemHandler.PlatformView = {Type}", platformView?.GetType().Name ?? "null");
+                    try
+                    {
+                        var handlerType = shellHandler.GetType();
+                        var allFields = new List<string>();
+                        var t = handlerType;
+                        while (t != null)
+                        {
+                            foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
+                            {
+                                var val = "(err)";
+                                try { val = f.GetValue(shellHandler)?.GetType().Name ?? "null"; } catch { }
+                                allFields.Add($"{f.DeclaringType?.Name}.{f.Name}={val}");
+                            }
+                            t = t.BaseType;
+                        }
+                        Log.Debug("[AppShell] ShellHandler fields: {Fields}", string.Join(" | ", allFields));
 
-            if (platformView != null && contentProp != null)
-            {
-                contentProp.SetValue(contentControl, platformView);
-                Log.Debug("[AppShell] Diag: forced _mainContentControl.Content = {Type}", platformView.GetType().Name);
+                        // Also try to find any Avalonia Control fields that have a VisualRoot
+                        var outerField = FindField(handlerType, "_mainContentControl");
+                        if (outerField != null)
+                        {
+                            var tcc = outerField.GetValue(shellHandler);
+                            if (tcc != null)
+                            {
+                                var tccType = tcc.GetType();
+                                var tccFields = new List<string>();
+                                var tt = tccType;
+                                while (tt != null)
+                                {
+                                    foreach (var f in tt.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
+                                    {
+                                        var val = "(err)";
+                                        try { val = f.GetValue(tcc)?.GetType().Name ?? "null"; } catch { }
+                                        tccFields.Add($"{f.DeclaringType?.Name}.{f.Name}={val}");
+                                    }
+                                    tt = tt.BaseType;
+                                }
+                                Log.Debug("[AppShell] _mainContentControl ({Type}) fields: {Fields}",
+                                    tccType.Name, string.Join(" | ", tccFields));
+
+                                // Check all properties too
+                                var props = tccType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+                                var propDump = props.Select(p => {
+                                    var v = "(err)";
+                                    try { v = p.GetValue(tcc)?.ToString() ?? "null"; } catch { }
+                                    return $"{p.Name}={v}";
+                                });
+                                Log.Debug("[AppShell] _mainContentControl props: {Props}", string.Join(" | ", propDump));
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "[AppShell] ShellHandler field dump failed");
+                    }
+                });
             }
+
+            // Fixed delay — give Avalonia time to finish layout before attempt 2
+            await Task.Delay(200);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "[AppShell] Diag: TryForceSetMainContent failed (non-fatal)");
+            Log.Warning(ex, "[AppShell] WaitForMainContentControlReady failed (non-fatal), proceeding");
+        }
+    }
+
+    // Saved transition for restore after retry
+    private object? _savedMainContentTransition;
+
+    private async Task DisableMainContentTransitionAsync()
+    {
+        try
+        {
+            var shellHandler = Handler;
+            if (shellHandler == null) return;
+
+            var outerField = FindField(shellHandler.GetType(), "_mainContentControl");
+            if (outerField == null) return;
+            var outerTcc = outerField.GetValue(shellHandler);
+            if (outerTcc == null) return;
+
+            var transitionProp = outerTcc.GetType().GetProperty("PageTransition",
+                BindingFlags.Instance | BindingFlags.Public);
+            if (transitionProp == null) return;
+
+            await Dispatcher.DispatchAsync(() =>
+            {
+                _savedMainContentTransition = transitionProp.GetValue(outerTcc);
+                transitionProp.SetValue(outerTcc, null);
+                Log.Debug("[AppShell] DisableMainContentTransition: PageTransition nulled (was {T})",
+                    _savedMainContentTransition?.GetType().Name ?? "null");
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[AppShell] DisableMainContentTransition failed (non-fatal)");
+        }
+    }
+
+    private async Task RestoreMainContentTransitionAsync()
+    {
+        try
+        {
+            var shellHandler = Handler;
+            if (shellHandler == null) return;
+
+            var outerField = FindField(shellHandler.GetType(), "_mainContentControl");
+            if (outerField == null) return;
+            var outerTcc = outerField.GetValue(shellHandler);
+            if (outerTcc == null) return;
+
+            var transitionProp = outerTcc.GetType().GetProperty("PageTransition",
+                BindingFlags.Instance | BindingFlags.Public);
+            if (transitionProp == null) return;
+
+            // Wait one render pass so the null-transition UpdateContent fully commits
+            await Task.Delay(50);
+
+            await Dispatcher.DispatchAsync(() =>
+            {
+                transitionProp.SetValue(outerTcc, _savedMainContentTransition);
+                _savedMainContentTransition = null;
+                Log.Debug("[AppShell] RestoreMainContentTransition: PageTransition restored");
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[AppShell] RestoreMainContentTransition failed (non-fatal)");
         }
     }
 
@@ -621,11 +404,11 @@ public partial class AppShell : Shell
             foreach (var item in Items)
                 ClearPendingOnShellItem(item);
 
-            // Also walk via LogicalChildren which includes implicit wrappers
+            // Also walk via visual tree descendants to catch implicit wrappers
             // that may not appear in Items directly
-            foreach (var child in LogicalChildren.OfType<ShellSection>())
+            foreach (var child in this.GetVisualTreeDescendants().OfType<ShellSection>())
                 ClearPendingOnSection(child);
-            foreach (var child in LogicalChildren.OfType<ShellItem>())
+            foreach (var child in this.GetVisualTreeDescendants().OfType<ShellItem>())
                 foreach (var section in child.Items)
                     ClearPendingOnSection(section);
         }

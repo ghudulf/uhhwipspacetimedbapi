@@ -18,6 +18,32 @@ public partial class LoginSelectorPage : ContentPage
         }
     }
 
+    protected override void OnAppearing()
+    {
+        try
+        {
+            Log.Information("[LoginSelectorPage] OnAppearing — page is now visible");
+            base.OnAppearing();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LoginSelectorPage] OnAppearing threw");
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        try
+        {
+            Log.Information("[LoginSelectorPage] OnDisappearing");
+            base.OnDisappearing();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LoginSelectorPage] OnDisappearing threw");
+        }
+    }
+
     private async void OnOAuthClicked(object sender, EventArgs e)
     {
         try
