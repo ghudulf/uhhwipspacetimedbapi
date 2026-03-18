@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.MainContentPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="#1E1E2E"
+    Shell.NavBarIsVisible="False">
+
+    <!--
+        TODO: Replace this placeholder with <maui:AvaloniaView> embedding the
+        Avalonia Unity content once the AvaloniaView MAUI control is wired up.
+        For UseAvaloniaApp() full-hosting mode, the Avalonia window takes over
+        the entire window surface — this page acts as the authenticated shell entry.
+    -->
+    <Grid>
+        <Label
+            Text="Главная страница"
+            FontSize="20"
+            TextColor="White"
+            HorizontalOptions="Center"
+            VerticalOptions="Center" />
+    </Grid>
+</ContentPage>

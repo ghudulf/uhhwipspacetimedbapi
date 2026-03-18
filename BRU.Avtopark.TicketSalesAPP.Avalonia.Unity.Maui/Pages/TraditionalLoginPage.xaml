@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.TraditionalLoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:maui="clr-namespace:Avalonia.Controls.Maui.Controls;assembly=Avalonia.Controls.Maui"
+    xmlns:controls="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Controls;assembly=BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
+    BackgroundColor="#1E1E2E"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header bar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="#2D2D44">
+            <Button Grid.Column="0"
+                    Text="← Назад"
+                    BackgroundColor="Transparent"
+                    TextColor="#A0A0B0"
+                    FontSize="14"
+                    Padding="0"
+                    Clicked="OnBackClicked" />
+            <Label Grid.Column="1"
+                   Text="Вход с паролем"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+        </Grid>
+
+        <!--
+            Avalonia TraditionalLoginControl embedded via AvaloniaView.
+            On desktop (UseAvaloniaApp) Avalonia owns the full window surface.
+            On mobile/browser (UseAvaloniaEmbedding) this renders natively via AvaloniaView.
+            The control raises AuthCompleted which is wired in code-behind.
+        -->
+        <maui:AvaloniaView
+            x:Name="TraditionalAvaloniaView"
+            Grid.Row="1"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill">
+            <controls:TraditionalLoginControl
+                x:Name="TraditionalControl"
+                AuthCompleted="OnAvaloniaAuthCompleted" />
+        </maui:AvaloniaView>
+
+        <!-- Error / status footer -->
+        <Label x:Name="ErrorLabel"
+               Grid.Row="2"
+               Text=""
+               TextColor="#FF6B6B"
+               FontSize="13"
+               HorizontalOptions="Center"
+               Margin="16,8"
+               IsVisible="False" />
+    </Grid>
+</ContentPage>

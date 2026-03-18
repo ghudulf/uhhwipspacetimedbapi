@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Controls.TraditionalLoginControl">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Progress header -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BruHeaderBackground}"
+                BorderBrush="{DynamicResource BruHeaderBorder}"
+                BorderThickness="0,0,0,1" Padding="15,10">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           x:Name="StepTitleText"
+                           FontSize="14" FontWeight="SemiBold"
+                           Foreground="{DynamicResource BruTitleForeground}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1"
+                           x:Name="ProgressText"
+                           FontSize="11"
+                           Foreground="{DynamicResource BruSubtleForeground}"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Step content area — populated programmatically -->
+        <ContentControl Grid.Row="1" x:Name="StepContentArea" Margin="0"/>
+
+        <!-- Navigation footer -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource BruFooterBackground}"
+                BorderBrush="{DynamicResource BruFooterBorder}"
+                BorderThickness="0,1,0,0" Padding="15,10">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Button Grid.Column="0"
+                        x:Name="BackButton"
+                        Content="← Назад"
+                        Padding="16,6" CornerRadius="0"
+                        IsEnabled="False"
+                        Click="BackButton_Click"/>
+                <TextBlock Grid.Column="1"
+                           x:Name="StatusText"
+                           FontSize="11"
+                           Foreground="{DynamicResource BruSubtleForeground}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"/>
+                <Button Grid.Column="2"
+                        x:Name="CancelButton"
+                        Content="Отмена"
+                        Padding="16,6" CornerRadius="0"
+                        Margin="0,0,8,0"
+                        Click="CancelButton_Click"/>
+                <Button Grid.Column="3"
+                        x:Name="NextButton"
+                        Content="Далее →"
+                        Padding="16,6" CornerRadius="0"
+                        IsEnabled="False"
+                        Click="NextButton_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

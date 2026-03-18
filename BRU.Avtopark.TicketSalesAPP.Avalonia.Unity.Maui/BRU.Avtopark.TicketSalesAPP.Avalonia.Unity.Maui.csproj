@@ -26,6 +26,10 @@
     <!-- DESKTOP constant for platform guards in shared Unity library -->
     <!-- MAUI_HOST constant to distinguish MAUI-hosted desktop from standalone desktop -->
     <DefineConstants Condition="'$(TargetFramework)' == 'net11.0'">$(DefineConstants);DESKTOP;MAUI_HOST</DefineConstants>
+
+    <!-- Windows application manifest: declares Win10/11 support so NativeControlHost
+         (used by NativeWebView/WebView2) can create child HWNDs without crashing. -->
+    <ApplicationManifest Condition="'$(TargetFramework)' == 'net11.0'">app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <!-- Android-specific properties -->
@@ -63,6 +67,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <!-- Serilog: structured logging with file + debug sinks -->
+    <PackageReference Include="Serilog" Version="4.2.1-dev-02337" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <!-- Avalonia core - explicit reference so Avalonia.Controls types resolve in this project -->
+    <PackageReference Include="Avalonia" Version="12.0.0-preview2" />
     <!-- Avalonia.Controls.Maui - replaces MAUI rendering pipeline with Avalonia/Skia -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-preview.2.26075.1512" />
     <!-- Desktop package: provides source-generated AppBuilder + run loop for net11.0 generic desktop TFM -->

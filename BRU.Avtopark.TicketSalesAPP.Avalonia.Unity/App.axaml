@@ -12,16 +12,54 @@
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Resources>
-        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
-        <converters:BoolToConnectTextConverter x:Key="BoolToConnectTextConverter"/>
-        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
-        <converters:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
-        <converters:StatusToBorderBrushConverter x:Key="StatusToBorderBrushConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
 
-        <!-- BRU Design System Colors -->
-        <SolidColorBrush x:Key="BgElevated">#1E1E28</SolidColorBrush>
-        <SolidColorBrush x:Key="TextFaint">#3A3A48</SolidColorBrush>
-        <SolidColorBrush x:Key="TextMuted">#4A4A58</SolidColorBrush>
+                <!-- ── Light theme ───────────────────────────────────────── -->
+                <ResourceDictionary x:Key="Light">
+                    <!-- Control chrome -->
+                    <SolidColorBrush x:Key="BruHeaderBackground">#F0F0F0</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruHeaderBorder">#C0C0C0</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruFooterBackground">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruFooterBorder">#B0B0B0</SolidColorBrush>
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="BruTitleForeground">#1A1A1A</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruSubtleForeground">#505050</SolidColorBrush>
+                    <!-- Loading indicator -->
+                    <SolidColorBrush x:Key="BruLoadingCircle">#0050C8</SolidColorBrush>
+                    <!-- BRU Design System -->
+                    <SolidColorBrush x:Key="BgElevated">#F5F5FA</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextFaint">#D0D0D8</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextMuted">#707080</SolidColorBrush>
+                </ResourceDictionary>
+
+                <!-- ── Dark theme ────────────────────────────────────────── -->
+                <ResourceDictionary x:Key="Dark">
+                    <!-- Control chrome -->
+                    <SolidColorBrush x:Key="BruHeaderBackground">#252530</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruHeaderBorder">#3A3A48</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruFooterBackground">#1A1A24</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruFooterBorder">#3A3A48</SolidColorBrush>
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="BruTitleForeground">#F0F0F0</SolidColorBrush>
+                    <SolidColorBrush x:Key="BruSubtleForeground">#909090</SolidColorBrush>
+                    <!-- Loading indicator -->
+                    <SolidColorBrush x:Key="BruLoadingCircle">#4080FF</SolidColorBrush>
+                    <!-- BRU Design System -->
+                    <SolidColorBrush x:Key="BgElevated">#1E1E28</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextFaint">#3A3A48</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextMuted">#4A4A58</SolidColorBrush>
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Converters (theme-neutral) -->
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+            <converters:BoolToConnectTextConverter x:Key="BoolToConnectTextConverter"/>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:StatusToBackgroundConverter x:Key="StatusToBackgroundConverter"/>
+            <converters:StatusToBorderBrushConverter x:Key="StatusToBorderBrushConverter"/>
+        </ResourceDictionary>
     </Application.Resources>
 
     

@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Controls.OAuthLoginControl">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- WebView container — NativeWebView is added here programmatically -->
+        <Panel x:Name="WebViewContainer" Grid.Row="0">
+            <StackPanel x:Name="LoadingPanel"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="15">
+                <Border Width="60" Height="60"
+                        Background="{DynamicResource BruLoadingCircle}"
+                        CornerRadius="30"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="⏳" FontSize="32"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Загрузка страницы авторизации..."
+                           FontSize="14"
+                           Foreground="{DynamicResource BruSubtleForeground}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Panel>
+
+        <!-- Footer -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource BruFooterBackground}"
+                Padding="15,10"
+                BorderBrush="{DynamicResource BruFooterBorder}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="🛡️" FontSize="14"/>
+                    <TextBlock Text="Ваши учетные данные передаются безопасно"
+                               FontSize="11"
+                               Foreground="{DynamicResource BruSubtleForeground}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Grid.Column="1"
+                        x:Name="CancelButton"
+                        Content="Отмена"
+                        Padding="20,6"
+                        CornerRadius="0"
+                        Click="CancelButton_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
