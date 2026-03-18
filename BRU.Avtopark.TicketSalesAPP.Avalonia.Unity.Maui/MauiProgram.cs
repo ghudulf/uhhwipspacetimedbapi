@@ -1,6 +1,5 @@
 using Avalonia.Controls.Maui;
 using Avalonia.Controls.Maui.Essentials;
-using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 using Microsoft.Extensions.Logging;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui;
@@ -9,33 +8,47 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        var builder = MauiApp.CreateBuilder();
+        Console.WriteLine("[MAUI] CreateMauiApp: start");
 
-        // Set MAUI_HOST flag for App.axaml.cs to detect MAUI-hosted mode
-        AppContext.SetData("MAUI_HOST", true);
+        try
+        {
+            var builder = MauiApp.CreateBuilder();
+            Console.WriteLine("[MAUI] CreateMauiApp: builder created");
 
-        builder
-            .UseMauiApp<App>()                    // MAUI App.cs defined in this project
-            .UseAvaloniaApp()                     // Full hosting: Avalonia replaces MAUI rendering
-                                                  // For Browser/WASM use: .UseAvaloniaApp(useSingleViewLifetime: true)
-            .UseAvaloniaEssentials()              // Avalonia implementations of Essentials APIs
-            .ConfigureFonts(fonts =>
-            {
-                // Fonts placed in Resources/Fonts/ with MauiFont build action
-                // are converted to Avalonia embedded resources at build time.
-                fonts.AddFont("Inter-Regular.ttf", "InterRegular");
-                fonts.AddFont("Inter-Medium.ttf", "InterMedium");
-                fonts.AddFont("Inter-Bold.ttf", "InterBold");
-            });
+            // Signal shared Avalonia App.axaml.cs to skip the desktop startup flow
+            AppContext.SetData("MAUI_HOST", true);
+            Console.WriteLine("[MAUI] CreateMauiApp: MAUI_HOST flag set");
 
-        // Custom MAUI handler registrations go AFTER UseAvaloniaApp so they
-        // take precedence over the Avalonia defaults.
-        // builder.ConfigureMauiHandlers(handlers => { ... });
+            builder
+                .UseMauiApp<App>()
+                .UseAvaloniaApp()         // full hosting: Avalonia replaces MAUI rendering
+                .UseAvaloniaEssentials()  // Avalonia-backed Essentials APIs
+                .ConfigureFonts(fonts =>
+                {
+                    // Only register fonts that actually exist in Resources/Fonts/
+                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                    fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                });
+
+            Console.WriteLine("[MAUI] CreateMauiApp: builder configured");
 
 #if DEBUG
-        builder.Logging.AddDebug();
+            builder.Logging
+                .AddDebug()
+                .SetMinimumLevel(LogLevel.Trace);
+            Console.WriteLine("[MAUI] CreateMauiApp: debug logging enabled");
 #endif
 
-        return builder.Build();
+            Console.WriteLine("[MAUI] CreateMauiApp: calling builder.Build()...");
+            var app = builder.Build();
+            Console.WriteLine("[MAUI] CreateMauiApp: build complete");
+            return app;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("[MAUI] CreateMauiApp FAILED:");
+            Console.Error.WriteLine(ex.ToString());
+            throw;
+        }
     }
 }

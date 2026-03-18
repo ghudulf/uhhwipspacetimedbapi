@@ -1,0 +1,53 @@
+using System.Diagnostics;
+
+namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui;
+
+class Program
+{
+    [STAThread]
+    static void Main(string[] args)
+    {
+        // Ensure console output is visible when running with dotnet run
+        if (!Console.IsOutputRedirected)
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+        Console.WriteLine("[MAUI] Program.Main starting...");
+        Console.WriteLine($"[MAUI] Runtime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+        Console.WriteLine($"[MAUI] OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
+        Console.WriteLine($"[MAUI] Args: {string.Join(", ", args)}");
+
+        // Hook unhandled exceptions before anything else
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            var ex = e.ExceptionObject as Exception;
+            Console.Error.WriteLine($"[MAUI] FATAL UnhandledException (IsTerminating={e.IsTerminating}):");
+            Console.Error.WriteLine(ex?.ToString() ?? e.ExceptionObject?.ToString() ?? "(null)");
+            Debug.WriteLine($"[MAUI] FATAL: {ex}");
+            // Give the console a moment to flush before the process dies
+            Console.Error.Flush();
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, e) =>
+        {
+            Console.Error.WriteLine($"[MAUI] UnobservedTaskException:");
+            Console.Error.WriteLine(e.Exception.ToString());
+            Debug.WriteLine($"[MAUI] UnobservedTaskException: {e.Exception}");
+            e.SetObserved(); // prevent process crash; we've logged it
+        };
+
+        try
+        {
+            Console.WriteLine("[MAUI] Calling MauiProgram.CreateMauiApp()...");
+            var app = MauiProgram.CreateMauiApp();
+            Console.WriteLine("[MAUI] MauiApp built successfully. Avalonia run loop should now be active.");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("[MAUI] FATAL: CreateMauiApp() threw an exception:");
+            Console.Error.WriteLine(ex.ToString());
+            Debug.WriteLine($"[MAUI] FATAL: {ex}");
+            Console.Error.Flush();
+            Environment.Exit(1);
+        }
+    }
+}

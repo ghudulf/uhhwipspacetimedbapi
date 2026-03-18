@@ -6,6 +6,7 @@
     <EnableMobileTargets Condition="'$(EnableMobileTargets)' == ''">false</EnableMobileTargets>
     <TargetFrameworks Condition="'$(EnableMobileTargets)' == 'true'">net11.0-android;net11.0-ios;net11.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(EnableMobileTargets)' != 'true'">net11.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
     <RootNamespace>BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui</RootNamespace>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
@@ -24,7 +25,7 @@
 
     <!-- DESKTOP constant for platform guards in shared Unity library -->
     <!-- MAUI_HOST constant to distinguish MAUI-hosted desktop from standalone desktop -->
-    <DefineConstants Condition="'$(TargetFramework)' == 'net10.0'">$(DefineConstants);DESKTOP;MAUI_HOST</DefineConstants>
+    <DefineConstants Condition="'$(TargetFramework)' == 'net11.0'">$(DefineConstants);DESKTOP;MAUI_HOST</DefineConstants>
   </PropertyGroup>
 
   <!-- Android-specific properties -->
@@ -57,16 +58,19 @@
 
   <PropertyGroup>
     <!-- MAUI version property -->
-    <MauiVersion>10.0.0</MauiVersion>
+    <MauiVersion>11.0.0-preview.2.26152.10 </MauiVersion>
   </PropertyGroup>
 
   <ItemGroup>
-  <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <!-- Avalonia.Controls.Maui - WHILE IT USES AVALONIA 12 - ITS VERSION FOR SOME REASON IS SET AS 11.0 - NOT A ISSUE - THATS THE ONLY NUGET VERSION AVAILABLE RELEASED 2 DAYS AGO: replaces MAUI rendering pipeline with Avalonia/Skia -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <!-- Avalonia.Controls.Maui - replaces MAUI rendering pipeline with Avalonia/Skia -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-preview.2.26075.1512" />
+    <!-- Desktop package: provides source-generated AppBuilder + run loop for net11.0 generic desktop TFM -->
+    <PackageReference Include="Avalonia.Controls.Maui.Desktop"
+                      Condition="'$(TargetFramework)' == 'net11.0'"
+                      Version="11.0.0-preview.2.26075.1512" />
     <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
     <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-preview.2.26075.1512" />
-
   </ItemGroup>
 
   <ItemGroup>
