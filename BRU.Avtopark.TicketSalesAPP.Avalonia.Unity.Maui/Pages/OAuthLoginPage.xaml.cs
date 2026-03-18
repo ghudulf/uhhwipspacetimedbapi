@@ -199,6 +199,14 @@ public partial class OAuthLoginPage : ContentPage
 
     private async void OnBackClicked(object? sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync("//login");
+        try
+        {
+            Log.Debug("[OAuthLoginPage] Back clicked");
+            await Shell.Current.GoToAsync("//login");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[OAuthLoginPage] OnBackClicked navigation failed");
+        }
     }
 }

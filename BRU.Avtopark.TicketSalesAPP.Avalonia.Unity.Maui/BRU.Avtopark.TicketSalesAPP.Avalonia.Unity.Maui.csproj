@@ -82,6 +82,10 @@
                       Version="11.0.0-preview.2.26075.1512" />
     <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
     <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-preview.2.26075.1512" />
+
+    <PackageReference Include="UraniumUI" Version="2.15.0" />
+    <PackageReference Include="UraniumUI.Blurs" Version="2.15.0" />
+    <PackageReference Include="UraniumUI.Material" Version="2.15.0" />
   </ItemGroup>
 
   <ItemGroup>

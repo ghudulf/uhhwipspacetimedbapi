@@ -60,10 +60,20 @@ public sealed class MauiAuthService
     /// </summary>
     public async Task<bool> HasValidTokenAsync()
     {
-        var tokens = await TokenStorage.GetTokensAsync();
-        return tokens is not null
-            && !string.IsNullOrEmpty(tokens.AccessToken)
-            && tokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5);
+        try
+        {
+            var tokens = await TokenStorage.GetTokensAsync();
+            bool valid = tokens is not null
+                && !string.IsNullOrEmpty(tokens.AccessToken)
+                && tokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5);
+            Log.Debug("[MauiAuthService] HasValidTokenAsync={Valid}", valid);
+            return valid;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MauiAuthService] HasValidTokenAsync threw — treating as no token");
+            return false;
+        }
     }
 
     /// <summary>
@@ -126,10 +136,22 @@ public sealed class MauiAuthService
     /// </summary>
     public async Task LogoutAsync()
     {
-        await TokenStorage.ClearTokensAsync();
-        ApiClientService.Instance.AuthToken = null;
-        ApiClientService.Instance.IsAdmin = null;
-        ApiClientService.Instance.UserRole = null;
-        Console.WriteLine("[MauiAuthService] Logged out — tokens cleared");
+        try
+        {
+            Log.Information("[MauiAuthService] LogoutAsync: clearing tokens");
+            await TokenStorage.ClearTokensAsync();
+            ApiClientService.Instance.AuthToken = null;
+            ApiClientService.Instance.IsAdmin = null;
+            ApiClientService.Instance.UserRole = null;
+            TokenExpiresAt = DateTime.MinValue;
+            Log.Information("[MauiAuthService] Logged out — tokens cleared");
+            Console.WriteLine("[MauiAuthService] Logged out — tokens cleared");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MauiAuthService] LogoutAsync failed");
+            Console.Error.WriteLine($"[MauiAuthService] LogoutAsync failed: {ex}");
+            throw;
+        }
     }
 }

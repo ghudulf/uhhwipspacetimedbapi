@@ -1,21 +1,50 @@
+using Serilog;
+
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages;
 
 public partial class LoginSelectorPage : ContentPage
 {
     public LoginSelectorPage()
     {
-        InitializeComponent();
+        try
+        {
+            InitializeComponent();
+            Log.Debug("[LoginSelectorPage] Initialized");
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "[LoginSelectorPage] Constructor FAILED");
+            throw;
+        }
     }
 
     private async void OnOAuthClicked(object sender, EventArgs e)
     {
-        Console.WriteLine("[LoginSelectorPage] OAuth selected → navigating to OAuthLoginPage");
-        await Shell.Current.GoToAsync("///oauth-login");
+        try
+        {
+            Log.Information("[LoginSelectorPage] OAuth selected → navigating to OAuthLoginPage");
+            Console.WriteLine("[LoginSelectorPage] OAuth selected → navigating to OAuthLoginPage");
+            await Shell.Current.GoToAsync("///oauth-login");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LoginSelectorPage] OnOAuthClicked navigation failed");
+            Console.Error.WriteLine($"[LoginSelectorPage] OnOAuthClicked failed: {ex}");
+        }
     }
 
     private async void OnTraditionalClicked(object sender, EventArgs e)
     {
-        Console.WriteLine("[LoginSelectorPage] Traditional selected → navigating to TraditionalLoginPage");
-        await Shell.Current.GoToAsync("///traditional-login");
+        try
+        {
+            Log.Information("[LoginSelectorPage] Traditional selected → navigating to TraditionalLoginPage");
+            Console.WriteLine("[LoginSelectorPage] Traditional selected → navigating to TraditionalLoginPage");
+            await Shell.Current.GoToAsync("///traditional-login");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LoginSelectorPage] OnTraditionalClicked navigation failed");
+            Console.Error.WriteLine($"[LoginSelectorPage] OnTraditionalClicked failed: {ex}");
+        }
     }
 }

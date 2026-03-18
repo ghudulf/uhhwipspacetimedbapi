@@ -46,28 +46,28 @@
 
     <TabBar x:Name="MainTabBar" Route="main" Shell.NavBarIsVisible="False">
 
-        <Tab Title="Главная" Route="dashboard">
+        <Tab Title="Главная" Route="dashboard_tab">
             <ShellContent
                 Route="dashboard"
                 ContentTemplate="{DataTemplate pages:MainContentPage}"
                 Shell.NavBarIsVisible="False" />
         </Tab>
 
-        <Tab Title="Маршруты" Route="routes">
+        <Tab Title="Маршруты" Route="routes_tab">
             <ShellContent
                 Route="routes"
                 ContentTemplate="{DataTemplate pages:RoutesPage}"
                 Shell.NavBarIsVisible="False" />
         </Tab>
 
-        <Tab Title="Билеты" Route="tickets">
+        <Tab Title="Билеты" Route="tickets_tab">
             <ShellContent
                 Route="tickets"
                 ContentTemplate="{DataTemplate pages:TicketsPage}"
                 Shell.NavBarIsVisible="False" />
         </Tab>
 
-        <Tab Title="Профиль" Route="profile">
+        <Tab Title="Профиль" Route="profile_tab">
             <ShellContent
                 Route="profile"
                 ContentTemplate="{DataTemplate pages:ProfilePage}"
