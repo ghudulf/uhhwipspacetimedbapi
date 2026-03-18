@@ -9,11 +9,6 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.LifecycleEvents;
 using Serilog;
 using Serilog.Events;
-using UraniumUI;
-using UraniumUI.Dialogs;
-using UraniumUI.Options;
- 
-
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui;
 
@@ -59,12 +54,7 @@ public static class MauiProgram
                 .UseAvaloniaEmbedding<BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.App>()
 #endif
                 .UseAvaloniaEssentials()
-
-                .UseUraniumUI()
-            .UseUraniumUIMaterial()
-            .UseUraniumUIBlurs(true)
-                
-                 .ConfigureFonts(fonts =>
+                .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
@@ -80,11 +70,22 @@ public static class MauiProgram
                 {
                     events.AddWindows(avalonia =>
                     {
-                        avalonia.OnLaunched((app, args) =>
+                        avalonia.OnLaunched(async (app, args) =>
                         {
-                            // Navigation is handled by SplashPage.OnAppearing — no need to
-                            // fire GoToAsync here, which would race with Shell initialization.
-                            Console.WriteLine("[MAUI] OnLaunched: Shell will navigate from SplashPage");
+                            Console.WriteLine("[MAUI] OnLaunched: checking token for initial navigation");
+                            try
+                            {
+                                bool hasValidToken = await MauiAuthService.Instance.HasValidTokenAsync();
+
+                                Console.WriteLine($"[MAUI] OnLaunched: hasValidToken={hasValidToken}, navigating to //splash");
+                                await Shell.Current.GoToAsync("//splash");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.Error.WriteLine($"[MAUI] OnLaunched error: {ex}");
+                                try { await Shell.Current.GoToAsync("//splash"); }
+                                catch { /* ignore secondary failure */ }
+                            }
                         });
                     });
                 });
