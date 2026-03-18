@@ -238,7 +238,7 @@ public partial class App : Application
         {
             // Android via MAUI.
             // The full desktop startup flow does NOT run here.
-            activityLifetime.MainActivity.SetContentView(new MainView
+            activityLifetime.RootActivity?.SetContentView(new MainView
             {
                 DataContext = new MainViewModel()
             });
