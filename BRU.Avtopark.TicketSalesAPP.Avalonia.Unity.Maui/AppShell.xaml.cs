@@ -210,53 +210,39 @@ public partial class AppShell : Shell
                 {
                     var tcc = outerField.GetValue(shellHandler);
                     if (tcc == null) return;
-
                     var tccType = tcc.GetType();
 
-                    // Get the Content property
-                    var contentProp = tccType.GetProperty("Content",
-                        BindingFlags.Instance | BindingFlags.Public);
-                    if (contentProp == null)
+                    // ── Step 1: also reset the inner TCC (ShellItemHandler._contentControl) ──
+                    // The outer TCC's Content is the inner TCC. The inner TCC holds the actual
+                    // page view. We need to cycle its Content too so it re-renders login.
+                    var currentItemHandlerField = FindField(shellHandler.GetType(), "_currentItemHandler");
+                    if (currentItemHandlerField != null)
                     {
-                        Log.Warning("[AppShell] ForceMainContentRefresh: Content property not found on TCC");
-                        return;
+                        var itemHandler = currentItemHandlerField.GetValue(shellHandler);
+                        if (itemHandler != null)
+                        {
+                            var innerTccField = FindField(itemHandler.GetType(), "_contentControl");
+                            if (innerTccField != null)
+                            {
+                                var innerTcc = innerTccField.GetValue(itemHandler);
+                                if (innerTcc != null)
+                                {
+                                    ResetTcc(innerTcc, "inner");
+                                }
+                                else
+                                {
+                                    Log.Warning("[AppShell] ForceMainContentRefresh: inner TCC (_contentControl) is null");
+                                }
+                            }
+                            else
+                            {
+                                Log.Warning("[AppShell] ForceMainContentRefresh: _contentControl field not found on ShellItemHandler");
+                            }
+                        }
                     }
 
-                    var currentContent = contentProp.GetValue(tcc);
-                    Log.Debug("[AppShell] ForceMainContentRefresh: current Content={C}", currentContent?.GetType().Name ?? "null");
-
-                    // Reset _isFirstFull to false so UpdateContent uses Presenter (not _presenter2)
-                    // and doesn't try to start a CrossFade
-                    var isFirstFullField = FindField(tccType, "_isFirstFull");
-                    if (isFirstFullField != null)
-                    {
-                        isFirstFullField.SetValue(tcc, false);
-                        Log.Debug("[AppShell] ForceMainContentRefresh: reset _isFirstFull=false");
-                    }
-
-                    // Null out _lastPresenter so HideOldPresenter is a no-op
-                    var lastPresenterField = FindField(tccType, "_lastPresenter");
-                    if (lastPresenterField != null)
-                    {
-                        lastPresenterField.SetValue(tcc, null);
-                        Log.Debug("[AppShell] ForceMainContentRefresh: cleared _lastPresenter");
-                    }
-
-                    // Force Content re-assignment: null → real value
-                    // This triggers OnPropertyChanged → UpdateContent(withTransition:false since PageTransition=null)
-                    contentProp.SetValue(tcc, null);
-                    contentProp.SetValue(tcc, currentContent);
-                    Log.Debug("[AppShell] ForceMainContentRefresh: Content cycled null→{C}", currentContent?.GetType().Name ?? "null");
-
-                    // Also call InvalidateMeasure/InvalidateVisual via reflection
-                    // to force Avalonia to re-layout and re-render
-                    var invalidateMeasure = tccType.GetMethod("InvalidateMeasure",
-                        BindingFlags.Instance | BindingFlags.Public);
-                    var invalidateVisual = tccType.GetMethod("InvalidateVisual",
-                        BindingFlags.Instance | BindingFlags.Public);
-                    invalidateMeasure?.Invoke(tcc, null);
-                    invalidateVisual?.Invoke(tcc, null);
-                    Log.Debug("[AppShell] ForceMainContentRefresh: InvalidateMeasure+InvalidateVisual called");
+                    // ── Step 2: reset the outer TCC ──
+                    ResetTcc(tcc, "outer");
                 }
                 catch (Exception ex)
                 {
@@ -267,6 +253,85 @@ public partial class AppShell : Shell
         catch (Exception ex)
         {
             Log.Warning(ex, "[AppShell] ForceMainContentRefresh failed (non-fatal)");
+        }
+    }
+
+    private static void ResetTcc(object tcc, string label)
+    {
+        try
+        {
+            var tccType = tcc.GetType();
+
+            var contentProp = tccType.GetProperty("Content", BindingFlags.Instance | BindingFlags.Public);
+            if (contentProp == null)
+            {
+                Log.Warning("[AppShell] ResetTcc({L}): Content property not found", label);
+                return;
+            }
+
+            var currentContent = contentProp.GetValue(tcc);
+            Log.Debug("[AppShell] ResetTcc({L}): Content={C}", label, currentContent?.GetType().Name ?? "null");
+
+            // Reset _isFirstFull so UpdateContent uses Presenter (not _presenter2)
+            var isFirstFullField = FindField(tccType, "_isFirstFull");
+            isFirstFullField?.SetValue(tcc, false);
+
+            // Clear _lastPresenter so HideOldPresenter is a no-op
+            var lastPresenterField = FindField(tccType, "_lastPresenter");
+            lastPresenterField?.SetValue(tcc, null);
+
+            // Clear _currentTransition to kill any in-flight animation
+            var currentTransitionField = FindField(tccType, "_currentTransition");
+            if (currentTransitionField != null)
+            {
+                var ct = currentTransitionField.GetValue(tcc);
+                if (ct != null)
+                {
+                    // Try to cancel/dispose it
+                    try
+                    {
+                        var cancelMethod = ct.GetType().GetMethod("Cancel",
+                            BindingFlags.Instance | BindingFlags.Public);
+                        cancelMethod?.Invoke(ct, null);
+                        var disposeMethod = ct.GetType().GetMethod("Dispose",
+                            BindingFlags.Instance | BindingFlags.Public);
+                        disposeMethod?.Invoke(ct, null);
+                    }
+                    catch { /* best effort */ }
+                    currentTransitionField.SetValue(tcc, null);
+                    Log.Debug("[AppShell] ResetTcc({L}): cleared _currentTransition", label);
+                }
+            }
+
+            // Also hide _presenter2 explicitly so it doesn't paint over Presenter
+            var presenter2Field = FindField(tccType, "_presenter2");
+            if (presenter2Field != null)
+            {
+                var p2 = presenter2Field.GetValue(tcc);
+                if (p2 != null)
+                {
+                    var isVisibleProp = p2.GetType().GetProperty("IsVisible",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    isVisibleProp?.SetValue(p2, false);
+                    var opacityProp = p2.GetType().GetProperty("Opacity",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    opacityProp?.SetValue(p2, 0.0);
+                    Log.Debug("[AppShell] ResetTcc({L}): hid _presenter2", label);
+                }
+            }
+
+            // Cycle Content null → real value to trigger fresh synchronous UpdateContent
+            contentProp.SetValue(tcc, null);
+            contentProp.SetValue(tcc, currentContent);
+            Log.Debug("[AppShell] ResetTcc({L}): Content cycled null→{C}", label, currentContent?.GetType().Name ?? "null");
+
+            // Force layout/render pass
+            tccType.GetMethod("InvalidateMeasure", BindingFlags.Instance | BindingFlags.Public)?.Invoke(tcc, null);
+            tccType.GetMethod("InvalidateVisual", BindingFlags.Instance | BindingFlags.Public)?.Invoke(tcc, null);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[AppShell] ResetTcc({L}) failed (non-fatal)", label);
         }
     }
 
