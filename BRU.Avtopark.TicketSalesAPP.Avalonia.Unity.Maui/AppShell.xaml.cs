@@ -107,10 +107,6 @@ public partial class AppShell : Shell
 
                 if (neededRetry)
                 {
-                    // Before attempt 2: wait for _mainContentControl to be fully
-                    // attached to the visual tree (VisualRoot != null, _presenter2 != null),
-                    // then disable the CrossFade so UpdateContent calls HideOldPresenter()
-                    // synchronously instead of starting a 250ms animation.
                     await WaitForMainContentControlReadyAsync();
                     await DisableMainContentTransitionAsync();
                 }
@@ -120,7 +116,12 @@ public partial class AppShell : Shell
 
                 if (neededRetry)
                 {
-                    // Restore the transition after navigation completes
+                    // Force the TCC to re-render with the correct content after
+                    // the retry. The CrossFade was disabled so UpdateContent ran
+                    // synchronously, but the visual layer may still show the old
+                    // presenter. Explicitly re-set Content on the TCC to force
+                    // a fresh UpdateContent pass, then restore the transition.
+                    await ForceMainContentRefreshAsync();
                     await RestoreMainContentTransitionAsync();
                 }
                 return;
@@ -157,86 +158,115 @@ public partial class AppShell : Shell
     /// </summary>
     private async Task WaitForMainContentControlReadyAsync()
     {
-        // VisualRoot is permanently null on _mainContentControl — the field exists but
-        // the object is never attached to the Avalonia visual tree (it may be a
-        // detached/shadow instance). Skip the poll and just do a fixed delay so
-        // Avalonia has time to finish its layout pass before attempt 2 fires.
-        // The DisableMainContentTransition + null PageTransition approach handles
-        // the actual rendering fix; this method just provides the timing gap.
+        // Fixed delay — give Avalonia time to finish layout before attempt 2.
+        // The TCC is already in the visual tree (confirmed by field dump showing
+        // _visualParent=DockPanel, _logicalRoot=MauiAvaloniaWindow), but VisualRoot
+        // property returns null due to Avalonia's IRenderRoot chain not being
+        // fully wired at this point. We don't need to poll — just yield.
         try
         {
-            var shellHandler = Handler;
-
-            // One-time diagnostic: dump ShellHandler fields so we can identify
-            // the correct field name if _mainContentControl is wrong
-            if (shellHandler != null)
-            {
-                await Dispatcher.DispatchAsync(() =>
-                {
-                    try
-                    {
-                        var handlerType = shellHandler.GetType();
-                        var allFields = new List<string>();
-                        var t = handlerType;
-                        while (t != null)
-                        {
-                            foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
-                            {
-                                var val = "(err)";
-                                try { val = f.GetValue(shellHandler)?.GetType().Name ?? "null"; } catch { }
-                                allFields.Add($"{f.DeclaringType?.Name}.{f.Name}={val}");
-                            }
-                            t = t.BaseType;
-                        }
-                        Log.Debug("[AppShell] ShellHandler fields: {Fields}", string.Join(" | ", allFields));
-
-                        // Also try to find any Avalonia Control fields that have a VisualRoot
-                        var outerField = FindField(handlerType, "_mainContentControl");
-                        if (outerField != null)
-                        {
-                            var tcc = outerField.GetValue(shellHandler);
-                            if (tcc != null)
-                            {
-                                var tccType = tcc.GetType();
-                                var tccFields = new List<string>();
-                                var tt = tccType;
-                                while (tt != null)
-                                {
-                                    foreach (var f in tt.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
-                                    {
-                                        var val = "(err)";
-                                        try { val = f.GetValue(tcc)?.GetType().Name ?? "null"; } catch { }
-                                        tccFields.Add($"{f.DeclaringType?.Name}.{f.Name}={val}");
-                                    }
-                                    tt = tt.BaseType;
-                                }
-                                Log.Debug("[AppShell] _mainContentControl ({Type}) fields: {Fields}",
-                                    tccType.Name, string.Join(" | ", tccFields));
-
-                                // Check all properties too
-                                var props = tccType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
-                                var propDump = props.Select(p => {
-                                    var v = "(err)";
-                                    try { v = p.GetValue(tcc)?.ToString() ?? "null"; } catch { }
-                                    return $"{p.Name}={v}";
-                                });
-                                Log.Debug("[AppShell] _mainContentControl props: {Props}", string.Join(" | ", propDump));
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "[AppShell] ShellHandler field dump failed");
-                    }
-                });
-            }
-
-            // Fixed delay — give Avalonia time to finish layout before attempt 2
             await Task.Delay(200);
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "[AppShell] WaitForMainContentControlReady failed (non-fatal), proceeding");
+        }
+    }
+
+    /// <summary>
+    /// After a retry navigation, the TCC may still be showing the old presenter
+    /// because UpdateContent ran during attempt 1 (which set _isFirstFull=true and
+    /// started a CrossFade that was then abandoned when the exception fired).
+    /// 
+    /// We fix this by:
+    /// 1. Reading the current Content value from the TCC
+    /// 2. Temporarily setting Content = null (forces TCC to clear both presenters)
+    /// 3. Setting Content back to the real value (forces a fresh UpdateContent pass)
+    /// 4. Calling InvalidateMeasure/InvalidateVisual on the TCC and its parent
+    /// 
+    /// This is safe because PageTransition is already null at this point (disabled
+    /// by DisableMainContentTransitionAsync), so UpdateContent runs synchronously.
+    /// </summary>
+    private async Task ForceMainContentRefreshAsync()
+    {
+        try
+        {
+            var shellHandler = Handler;
+            if (shellHandler == null) return;
+
+            var outerField = FindField(shellHandler.GetType(), "_mainContentControl");
+            if (outerField == null)
+            {
+                Log.Warning("[AppShell] ForceMainContentRefresh: _mainContentControl field not found");
+                return;
+            }
+
+            // Wait one frame so the navigation commit is fully processed
+            await Task.Delay(50);
+
+            await Dispatcher.DispatchAsync(() =>
+            {
+                try
+                {
+                    var tcc = outerField.GetValue(shellHandler);
+                    if (tcc == null) return;
+
+                    var tccType = tcc.GetType();
+
+                    // Get the Content property
+                    var contentProp = tccType.GetProperty("Content",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    if (contentProp == null)
+                    {
+                        Log.Warning("[AppShell] ForceMainContentRefresh: Content property not found on TCC");
+                        return;
+                    }
+
+                    var currentContent = contentProp.GetValue(tcc);
+                    Log.Debug("[AppShell] ForceMainContentRefresh: current Content={C}", currentContent?.GetType().Name ?? "null");
+
+                    // Reset _isFirstFull to false so UpdateContent uses Presenter (not _presenter2)
+                    // and doesn't try to start a CrossFade
+                    var isFirstFullField = FindField(tccType, "_isFirstFull");
+                    if (isFirstFullField != null)
+                    {
+                        isFirstFullField.SetValue(tcc, false);
+                        Log.Debug("[AppShell] ForceMainContentRefresh: reset _isFirstFull=false");
+                    }
+
+                    // Null out _lastPresenter so HideOldPresenter is a no-op
+                    var lastPresenterField = FindField(tccType, "_lastPresenter");
+                    if (lastPresenterField != null)
+                    {
+                        lastPresenterField.SetValue(tcc, null);
+                        Log.Debug("[AppShell] ForceMainContentRefresh: cleared _lastPresenter");
+                    }
+
+                    // Force Content re-assignment: null → real value
+                    // This triggers OnPropertyChanged → UpdateContent(withTransition:false since PageTransition=null)
+                    contentProp.SetValue(tcc, null);
+                    contentProp.SetValue(tcc, currentContent);
+                    Log.Debug("[AppShell] ForceMainContentRefresh: Content cycled null→{C}", currentContent?.GetType().Name ?? "null");
+
+                    // Also call InvalidateMeasure/InvalidateVisual via reflection
+                    // to force Avalonia to re-layout and re-render
+                    var invalidateMeasure = tccType.GetMethod("InvalidateMeasure",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    var invalidateVisual = tccType.GetMethod("InvalidateVisual",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    invalidateMeasure?.Invoke(tcc, null);
+                    invalidateVisual?.Invoke(tcc, null);
+                    Log.Debug("[AppShell] ForceMainContentRefresh: InvalidateMeasure+InvalidateVisual called");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[AppShell] ForceMainContentRefresh: inner dispatch threw (non-fatal)");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[AppShell] ForceMainContentRefresh failed (non-fatal)");
         }
     }
 
