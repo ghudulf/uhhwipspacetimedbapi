@@ -11,6 +11,11 @@
 
     <!-- ── Unauthenticated flow ──────────────────────────────────────── -->
 
+    <ShellContent Route="splash"
+                  ContentTemplate="{DataTemplate pages:SplashPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />   <!-- IF SPLASH IS UNDEFINED HERE IT WONT FUCKING RUN AT APP START UP - DO NOT REMOVE-->
+
     <ShellContent Route="login"
                   ContentTemplate="{DataTemplate pages:LoginSelectorPage}"
                   Shell.NavBarIsVisible="False"
