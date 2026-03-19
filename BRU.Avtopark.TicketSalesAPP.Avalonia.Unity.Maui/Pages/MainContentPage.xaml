@@ -19,16 +19,16 @@
                     <VerticalStackLayout Grid.Column="0" Spacing="3">
                         <Label Text="Добро пожаловать в систему"
                                FontSize="12"
-                               TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                         <Label x:Name="WelcomeLabel"
                                Text="Автопарк Автобусов"
                                FontSize="26"
                                FontAttributes="Bold"
-                               TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                     </VerticalStackLayout>
 
                     <Border Grid.Column="1"
-                            BackgroundColor="{AppThemeBinding Light=#EAE8FF, Dark=#2A2A42}"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceVariantLight}, Dark={StaticResource SurfaceVariantDark}}"
                             StrokeShape="RoundRectangle 22"
                             StrokeThickness="0"
                             WidthRequest="44" HeightRequest="44"
@@ -48,10 +48,10 @@
                     <!-- Routes -->
                     <Border StrokeShape="RoundRectangle 14"
                             StrokeThickness="1"
-                            BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1C1C2E}"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceCardLight}, Dark={StaticResource SurfaceCardDark}}"
                             Padding="20,18">
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#20000000" Offset="0,2" Radius="8" Opacity="0.12" />
@@ -62,12 +62,12 @@
                                    Text="—"
                                    FontSize="28"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                             <Label Text="Маршруты"
                                    FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             <BoxView HeightRequest="3" CornerRadius="2"
-                                     BackgroundColor="{StaticResource BrandPurple}"
+                                     BackgroundColor="{StaticResource BrandPrimary}"
                                      HorizontalOptions="Start" WidthRequest="32" />
                         </VerticalStackLayout>
                     </Border>
@@ -76,10 +76,10 @@
                     <Border Grid.Column="1"
                             StrokeShape="RoundRectangle 14"
                             StrokeThickness="1"
-                            BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1C1C2E}"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceCardLight}, Dark={StaticResource SurfaceCardDark}}"
                             Padding="20,18">
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#20000000" Offset="0,2" Radius="8" Opacity="0.12" />
@@ -90,10 +90,10 @@
                                    Text="—"
                                    FontSize="28"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                             <Label Text="Автобусы"
                                    FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             <BoxView HeightRequest="3" CornerRadius="2"
                                      BackgroundColor="{StaticResource BrandAccentBlue}"
                                      HorizontalOptions="Start" WidthRequest="32" />
@@ -104,10 +104,10 @@
                     <Border Grid.Column="2"
                             StrokeShape="RoundRectangle 14"
                             StrokeThickness="1"
-                            BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1C1C2E}"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceCardLight}, Dark={StaticResource SurfaceCardDark}}"
                             Padding="20,18">
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#20000000" Offset="0,2" Radius="8" Opacity="0.12" />
@@ -118,10 +118,10 @@
                                    Text="—"
                                    FontSize="28"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                             <Label Text="Билеты сегодня"
                                    FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             <BoxView HeightRequest="3" CornerRadius="2"
                                      BackgroundColor="{StaticResource BrandAccentGreen}"
                                      HorizontalOptions="Start" WidthRequest="32" />
@@ -136,14 +136,14 @@
                         Margin="0,0,0,28"
                         Padding="20,16">
                     <Border.BackgroundColor>
-                        <AppThemeBinding Light="#F0EEFF" Dark="#1A1A2E" />
+                        <AppThemeBinding Light="{StaticResource SurfaceVariantLight}" Dark="{StaticResource SurfaceVariantDark}" />
                     </Border.BackgroundColor>
                     <Border.Stroke>
-                        <AppThemeBinding Light="#D8D4FF" Dark="#2E2E50" />
+                        <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                     </Border.Stroke>
                     <Grid ColumnDefinitions="Auto,*">
                         <Border Grid.Column="0"
-                                BackgroundColor="{StaticResource BrandPurple}"
+                                BackgroundColor="{StaticResource BrandPrimary}"
                                 StrokeThickness="0"
                                 StrokeShape="RoundRectangle 6"
                                 WidthRequest="6"
@@ -152,11 +152,11 @@
                             <Label Text="Система активна"
                                    FontSize="14"
                                    FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#3D2FA0, Dark=#C0B8FF}" />
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                             <Label x:Name="StatusLabel"
                                    Text="Подключение к серверу..."
                                    FontSize="12"
-                                   TextColor="{AppThemeBinding Light=#7070A0, Dark=#6060A0}"
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                                    LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Grid>
@@ -166,7 +166,7 @@
                 <Label Text="Быстрые действия"
                        FontSize="15"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#C0BCFF}"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                        Margin="0,0,0,14" />
 
                 <VerticalStackLayout Spacing="10">
@@ -176,10 +176,10 @@
                             StrokeThickness="1"
                             Padding="0">
                         <Border.BackgroundColor>
-                            <AppThemeBinding Light="#FFFFFF" Dark="#1C1C2E" />
+                            <AppThemeBinding Light="{StaticResource SurfaceCardLight}" Dark="{StaticResource SurfaceCardDark}" />
                         </Border.BackgroundColor>
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#18000000" Offset="0,2" Radius="6" Opacity="0.1" />
@@ -194,14 +194,14 @@
                                 <Label Text="Продать билет"
                                        FontSize="15"
                                        FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                                 <Label Text="Оформить новый билет на маршрут"
                                        FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›"
                                    FontSize="20"
-                                   TextColor="{AppThemeBinding Light=#C0BCFF, Dark=#5050A0}"
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                                    VerticalOptions="Center" />
                         </Grid>
                     </Border>
@@ -211,10 +211,10 @@
                             StrokeThickness="1"
                             Padding="0">
                         <Border.BackgroundColor>
-                            <AppThemeBinding Light="#FFFFFF" Dark="#1C1C2E" />
+                            <AppThemeBinding Light="{StaticResource SurfaceCardLight}" Dark="{StaticResource SurfaceCardDark}" />
                         </Border.BackgroundColor>
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#18000000" Offset="0,2" Radius="6" Opacity="0.1" />
@@ -223,20 +223,20 @@
                             <TapGestureRecognizer Tapped="OnRoutesTapped" />
                         </Border.GestureRecognizers>
                         <Grid ColumnDefinitions="4,*,Auto" Padding="0,14,18,14">
-                            <BoxView BackgroundColor="{StaticResource BrandPurple}"
+                            <BoxView BackgroundColor="{StaticResource BrandPrimary}"
                                      VerticalOptions="Fill" Margin="0,6,0,6" />
                             <VerticalStackLayout Grid.Column="1" Spacing="3" Padding="16,0,0,0">
                                 <Label Text="Маршруты"
                                        FontSize="15"
                                        FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                                 <Label Text="Просмотр и управление маршрутами"
                                        FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›"
                                    FontSize="20"
-                                   TextColor="{AppThemeBinding Light=#C0BCFF, Dark=#5050A0}"
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                                    VerticalOptions="Center" />
                         </Grid>
                     </Border>
@@ -246,10 +246,10 @@
                             StrokeThickness="1"
                             Padding="0">
                         <Border.BackgroundColor>
-                            <AppThemeBinding Light="#FFFFFF" Dark="#1C1C2E" />
+                            <AppThemeBinding Light="{StaticResource SurfaceCardLight}" Dark="{StaticResource SurfaceCardDark}" />
                         </Border.BackgroundColor>
                         <Border.Stroke>
-                            <AppThemeBinding Light="#E8E6F8" Dark="#2E2E48" />
+                            <AppThemeBinding Light="{StaticResource BorderLight}" Dark="{StaticResource BorderDark}" />
                         </Border.Stroke>
                         <Border.Shadow>
                             <Shadow Brush="#18000000" Offset="0,2" Radius="6" Opacity="0.1" />
@@ -264,14 +264,14 @@
                                 <Label Text="Расписание"
                                        FontSize="15"
                                        FontAttributes="Bold"
-                                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                                 <Label Text="Расписание рейсов на сегодня"
                                        FontSize="12"
-                                       TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›"
                                    FontSize="20"
-                                   TextColor="{AppThemeBinding Light=#C0BCFF, Dark=#5050A0}"
+                                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                                    VerticalOptions="Center" />
                         </Grid>
                     </Border>

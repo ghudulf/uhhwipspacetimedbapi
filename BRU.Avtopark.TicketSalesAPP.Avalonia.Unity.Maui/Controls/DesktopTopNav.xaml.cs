@@ -26,9 +26,9 @@ public partial class DesktopTopNav : ContentView
     private void UpdateActiveButton(string route)
     {
         var activeText   = Application.Current!.RequestedTheme == AppTheme.Dark
-            ? Color.FromArgb("#C8C2FF") : Color.FromArgb("#5B4FD9");
+            ? Color.FromArgb("#FF7043") : Color.FromArgb("#E64A19");
         var inactiveText = Application.Current.RequestedTheme == AppTheme.Dark
-            ? Color.FromArgb("#7070A0") : Color.FromArgb("#9090B0");
+            ? Color.FromArgb("#9E9E9E") : Color.FromArgb("#757575");
 
         SetTab(BtnDashboard, BarDashboard, route == "dashboard", activeText, inactiveText);
         SetTab(BtnRoutes,    BarRoutes,    route == "routes",    activeText, inactiveText);

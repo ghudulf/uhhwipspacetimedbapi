@@ -18,7 +18,7 @@
             <Label Text="Профиль"
                    FontSize="26"
                    FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                    Margin="0,0,0,24" />
 
             <VerticalStackLayout HorizontalOptions="Center"
@@ -26,7 +26,7 @@
                                  Spacing="16"
                                  Margin="0,40,0,0">
 
-                <Border BackgroundColor="{AppThemeBinding Light=#EAE8FF, Dark=#2A2A42}"
+                <Border BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceVariantLight}, Dark={StaticResource SurfaceVariantDark}}"
                         StrokeThickness="0"
                         StrokeShape="RoundRectangle 40"
                         WidthRequest="80" HeightRequest="80"
@@ -39,7 +39,7 @@
                 <Label Text="Профиль пользователя"
                        FontSize="17"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#C0BCFF}"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                        HorizontalOptions="Center" />
 
                 <Button Text="Выйти из системы"

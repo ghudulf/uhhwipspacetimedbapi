@@ -10,7 +10,7 @@
         <!-- Nav background -->
         <Border Grid.Row="0"
                 StrokeThickness="0"
-                BackgroundColor="{AppThemeBinding Light=#F8F7FF, Dark=#13131F}">
+                BackgroundColor="{AppThemeBinding Light={StaticResource AuthHeaderLight}, Dark={StaticResource AuthHeaderDark}}">
 
             <Grid ColumnDefinitions="Auto,*,Auto" Padding="12,0">
 
@@ -32,7 +32,7 @@
                     <Label Text="BRU Автопарк"
                            FontSize="13"
                            FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#3D3A5C, Dark=#E0DEFF}"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                            VerticalOptions="Center" />
                 </StackLayout>
 
@@ -108,7 +108,7 @@
 
         <!-- Bottom separator line -->
         <BoxView Grid.Row="1"
-                 BackgroundColor="{AppThemeBinding Light=#E0DEFF, Dark=#2A2A40}"
+                 BackgroundColor="{AppThemeBinding Light={StaticResource BorderLight}, Dark={StaticResource BorderDark}}"
                  HeightRequest="1" />
 
     </Grid>

@@ -3,56 +3,79 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- ── Brand ──────────────────────────────────────────────────── -->
-    <Color x:Key="BrandPurple">#6C63FF</Color>
-    <Color x:Key="BrandPurpleLight">#8B85FF</Color>
-    <Color x:Key="BrandPurpleDark">#4A44CC</Color>
-    <Color x:Key="BrandAccentBlue">#4FC3F7</Color>
-    <Color x:Key="BrandAccentGreen">#66BB6A</Color>
-    <Color x:Key="BrandAccentRed">#EF5350</Color>
+    <!-- ── Brand (BRU Design System v3.0 — Warm Orange/Red) ──────── -->
+    <Color x:Key="BrandPrimary">#FF5722</Color>
+    <Color x:Key="BrandPrimaryDark">#E64A19</Color>
+    <Color x:Key="BrandPrimaryLight">#FF8A65</Color>
+    <Color x:Key="BrandPrimaryDarkTheme">#FF7043</Color>
+    <Color x:Key="BrandSecondary">#FFA726</Color>
+    <Color x:Key="BrandSecondaryDark">#F57C00</Color>
 
-    <!-- ── Semantic (light) ───────────────────────────────────────── -->
+    <!-- ── Accent / Status ────────────────────────────────────────── -->
+    <Color x:Key="BrandAccentBlue">#1976D2</Color>
+    <Color x:Key="BrandAccentGreen">#388E3C</Color>
+    <Color x:Key="BrandAccentRed">#D32F2F</Color>
+    <Color x:Key="BrandAccentWarning">#F57C00</Color>
+
+    <!-- ── Surface (light) ───────────────────────────────────────── -->
+    <Color x:Key="BackgroundLight">#FAFAFA</Color>
     <Color x:Key="SurfaceLight">#FFFFFF</Color>
-    <Color x:Key="SurfaceVariantLight">#F4F3FF</Color>
-    <Color x:Key="SurfaceCardLight">#EEEDF9</Color>
-    <Color x:Key="BackgroundLight">#F0EFF8</Color>
-    <Color x:Key="OnSurfaceLight">#1A1A2E</Color>
-    <Color x:Key="OnSurfaceMutedLight">#6B6880</Color>
-    <Color x:Key="DividerLight">#D8D6EE</Color>
-    <Color x:Key="StatusBarAccentLight">#7C7CFF</Color>
+    <Color x:Key="SurfaceCardLight">#FFFFFF</Color>
+    <Color x:Key="SurfaceVariantLight">#F5F5F5</Color>
+    <Color x:Key="OnSurfaceLight">#1A1A1A</Color>
+    <Color x:Key="OnSurfaceSecondaryLight">#424242</Color>
+    <Color x:Key="OnSurfaceMutedLight">#757575</Color>
+    <Color x:Key="DividerLight">#E0E0E0</Color>
+    <Color x:Key="BorderLight">#E0E0E0</Color>
 
-    <!-- ── Semantic (dark) ────────────────────────────────────────── -->
-    <Color x:Key="SurfaceDark">#1E1E2E</Color>
-    <Color x:Key="SurfaceVariantDark">#2A2A42</Color>
-    <Color x:Key="SurfaceCardDark">#252540</Color>
-    <Color x:Key="BackgroundDark">#16161E</Color>
-    <Color x:Key="OnSurfaceDark">#E8E6FF</Color>
-    <Color x:Key="OnSurfaceMutedDark">#8080A0</Color>
-    <Color x:Key="DividerDark">#3A3A5C</Color>
-    <Color x:Key="StatusBarAccentDark">#7C7CFF</Color>
+    <!-- ── Surface (dark) ────────────────────────────────────────── -->
+    <Color x:Key="BackgroundDark">#121212</Color>
+    <Color x:Key="SurfaceDark">#1E1E1E</Color>
+    <Color x:Key="SurfaceCardDark">#1E1E1E</Color>
+    <Color x:Key="SurfaceVariantDark">#282828</Color>
+    <Color x:Key="OnSurfaceDark">#FAFAFA</Color>
+    <Color x:Key="OnSurfaceSecondaryDark">#E0E0E0</Color>
+    <Color x:Key="OnSurfaceMutedDark">#9E9E9E</Color>
+    <Color x:Key="DividerDark">#333333</Color>
+    <Color x:Key="BorderDark">#333333</Color>
 
     <!-- ── TabBar (light) ─────────────────────────────────────────── -->
     <Color x:Key="TabBarBgLight">#FFFFFF</Color>
-    <Color x:Key="TabBarSelectedLight">#6C63FF</Color>
-    <Color x:Key="TabBarUnselectedLight">#9E9BB8</Color>
+    <Color x:Key="TabBarSelectedLight">#FF5722</Color>
+    <Color x:Key="TabBarUnselectedLight">#9E9E9E</Color>
 
     <!-- ── TabBar (dark) ──────────────────────────────────────────── -->
-    <Color x:Key="TabBarBgDark">#1A1A28</Color>
-    <Color x:Key="TabBarSelectedDark">#8B85FF</Color>
-    <Color x:Key="TabBarUnselectedDark">#5A5870</Color>
+    <Color x:Key="TabBarBgDark">#1A1A1A</Color>
+    <Color x:Key="TabBarSelectedDark">#FF7043</Color>
+    <Color x:Key="TabBarUnselectedDark">#616161</Color>
+
+    <!-- ── Auth page surfaces ─────────────────────────────────────── -->
+    <Color x:Key="AuthBgLight">#FAFAFA</Color>
+    <Color x:Key="AuthBgDark">#121212</Color>
+    <Color x:Key="AuthCardLight">#FFFFFF</Color>
+    <Color x:Key="AuthCardDark">#1E1E1E</Color>
+    <Color x:Key="AuthHeaderLight">#F5F5F5</Color>
+    <Color x:Key="AuthHeaderDark">#1E1E1E</Color>
 
     <!-- ── Legacy aliases (keep existing code compiling) ─────────── -->
-    <Color x:Key="Primary">#6C63FF</Color>
-    <Color x:Key="PrimaryDark">#8B85FF</Color>
-    <Color x:Key="PrimaryDarkText">#1A1A2E</Color>
-    <Color x:Key="Secondary">#E8E6FF</Color>
-    <Color x:Key="SecondaryDarkText">#8B85FF</Color>
-    <Color x:Key="Tertiary">#4A44CC</Color>
+    <!-- BrandPurple → BrandPrimary (orange-red) -->
+    <Color x:Key="BrandPurple">#FF5722</Color>
+    <Color x:Key="BrandPurpleLight">#FF7043</Color>
+    <Color x:Key="BrandPurpleDark">#E64A19</Color>
+    <Color x:Key="StatusBarAccentLight">#FF5722</Color>
+    <Color x:Key="StatusBarAccentDark">#FF7043</Color>
+
+    <Color x:Key="Primary">#FF5722</Color>
+    <Color x:Key="PrimaryDark">#FF7043</Color>
+    <Color x:Key="PrimaryDarkText">#1A1A1A</Color>
+    <Color x:Key="Secondary">#FFA726</Color>
+    <Color x:Key="SecondaryDarkText">#FF7043</Color>
+    <Color x:Key="Tertiary">#E64A19</Color>
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
-    <Color x:Key="Magenta">#6C63FF</Color>
-    <Color x:Key="MidnightBlue">#1A1A2E</Color>
-    <Color x:Key="OffBlack">#1E1E2E</Color>
+    <Color x:Key="Magenta">#FF5722</Color>
+    <Color x:Key="MidnightBlue">#1A1A1A</Color>
+    <Color x:Key="OffBlack">#1E1E1E</Color>
     <Color x:Key="Gray100">#E1E1E1</Color>
     <Color x:Key="Gray200">#C8C8C8</Color>
     <Color x:Key="Gray300">#ACACAC</Color>

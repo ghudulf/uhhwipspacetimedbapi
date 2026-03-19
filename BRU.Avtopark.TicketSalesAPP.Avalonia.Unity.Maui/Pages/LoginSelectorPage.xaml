@@ -3,7 +3,7 @@
     x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.LoginSelectorPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    BackgroundColor="#1E1E2E"
+    BackgroundColor="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
     Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="*,Auto,*">
@@ -17,14 +17,14 @@
                 Text="Вход в систему"
                 FontSize="24"
                 FontAttributes="Bold"
-                TextColor="White"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                 HorizontalOptions="Center"
                 Margin="0,0,0,16" />
 
             <Label
                 Text="Выберите способ входа"
                 FontSize="14"
-                TextColor="#A0A0B0"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                 HorizontalOptions="Center"
                 Margin="0,0,0,24" />
 
@@ -32,7 +32,7 @@
             <Button
                 x:Name="OAuthButton"
                 Text="🔐  Войти через OAuth"
-                BackgroundColor="#512BD4"
+                BackgroundColor="{StaticResource BrandPrimary}"
                 TextColor="White"
                 FontSize="16"
                 CornerRadius="12"
@@ -43,8 +43,8 @@
             <Button
                 x:Name="TraditionalButton"
                 Text="👤  Войти с паролем"
-                BackgroundColor="#2D2D44"
-                TextColor="White"
+                BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceVariantLight}, Dark={StaticResource SurfaceVariantDark}}"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                 FontSize="16"
                 CornerRadius="12"
                 HeightRequest="52"
@@ -54,7 +54,7 @@
             <Label
                 x:Name="ErrorLabel"
                 Text=""
-                TextColor="#FF6B6B"
+                TextColor="{StaticResource BrandAccentRed}"
                 FontSize="13"
                 HorizontalOptions="Center"
                 IsVisible="False" />

@@ -350,7 +350,7 @@
     <!-- Custom top nav button for desktop -->
     <Style x:Key="TopNavButton" TargetType="Button">
         <Setter Property="BackgroundColor" Value="Transparent" />
-        <Setter Property="TextColor" Value="{AppThemeBinding Light=#9090B0, Dark=#7070A0}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}" />
         <Setter Property="FontFamily" Value="OpenSansRegular" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontAttributes" Value="None" />

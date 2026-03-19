@@ -5,24 +5,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:maui="clr-namespace:Avalonia.Controls.Maui.Controls;assembly=Avalonia.Controls.Maui"
     xmlns:controls="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Controls;assembly=BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
-    BackgroundColor="#1E1E2E"
+    BackgroundColor="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
     Shell.NavBarIsVisible="False">
 
-    <!--
-        Root Grid — all layers stacked here so the loading overlay can cover
-        the entire page surface (header + webview + footer) with no bleed-through.
-    -->
     <Grid>
 
-        <!-- ── Page content (rows: header / webview / error footer) ── -->
+        <!-- ── Page content ── -->
         <Grid RowDefinitions="Auto,*,Auto">
 
             <!-- Header bar -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="#2D2D44">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource AuthHeaderLight}, Dark={StaticResource AuthHeaderDark}}">
                 <Button Grid.Column="0"
                         Text="← Назад"
                         BackgroundColor="Transparent"
-                        TextColor="#A0A0B0"
+                        TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                         FontSize="14"
                         Padding="0"
                         Clicked="OnBackClicked" />
@@ -30,12 +27,12 @@
                        Text="OAuth авторизация"
                        FontSize="16"
                        FontAttributes="Bold"
-                       TextColor="White"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                        HorizontalOptions="Center"
                        VerticalOptions="Center" />
             </Grid>
 
-            <!-- Avalonia OAuthLoginControl embedded via AvaloniaView -->
+            <!-- Avalonia OAuthLoginControl -->
             <maui:AvaloniaView
                 x:Name="OAuthAvaloniaView"
                 Grid.Row="1"
@@ -45,11 +42,11 @@
                     x:Name="OAuthControl" />
             </maui:AvaloniaView>
 
-            <!-- Error / status footer — hidden while loading overlay is active -->
+            <!-- Error footer -->
             <Label x:Name="ErrorLabel"
                    Grid.Row="2"
                    Text=""
-                   TextColor="#FF6B6B"
+                   TextColor="{StaticResource BrandAccentRed}"
                    FontSize="13"
                    HorizontalOptions="Center"
                    Margin="16,8"
@@ -57,24 +54,17 @@
 
         </Grid>
 
-        <!--
-            Loading overlay — declared AFTER the content grid so it renders on top.
-            Covers the full page (header + webview + footer) with a fully-opaque
-            background so no WebView "navigation failed" text bleeds through.
-            Hidden by default; shown the instant AuthCompleted fires with success=True.
-        -->
+        <!-- Loading overlay -->
         <Grid x:Name="LoadingOverlay"
               IsVisible="False"
               HorizontalOptions="Fill"
               VerticalOptions="Fill"
               InputTransparent="False">
 
-            <!-- Fully opaque backdrop — same colour as page background -->
-            <BoxView Color="#1E1E2E"
+            <BoxView Color="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
                      HorizontalOptions="Fill"
                      VerticalOptions="Fill" />
 
-            <!-- Centred spinner + label -->
             <VerticalStackLayout
                 HorizontalOptions="Center"
                 VerticalOptions="Center"
@@ -82,18 +72,18 @@
 
                 <ActivityIndicator
                     IsRunning="True"
-                    Color="#7C7CFF"
+                    Color="{StaticResource BrandPrimary}"
                     WidthRequest="56"
                     HeightRequest="56"
                     HorizontalOptions="Center" />
 
                 <Label Text="Выполняется авторизация..."
-                       TextColor="White"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                        FontSize="17"
                        HorizontalOptions="Center" />
 
                 <Label Text="Пожалуйста, подождите"
-                       TextColor="#8080A0"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                        FontSize="13"
                        HorizontalOptions="Center" />
 

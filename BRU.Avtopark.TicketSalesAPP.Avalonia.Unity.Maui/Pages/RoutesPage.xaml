@@ -18,7 +18,7 @@
             <Label Text="Маршруты"
                    FontSize="26"
                    FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                    Margin="0,0,0,24" />
 
             <VerticalStackLayout HorizontalOptions="Center"
@@ -29,11 +29,11 @@
                 <Label Text="Список маршрутов"
                        FontSize="17"
                        FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#C0BCFF}"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
                        HorizontalOptions="Center" />
                 <Label Text="Здесь будет список маршрутов"
                        FontSize="13"
-                       TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
                        HorizontalOptions="Center" />
             </VerticalStackLayout>
 
