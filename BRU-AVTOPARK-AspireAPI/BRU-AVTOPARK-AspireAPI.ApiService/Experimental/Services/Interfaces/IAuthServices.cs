@@ -44,9 +44,9 @@ public record UserTokenPayload
     public int PrimaryRole { get; init; }
     public List<string> Roles { get; init; } = [];
     public List<string> Permissions { get; init; } = [];
-    /// <summary>SpacetimeDB Identity string (emitted as "spacetime_identity" claim, separate from legacy "identity" claim).</summary>
+    /// <summary>SpacetimeDB Identity string (separate from UserId/LegacyUserId).</summary>
     public string? Identity { get; init; }
-    /// <summary>Legacy integer user ID (maps to LegacyUserId in UserProfile, emitted as legacy "identity" claim for compatibility).</summary>
+    /// <summary>Legacy integer user ID (maps to LegacyUserId in UserProfile).</summary>
     public string? LegacyUserId { get; init; }
     /// <summary>External user ID (xuid). Falls back to LegacyUserId then UserId.</summary>
     public string? Xuid { get; init; }
