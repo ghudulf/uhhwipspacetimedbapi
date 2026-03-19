@@ -29,7 +29,7 @@
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
                     </Border>
-                    <Label Text="BRU Авторпарк"
+                    <Label Text="BRU Автопарк"
                            FontSize="13"
                            FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light=#3D3A5C, Dark=#E0DEFF}"

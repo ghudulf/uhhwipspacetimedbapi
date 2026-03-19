@@ -20,26 +20,28 @@ public partial class SplashPage : ContentPage
         try
         {
             StatusLabel.Text = "Проверка авторизации...";
-            await Task.Delay(800); // brief splash display
+            await Task.Delay(800);
 
-            bool hasValidToken = await MauiAuthService.Instance.HasValidTokenAsync();
+            // RestoreSessionAsync loads the token from disk AND sets ApiClientService.AuthToken
+            // so HasValidTokenSync() works correctly on all subsequent pages.
+            bool restored = await MauiAuthService.Instance.RestoreSessionAsync();
 
-            if (hasValidToken)
+            if (restored)
             {
-                Console.WriteLine("[SplashPage] Valid token found, navigating to main");
+                Serilog.Log.Information("[SplashPage] Session restored — navigating to main");
                 StatusLabel.Text = "Добро пожаловать!";
                 await Task.Delay(400);
                 await AppShell.NavigateToMainAsync();
             }
             else
             {
-                Console.WriteLine("[SplashPage] No valid token, navigating to login");
+                Serilog.Log.Information("[SplashPage] No valid session — navigating to login");
                 await Shell.Current.GoToAsync("//login");
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[SplashPage] Startup flow error: {ex}");
+            Serilog.Log.Error(ex, "[SplashPage] Startup flow error");
             StatusLabel.Text = "Ошибка запуска";
             Spinner.IsRunning = false;
             await Task.Delay(1500);

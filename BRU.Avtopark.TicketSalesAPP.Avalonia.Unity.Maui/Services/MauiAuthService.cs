@@ -56,7 +56,56 @@ public sealed class MauiAuthService
     // ── Token helpers ────────────────────────────────────────────────────
 
     /// <summary>
+    /// Loads persisted tokens from disk and restores them into ApiClientService.
+    /// Must be called once at startup before any HasValidToken* checks.
+    /// </summary>
+    public async Task<bool> RestoreSessionAsync()
+    {
+        try
+        {
+            Log.Information("[MauiAuthService] RestoreSessionAsync: loading tokens from disk");
+            var tokens = await TokenStorage.GetTokensAsync();
+
+            if (tokens is null)
+            {
+                Log.Information("[MauiAuthService] RestoreSessionAsync: no token file found");
+                return false;
+            }
+
+            Log.Debug("[MauiAuthService] RestoreSessionAsync: token file found, AccessToken.Length={Len}, ExpiresAt={Exp:u}",
+                tokens.AccessToken?.Length ?? 0, tokens.ExpiresAt);
+
+            if (string.IsNullOrEmpty(tokens.AccessToken))
+            {
+                Log.Warning("[MauiAuthService] RestoreSessionAsync: token file exists but AccessToken is empty");
+                return false;
+            }
+
+            if (tokens.ExpiresAt <= DateTime.UtcNow.AddMinutes(5))
+            {
+                Log.Warning("[MauiAuthService] RestoreSessionAsync: token expired at {Exp:u} (now={Now:u}), skipping restore",
+                    tokens.ExpiresAt, DateTime.UtcNow);
+                return false;
+            }
+
+            // Restore into in-memory state
+            ApiClientService.Instance.AuthToken = tokens.AccessToken;
+            TokenExpiresAt = tokens.ExpiresAt;
+
+            Log.Information("[MauiAuthService] RestoreSessionAsync: session restored, token valid until {Exp:u}",
+                tokens.ExpiresAt);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MauiAuthService] RestoreSessionAsync threw — treating as no session");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Returns true if a non-expired access token is stored on disk.
+    /// NOTE: does NOT restore the token into ApiClientService — call RestoreSessionAsync() for that.
     /// </summary>
     public async Task<bool> HasValidTokenAsync()
     {
@@ -66,7 +115,8 @@ public sealed class MauiAuthService
             bool valid = tokens is not null
                 && !string.IsNullOrEmpty(tokens.AccessToken)
                 && tokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5);
-            Log.Debug("[MauiAuthService] HasValidTokenAsync={Valid}", valid);
+            Log.Debug("[MauiAuthService] HasValidTokenAsync={Valid}, ExpiresAt={Exp:u}",
+                valid, tokens?.ExpiresAt ?? DateTime.MinValue);
             return valid;
         }
         catch (Exception ex)

@@ -17,11 +17,11 @@
                 <!-- ── Page header ──────────────────────────────────── -->
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,24">
                     <VerticalStackLayout Grid.Column="0" Spacing="3">
-                        <Label Text="Добро пожаловать"
+                        <Label Text="Добро пожаловать в систему"
                                FontSize="12"
                                TextColor="{AppThemeBinding Light=#9090B0, Dark=#6060A0}" />
                         <Label x:Name="WelcomeLabel"
-                               Text="BRU Авторпарк"
+                               Text="Автопарк Автобусов"
                                FontSize="26"
                                FontAttributes="Bold"
                                TextColor="{AppThemeBinding Light=#1E1A3C, Dark=#E8E4FF}" />
