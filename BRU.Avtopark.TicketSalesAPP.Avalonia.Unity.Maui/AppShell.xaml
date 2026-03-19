@@ -11,11 +11,6 @@
 
     <!-- ── Unauthenticated flow ──────────────────────────────────────── -->
 
-    <ShellContent Route="splash"
-                  ContentTemplate="{DataTemplate pages:SplashPage}"
-                  Shell.NavBarIsVisible="False"
-                  Shell.TabBarIsVisible="False" />
-
     <ShellContent Route="login"
                   ContentTemplate="{DataTemplate pages:LoginSelectorPage}"
                   Shell.NavBarIsVisible="False"

@@ -131,7 +131,9 @@ public sealed class MauiAuthService
     /// Suitable for UI refresh calls that must not block.
     /// </summary>
     public bool HasValidTokenSync()
-        => !string.IsNullOrEmpty(ApiClientService.Instance.AuthToken);
+        => !string.IsNullOrEmpty(ApiClientService.Instance.AuthToken)
+           && TokenExpiresAt != DateTime.MinValue
+           && DateTime.UtcNow < TokenExpiresAt;
 
     /// <summary>
     /// Expiry time of the currently cached token, or MinValue if none.

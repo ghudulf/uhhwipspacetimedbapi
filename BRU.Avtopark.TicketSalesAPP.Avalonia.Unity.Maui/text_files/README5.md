@@ -1,6 +1,6 @@
 # Splash Screen
 
-Place `splash.svg` here.
+Place `splash.svg` in Resources/Splash/.
 The `.csproj` references it via:
 
 ```xml

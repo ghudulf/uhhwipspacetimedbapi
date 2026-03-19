@@ -51,22 +51,11 @@ public class TraditionalLoginViewHandler : AvaloniaControlHandler<TraditionalLog
     {
         Console.WriteLine($"[TraditionalLoginViewHandler] AuthCompleted: success={success}");
 
-        Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(async () =>
+        Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() =>
         {
             if (VirtualView is not { } view) return;
 
             view.RaiseAuthCompleted(success);
-
-            if (success)
-            {
-                Console.WriteLine("[TraditionalLoginViewHandler] Login success → navigating to //main");
-                await Shell.Current.GoToAsync("//main");
-            }
-            else
-            {
-                Console.WriteLine("[TraditionalLoginViewHandler] Login cancelled/failed → navigating back");
-                await Shell.Current.GoToAsync("..");
-            }
         });
     }
 }

@@ -101,9 +101,9 @@ public class OAuthLoginViewHandler : AvaloniaControlHandler<OAuthLoginView, OAut
                         if (tokens != null && !string.IsNullOrEmpty(tokens.AccessToken))
                         {
                             ApiClientService.Instance.AuthToken = tokens.AccessToken;
-                            Console.WriteLine("[OAuthLoginViewHandler] Token exchange OK → //main");
+                            Console.WriteLine("[OAuthLoginViewHandler] Token exchange OK → NavigateToMainAsync");
                             view.RaiseAuthCompleted(new OAuthLoginResult { Success = true });
-                            await Shell.Current.GoToAsync("//main");
+                            await AppShell.NavigateToMainAsync();
                             return;
                         }
                     }

@@ -3914,6 +3914,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                     deviceId,
                                     reason = pollStatus
                                 }, sendLock, subCts.Token);
+
+                                await PublishAuthEventAsync("auth.qr.failed", null, null, sourceIp,
+                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = pollStatus, ["source"] = "websocket" });
                             }
                             break;
                         }
@@ -3935,6 +3938,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                                 deviceId,
                                 reason = "timeout"
                             }, sendLock, subCts.Token);
+
+                            await PublishAuthEventAsync("auth.qr.failed", null, null, sourceIp,
+                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "timeout", ["source"] = "websocket" });
                         }
                     }
                 }

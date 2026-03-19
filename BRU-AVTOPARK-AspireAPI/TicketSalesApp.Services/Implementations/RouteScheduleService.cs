@@ -767,10 +767,38 @@ namespace TicketSalesApp.Services.Implementations
 
                     if (matchesDay && matchesTimeWindow)
                     {
-                        matchingSchedules.Add(schedule);
+                        if (schedule.IsRecurring)
+                        {
+                            // Compute occurrence timestamps for the queried date
+                            var timeOfDay = schedule.DepartureTime % 86400000;
+                            var occurrenceDeparture = date + timeOfDay;
+                            var duration = schedule.ArrivalTime - schedule.DepartureTime;
+                            var occurrenceArrival = occurrenceDeparture + duration;
+
+                            // Create a copy with adjusted timestamps
+                            var adjustedSchedule = new RouteSchedule
+                            {
+                                ScheduleId = schedule.ScheduleId,
+                                RouteId = schedule.RouteId,
+                                DepartureTime = occurrenceDeparture,
+                                ArrivalTime = occurrenceArrival,
+                                IsRecurring = schedule.IsRecurring,
+                                DaysOfWeek = schedule.DaysOfWeek,
+                                ValidFrom = schedule.ValidFrom,
+                                ValidUntil = schedule.ValidUntil,
+                                IsActive = schedule.IsActive,
+                                CreatedAt = schedule.CreatedAt,
+                                UpdatedAt = schedule.UpdatedAt
+                            };
+                            matchingSchedules.Add(adjustedSchedule);
+                        }
+                        else
+                        {
+                            matchingSchedules.Add(schedule);
+                        }
                     }
                 }
-                
+
                 // Sort by departure time
                 matchingSchedules.Sort((a, b) => a.DepartureTime.CompareTo(b.DepartureTime));
                 

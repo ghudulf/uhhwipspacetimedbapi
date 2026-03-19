@@ -34,7 +34,7 @@ public partial class MainContentPage : ContentPage
         => AppShell.IsDesktop ? $"//{desktop}" : $"//{mobile}";
 
     private async void OnProfileTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync(Route("profile", "dashboard_m"));
+        => await Shell.Current.GoToAsync(Route("profile", "profile_m"));
 
     private async void OnSellTicketTapped(object? sender, TappedEventArgs e)
         => await Shell.Current.GoToAsync(Route("tickets", "tickets_m"));

@@ -93,7 +93,8 @@ public class TokenService : ITokenService
             new Claim("unique_name", payload.Username),
             new Claim(ClaimTypes.Name, payload.Username),
             new Claim("sub", payload.LegacyUserId ?? payload.Identity ?? payload.UserId),
-            new Claim("identity", payload.Identity ?? payload.UserId),
+            new Claim("identity", payload.LegacyUserId ?? payload.UserId),
+            new Claim("spacetime_identity", payload.Identity ?? payload.UserId),
             new Claim("xuid", payload.Xuid ?? payload.LegacyUserId ?? payload.UserId),
             new Claim("token_usage", "access_token"),
             new Claim("oi_tkn_id", Guid.NewGuid().ToString()),
@@ -166,7 +167,8 @@ public class TokenService : ITokenService
             new Claim("unique_name", userProfile.Login),
             new Claim(ClaimTypes.Name, userProfile.Login), // Keep for backward compatibility
             new Claim("sub", userProfile.LegacyUserId.ToString()),
-            new Claim("identity", userProfile.UserId.ToString()),
+            new Claim("identity", userProfile.LegacyUserId.ToString()),
+            new Claim("spacetime_identity", userProfile.UserId.ToString()),
             new Claim("xuid", userProfile.Xuid?.ToString() ?? ""),
             new Claim("token_usage", "access_token"), // OpenIddict expects this
             new Claim("oi_tkn_id", Guid.NewGuid().ToString()) // OpenIddict token ID

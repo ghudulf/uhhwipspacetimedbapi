@@ -49,6 +49,8 @@
                         BorderWidth="1"
                         CornerRadius="10"
                         Padding="32,12"
+                        SemanticProperties.Hint="Logs you out of the app"
+                        SemanticProperties.Description="Logout button, activates sign-out and returns to the login screen"
                         Clicked="OnLogoutClicked" />
             </VerticalStackLayout>
 

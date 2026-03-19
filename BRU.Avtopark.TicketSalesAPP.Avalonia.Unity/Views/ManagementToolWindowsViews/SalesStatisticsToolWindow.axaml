@@ -117,18 +117,19 @@
                     <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Text="Ежедневная статистика" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                            <DataGrid Grid.Row="1" 
+                            <DataGrid Grid.Row="1"
                                     ItemsSource="{Binding DailyStatistics}"
                                     AutoGenerateColumns="False"
                                     IsReadOnly="True"
                                     MinHeight="200"
                                     MaxHeight="400"
-                                    HorizontalScrollBarVisibility="Auto">
+                                    HorizontalScrollBarVisibility="Auto"
+                                    x:DataType="vm:DailyStatistic">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Дата" Binding="{ReflectionBinding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Рост" Binding="{ReflectionBinding GrowthRate, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Рост" Binding="{Binding GrowthRate, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -138,18 +139,19 @@
                     <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Text="Статистика по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                            <DataGrid Grid.Row="1" 
+                            <DataGrid Grid.Row="1"
                                     ItemsSource="{Binding RouteStatistics}"
                                     AutoGenerateColumns="False"
                                     IsReadOnly="True"
                                     MinHeight="200"
                                     MaxHeight="400"
-                                    HorizontalScrollBarVisibility="Auto">
+                                    HorizontalScrollBarVisibility="Auto"
+                                    x:DataType="vm:RouteStatistic">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Доля" Binding="{ReflectionBinding SalesPercentage, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Доля" Binding="{Binding SalesPercentage, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>

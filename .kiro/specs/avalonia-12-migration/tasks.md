@@ -84,7 +84,7 @@
   - [ ] 10.7 Research and update `ReDocking.Avalonia` to an Avalonia 12-compatible version, or document incompatibility
   - [ ] 10.8 Research and update `Dock.Model.Mvvm` to an Avalonia 12-compatible version
   - [ ] 10.9 Research and update `MessageBox.Avalonia` to an Avalonia 12-compatible version
-  - [ ] 10.10 Research and update `WebView.Avalonia` to an Avalonia 12-compatible version
+  - [ ] 10.10 Confirm migration to `Avalonia.Controls.WebView` and `NativeWebView` and remove `WebView.Avalonia` usage
   - [ ] 10.11 Research and update `LiveChartsCore.SkiaSharpView.Avalonia` to a stable Avalonia 12-compatible version
   - [ ] 10.12 Research and update `FluentAvalonia.ProgressRing` to an Avalonia 12-compatible version, or document incompatibility
   - [ ] 10.13 For any package with no Avalonia 12-compatible release, document the package name, current version, incompatibility status, and chosen resolution strategy (pin-and-test, remove, or fork)
