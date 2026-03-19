@@ -3,7 +3,6 @@
             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
             xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
-            xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
             xmlns:icons="using:Material.Icons.Avalonia"
             x:DataType="vm:IncomeReportViewModel"
             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
@@ -83,26 +82,32 @@
                 <StackPanel Spacing="20">
                     <!-- Charts Section -->
                     <WrapPanel Orientation="Horizontal">
-                        <!-- Monthly Sales Chart -->
+                        <!-- Monthly Sales Chart — LiveCharts incompatible with Avalonia 12 preview2 -->
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
-                            <Grid RowDefinitions="Auto,*">
+                            <StackPanel Spacing="8">
                                 <TextBlock Text="Динамика продаж" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <lvc:CartesianChart Grid.Row="1"
-                                            Series="{Binding MonthlySalesChart}"
-                                            XAxes="{Binding XAxes}"
-                                            YAxes="{Binding YAxes}"
-                                            MinHeight="250" MaxHeight="400"/>
-                            </Grid>
+                                <Border Background="{DynamicResource BgElevated}" CornerRadius="8" Padding="16" MinHeight="250">
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                        <icons:MaterialIcon Kind="ChartLine" Width="48" Height="48" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="График недоступен" FontSize="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Border>
-                        
-                        <!-- Route Distribution Chart -->
+
+                        <!-- Route Distribution Chart — same issue -->
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
-                            <Grid RowDefinitions="Auto,*">
+                            <StackPanel Spacing="8">
                                 <TextBlock Text="Распределение по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <lvc:PieChart Grid.Row="1"
-                                            Series="{Binding RouteDistributionChart}"
-                                            MinHeight="250" MaxHeight="400"/>
-                            </Grid>
+                                <Border Background="{DynamicResource BorderSubtle}" CornerRadius="8" Padding="16" MinHeight="250">
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                        <icons:MaterialIcon Kind="ChartPie" Width="48" Height="48" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="График недоступен" FontSize="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="{DynamicResource TextFaint}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Border>
                     </WrapPanel>
         
@@ -120,11 +125,11 @@
                                         MaxHeight="400"
                                         HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Месяц" Binding="{Binding Month}"/>
-                                        <DataGridTextColumn Header="Год" Binding="{Binding Year}"/>
-                                        <DataGridTextColumn Header="Доход" Binding="{Binding TotalIncome, StringFormat={}{0:C}}"/>
-                                        <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{Binding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Месяц" Binding="{ReflectionBinding Month}"/>
+                                        <DataGridTextColumn Header="Год" Binding="{ReflectionBinding Year}"/>
+                                        <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
@@ -142,10 +147,10 @@
                                         MaxHeight="400"
                                         HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
-                                        <DataGridTextColumn Header="Доход" Binding="{Binding TotalIncome, StringFormat={}{0:C}}"/>
-                                        <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{Binding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
+                                        <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

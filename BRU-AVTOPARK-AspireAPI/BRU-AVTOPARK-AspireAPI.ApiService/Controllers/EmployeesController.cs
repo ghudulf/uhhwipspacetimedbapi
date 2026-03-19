@@ -56,14 +56,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            var claims = await ValidateOAuthTokenAsync();
+            if (claims == null)
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
             // Allow connection for mutation-only users; permission checks enforced per-command
-            var eventsSource = (IsAdmin() || HasPermission("employees.view"))
+            // Use pre-validated claims instead of re-calling IsAdminAsync()/HasPermissionAsync()
+            var isAdmin = claims.ContainsKey("primary_role") && claims["primary_role"]?.ToString() == "admin";
+
+            var eventsSource = (isAdmin || HasPermission("employees.view", claims))
                 ? _realtimeEventBus.SubscribeAsync("employees", cancellationToken)
                 : EmptyAsyncEnumerable();
 
@@ -118,7 +122,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "employees.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!IsAdmin() && !HasPermission("employees.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.view");
             }
@@ -135,7 +139,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("employees.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.view");
             }
@@ -153,7 +157,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a create model.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("employees.create"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.create"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.create");
             }
@@ -232,7 +236,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing from the request.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("employees.update"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.update"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.update");
             }
@@ -321,7 +325,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>An object with fields: <c>operation</c> ("delete"), <c>success</c> (deletion result), and <c>deletedId</c> (the employee id attempted).</returns>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("employees.delete"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.delete"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.delete");
             }
@@ -407,7 +411,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employees");
                     return Forbid();
@@ -457,7 +461,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employee {EmployeeId}", id);
                     return Forbid();
@@ -512,7 +516,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.create"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.create"))
                 {
                     _logger.LogWarning("Unauthorized attempt to create employee");
                     return Forbid();
@@ -580,7 +584,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.update"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.update"))
                 {
                     _logger.LogWarning("Unauthorized attempt to update employee {EmployeeId}", id);
                     return Forbid();
@@ -658,7 +662,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.delete"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.delete"))
                 {
                     _logger.LogWarning("Unauthorized attempt to delete employee {EmployeeId}", id);
                     return Forbid();
@@ -717,7 +721,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employees by job {JobId}", jobId);
                     return Forbid();
@@ -764,7 +768,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin() && !HasPermission("employees.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view drivers");
                     return Forbid();

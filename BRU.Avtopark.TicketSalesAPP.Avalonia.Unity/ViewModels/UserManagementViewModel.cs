@@ -1092,7 +1092,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // Login field
                 var loginLabel = new TextBlock { Text = "Login:", Margin = new Thickness(0, 0, 0, 5) };
-                var loginBox = new TextBox { Watermark = "Enter login" };
+                var loginBox = new TextBox { PlaceholderText = "Enter login" };
                 grid.Children.Add(loginLabel);
                 Grid.SetRow(loginLabel, 0);
                 grid.Children.Add(loginBox);
@@ -1100,7 +1100,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // Password field
                 var passwordLabel = new TextBlock { Text = "Password:", Margin = new Thickness(0, 10, 0, 5) };
-                var passwordBox = new TextBox { Watermark = "Enter password", PasswordChar = '*' };
+                var passwordBox = new TextBox { PlaceholderText = "Enter password", PasswordChar = '*' };
                 grid.Children.Add(passwordLabel);
                 Grid.SetRow(passwordLabel, 2);
                 grid.Children.Add(passwordBox);
@@ -1260,7 +1260,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // Password
                 grid.Children.Add(new TextBlock { Text = "Новый пароль:", Margin = new Thickness(0, 5) });
-                var passwordBox = new TextBox { Watermark = "Оставьте пустым, чтобы не менять", PasswordChar = '*' };
+                var passwordBox = new TextBox { PlaceholderText = "Оставьте пустым, чтобы не менять", PasswordChar = '*' };
                 Grid.SetRow(passwordBox, 1); Grid.SetColumn(passwordBox, 1);
                 grid.Children.Add(passwordBox);
 

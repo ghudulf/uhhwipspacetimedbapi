@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.SplashPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto,*">
+        <VerticalStackLayout
+            Grid.Row="1"
+            HorizontalOptions="Center"
+            Spacing="24">
+
+            <!-- App icon -->
+            <Frame
+                BackgroundColor="{StaticResource BrandPrimary}"
+                CornerRadius="24"
+                HeightRequest="96"
+                WidthRequest="96"
+                HorizontalOptions="Center"
+                Padding="0">
+                <Label
+                    Text="🚌"
+                    FontSize="48"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center" />
+            </Frame>
+
+            <Label
+                Text="BRU Avtopark"
+                FontSize="28"
+                FontAttributes="Bold"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                HorizontalOptions="Center" />
+
+            <Label
+                x:Name="StatusLabel"
+                Text="Загрузка..."
+                FontSize="14"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                HorizontalOptions="Center" />
+
+            <ActivityIndicator
+                x:Name="Spinner"
+                IsRunning="True"
+                Color="{StaticResource BrandPrimary}"
+                HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

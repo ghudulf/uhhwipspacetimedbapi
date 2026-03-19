@@ -1,4 +1,5 @@
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -16,6 +17,10 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         HttpMethods.Patch,
         HttpMethods.Delete
     };
+
+    private static readonly HashSet<string> AllowedHttpMethods = new(
+        MutationMethods.Concat(new[] { "GET", "HEAD", "OPTIONS" }),
+        StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -53,6 +58,11 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         {
             return;
         }
+
+        // Normalize HTTP method against allowlist to prevent log forging.
+        // Only recognized methods pass through; anything else is normalized to "UNKNOWN".
+        var rawMethod = request.Method?.ToUpperInvariant().Trim() ?? string.Empty;
+        var sanitizedMethod = AllowedHttpMethods.Contains(rawMethod) ? rawMethod : "UNKNOWN";
 
         var statusCode = ResolveStatusCode(executedContext.Result, context.HttpContext.Response.StatusCode);
         if (statusCode is < 200 or >= 400)
@@ -104,8 +114,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
             tenant = user.FindFirst(TenantClaimType)?.Value;
         }
         
-        var sanitizedPath = TruncateIfNeeded(request.Path.ToString(), MaxMetadataStringLength);
-        var sanitizedUserAgent = TruncateIfNeeded(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
+        var sanitizedPath = LogSanitizer.SanitizeLogField(request.Path.ToString(), MaxMetadataStringLength);
+        var sanitizedUserAgent = LogSanitizer.SanitizeLogField(request.Headers.UserAgent.ToString(), MaxMetadataStringLength);
         
         var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -117,9 +127,9 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         };
 
         var domainEvent = new ApiDomainEvent(
-            EventName: $"{resource}.{request.Method}.completed",
+            EventName: $"{resource}.{sanitizedMethod}.completed",
             Resource: resource,
-            HttpMethod: request.Method,
+            HttpMethod: sanitizedMethod,
             StatusCode: statusCode,
             OccurredAt: DateTimeOffset.UtcNow,
             CorrelationId: context.HttpContext.TraceIdentifier,
@@ -135,23 +145,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", request.Method, sanitizedPath);
+            _logger.LogWarning(ex, "Failed to publish mutation event for {Method} {Path}", sanitizedMethod, sanitizedPath);
         }
-    }
-
-    /// <summary>
-    /// Truncates a string to the specified maximum length if it exceeds that length.
-    /// </summary>
-    /// <param name="value">The string to truncate.</param>
-    /// <param name="maxLength">The maximum allowed length.</param>
-    /// <returns>The original string if it's within the limit, otherwise a truncated version.</returns>
-    private static string TruncateIfNeeded(string value, int maxLength)
-    {
-        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
-        {
-            return value;
-        }
-        return value.Substring(0, maxLength);
     }
 
     /// <summary>

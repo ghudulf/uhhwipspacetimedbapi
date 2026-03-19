@@ -29,6 +29,303 @@ namespace TicketSalesApp.Services.Implementations
             _exportService = exportService; // Can be null
         }
 
+        public async Task<List<Sale>> GetAllSalesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving all sales");
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.Iter().ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all sales");
+                throw;
+            }
+        }
+
+        public async Task<(List<Sale> items, int totalCount)> GetPagedSalesAsync(int page, int pageSize)
+        {
+            try
+            {
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 1, 1000);
+                _logger.LogInformation("Retrieving sales page {Page} (size {PageSize})", page, pageSize);
+                var conn = _spacetimeService.GetConnection();
+
+                // Single-pass scan: count total and collect only the requested page slice.
+                // Use safe long calculation to avoid overflow
+                long skipLong = ((long)page - 1) * (long)pageSize;
+                if (skipLong > int.MaxValue)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(page), "Page number is too large and would cause overflow.");
+                }
+                int skip = (int)skipLong;
+                int totalCount = 0;
+                int collected = 0;
+                var items = new List<Sale>(pageSize);
+
+                foreach (var s in conn.Db.Sale.Iter().OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId))
+                {
+                    totalCount++;
+                    if (totalCount > skip && collected < pageSize)
+                    {
+                        items.Add(s);
+                        collected++;
+                    }
+                }
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paged sales");
+                throw;
+            }
+        }
+
+        public async Task<Sale?> GetSaleByIdAsync(uint saleId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sale by ID: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.SaleId.Find(saleId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sale by ID: {SaleId}", saleId);
+                throw;
+            }
+        }
+
+        public async Task<List<Sale>> GetSalesByTicketIdAsync(uint ticketId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sales for ticket: {TicketId}", ticketId);
+                var conn = _spacetimeService.GetConnection();
+                return conn.Db.Sale.Iter()
+                    .Where(s => s.TicketId == ticketId)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sales for ticket: {TicketId}", ticketId);
+                throw;
+            }
+        }
+
+        public async Task<List<Sale>> GetSalesByDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                // Validate date range
+                if (endDate < startDate)
+                {
+                    throw new ArgumentException($"End date ({endDate}) must be greater than or equal to start date ({startDate})", nameof(endDate));
+                }
+
+                _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
+                var conn = _spacetimeService.GetConnection();
+
+                // Convert to UTC before creating DateTimeOffset to avoid relabeling local time as UTC.
+                ulong startTimestamp = (ulong)new DateTimeOffset(startDate.ToUniversalTime()).ToUnixTimeMilliseconds();
+                ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1).ToUniversalTime()).ToUnixTimeMilliseconds();
+                
+                return conn.Db.Sale.Iter()
+                    .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
+                    .OrderBy(s => s.SaleDate)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
+                throw;
+            }
+        }
+
+        public async Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null)
+        {
+            try
+            {
+                _logger.LogInformation("Creating sale for ticket: {TicketId}", ticketId);
+                var conn = _spacetimeService.GetConnection();
+
+                // Verify ticket exists
+                var ticket = conn.Db.Ticket.TicketId.Find(ticketId);
+                if (ticket == null)
+                {
+                    _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
+                    return null;
+                }
+
+                // Store pre-call count for out-of-band correlation
+                var preCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
+                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Call the CreateSale reducer with actual parameters (no correlation in notes)
+                conn.Reducers.CreateSale(
+                    ticketId,
+                    buyerName,
+                    buyerPhone,
+                    saleLocation,
+                    saleNotes
+                );
+
+                // Flush pending reducer responses
+                conn.FrameTick();
+
+                // WORKAROUND: SpacetimeDB reducers don't return created IDs, forcing timestamp-based correlation.
+                // This is racy - concurrent creates for the same ticket can return wrong sale.
+                // TODO: Add correlation token to Sale table or use SpacetimeDB transaction support when available.
+                // Find the newly created sale using timestamp correlation
+                var newSale = conn.Db.Sale.Iter()
+                    .Where(s => s.TicketId == ticketId && s.SaleDate >= (ulong)preCallTimestamp)
+                    .OrderByDescending(s => s.SaleDate)
+                    .FirstOrDefault();
+
+                // Verify we got a new sale (count increased)
+                var postCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
+                if (newSale != null && postCallCount > preCallCount)
+                {
+                    _logger.LogInformation("Successfully created sale with ID: {SaleId}", newSale.SaleId);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not reliably identify created sale for ticket: {TicketId}", ticketId);
+                    return null;
+                }
+
+                return newSale?.SaleId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating sale for ticket: {TicketId}", ticketId);
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null, string? saleLocation = null, string? saleNotes = null)
+        {
+            try
+            {
+                _logger.LogInformation("Updating sale: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+
+                var sale = conn.Db.Sale.SaleId.Find(saleId);
+                if (sale == null)
+                {
+                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
+                    return false;
+                }
+
+                // UpdateSale reducer is not yet implemented in SpacetimeDB schema
+                // Use create+delete workaround pattern (create first to avoid data loss)
+                _logger.LogInformation("Using create+delete workaround for sale update: {SaleId}", saleId);
+
+                // Clean notes (no correlation tokens)
+                var cleanedNotes = saleNotes ?? sale.SaleNotes;
+                if (!string.IsNullOrEmpty(cleanedNotes) && cleanedNotes.Contains("[CORRELATION:"))
+                {
+                    var startIdx = cleanedNotes.IndexOf("[CORRELATION:");
+                    var endIdx = cleanedNotes.IndexOf(']', startIdx);
+                    if (endIdx > startIdx)
+                    {
+                        cleanedNotes = cleanedNotes.Remove(startIdx, endIdx - startIdx + 1).Trim();
+                        _logger.LogWarning("Stripped existing correlation marker from sale notes");
+                    }
+                }
+
+                // Store pre-call timestamp for correlation
+                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Create new sale FIRST with updated values (no correlation in notes)
+                conn.Reducers.CreateSale(
+                    sale.TicketId,
+                    buyerName ?? sale.TicketSoldToUser,
+                    buyerPhone ?? sale.TicketSoldToUserPhone,
+                    saleLocation ?? sale.SaleLocation,
+                    cleanedNotes
+                );
+                conn.FrameTick();
+
+                // Find the newly created sale using timestamp
+                var newSale = conn.Db.Sale.Iter()
+                    .Where(s => s.TicketId == sale.TicketId &&
+                               s.SaleDate >= (ulong)preCallTimestamp &&
+                               s.SaleId != saleId)
+                    .OrderByDescending(s => s.SaleDate)
+                    .FirstOrDefault();
+
+                if (newSale == null)
+                {
+                    _logger.LogError("Failed to create new sale during update for original SaleId: {SaleId}", saleId);
+                    return false;
+                }
+
+                _logger.LogInformation("Created new sale {NewSaleId}, now deleting old sale {OldSaleId}", newSale.SaleId, saleId);
+
+                // Now delete the old sale (data is safe in new sale)
+                conn.Reducers.DeleteSale(saleId, null);
+                conn.FrameTick();
+
+                // Verify deletion
+                var oldSaleStillExists = conn.Db.Sale.SaleId.Find(saleId);
+                if (oldSaleStillExists != null)
+                {
+                    _logger.LogError("Old sale {SaleId} still exists after delete attempt - update failed", saleId);
+                    return false;
+                }
+
+                _logger.LogInformation("Sale updated via create+delete: old SaleId={OldSaleId}, new SaleId={NewSaleId}", saleId, newSale.SaleId);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating sale: {SaleId}", saleId);
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteSaleAsync(uint saleId)
+        {
+            try
+            {
+                _logger.LogInformation("Deleting sale: {SaleId}", saleId);
+                var conn = _spacetimeService.GetConnection();
+
+                var sale = conn.Db.Sale.SaleId.Find(saleId);
+                if (sale == null)
+                {
+                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
+                    return false;
+                }
+
+                // Call the DeleteSale reducer
+                conn.Reducers.DeleteSale(saleId, null);
+
+                // Wait for confirmation using FrameTick
+                conn.FrameTick();
+
+                // Verify deletion
+                var deletedSale = conn.Db.Sale.SaleId.Find(saleId);
+                if (deletedSale != null)
+                {
+                    _logger.LogWarning("Sale {SaleId} still exists after delete attempt", saleId);
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting sale: {SaleId}", saleId);
+                throw;
+            }
+        }
+
         public async Task<decimal> GetTotalIncomeAsync(int year, int month)
         {
             try

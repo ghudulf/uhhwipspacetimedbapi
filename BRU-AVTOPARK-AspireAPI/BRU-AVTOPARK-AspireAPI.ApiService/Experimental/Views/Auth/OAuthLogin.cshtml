@@ -49,39 +49,129 @@
             <partial name="_StatusMessages"
                      model="new StatusViewModel(error, null)" />
 
-            @if (scopes != null && scopes.Length > 0)
-            {
-                <div class="oauth-scopes">
-                    <h3 class="oauth-scopes__title">This application will be able to:</h3>
-                    <ul class="oauth-scopes__list">
-                        @foreach (var scope in scopes)
-                        {
-                            <li class="oauth-scopes__item">
-                                <svg class="oauth-scopes__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="@GetScopeIcon(scope)" clip-rule="evenodd"/>
-                                </svg>
-                                <span>@GetScopeDescription(scope)</span>
-                            </li>
-                        }
-                    </ul>
+            <!-- Step indicator -->
+            <div class="oauth-steps" aria-label="Sign-in steps">
+                <div class="oauth-step oauth-step--active" id="stepDot1" aria-current="step">
+                    <span class="oauth-step__dot"></span>
+                    <span class="oauth-step__label">Username</span>
                 </div>
-            }
+                <div class="oauth-step__connector"></div>
+                <div class="oauth-step" id="stepDot2">
+                    <span class="oauth-step__dot"></span>
+                    <span class="oauth-step__label">Password</span>
+                </div>
+                <div class="oauth-step__connector"></div>
+                <div class="oauth-step" id="stepDot3">
+                    <span class="oauth-step__dot"></span>
+                    <span class="oauth-step__label">Authorize</span>
+                </div>
+            </div>
 
             <form method="POST" action="/connect/authorize/callback" id="oauthLoginForm" novalidate>
                 <input type="hidden" name="requestId" value="@requestId">
+                <!-- Hidden username field so it's always submitted with the form -->
+                <input type="hidden" name="username" id="usernameHidden">
+                <!-- Hidden password field so it's always submitted with the form -->
+                <input type="hidden" name="password" id="passwordHidden">
 
-                <partial name="_FormField"
-                         model='new FormFieldViewModel("username", "Username", Placeholder: "Enter your username", Required: true)' />
+                <!-- Step 1: Username -->
+                <div id="stepUsername" class="oauth-form-step">
+                    <div class="form-group">
+                        <label class="form-label" for="usernameInput">Username</label>
+                        <input
+                            type="text"
+                            id="usernameInput"
+                            name="_username_visible"
+                            class="form-input"
+                            placeholder="Enter your username"
+                            autocomplete="username"
+                            required
+                            autofocus />
+                    </div>
+                    <button type="button" class="btn btn--auth-primary" id="btnNextStep" onclick="oauthStepNext()">
+                        <span>Continue</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                </div>
 
-                <partial name="_FormField"
-                         model='new FormFieldViewModel("password", "Password", Type: "password", Placeholder: "Enter your password", Required: true)' />
+                <!-- Step 2: Password (hidden initially) -->
+                <div id="stepPassword" class="oauth-form-step" style="display:none">
+                    <!-- Username chip showing who is signing in -->
+                    <div class="oauth-user-chip" id="userChip">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="userChipName"></span>
+                        <button type="button" class="oauth-user-chip__change" onclick="oauthStepBack()" aria-label="Change username">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                    </div>
 
-                <button type="submit" class="btn btn--auth-primary">
-                    <span>Authorize</span>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                </button>
+                    <div class="form-group">
+                        <label class="form-label" for="passwordInput">Password</label>
+                        <input
+                            type="password"
+                            id="passwordInput"
+                            name="_password_visible"
+                            class="form-input"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required />
+                    </div>
+                    <button type="button" class="btn btn--auth-primary" id="btnToConsent" onclick="oauthStepToConsent()">
+                        <span>Next</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Step 3: Consent (hidden initially) -->
+                <div id="stepConsent" class="oauth-form-step" style="display:none">
+                    <!-- Username chip -->
+                    <div class="oauth-user-chip" id="userChipConsent">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="userChipNameConsent"></span>
+                        <button type="button" class="oauth-user-chip__change" onclick="oauthStepBack2()" aria-label="Change password">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    @if (scopes != null && scopes.Length > 0)
+                    {
+                        <div class="oauth-scopes">
+                            <h3 class="oauth-scopes__title">This application will be able to:</h3>
+                            <ul class="oauth-scopes__list">
+                                @foreach (var scope in scopes)
+                                {
+                                    <li class="oauth-scopes__item">
+                                        <svg class="oauth-scopes__icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="@GetScopeIcon(scope)" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span>@GetScopeDescription(scope)</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <button type="submit" class="btn btn--auth-primary">
+                        <span>Authorize</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </button>
+                </div>
             </form>
 
             <div class="divider">
@@ -101,16 +191,207 @@
     <partial name="_AuthFooterLinks" />
 </div>
 
+<script>
+(function () {
+    'use strict';
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function setStep(n) {
+        ['stepUsername', 'stepPassword', 'stepConsent'].forEach(function (id, i) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = (i === n - 1) ? '' : 'none';
+        });
+        // Update step dots
+        [1, 2, 3].forEach(function (i) {
+            var dot = document.getElementById('stepDot' + i);
+            if (!dot) return;
+            dot.classList.toggle('oauth-step--active', i === n);
+            dot.classList.toggle('oauth-step--done', i < n);
+            if (i === n) dot.setAttribute('aria-current', 'step');
+            else dot.removeAttribute('aria-current');
+        });
+    }
+
+    function getUsername() {
+        return (document.getElementById('usernameInput') || {}).value || '';
+    }
+
+    // ── step navigation ───────────────────────────────────────────────────────
+    window.oauthStepNext = function () {
+        var username = getUsername().trim();
+        if (!username) {
+            document.getElementById('usernameInput').focus();
+            return;
+        }
+        // Sync to hidden field
+        document.getElementById('usernameHidden').value = username;
+        // Show username chip
+        document.getElementById('userChipName').textContent = username;
+        document.getElementById('userChipNameConsent').textContent = username;
+        setStep(2);
+        setTimeout(function () {
+            var pw = document.getElementById('passwordInput');
+            if (pw) pw.focus();
+        }, 50);
+    };
+
+    window.oauthStepBack = function () {
+        setStep(1);
+        setTimeout(function () {
+            var u = document.getElementById('usernameInput');
+            if (u) u.focus();
+        }, 50);
+    };
+
+    window.oauthStepToConsent = function () {
+        var password = (document.getElementById('passwordInput') || {}).value || '';
+        if (!password) {
+            document.getElementById('passwordInput').focus();
+            return;
+        }
+        // Sync to hidden field
+        document.getElementById('passwordHidden').value = password;
+        setStep(3);
+    };
+
+    window.oauthStepBack2 = function () {
+        setStep(2);
+        setTimeout(function () {
+            var pw = document.getElementById('passwordInput');
+            if (pw) pw.focus();
+        }, 50);
+    };
+
+    // ── keyboard support ──────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        var usernameInput = document.getElementById('usernameInput');
+        var passwordInput = document.getElementById('passwordInput');
+
+        if (usernameInput) {
+            usernameInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); oauthStepNext(); }
+            });
+        }
+        if (passwordInput) {
+            passwordInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); oauthStepToConsent(); }
+            });
+        }
+
+        // Ensure hidden fields are populated on submit (in case JS ran out of order)
+        var form = document.getElementById('oauthLoginForm');
+        if (form) {
+            form.addEventListener('submit', function () {
+                document.getElementById('usernameHidden').value = getUsername().trim() ||
+                    document.getElementById('usernameHidden').value;
+                document.getElementById('passwordHidden').value =
+                    (document.getElementById('passwordInput') || {}).value ||
+                    document.getElementById('passwordHidden').value;
+            });
+        }
+    });
+})();
+</script>
+
 <style>
+    /* Step indicator */
+    .oauth-steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        margin: 1.25rem 0 1.75rem;
+    }
+
+    .oauth-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .oauth-step__dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--border-color, #444);
+        transition: background 0.25s, transform 0.25s;
+        display: block;
+    }
+
+    .oauth-step--active .oauth-step__dot {
+        background: var(--primary-color, #6366f1);
+        transform: scale(1.35);
+    }
+
+    .oauth-step--done .oauth-step__dot {
+        background: var(--success-color, #22c55e);
+    }
+
+    .oauth-step__label {
+        font-size: 0.7rem;
+        color: var(--text-secondary, #888);
+        white-space: nowrap;
+    }
+
+    .oauth-step--active .oauth-step__label {
+        color: var(--primary-color, #6366f1);
+        font-weight: 600;
+    }
+
+    .oauth-step--done .oauth-step__label {
+        color: var(--success-color, #22c55e);
+    }
+
+    .oauth-step__connector {
+        flex: 1;
+        height: 2px;
+        min-width: 2rem;
+        background: var(--border-color, #444);
+        margin-bottom: 1.1rem;
+        transition: background 0.25s;
+    }
+
+    /* Username chip */
+    .oauth-user-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.85rem;
+        background: var(--surface-elevated, #1e1e2e);
+        border: 1px solid var(--border-color, #444);
+        border-radius: 999px;
+        margin-bottom: 1.25rem;
+        width: fit-content;
+        font-size: 0.875rem;
+        color: var(--text-color, #e2e8f0);
+    }
+
+    .oauth-user-chip__change {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.1rem;
+        color: var(--text-secondary, #888);
+        display: flex;
+        align-items: center;
+        border-radius: 4px;
+        transition: color 0.15s;
+    }
+
+    .oauth-user-chip__change:hover {
+        color: var(--primary-color, #6366f1);
+    }
+
     /* Scoped OAuth permissions styling */
     .oauth-scopes {
-        margin: 1.5rem 0;
-        padding: 1.5rem;
+        margin: 1.25rem 0;
+        padding: 1.25rem;
         background: var(--surface-elevated);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
     }
-    
+
     .oauth-scopes__title {
         font-size: 0.8125rem;
         font-weight: 600;
@@ -119,7 +400,7 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    
+
     .oauth-scopes__list {
         list-style: none !important;
         padding: 0 !important;
@@ -128,7 +409,7 @@
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .oauth-scopes__item {
         display: flex !important;
         align-items: flex-start;
@@ -137,24 +418,34 @@
         list-style: none !important;
         list-style-type: none !important;
     }
-    
+
     .oauth-scopes__item::before,
     .oauth-scopes__item::marker {
         display: none !important;
         content: none !important;
     }
-    
+
     .oauth-scopes__icon {
         flex-shrink: 0;
         margin-top: 2px;
         color: var(--primary-color);
         opacity: 0.9;
     }
-    
+
     .oauth-scopes__item span {
         font-size: 0.9375rem;
         color: var(--text-color);
         line-height: 1.5;
         flex: 1;
+    }
+
+    /* Step transition */
+    .oauth-form-step {
+        animation: stepFadeIn 0.2s ease;
+    }
+
+    @keyframes stepFadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
 </style>

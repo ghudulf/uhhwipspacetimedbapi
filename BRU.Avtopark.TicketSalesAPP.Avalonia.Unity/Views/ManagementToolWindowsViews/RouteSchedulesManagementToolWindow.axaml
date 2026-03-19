@@ -41,7 +41,7 @@
                     
                     <CalendarDatePicker Grid.Column="1"
                                       SelectedDate="{Binding SelectedDate.Date}"
-                                      Watermark="Выберите дату"
+                                      PlaceholderText="Выберите дату"
                                       Margin="0,0,10,0"/>
                     
                     <Button Grid.Column="2"
@@ -72,25 +72,25 @@
                     Margin="0,20,0,0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Маршрут" 
-                                    Binding="{Binding StartPoint}"
+                                    Binding="{ReflectionBinding StartPoint}"
                                     Width="*"/>
                     <DataGridTextColumn Header="Конечная" 
-                                    Binding="{Binding EndPoint}"
+                                    Binding="{ReflectionBinding EndPoint}"
                                     Width="*"/>
                     <DataGridTextColumn Header="Отправление" 
-                                    Binding="{Binding DepartureTimeDisplay}"
+                                    Binding="{ReflectionBinding DepartureTimeDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Прибытие" 
-                                    Binding="{Binding ArrivalTimeDisplay}"
+                                    Binding="{ReflectionBinding ArrivalTimeDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Цена" 
-                                    Binding="{Binding Price, StringFormat={}{0:C}}"
+                                    Binding="{ReflectionBinding Price, StringFormat={}{0:C}}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Места" 
-                                    Binding="{Binding AvailableSeats}"
+                                    Binding="{ReflectionBinding AvailableSeats}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Статус" 
-                                    Binding="{Binding IsActive}"
+                                    Binding="{ReflectionBinding IsActive}"
                                     Width="Auto"/>
                 </DataGrid.Columns>
             </DataGrid>

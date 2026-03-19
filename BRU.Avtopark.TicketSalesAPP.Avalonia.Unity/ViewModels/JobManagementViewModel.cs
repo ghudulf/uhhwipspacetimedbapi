@@ -293,8 +293,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Margin = new Thickness(10)
                 };
 
-                var jobTitleBox = new TextBox { Watermark = "Название должности" };
-                var internshipBox = new TextBox { Watermark = "Требования к стажировке" };
+                var jobTitleBox = new TextBox { PlaceholderText = "Название должности" };
+                var internshipBox = new TextBox { PlaceholderText = "Требования к стажировке" };
 
                 var addButton = new Button
                 {
@@ -415,12 +415,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var jobTitleBox = new TextBox 
                 { 
                     Text = SelectedJob.JobTitle,
-                    Watermark = "Название должности" 
+                    PlaceholderText = "Название должности" 
                 };
                 var internshipBox = new TextBox 
                 { 
                     Text = SelectedJob.Internship,
-                    Watermark = "Требования к стажировке" 
+                    PlaceholderText = "Требования к стажировке" 
                 };
 
                 var updateButton = new Button

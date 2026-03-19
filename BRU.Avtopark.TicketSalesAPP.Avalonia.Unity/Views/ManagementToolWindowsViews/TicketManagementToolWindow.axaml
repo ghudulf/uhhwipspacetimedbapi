@@ -11,7 +11,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0"
                      Text="{Binding SearchText}"
-                     Watermark="Поиск билетов..."
+                     PlaceholderText="Поиск билетов..."
                      Margin="0,0,10,0"/>
             <Button Grid.Column="1"
                     Command="{Binding AddCommand}"
@@ -26,19 +26,19 @@
                   Margin="0,0,0,10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID"
-                                  Binding="{Binding TicketId}"/>
+                                  Binding="{ReflectionBinding TicketId}"/>
                 <DataGridTextColumn Header="Начальная точка"
-                                  Binding="{Binding StartPoint}"/>
+                                  Binding="{ReflectionBinding StartPoint}"/>
                 <DataGridTextColumn Header="Конечная точка"
-                                  Binding="{Binding EndPoint}"/>
+                                  Binding="{ReflectionBinding EndPoint}"/>
                 <DataGridTextColumn Header="Время в пути"
-                                  Binding="{Binding TravelTime}"/>
+                                  Binding="{ReflectionBinding TravelTime}"/>
                 <DataGridTextColumn Header="Цена билета"
-                                  Binding="{Binding TicketPrice}"/>
+                                  Binding="{ReflectionBinding TicketPrice}"/>
                 <DataGridTextColumn Header="Номер места"
-                                  Binding="{Binding SeatNumber}"/>
+                                  Binding="{ReflectionBinding SeatNumber}"/>
                 <DataGridCheckBoxColumn Header="Активен"
-                                  Binding="{Binding IsActive}"/>
+                                  Binding="{ReflectionBinding IsActive}"/>
             </DataGrid.Columns>
         </DataGrid>
 

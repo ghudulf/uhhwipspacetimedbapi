@@ -538,7 +538,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Debug("Setting up sale type textbox with default value");
                 var saleTypeTextBox = new TextBox
                 {
-                    Watermark = "Покупатель",
+                    PlaceholderText = "Покупатель",
                     Text = "ФИЗ.ПРОДАЖА",
                     Margin = new Thickness(0, 10, 0, 0)
                 };
@@ -546,7 +546,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Debug("Setting up phone textbox with user's phone: {Phone}", currentUser.PhoneNumber ?? "");
                 var phoneTextBox = new TextBox
                 {
-                    Watermark = "Телефон покупателя",
+                    PlaceholderText = "Телефон покупателя",
                     Text = currentUser.PhoneNumber ?? "",
                     Margin = new Thickness(0, 10, 0, 0)
                 };

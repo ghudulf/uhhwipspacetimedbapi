@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.TicketsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:nav="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Controls"
+    BackgroundColor="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <nav:DesktopTopNav Grid.Row="0" ActiveRoute="tickets" />
+
+        <VerticalStackLayout Grid.Row="1"
+                             Padding="32,24,32,32"
+                             Spacing="0">
+
+            <Label Text="Билеты"
+                   FontSize="26"
+                   FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                   Margin="0,0,0,24" />
+
+            <VerticalStackLayout HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 Spacing="12"
+                                 Margin="0,60,0,0">
+                <Label Text="🎫" FontSize="52" HorizontalOptions="Center" />
+                <Label Text="Продажа билетов"
+                       FontSize="17"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                       HorizontalOptions="Center" />
+                <Label Text="История и продажа билетов будет здесь"
+                       FontSize="13"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

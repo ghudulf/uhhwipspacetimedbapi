@@ -5,93 +5,126 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="460"
         x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.SplashScreen"
-		xmlns:ui="using:FluentAvalonia.UI.Controls"
         Title="Загрузка..."
         WindowStartupLocation="CenterScreen"
         Width="820" Height="460"
         CanResize="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent">
 
-	<Window.Styles>
+    <Border CornerRadius="0">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Offset="0.0" Color="#FF1A2535"/>
+                <GradientStop Offset="0.45" Color="#FF1E2D3D"/>
+                <GradientStop Offset="0.7"  Color="#FF2A3040"/>
+                <GradientStop Offset="1.0"  Color="#FF1A1F2E"/>
+            </LinearGradientBrush>
+        </Border.Background>
 
-		<Style Selector="TextBlock.title">
-			<Setter Property="FontSize" Value="48"/>
-			<Setter Property="FontWeight" Value="Light"/>
-			<Setter Property="Foreground" Value="White"/>
-			<Setter Property="Margin" Value="0,0,0,20"/>
-		</Style>
-		<Style Selector="TextBlock.subtitle">
-			<Setter Property="FontSize" Value="24"/>
-			<Setter Property="FontWeight" Value="Light"/>
-			<Setter Property="Foreground" Value="#E0FFFFFF"/>
-			<Setter Property="Margin" Value="0,0,0,10"/>
-		</Style>
-		<Style Selector="TextBlock.info">
-			<Setter Property="FontSize" Value="16"/>
-			<Setter Property="Foreground" Value="#CCFFFFFF"/>
-			<Setter Property="Margin" Value="0,5"/>
-		</Style>
-		<Style Selector="TextBlock.error">
-			<Setter Property="FontSize" Value="16"/>
-			<Setter Property="Foreground" Value="#FFFF4444"/>
-			<Setter Property="Margin" Value="0,5"/>
-			<Setter Property="TextWrapping" Value="Wrap"/>
-			<Setter Property="MaxWidth" Value="500"/>
-			<Setter Property="TextAlignment" Value="Center"/>
-		</Style>
-	</Window.Styles>
+        <Grid>
+            <!-- Subtle vignette overlay -->
+            <Border>
+                <Border.Background>
+                    <RadialGradientBrush Center="50%,50%" GradientOrigin="50%,50%" RadiusX="70%" RadiusY="70%">
+                        <GradientStop Offset="0.0" Color="#00000000"/>
+                        <GradientStop Offset="1.0" Color="#88000000"/>
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
 
-	<Border CornerRadius="0">
-		<Border.Background>
-			<LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-				<GradientStop Offset="0" Color="#FF1E1E1E"/>
-				<GradientStop Offset="1" Color="#FF2D2D2D"/>
-			</LinearGradientBrush>
-		</Border.Background>
+            <!-- Top logo area -->
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,32,0,0" Spacing="6">
+                <!-- Logo box mimicking the DevExpress style icon -->
+                <Border HorizontalAlignment="Center"
+                        Background="#CC1A2535"
+                        BorderBrush="#55FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <!-- Simple bus icon using shapes -->
+                        <Canvas Width="22" Height="16" VerticalAlignment="Center">
+                            <Rectangle Canvas.Left="0" Canvas.Top="2" Width="22" Height="12" Fill="#FFFFFFFF" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Canvas.Left="2" Canvas.Top="0" Width="18" Height="8" Fill="#FFFFFFFF" RadiusX="2" RadiusY="2"/>
+                            <Ellipse Canvas.Left="3" Canvas.Top="11" Width="5" Height="5" Fill="#FF1A2535"/>
+                            <Ellipse Canvas.Left="14" Canvas.Top="11" Width="5" Height="5" Fill="#FF1A2535"/>
+                        </Canvas>
+                        <TextBlock Text="БРУ Автопарк"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
-		<Grid>
-			<!-- Background pattern -->
-			<Canvas>
-				<Path Data="M0,0 C300,200 600,-100 800,300" Stroke="#20FFFFFF" StrokeThickness="2"/>
-				<Path Data="M0,450 C300,250 600,550 800,150" Stroke="#20FFFFFF" StrokeThickness="2"/>
-			</Canvas>
+            <!-- Center content -->
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                <TextBlock Text="Система управления"
+                           FontSize="36"
+                           FontWeight="Light"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           LetterSpacing="1"/>
+                <TextBlock Text="автобусным парком БРУ"
+                           FontSize="18"
+                           FontWeight="Light"
+                           Foreground="#CCFFFFFF"
+                           HorizontalAlignment="Center"
+                           LetterSpacing="0.5"/>
 
-			<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
-				<!-- Logo/Brand -->
-				<TextBlock Text="Автопарк автобусов" Classes="title" HorizontalAlignment="Center"/>
-				<TextBlock Text="Система управления автобусным парком" Classes="subtitle" HorizontalAlignment="Center"/>
+                <!-- Animated dots loader -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,28,0,0" Spacing="8">
+                    <Ellipse Name="Dot1" Width="9" Height="9" Fill="#AAFFFFFF"/>
+                    <Ellipse Name="Dot2" Width="9" Height="9" Fill="#55FFFFFF"/>
+                    <Ellipse Name="Dot3" Width="9" Height="9" Fill="#33FFFFFF"/>
+                    <Ellipse Name="Dot4" Width="9" Height="9" Fill="#22FFFFFF"/>
+                </StackPanel>
+            </StackPanel>
 
-				<StackPanel Margin="0,40,0,0">
-					<TextBlock Name="StatusMessage" Text="Инициализация системы..." Classes="info" HorizontalAlignment="Center"/>
-					<TextBlock Name="ErrorMessage" Classes="error" IsVisible="False" HorizontalAlignment="Center"
-                              Text="Ошибка: Сервер администрирования недоступен. Пожалуйста, запустите TicketSalesApp.AdminServer перед запуском приложения."/>
-					<TextBlock Text="Группа: АСОИСЗ-241" Classes="info" HorizontalAlignment="Center"/>
-					<TextBlock Text="ФИО: Савич Андрей Олегович" Classes="info" HorizontalAlignment="Center"/>
-				</StackPanel>
+            <!-- Bottom bar -->
+            <Grid VerticalAlignment="Bottom" Margin="24,0,24,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-				<ui:ProgressRing IsIndeterminate="True"
-						 Width="35"
-						 Height="35"
-						BorderThickness="5"
-					 />
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="© 2025 Белорусско-российский университет."
+                               Foreground="#66FFFFFF"
+                               FontSize="11"/>
+                    <TextBlock Text="Все права защищены. Версия 0.5A"
+                               Foreground="#44FFFFFF"
+                               FontSize="11"/>
+                </StackPanel>
 
-				<!-- Version info -->
-				<TextBlock Text="Версия 0.5A"
-                         Foreground="#80FFFFFF"
-                         FontSize="14"
-                         HorizontalAlignment="Center"
-                         Margin="0,20,0,0"/>
-			</StackPanel>
+                <TextBlock Name="StatusMessage"
+                           Grid.Column="1"
+                           Text="Запуск..."
+                           Foreground="#88FFFFFF"
+                           FontSize="12"
+                           VerticalAlignment="Bottom"
+                           FontStyle="Italic"/>
+            </Grid>
 
-			<!-- Copyright -->
-			<TextBlock Text="© 2025 Белорусско-российский университет."
-                     Foreground="#80FFFFFF"
-                     FontSize="12"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Bottom"
-                     Margin="0,0,0,20"/>
-		</Grid>
-	</Border>
+            <!-- Error overlay (hidden by default) -->
+            <Border Name="ErrorPanel"
+                    IsVisible="False"
+                    Background="#CC1A0000"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,0,50"
+                    Padding="16,8">
+                <TextBlock Name="ErrorMessage"
+                           Foreground="#FFFF6B6B"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           MaxWidth="600"
+                           Text="Ошибка подключения к серверу"/>
+            </Border>
+        </Grid>
+    </Border>
 </Window>

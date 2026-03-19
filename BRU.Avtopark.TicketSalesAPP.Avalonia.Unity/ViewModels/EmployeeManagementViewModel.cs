@@ -365,9 +365,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     Margin = new Thickness(10)
                 };
 
-                var surnameBox = new TextBox { Watermark = "Surname" };
-                var nameBox = new TextBox { Watermark = "Name" };
-                var patronymBox = new TextBox { Watermark = "Patronym" };
+                var surnameBox = new TextBox { PlaceholderText = "Surname" };
+                var nameBox = new TextBox { PlaceholderText = "Name" };
+                var patronymBox = new TextBox { PlaceholderText = "Patronym" };
                 var employedSincePicker = new DatePicker { SelectedDate = DateTimeOffset.Now };
                 var jobComboBox = new ComboBox
                 {

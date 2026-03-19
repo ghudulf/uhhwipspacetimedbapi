@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Utilities;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
@@ -9,7 +10,11 @@ public sealed record RealtimeCrudRequest(
     string Command,
     string? RequestId,
     uint? Id,
-    JsonElement? Payload);
+    JsonElement? Payload)
+{
+    public int? Page { get; init; }
+    public int? PageSize { get; init; }
+};
 
 public static class WebSocketEventStreamWriter
 {
@@ -17,7 +22,8 @@ public static class WebSocketEventStreamWriter
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        IncludeFields = true // CRITICAL: SpacetimeDB generated types use fields, not properties
     };
 
     /// <summary>
@@ -64,7 +70,7 @@ public static class WebSocketEventStreamWriter
                     eventName = evt.EventName,
                     resource = evt.Resource,
                     data = evt
-                }, sendLock, linkedCts.Token);
+                }, sendLock, logger, linkedCts.Token);
             }
         }, linkedCts.Token);
 
@@ -72,7 +78,7 @@ public static class WebSocketEventStreamWriter
         {
             while (webSocket.State == WebSocketState.Open && !linkedCts.Token.IsCancellationRequested)
             {
-                var request = await ReceiveRequestAsync(webSocket, linkedCts.Token);
+                var request = await ReceiveRequestAsync(webSocket, logger, linkedCts.Token);
                 if (request is null)
                 {
                     break;
@@ -82,7 +88,14 @@ public static class WebSocketEventStreamWriter
                 object payload;
                 try
                 {
+                    var sanitizedCommand = LogSanitizer.SanitizeLogField(request.Command ?? "", 100);
+                    var sanitizedRequestId = LogSanitizer.SanitizeLogField(request.RequestId ?? "", 50);
+                    
+                    logger.LogInformation("[WebSocketEventStreamWriter] Processing request - Command: {Command}, RequestId: {RequestId}", 
+                        sanitizedCommand, sanitizedRequestId);
                     var data = await requestHandler(request, linkedCts.Token);
+                    logger.LogInformation("[WebSocketEventStreamWriter] Request handler completed successfully");
+                    
                     payload = new
                     {
                         type = "result",
@@ -91,15 +104,22 @@ public static class WebSocketEventStreamWriter
                         data
                     };
                 }
+                catch (OperationCanceledException)
+                {
+                    // Cancellation is expected (client disconnect or server shutdown) — propagate
+                    // so the outer loop exits cleanly without building an error payload.
+                    throw;
+                }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "WebSocket CRUD command failed: {Command}", request.Command);
+                    var sanitizedCommand = LogSanitizer.SanitizeLogField(request.Command ?? "", 100);
+                    logger.LogError(ex, "WebSocket CRUD command failed: {Command}", sanitizedCommand);
 
                     // Determine client-facing error message (sanitize sensitive information)
                     var clientErrorMessage = ex switch
                     {
-                        UnauthorizedAccessException => ex.Message,
-                        InvalidOperationException => ex.Message,
+                        UnauthorizedAccessException => "Unauthorized",
+                        InvalidOperationException => "Invalid operation",
                         ArgumentException => "Bad request",
                         JsonException => "Bad request",
                         _ => "Internal server error"
@@ -115,7 +135,7 @@ public static class WebSocketEventStreamWriter
                 }
 
                 // Send response (transport errors will propagate and close session)
-                await SendJsonAsync(webSocket, payload, sendLock, linkedCts.Token);
+                await SendJsonAsync(webSocket, payload, sendLock, logger, linkedCts.Token);
             }
         }
         finally
@@ -133,7 +153,7 @@ public static class WebSocketEventStreamWriter
             catch (Exception ex)
             {
                 // Log unexpected exceptions from event pump (e.g., from WithCancellation or SendJsonAsync)
-                logger.LogError(ex, "Event pump task faulted with unexpected exception: {Message}", ex.Message);
+                logger.LogError(ex, "Event pump task faulted with unexpected exception");
             }
 
             if (webSocket.State == WebSocketState.Open)
@@ -147,6 +167,7 @@ public static class WebSocketEventStreamWriter
     /// Reads one text message from the provided WebSocket, parses the message as JSON, and returns a deserialized RealtimeCrudRequest.
     /// </summary>
     /// <param name="webSocket">The active WebSocket to receive the message from.</param>
+    /// <param name="logger">Logger for diagnostic messages.</param>
     /// <param name="cancellationToken">Token to observe for cancellation of the receive operation.</param>
     /// <returns>
     /// A <see cref="RealtimeCrudRequest"/> parsed from the received JSON text message, or <c>null</c> if the connection was closed, the message was rejected (non-text, too large, or invalid JSON), or the close handshake completed.
@@ -154,7 +175,7 @@ public static class WebSocketEventStreamWriter
     /// <remarks>
     /// On protocol or payload errors this method will initiate a close using an appropriate WebSocket close status (for example InvalidMessageType, MessageTooBig, or InvalidPayloadData).
     /// </remarks>
-    private static async Task<RealtimeCrudRequest?> ReceiveRequestAsync(WebSocket webSocket, CancellationToken cancellationToken)
+    private static async Task<RealtimeCrudRequest?> ReceiveRequestAsync(WebSocket webSocket, ILogger logger, CancellationToken cancellationToken)
     {
         var buffer = new byte[8 * 1024];
         using var messageBuffer = new MemoryStream();
@@ -178,6 +199,7 @@ public static class WebSocketEventStreamWriter
             // Reject non-text frames
             if (result.MessageType != WebSocketMessageType.Text)
             {
+                logger.LogWarning("[WebSocketEventStreamWriter] Rejecting non-text frame: {MessageType}", result.MessageType);
                 await webSocket.CloseAsync(
                     WebSocketCloseStatus.InvalidMessageType,
                     "Only text frames are supported",
@@ -191,6 +213,8 @@ public static class WebSocketEventStreamWriter
 
                 if (messageBuffer.Length > MaxIncomingMessageSize)
                 {
+                    logger.LogWarning("[WebSocketEventStreamWriter] Message too large: {Size} bytes (max: {MaxSize})", 
+                        messageBuffer.Length, MaxIncomingMessageSize);
                     await webSocket.CloseAsync(
                         WebSocketCloseStatus.MessageTooBig,
                         $"Message exceeds maximum size of {MaxIncomingMessageSize} bytes",
@@ -206,17 +230,40 @@ public static class WebSocketEventStreamWriter
         }
 
         var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
+        logger.LogDebug("[WebSocketEventStreamWriter] <<<< RECEIVED RAW: {Json}", json);
 
         // Wrap JSON deserialization in try-catch to handle invalid JSON
         try
         {
-            return JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+            var request = JsonSerializer.Deserialize<RealtimeCrudRequest>(json, JsonOptions);
+            
+            var sanitizedCommand = LogSanitizer.SanitizeLogField(request?.Command ?? "", 100);
+            var sanitizedRequestId = LogSanitizer.SanitizeLogField(request?.RequestId ?? "", 50);
+            var sanitizedId = request?.Id?.ToString() ?? "null";
+            
+            logger.LogInformation("[WebSocketEventStreamWriter] Parsed request - Command: {Command}, RequestId: {RequestId}, Id: {Id}",
+                sanitizedCommand, sanitizedRequestId, sanitizedId);
+
+            // Validate the deserialized request
+            if (request == null || string.IsNullOrWhiteSpace(request.Command))
+            {
+                logger.LogWarning("[WebSocketEventStreamWriter] Malformed envelope - null request or empty Command field");
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.InvalidPayloadData,
+                    "Malformed envelope: Command field is required",
+                    CancellationToken.None);
+                return null;
+            }
+
+            return request;
         }
         catch (JsonException ex)
         {
+            var sanitizedJsonError = LogSanitizer.SanitizeLogField(ex.Message ?? string.Empty, 200);
+            logger.LogError(ex, "[WebSocketEventStreamWriter] JSON parse error: {Message}", sanitizedJsonError);
             await webSocket.CloseAsync(
                 WebSocketCloseStatus.InvalidPayloadData,
-                $"Invalid JSON: {ex.Message}",
+                "Invalid JSON payload",
                 CancellationToken.None);
             return null;
         }
@@ -228,16 +275,34 @@ public static class WebSocketEventStreamWriter
     /// <param name="socket">The target WebSocket to send the JSON text frame to.</param>
     /// <param name="payload">The object to serialize to JSON for transmission.</param>
     /// <param name="sendLock">A semaphore used to enforce single-concurrent-send semantics.</param>
+    /// <param name="logger">Logger for diagnostic messages.</param>
     /// <param name="cancellationToken">Token to observe for cancellation of wait or send operations.</param>
-    private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
+    private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, ILogger logger, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(payload, JsonOptions);
+        logger.LogDebug("[WebSocketEventStreamWriter] >>>> SENDING: {Json}", json);
+        
         var bytes = Encoding.UTF8.GetBytes(json);
 
         await sendLock.WaitAsync(cancellationToken);
         try
         {
             await socket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+            logger.LogDebug("[WebSocketEventStreamWriter] Message sent successfully ({ByteCount} bytes)", bytes.Length);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
+        {
+            // Cancellation is expected during shutdown – log at Debug level and rethrow
+            logger.LogDebug("[WebSocketEventStreamWriter] Send cancelled: {ErrorType}", ex.GetType().Name);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Sanitize exception message to prevent log injection
+            var sanitizedMessage = LogSanitizer.SanitizeLogField(ex.Message, 200);
+            logger.LogError(ex, "[WebSocketEventStreamWriter] Send error: {ErrorType}: {Message}",
+                ex.GetType().Name, sanitizedMessage);
+            throw;
         }
         finally
         {

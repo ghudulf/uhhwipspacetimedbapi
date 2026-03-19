@@ -26,7 +26,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                     <TextBox Grid.Column="0" 
                              Text="{Binding SearchText}"
-                             Watermark="Поиск по фамилии, имени, отчеству или должности..."
+                             PlaceholderText="Поиск по фамилии, имени, отчеству или должности..."
                              Margin="0,0,10,0"/>
                     <Button Grid.Column="1" 
                             Command="{Binding AddCommand}"
@@ -62,22 +62,22 @@
                   Margin="0,0,0,10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" 
-                                    Binding="{Binding EmployeeId}"
+                                    Binding="{ReflectionBinding EmployeeId}"
                                     Width="Auto"/>
                 <DataGridTextColumn Header="Фамилия" 
-                                    Binding="{Binding Surname}"
+                                    Binding="{ReflectionBinding Surname}"
                                     Width="*"/>
                 <DataGridTextColumn Header="Имя" 
-                                    Binding="{Binding Name}"
+                                    Binding="{ReflectionBinding Name}"
                                     Width="*"/>
                 <DataGridTextColumn Header="Отчество" 
-                                    Binding="{Binding Patronym}"
+                                    Binding="{ReflectionBinding Patronym}"
                                     Width="*"/>
                 <DataGridTextColumn Header="Дата приема" 
-                                    Binding="{Binding EmployedSinceDisplay}"
+                                    Binding="{ReflectionBinding EmployedSinceDisplay}"
                                     Width="Auto"/>
                 <DataGridTextColumn Header="Должность" 
-                                    Binding="{Binding JobTitle}"
+                                    Binding="{ReflectionBinding JobTitle}"
                                     Width="*"/>
             </DataGrid.Columns>
         </DataGrid>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.ProfilePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:nav="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Controls"
+    BackgroundColor="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <nav:DesktopTopNav Grid.Row="0" ActiveRoute="profile" />
+
+        <VerticalStackLayout Grid.Row="1"
+                             Padding="32,24,32,32"
+                             Spacing="0">
+
+            <Label Text="Профиль"
+                   FontSize="26"
+                   FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                   Margin="0,0,0,24" />
+
+            <VerticalStackLayout HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 Spacing="16"
+                                 Margin="0,40,0,0">
+
+                <Border BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceVariantLight}, Dark={StaticResource SurfaceVariantDark}}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 40"
+                        WidthRequest="80" HeightRequest="80"
+                        HorizontalOptions="Center">
+                    <Label Text="👤" FontSize="36"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+
+                <Label Text="Профиль пользователя"
+                       FontSize="17"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                       HorizontalOptions="Center" />
+
+                <Button Text="Выйти из системы"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource BrandAccentRed}"
+                        BorderColor="{StaticResource BrandAccentRed}"
+                        BorderWidth="1"
+                        CornerRadius="10"
+                        Padding="32,12"
+                        SemanticProperties.Hint="Logs you out of the app"
+                        SemanticProperties.Description="Logout button, activates sign-out and returns to the login screen"
+                        Clicked="OnLogoutClicked" />
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

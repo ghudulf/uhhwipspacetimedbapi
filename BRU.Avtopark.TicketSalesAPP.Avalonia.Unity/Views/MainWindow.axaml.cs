@@ -12,7 +12,7 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 using Material.Icons;
 using Reactive.Bindings;
-using ReDocking;
+ 
 using System;
 using System.Collections.Specialized;
 using System.Linq;
@@ -40,12 +40,16 @@ public partial class MainWindow : Window
     private Button? _systemSettingsButton;
     private Button? _createBackupButton;
     private Button? _testTokenButton;
+    private Button? _webSocketDebugButton;
     
     // Command buttons
     private Button? _okButton;
     private Button? _exitButton;
     private Button? _logoutAndExitButton;
     private Button? _helpButton;
+
+    // WebSocket debug window singleton
+    private WebSocketDebugWindow? _webSocketDebugWindow;
 
     private void InitializeComponent()
     {
@@ -54,144 +58,37 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        ExtendClientAreaChromeHints =
-            ExtendClientAreaChromeHints.SystemChrome | ExtendClientAreaChromeHints.OSXThickTitleBar;
-        ExtendClientAreaToDecorationsHint = true;
-        ExtendClientAreaTitleBarHeightHint = 22;
+#if DESKTOP
+        WindowDecorations = WindowDecorations.None;
+#else
+        // On MAUI mobile/browser targets, hide the custom titlebar row at runtime
+        // since #if guards cannot be used in .axaml files.
+        this.Loaded += (_, _) =>
+        {
+            var titleBarGrid = this.FindControl<Grid>("TitleBarGrid");
+            if (titleBarGrid != null)
+                titleBarGrid.IsVisible = false;
+
+            var rootGrid = this.FindControl<Grid>("RootGrid");
+            if (rootGrid?.RowDefinitions.Count > 0)
+                rootGrid.RowDefinitions[0].Height = new GridLength(0);
+        };
+#endif
         _viewModel = new MainWindowViewModel();
-        _viewModel.FloatingWindows.CollectionChanged += FloatingWindowsOnCollectionChanged;
+        
         DataContext = _viewModel;
 
         InitializeComponent();
-        
+
+#if DESKTOP
         // Setup title bar after components are initialized
         SetupTitleBar();
-        SetupUtilityButtons();
-        SetupCommandButtons();
+#endif
+        
         SubscribeToWindowState();
     }
 
-    private void FloatingWindowsOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.Action == NotifyCollectionChangedAction.Add)
-        {
-            foreach (ToolWindowViewModel item in e.NewItems!)
-            {
-                _ = new ToolWindow(item, this);
-            }
-        }
-        else if (e.Action == NotifyCollectionChangedAction.Remove)
-        {
-            foreach (ToolWindowViewModel item in e.OldItems!)
-            {
-                this.OwnedWindows.FirstOrDefault(x => x.DataContext == item)?.Close();
-            }
-        }
-    }
-
-    private void OnSideBarButtonDrop(object? sender, SideBarButtonMoveEventArgs e)
-    {
-        if (DataContext is not MainWindowViewModel viewModel) return;
-        var oldItems = GetItemsSource(viewModel, e.SourceLocation);
-        var oldSelectedItem = GetSelectedItem(viewModel, e.SourceLocation);
-        var newItems = GetItemsSource(viewModel, e.DestinationLocation);
-
-        if (e.Item is not ToolWindowViewModel item)
-        {
-            return;
-        }
-
-        if (oldSelectedItem.Value == item)
-        {
-            oldSelectedItem.Value = null;
-        }
-
-        if (oldItems == newItems)
-        {
-            var sourceIndex = oldItems.IndexOf(item);
-            var destinationIndex = e.DestinationIndex;
-            if (sourceIndex < destinationIndex)
-            {
-                destinationIndex--;
-            }
-            try
-            {
-                oldItems.Move(sourceIndex, destinationIndex);
-                item.IsSelected.Value = true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-        else
-        {
-            oldItems.Remove(item);
-            var newItem = new ToolWindowViewModel(item.Name.Value, item.Icon.Value, item.Content.Value);
-            newItems.Insert(e.DestinationIndex, newItem);
-            newItem.IsSelected.Value = true;
-        }
-
-        e.Handled = true;
-    }
-
-    internal static ReactiveCollection<ToolWindowViewModel> GetItemsSource(MainWindowViewModel viewModel,
-        DockAreaLocation location)
-    {
-        return (location.ButtonLocation, location.LeftRight) switch
-        {
-            (SideBarButtonLocation.UpperTop, SideBarLocation.Left) => viewModel.LeftUpperTopTools,
-            (SideBarButtonLocation.UpperBottom, SideBarLocation.Left) => viewModel.LeftUpperBottomTools,
-            (SideBarButtonLocation.LowerTop, SideBarLocation.Left) => viewModel.LeftLowerTopTools,
-            (SideBarButtonLocation.LowerBottom, SideBarLocation.Left) => viewModel.LeftLowerBottomTools,
-            (SideBarButtonLocation.UpperTop, SideBarLocation.Right) => viewModel.RightUpperTopTools,
-            (SideBarButtonLocation.UpperBottom, SideBarLocation.Right) => viewModel.RightUpperBottomTools,
-            (SideBarButtonLocation.LowerTop, SideBarLocation.Right) => viewModel.RightLowerTopTools,
-            (SideBarButtonLocation.LowerBottom, SideBarLocation.Right) => viewModel.RightLowerBottomTools,
-            _ => throw new ArgumentOutOfRangeException(nameof(location), location, null)
-        };
-    }
-
-    private static ReactiveProperty<ToolWindowViewModel?> GetSelectedItem(MainWindowViewModel viewModel,
-        DockAreaLocation location)
-    {
-        return (location.ButtonLocation, location.LeftRight) switch
-        {
-            (SideBarButtonLocation.UpperTop, SideBarLocation.Left) => viewModel.SelectedLeftUpperTopTool,
-            (SideBarButtonLocation.UpperBottom, SideBarLocation.Left) => viewModel.SelectedLeftUpperBottomTool,
-            (SideBarButtonLocation.LowerTop, SideBarLocation.Left) => viewModel.SelectedLeftLowerTopTool,
-            (SideBarButtonLocation.LowerBottom, SideBarLocation.Left) => viewModel.SelectedLeftLowerBottomTool,
-            (SideBarButtonLocation.UpperTop, SideBarLocation.Right) => viewModel.SelectedRightUpperTopTool,
-            (SideBarButtonLocation.UpperBottom, SideBarLocation.Right) => viewModel.SelectedRightUpperBottomTool,
-            (SideBarButtonLocation.LowerTop, SideBarLocation.Right) => viewModel.SelectedRightLowerTopTool,
-            (SideBarButtonLocation.LowerBottom, SideBarLocation.Right) => viewModel.SelectedRightLowerBottomTool,
-            _ => throw new ArgumentOutOfRangeException(nameof(location), location, null)
-        };
-    }
-
-    private void OnSideBarButtonDisplayModeChanged(object? sender, SideBarButtonDisplayModeChangedEventArgs e)
-    {
-        if (DataContext is not MainWindowViewModel viewModel) return;
-        if (e.Item is not ToolWindowViewModel item || item.DisplayMode.Value == e.DisplayMode) return;
-        item.IsSelected.Value = false;
-        item.DisplayMode.Value = e.DisplayMode;
-        item.IsSelected.Value = true;
-        if (e.DisplayMode == DockableDisplayMode.Floating)
-        {
-            viewModel.FloatingWindows.Add(item);
-        }
-        else
-        {
-            viewModel.FloatingWindows.Remove(item);
-        }
-
-        e.Handled = true;
-    }
-
-    private void OnButtonFlyoutRequested(object? sender, SideBarButtonFlyoutRequestedEventArgs e)
-    {
-        
-    }
+     
     private void SetupTitleBar()
     {
         _minimizeButton = this.FindControl<Button>("MinimizeButton");
@@ -220,7 +117,9 @@ public partial class MainWindow : Window
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
+#if DESKTOP
             BeginMoveDrag(e);
+#endif
         }
     }
 
@@ -258,7 +157,7 @@ public partial class MainWindow : Window
 
     private void DragOver(object sender, DragEventArgs e)
     {
-        if (e.Data.Contains(DataFormats.Text))
+        if (e.DataTransfer.Contains(DataFormat.Text))
         {
             e.DragEffects = DragDropEffects.Move;
         }
@@ -266,38 +165,14 @@ public partial class MainWindow : Window
 
     private void Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.Contains(DataFormats.Text))
+        if (e.DataTransfer.Contains(DataFormat.Text))
         {
-            var window = e.Data.Get(DataFormats.Text) as Window;
-            if (window != null)
-            {
-                var vm = DataContext as BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.MainWindowViewModel;
-                if (vm != null)
-                {
-                    // Extract content and create tab
-                    var content = window.Content as Control;
-                    window.Content = null;
-                    window.Hide();
-
-                    
-                }
-            }
+            var text = e.DataTransfer.TryGetText();
+            // Drag-and-drop text handling placeholder
+            _ = text;
         }
     }
 
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-
-        var aboutButton = this.FindControl<Button>("AboutButton");
-        var helpButton = this.FindControl<Button>("HelpButton");
-
-        if (aboutButton != null)
-            aboutButton.Click += AboutButton_Click;
-
-        if (helpButton != null)
-            helpButton.Click += HelpButton_Click;
-    }
 
     private async void AboutButton_Click(object? sender, RoutedEventArgs e)
     {
@@ -310,73 +185,7 @@ public partial class MainWindow : Window
         // Example: new HelpWindow().ShowDialog(this);
     }
 
-    private void SetupUtilityButtons()
-    {
-        // Connect utility buttons from XAML
-        _runEmployeeManagementButton = this.FindControl<Button>("RunEmployeeManagementButton");
-        _runBusManagementButton = this.FindControl<Button>("RunBusManagementButton");
-        _runRouteManagementButton = this.FindControl<Button>("RunRouteManagementButton");
-        _runTicketSalesButton = this.FindControl<Button>("RunTicketSalesButton");
-        _runMaintenanceButton = this.FindControl<Button>("RunMaintenanceButton");
-        _runReportsButton = this.FindControl<Button>("RunReportsButton");
-        _openCentralViewButton = this.FindControl<Button>("OpenCentralViewButton");
-        _systemSettingsButton = this.FindControl<Button>("SystemSettingsButton");
-        _createBackupButton = this.FindControl<Button>("CreateBackupButton");
-        _testTokenButton = this.FindControl<Button>("TestTokenButton");
-        
-        // Attach event handlers to utility buttons
-        if (_runEmployeeManagementButton != null)
-            _runEmployeeManagementButton.Click += RunEmployeeManagement_Click;
-            
-        if (_runBusManagementButton != null)
-            _runBusManagementButton.Click += RunBusManagement_Click;
-            
-        if (_runRouteManagementButton != null)
-            _runRouteManagementButton.Click += RunRouteManagement_Click;
-            
-        if (_runTicketSalesButton != null)
-            _runTicketSalesButton.Click += RunTicketSales_Click;
-            
-        if (_runMaintenanceButton != null)
-            _runMaintenanceButton.Click += RunMaintenance_Click;
-            
-        if (_runReportsButton != null)
-            _runReportsButton.Click += RunReports_Click;
-            
-        if (_openCentralViewButton != null)
-            _openCentralViewButton.Click += OpenCentralView_Click;
-            
-        if (_systemSettingsButton != null)
-            _systemSettingsButton.Click += SystemSettings_Click;
-            
-        if (_createBackupButton != null)
-            _createBackupButton.Click += CreateBackup_Click;
-            
-        if (_testTokenButton != null)
-            _testTokenButton.Click += TestToken_Click;
-    }
     
-    private void SetupCommandButtons()
-    {
-        // Connect command buttons from XAML
-        _okButton = this.FindControl<Button>("OKButton");
-        _exitButton = this.FindControl<Button>("ExitButton");
-        _logoutAndExitButton = this.FindControl<Button>("LogoutAndExitButton");
-        _helpButton = this.FindControl<Button>("HelpButton");
-        
-        // Attach event handlers to command buttons
-        if (_okButton != null)
-            _okButton.Click += OKButton_Click;
-            
-        if (_exitButton != null)
-            _exitButton.Click += ExitButton_Click;
-            
-        if (_logoutAndExitButton != null)
-            _logoutAndExitButton.Click += LogoutAndExitButton_Click;
-            
-        if (_helpButton != null)
-            _helpButton.Click += HelpButton_Click;
-    }
 
     // Event handlers for utility buttons
     private void RunEmployeeManagement_Click(object? sender, RoutedEventArgs e)
@@ -418,7 +227,8 @@ public partial class MainWindow : Window
     private void OpenCentralView_Click(object? sender, RoutedEventArgs e)
     {
         // Create and show the Central View window
-        var centralViewWindow = new CentralViewWindow
+        var centralViewWindow = new CentralViewWindow(
+            new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel())
         {
             WindowStartupLocation = WindowStartupLocation.CenterScreen
         };
@@ -601,5 +411,17 @@ public partial class MainWindow : Window
             Environment.Exit(0);
         }
     }
-    
+
+    private void OpenWebSocketDebug_Click(object? sender, RoutedEventArgs e)
+    {
+        // Reuse existing window if it's still open (including minimized state)
+        if (_webSocketDebugWindow == null)
+        {
+            _webSocketDebugWindow = new WebSocketDebugWindow();
+            _webSocketDebugWindow.Closed += (s, args) => _webSocketDebugWindow = null;
+        }
+
+        _webSocketDebugWindow.Show();
+        _webSocketDebugWindow.Activate();
+    }
 }

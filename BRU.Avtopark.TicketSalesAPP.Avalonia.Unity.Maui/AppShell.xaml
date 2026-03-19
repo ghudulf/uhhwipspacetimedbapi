@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages"
+    Title="BRU Avtopark"
+    FlyoutBehavior="Disabled"
+    Shell.NavBarIsVisible="False"
+    Shell.TabBarIsVisible="False">
+
+    <!-- ── Unauthenticated flow ──────────────────────────────────────── -->
+
+    <ShellContent Route="splash"
+                  ContentTemplate="{DataTemplate pages:SplashPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />   <!-- IF SPLASH IS UNDEFINED HERE IT WONT FUCKING RUN AT APP START UP - DO NOT REMOVE-->
+
+    <ShellContent Route="login"
+                  ContentTemplate="{DataTemplate pages:LoginSelectorPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="oauth-login"
+                  ContentTemplate="{DataTemplate pages:OAuthLoginPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="traditional-login"
+                  ContentTemplate="{DataTemplate pages:TraditionalLoginPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- ── Desktop: flat ShellContent items — no Tab wrapper = no tab bar.
+         Custom DesktopTopNav inside each page handles navigation.
+         Toggled visible in code-behind when IsDesktop == true.         -->
+    <ShellContent x:Name="DesktopDashboard"
+                  Route="dashboard"
+                  IsVisible="False"
+                  ContentTemplate="{DataTemplate pages:MainContentPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent x:Name="DesktopRoutes"
+                  Route="routes"
+                  IsVisible="False"
+                  ContentTemplate="{DataTemplate pages:RoutesPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent x:Name="DesktopTickets"
+                  Route="tickets"
+                  IsVisible="False"
+                  ContentTemplate="{DataTemplate pages:TicketsPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent x:Name="DesktopProfile"
+                  Route="profile"
+                  IsVisible="False"
+                  ContentTemplate="{DataTemplate pages:ProfilePage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- ── Mobile: FlyoutItem > multiple Tab = BOTTOM tab bar ──────────
+         Each Tab becomes a bottom tab item on Android/iOS.
+         Toggled visible in code-behind when IsDesktop == false.        -->
+    <FlyoutItem x:Name="MobileTabs"
+                Route="main_mobile"
+                IsVisible="False"
+                Shell.NavBarIsVisible="False">
+        <Tab Title="Главная" Route="dashboard_tab" Shell.NavBarIsVisible="False">
+            <ShellContent Route="dashboard_m"
+                          ContentTemplate="{DataTemplate pages:MainContentPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+        <Tab Title="Маршруты" Route="routes_tab" Shell.NavBarIsVisible="False">
+            <ShellContent Route="routes_m"
+                          ContentTemplate="{DataTemplate pages:RoutesPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+        <Tab Title="Билеты" Route="tickets_tab" Shell.NavBarIsVisible="False">
+            <ShellContent Route="tickets_m"
+                          ContentTemplate="{DataTemplate pages:TicketsPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+        <Tab Title="Профиль" Route="profile_tab" Shell.NavBarIsVisible="False">
+            <ShellContent Route="profile_m"
+                          ContentTemplate="{DataTemplate pages:ProfilePage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+    </FlyoutItem>
+
+</Shell>

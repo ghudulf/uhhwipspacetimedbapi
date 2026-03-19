@@ -655,9 +655,9 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 **Migration Strategy Context**:
 - **Phase 1 (Weeks 1-7)**: Build new modular architecture in Experimental folder WITHOUT touching AuthController
 - **Phase 2 (Week 8)**: Add feature flag system to orchestration layer
-- **Phase 3 (Weeks 9-10)**: Modify AuthController to check feature flags and delegate to new architecture when enabled
+- **Phase 3 (Weeks 9-10)**: Create dual-controller architecture with dynamic routing based on feature flags
 - **Phase 4 (Post-deployment)**: Gradually enable feature flags, monitor, improve as needed
-- **Phase 5 (Final)**: Once fully validated, remove legacy code and feature flags
+- **Phase 6 (Cleanup and Repurposing)**: Delete legacy controller, rename refactored controller, KEEP feature flags for operational flexibility (repurposed for endpoint availability control - enable/disable endpoints for operational needs)
 
 **Critical Constraint**: The current AuthController (8,293 lines) MUST remain completely untouched and operational until Phase 3. All new code is built in parallel in the Experimental folder, allowing the system to continue functioning normally during development.
 
@@ -769,13 +769,15 @@ The refactoring follows a strict **copy-first, modify-later** approach to ensure
 - **Critical**: Can instantly rollback by disabling flag
 - **Result**: New architecture validated in production with real traffic
 
-**Phase 5: Cleanup (After full validation)**
-- Remove feature flag checks from AuthController
-- Remove legacy code paths
-- Delete old helper methods
-- Reduce AuthController from 8,293 lines to ~2,000 lines
+**Phase 6: Cleanup (After full validation)**
+- Delete legacy AuthController.cs file (8,293 lines)
+- Rename AuthControllerRefactored.cs to AuthController.cs
+- Remove routing infrastructure ([LegacyAction]/[RefactoredAction] attributes)
+- KEEP feature flag infrastructure for operational flexibility
+- Repurpose feature flags for endpoint availability control
+- Add feature flag checks to enable/disable endpoints (503 if disabled)
 - **Critical**: Only done after weeks/months of stable operation
-- **Result**: Clean, maintainable codebase
+- **Result**: Clean architecture (~2,000-2,500 lines) with operational control via feature flags
 
 **Risk Mitigation**:
 - Legacy code continues working throughout Phases 1-3
@@ -1088,12 +1090,15 @@ public async Task<LoginResult> LoginAsync(string username, string password)
 - **AuthController**: Running both code paths
 - **Risk Level**: CONTROLLED - instant rollback available
 
-**Phase 6: Legacy Code Removal (After validation)** - Zero Risk
-- Remove feature flag checks
-- Remove legacy code paths
-- Remove duplicated helper methods
+**Phase 6: Legacy Code Cleanup and Repurposing (After validation)** - Zero Risk
+- Delete legacy AuthController.cs file
+- Rename AuthControllerRefactored.cs to AuthController.cs
+- Remove routing infrastructure
+- KEEP feature flags for operational flexibility (repurposed for endpoint availability control)
+- **Risk Level**: ZERO - new code already validated
 - Clean up and optimize
 - **AuthController**: Simplified to ~2,000 lines
 - **Risk Level**: ZERO - new code already validated in production
 
 **Key Principle**: At no point during Phases 1-3 is the production system at risk. The existing AuthController continues serving all requests normally while the new architecture is built in parallel.
+

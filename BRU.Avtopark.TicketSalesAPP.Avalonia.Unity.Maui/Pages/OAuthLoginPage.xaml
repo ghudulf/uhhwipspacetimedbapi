@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.OAuthLoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:maui="clr-namespace:Avalonia.Controls.Maui.Controls;assembly=Avalonia.Controls.Maui"
+    xmlns:controls="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Controls;assembly=BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
+    BackgroundColor="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
+    Shell.NavBarIsVisible="False">
+
+    <Grid>
+
+        <!-- ── Page content ── -->
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- Header bar -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource AuthHeaderLight}, Dark={StaticResource AuthHeaderDark}}">
+                <Button Grid.Column="0"
+                        Text="← Назад"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                        FontSize="14"
+                        Padding="0"
+                        Clicked="OnBackClicked" />
+                <Label Grid.Column="1"
+                       Text="OAuth авторизация"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Grid>
+
+            <!-- Avalonia OAuthLoginControl -->
+            <maui:AvaloniaView
+                x:Name="OAuthAvaloniaView"
+                Grid.Row="1"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill">
+                <controls:OAuthLoginControl
+                    x:Name="OAuthControl" />
+            </maui:AvaloniaView>
+
+            <!-- Error footer -->
+            <Label x:Name="ErrorLabel"
+                   Grid.Row="2"
+                   Text=""
+                   TextColor="{StaticResource BrandAccentRed}"
+                   FontSize="13"
+                   HorizontalOptions="Center"
+                   Margin="16,8"
+                   IsVisible="False" />
+
+        </Grid>
+
+        <!-- Loading overlay -->
+        <Grid x:Name="LoadingOverlay"
+              IsVisible="False"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill"
+              InputTransparent="False">
+
+            <BoxView Color="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
+                     HorizontalOptions="Fill"
+                     VerticalOptions="Fill" />
+
+            <VerticalStackLayout
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Spacing="24">
+
+                <ActivityIndicator
+                    IsRunning="True"
+                    Color="{StaticResource BrandPrimary}"
+                    WidthRequest="56"
+                    HeightRequest="56"
+                    HorizontalOptions="Center" />
+
+                <Label Text="Выполняется авторизация..."
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                       FontSize="17"
+                       HorizontalOptions="Center" />
+
+                <Label Text="Пожалуйста, подождите"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                       FontSize="13"
+                       HorizontalOptions="Center" />
+
+            </VerticalStackLayout>
+
+        </Grid>
+
+    </Grid>
+</ContentPage>

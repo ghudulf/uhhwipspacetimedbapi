@@ -1,7 +1,6 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.ReactiveUI;
-using Avalonia.WebView.Desktop;
+  
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.File;
@@ -53,13 +52,17 @@ class Program
 
 
     // Avalonia configuration, don't remove; also used by visual designer.
+    // NOTE (Avalonia 12 migration): UsePlatformDetect() is valid in Avalonia 12 — no change needed.
+    // NOTE (Avalonia 12 migration): .UseDesktopWebView() has been removed. The project now targets
+    //   Avalonia 12 and uses Avalonia.Controls.WebView (12.0.0-preview2) via NativeWebView.
+    //   AvaloniaWebViewBuilder.Initialize(default) in App.axaml.cs no longer needs a #if DESKTOP guard.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace()
-            .UseReactiveUI()
-            .UseDesktopWebView();
+            .LogToTrace();
+             
+             
 
     private static void SilenceConsole()
     {

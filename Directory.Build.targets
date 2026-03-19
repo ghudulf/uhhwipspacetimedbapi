@@ -1,0 +1,31 @@
+<Project>
+  <!-- 
+    This file ensures proper build order and compatibility between:
+    - SpacetimeDB module (net8.0 + wasi-wasm)
+    - All other projects (net9.0)
+  -->
+  
+  <Target Name="ValidateSpacetimeDBModuleBuild"
+          BeforeTargets="Build"
+          Condition="'$(IsSpacetimeDBModule)' == 'true'">
+    <Message Text="Building SpacetimeDB module with .NET 8.0 and WASI-WASM runtime" Importance="high" />
+    <Error Text="SpacetimeDB module requires TargetFramework=net8.0 but got '$(TargetFramework)'"
+           Condition="'$(TargetFramework)' != 'net8.0'" />
+    <Error Text="SpacetimeDB module requires RuntimeIdentifier=wasi-wasm but got '$(RuntimeIdentifier)'"
+           Condition="'$(RuntimeIdentifier)' != 'wasi-wasm'" />
+    <Error Text="SpacetimeDB module requires .NET SDK major version 8, but got '$(NETCoreSdkVersion)'"
+           Condition="!$(NETCoreSdkVersion.StartsWith('8.'))" />
+  </Target>
+  
+  <Target Name="ValidateStandardProjectBuild" 
+          BeforeTargets="Build" 
+          Condition="'$(IsSpacetimeDBModule)' != 'true' AND ($(TargetFramework.StartsWith('net9.0')) OR $(TargetFramework.StartsWith('net10.0')) OR $(TargetFramework.StartsWith('net11.0')))">
+    <Message Text="Building $(MSBuildProjectName) with $(TargetFramework)" Importance="normal" />
+  </Target>
+
+  <Target Name="ValidateStandardProjectFramework"
+          BeforeTargets="Build"
+          Condition="!$(TargetFramework.StartsWith('net9.0')) AND !$(TargetFramework.StartsWith('net10.0')) AND !$(TargetFramework.StartsWith('net11.0')) AND '$(IsSpacetimeDBModule)' != 'true' AND '$(TargetFramework)' != ''">
+    <Error Text="Non-SpacetimeDB project '$(MSBuildProjectName)' must target net9.0, net10.0, or net11.0 but targets '$(TargetFramework)'" />
+  </Target>
+</Project>

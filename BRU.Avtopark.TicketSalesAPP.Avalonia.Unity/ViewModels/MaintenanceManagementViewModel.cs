@@ -379,9 +379,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 var lastServiceDatePicker = new DatePicker { SelectedDate = DateTimeOffset.Now };
                 var nextServiceDatePicker = new DatePicker { SelectedDate = DateTimeOffset.Now.AddMonths(1) };
-                var serviceEngineerBox = new TextBox { Watermark = "Инженер" };
-                var foundIssuesBox = new TextBox { Watermark = "Найденные проблемы" };
-                var roadworthinessBox = new TextBox { Watermark = "Состояние (напр., 'Good', 'Needs Repair')" };
+                var serviceEngineerBox = new TextBox { PlaceholderText = "Инженер" };
+                var foundIssuesBox = new TextBox { PlaceholderText = "Найденные проблемы" };
+                var roadworthinessBox = new TextBox { PlaceholderText = "Состояние (напр., 'Good', 'Needs Repair')" };
 
                 var addButton = new Button
                 {
@@ -529,19 +529,19 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var serviceEngineerBox = new TextBox
                 {
                     Text = SelectedRecord.Maintenance.ServiceEngineer,
-                    Watermark = "Инженер"
+                    PlaceholderText = "Инженер"
                 };
 
                 var foundIssuesBox = new TextBox
                 {
                     Text = SelectedRecord.Maintenance.FoundIssues,
-                    Watermark = "Найденные проблемы"
+                    PlaceholderText = "Найденные проблемы"
                 };
 
                 var roadworthinessBox = new TextBox
                 {
                     Text = SelectedRecord.Maintenance.Roadworthiness,
-                    Watermark = "Состояние"
+                    PlaceholderText = "Состояние"
                 };
 
                 var updateButton = new Button

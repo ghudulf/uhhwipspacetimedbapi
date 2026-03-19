@@ -27,16 +27,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             try
             {
-                // Calculate expiration time
                 tokens.ExpiresAt = DateTime.UtcNow.AddSeconds(tokens.ExpiresIn);
+                Console.WriteLine($"[TokenStorage] Saving tokens, ExpiresAt={tokens.ExpiresAt:u}, path={_tokenFilePath}");
 
                 var json = JsonSerializer.Serialize(tokens);
                 var encrypted = EncryptString(json);
                 await File.WriteAllBytesAsync(_tokenFilePath, encrypted);
+
+                Console.WriteLine($"[TokenStorage] Saved {encrypted.Length} bytes to {_tokenFilePath}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving tokens: {ex.Message}");
+                Console.WriteLine($"[TokenStorage] Error saving tokens: {ex.Message}");
                 throw;
             }
         }
@@ -47,16 +49,23 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 if (!File.Exists(_tokenFilePath))
                 {
+                    Console.WriteLine($"[TokenStorage] No token file at {_tokenFilePath}");
                     return null;
                 }
 
+                var fileInfo = new FileInfo(_tokenFilePath);
+                Console.WriteLine($"[TokenStorage] Reading token file: {fileInfo.Length} bytes, modified={fileInfo.LastWriteTimeUtc:u}");
+
                 var encrypted = await File.ReadAllBytesAsync(_tokenFilePath);
                 var json = DecryptString(encrypted);
-                return JsonSerializer.Deserialize<OAuthTokenResponse>(json);
+                var result = JsonSerializer.Deserialize<OAuthTokenResponse>(json);
+
+                Console.WriteLine($"[TokenStorage] Deserialized token: AccessToken.Length={result?.AccessToken?.Length ?? 0}, ExpiresAt={result?.ExpiresAt:u}");
+                return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading tokens: {ex.Message}");
+                Console.WriteLine($"[TokenStorage] Error reading tokens: {ex.GetType().Name}: {ex.Message}");
                 return null;
             }
         }

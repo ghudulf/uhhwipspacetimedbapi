@@ -23,8 +23,8 @@ namespace TicketSalesApp.AdminServer.Controllers
     {
         private readonly IRouteScheduleService _routeScheduleService;
         private readonly ILogger<RouteSchedulesController> _logger;
-
         private readonly IRealtimeEventBus _realtimeEventBus;
+        private readonly IConfiguration _configuration;
 
         /// <summary>
         /// Initializes a new instance of <see cref="RouteSchedulesController"/> with its required services.
@@ -32,15 +32,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="routeScheduleService">Service for managing route schedules.</param>
         /// <param name="logger">Logger for controller operations.</param>
         /// <param name="realtimeEventBus">Event bus used to publish and subscribe realtime schedule events.</param>
+        /// <param name="configuration">Application configuration for reading runtime settings.</param>
         /// <exception cref="ArgumentNullException">Thrown when any of the provided dependencies is null.</exception>
         public RouteSchedulesController(
             IRouteScheduleService routeScheduleService,
             ILogger<RouteSchedulesController> logger,
-            IRealtimeEventBus realtimeEventBus)
+            IRealtimeEventBus realtimeEventBus,
+            IConfiguration configuration)
         {
             _routeScheduleService = routeScheduleService ?? throw new ArgumentNullException(nameof(routeScheduleService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
        
@@ -73,7 +76,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>
         /// An object whose shape depends on the command:
-        /// - For "read_all": { schedules = IEnumerable of all schedules }.
+        /// - For "read_all": { schedules = IEnumerable of schedules, pagination = { page, pageSize, totalCount, totalPages } }.
         /// - For "read": { schedule = the schedule with the specified id }.
         /// - For "create": an operation result object containing operation, success flag and a snapshot of schedules after creation.
         /// - For "update": an operation result object containing operation, success flag, the updated entity and a snapshot of schedules.
@@ -85,65 +88,214 @@ namespace TicketSalesApp.AdminServer.Controllers
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
-            return command switch
+            
+            // Extract pagination parameters from root-level properties OR payload
+            int? page = request.Page;  // Try root-level property first
+            int? pageSize = request.PageSize;
+            
+            // Fallback to payload if root-level properties not set
+            if (request.Payload.HasValue && (!page.HasValue || !pageSize.HasValue))
             {
-                "read_all" => await HandleReadAllCommandAsync(),
-                "read" => await HandleReadCommandAsync(request),
-                "create" => await HandleCreateCommandAsync(request),
-                "update" => await HandleUpdateCommandAsync(request),
-                "delete" => await HandleDeleteCommandAsync(request),
-                _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
+                try
+                {
+                    var rootElement = request.Payload.Value;
+                    
+                    // Check root level
+                    if (!page.HasValue && rootElement.TryGetProperty("page", out var pageEl))
+                        page = pageEl.GetInt32();
+                    if (!pageSize.HasValue && rootElement.TryGetProperty("pageSize", out var pageSizeEl))
+                        pageSize = pageSizeEl.GetInt32();
+                    
+                    // Fallback: check nested payload property
+                    if (!page.HasValue || !pageSize.HasValue)
+                    {
+                        if (rootElement.TryGetProperty("payload", out var nestedPayload))
+                        {
+                            if (!page.HasValue && nestedPayload.TryGetProperty("page", out var nestedPageEl))
+                                page = nestedPageEl.GetInt32();
+                            if (!pageSize.HasValue && nestedPayload.TryGetProperty("pageSize", out var nestedPageSizeEl))
+                                pageSize = nestedPageSizeEl.GetInt32();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
+                        SanitizePayloadForLogging(request.Payload.Value));
+                }
+            }
+            
+            // Handle pagination navigation commands
+            switch (command)
+            {
+                case "read_all":
+                case "next_page":
+                case "prev_page":
+                case "first_page":
+                case "last_page":
+                case "goto_page":
+                    return await HandleNavigationCommandAsync(command, page, pageSize);
+                
+                case "read":
+                    return await HandleReadCommandAsync(request);
+                
+                case "create":
+                    return await HandleCreateCommandAsync(request);
+                
+                case "update":
+                    return await HandleUpdateCommandAsync(request);
+                
+                case "delete":
+                    return await HandleDeleteCommandAsync(request);
+                
+                default:
+                    throw new InvalidOperationException($"Unsupported command '{request.Command}'");
+            }
+        }
+
+        /// <summary>
+        /// Handle navigation commands by using server-side paging to avoid materializing entire table.
+        /// </summary>
+        private async Task<object> HandleNavigationCommandAsync(string command, int? page, int? pageSize)
+        {
+            // Calculate page size (enforcement deferred to service layer)
+            var currentPageSize = pageSize ?? 100;
+            if (currentPageSize < 1) currentPageSize = 100;
+
+            // Normalize initial page value
+            var initialPage = Math.Max(1, page ?? 1);
+
+            // Get first page to determine total count and pages
+            (List<RouteSchedule> initialItems, int totalCount) firstResult;
+            try
+            {
+                firstResult = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch initial page", command);
+                // throw; NO THROWS HERE - WE DONT WANT RUNTIME CRASHES 
+                   return new { error = "Failed to retrieve schedules", command };
+            }
+
+            var (initialItems, totalCount) = firstResult;
+            // If we got fewer items than requested, we're on the last page
+            var effectivePageSize = (initialItems.Count > 0 && initialItems.Count < currentPageSize)
+                ? initialItems.Count
+                : currentPageSize;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
+
+            // Normalize page within bounds
+            var currentPage = Math.Max(1, Math.Min(initialPage, totalPages));
+
+            // Apply navigation logic
+            switch (command)
+            {
+                case "next_page":
+                    currentPage = Math.Min(currentPage + 1, totalPages);
+                    break;
+                case "prev_page":
+                    currentPage = Math.Max(currentPage - 1, 1);
+                    break;
+                case "first_page":
+                    currentPage = 1;
+                    break;
+                case "last_page":
+                    currentPage = totalPages;
+                    break;
+                case "goto_page":
+                    // Already normalized above
+                    break;
+            }
+
+            _logger.LogInformation("RouteSchedules WebSocket {Command} - Page: {Page}/{TotalPages}, PageSize: {PageSize}, Total: {TotalCount}",
+                command, currentPage, totalPages, currentPageSize, totalCount);
+
+            // Reuse initialItems if page didn't change, otherwise fetch the new page
+            List<RouteSchedule> schedules;
+            if (currentPage == initialPage)
+            {
+                schedules = initialItems;
+            }
+            else
+            {
+                try
+                {
+                    schedules = (await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize)).Item1;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch page {Page}", command, currentPage);
+                    return new { error = ex.Message, command };
+                }
+            }
+
+            // Project schedules and return with pagination metadata
+            var result = schedules.Select(ProjectScheduleForList).ToList();
+
+            return new
+            {
+                schedules = result,
+                pagination = new
+                {
+                    page = currentPage,
+                    pageSize = effectivePageSize,
+                    totalCount = totalCount,
+                    totalPages = totalPages,
+                    hasNextPage = currentPage < totalPages,
+                    hasPreviousPage = currentPage > 1
+                }
             };
         }
 
         /// <summary>
-        /// Handle the realtime "read_all" command and return projected route schedules matching the REST DTO shape with timestamp conversions.
+        /// Shared helper method to apply pagination logic and return paginated schedules with metadata.
         /// </summary>
-        /// <returns>An object with a `schedules` property containing all projected route schedules.</returns>
-        private async Task<object> HandleReadAllCommandAsync()
+        /// <param name="schedules">The full collection of schedules to paginate.</param>
+        /// <param name="page">Page number (1-based). Defaults to 1 if not specified.</param>
+        /// <param name="pageSize">Number of items per page. Defaults to 100 if not specified. Maximum 500.</param>
+        /// <returns>An object with a `schedules` property containing paginated route schedules and a `pagination` property with metadata.</returns>
+        /// <remarks>
+        /// TODO: Refactor to use centralized pagination config and derive effectivePageSize from actual returned items count
+        /// to match the pattern used in HandleNavigationCommandAsync. Currently uses hardcoded defaults and requested pageSize.
+        /// </remarks>
+        private object ApplyPaginationAndProject(IReadOnlyList<RouteSchedule> schedules, int? page, int? pageSize)
         {
-            var schedules = await _routeScheduleService.GetAllSchedulesAsync();
+            // Apply defaults and validation
+            var currentPage = page ?? 1;
+            var maxPageSize = _configuration.GetValue<int?>("RouteSchedule:MaxPageSize") ?? 5000;
+            if (maxPageSize < 1) maxPageSize = 5000;
+            var currentPageSize = Math.Clamp(pageSize ?? 100, 1, maxPageSize);
 
-            // Map to anonymous type matching REST endpoint projection
-            var result = schedules.Select(s => new {
-                s.ScheduleId,
-                s.RouteId,
-                s.StartPoint,
-                s.RouteStops,
-                s.EndPoint,
-                s.DepartureTime,
-                s.ArrivalTime,
-                s.Price,
-                s.AvailableSeats,
-                s.SeatedCapacity,
-                s.StandingCapacity,
-                s.DaysOfWeek,
-                s.BusTypes,
-                s.IsActive,
-                s.ValidFrom,
-                s.ValidUntil,
-                s.StopDurationMinutes,
-                s.IsRecurring,
-                s.EstimatedStopTimes,
-                s.StopDistances,
-                s.Notes,
-                s.CreatedAt,
-                s.UpdatedAt,
-                s.UpdatedBy,
-                s.PeakHourLoad,
-                s.OffPeakHourLoad,
-                s.IsSpecialEvent,
-                s.SpecialEventName,
-                s.IsHoliday,
-                s.HolidayName,
-                s.IsWeekend,
-                s.SeatConfigurationId,
-                s.RequiresSeatReservation,
-                s.RouteType
-            }).ToList();
+            if (currentPage < 1) currentPage = 1;
 
-            return new { schedules = result };
+            var totalCount = schedules.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)currentPageSize));
+
+            // Clamp page to valid range
+            currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+
+            // Apply pagination
+            var pagedSchedules = schedules
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize);
+
+            // Map using centralized projection helper
+            var result = pagedSchedules.Select(ProjectScheduleForList).ToList();
+
+            return new {
+                schedules = result,
+                pagination = new {
+                    page = currentPage,
+                    pageSize = currentPageSize,
+                    totalCount = totalCount,
+                    totalPages = totalPages,
+                    hasNextPage = currentPage < totalPages,
+                    hasPreviousPage = currentPage > 1
+                }
+            };
         }
+
 
         /// <summary>
         /// Handle a realtime "read" command and return a single projected route schedule matching the REST DTO shape with timestamp conversions.
@@ -168,8 +320,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 schedule.StartPoint,
                 schedule.EndPoint,
                 schedule.RouteStops,
-                DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
-                ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).UtcDateTime,
+                ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).UtcDateTime,
                 schedule.Price,
                 schedule.AvailableSeats,
                 schedule.DaysOfWeek,
@@ -195,8 +347,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.create");
             var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var success = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), (ulong)new DateTimeOffset(m.DepartureTime).ToUnixTimeMilliseconds(), (ulong)new DateTimeOffset(m.ArrivalTime).ToUnixTimeMilliseconds(), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
-            var result = new { operation = "create", success };
+            var scheduleId = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
+            var success = scheduleId.HasValue;
+            var result = new { operation = "create", success, scheduleId };
 
             if (success)
             {
@@ -213,7 +366,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         UserName: null,
                         Tenant: null,
                         SourceIp: "internal",
-                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
+                        Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true", ["scheduleId"] = scheduleId.ToString() ?? "null" }
                     ));
                 }
                 catch (Exception ex)
@@ -242,32 +395,11 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), m.DepartureTime.HasValue ? (ulong)new DateTimeOffset(m.DepartureTime.Value).ToUnixTimeMilliseconds() : null, m.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(m.ArrivalTime.Value).ToUnixTimeMilliseconds() : null, m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, m.ValidUntil.HasValue ? (ulong)new DateTimeOffset(m.ValidUntil.Value).ToUnixTimeMilliseconds() : null);
+            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, ToUnixMsUtc(m.ValidUntil));
             var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
 
-            // Project entity to match REST endpoint shape
-            object? projectedEntity = null;
-            if (schedule != null)
-            {
-                projectedEntity = new {
-                    schedule.ScheduleId,
-                    schedule.RouteId,
-                    schedule.StartPoint,
-                    schedule.EndPoint,
-                    schedule.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
-                    schedule.Price,
-                    schedule.AvailableSeats,
-                    schedule.DaysOfWeek,
-                    schedule.BusTypes,
-                    schedule.StopDurationMinutes,
-                    schedule.IsRecurring,
-                    schedule.EstimatedStopTimes,
-                    schedule.StopDistances,
-                    schedule.Notes
-                };
-            }
+            // Project entity using the shared helper to ensure consistent shape and UtcDateTime usage
+            object? projectedEntity = schedule != null ? ProjectScheduleForList(schedule) : null;
 
             var result = new { operation = "update", success, entity = projectedEntity };
 
@@ -359,75 +491,52 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}", 
-                    page, pageSize, isActive);
-                
-                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
-                
-                _logger.LogInformation("Retrieved {TotalCount} total schedules from database", schedules.Count());
-                
-                // Filter by IsActive if specified
-                var filtered = schedules.AsEnumerable();
-                if (isActive.HasValue)
-                {
-                    filtered = filtered.Where(s => s.IsActive == isActive.Value);
-                    _logger.LogDebug("Filtered to {Count} schedules with IsActive={IsActive}", filtered.Count(), isActive.Value);
-                }
-                
-                // Apply pagination
-                var totalCount = filtered.Count();
-                var paged = filtered
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize);
-                
-                // Map to anonymous type with ALL fields - CRITICAL for client deserialization
-                var result = paged.Select(s => new {
-                    s.ScheduleId,
-                    s.RouteId,
-                    s.StartPoint,
-                    s.RouteStops,
-                    s.EndPoint,
-                    s.DepartureTime,
-                    s.ArrivalTime,
-                    s.Price,
-                    s.AvailableSeats,
-                    s.SeatedCapacity,
-                    s.StandingCapacity,
-                    s.DaysOfWeek,
-                    s.BusTypes,
-                    s.IsActive,
-                    s.ValidFrom,
-                    s.ValidUntil,
-                    s.StopDurationMinutes,
-                    s.IsRecurring,
-                    s.EstimatedStopTimes,
-                    s.StopDistances,
-                    s.Notes,
-                    s.CreatedAt,
-                    s.UpdatedAt,
-                    s.UpdatedBy,
-                    s.PeakHourLoad,
-                    s.OffPeakHourLoad,
-                    s.IsSpecialEvent,
-                    s.SpecialEventName,
-                    s.IsHoliday,
-                    s.HolidayName,
-                    s.IsWeekend,
-                    s.SeatConfigurationId,
-                    s.RequiresSeatReservation,
-                    s.RouteType
-                }).ToList();
+                if (pageSize < 1) pageSize = 1;
+                if (page < 1) page = 1;
 
-                _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
-                    result.Count, page, (int)Math.Ceiling(totalCount / (double)pageSize), totalCount);
-                
-                // Add pagination metadata to response headers
-                Response.Headers.Add("X-Total-Count", totalCount.ToString());
-                Response.Headers.Add("X-Page", page.ToString());
-                Response.Headers.Add("X-Page-Size", pageSize.ToString());
-                Response.Headers.Add("X-Total-Pages", ((int)Math.Ceiling(totalCount / (double)pageSize)).ToString());
-                
+                // Read max page size from configuration; fall back to 5000 if missing or invalid
+                var maxPageSize = _configuration.GetValue<int?>("RouteSchedule:MaxPageSize") ?? 5000;
+                if (maxPageSize < 1) maxPageSize = 5000;
+                var effectivePageSize = Math.Clamp(pageSize, 1, maxPageSize);
+
+                _logger.LogInformation("Fetching route schedules - Page: {Page}, PageSize: {PageSize}, IsActive: {IsActive}",
+                    page, effectivePageSize, isActive);
+
+                var query = new TicketSalesApp.Services.Models.ScheduleQuery { IsActive = isActive };
+                var (paged, totalCount) = await _routeScheduleService.GetSchedulesPageAsync(page, effectivePageSize, query);
+
+                var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)effectivePageSize));
+
+                // Clamp page to valid range
+                var normalizedPage = Math.Max(1, Math.Min(page, totalPages));
+
+                // If page was out of bounds, re-fetch with normalized page
+                List<RouteSchedule> finalPaged;
+                if (normalizedPage != page)
+                {
+                    (finalPaged, _) = await _routeScheduleService.GetSchedulesPageAsync(normalizedPage, effectivePageSize, query);
+                }
+                else
+                {
+                    finalPaged = paged;
+                }
+
+                var result = finalPaged.Select(ProjectScheduleForList).ToList();
+
+                _logger.LogInformation("Returning {Count} schedules (Page {Page}/{TotalPages}, Total: {TotalCount})",
+                    result.Count, normalizedPage, totalPages, totalCount);
+
+                Response.Headers["X-Total-Count"] = totalCount.ToString();
+                Response.Headers["X-Page"] = normalizedPage.ToString();
+                Response.Headers["X-Page-Size"] = effectivePageSize.ToString();
+                Response.Headers["X-Total-Pages"] = totalPages.ToString();
+
                 return Ok(result);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _logger.LogWarning(ex, "Invalid pagination parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+                return BadRequest($"Invalid pagination parameter: {ex.ParamName}. {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -457,8 +566,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     schedule.StartPoint,
                     schedule.EndPoint,
                     schedule.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).DateTime,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.DepartureTime).UtcDateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)schedule.ArrivalTime).UtcDateTime,
                     schedule.Price,
                     schedule.AvailableSeats,
                     schedule.DaysOfWeek,
@@ -545,13 +654,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogInformation("Target Date: {Date} ({DayOfWeek} / {DayOfWeekRussian})", 
                         targetDate.ToString("yyyy-MM-dd"), targetDayOfWeek, targetDayOfWeekRussian);
                     _logger.LogInformation("Target Date Range (Unix ms): {Start} to {End}", targetDateStartMs, targetDateEndMs);
-                    _logger.LogInformation("Total schedules before date filter: {Count}", query.Count());
                     
-                    // Count schedules by type before filtering for diagnostic purposes
-                    var totalBeforeFilter = query.Count();
-                    var recurringBeforeFilter = query.Count(s => s.IsRecurring);
+                    // Materialize query once before counting to avoid multiple enumerations
+                    var preFilterList = query.ToList();
+                    var totalBeforeFilter = preFilterList.Count;
+                    var recurringBeforeFilter = preFilterList.Count(s => s.IsRecurring);
                     var nonRecurringBeforeFilter = totalBeforeFilter - recurringBeforeFilter;
                     
+                    _logger.LogInformation("Total schedules before date filter: {Count}", totalBeforeFilter);
                     _logger.LogInformation("Schedules breakdown: {Total} total ({Recurring} recurring, {NonRecurring} non-recurring)", 
                         totalBeforeFilter, recurringBeforeFilter, nonRecurringBeforeFilter);
                     
@@ -596,9 +706,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                     });
                     
                     // Post-filter analysis and logging
-                    var totalAfterFilter = query.Count();
-                    var recurringAfterFilter = query.Count(s => s.IsRecurring);
+                    var matchedList = query.ToList();
+                    var totalAfterFilter = matchedList.Count;
+                    var recurringAfterFilter = matchedList.Count(s => s.IsRecurring);
                     var nonRecurringAfterFilter = totalAfterFilter - recurringAfterFilter;
+                    
+                    // Use matchedList for all subsequent operations to avoid re-executing the query
+                    query = matchedList.AsQueryable();
                     
                     _logger.LogInformation("Schedules after date filter: {Total} total ({Recurring} recurring, {NonRecurring} non-recurring)", 
                         totalAfterFilter, recurringAfterFilter, nonRecurringAfterFilter);
@@ -608,7 +722,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         nonRecurringBeforeFilter - nonRecurringAfterFilter);
                     
                     // Sample logging: show first few matching schedules for verification
-                    var sampleSchedules = query.Take(3).ToList();
+                    var sampleSchedules = matchedList.Take(3).ToList();
                     if (sampleSchedules.Any())
                     {
                         _logger.LogDebug("Sample matching schedules:");
@@ -635,12 +749,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                             targetDayOfWeek, targetDayOfWeekRussian);
                         _logger.LogWarning("  NOTE: ValidFrom/ValidUntil checks are disabled to avoid date range issues");
                         
-                        // DIAGNOSTIC: Sample filtered-out schedules to show WHY they were excluded
-                        var sampleFiltered = query.Take(5).ToList();
-                        if (sampleFiltered.Any())
+                        // DIAGNOSTIC: Sample excluded schedules to show WHY they were filtered out
+                        var excludedSchedules = preFilterList.Except(matchedList).Take(5).ToList();
+                        if (excludedSchedules.Any())
                         {
                             _logger.LogWarning("=== SAMPLE FILTERED-OUT SCHEDULES (showing why they were excluded) ===");
-                            foreach (var sample in sampleFiltered)
+                            foreach (var sample in excludedSchedules)
                             {
                                 var daysOfWeekStr = sample.DaysOfWeek != null ? string.Join(", ", sample.DaysOfWeek) : "null";
                                 var validFromDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sample.ValidFrom).ToString("yyyy-MM-dd");
@@ -700,7 +814,15 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // Get total count before pagination
                 var totalCount = query.Count();
-                
+
+                // Validate and normalize pagination to avoid divide-by-zero and 500s.
+                if (pageSize <= 0) pageSize = 50;
+                var maxPageSize = _configuration.GetValue<int>("RouteSchedule:MaxPageSize", 100);
+                pageSize = Math.Min(pageSize, maxPageSize);
+                if (page < 1) page = 1;
+                var totalPages = totalCount > 0 ? (int)Math.Ceiling(totalCount / (double)pageSize) : 1;
+                if (page > totalPages) page = totalPages;
+
                 // Apply pagination
                 var paged = query
                     .Skip((page - 1) * pageSize)
@@ -713,8 +835,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     s.StartPoint,
                     s.EndPoint,
                     s.RouteStops,
-                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).DateTime,
-                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).DateTime,
+                    DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).UtcDateTime,
+                    ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).UtcDateTime,
                     s.Price,
                     s.AvailableSeats,
                     s.DaysOfWeek,
@@ -727,7 +849,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }).ToList();
 
                 // Add pagination metadata to response headers
-                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
                 var metadata = new
                 {
                     TotalCount = totalCount,
@@ -772,13 +893,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 _logger.LogInformation("Creating new route schedule for route {RouteId}", model.RouteId);
 
-                var success = await _routeScheduleService.CreateScheduleAsync(
+                var scheduleId = await _routeScheduleService.CreateScheduleAsync(
                     routeId: model.RouteId,
                     startPoint: model.StartPoint,
                     endPoint: model.EndPoint,
                     routeStops: model.RouteStops?.ToList(),
-                    departureTime: (ulong)new DateTimeOffset(model.DepartureTime).ToUnixTimeMilliseconds(),
-                    arrivalTime: (ulong)new DateTimeOffset(model.ArrivalTime).ToUnixTimeMilliseconds(),
+                    departureTime: ToUnixMsUtc(model.DepartureTime),
+                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
                     price: model.Price,
                     availableSeats: model.AvailableSeats,
                     daysOfWeek: model.DaysOfWeek?.ToList(),
@@ -790,24 +911,23 @@ namespace TicketSalesApp.AdminServer.Controllers
                     notes: model.Notes
                 );
 
-                if (!success)
+                if (!scheduleId.HasValue)
                 {
                     _logger.LogWarning("Failed to create route schedule");
                     return BadRequest("Failed to create route schedule");
                 }
 
-                // Get the newly created schedule
-                var schedules = await _routeScheduleService.GetAllSchedulesAsync();
-                var schedule = schedules.LastOrDefault();
+                // Use the returned scheduleId to fetch the created schedule directly
+                var schedule = await _routeScheduleService.GetScheduleByIdAsync(scheduleId.Value);
 
                 if (schedule == null)
                 {
-                    _logger.LogError("Schedule was created but could not be retrieved");
+                    _logger.LogError("Schedule {ScheduleId} was created but could not be retrieved", scheduleId.Value);
                     return StatusCode(500, "Schedule was created but could not be retrieved");
                 }
 
                 _logger.LogInformation("Successfully created route schedule {ScheduleId}", schedule.ScheduleId);
-                return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, schedule);
+                return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, ProjectScheduleForList(schedule));
             }
             catch (Exception ex)
             {
@@ -835,8 +955,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     startPoint: model.StartPoint,
                     endPoint: model.EndPoint,
                     routeStops: model.RouteStops?.ToList(),
-                    departureTime: model.DepartureTime.HasValue ? (ulong)new DateTimeOffset(model.DepartureTime.Value).ToUnixTimeMilliseconds() : null,
-                    arrivalTime: model.ArrivalTime.HasValue ? (ulong)new DateTimeOffset(model.ArrivalTime.Value).ToUnixTimeMilliseconds() : null,
+                    departureTime: ToUnixMsUtc(model.DepartureTime),
+                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
                     price: model.Price,
                     availableSeats: model.AvailableSeats,
                     daysOfWeek: model.DaysOfWeek?.ToList(),
@@ -892,6 +1012,137 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogError(ex, "Error deleting route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while deleting the route schedule");
             }
+        }
+
+        /// <summary>
+        /// Projects a RouteSchedule entity to an anonymous object for list responses.
+        /// Centralizes the projection logic to avoid duplication across multiple methods.
+        /// </summary>
+        private static ulong ToUnixMsUtc(DateTime dt)
+        {
+            DateTime utc = dt.Kind == DateTimeKind.Utc ? dt
+                         : dt.Kind == DateTimeKind.Local ? dt.ToUniversalTime()
+                         : DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            return (ulong)new DateTimeOffset(utc).ToUnixTimeMilliseconds();
+        }
+
+        private static ulong? ToUnixMsUtc(DateTime? dt)
+        {
+            if (!dt.HasValue) return null;
+            return ToUnixMsUtc(dt.Value);
+        }
+
+        private static object ProjectScheduleForList(RouteSchedule s)
+        {
+            return new
+            {
+                s.ScheduleId,
+                s.RouteId,
+                s.StartPoint,
+                s.RouteStops,
+                s.EndPoint,
+                DepartureTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.DepartureTime).UtcDateTime,
+                ArrivalTime = DateTimeOffset.FromUnixTimeMilliseconds((long)s.ArrivalTime).UtcDateTime,
+                s.Price,
+                s.AvailableSeats,
+                s.SeatedCapacity,
+                s.StandingCapacity,
+                s.DaysOfWeek,
+                s.BusTypes,
+                s.IsActive,
+                s.ValidFrom,
+                s.ValidUntil,
+                s.StopDurationMinutes,
+                s.IsRecurring,
+                s.EstimatedStopTimes,
+                s.StopDistances,
+                s.Notes,
+                s.CreatedAt,
+                s.UpdatedAt,
+                s.UpdatedBy,
+                s.PeakHourLoad,
+                s.OffPeakHourLoad,
+                s.IsSpecialEvent,
+                s.SpecialEventName,
+                s.IsHoliday,
+                s.HolidayName,
+                s.IsWeekend,
+                s.SeatConfigurationId,
+                s.RequiresSeatReservation,
+                s.RouteType
+            };
+        }
+
+        /// <summary>
+        /// Sanitizes a JSON payload for logging by masking sensitive fields and limiting length.
+        /// </summary>
+        private string SanitizePayloadForLogging(JsonElement payload)
+        {
+            const int MaxLength = 500;
+            var sensitiveFields = new[] { "password", "token", "secret", "apikey", "api_key" };
+
+            try
+            {
+                var payloadStr = payload.ToString();
+                if (string.IsNullOrEmpty(payloadStr))
+                    return "[empty]";
+
+                // Parse and mask sensitive fields
+                using var doc = JsonDocument.Parse(payloadStr);
+                var sanitized = JsonSerializer.Serialize(SanitizeJsonElement(doc.RootElement, sensitiveFields));
+                var result = sanitized.Length > MaxLength
+                    ? sanitized.Substring(0, MaxLength) + "... [truncated]"
+                    : sanitized;
+                return result;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse JSON payload for sanitization");
+                return "[invalid JSON]";
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                _logger.LogDebug(ex, "Failed to parse JSON payload for sanitization (unexpected exception)");
+                return "[invalid JSON]";
+            }
+        }
+
+        private object SanitizeJsonElement(JsonElement element, string[] sensitiveFields)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                var sanitizedObj = new Dictionary<string, object>();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    var key = prop.Name;
+                    var isSensitive = sensitiveFields.Any(sf => key.Contains(sf, StringComparison.OrdinalIgnoreCase));
+
+                    if (isSensitive)
+                    {
+                        sanitizedObj[key] = "***";
+                    }
+                    else if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        sanitizedObj[key] = SanitizeJsonElement(prop.Value, sensitiveFields);
+                    }
+                    else
+                    {
+                        sanitizedObj[key] = prop.Value.ToString();
+                    }
+                }
+                return sanitizedObj;
+            }
+            else if (element.ValueKind == JsonValueKind.Array)
+            {
+                var sanitizedArray = new List<object>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    sanitizedArray.Add(SanitizeJsonElement(item, sensitiveFields));
+                }
+                return sanitizedArray;
+            }
+
+            return element.ToString();
         }
     }
 

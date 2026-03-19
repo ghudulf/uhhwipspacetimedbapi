@@ -1727,15 +1727,24 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 - **Routing**: Dynamic selection based on feature flags
 - **Risk Level**: CONTROLLED - instant rollback available, both controllers coexist
 
-**Phase 6: Legacy Code Removal (After validation)** - Zero Risk
-- Remove feature flag checks and attributes
-- Delete legacy `AuthController.cs` file
+**Phase 6: Legacy Code Cleanup (After validation)** - Zero Risk
+- Delete legacy `AuthController.cs` file (8,293 lines removed)
 - Rename `AuthControllerRefactored.cs` to `AuthController.cs`
-- Remove `[RefactoredAction]` attributes (no longer needed)
-- Remove `FeatureFlagActionConstraint.cs` (no longer needed)
-- Clean up and optimize
-- **AuthController**: Simplified to ~2,000 lines (from 8,293)
+- Remove `[RefactoredAction]` and `[LegacyAction]` attributes (no longer needed)
+- Remove `FeatureFlagActionConstraint.cs` and related routing infrastructure
+- KEEP feature flag infrastructure for operational flexibility
+- Repurpose feature flags for endpoint availability control (enable/disable endpoints)
+- Add feature flag checks to control endpoint availability (503 if disabled)
+- **AuthController**: Simplified to ~2,000-2,500 lines (from 8,293)
+- **Feature Flags**: Repurposed for operational control (not implementation selection)
 - **Risk Level**: ZERO - new code already validated in production for weeks/months
+
+**Why Keep Feature Flags**:
+- Operational flexibility: Instantly disable problematic endpoints without deployment
+- A/B testing: Test endpoint changes with subset of users
+- Emergency response: Quick mitigation for security issues or performance problems
+- Gradual rollout: Enable new features incrementally
+- Monitoring: Track endpoint usage and performance per flag
 
 ### Timeline
 
@@ -1746,7 +1755,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 **Week 8**: Feature flag integration
 **Week 9-10**: Controller modification and testing
 **Week 11+**: Gradual production rollout (1-2 months)
-**Week 20+**: Legacy code removal (after full validation)
+**Week 20+**: Legacy code cleanup (after full validation) - delete old controller, rename new one, repurpose feature flags
 
 ### Risk Mitigation
 
@@ -2510,6 +2519,2088 @@ The current refactoring (separating business logic into services and creating or
 **Long-term** (12 months post-refactoring): Build Next.js frontend, deprecate CSHTML
 
 This phased approach minimizes risk while moving toward the ultimate goal of a truly frontend-agnostic authentication service.
+
+### Alternative Architecture: Elysia JS as Authentication Gateway
+
+This section explores using **Elysia JS** (a modern TypeScript web framework) as an authentication gateway or proxy layer in front of the C# backend. This represents an alternative architectural evolution that could complement or replace parts of the current system.
+
+#### What is Elysia JS?
+
+Elysia is a fast, ergonomic TypeScript web framework built on Bun runtime with first-class support for:
+- **Type-safe routing**: Compile-time type checking for routes and parameters
+- **Plugin ecosystem**: JWT, OAuth2 Server, Session, CORS, Helmet, Rate Limiting
+- **OpenAPI generation**: Auto-generates Swagger/Scalar documentation
+- **End-to-end type safety**: Eden client provides type-safe API consumption
+- **Performance**: ~10k req/s on single core (comparable to Go/Rust frameworks)
+- **Built-in auth**: JWT plugin, OAuth2 server plugin, session management
+- **WebSocket support**: Native WebSocket handling for real-time authentication
+
+#### Why Consider Elysia JS?
+
+**Current Pain Points** (Based on Actual Codebase):
+1. **OpenIddict + SpacetimeDB complexity**:
+   - Custom stores (TokenStore, AuthorizationStore, ApplicationStore) with 3-tier ID mapping
+   - ReferenceId → InternalId → DatabaseId mapping requires ConcurrentDictionary "safety nets"
+   - AuthorizationStore permanently disabled due to SpacetimeDB validation bugs
+   - PKCE data stored in token payload instead of authorization table
+   - Polling-based confirmation (50 attempts × 100ms) after reducer calls
+
+2. **SpacetimeDB reactive state challenges**:
+   - "Lawn sync problem": Database updates not immediately visible to queries
+   - Race conditions between reducer execution and query results
+   - Manual cache management to work around reactive state issues
+   - Example from TokenStore.cs: `_referenceIdToInternalId`, `_internalIdToReferenceId`, `_internalIdToDatabaseId` static dictionaries
+
+3. **Data Protection key management**:
+   - Persistent key storage required for PKCE decryption across requests
+   - Keys stored in `DataProtectionKeys/` folder
+   - Without stable keys, OpenIddict cannot decrypt authorization code payloads
+
+4. **Mixed authentication schemes**:
+   - JWT Bearer (custom tokens with SymmetricSecurityKey)
+   - OpenIddict validation (for OAuth tokens)
+   - Cookie authentication (for web pages)
+   - Complex policy configuration to support all three
+
+5. **WebSocket authentication limitations**:
+   - Current implementation: Query parameter token passing (`?access_token=...`)
+   - No OIDC-over-WebSocket support
+   - SignalR hubs require separate authentication configuration
+
+**Elysia JS Benefits**:
+1. **Lightweight**: Purpose-built for auth/proxy use cases
+2. **Modern DX**: TypeScript, hot reload, modern tooling
+3. **Production-grade OIDC**: `oidc-provider` (v9.x) integrated via `elysiajs/node` adapter for full OIDC compliance
+4. **Easy integration**: Can proxy to existing C# backend for business logic
+5. **Independent scaling**: Auth layer scales separately from business logic
+6. **Native WebSocket support**: Built-in WebSocket handling for real-time auth
+
+**Note on OAuth packages**:
+- `elysia-oauth2` (v2+) is for **consuming** third-party OAuth2 providers (e.g., login with Google/GitHub), not for implementing your own OAuth server
+- For implementing a full OIDC provider, the **preferred integration** is to forward OIDC traffic through Elysia's `app.fetch` and handle it via a Fetch↔Node conversion shim with `oidc-provider` (v9.x). This keeps all traffic in the same HTTP pipeline. As an alternate fallback, you can mount `oidc-provider` directly on http.Server before Elysia's routing for `/oidc/*` endpoints
+
+#### Architecture Option 1: Elysia as Authentication Gateway
+
+Replace ASP.NET Core authentication layer with Elysia JS, keep C# for business logic.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Elysia JS Authentication Gateway (Port 3000)               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ Authentication Endpoints                             │  │
+│  │  - POST /auth/login → JWT generation                 │  │
+│  │  - POST /auth/register → User creation               │  │
+│  │  - POST /auth/totp/verify → TOTP validation          │  │
+│  │  - POST /auth/webauthn/validate → WebAuthn           │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ OAuth/OIDC Provider (OpenID Connect)                 │  │
+│  │  - GET /connect/authorize → Authorization flow       │  │
+│  │  - POST /connect/token → Token exchange              │  │
+│  │  - GET /connect/userinfo → User claims               │  │
+│  │  - GET /.well-known/openid-configuration             │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ Proxy Layer                                          │  │
+│  │  - Forward authenticated requests to C# backend      │  │
+│  │  - Add user context to headers                       │  │
+│  │  - Handle rate limiting and caching                  │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     │ HTTP/JSON (authenticated)
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│  C# Backend (Business Logic Only) (Port 5000)               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ Business Logic Services                              │  │
+│  │  - UserService, BusService, RouteService             │  │
+│  │  - TicketService, MaintenanceService                 │  │
+│  │  - NO authentication logic (delegated to Elysia)    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ SpacetimeDB Integration                              │  │
+│  │  - Database queries and mutations                    │  │
+│  │  - Real-time subscriptions                           │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**CRITICAL: Elysia as Standalone Auth Server**:
+- Elysia JS connects DIRECTLY to SpacetimeDB (no C# backend calls for auth data)
+- Elysia handles ALL authentication: JWT, OAuth/OIDC, TOTP, WebAuthn, QR codes
+- C# backend MUST validate all tokens: the C# service must validate token signature, issuer, audience, and expiry before accepting requests from Elysia (or require documented mTLS plus signed assertions)
+- SpacetimeDB is accessed by BOTH Elysia (for auth data) and C# (for business data)
+
+**Request Flow**:
+1. Client → Elysia JS `/auth/login` with credentials
+2. Elysia validates credentials against SpacetimeDB **DIRECTLY** (using SpacetimeDB TypeScript SDK)
+3. Elysia generates JWT token and returns to client
+4. Client → Elysia JS `/api/buses` with JWT token
+5. Elysia validates JWT, extracts user context
+6. Elysia proxies request to C# backend with JWT token or signed assertion in headers
+7. C# backend independently validates JWT/signed assertion (signature, issuer, audience, expiry) before processing business logic and returns response
+8. Elysia returns response to client
+
+**Benefits**:
+- **Separation of concerns**: Auth logic in Elysia, business logic in C#
+- **Independent scaling**: Scale auth layer separately from business logic
+- **Modern auth infrastructure**: Use production-grade OIDC provider (oidc-provider) for token issuance
+- **Simplified C# backend**: Remove ALL authentication code, focus purely on business logic
+- **Better performance**: Elysia handles auth faster than ASP.NET Core
+- **Direct database access**: Elysia reads/writes auth data directly to SpacetimeDB without C# proxy
+
+**Important Note on OAuth2 Plugins**:
+- **For implementing an OAuth/OIDC server** (token issuance): Use `oidc-provider` (production-grade OIDC implementation)
+- **For consuming third-party OAuth providers** (e.g., "Login with Google"): Use `elysia-oauth2` (OAuth2 client plugin)
+- Do NOT use `elysia-oauth2` to replace OpenIddict - it's a client library, not a server implementation
+
+**Trade-offs**:
+- **Two runtimes**: Bun (Elysia) + .NET (C# backend)
+- **Deployment complexity**: Two services to deploy and monitor
+- **Learning curve**: Team needs TypeScript/Elysia expertise
+- **Migration effort**: Significant refactoring required
+- **Dual SpacetimeDB access**: Both Elysia and C# connect to SpacetimeDB independently
+
+#### Architecture Option 2: Elysia as OAuth/OIDC Proxy
+
+**Use Case**: Keep existing C# authentication system (OpenIddict + all auth flows), use Elysia ONLY to proxy OAuth/OIDC endpoints to JavaScript frontends that need standards-compliant OAuth2/OIDC discovery.
+
+**Why This Exists**: If the current C# authentication system must remain operational (e.g., for legacy clients, gradual migration, or organizational requirements), this option allows adding OAuth/OIDC capabilities without replacing the entire auth system.
+
+**CRITICAL: Proxy Architecture**:
+- Elysia PROXIES OpenIddict/OIDC endpoints from C# backend to JavaScript frontends
+- C# backend retains ALL authentication logic (OpenIddict, TOTP, WebAuthn, QR, etc.)
+- Elysia acts as a translation layer for JavaScript clients that need OAuth2/OIDC discovery
+- C# backend continues to access SpacetimeDB directly for all auth operations
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Elysia JS OAuth Proxy (Port 3000)                          │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ OAuth/OIDC Proxy Endpoints                           │  │
+│  │  - GET /connect/authorize → Proxies to C# OpenIddict│  │
+│  │  - POST /connect/token → Proxies to C# OpenIddict    │  │
+│  │  - GET /connect/userinfo → Proxies to C# OpenIddict  │  │
+│  │  - GET /.well-known/openid-configuration → Proxies  │  │
+│  │  - Translates requests for JavaScript clients       │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     │ Proxy all auth requests to C# backend
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│  C# Backend (Full Authentication + Business Logic)          │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ OpenIddict OAuth/OIDC Server                         │  │
+│  │  - Authorization endpoints                           │  │
+│  │  - Token issuance and validation                     │  │
+│  │  - Discovery document generation                     │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ Authentication Endpoints                             │  │
+│  │  - POST /api/auth/login → Custom JWT                 │  │
+│  │  - POST /api/auth/register → User creation           │  │
+│  │  - All existing auth flows (TOTP, WebAuthn, QR)     │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ Business Logic Services                              │  │
+│  │  - UserService, BusService, RouteService             │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ SpacetimeDB Integration                              │  │
+│  │  - Direct access for auth AND business data         │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Use Case**: Provide OAuth/OIDC endpoints to JavaScript frontends while keeping the entire C# authentication system operational.
+
+**Benefits**:
+- **OAuth/OIDC for JS clients**: JavaScript frontends get standards-compliant OAuth2/OIDC
+- **Zero C# changes**: C# backend keeps ALL existing auth logic unchanged
+- **Gradual adoption**: JavaScript clients can migrate to OAuth while other clients use existing endpoints
+- **Minimal risk**: Elysia is just a proxy, all auth logic remains in proven C# code
+
+**Important Note**:
+- This is a PROXY pattern, not a replacement
+- Elysia does NOT implement auth - it forwards requests to C# OpenIddict
+- C# backend remains the authoritative authentication server
+
+**Complete Proxy Implementation**:
+```typescript
+import { Elysia } from 'elysia'
+import { cors } from '@elysiajs/cors'
+
+// Elysia OAuth/OIDC Proxy - Forwards to existing C# OpenIddict endpoints
+const app = new Elysia()
+  .use(cors({
+    origin: ['https://app.bru-avtopark.com', 'http://localhost:5000'],
+    credentials: true
+  }))
+
+  // Health check
+  .get('/health', () => ({ 
+    status: 'ok', 
+    service: 'elysia-oauth-proxy',
+    backend: 'csharp-openiddict'
+  }))
+
+  // Proxy OpenIddict discovery document
+  .get('/.well-known/openid-configuration', async ({ request }) => {
+    const response = await fetch('https://localhost:5001/.well-known/openid-configuration', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      return new Response(JSON.stringify({ error: 'Discovery endpoint unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Return discovery document as-is from C# backend
+    return response
+  })
+
+  // Proxy OAuth authorization endpoint (GET and POST)
+  // C# endpoint: ~/connect/authorize in AuthController.cs
+  .get('/connect/authorize', async ({ request, query }) => {
+    const queryString = new URLSearchParams(query as Record<string, string>).toString()
+    const response = await fetch(`https://localhost:5001/connect/authorize?${queryString}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml',
+        'Cookie': request.headers.get('cookie') || ''
+      },
+      redirect: 'manual' // Handle redirects manually
+    })
+
+    return response
+  })
+
+  .post('/connect/authorize', async ({ request, body }) => {
+    const rawBody = await request.text()
+    const response = await fetch('https://localhost:5001/connect/authorize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': request.headers.get('content-type') || 'application/x-www-form-urlencoded',
+        'Cookie': request.headers.get('cookie') || '',
+        'Accept': 'text/html,application/xhtml+xml,application/xml'
+      },
+      body: rawBody,
+      redirect: 'manual'
+    })
+
+    return response
+  })
+
+  // Proxy OAuth authorization callback
+  // C# endpoint: ~/connect/authorize/callback in AuthController.cs
+  .post('/connect/authorize/callback', async ({ request, body }) => {
+    const rawBody = await request.text()
+    const response = await fetch('https://localhost:5001/connect/authorize/callback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': request.headers.get('content-type') || 'application/x-www-form-urlencoded',
+        'Cookie': request.headers.get('cookie') || ''
+      },
+      body: rawBody,
+      redirect: 'manual'
+    })
+
+    return response
+  })
+
+  // Proxy OAuth token endpoint
+  // C# endpoint: ~/connect/token in AuthController.cs
+  .post('/connect/token', async ({ request, body }) => {
+    const response = await fetch('https://localhost:5001/connect/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams(body as Record<string, string>).toString()
+    })
+
+    if (!response.ok) {
+      return new Response(await response.text(), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    return response
+  })
+
+  // Proxy OAuth userinfo endpoint
+  // C# endpoint: ~/connect/userinfo in AuthController.cs (if implemented)
+  .get('/connect/userinfo', async ({ request }) => {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const response = await fetch('https://localhost:5001/connect/userinfo', {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader,
+        'Accept': 'application/json'
+      }
+    })
+
+    return response
+  })
+
+  // Proxy token validation endpoint (custom endpoint for BaseController)
+  // C# endpoint: ~/connect/tokeninfo in AuthController.cs
+  .get('/connect/tokeninfo', async ({ request }) => {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    const response = await fetch('https://localhost:5001/connect/tokeninfo', {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader,
+        'Accept': 'application/json'
+      }
+    })
+
+    return response
+  })
+
+  // Proxy all other API requests to C# backend
+  .all('/api/*', async ({ request }) => {
+    const url = new URL(request.url)
+    // Build an explicit header allowlist to avoid forwarding hop-by-hop headers.
+    const allowedHeaders: Record<string, string> = {}
+    const hopByHop = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
+      'te', 'trailers', 'transfer-encoding', 'upgrade'])
+    // Exclude caller-controlled identity and internal headers to prevent spoofing downstream.
+    // NOTE: Authorization header IS forwarded (normalized to lowercase) for API authentication.
+    const sensitiveHeaders = new Set(['cookie', 'x-forwarded-for'])
+    for (const [key, value] of request.headers.entries()) {
+      const lk = key.toLowerCase()
+      if (!hopByHop.has(lk) && !sensitiveHeaders.has(lk) && !lk.startsWith('x-user-') && !lk.startsWith('x-internal-')) {
+        // Normalize Authorization header to lowercase for consistency
+        const headerKey = lk === 'authorization' ? 'authorization' : key
+        allowedHeaders[headerKey] = value
+      }
+    }
+    const response = await fetch(`https://localhost:5001${url.pathname}${url.search}`, {
+      method: request.method,
+      headers: allowedHeaders,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
+    })
+
+    return response
+  })
+
+  .listen(3000, () => {
+    console.log('🔄 Elysia OAuth Proxy running on http://localhost:3000')
+    console.log('📋 Proxying to C# OpenIddict: https://localhost:5001')
+    console.log('🔐 OAuth Endpoints:')
+    console.log('   - GET  /.well-known/openid-configuration')
+    console.log('   - GET  /connect/authorize')
+    console.log('   - POST /connect/authorize')
+    console.log('   - POST /connect/authorize/callback')
+    console.log('   - POST /connect/token')
+    console.log('   - GET  /connect/userinfo')
+    console.log('   - GET  /connect/tokeninfo')
+  })
+```
+
+**Key Points**:
+- All `/connect/*` endpoints proxy directly to C# AuthController
+- No authentication logic in Elysia - pure passthrough
+- Cookies and headers forwarded to maintain session state
+- Redirects handled manually to preserve OAuth flow
+- C# backend remains authoritative for all auth decisions
+
+**Trade-offs**:
+- **Two auth systems**: Elysia for OAuth, C# for everything else
+- **Complexity**: Managing two authentication layers
+- **Limited benefit**: Only helps with OAuth, not other auth flows
+
+---
+
+### Architecture Comparison Summary
+
+| Aspect | Option 1: Full Auth Server | Option 2: OAuth Proxy | Option 3: Hybrid |
+|--------|----------------------------|----------------------|------------------|
+| **Elysia Role** | Standalone auth server | Proxy to C# OpenIddict | New features only |
+| **SpacetimeDB Access** | **Direct** (TypeScript SDK) | Via C# backend | Mixed |
+| **C# Backend Role** | Business logic only | Full auth + business | Full auth + business |
+| **Auth Implementation** | Elysia (oidc-provider) | C# (OpenIddict) | Both |
+| **Migration Effort** | High (full rewrite) | Low (proxy layer) | Medium (gradual) |
+| **Deployment** | 2 services | 2 services | 2 services |
+| **Best For** | Greenfield or full modernization | Legacy system compatibility | Incremental adoption |
+
+**Key Architectural Decisions**:
+
+1. **Option 1 (Full Auth Server)** - Future Vision:
+   - Elysia becomes THE authentication server
+   - Elysia connects DIRECTLY to SpacetimeDB using TypeScript SDK
+   - NO C# backend calls for authentication data
+   - C# backend becomes a pure business logic API
+   - C# backend MUST validate JWT tokens (verify signature, issuer, audience, expiry) OR enforce mTLS with strict network isolation and signed internal assertions
+
+2. **Option 2 (OAuth Proxy)** - Compatibility Layer:
+   - Elysia PROXIES requests to existing C# OpenIddict endpoints
+   - C# backend retains ALL authentication logic
+   - Used when C# auth system must remain operational
+   - Provides OAuth/OIDC to JavaScript clients without changing C# code
+   - C# backend validates tokens as it currently does (OpenIddict validation)
+
+3. **Option 3 (Hybrid)** - Gradual Migration:
+   - Mix of both approaches
+   - New features in Elysia, existing features in C#
+   - Allows incremental migration over time
+   - C# backend validates tokens for its own endpoints; Elysia validates for its endpoints
+
+#### Architecture Option 3: Hybrid Approach
+
+Use Elysia for new features, keep C# for existing features.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Elysia JS (New Features)                                   │
+│  - OAuth/OIDC provider (replaces OpenIddict)                │
+│  - Rate limiting and caching                                │
+│  - WebSocket proxy for SpacetimeDB real-time                │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     │ Coexist
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│  C# Backend (Existing Features)                             │
+│  - All existing auth flows (Login, TOTP, WebAuthn, etc.)   │
+│  - Business logic services                                  │
+│  - SpacetimeDB integration                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Use Case**: Add Elysia for new capabilities without disrupting existing system.
+
+**Benefits**:
+- **Zero risk**: Existing system unchanged
+- **Incremental adoption**: Add Elysia features gradually
+- **Best of both worlds**: C# for business logic, Elysia for auth/proxy
+
+**Trade-offs**:
+- **Operational complexity**: Two services to maintain
+- **Unclear boundaries**: Which features go where?
+
+#### Implementation Example: Elysia OIDC Server
+
+For production OIDC implementation, use `oidc-provider` (v9.x) - the industry-standard library used by Auth0, Okta, and other major identity providers.
+
+**Installation**:
+```bash
+bun add oidc-provider
+bun add @elysiajs/node
+```
+
+**Why oidc-provider?**:
+- **Battle-tested**: Used in production by major identity providers
+- **Full OIDC spec**: ID tokens, discovery endpoints, userinfo, token introspection
+- **PKCE support**: Built-in support for public clients
+- **Flexible adapters**: Works with any database (including SpacetimeDB via custom adapter)
+
+**Note**: `elysia-oauth2` (v2+) is designed for **consuming** third-party OAuth2 providers, not for implementing your own OAuth server.
+
+**Complete Implementation**:
+```typescript
+import { Elysia, t } from 'elysia'
+import Provider from 'oidc-provider'
+import { node } from '@elysiajs/node'
+
+// Custom SpacetimeDB adapter for oidc-provider
+// This adapter connects Elysia DIRECTLY to SpacetimeDB for auth data storage
+import { DbConnection } from 'spacetimedb'
+
+class SpacetimeDBAdapter {
+  private spacetimeDB: DbConnection
+
+  constructor(private name: string) {
+    // PRODUCTION: Direct SpacetimeDB connection using new builder pattern
+    this.spacetimeDB = DbConnection.builder()
+      .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+      .withDatabaseName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+      .withToken(process.env.SPACETIMEDB_TOKEN)
+      .withLifecycleCallbacks({
+        onConnect: () => console.log('Connected to SpacetimeDB'),
+        onDisconnect: () => console.log('Disconnected from SpacetimeDB')
+      })
+      .build()
+  }
+
+  async upsert(id: string, payload: any, expiresIn: number) {
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.store_oidc_token(
+      this.name,
+      id,
+      JSON.stringify(payload),
+      BigInt(Date.now() + (expiresIn * 1000))
+    )
+  }
+
+  async find(id: string) {
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => token.TokenType === this.name && token.TokenId === id)
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
+  }
+
+  async findByUserCode(userCode: string) {
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => {
+        const payload = JSON.parse(token.Payload)
+        return payload.userCode === userCode
+      })
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
+  }
+
+  async findByUid(uid: string) {
+    // PRODUCTION: Direct SpacetimeDB table query
+    const tokens = Array.from(this.spacetimeDB.db.OpenIddictSpacetimeToken.iter())
+      .filter(token => token.TokenType === this.name && token.Uid === uid)
+    if (tokens.length === 0) return undefined
+    return JSON.parse(tokens[0].Payload)
+  }
+
+  async destroy(id: string) {
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.delete_oidc_token(
+      this.name,
+      id
+    )
+  }
+
+  async revokeByGrantId(grantId: string) {
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.revoke_oidc_tokens_by_grant(grantId)
+  }
+
+  async consume(id: string) {
+    // PRODUCTION: Direct SpacetimeDB reducer call
+    await this.spacetimeDB.reducers.consume_oidc_token(
+      this.name,
+      id
+    )
+  }
+}
+
+// Configure oidc-provider with SpacetimeDB adapter
+const oidc = new Provider('https://auth.bru-avtopark.com', {
+  adapter: SpacetimeDBAdapter,
+  clients: [
+    {
+      client_id: 'avalonia-desktop-client',
+      client_secret: process.env.AVALONIA_CLIENT_SECRET,
+      redirect_uris: ['http://localhost:5000/callback', 'bruavtopark://callback'],
+      response_types: ['code'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_method: 'client_secret_post',
+    },
+    {
+      client_id: 'web-spa-client',
+      // Public client - no secret
+      redirect_uris: ['https://app.bru-avtopark.com/callback'],
+      response_types: ['code'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_method: 'none', // PKCE required for public clients
+    },
+  ],
+  pkce: {
+    required: (ctx, client) => {
+      // Enforce PKCE for public clients (no client_secret)
+      return !client.clientSecret
+    },
+  },
+  features: {
+    devInteractions: { enabled: false }, // Use custom login pages
+    rpInitiatedLogout: { enabled: true },
+    revocation: { enabled: true },
+    introspection: { enabled: true },
+    resourceIndicators: { enabled: true }, // For API scopes
+  },
+  findAccount: async (ctx, id) => {
+    // PRODUCTION: Fetch user directly from SpacetimeDB
+    const spacetimeDB = DbConnection.builder()
+      .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+      .withDatabaseName('bru-avtopark')
+      .withToken(process.env.SPACETIMEDB_TOKEN)
+      .build()
+
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(user => user.UserId === parseInt(id))
+    if (users.length === 0) return undefined
+
+    const user = users[0]
+    return {
+      accountId: id,
+      async claims(use, scope) {
+        return {
+          sub: id,
+          email: user.Email,
+          name: user.FullName || user.Login,
+          preferred_username: user.Login,
+          email_verified: user.EmailVerified,
+          // Add custom claims based on scope
+          ...(scope.includes('profile') && {
+            phone_number: user.PhoneNumber,
+            phone_number_verified: user.PhoneVerified,
+          }),
+          ...(scope.includes('roles') && {
+            roles: user.Roles || [],
+            permissions: user.Permissions || [],
+          }),
+        }
+      },
+    }
+  },
+  // Custom login/consent pages
+  interactions: {
+    url(ctx, interaction) {
+      return `/auth/interaction/${interaction.uid}`
+    },
+  },
+})
+```
+
+### Elysia Application Bootstrap
+
+Now that we have the OIDC provider configured, let's bootstrap the Elysia application:
+
+```typescript
+// SNIPPET: Elysia Application Bootstrap with SpacetimeDB
+// FULL STANDALONE AUTH SERVER - Handles ALL authentication
+import { Elysia } from 'elysia'
+import { cors } from '@elysiajs/cors'
+import { jwt } from '@elysiajs/jwt'
+import { DbConnection } from 'spacetimedb'
+
+// Initialize SpacetimeDB connection using official SDK
+const spacetimeDB = DbConnection.builder()
+  .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+  .withDatabaseName('bru-avtopark')
+  .withToken(process.env.SPACETIMEDB_TOKEN)
+  .build()
+
+const app = new Elysia()
+  .use(cors({
+    origin: ['https://app.bru-avtopark.com', 'http://localhost:5000'],
+    credentials: true
+  }))
+  .use(jwt({
+    name: 'jwt',
+    secret: process.env.JWT_SECRET!
+  }))
+
+  // Health check
+  .get('/health', () => ({
+    status: 'ok',
+    service: 'elysia-standalone-auth-server',
+    spacetimedb: spacetimeDB.isConnected ? 'connected' : 'disconnected'
+  }))
+
+  //===========================================
+  // AUTHENTICATION ENDPOINTS (Direct SpacetimeDB)
+  //===========================================
+
+  // Login with username/password
+  .post('/auth/login', async ({ body, jwt, set }) => {
+    const { username, password } = body as { username: string; password: string }
+    
+    // Query SpacetimeDB directly for user
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.Login === username)
+    if (users.length === 0) {
+      set.status = 401
+      return { error: 'Invalid credentials' }
+    }
+
+    const user = users[0]
+    
+    // Verify password using Bun's built-in bcrypt
+    const isValid = await Bun.password.verify(password, user.PasswordHash)
+    if (!isValid) {
+      set.status = 401
+      return { error: 'Invalid credentials' }
+    }
+
+    // Check if 2FA is enabled
+    if (user.TotpEnabled || user.WebAuthnEnabled) {
+      // Return challenge token for 2FA
+      const challengeToken = await jwt.sign({
+        sub: user.UserId.toString(),
+        type: '2fa_challenge',
+        exp: Math.floor(Date.now() / 1000) + (5 * 60) // 5 minutes
+      })
+
+      return {
+        requires_2fa: true,
+        challenge_token: challengeToken,
+        methods: {
+          totp: user.TotpEnabled,
+          webauthn: user.WebAuthnEnabled
+        }
+      }
+    }
+
+    // Generate access token
+    const accessToken = await jwt.sign({
+      sub: user.UserId.toString(),
+      username: user.Login,
+      email: user.Email,
+      roles: user.Roles || [],
+      permissions: user.Permissions || [],
+      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24) // 24 hours
+    })
+
+    // Log authentication event to SpacetimeDB
+    await spacetimeDB.reducers.logAuthEvent(
+      user.UserId,
+      'login',
+      true,
+      '', // Extract from request
+      ''  // Extract from request
+    )
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 86400,
+      user: {
+        id: user.UserId,
+        username: user.Login,
+        email: user.Email,
+        roles: user.Roles || []
+      }
+    }
+  })
+
+  // Verify TOTP code
+  .post('/auth/totp/verify', async ({ body, jwt, set }) => {
+    const { challenge_token, code } = body as { challenge_token: string; code: string }
+    
+    // Verify challenge token
+    const challenge = await jwt.verify(challenge_token)
+    if (!challenge || challenge.type !== '2fa_challenge') {
+      set.status = 401
+      return { error: 'Invalid challenge token' }
+    }
+
+    const userId = parseInt(challenge.sub)
+    
+    // Get user's TOTP secret from SpacetimeDB
+    const users = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.UserId === userId)
+    if (users.length === 0) {
+      set.status = 401
+      return { error: 'User not found' }
+    }
+
+    const user = users[0]
+    
+    // Verify TOTP code (implement TOTP verification logic)
+    const isValid = await verifyTOTP(user.TotpSecret, code)
+    if (!isValid) {
+      set.status = 401
+      return { error: 'Invalid TOTP code' }
+    }
+
+    // Generate access token
+    const accessToken = await jwt.sign({
+      sub: user.UserId.toString(),
+      username: user.Login,
+      email: user.Email,
+      roles: user.Roles || [],
+      permissions: user.Permissions || [],
+      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)
+    })
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 86400
+    }
+  })
+
+  // WebAuthn authentication challenge
+  .post('/auth/webauthn/challenge', async ({ body, jwt, set }) => {
+    const { challenge_token } = body as { challenge_token: string }
+    
+    const challenge = await jwt.verify(challenge_token)
+    if (!challenge || challenge.type !== '2fa_challenge') {
+      set.status = 401
+      return { error: 'Invalid challenge token' }
+    }
+
+    const userId = parseInt(challenge.sub)
+    
+    // Get user's WebAuthn credentials from SpacetimeDB
+    const credentials = Array.from(spacetimeDB.db.WebAuthnCredential.iter())
+      .filter(c => c.UserId === userId)
+    
+    // Generate WebAuthn challenge
+    const webauthnChallenge = crypto.randomUUID()
+    
+    // Store challenge in SpacetimeDB
+    await spacetimeDB.reducers.storeWebauthnChallenge(
+      userId,
+      webauthnChallenge,
+      BigInt(Date.now() + (5 * 60 * 1000))
+    )
+
+    return {
+      challenge: webauthnChallenge,
+      credentials: credentials.map(c => ({
+        id: c.CredentialId,
+        type: 'public-key'
+      }))
+    }
+  })
+
+  // WebAuthn authentication verification
+  .post('/auth/webauthn/verify', async ({ body, jwt, set }) => {
+    const { challenge_token, credential } = body as { 
+      challenge_token: string; 
+      credential: any 
+    }
+    
+    // Verify challenge token and WebAuthn assertion
+    // (Implementation details omitted for brevity)
+    
+    // Generate access token on success
+    const accessToken = await jwt.sign({
+      sub: credential.userId.toString(),
+      // ... other claims
+      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)
+    })
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 86400
+    }
+  })
+
+  // QR Code authentication - Generate QR
+  .post('/auth/qr/generate', async ({ jwt }) => {
+    // Generate unique QR session ID
+    const sessionId = crypto.randomUUID()
+    
+    // Store QR session in SpacetimeDB
+    await spacetimeDB.reducers.createQrSession(
+      sessionId,
+      'pending',
+      BigInt(Date.now() + (5 * 60 * 1000)) // 5 minutes
+    )
+
+    return {
+      session_id: sessionId,
+      qr_data: `bruavtopark://auth/${sessionId}`,
+      expires_in: 300
+    }
+  })
+
+  // QR Code authentication - Poll status
+  .get('/auth/qr/status/:sessionId', async ({ params, jwt, set }) => {
+    const { sessionId } = params
+    
+    // Query QR session from SpacetimeDB
+    const sessions = Array.from(spacetimeDB.db.QRAuthSession.iter())
+      .filter(s => s.SessionId === sessionId)
+    if (sessions.length === 0) {
+      set.status = 404
+      return { error: 'Session not found' }
+    }
+
+    const session = sessions[0]
+    
+    if (session.Status === 'approved' && session.UserId) {
+      // Get user details
+      const users = Array.from(spacetimeDB.db.UserProfile.iter())
+        .filter(u => u.UserId === session.UserId)
+      if (users.length === 0) {
+        set.status = 404
+        return { error: 'User not found' }
+      }
+
+      const user = users[0]
+      
+      // Generate access token
+      const accessToken = await jwt.sign({
+        sub: user.UserId.toString(),
+        username: user.Login,
+        email: user.Email,
+        roles: user.Roles || [],
+        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)
+      })
+
+      return {
+        status: 'approved',
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: 86400
+      }
+    }
+
+    return {
+      status: session.Status // 'pending', 'denied', 'expired'
+    }
+  })
+
+  // User registration
+  .post('/auth/register', async ({ body, set }) => {
+    const { username, email, password, fullName } = body as {
+      username: string;
+      email: string;
+      password: string;
+      fullName?: string;
+    }
+
+    // Check if user already exists
+    const existingUsers = Array.from(spacetimeDB.db.UserProfile.iter())
+      .filter(u => u.Login === username || u.Email === email)
+    if (existingUsers.length > 0) {
+      set.status = 409
+      return { error: 'User already exists' }
+    }
+
+    // Hash password
+    const passwordHash = await Bun.password.hash(password)
+
+    // Create user in SpacetimeDB
+    await spacetimeDB.reducers.registerUser(
+      username,
+      email,
+      passwordHash,
+      fullName || username,
+      null,
+      ['user'], // Default role
+      []
+    )
+
+    return {
+      success: true,
+      message: 'User registered successfully'
+    }
+  })
+
+  //===========================================
+  // BUSINESS LOGIC PROXY (to C# backend)
+  //===========================================
+
+  // Proxy to C# backend for business logic
+  // C# backend accepts JWTs issued by Elysia after performing full validation
+  // (signature verification, claim checks, and expiration) or via mTLS + signed internal assertions
+  .all('/api/*', async ({ request, headers, jwt, set }) => {
+    const authHeader = headers.authorization
+    if (!authHeader?.startsWith('Bearer ')) {
+      set.status = 401
+      return { error: 'Unauthorized' }
+    }
+
+    // Verify JWT token
+    const token = authHeader.substring(7)
+    const payload = await jwt.verify(token)
+    if (!payload) {
+      set.status = 401
+      return { error: 'Invalid token' }
+    }
+
+    // Build safe headers - forward original bearer token for independent validation
+    // The C# backend will independently validate the token, providing defense-in-depth.
+    // Additionally, include X-User-* headers as a convenience (derived from Elysia's JWT verification).
+    const safeHeaders: Record<string, string> = {
+      'Content-Type': headers['content-type'] || 'application/json',
+      'Accept': headers['accept'] || '*/*',
+      // Forward original Authorization header for C# backend to independently validate
+      'Authorization': authHeader,
+      // Convenience headers from verified JWT (C# backend should validate token independently)
+      'X-User-Id': String(payload.sub || ''),
+      'X-User-Username': String(payload.username || ''),
+      'X-User-Email': String(payload.email || ''),
+      'X-User-Roles': JSON.stringify(payload.roles || []),
+      'X-User-Permissions': JSON.stringify(payload.permissions || []),
+    }
+
+    // Forward to C# backend with safe headers only
+    const url = new URL(request.url)
+    const response = await fetch(`http://csharp-backend:5000${url.pathname}${url.search}`, {
+      method: request.method,
+      headers: safeHeaders,
+      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
+    })
+
+    return response
+  })
+
+// OIDC Integration - Canonical Pattern (Elysia app.fetch + Fetch↔Node Shim)
+// This is the RECOMMENDED approach for production environments.
+// OIDC traffic flows through Elysia routes, allowing middleware to apply.
+
+// Helper: Convert Elysia Request to Node.js req/res for oidc-provider
+async function handleOidcRequest(request: Request): Promise<Response> {
+  const { Duplex } = await import('stream')
+  const { IncomingMessage, ServerResponse } = await import('http')
+  const { Socket } = await import('net')
+
+  const url = new URL(request.url)
+  const headersObj = Object.fromEntries(request.headers.entries())
+
+  // Build a proper IncomingMessage-compatible Readable so oidc-provider can
+  // read the body via stream semantics (not a .body property).
+  const socket = new Socket()
+  const nodeReq = new IncomingMessage(socket)
+  nodeReq.method = request.method
+  nodeReq.url = url.pathname + url.search
+  nodeReq.headers = headersObj
+  // rawHeaders: flat [name, value, name, value, ...] array
+  nodeReq.rawHeaders = Object.entries(headersObj).flatMap(([k, v]) => [k, v])
+  nodeReq.httpVersion = '1.1'
+  nodeReq.httpVersionMajor = 1
+  nodeReq.httpVersionMinor = 1
+
+  // Push body bytes into the IncomingMessage stream
+  if (request.body && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+    const reader = request.body.getReader()
+    const pushBody = async () => {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) { nodeReq.push(null); break }
+        nodeReq.push(Buffer.from(value))
+      }
+    }
+    pushBody().catch(() => nodeReq.push(null))
+  } else {
+    // No body — signal end-of-stream immediately
+    process.nextTick(() => nodeReq.push(null))
+  }
+
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+
+    // Build a minimal ServerResponse-compatible object.
+    // ServerResponse requires an IncomingMessage in its constructor.
+    const nodeRes = new ServerResponse(nodeReq)
+
+    // Create a proper Duplex stream that implements both readable and writable sides
+    // This is required by ServerResponse.assignSocket which expects a socket-like object
+    //
+    // ⚠️  WARNING: This shim relies on Node.js internals (ServerResponse.assignSocket,
+    //    Duplex stream cast to 'any') and may break across Node.js versions. This is
+    //    NOT production-ready copy-paste code. For vetted reference implementations, see:
+    //    https://github.com/honojs/node-server or similar established adapters.
+    const duplexSink = new Duplex({
+      read() {}, // No-op for read side since we're only capturing writes
+      write(chunk, _enc, cb) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        cb()
+      }
+    })
+
+    // Emit socket events expected by ServerResponse
+    process.nextTick(() => {
+      duplexSink.emit('connect')
+      duplexSink.emit('ready')
+    })
+
+    // Redirect ServerResponse output into our duplex sink so we can capture it.
+    nodeRes.assignSocket(duplexSink as any)
+
+    nodeRes.on('finish', () => {
+      const body = Buffer.concat(chunks)
+      const status = nodeRes.statusCode ?? 200
+      const headers: Record<string, string> = {}
+      const raw = nodeRes.getHeaders()
+      for (const [k, v] of Object.entries(raw)) {
+        if (v !== undefined) headers[k.toLowerCase()] = Array.isArray(v) ? v.join(', ') : String(v)
+      }
+      resolve(new Response(body, { status, headers }))
+    })
+
+    oidc.callback()(nodeReq, nodeRes, (err: any) => {
+      if (err) {
+        resolve(new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }))
+      }
+    })
+  })
+}
+
+// Add OIDC routes to Elysia (allows middleware to apply)
+app.all('/.well-known/openid-configuration', async ({ request }) => {
+  return await handleOidcRequest(request)
+})
+.all('/oidc/*', async ({ request }) => {
+  return await handleOidcRequest(request)
+})
+
+// Start server
+app.listen(3000, (server) => {
+
+  console.log('🚀 Elysia Standalone Auth Server running on http://localhost:3000')
+  console.log('📊 SpacetimeDB:', spacetimeDB.isConnected ? 'Connected' : 'Disconnected')
+  console.log('')
+  console.log('🔐 Authentication Endpoints:')
+  console.log('   - POST /auth/login')
+  console.log('   - POST /auth/register')
+  console.log('   - POST /auth/totp/verify')
+  console.log('   - POST /auth/webauthn/challenge')
+  console.log('   - POST /auth/webauthn/verify')
+  console.log('   - POST /auth/qr/generate')
+  console.log('   - GET  /auth/qr/status/:sessionId')
+  console.log('')
+  console.log('📋 OIDC Endpoints:')
+  console.log('   - GET  /.well-known/openid-configuration')
+  console.log('   - GET  /oidc/authorize')
+  console.log('   - POST /oidc/authorize')
+  console.log('   - POST /oidc/token')
+  console.log('   - GET  /oidc/userinfo')
+  console.log('')
+  console.log('🔄 Business API Proxy: /api/* → C# Backend')
+})
+
+// FALLBACK PATTERN: Server-level interception (use only if app.fetch approach doesn't work)
+// WARNING: This bypasses Elysia middleware - CORS, JWT, etc. won't apply to OIDC endpoints
+// Only use this if you absolutely need maximum performance or encounter compatibility issues.
+/*
+app.listen(3000, (server) => {
+  const httpServer = server.server as any
+
+  if (!httpServer) {
+    console.error('Could not access underlying Node.js server')
+    return
+  }
+
+  // Intercept requests BEFORE they reach Elysia routing
+  const originalListener = httpServer.listeners('request')[0]
+  httpServer.removeAllListeners('request')
+
+  httpServer.on('request', (req: any, res: any) => {
+    if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
+      // Route to oidc-provider (bypasses Elysia middleware!)
+      oidc.callback()(req, res, (err: any) => {
+        if (err) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: err.message }))
+        } else {
+          res.statusCode = 404
+          res.end('Not Found')
+        }
+      })
+    } else {
+      // Route to Elysia
+      originalListener(req, res)
+    }
+  })
+
+  console.log('🚀 Elysia Standalone Auth Server running on http://localhost:3000')
+  console.log('⚠️  WARNING: Using server-level OIDC interception - Elysia middleware bypassed')
+})
+*/
+
+// Helper function for TOTP verification
+async function verifyTOTP(secret: string, code: string): Promise<boolean> {
+  // Implement TOTP verification using a library like @levminer/speakeasy
+  // This is a placeholder
+  return true
+}
+       
+
+// Alternative approach 2: Fetch-based shim (simpler but adds overhead)
+// Convert Elysia Request ↔ Node.js req/res for oidc-provider compatibility
+/*
+app.all('/oidc/*', async ({ request }) => {
+  // Create Node.js-like req/res objects from Fetch Request
+  const { toNodeRequest, toFetchResponse } = await import('./node-shim')
+
+  return new Promise((resolve) => {
+    const nodeReq = toNodeRequest(request)
+    const nodeRes = {
+      statusCode: 200,
+      headers: {},
+      setHeader(name: string, value: string) {
+        this.headers[name] = value
+      },
+      end(body: string) {
+        resolve(toFetchResponse(this.statusCode, this.headers, body))
+      }
+    }
+
+    oidc.callback()(nodeReq, nodeRes)
+  })
+})
+*/
+```
+
+**Key Features of oidc-provider**:
+
+1. **Production-grade**: Used by Auth0, Okta, and other major identity providers
+2. **Full OIDC compliance**: ID tokens, discovery endpoints, userinfo, token introspection
+3. **PKCE support**: Built-in support for public clients (mobile apps, SPAs)
+4. **Flexible adapters**: Works with any storage backend (SpacetimeDB, PostgreSQL, Redis)
+5. **Extensive features**: Dynamic client registration, session management, consent flows
+6. **Active maintenance**: Regular security patches and updates
+
+**Integration with SpacetimeDB**:
+
+The `SpacetimeDBAdapter` class shown above demonstrates how oidc-provider integrates with SpacetimeDB. In the **production/standalone architecture** (Architecture Option 1), Elysia connects DIRECTLY to SpacetimeDB using the TypeScript SDK with no C# backend involvement for auth data. The adapter methods (`upsert`, `find`, `findByUserCode`, `findByUid`, `destroy`, `revokeByGrantId`, `consume`) call SpacetimeDB reducers and query tables directly.
+
+**IMPORTANT**: The C# backend proxy pattern shown in the adapter code (with `useCSharpProxyForMigration` flag) is ONLY for gradual migration scenarios. In production standalone mode, all adapter methods use direct SpacetimeDB access via the canonical v2 SDK:
+- `upsert` → calls `conn.reducers.StoreOidcToken(...)`
+- `find` → queries `Array.from(conn.db.OpenIddictSpacetimeToken.iter()).filter(...)`
+- `destroy` → calls `conn.reducers.DeleteOidcToken(...)`
+- etc.
+
+The C# proxy approach is documented separately in the "Migration Bridge" appendix below for teams that need to migrate gradually from the current C# OpenIddict implementation.
+
+**Comparison with OpenIddict**:
+
+| Feature | OpenIddict (C#) | oidc-provider (Node.js) |
+|---------|-----------------|-------------------------|
+| **Language** | C# | TypeScript/JavaScript |
+| **Runtime** | .NET 8.0 | Node.js 18+/Bun 1.0+ |
+| **OAuth2 Spec** | ✅ Full compliance | ✅ Full compliance |
+| **OIDC Support** | ✅ Full OIDC 1.0 | ✅ Full OIDC 1.0 |
+| **PKCE** | ✅ Built-in (RFC 7636) | ✅ Built-in (RFC 7636) |
+| **Storage** | Custom stores (IOpenIddictTokenStore, IOpenIddictAuthorizationStore, IOpenIddictApplicationStore) | Adapter-based (single interface) |
+| **SpacetimeDB Integration** | ⚠️ Complex: 3-tier ID mapping (ReferenceId→InternalId→DatabaseId), ConcurrentDictionary safety nets, 50-attempt polling loops, AuthorizationStore permanently disabled due to validation bugs | ✅ Simpler: Direct adapter with async/await, no ID mapping, no polling, works with SpacetimeDB reactive state |
+| **Authorization Storage** | ⚠️ Permanently disabled (`DisableAuthorizationStorage()`) - unfixable SpacetimeDB validation conflicts | ✅ Works with adapter (or can be disabled if needed) |
+| **Data Protection Keys** | ⚠️ Required for PKCE payload encryption/decryption, must persist to disk (`DataProtectionKeys/` folder) | ✅ Not required - oidc-provider handles encryption internally |
+| **Memory Cache Usage** | ✅ Used for OAuth request parameters (10-minute TTL) | ✅ Can use same pattern or store in adapter |
+| **Performance** | ~3-5k req/s (ASP.NET Core overhead) | ~8-12k req/s (Bun/Node.js) |
+| **Developer Experience** | ⚠️ Complex: Custom stores, ID mapping, polling confirmations, Data Protection setup, SpacetimeDB workarounds | ✅ Simpler: Single adapter interface, well-documented, fewer edge cases |
+| **Discovery Endpoint** | ✅ Auto-generated (`/.well-known/openid-configuration`) | ✅ Auto-generated (`/.well-known/openid-configuration`) |
+| **Token Introspection** | ✅ Built-in (`/connect/introspect`) | ✅ Built-in (configurable endpoint) |
+| **Refresh Tokens** | ✅ Full support | ✅ Full support |
+| **Device Flow** | ✅ Supported | ✅ Supported |
+| **Dynamic Client Registration** | ⚠️ Manual implementation required | ✅ Built-in support |
+| **Session Management** | ⚠️ Manual implementation | ✅ Built-in support |
+| **Production Readiness** | ✅ Mature, widely used in .NET ecosystem | ✅ Battle-tested (used by Auth0, Okta, Keycloak) |
+| **Current Issues** | ⚠️ AuthorizationStore disabled, complex workarounds for SpacetimeDB, polling-based confirmations, 3-tier ID mapping | ✅ No known blockers for SpacetimeDB integration |
+| **Migration Complexity** | N/A (current implementation) | ⚠️ High: Requires TypeScript expertise, dual runtime (Bun + .NET), adapter implementation |
+
+**Note**: `oidc-provider` is a production-grade OIDC implementation. For **consuming** third-party OAuth2 providers (e.g., "Login with Google"), use `elysia-oauth2` (v2+) instead.
+
+#### SpacetimeDB Integration with Elysia
+
+Elysia can integrate with SpacetimeDB in two ways:
+
+**Option 1: Direct SpacetimeDB Client**
+```typescript
+import { DbConnection } from 'spacetimedb'
+
+// Initialize SpacetimeDB connection using canonical builder pattern
+const spacetimeDB = DbConnection.builder()
+  .withUri(process.env.SPACETIMEDB_HOST || 'localhost:3000')
+  .withDatabaseName(process.env.SPACETIMEDB_MODULE || 'bru-avtopark')
+  .withToken(process.env.SPACETIMEDB_TOKEN)
+  .withLifecycleCallbacks({
+    onConnect: () => console.log('Connected to SpacetimeDB'),
+    onDisconnect: () => console.log('Disconnected from SpacetimeDB')
+  })
+  .build()
+
+app.state('spacetimeDB', spacetimeDB)
+
+// Use in handlers
+app.post('/auth/login', async ({ body, spacetimeDB }) => {
+  // Query SpacetimeDB tables directly
+  const users = Array.from(spacetimeDB.db.UserProfile.iter())
+    .filter(user => user.Login === body.username)
+  
+  if (users.length === 0) {
+    return { error: 'User not found' }
+  }
+  
+  const user = users[0]
+  // ... authentication logic
+})
+```
+
+**Migration Bridge: C# Proxy (temporary — not part of Elysia future-state)**
+
+```typescript
+// Elysia delegates to C# backend for all SpacetimeDB operations.
+// This is a TEMPORARY migration bridge only. The long-term architecture
+// is standalone Elysia with direct SpacetimeDB access (Option 1 above).
+app.post('/auth/login', async ({ body }) => {
+  const response = await fetch('http://csharp-backend:5000/api/auth/validate', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+  
+  if (response.ok) {
+    const user = await response.json()
+    // Generate JWT in Elysia
+    const token = await jwt.sign({ sub: user.id, roles: user.roles })
+    return { token, user }
+  }
+  
+  return { error: 'Invalid credentials' }
+})
+```
+
+#### Integrating oidc-provider with Elysia
+
+Since oidc-provider is built for Node.js and expects `req`/`res` objects, while Elysia uses modern Fetch API `Request`/`Response` objects, we need an integration layer. There are two approaches:
+
+**Approach 1: Elysia app.fetch + Fetch↔Node Shim** (Recommended - Canonical Pattern)
+
+OIDC traffic flows through Elysia's Fetch-based routing. The Node.js compatibility shim intercepts at the server level to bridge oidc-provider's req/res expectations with Elysia's Fetch API, but the interception happens WITHIN Elysia's route handlers, allowing Elysia middleware and features to apply.
+
+**Architecture Flow**:
+```
+Client Request → Elysia Middleware (CORS, JWT, etc.) → Elysia Route Handler → 
+Node.js Shim (Fetch→req/res conversion) → oidc-provider → 
+Node.js Shim (res→Fetch conversion) → Elysia Response
+```
+
+**Key Point**: The Node.js shim does server-level interception magic to make oidc-provider compatible with Elysia, but it's invoked FROM WITHIN Elysia route handlers, so Elysia's middleware chain and features still apply to OIDC endpoints.
+
+**Benefits**:
+- ✅ Elysia middleware (CORS, JWT, rate limiting) applies to OIDC endpoints
+- ✅ Type safety across all routes
+- ✅ Single request flow through Elysia makes debugging easier
+- ✅ Can use Elysia features (hooks, guards, decorators) on OIDC endpoints
+- ✅ Unified logging and monitoring
+
+**Implementation**:
+
+```typescript
+import { Elysia } from 'elysia'
+import Provider from 'oidc-provider'
+import { Readable } from 'stream'
+
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter,
+  clients: [...],
+  // ... oidc-provider configuration
+})
+
+// Helper: Convert Elysia Request to Node.js req/res for oidc-provider
+async function handleOidcRequest(request: Request): Promise<Response> {
+  return new Promise((resolve) => {
+    // Create Node.js-compatible request object
+    const url = new URL(request.url)
+    const nodeReq = {
+      method: request.method,
+      url: url.pathname + url.search,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: request.body ? Readable.from(request.body) : undefined,
+    } as any
+
+    // Create Node.js-compatible response object
+    const chunks: Buffer[] = []
+    const nodeRes = {
+      statusCode: 200,
+      headers: {} as Record<string, string>,
+      setHeader(name: string, value: string | string[]) {
+        this.headers[name.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value
+      },
+      getHeader(name: string) {
+        return this.headers[name.toLowerCase()]
+      },
+      write(chunk: any) {
+        chunks.push(Buffer.from(chunk))
+      },
+      end(chunk?: any) {
+        if (chunk) chunks.push(Buffer.from(chunk))
+        const body = Buffer.concat(chunks).toString()
+        
+        // Convert Node.js response back to Fetch Response
+        resolve(new Response(body, {
+          status: this.statusCode,
+          headers: this.headers
+        }))
+      }
+    } as any
+
+    // Call oidc-provider handler
+    oidc.callback()(nodeReq, nodeRes, (err: any) => {
+      if (err) {
+        resolve(new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }))
+      }
+    })
+  })
+}
+
+// Elysia application with OIDC routes
+const app = new Elysia()
+  .use(cors({ origin: '*', credentials: true }))
+  
+  // OIDC endpoints handled by Elysia routes, forwarded to oidc-provider via shim
+  .all('/.well-known/openid-configuration', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/auth', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/token', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/userinfo', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  .all('/oidc/interaction/:uid', async ({ request }) => {
+    return await handleOidcRequest(request)
+  })
+  
+  // Regular Elysia routes for authentication
+  .post('/auth/login', async ({ body, jwt }) => {
+    // Direct SpacetimeDB access for authentication
+    // ...
+  })
+  
+  .listen(3000)
+```
+
+**Approach 2: Server-Level Interception Before Elysia** (Fallback-Only Pattern)
+
+OIDC traffic is intercepted at the Node.js HTTP server level BEFORE reaching Elysia routing. This approach completely bypasses Elysia for OIDC endpoints.
+
+**Architecture Flow**:
+```
+Client Request → Node.js HTTP Server → 
+  [if /oidc/* → oidc-provider directly] OR 
+  [if other → Elysia Middleware → Elysia Handler]
+```
+
+**Key Difference**: The interception happens BEFORE Elysia sees the request, so Elysia middleware and features don't apply to OIDC endpoints.
+
+**Trade-offs**:
+- ✅ Simpler integration (no Fetch↔Node.js conversion needed)
+- ✅ Potentially better performance (one less conversion layer)
+- ⚠️ Bypasses Elysia middleware for OIDC endpoints (no CORS, no rate limiting, etc.)
+- ⚠️ No type safety for OIDC routes
+- ⚠️ Two separate request paths (harder to debug)
+- ⚠️ Cannot use Elysia features on OIDC endpoints
+
+**Implementation**:
+
+```typescript
+import { Elysia } from 'elysia'
+import Provider from 'oidc-provider'
+
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter,
+  clients: [...],
+})
+
+// Elysia application
+const app = new Elysia()
+  .use(cors({ origin: '*', credentials: true }))
+  
+  // Regular Elysia routes
+  .post('/auth/login', async ({ body, jwt }) => {
+    // Direct SpacetimeDB access
+  })
+  
+  .listen(3000, (server) => {
+    const httpServer = server.server as any
+
+    if (!httpServer) {
+      console.error('Could not access underlying Node.js server')
+      return
+    }
+
+    // Intercept requests BEFORE they reach Elysia routing
+    const originalListener = httpServer.listeners('request')[0]
+    httpServer.removeAllListeners('request')
+
+    httpServer.on('request', (req: any, res: any) => {
+      if (req.url?.startsWith('/oidc') || req.url?.startsWith('/.well-known/openid-configuration')) {
+        // Route to oidc-provider (bypasses Elysia)
+        oidc.callback()(req, res, () => {
+          res.statusCode = 404
+          res.end('Not Found')
+        })
+      } else {
+        // Route to Elysia
+        originalListener(req, res)
+      }
+    })
+
+    console.log('🚀 Elysia Auth Server running on http://localhost:3000')
+  })
+```
+
+**Recommendation**: Use **Approach 1** (Elysia app.fetch + Fetch↔Node Shim) as the canonical/primary pattern for production. The unified middleware and type safety benefits outweigh the small performance overhead of the Fetch↔Node.js conversion. Use **Approach 2** (Server-Level Interception) only as a fallback if you need maximum performance and don't require Elysia middleware on OIDC endpoints.
+
+**Full Integration Example**:
+
+```typescript
+import { Elysia } from 'elysia'
+import Provider from 'oidc-provider'
+
+// Custom SpacetimeDB adapter for oidc-provider
+// Connection sourced from module-level client closure
+class SpacetimeDBAdapter {
+  public name: string;
+  private conn: any; // SpacetimeDB connection from closure/module-level client
+
+  constructor(modelName: string) {
+    this.name = modelName;
+    this.conn = client; // Source connection from module-level client
+  }
+
+  async upsert(id: string, payload: any, expiresIn: number) {
+    // PRODUCTION: Direct SpacetimeDB access via generated reducer binding
+    await this.conn.reducers.StoreOidcToken({
+      type: this.name,
+      id,
+      payload: JSON.stringify(payload),
+      expiresAt: Date.now() + (expiresIn * 1000)
+    })
+  }
+
+  async find(id: string) {
+    // PRODUCTION: Direct SpacetimeDB query via generated DB accessor
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.type === this.name && t.id === id
+    )
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+
+  async findByUserCode(userCode: string) {
+    // Use this.conn.db.*.iter() pattern instead of spacetimeClient.query()
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.userCode === userCode
+    )
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+
+  async findByUid(uid: string) {
+    // Use this.conn.db.*.iter() pattern instead of spacetimeClient.query()
+    const result = Array.from(this.conn.db.OidcTokens.iter()).filter(
+      (t: any) => t.type === this.name && t.uid === uid
+    )
+    if (!result || result.length === 0) return undefined
+    return JSON.parse(result[0].payload)
+  }
+  
+  async destroy(id: string) {
+    await this.spacetimeClient.call('DeleteOidcToken', {
+      type: this.name,
+      id
+    })
+  }
+  
+  async revokeByGrantId(grantId: string) {
+    await this.spacetimeClient.call('RevokeOidcTokensByGrantId', {
+      grantId
+    })
+  }
+  
+  async consume(id: string) {
+    await this.spacetimeClient.call('ConsumeOidcToken', {
+      type: this.name,
+      id
+    })
+  }
+}
+
+// ============================================================================
+// C# PROXY MIGRATION BRIDGE (Use only during migration from OpenIddict)
+// ============================================================================
+// This section shows how to call ACTUAL AuthController endpoints during migration.
+// Once migration is complete, use the direct SpacetimeDB implementation above.
+//
+// ACTUAL ENDPOINTS from AuthController.cs:
+// - POST /auth/login - Login with username/password
+// - POST /auth/register - Register new user
+// - GET  /auth/totp/setup - Get TOTP QR code
+// - POST /auth/totp/verify - Verify TOTP code
+// - POST /auth/totp/validate - Validate TOTP for login
+// - POST /auth/webauthn/register/options - Get WebAuthn registration options
+// - POST /auth/webauthn/register/complete - Complete WebAuthn registration
+// - POST /auth/webauthn/login/options - Get WebAuthn login options
+// - POST /auth/webauthn/login/complete - Complete WebAuthn login
+// - GET  /auth/qr/generate - Generate QR code for login
+// - POST /auth/qr/login - Login via QR code
+// - GET  ~/connect/authorize - OAuth authorization endpoint
+// - POST ~/connect/token - OAuth token endpoint
+// - GET  ~/connect/userinfo - Get user info from token
+// - GET  ~/connect/tokeninfo - Get token info
+// - POST /connect/registerclient - Register OAuth client
+// - PUT  /connect/update-client/{clientId} - Update OAuth client
+// - DELETE /connect/delete-client/{clientId} - Delete OAuth client
+// - GET  /connect/client/{clientId} - Get OAuth client details
+// - GET  /connect/clients - List all OAuth clients
+// - GET  /connect/scopes - List available OAuth scopes
+
+class CSharpProxyAuthClient {
+  constructor(private baseUrl: string = 'http://localhost:5000') {}
+  
+  // MIGRATION ONLY: Login via C# backend
+  async login(username: string, password: string) {
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    if (!response.ok) throw new Error('Login failed')
+    return await response.json() // Returns { token, userId, ... }
+  }
+  
+  // MIGRATION ONLY: Register via C# backend
+  async register(username: string, password: string, email: string) {
+    const response = await fetch(`${this.baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, email })
+    })
+    if (!response.ok) throw new Error('Registration failed')
+    return await response.json()
+  }
+  
+  // MIGRATION ONLY: OAuth authorization flow
+  async authorize(clientId: string, redirectUri: string, scope: string, state: string, codeChallenge: string) {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })
+    const response = await fetch(`${this.baseUrl}/connect/authorize?${params}`, {
+      method: 'GET',
+      credentials: 'include' // Include cookies for session
+    })
+    return response // Returns redirect or login page
+  }
+  
+  // MIGRATION ONLY: Exchange authorization code for token
+  async getToken(code: string, codeVerifier: string, clientId: string, redirectUri: string) {
+    const response = await fetch(`${this.baseUrl}/connect/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: codeVerifier,
+        client_id: clientId,
+        redirect_uri: redirectUri
+      })
+    })
+    if (!response.ok) throw new Error('Token exchange failed')
+    return await response.json() // Returns { access_token, refresh_token, ... }
+  }
+  
+  // MIGRATION ONLY: Get user info from token
+  async getUserInfo(accessToken: string) {
+    const response = await fetch(`${this.baseUrl}/connect/userinfo`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
+    if (!response.ok) throw new Error('Failed to get user info')
+    return await response.json()
+  }
+  
+  // MIGRATION ONLY: Register OAuth client
+  async registerClient(clientName: string, redirectUris: string[], scopes: string[]) {
+    const response = await fetch(`${this.baseUrl}/connect/registerclient`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientName,
+        redirectUris,
+        scopes
+      })
+    })
+    if (!response.ok) throw new Error('Client registration failed')
+    return await response.json() // Returns { clientId, clientSecret, ... }
+  }
+  
+  // MIGRATION ONLY: Setup TOTP
+  async setupTotp(token: string) {
+    const response = await fetch(`${this.baseUrl}/auth/totp/setup`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!response.ok) throw new Error('TOTP setup failed')
+    return await response.json() // Returns { qrCodeUri, secretKey }
+  }
+  
+  // MIGRATION ONLY: Verify TOTP
+  async verifyTotp(token: string, code: string) {
+    const response = await fetch(`${this.baseUrl}/auth/totp/verify`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code })
+    })
+    if (!response.ok) throw new Error('TOTP verification failed')
+    return await response.json()
+  }
+  
+  // MIGRATION ONLY: WebAuthn registration
+  async webAuthnRegisterOptions(token: string) {
+    const response = await fetch(`${this.baseUrl}/auth/webauthn/register/options`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (!response.ok) throw new Error('WebAuthn options failed')
+    return await response.json()
+  }
+  
+  async webAuthnRegisterComplete(token: string, credential: any) {
+    const response = await fetch(`${this.baseUrl}/auth/webauthn/register/complete`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(credential)
+    })
+    if (!response.ok) throw new Error('WebAuthn registration failed')
+    return await response.json()
+  }
+  
+  // MIGRATION ONLY: QR code login
+  async generateQrCode() {
+    const response = await fetch(`${this.baseUrl}/auth/qr/generate`, {
+      method: 'GET'
+    })
+    if (!response.ok) throw new Error('QR generation failed')
+    return await response.json() // Returns { qrCode, sessionId }
+  }
+  
+  async loginWithQr(sessionId: string, username: string, password: string) {
+    const response = await fetch(`${this.baseUrl}/auth/qr/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, username, password })
+    })
+    if (!response.ok) throw new Error('QR login failed')
+    return await response.json()
+  }
+}
+
+// Example usage during migration:
+const authClient = new CSharpProxyAuthClient('http://localhost:5000')
+
+// Login flow
+const loginResult = await authClient.login('user@example.com', 'password123')
+console.log('Logged in:', loginResult.token)
+
+// OAuth flow
+const authUrl = await authClient.authorize(
+  'avalonia-client',
+  'http://localhost:3000/callback',
+  'openid profile email',
+  'random-state',
+  'code-challenge-here'
+)
+// User completes login, gets authorization code
+const tokenResult = await authClient.getToken(
+  'auth-code',
+  'code-verifier',
+  'avalonia-client',
+  'http://localhost:3000/callback'
+)
+const userInfo = await authClient.getUserInfo(tokenResult.access_token)
+
+// ============================================================================
+// END C# PROXY MIGRATION BRIDGE
+// ============================================================================
+
+// Configure oidc-provider
+const oidc = new Provider('http://localhost:3000', {
+  adapter: SpacetimeDBAdapter, // Use direct SpacetimeDB adapter (production)
+  // adapter: SpacetimeDBAdapterWithCSharpProxy, // Use C# proxy (migration only)
+  clients: [
+    {
+      client_id: 'avalonia-client',
+      client_secret: 'client-secret',
+      redirect_uris: ['http://localhost:3000/callback'],
+      response_types: ['code'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_method: 'client_secret_post',
+    },
+  ],
+  pkce: {
+    required: () => true, // Enforce PKCE for all clients
+  },
+  features: {
+    devInteractions: { enabled: false }, // Use custom login pages
+    rpInitiatedLogout: { enabled: true },
+    revocation: { enabled: true },
+    introspection: { enabled: true },
+  },
+  findAccount: async (ctx, id) => {
+    // PRODUCTION: Fetch user directly from SpacetimeDB
+    const result = await spacetimeClient.query(`
+      SELECT * FROM Users WHERE UserId = ?
+    `, [id])
+    if (!result || result.length === 0) return undefined
+    
+    const user = result[0]
+    return {
+      accountId: id,
+      async claims() {
+        return {
+          sub: id,
+          email: user.Email,
+          name: user.Login,
+          preferred_username: user.Login,
+        }
+      },
+    }
+  },
+})
+
+// Integrate with Elysia
+// NOTE: oidc-provider requires Node.js req/res objects and cannot be directly
+// integrated into Elysia route handlers. Use one of these integration patterns:
+//
+// ALLOWED Integration Patterns:
+// Pattern A (RECOMMENDED): Elysia-first routing with Node.js shim inside handlers
+// Pattern B (Alternative): Server-level interception before Elysia
+//
+// Pattern A: Elysia-first routing (RECOMMENDED)
+// All OIDC traffic flows through Elysia routes, and Fetch↔Node conversion
+// happens inside the OIDC handlers via handleOidcRequest helper.
+// This approach preserves Elysia middleware and features.
+const appA = new Elysia()
+  .all('/oidc/*', async ({ request }) => {
+    // Convert Fetch Request to Node.js req/res inside Elysia handler
+    return await handleOidcRequest(request, oidc)
+  })
+  .listen(3000)
+
+async function handleOidcRequest(request: Request, oidc: Provider) {
+  // Construct Node-style req from Fetch Request
+  const nodeReq = {
+    method: request.method,
+    url: new URL(request.url).pathname + new URL(request.url).search,
+    headers: Object.fromEntries(request.headers.entries()),
+    body: await request.text(),
+    // ... other Node.js req properties
+  }
+  
+  // Construct Node-style res to collect response
+  const nodeRes = {
+    statusCode: 200,
+    headers: {},
+    body: '',
+    setHeader(name: string, value: string) { this.headers[name] = value },
+    writeHead(status: number) { this.statusCode = status },
+    write(chunk: string) { this.body += chunk },
+    end(chunk?: string) { if (chunk) this.body += chunk },
+  }
+  
+  // Call oidc.callback() with Node-style req/res
+  await new Promise((resolve) => {
+    oidc.callback()(nodeReq as any, nodeRes as any, resolve)
+  })
+  
+  // Convert Node-style res back to Fetch Response
+  return new Response(nodeRes.body, {
+    status: nodeRes.statusCode,
+    headers: nodeRes.headers
+  })
+}
+
+// Pattern B: Server-level interception (Alternative - bypasses Elysia middleware)
+// This pattern intercepts requests BEFORE Elysia, so Elysia middleware does NOT apply.
+// Use only if Pattern A is insufficient.
+const appB = new Elysia()
+  .get('/', () => 'Elysia + oidc-provider')
+  .listen(3000, (server) => {
+    // Access underlying Node.js server and mount oidc-provider
+    if (server.server) {
+      const nodeServer = server.server as any
+      const originalListener = nodeServer.listeners('request')[0]
+      nodeServer.removeAllListeners('request')
+      
+      nodeServer.on('request', (req: any, res: any) => {
+        if (req.url?.startsWith('/oidc')) {
+          oidc.callback()(req, res, () => {})
+        } else {
+          originalListener(req, res)
+        }
+      })
+    }
+  })
+```
+
+**Benefits over Current OpenIddict Implementation**:
+1. **No 3-tier ID mapping**: oidc-provider handles ID management internally
+2. **No polling**: Async/await based, no need for 50-attempt polling loops
+3. **No AuthorizationStore issues**: Custom adapter works around SpacetimeDB reactive state
+4. **Better PKCE handling**: Native PKCE support without Data Protection keys
+5. **Simpler debugging**: TypeScript stack traces vs C# + SpacetimeDB + OpenIddict
+
+#### Migration Path to Elysia
+
+**Phase 1: Proof of Concept** (2-4 weeks)
+- [ ] Set up Elysia project with oidc-provider
+- [ ] Route OIDC traffic through Elysia app.fetch using a Fetch↔Node shim (Pattern A - RECOMMENDED) and implement OIDC handlers (authorize, token, userinfo) that convert between Fetch and Node requests/responses
+- [ ] Implement server-level interception for /oidc/* endpoints (Pattern B - fallback/alternative)
+- [ ] Implement basic OIDC flow (authorize, token, userinfo)
+- [ ] Test with Avalonia client
+- [ ] Compare performance with OpenIddict
+- [ ] Evaluate developer experience
+
+**Phase 2: OAuth Migration** (4-6 weeks)
+- [ ] Implement full OAuth/OIDC spec in Elysia
+- [ ] Migrate client registrations from OpenIddict to Elysia
+- [ ] Run Elysia side-by-side with C# backend
+- [ ] Gradually migrate OAuth clients to Elysia
+- [ ] Monitor error rates and performance
+
+**Phase 3: Authentication Gateway** (8-12 weeks)
+- [ ] Migrate all auth endpoints to Elysia
+- [ ] Implement proxy layer to C# backend
+- [ ] Remove authentication code from C# backend
+- [ ] C# backend becomes pure business logic API
+- [ ] Full production deployment
+
+**Total Effort**: 14-22 weeks for complete migration
+
+#### OIDC over WebSockets: Real-Time Authentication
+
+Current WebSocket authentication in the codebase uses query parameter token passing (`?access_token=...`). This section explores OIDC-over-WebSocket for more secure real-time authentication.
+
+**Current Implementation** (from WebSocketEventStreamWriter.cs and Program.cs):
+```csharp
+// Token passed as query parameter
+options.Events = new JwtBearerEvents
+{
+    OnMessageReceived = context =>
+    {
+        var path = context.HttpContext.Request.Path;
+        if (path.StartsWithSegments("/hubs/system-events") && 
+            context.Request.Query.TryGetValue("access_token", out var accessToken))
+        {
+            context.Token = accessToken;
+        }
+        return Task.CompletedTask;
+    }
+}
+```
+
+**Problems with Query Parameter Auth**:
+1. **Security**: Tokens visible in logs, browser history, proxy logs
+2. **Token refresh**: No mechanism to refresh expired tokens over WebSocket
+3. **Revocation**: Cannot revoke tokens mid-session
+4. **Limited metadata**: Cannot send additional auth context
+
+**OIDC-over-WebSocket Benefits**:
+1. **Secure (desktop/native clients)**: Header-based Authorization during WebSocket handshake — tokens are not exposed in URLs, logs, or browser history. Note: browser clients cannot set arbitrary headers on WebSocket handshakes; see "Client-Specific WebSocket Authentication Strategies" below for browser alternatives.
+2. **Token refresh**: Automatic token refresh over WebSocket
+3. **Revocation**: Server can close connection on token revocation
+4. **Better UX**: No reconnection needed for token refresh
+5. **Audit trail**: All auth events logged server-side
+
+**Client-Specific WebSocket Authentication Strategies**:
+
+**For Avalonia/Desktop Clients (using ClientWebSocket)**:
+- **Recommended**: Header-based Authorization during handshake
+- **Implementation**: Use `ClientWebSocket.Options.SetRequestHeader("Authorization", "Bearer {token}")` before connecting
+- **Benefits**: Full control over headers, secure token transmission, standard OAuth2 bearer token pattern
+- **Example**:
+  ```csharp
+  var ws = new ClientWebSocket();
+  ws.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+  await ws.ConnectAsync(new Uri("wss://api.example.com/ws"), cancellationToken);
+  ```
+
+**For Browser Clients (JavaScript/TypeScript)**:
+- **Problem**: Browsers do not allow setting arbitrary headers (including Authorization) on WebSocket handshakes
+- **Alternative Strategies**:
+  1. **Secure HTTP-only Cookies**: Set authentication cookie via standard login, automatically sent with WebSocket handshake
+  2. **Short-lived Query Tickets**: Exchange access token for single-use WebSocket ticket via API, use ticket in query parameter
+  3. **Sec-WebSocket-Protocol Subprotocol**: Encode token in subprotocol header (e.g., `["access_token", base64Token]`)
+- **Security Note**: Query parameter tokens should only be short-lived tickets, never long-lived access tokens
+
+**Migration Strategy by Client Type**:
+1. **Phase 1 - Avalonia Clients**: 
+   - Enable header-based Authorization in server WebSocket handlers
+   - Update Avalonia clients to use `SetRequestHeader` for Authorization
+   - Test and validate header-based auth flow
+2. **Phase 1 - Browser Clients**:
+   - Deploy secure cookie-based auth OR ticket exchange endpoint
+   - Implement Sec-WebSocket-Protocol fallback if needed
+   - Update browser clients to use chosen strategy
+3. **Phase 2**: Implement token refresh protocol for both client types
+4. **Phase 3**: Monitor and validate both authentication paths in production
+5. **Phase 4**: Deprecate legacy query parameter auth (if previously used)
+6. **Phase 5**: Remove query parameter auth support entirely
+
+#### When to Consider Elysia JS
+
+**Good Fit If**:
+- Team has TypeScript expertise
+- OAuth/OIDC is a major pain point
+- Need independent scaling of auth layer
+- Want modern developer experience
+- Building microservices architecture
+
+**Not a Good Fit If**:
+- Team is C#-only
+- Current OpenIddict implementation works well
+- Want to minimize operational complexity
+- Prefer monolithic architecture
+- Limited resources for migration
+
+#### Recommendation
+
+**Short-term** (Current refactoring): **Do NOT use Elysia**
+- Focus on completing C# refactoring first
+- Elysia would add unnecessary complexity
+- Current OpenIddict + SpacetimeDB approach is working
+
+**Medium-term** (6-12 months post-refactoring): **Evaluate Elysia for OAuth**
+- If OAuth continues to be painful, consider Elysia as OAuth proxy
+- Run proof of concept to validate benefits
+- Compare with improving current OpenIddict implementation
+
+**Long-term** (12+ months post-refactoring): **Consider Elysia as Auth Gateway**
+- If moving to microservices architecture
+- If need independent scaling of auth layer
+- If team gains TypeScript expertise
+- Full migration to Elysia as authentication gateway
+
+**Key Insight**: Elysia JS is a **valid alternative** for authentication/proxy layer, but it's **not a priority** for the current refactoring. Complete the C# refactoring first, then evaluate Elysia based on actual pain points and team capabilities.
 
 ## Conclusion
 

@@ -327,6 +327,16 @@ namespace TicketSalesApp.AdminServer.Configuration
         public bool EnableStatusRefactoring { get; set; } = false;
 
         // ============================================
+        // WebSocket Authentication (1 endpoint)
+        // ============================================
+
+        /// <summary>
+        /// GET /api/auth/ws - Real-time authentication over WebSocket.
+        /// Supports: token validation, QR login status push, auth event streaming.
+        /// </summary>
+        public bool EnableWebSocketAuthRefactoring { get; set; } = false;
+
+        // ============================================
         // Utility Pages (4 endpoints)
         // ============================================
         

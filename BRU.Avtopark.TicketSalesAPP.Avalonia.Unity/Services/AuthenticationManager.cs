@@ -18,6 +18,51 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private static readonly object _lock = new object();
         private bool _isResetting = false; // Prevent retry during reset
 
+        /// <summary>
+        /// Path to the persistent logout-pending marker file.
+        /// Survives app restarts so the WebView session is cleared even after a crash/restart.
+        /// </summary>
+        private static readonly string _logoutFlagPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BRU.Avtopark.TicketSalesApp",
+            "logout_pending");
+
+        /// <summary>
+        /// Set to true by LogoutAsync() so the next OAuthLoginWindow knows to clear
+        /// WebView session cookies. Persisted to disk so it survives app restarts.
+        /// Consumed (deleted) once the window reads it.
+        /// </summary>
+        public static bool ClearWebViewSessionOnNextLogin
+        {
+            get => File.Exists(_logoutFlagPath);
+            private set
+            {
+                if (value)
+                {
+                    // Ensure directory exists before writing
+                    Directory.CreateDirectory(Path.GetDirectoryName(_logoutFlagPath)!);
+                    File.WriteAllText(_logoutFlagPath, "1");
+                }
+                else
+                {
+                    if (File.Exists(_logoutFlagPath))
+                        File.Delete(_logoutFlagPath);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called by OAuthLoginWindow after reading the flag to reset it, so subsequent
+        /// logins (e.g. token refresh flows) don't unnecessarily clear the session.
+        /// </summary>
+        /// <returns>True if the flag was set and has been consumed, false otherwise.</returns>
+        public static bool ConsumeClearWebViewSessionFlag()
+        {
+            var wasSet = ClearWebViewSessionOnNextLogin;
+            ClearWebViewSessionOnNextLogin = false;
+            return wasSet;
+        }
+
         public static AuthenticationManager Instance
         {
             get
@@ -274,6 +319,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             Log.Information("=== LOGOUT: Starting logout process ===");
             
+            // Signal that the next OAuth window must clear WebView session cookies
+            ClearWebViewSessionOnNextLogin = true;
+            Log.Information("LOGOUT: WebView session clear flag set");
+            
             // Clear OAuth tokens from storage
             await _oauthService.LogoutAsync();
             Log.Information("LOGOUT: Cleared OAuth tokens from storage");
@@ -286,6 +335,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             ApiClientService.Instance.IsAdmin = null;
             ApiClientService.Instance.UserRole = null;
             Log.Information("LOGOUT: Cleared cached user data");
+            
+            // Clean up any state files that may have been written to disk
+            await CleanupStateFilesAsync();
             
             // Notify listeners
             AuthenticationStateChanged?.Invoke(this, false);
@@ -305,6 +357,79 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Removes any state files the app may have written to disk — both in the
+        /// %LocalAppData% app folder and next to the executable (bin folder), where
+        /// AvaloniaWebView / WebView2 can drop its user-data directory at runtime.
+        /// Called on every explicit logout so a fresh restart starts clean.
+        /// </summary>
+        private static async Task CleanupStateFilesAsync()
+        {
+            await Task.Run(() =>
+            {
+                // 1. %LocalAppData%\BRU.Avtopark.TicketSalesApp — oauth_* temp files
+                try
+                {
+                    var appDataFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "BRU.Avtopark.TicketSalesApp");
+
+                    if (Directory.Exists(appDataFolder))
+                    {
+                        foreach (var file in Directory.GetFiles(appDataFolder, "oauth_*"))
+                        {
+                            TryDelete(file);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "CleanupStateFiles: error sweeping LocalAppData folder");
+                }
+
+                // 2. Bin / working directory — WebView2 user-data folder
+                //    AvaloniaWebView (WebView2 backend) creates "<exename>.WebView2\EBWebView"
+                //    next to the executable. Delete the whole "<exename>.WebView2" tree.
+                var baseDir = AppContext.BaseDirectory;
+                try
+                {
+                    // Match any directory ending in ".WebView2" next to the exe
+                    foreach (var dir in Directory.GetDirectories(baseDir, "*.WebView2"))
+                    {
+                        try
+                        {
+                            Directory.Delete(dir, recursive: true);
+                            Log.Information("CleanupStateFiles: deleted WebView2 data dir {Dir}", dir);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", dir);
+                        }
+                    }
+                    // Also sweep legacy names just in case
+                    foreach (var dirName in new[] { "EBWebView", "WebView2", ".webview" })
+                    {
+                        var path = Path.Combine(baseDir, dirName);
+                        if (Directory.Exists(path))
+                        {
+                            try { Directory.Delete(path, recursive: true); Log.Information("CleanupStateFiles: deleted {Dir}", path); }
+                            catch (Exception ex) { Log.Warning(ex, "CleanupStateFiles: could not delete {Dir}", path); }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "CleanupStateFiles: error sweeping bin directory");
+                }
+            });
+        }
+
+        private static void TryDelete(string path)
+        {
+            try { File.Delete(path); }
+            catch (Exception ex) { Log.Warning(ex, "CleanupStateFiles: could not delete {File}", path); }
         }
 
         /// <summary>
@@ -419,13 +544,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                                 var values = new List<string>();
                                 foreach (var item in claim.Value.EnumerateArray())
                                 {
-                                    values.Add(item.GetString() ?? "");
+                                    // Guard against non-string JsonElement kinds (numbers, booleans, objects, arrays)
+                                    // to prevent InvalidOperationException from GetString() on non-string elements.
+                                    string itemValue = item.ValueKind == System.Text.Json.JsonValueKind.String || item.ValueKind == System.Text.Json.JsonValueKind.Null
+                                        ? (item.GetString() ?? string.Empty)
+                                        : item.GetRawText();
+                                    values.Add(itemValue);
                                 }
                                 Log.Information("  {ClaimType}: [{Values}]", claim.Name, string.Join(", ", values));
                             }
-                            else
+                            else if (claim.Value.ValueKind == System.Text.Json.JsonValueKind.String)
                             {
                                 Log.Information("  {ClaimType}: {Value}", claim.Name, claim.Value.GetString());
+                            }
+                            else
+                            {
+                                Log.Information("  {ClaimType}: {Value}", claim.Name, claim.Value.GetRawText());
                             }
                         }
                     }

@@ -15,7 +15,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <TextBox Grid.Column="0" 
                      Text="{Binding SearchText}"
-                     Watermark="Поиск по инженеру, проблемам, состоянию или модели автобуса..."
+                     PlaceholderText="Поиск по инженеру, проблемам, состоянию или модели автобуса..."
                      Margin="0,0,10,0"/>
             <Button Grid.Column="1" 
                     Command="{Binding AddCommand}"
@@ -34,46 +34,46 @@
                   Margin="0,0,0,10">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" 
-                                  Binding="{Binding MaintenanceId}"
+                                  Binding="{ReflectionBinding MaintenanceId}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Автобус" 
-                                  Binding="{Binding BusModel}"
+                                  Binding="{ReflectionBinding BusModel}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Рег. номер" 
-                                  Binding="{Binding BusRegistrationNumber}"
+                                  Binding="{ReflectionBinding BusRegistrationNumber}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Дата обслуживания" 
-                                  Binding="{Binding LastServiceDateDisplay}"
+                                  Binding="{ReflectionBinding LastServiceDateDisplay}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Следующее обслуживание" 
-                                  Binding="{Binding NextServiceDateDisplay}"
+                                  Binding="{ReflectionBinding NextServiceDateDisplay}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Инженер" 
-                                  Binding="{Binding ServiceEngineer}"
+                                  Binding="{ReflectionBinding ServiceEngineer}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Найденные проблемы" 
-                                  Binding="{Binding FoundIssues}"
+                                  Binding="{ReflectionBinding FoundIssues}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Состояние" 
-                                  Binding="{Binding Roadworthiness}"
+                                  Binding="{ReflectionBinding Roadworthiness}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Тип обслуживания" 
-                                  Binding="{Binding MaintenanceType}"
+                                  Binding="{ReflectionBinding MaintenanceType}"
                                   Width="*"/>
                 <DataGridTextColumn Header="Пробег" 
-                                  Binding="{Binding MileageThreshold}"
+                                  Binding="{ReflectionBinding MileageThreshold}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Стоимость работ" 
-                                  Binding="{Binding MaintenanceCost, StringFormat={}{0:C}}"
+                                  Binding="{ReflectionBinding MaintenanceCost, StringFormat={}{0:C}}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Стоимость запчастей" 
-                                  Binding="{Binding PartsCost, StringFormat={}{0:C}}"
+                                  Binding="{ReflectionBinding PartsCost, StringFormat={}{0:C}}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Общая стоимость" 
-                                  Binding="{Binding TotalMaintenanceCost, StringFormat={}{0:C}}"
+                                  Binding="{ReflectionBinding TotalMaintenanceCost, StringFormat={}{0:C}}"
                                   Width="Auto"/>
                 <DataGridTextColumn Header="Статус" 
-                                  Binding="{Binding MaintenanceStatus}"
+                                  Binding="{ReflectionBinding MaintenanceStatus}"
                                   Width="Auto"/>
             </DataGrid.Columns>
         </DataGrid>

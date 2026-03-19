@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.LoginSelectorPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="{AppThemeBinding Light={StaticResource AuthBgLight}, Dark={StaticResource AuthBgDark}}"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto,*">
+        <VerticalStackLayout
+            Grid.Row="1"
+            HorizontalOptions="Center"
+            WidthRequest="320"
+            Spacing="16">
+
+            <Label
+                Text="Вход в систему"
+                FontSize="24"
+                FontAttributes="Bold"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                HorizontalOptions="Center"
+                Margin="0,0,0,16" />
+
+            <Label
+                Text="Выберите способ входа"
+                FontSize="14"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                HorizontalOptions="Center"
+                Margin="0,0,0,24" />
+
+            <!-- OAuth button -->
+            <Button
+                x:Name="OAuthButton"
+                Text="🔐  Войти через OAuth"
+                BackgroundColor="{StaticResource BrandPrimary}"
+                TextColor="White"
+                FontSize="16"
+                CornerRadius="12"
+                HeightRequest="52"
+                Clicked="OnOAuthClicked" />
+
+            <!-- Traditional login button -->
+            <Button
+                x:Name="TraditionalButton"
+                Text="👤  Войти с паролем"
+                BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceVariantLight}, Dark={StaticResource SurfaceVariantDark}}"
+                TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                FontSize="16"
+                CornerRadius="12"
+                HeightRequest="52"
+                Clicked="OnTraditionalClicked" />
+
+            <!-- Status / error label -->
+            <Label
+                x:Name="ErrorLabel"
+                Text=""
+                TextColor="{StaticResource BrandAccentRed}"
+                FontSize="13"
+                HorizontalOptions="Center"
+                IsVisible="False" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

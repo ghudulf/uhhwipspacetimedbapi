@@ -4,7 +4,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
         xmlns:converters="using:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
-        xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
         xmlns:icons="using:Material.Icons.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews.SalesStatisticsToolWindow"
@@ -83,26 +82,32 @@
             <StackPanel Spacing="20">
                 <!-- Charts Section -->
                 <WrapPanel Orientation="Horizontal">
-                    <!-- Sales Trend Chart -->
+                    <!-- Sales Trend Chart — LiveCharts incompatible with Avalonia 12 preview2, shown as table -->
                     <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
-                        <Grid RowDefinitions="Auto,*">
+                        <StackPanel Spacing="8">
                             <TextBlock Text="Динамика продаж" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                            <lvc:CartesianChart Grid.Row="1"
-                                          Series="{Binding SalesTrendChart}"
-                                          XAxes="{Binding XAxes}"
-                                          YAxes="{Binding YAxes}"
-                                          MinHeight="250" MaxHeight="400"/>
-                        </Grid>
+                            <Border Background="#1E1E28" CornerRadius="8" Padding="16" MinHeight="250">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                    <icons:MaterialIcon Kind="ChartLine" Width="48" Height="48" Foreground="#3A3A48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="График недоступен" FontSize="14" Foreground="#4A4A58" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="#3A3A48" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Border>
-                    
-                    <!-- Route Distribution Chart -->
+
+                    <!-- Route Distribution Chart — same issue -->
                     <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
-                        <Grid RowDefinitions="Auto,*">
+                        <StackPanel Spacing="8">
                             <TextBlock Text="Распределение по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                            <lvc:PieChart Grid.Row="1"
-                                        Series="{Binding RouteDistributionChart}"
-                                        MinHeight="250" MaxHeight="400"/>
-                        </Grid>
+                            <Border Background="#1E1E28" CornerRadius="8" Padding="16" MinHeight="250">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                                    <icons:MaterialIcon Kind="ChartPie" Width="48" Height="48" Foreground="#3A3A48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="График недоступен" FontSize="14" Foreground="#4A4A58" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="LiveCharts несовместим с Avalonia 12 preview2" FontSize="11" Foreground="#3A3A48" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Border>
                 </WrapPanel>
     
@@ -120,10 +125,10 @@
                                     MaxHeight="400"
                                     HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Рост" Binding="{Binding GrowthRate, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Дата" Binding="{ReflectionBinding Date, StringFormat={}{0:dd.MM.yyyy}}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Рост" Binding="{ReflectionBinding GrowthRate, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -141,10 +146,10 @@
                                     MaxHeight="400"
                                     HorizontalScrollBarVisibility="Auto">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Маршрут" Binding="{Binding RouteName}"/>
-                                    <DataGridTextColumn Header="Продажи" Binding="{Binding TotalSales}"/>
-                                    <DataGridTextColumn Header="Доход" Binding="{Binding TotalRevenue, StringFormat={}{0:C}}"/>
-                                    <DataGridTextColumn Header="Доля" Binding="{Binding SalesPercentage, StringFormat={}{0:N1}%}"/>
+                                    <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
+                                    <DataGridTextColumn Header="Продажи" Binding="{ReflectionBinding TotalSales}"/>
+                                    <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalRevenue, StringFormat={}{0:C}}"/>
+                                    <DataGridTextColumn Header="Доля" Binding="{ReflectionBinding SalesPercentage, StringFormat={}{0:N1}%}"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>

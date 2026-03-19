@@ -1,131 +1,122 @@
-﻿using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
-using ReDocking;
-using System;
-using System.Linq;
-using System.Reactive.Linq;
-
-using Avalonia.Controls;
-using Avalonia.Layout;
-using FluentAvalonia.UI.Controls;
-using System.Collections.ObjectModel;
-using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
+﻿using System;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
-
-public class CentralViewWindowViewModel : IDisposable
+public partial class CentralViewWindowViewModel : ObservableObject
 {
-    private TabView? _mainTabView;
-    private ObservableCollection<TabViewItem> _tabItems = new();
+    [ObservableProperty] private object? _currentView;
+    [ObservableProperty] private bool _isNavPaneOpen = false;
+    [ObservableProperty] private string _currentSectionTitle = "Автобусы";
+    [ObservableProperty] private string _currentSectionSubtitle = "Парк транспортных средств";
+    [ObservableProperty] private string _userInitials = string.Empty;
+    [ObservableProperty] private bool _isConnected = true;
+    [ObservableProperty] private string _connectionStatus = "Подключено к серверу";
 
-   
+    partial void OnIsConnectedChanged(bool value)
+    {
+        ConnectionStatus = value ? "Подключено к серверу" : "Отключено";
+    }
 
     public CentralViewWindowViewModel()
     {
-        void ConfigureToolsList(ReactiveCollection<ToolWindowViewModel> list,
-            ReactiveProperty<ToolWindowViewModel?> selected)
-        {
-            selected.Subscribe(x =>
-                list.ToObservable()
-                    .Where(y => y != x && y.DisplayMode.Value == DockableDisplayMode.Docked)
-                    .Subscribe(y => y.IsSelected.Value = false));
-
-            list.ObserveAddChanged()
-                .Select(x => x.IsSelected.Select(y => (x, y)))
-                .Subscribe(z =>
-                {
-                    z.Subscribe(w =>
-                    {
-                        if (w is { y: true, x.DisplayMode.Value: DockableDisplayMode.Docked })
-                        {
-                            selected.Value = w.x;
-                        }
-                        else
-                        {
-                            selected.Value = list.FirstOrDefault(xx =>
-                                xx.IsSelected.Value && xx.DisplayMode.Value == DockableDisplayMode.Docked);
-                        }
-                    });
-                });
-
-            list.ObserveRemoveChanged()
-                .Subscribe(x => x.Dispose());
-        }
-
-        ConfigureToolsList(LeftUpperTopTools, SelectedLeftUpperTopTool);
-        ConfigureToolsList(LeftUpperBottomTools, SelectedLeftUpperBottomTool);
-        ConfigureToolsList(LeftLowerTopTools, SelectedLeftLowerTopTool);
-        ConfigureToolsList(LeftLowerBottomTools, SelectedLeftLowerBottomTool);
-        ConfigureToolsList(RightUpperTopTools, SelectedRightUpperTopTool);
-        ConfigureToolsList(RightUpperBottomTools, SelectedRightUpperBottomTool);
-        ConfigureToolsList(RightLowerTopTools, SelectedRightLowerTopTool);
-        ConfigureToolsList(RightLowerBottomTools, SelectedRightLowerBottomTool);
-
-        // Add management tool windows
-        LeftUpperTopTools.Add(new ToolWindowViewModel("Билеты", "\uE8F5", new TicketManagementToolWindow()));
-        LeftUpperTopTools.Add(new ToolWindowViewModel("Автобусы", "\uE806", new BusManagementToolWindow()));
-        LeftUpperTopTools.Add(new ToolWindowViewModel("Маршруты", "\uE707", new RouteManagementToolWindow()));
-        LeftUpperTopTools.Add(new ToolWindowViewModel("Обслуживание", "\uE7C0", new MaintenanceManagementToolWindow()));
-        
-        // Add statistics and reporting tool windows
-        RightUpperTopTools.Add(new ToolWindowViewModel("Статистика продаж", "\uE9D9", new SalesStatisticsToolWindow()));
-        RightUpperTopTools.Add(new ToolWindowViewModel("Статистика доходов", "\uE9F9", new IncomeReportToolWindow()));
-        
-        // Add sales management tool window
-        RightUpperBottomTools.Add(new ToolWindowViewModel("Продажи билетов", "\uE8FB", new SalesManagementToolWindow()));
-
-        // Add employee and job management tool windows
-        LeftLowerTopTools.Add(new ToolWindowViewModel("Управление пользователями", "\uE779", new UserManagementViewModel()));
-        LeftLowerTopTools.Add(new ToolWindowViewModel("Сотрудники", "\uE77B", new EmployeeManagementToolWindow()));
-        LeftLowerTopTools.Add(new ToolWindowViewModel("Должности", "\uE779", new JobManagementViewModel()));
-        LeftLowerTopTools.Add(new ToolWindowViewModel("Расписание", "\uE779", new RouteSchedulesManagementToolWindow()));
+        _currentView = new BusManagementToolWindow();
     }
 
-    public ReactiveCollection<ToolWindowViewModel> LeftUpperTopTools { get; } = [];
+    [RelayCommand]
+    private void ToggleNavPane() => IsNavPaneOpen = !IsNavPaneOpen;
 
-    public ReactiveProperty<ToolWindowViewModel?> SelectedLeftUpperTopTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> LeftUpperBottomTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedLeftUpperBottomTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> LeftLowerTopTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedLeftLowerTopTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> LeftLowerBottomTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedLeftLowerBottomTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> RightUpperTopTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedRightUpperTopTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> RightUpperBottomTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedRightUpperBottomTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> RightLowerTopTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedRightLowerTopTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> RightLowerBottomTools { get; } = [];
-
-    public ReactiveProperty<ToolWindowViewModel?> SelectedRightLowerBottomTool { get; } = new();
-
-    public ReactiveCollection<ToolWindowViewModel> FloatingWindows { get; } = [];
-
-    public void Dispose()
+    private void Navigate(object view, string title, string subtitle)
     {
-        SelectedLeftUpperTopTool.Dispose();
-        SelectedLeftUpperBottomTool.Dispose();
-        SelectedLeftLowerTopTool.Dispose();
-        SelectedLeftLowerBottomTool.Dispose();
-        SelectedRightUpperTopTool.Dispose();
-        SelectedRightUpperBottomTool.Dispose();
-        SelectedRightLowerTopTool.Dispose();
-        SelectedRightLowerBottomTool.Dispose();
+        CurrentView = view;
+        CurrentSectionTitle = title;
+        CurrentSectionSubtitle = subtitle;
+        IsNavPaneOpen = false;
+    }
+
+    [RelayCommand]
+    private void ShowBusManagement() =>
+        Navigate(new BusManagementToolWindow(), "Автобусы", "Парк транспортных средств");
+
+    [RelayCommand]
+    private void ShowRouteSchedules() =>
+        Navigate(new RouteSchedulesManagementToolWindow(), "Расписание", "Расписание маршрутов");
+
+    [RelayCommand]
+    private void ShowTicketManagement() =>
+        Navigate(new TicketManagementToolWindow(), "Билеты", "Управление билетами");
+
+    [RelayCommand]
+    private void ShowUserManagement() =>
+        Navigate(new UserManagementToolWindow(), "Пользователи", "Права доступа");
+
+    [RelayCommand]
+    private void ShowSalesStatistics() =>
+        Navigate(new SalesStatisticsToolWindow(), "Статистика", "Аналитика продаж");
+
+    [RelayCommand]
+    private void ShowSalesManagement() =>
+        Navigate(new SalesManagementToolWindow(), "Продажи", "Кассовые операции");
+
+    [RelayCommand]
+    private void ShowRouteManagement() =>
+        Navigate(new RouteManagementToolWindow(), "Маршруты", "Управление маршрутами");
+
+    [RelayCommand]
+    private void ShowEmployeeManagement() =>
+        Navigate(new EmployeeManagementToolWindow(), "Сотрудники", "Кадровый учёт");
+
+    [RelayCommand]
+    private void ShowJobManagement() =>
+        Navigate(new JobManagementToolWindow(), "Должности", "Штатное расписание");
+
+    [RelayCommand]
+    private void ShowMaintenanceManagement() =>
+        Navigate(new MaintenanceManagementToolWindow(), "Обслуживание", "ТО и ремонт");
+
+    [RelayCommand]
+    private void ShowIncomeReport() =>
+        Navigate(new IncomeReportToolWindow(), "Доходы", "Финансовые отчёты");
+
+    [RelayCommand]
+    private void ShowWebSocketDebug()
+    {
+        var win = new WebSocketDebugWindow();
+        win.Show();
+    }
+
+    [RelayCommand]
+    private void OpenAbout() => new AboutWindow().Show();
+
+    [RelayCommand]
+    private void OpenHelp() => new HelpWindow().Show();
+
+    [RelayCommand]
+    private void Refresh()
+    {
+        // Re-create view instance to refresh content
+        var title = CurrentSectionTitle;
+        var subtitle = CurrentSectionSubtitle;
+        var viewType = CurrentView?.GetType();
+
+        if (viewType != null)
+        {
+            CurrentView = null;
+            CurrentView = Activator.CreateInstance(viewType);
+            CurrentSectionTitle = title;
+            CurrentSectionSubtitle = subtitle;
+        }
+    }
+
+    [RelayCommand]
+    private void Exit()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
     }
 }

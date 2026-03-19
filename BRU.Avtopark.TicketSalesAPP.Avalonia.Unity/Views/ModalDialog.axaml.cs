@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using System.Threading.Tasks;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 {
@@ -48,7 +49,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             InitializeComponent();
 
 #if DEBUG
-            this.AttachDevTools();
+            DevToolsHelper.AttachOnce();
 #endif
         }
 

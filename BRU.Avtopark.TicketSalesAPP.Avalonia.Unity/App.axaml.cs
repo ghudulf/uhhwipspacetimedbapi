@@ -5,14 +5,10 @@ using Avalonia.Markup.Xaml;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
-using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Serilog;
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using AvaloniaWebView;
-
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 
 public partial class App : Application
@@ -27,10 +23,16 @@ public partial class App : Application
     public override void RegisterServices()
     {
         base.RegisterServices();
-        
-        // Initialize WebView.Avalonia
-        AvaloniaWebViewBuilder.Initialize(default);
-        Log.Information("WebView.Avalonia initialized");
+#if DESKTOP
+        // AvaloniaWebViewBuilder is only available on the desktop entry point.
+        // The DESKTOP constant is defined in the Desktop .csproj and the MAUI
+        // .csproj for the net10.0 (generic desktop) TFM only — not for
+        // net10.0-android or net10.0-ios — so this call is safely excluded on
+        // mobile/browser targets.
+        // Uncomment when Avalonia.Controls.WebView is wired up:
+        // AvaloniaWebViewBuilder.Initialize(default);
+        // Log.Information("WebView.Avalonia initialized");
+#endif
     }
 
 
@@ -189,23 +191,11 @@ public partial class App : Application
         
     
 
-    private void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
-    }
-
-
     public override void OnFrameworkInitializationCompleted()
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        var isMauiHost = AppContext.GetData("MAUI_HOST") as bool? == true;
+
+        if (!isMauiHost && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
           try
             {
@@ -224,7 +214,8 @@ public partial class App : Application
 #else
                 Log.Debug("Creating splash screen");
                 // Create and show the splash screen directly in release mode
-                await ShowSplashScreenAndInitialize(desktop);
+                // Fire-and-forget: OnFrameworkInitializationCompleted cannot be async
+                _ = ShowSplashScreenAndInitialize(desktop);
 #endif
 
             }
@@ -236,7 +227,18 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
+            // MAUI single-view targets: Browser/WASM, iOS.
+            // The full desktop startup flow (splash, multi-window, OAuth) does NOT run here.
             singleViewPlatform.MainView = new MainView
+            {
+                DataContext = new MainViewModel()
+            };
+        }
+        else if (ApplicationLifetime is IActivityApplicationLifetime activityLifetime)
+        {
+            // Android via MAUI.
+            // The full desktop startup flow does NOT run here.
+            activityLifetime.MainViewFactory = () => new MainView
             {
                 DataContext = new MainViewModel()
             };

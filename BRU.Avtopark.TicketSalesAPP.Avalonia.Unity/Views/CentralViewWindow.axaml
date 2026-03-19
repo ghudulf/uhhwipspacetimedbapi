@@ -3,696 +3,701 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewModels="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
+        xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
         xmlns:icons="using:Material.Icons.Avalonia"
+        xmlns:converters="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
         mc:Ignorable="d"
-		xmlns:dock="using:ReDocking"
-		xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
-
-        d:DesignWidth="850" d:DesignHeight="620"
-        x:DataType="viewModels:CentralViewWindowViewModel"
-        Title="БРУ Автопарк - Система Управления"
+        d:DesignWidth="1200" d:DesignHeight="760"
+        x:DataType="vm:CentralViewWindowViewModel"
+        Title="БРУ Автопарк — Система Управления"
         WindowStartupLocation="CenterScreen"
-        CanResize="True" MinWidth="750" MinHeight="550"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="36"
-        Background="{DynamicResource SystemBackground}">
-<Window.Resources>
-        <!-- Custom Resources for Light and Dark Themes (Classic Lean) from MainWindow.axaml -->
-        <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <!-- Light Mode Resources -->
-                <ResourceDictionary x:Key="Light">
-                    <Color x:Key="SystemBackgroundColor">#C0C0C0</Color> <!-- Classic Gray -->
-                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
-                    
-                    <Color x:Key="TitleBarBackgroundColor">#000080</Color> <!-- Classic Windows Blue -->
-                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
-                    <Color x:Key="TitleBarTextColor">#FFFFFF</Color>
-                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
-                    <Color x:Key="TitleBarButtonHoverBackgroundColor">#D4D0C8</Color> <!-- Match button hover -->
-                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
-                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#A0A0A0</Color> <!-- Match button press -->
-                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
-                    
-                    <Color x:Key="MainContentBackgroundColor">#C0C0C0</Color>
-                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
-                    <Color x:Key="ContentAreaBorderColor">#808080</Color> <!-- Darker Gray -->
-                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
-                    <Color x:Key="ContentAreaInnerHighlightColor">#FFFFFF</Color>
-                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
-                    
-                    <!-- Utility Button Specific Colors -->
-                    <Color x:Key="UtilityButtonTextColor">#000000</Color>
-                    <Color x:Key="UtilityButtonIconColor">#000080</Color> 
-                    <Color x:Key="UtilityButtonHoverBackgroundColor">#000080</Color> <!-- Blue highlight -->
-                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
-                    <Color x:Key="UtilityButtonHoverTextColor">#FFFFFF</Color>
-                    <Color x:Key="UtilityButtonHoverIconColor">#FFFFFF</Color>
-                    
-                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
-                    <Color x:Key="CommandButtonOuterBorderColor">#FFFFFF</Color>
-                    <Color x:Key="CommandButtonInnerBorderColor">#808080</Color>
-                    <Color x:Key="CommandButtonBackgroundColor">#C0C0C0</Color>
-                    <Color x:Key="CommandButtonTextColor">#000000</Color>
-                    <Color x:Key="CommandButtonHoverBackgroundColor">#D4D0C8</Color>
-                    <Color x:Key="CommandButtonPressedBackgroundColor">#A0A0A0</Color>
-                    <Color x:Key="CommandButtonPressedOuterBorderColor">#808080</Color>
-                    <Color x:Key="CommandButtonPressedInnerBorderColor">#FFFFFF</Color>
-                    
-                    <Color x:Key="BottomBarBackgroundColor">#C0C0C0</Color>
-                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
-                    
-                    <Color x:Key="HeaderTextColor">#000000</Color>
-                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
-                    <Color x:Key="SubHeaderTextColor">#000000</Color>
-                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
-                    
-                    <Color x:Key="StatusBarBackgroundColor">#C0C0C0</Color>
-                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
-                    <Color x:Key="StatusBarBorderColor">#808080</Color>
-                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
-                    <Color x:Key="StatusBarInnerHighlightColor">#FFFFFF</Color>
-                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
-                    <Color x:Key="StatusBarTextColor">#000000</Color>
-                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
+        CanResize="True" MinWidth="960" MinHeight="620"
+        WindowDecorations="None"
+        Background="#111116">
 
-                    <!-- Divider Brush for Fluent/Modern Layouts -->
-                    <SolidColorBrush x:Key="TicketSalesApp.UI.Administration.AvaloniaDividerBrush" Color="#E6E6E6"/>
-
-                    <!-- Add Flyout colors -->
-                    <Color x:Key="FlyoutBackgroundColor">#F0F0F0</Color> 
-                    <SolidColorBrush x:Key="FlyoutBackground" Color="{DynamicResource FlyoutBackgroundColor}"/>
-                    <Color x:Key="FlyoutTextColor">#000000</Color>
-                    <SolidColorBrush x:Key="FlyoutText" Color="{DynamicResource FlyoutTextColor}"/>
-                    <Color x:Key="FlyoutButtonHoverBackgroundColor">#000080</Color>
-                    <SolidColorBrush x:Key="FlyoutButtonHoverBackground" Color="{DynamicResource FlyoutButtonHoverBackgroundColor}"/>
-                    <Color x:Key="FlyoutButtonHoverTextColor">#FFFFFF</Color>
-                    <SolidColorBrush x:Key="FlyoutButtonHoverText" Color="{DynamicResource FlyoutButtonHoverTextColor}"/>
-                    <Color x:Key="FlyoutSeparatorColor">#808080</Color>
-                    <SolidColorBrush x:Key="FlyoutSeparator" Color="{DynamicResource FlyoutSeparatorColor}"/>
-                </ResourceDictionary>
-                
-                <!-- Dark Mode Resources (Adapted for Classic Feel) -->
-                <ResourceDictionary x:Key="Dark">
-                    <Color x:Key="SystemBackgroundColor">#2E2E2E</Color>
-                    <SolidColorBrush x:Key="SystemBackground" Color="{DynamicResource SystemBackgroundColor}"/>
-                    
-                    <Color x:Key="TitleBarBackgroundColor">#1A1A1A</Color>
-                    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource TitleBarBackgroundColor}"/>
-                    <Color x:Key="TitleBarTextColor">#E0E0E0</Color>
-                    <SolidColorBrush x:Key="TitleBarText" Color="{DynamicResource TitleBarTextColor}"/>
-                     <Color x:Key="TitleBarButtonHoverBackgroundColor">#3C3C3C</Color> <!-- Match button hover -->
-                    <SolidColorBrush x:Key="TitleBarButtonHoverBackground" Color="{DynamicResource TitleBarButtonHoverBackgroundColor}"/>
-                    <Color x:Key="TitleBarButtonPressedBackgroundColor">#1E1E1E</Color> <!-- Match button press -->
-                    <SolidColorBrush x:Key="TitleBarButtonPressedBackground" Color="{DynamicResource TitleBarButtonPressedBackgroundColor}"/>
-                    
-                    <Color x:Key="MainContentBackgroundColor">#2E2E2E</Color>
-                    <SolidColorBrush x:Key="MainContentBackground" Color="{DynamicResource MainContentBackgroundColor}"/>
-                    <Color x:Key="ContentAreaBorderColor">#505050</Color>
-                    <SolidColorBrush x:Key="ContentAreaBorder" Color="{DynamicResource ContentAreaBorderColor}"/>
-                     <Color x:Key="ContentAreaInnerHighlightColor">#1A1A1A</Color>
-                    <SolidColorBrush x:Key="ContentAreaInnerHighlight" Color="{DynamicResource ContentAreaInnerHighlightColor}"/>
-
-                    <!-- Utility Button Specific Colors -->
-                    <Color x:Key="UtilityButtonTextColor">#E0E0E0</Color>
-                    <Color x:Key="UtilityButtonIconColor">#8CB1DE</Color> 
-                    <Color x:Key="UtilityButtonHoverBackgroundColor">#8CB1DE</Color> <!-- Blue highlight -->
-                    <SolidColorBrush x:Key="UtilityButtonHoverBackground" Color="{DynamicResource UtilityButtonHoverBackgroundColor}"/>
-                    <Color x:Key="UtilityButtonHoverTextColor">#1A1A1A</Color>
-                    <Color x:Key="UtilityButtonHoverIconColor">#1A1A1A</Color>
-                    
-                    <!-- Command Button Specific Colors (Keep Bevel Style) -->
-                    <Color x:Key="CommandButtonOuterBorderColor">#505050</Color>
-                    <Color x:Key="CommandButtonInnerBorderColor">#1A1A1A</Color>
-                    <Color x:Key="CommandButtonBackgroundColor">#2E2E2E</Color>
-                    <Color x:Key="CommandButtonTextColor">#E0E0E0</Color>
-                    <Color x:Key="CommandButtonHoverBackgroundColor">#3C3C3C</Color>
-                    <Color x:Key="CommandButtonPressedBackgroundColor">#1E1E1E</Color>
-                    <Color x:Key="CommandButtonPressedOuterBorderColor">#1A1A1A</Color>
-                    <Color x:Key="CommandButtonPressedInnerBorderColor">#505050</Color>
-                    
-                    <Color x:Key="BottomBarBackgroundColor">#2E2E2E</Color>
-                    <SolidColorBrush x:Key="BottomBarBackground" Color="{DynamicResource BottomBarBackgroundColor}"/>
-                    
-                    <Color x:Key="HeaderTextColor">#E0E0E0</Color>
-                    <SolidColorBrush x:Key="HeaderText" Color="{DynamicResource HeaderTextColor}"/>
-                    <Color x:Key="SubHeaderTextColor">#C0C0C0</Color>
-                    <SolidColorBrush x:Key="SubHeaderText" Color="{DynamicResource SubHeaderTextColor}"/>
-                    
-                    <Color x:Key="StatusBarBackgroundColor">#2E2E2E</Color>
-                    <SolidColorBrush x:Key="StatusBarBackground" Color="{DynamicResource StatusBarBackgroundColor}"/>
-                    <Color x:Key="StatusBarBorderColor">#505050</Color>
-                    <SolidColorBrush x:Key="StatusBarBorder" Color="{DynamicResource StatusBarBorderColor}"/>
-                    <Color x:Key="StatusBarInnerHighlightColor">#1A1A1A</Color>
-                    <SolidColorBrush x:Key="StatusBarInnerHighlight" Color="{DynamicResource StatusBarInnerHighlightColor}"/>
-                    <Color x:Key="StatusBarTextColor">#E0E0E0</Color>
-                    <SolidColorBrush x:Key="StatusBarText" Color="{DynamicResource StatusBarTextColor}"/>
-
-                    <!-- Divider Brush for Fluent/Modern Layouts -->
-                    <SolidColorBrush x:Key="TicketSalesApp.UI.Administration.AvaloniaDividerBrush" Color="#4D4D4D"/>
-
-                    <!-- Add Flyout colors -->
-                    <Color x:Key="FlyoutBackgroundColor">#3A3A3A</Color> 
-                    <SolidColorBrush x:Key="FlyoutBackground" Color="{DynamicResource FlyoutBackgroundColor}"/>
-                    <Color x:Key="FlyoutTextColor">#E0E0E0</Color>
-                    <SolidColorBrush x:Key="FlyoutText" Color="{DynamicResource FlyoutTextColor}"/>
-                    <Color x:Key="FlyoutButtonHoverBackgroundColor">#8CB1DE</Color>
-                    <SolidColorBrush x:Key="FlyoutButtonHoverBackground" Color="{DynamicResource FlyoutButtonHoverBackgroundColor}"/>
-                    <Color x:Key="FlyoutButtonHoverTextColor">#1A1A1A</Color>
-                    <SolidColorBrush x:Key="FlyoutButtonHoverText" Color="{DynamicResource FlyoutButtonHoverTextColor}"/>
-                    <Color x:Key="FlyoutSeparatorColor">#505050</Color>
-                    <SolidColorBrush x:Key="FlyoutSeparator" Color="{DynamicResource FlyoutSeparatorColor}"/>
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
-
-            <!-- Existing Docking Templates -->
-            <DataTemplate x:Key="LeftSideBarButtonDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
-                <dock:SideBarButton DisplayMode="{Binding DisplayMode.Value}"
-                                    IsChecked="{Binding IsSelected.Value}"
-                                    ToolTip.Placement="Right"
-                                    ToolTip.ShowDelay="200"
-                                    ToolTip.Tip="{Binding Name.Value}"
-                                    ToolTip.VerticalOffset="0">
-                    <!-- Use Fluent UI Icon or Material Icon depending on view model -->
-                    <icons:MaterialIcon Kind="{Binding Icon.Value}" Width="16" Height="16" /> 
-                </dock:SideBarButton>
-            </DataTemplate>
-            <DataTemplate x:Key="RightSideBarButtonDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
-                <dock:SideBarButton DisplayMode="{Binding DisplayMode.Value}"
-                                    IsChecked="{Binding IsSelected.Value}"
-                                    ToolTip.Placement="Left"
-                                    ToolTip.ShowDelay="200"
-                                    ToolTip.Tip="{Binding Name.Value}"
-                                    ToolTip.VerticalOffset="0">
-                   <icons:MaterialIcon Kind="{Binding Icon.Value}" Width="16" Height="16" />
-                </dock:SideBarButton>
-            </DataTemplate>
-            <DataTemplate x:Key="ToolContentDataTemplate" x:DataType="viewModels:ToolWindowViewModel">
-                <ContentControl Content="{Binding Content.Value}" />
-            </DataTemplate>
-        </ResourceDictionary>
+    <Window.Resources>
+        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
     </Window.Resources>
+
     <Window.Styles>
-        <!-- Styles from MainWindow.axaml -->
-        <!-- Utility Buttons (SmartStart Icon + Text Style) -->
-		<Style Selector="Button.UtilityButton">
+
+        <!-- ══════════════════════════════════════════
+             DESIGN TOKENS  (from bru-design-system.css)
+             ══════════════════════════════════════════ -->
+        <!--
+            bg-base:        #111116
+            bg-surface:     #16161B
+            bg-elevated:    #1C1C24
+            bg-hover:       #22222C
+            border-subtle:  #1E1E28
+            border-default: #2A2A35
+            primary:        #FF6B35
+            primary-dark:   #E55A25
+            primary-glow:   rgba(255,107,53,0.12)
+            text-primary:   #EBEBF5
+            text-secondary: #8E8E9A
+            text-muted:     #636370
+            text-faint:     #3A3A48
+            accent-green:   #2E7D32 / #34C759
+            accent-yellow:  #FFCC02
+            accent-red:     #FF453A / #C42B1C
+            radius-sm:      8px
+            radius-md:      10px
+            radius-lg:      14px
+        -->
+
+        <!-- ── Window chrome buttons ── -->
+        <Style Selector="Button.WinBtn">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="32"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="Margin" Value="10, 5"/> <!-- Spacing around buttons -->
-            <Setter Property="Width" Value="120"/> <!-- Fixed width for alignment -->
-			<Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Top"/>
-			<Setter Property="Cursor" Value="Hand"/>
-			<Setter Property="Template">
-				<ControlTemplate>
-                    <Border Background="{TemplateBinding Background}" 
-                            Padding="{TemplateBinding Padding}">
-						<ContentPresenter Name="PART_ContentPresenter"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          Content="{TemplateBinding Content}"
-                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-					</Border>
-				</ControlTemplate>
-			</Setter>
-		</Style>
-        
-        <Style Selector="Button.UtilityButton:pointerover /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
-        </Style>
-        <Style Selector="Button.UtilityButton:pointerover icons|MaterialIcon">
-             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
-		</Style>
-        <Style Selector="Button.UtilityButton:pointerover TextBlock">
-             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverTextColor}"/>
-		</Style>
-        
-		<Style Selector="Button.UtilityButton StackPanel">
-            <Setter Property="Orientation" Value="Vertical"/>
-            <Setter Property="Spacing" Value="5"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-		</Style>
-        
-		<Style Selector="Button.UtilityButton icons|MaterialIcon">
-			<Setter Property="Width" Value="32"/>
-			<Setter Property="Height" Value="32"/>
-            <Setter Property="Margin" Value="0,0,0,5"/> <!-- Space between icon and text -->
-            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonIconColor}"/>
-		</Style>
-        
-        <Style Selector="Button.UtilityButton TextBlock.ButtonTitle">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="Normal"/>
-			<Setter Property="TextWrapping" Value="Wrap"/>
-			<Setter Property="TextAlignment" Value="Center"/>
-            <Setter Property="Foreground" Value="{DynamicResource UtilityButtonTextColor}"/>
-            <Setter Property="MaxWidth" Value="110"/> <!-- Prevent text from becoming too wide -->
-        </Style>
-        
-        <!-- Remove subtitle style as it's not in the SmartStart button look -->
-        <Style Selector="Button.UtilityButton TextBlock.ButtonSubtitle">
-            <Setter Property="IsVisible" Value="False"/> 
-		</Style>
-
-        <!-- Command Buttons (Classic Bevel Style - Unchanged) -->
-        <Style Selector="Button.CommandButton">
-            <Setter Property="MinWidth" Value="75"/>
-            <Setter Property="Height" Value="23"/>
-            <Setter Property="Padding" Value="8,0"/>
-            <Setter Property="Margin" Value="6,0"/>
-			<Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Background" Value="{DynamicResource CommandButtonBackgroundColor}"/>
-            <Setter Property="Foreground" Value="{DynamicResource CommandButtonTextColor}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0.05"/>
-                </Transitions>
-            </Setter>
-            <Setter Property="Template">
-                 <ControlTemplate>
-                    <Border Name="PART_OuterBorder"
-                            BorderBrush="{DynamicResource CommandButtonOuterBorderColor}"
-                            BorderThickness="1">
-                        <Border Name="PART_InnerBorder"
-                                BorderBrush="{DynamicResource CommandButtonInnerBorderColor}"
-                                BorderThickness="1"
-                                Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter Name="PART_ContentPresenter"
-                                             ContentTemplate="{TemplateBinding ContentTemplate}"
-                                             Content="{TemplateBinding Content}"
-                                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                        </Border>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
         </Style>
-        <Style Selector="Button.CommandButton:pointerover /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="{DynamicResource CommandButtonHoverBackgroundColor}"/>
+        <Style Selector="Button.WinBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
         </Style>
-        <Style Selector="Button.CommandButton:pressed">
-             <Setter Property="Padding" Value="9,1,7,-1"/> <!-- Simulate press -->
+        <Style Selector="Button#CloseBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C42B1C"/>
         </Style>
-        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_OuterBorder">
-            <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedOuterBorderColor}"/>
-		</Style>
-        <Style Selector="Button.CommandButton:pressed /template/ Border#PART_InnerBorder">
-             <Setter Property="Background" Value="{DynamicResource CommandButtonPressedBackgroundColor}"/>
-             <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedInnerBorderColor}"/>
-		</Style>
-        
-        <!-- Title Bar Control Buttons (Classic Windows Style - Adjusted Hitbox) -->
-        <Style Selector="Button.TitleBarButton">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="25" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="Background" Value="{DynamicResource SystemBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/> <!-- Use theme text color -->
-            <Setter Property="BorderThickness" Value="1"/>
-             <Setter Property="Template">
-                 <ControlTemplate>
-                    <Border Name="PART_OuterBorder"
-                            BorderBrush="{DynamicResource CommandButtonOuterBorderColor}" 
-                            BorderThickness="1">
-                        <Border Name="PART_InnerBorder"
-                                BorderBrush="{DynamicResource CommandButtonInnerBorderColor}"
-                                BorderThickness="1"
-                                Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter Name="PART_ContentPresenter"
-                                             ContentTemplate="{TemplateBinding ContentTemplate}"
-                                             Content="{TemplateBinding Content}"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center"/>
-                        </Border>
-                    </Border>
-                </ControlTemplate>
-			</Setter>
-		</Style>
-
-        <Style Selector="Button.TitleBarButton:pointerover /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
-        </Style>
-        <Style Selector="Button.TitleBarButton:pressed">
-             <Setter Property="Padding" Value="1,1,1,1"/> <!-- Simulate press - adjust as needed -->
-        </Style>
-        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_OuterBorder">
-             <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedOuterBorderColor}"/>
-		</Style>
-        <Style Selector="Button.TitleBarButton:pressed /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="{DynamicResource TitleBarButtonPressedBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource CommandButtonPressedInnerBorderColor}"/>
-		</Style>
-        
-        <Style Selector="Button.TitleBarButton Path">
-             <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
-             <Setter Property="StrokeThickness" Value="1"/>
-             <Setter Property="VerticalAlignment" Value="Center"/>
-             <Setter Property="HorizontalAlignment" Value="Center"/>
-		</Style>
-
-        <!-- End of Styles from MainWindow.axaml -->
-
-        <!-- Styles for CentralViewWindow elements -->
-        <Style Selector="ui|TabView">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="{DynamicResource MainContentBackground}"/>
+        <Style Selector="Button.WinBtn icons|MaterialIcon">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Foreground" Value="#8E8E9A"/>
         </Style>
 
-        <!-- Style for Hamburger Menu Button -->
-        <Style Selector="Button#HamburgerButton">
-           
-            <Setter Property="Width" Value="35"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="0"/>
-        </Style>
-        <Style Selector="Button#HamburgerButton icons|MaterialIcon">
-            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/>
-        </Style>
-        <Style Selector="Button#HamburgerButton:pointerover /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
-        </Style>
-
-        <!-- Style for Flyout Menu -->
-        <Style Selector="FlyoutPresenter">
-            <Setter Property="Background" Value="{DynamicResource FlyoutBackground}"/>
-            <Setter Property="Padding" Value="8"/>
-        </Style>
-        <Style Selector="Button.MenuButton">
+        <!-- ── Icon rail buttons ── -->
+        <Style Selector="Button.RailBtn">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource FlyoutText}"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="Button.RailBtn:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.RailBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style Selector="Button.RailBtn.Active">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.RailBtn.Active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <!-- ── FAB / compose button ── -->
+        <Style Selector="Button.FabBtn">
+            <Setter Property="Background" Value="#FF6B35"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <Style Selector="Button.MenuButton:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource FlyoutButtonHoverBackground}"/>
+        <Style Selector="Button.FabBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E55A25"/>
+            <Setter Property="CornerRadius" Value="12"/>
         </Style>
-        
-        <Style Selector="FlyoutPresenter Separator">
-            <Setter Property="Background" Value="{DynamicResource FlyoutSeparator}"/>
-            <Setter Property="Margin" Value="0,4"/>
+
+        <!-- ── Nav list items (column 2) ── -->
+        <Style Selector="Button.NavItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="10,1"/>
+        </Style>
+        <Style Selector="Button.NavItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style Selector="Button.NavItem.Active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <!-- ── Header action pill buttons ── -->
+        <Style Selector="Button.ActionPill">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#2A2A35"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#8E8E9A"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.ActionPill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22222C"/>
+            <Setter Property="BorderBrush" Value="#FF6B35"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+        <Style Selector="Button.ActionPill:pointerover">
+            <Setter Property="Foreground" Value="#EBEBF5"/>
+        </Style>
+
+        <!-- ── Tab filter buttons ── -->
+        <Style Selector="Button.TabBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.TabBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1C24"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <!-- ── Separator line ── -->
+        <Style Selector="Border.Separator">
             <Setter Property="Height" Value="1"/>
+            <Setter Property="Background" Value="#1E1E28"/>
+            <Setter Property="Margin" Value="10,6"/>
         </Style>
 
-        <!-- Style for Quick Action Icon Buttons in Title Bar -->
-        <Style Selector="Button.IconButton">
-           
-            <Setter Property="Width" Value="35"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Padding" Value="0"/>
-        </Style>
-        <Style Selector="Button.IconButton icons|MaterialIcon">
-            <Setter Property="Foreground" Value="{DynamicResource TitleBarText}"/>
-             <Setter Property="Width" Value="16"/>
-			<Setter Property="Height" Value="16"/>
-        </Style>
-        <Style Selector="Button.IconButton:pointerover /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
-        </Style>
-
-        <!-- Specific Styles for Window Control Buttons (Minimize, Maximize, Close) -->
-        <Style Selector="Button#MinimizeButton, Button#MaximizeButton, Button#CloseButton">
-          
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="25"/> <!-- Adjusted Height -->
-        </Style>
-        <Style Selector="Button#MinimizeButton Path, Button#MaximizeButton Path, Button#CloseButton Path">
-             <Setter Property="Stroke" Value="{DynamicResource TitleBarText}"/>
-        </Style>
-		<Style Selector="Button#MinimizeButton:pointerover /template/ Border#PART_InnerBorder, Button#MaximizeButton:pointerover /template/ Border#PART_InnerBorder, Button#CloseButton:pointerover /template/ Border#PART_InnerBorder">
-			<Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBackground}"/>
-		</Style>
-        <Style Selector="Button#CloseButton:pointerover /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="#E81123"/> <!-- Red background on hover for close -->
-        </Style>
-        <Style Selector="Button#CloseButton:pointerover Path">
-            <Setter Property="Stroke" Value="#FFFFFF"/> <!-- White icon on hover for close -->
-        </Style>
-        <Style Selector="Button#CloseButton:pressed /template/ Border#PART_InnerBorder">
-            <Setter Property="Background" Value="#F1707A"/> <!-- Slightly lighter red on press -->
-        </Style>
-
-        <!-- Docking Sidebar Styles -->
-        <Style Selector="dock|SideBar">
-             <Setter Property="Background" Value="{DynamicResource SystemBackground}"/>
-             <Setter Property="BorderBrush" Value="{DynamicResource ContentAreaBorderColor}"/>
-        </Style>
-         <Style Selector="dock|SideBarButton">
-             <Setter Property="Width" Value="40"/>
-             <Setter Property="Height" Value="40"/>
-             <Setter Property="Padding" Value="5"/>
-             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonIconColor}"/>
-             <Setter Property="Background" Value="Transparent"/>
-             <Setter Property="BorderThickness" Value="0"/>
-         </Style>
-        <Style Selector="dock|SideBarButton:checked">
-            <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
-             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
-        </Style>
-        <Style Selector="dock|SideBarButton:pointerover">
-             <Setter Property="Background" Value="{DynamicResource UtilityButtonHoverBackground}"/>
-             <Setter Property="Foreground" Value="{DynamicResource UtilityButtonHoverIconColor}"/>
-        </Style>
     </Window.Styles>
-    <Grid RowDefinitions="Auto,*"> <!-- Simplified Row Definitions -->
-		<!-- Custom Title Bar -->
-		<Grid Name="TitleBar" Grid.Row="0" Background="{DynamicResource TitleBarBackground}" Height="35">
-			<Grid ColumnDefinitions="Auto,*,Auto" Name="TitleBarDragArea">
-				<!-- Left Section: Hamburger Menu & Quick Actions -->
-				<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="4,0,0,0" VerticalAlignment="Center">
-					<!-- Hamburger Menu -->
-					<Button Name="HamburgerButton"> <!-- Apply style implicitly -->
-						<icons:MaterialIcon Kind="Menu" Width="16" Height="16"/>
-						<Button.Flyout>
-							<Flyout Placement="BottomEdgeAlignedLeft" ShowMode="TransientWithDismissOnPointerMoveAway">
-								<StackPanel Width="200" Spacing="0"> <!-- Reduced spacing -->
-									<!-- Main Actions -->
-									<Button Classes="MenuButton" Name="NewProjectButton">
-										<StackPanel Orientation="Horizontal" Spacing="8">
-											<icons:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-											<TextBlock Text="Новый проект"/>
-										</StackPanel>
-									</Button>
-									<Button Classes="MenuButton" Name="OpenProjectButton">
-										<StackPanel Orientation="Horizontal" Spacing="8">
-											<icons:MaterialIcon Kind="FolderOpen" Width="16" Height="16"/>
-											<TextBlock Text="Открыть проект"/>
-										</StackPanel>
-									</Button>
-									<Separator/>
-									<!-- Settings & Help -->
-									<Button Classes="MenuButton" Name="SettingsButton">
-										<StackPanel Orientation="Horizontal" Spacing="8">
-											<icons:MaterialIcon Kind="Cog" Width="16" Height="16"/>
-											<TextBlock Text="Настройки"/>
-										</StackPanel>
-									</Button>
-									<Button Classes="MenuButton" Name="HelpButton">
-										<StackPanel Orientation="Horizontal" Spacing="8">
-											<icons:MaterialIcon Kind="Help" Width="16" Height="16"/>
-											<TextBlock Text="Справка"/>
-										</StackPanel>
-									</Button>
-									<Button Classes="MenuButton" Name="AboutButton">
-										<StackPanel Orientation="Horizontal" Spacing="8">
-											<icons:MaterialIcon Kind="Information" Width="16" Height="16"/>
-											<TextBlock Text="О программе"/>
-										</StackPanel>
-									</Button>
-								</StackPanel>
-							</Flyout>
-						</Button.Flyout>
-					</Button>
 
-					<!-- Quick Action Buttons -->
-					<Button Classes="IconButton" Name="QuickNewButton">
-						<icons:MaterialIcon Kind="Plus" />
-						<ToolTip.Tip>Новый проект</ToolTip.Tip>
-					</Button>
-					<Button Classes="IconButton" Name="QuickSearchButton">
-						<icons:MaterialIcon Kind="Search" />
-						<ToolTip.Tip>Поиск</ToolTip.Tip>
-					</Button>
-				</StackPanel>
+    <Grid x:Name="RootGrid" RowDefinitions="36,*">
 
-				<!-- Center: Title -->
-				<TextBlock Grid.Column="1" Text="БРУ Автопарк - Система Управления"
-						   Foreground="{DynamicResource TitleBarText}" 
-                           FontWeight="Normal" 
-                           FontSize="11"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        <!-- ══════════════════════════════════════════
+             TITLE BAR  
+             ══════════════════════════════════════════ -->
+        <Grid x:Name="TitleBarGrid" Grid.Row="0" Background="#111116" ColumnDefinitions="Auto,*,Auto">
 
-				<!-- Right: Window Control Buttons -->
-				<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,2,2" Spacing="2">
-					<Button Name="MinimizeButton">
-						<ToolTip.Tip>Свернуть</ToolTip.Tip>
-                        <!-- Minimize icon (Underscore) -->
-                        <Path Data="M0 5 H6" Width="6" Height="6" VerticalAlignment="Bottom" Margin="0,0,0,1"/> 
-					</Button>
-					<Button Name="MaximizeButton">
-						<ToolTip.Tip>Развернуть</ToolTip.Tip>
-                         <!-- Maximize/Restore icon -->
-                        <Path Name="MaximizeIcon" Data="M0 0 H7 V7 H0 Z M0 1 H7 M1 0 V7" Width="7" Height="7"/>
-					</Button>
-					<Button Name="CloseButton">
-						<ToolTip.Tip>Закрыть</ToolTip.Tip>
-                         <!-- Close icon (X) -->
-                         <Path Data="M1 1 L6 6 M1 6 L6 1" Width="7" Height="7" StrokeThickness="1"/>
-					</Button>
-				</StackPanel>
-			</Grid>
-		</Grid>
-        <Border Grid.Row="1" Background="{DynamicResource TicketSalesApp.UI.Administration.AvaloniaDividerBrush}" />
-		
-		
-		<dock:ReDockHost Grid.Row="1" 
-                         Background="{DynamicResource SystemBackground}" 
-                         ButtonDisplayModeChanged="OnSideBarButtonDisplayModeChanged"
-                         ButtonFlyoutRequested="OnButtonFlyoutRequested"
-                         ButtonMove="OnSideBarButtonDrop"
-                         IsFloatingEnabled="True">
-            <dock:ReDockHost.DockAreas>
-                <dock:DockArea LocalizedName="Left"
-                               Location="LeftUpperBottom"
-                               SideBar="LeftSideBar"
-                               Target="TopContent"
-                               View="LeftTopBottomArea" />
-                <dock:DockArea LocalizedName="Left Bottom"
-                               Location="LeftLowerTop"
-                               SideBar="LeftSideBar"
-                               Target="BottomContent"
-                               View="LeftTopBottomArea" />
+         
+            <!-- Draggable title area -->
+            <Border Grid.Column="1" Background="Transparent"
+                    PointerPressed="TitleBarDragArea_PointerPressed"
+                    DoubleTapped="TitleBarDragArea_DoubleTapped">
+                <TextBlock Text="БРУ Автопарк — Система Управления"
+                           FontSize="12" Foreground="#4A4A58" FontWeight="Medium"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
 
-                <dock:DockArea LocalizedName="Right"
-                               Location="RightUpperBottom"
-                               SideBar="RightSideBar"
-                               Target="TopContent"
-                               View="RightTopBottomArea" />
+            <!-- Window chrome buttons -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button x:Name="MinimizeBtn" Classes="WinBtn" Click="MinimizeButton_Click">
+                    <icons:MaterialIcon Kind="WindowMinimize"/>
+                </Button>
+                <Button x:Name="MaximizeBtn" Classes="WinBtn" Click="MaximizeButton_Click">
+                    <icons:MaterialIcon Kind="WindowMaximize"/>
+                </Button>
+                <Button x:Name="CloseBtn" Classes="WinBtn" Click="CloseButton_Click">
+                    <icons:MaterialIcon Kind="WindowClose"/>
+                </Button>
+            </StackPanel>
+        </Grid>
 
-                <dock:DockArea LocalizedName="Right Bottom"
-                               Location="RightLowerTop"
-                               SideBar="RightSideBar"
-                               Target="BottomContent"
-                               View="RightTopBottomArea" />
+        <!-- ══════════════════════════════════════════
+             3-COLUMN BODY
+             ══════════════════════════════════════════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="62,240,*">
 
-                <dock:DockArea LocalizedName="TopLeft"
-                               Location="LeftUpperTop"
-                               SideBar="LeftSideBar"
-                               Target="LeftContent"
-                               View="TopLeftRightArea" />
-                <dock:DockArea LocalizedName="TopRight"
-                               Location="RightUpperTop"
-                               SideBar="RightSideBar"
-                               Target="RightContent"
-                               View="TopLeftRightArea" />
-                <dock:DockArea LocalizedName="BottomLeft"
-                               Location="LeftLowerBottom"
-                               SideBar="LeftSideBar"
-                               Target="LeftContent"
-                               View="BottomLeftRightArea" />
-                <dock:DockArea LocalizedName="BottomRight"
-                               Location="RightLowerBottom"
-                               SideBar="RightSideBar"
-                               Target="RightContent"
-                               View="BottomLeftRightArea" />
-            </dock:ReDockHost.DockAreas>
-            <Grid ColumnDefinitions="40,*,40">
-                <dock:SideBar Name="LeftSideBar"
-                              BorderThickness="0,0,1,0"
-                              ItemTemplate="{StaticResource LeftSideBarButtonDataTemplate}"
-                              Location="Left"
-                              LowerBottomToolsSource="{Binding LeftLowerBottomTools}"
-                              LowerTopToolsSource="{Binding LeftLowerTopTools}"
-                              UpperBottomToolsSource="{Binding LeftUpperBottomTools}"
-                              UpperTopToolsSource="{Binding LeftUpperTopTools}" />
+            <!-- ─────────────────────────────────────────
+                 COL 0  Icon rail
+                 ───────────────────────────────────────── -->
+            <Border Grid.Column="0" Background="#111116"
+                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0">
+                <DockPanel Margin="0,14,0,14">
 
-                <dock:ReDock Name="LeftRightArea" Grid.Column="1">
-                    <dock:ReDock.LeftContent>
-                        <dock:VerticallySplittedView Name="LeftTopBottomArea"
-                                                     BottomContent="{Binding SelectedLeftLowerTopTool.Value}"
-                                                     BottomContentTemplate="{StaticResource ToolContentDataTemplate}"
-                                                     TopContent="{Binding SelectedLeftUpperBottomTool.Value}"
-                                                     TopContentTemplate="{StaticResource ToolContentDataTemplate}" />
-                    </dock:ReDock.LeftContent>
-                    <dock:ReDock.RightContent>
-                        <dock:VerticallySplittedView Name="RightTopBottomArea"
-                                                     BottomContent="{Binding SelectedRightLowerTopTool.Value}"
-                                                     BottomContentTemplate="{StaticResource ToolContentDataTemplate}"
-                                                     TopContent="{Binding SelectedRightUpperBottomTool.Value}"
-                                                     TopContentTemplate="{StaticResource ToolContentDataTemplate}" />
-                    </dock:ReDock.RightContent>
-                    <dock:VerticallySplittedView>
-                        <dock:VerticallySplittedView.TopContent>
-                            <dock:ReDock Name="TopLeftRightArea"
-                                         LeftContent="{Binding SelectedLeftUpperTopTool.Value}"
-                                         RightContent="{Binding SelectedRightUpperTopTool.Value}">
-                                <dock:ReDock.LeftContentTemplate>
-                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
-                                        <ContentControl Content="{Binding Content.Value}" />
-                                    </DataTemplate>
-                                </dock:ReDock.LeftContentTemplate>
-                                <dock:ReDock.RightContentTemplate>
-                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
-                                        <ContentControl Content="{Binding Content.Value}" />
-                                    </DataTemplate>
-                                </dock:ReDock.RightContentTemplate>
-                                <!-- Main Tab View -->
-                                <ui:TabView Name="MainTabView">
-                                    <ui:TabViewItem Header="Добро пожаловать">
-                                        <Border Background="{DynamicResource MainContentBackground}"> <!-- Ensure content area matches -->
-                                        <TextBlock Text="Нажмите на одну из боковых панелей чтобы начать работу"
-                                                       Foreground="{DynamicResource HeaderText}" 
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                        </Border>
-                                    </ui:TabViewItem>
-                                </ui:TabView>
-                            </dock:ReDock>
-                        </dock:VerticallySplittedView.TopContent>
-                        <dock:VerticallySplittedView.BottomContent>
-                             <!-- Add Border around Bottom Area for visual separation if needed -->
-                            <Border BorderBrush="{DynamicResource ContentAreaBorder}" BorderThickness="0,1,0,0">
-                            <dock:HorizontallySplittedView Name="BottomLeftRightArea"
-                                                           LeftContent="{Binding SelectedLeftLowerBottomTool.Value}"
-                                                           RightContent="{Binding SelectedRightLowerBottomTool.Value}">
-                                <dock:HorizontallySplittedView.LeftContentTemplate>
-                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
-                                        <ContentControl Content="{Binding Content.Value}" />
-                                    </DataTemplate>
-                                </dock:HorizontallySplittedView.LeftContentTemplate>
-                                <dock:HorizontallySplittedView.RightContentTemplate>
-                                    <DataTemplate x:DataType="viewModels:ToolWindowViewModel">
-                                        <ContentControl Content="{Binding Content.Value}" />
-                                    </DataTemplate>
-                                </dock:HorizontallySplittedView.RightContentTemplate>
-                            </dock:HorizontallySplittedView>
+                    <!-- FAB at top -->
+                    <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,2,0,14">
+                        <Button Classes="FabBtn" Command="{Binding ToggleNavPaneCommand}"
+                                ToolTip.Tip="Меню" ToolTip.Placement="Right">
+                            <Panel>
+                                <icons:MaterialIcon Kind="PencilOutline" Width="18" Height="18" Foreground="White"/>
+                            </Panel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- User avatar at bottom -->
+                    <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,0,0,4">
+                        <Border Width="36" Height="36" CornerRadius="18"
+                                Background="#2E7D32" Cursor="Hand"
+                                IsVisible="{Binding UserInitials, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                ToolTip.Tip="Профиль" ToolTip.Placement="Right">
+                            <TextBlock Text="{Binding UserInitials, FallbackValue='?'}" FontSize="11" FontWeight="Bold" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Nav icons -->
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel HorizontalAlignment="Center" Spacing="0">
+
+                            <TextBlock Text="МЕНЮ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,0,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowBusManagementCommand}"
+                                    ToolTip.Tip="Автобусы" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Bus" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowSalesStatisticsCommand}"
+                                    ToolTip.Tip="Статистика" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="ChartBar" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                            <Border Classes="Separator" Margin="8,8"/>
+
+                            <TextBlock Text="ГРУППЫ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,4,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowEmployeeManagementCommand}"
+                                    ToolTip.Tip="Сотрудники" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="AccountGroup" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowRouteManagementCommand}"
+                                    ToolTip.Tip="Маршруты" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="MapMarkerPath" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowJobManagementCommand}"
+                                    ToolTip.Tip="Должности" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Briefcase" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                            <Border Classes="Separator" Margin="8,8"/>
+
+                            <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
+                                       HorizontalAlignment="Center" Margin="0,4,0,4"
+                                       LetterSpacing="1"/>
+                            <Button Classes="RailBtn" Command="{Binding ShowTicketManagementCommand}"
+                                    ToolTip.Tip="Билеты" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Ticket" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowUserManagementCommand}"
+                                    ToolTip.Tip="Пользователи" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="AppsBox" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+                            <Button Classes="RailBtn" Command="{Binding ShowWebSocketDebugCommand}"
+                                    ToolTip.Tip="WebSocket Debug" ToolTip.Placement="Right">
+                                <icons:MaterialIcon Kind="Bug" Width="20" Height="20" Foreground="#8E8E9A"/>
+                            </Button>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+
+            <!-- ─────────────────────────────────────────
+                 COL 1  Navigation list panel
+                 ───────────────────────────────────────── -->
+            <Border Grid.Column="1" Background="#16161B"
+                    BorderBrush="#1E1E28" BorderThickness="0,0,1,0"
+                    IsVisible="{Binding IsNavPaneOpen}">
+                <DockPanel Margin="0,16,0,16">
+
+                    <!-- Search -->
+                    <Border DockPanel.Dock="Top" Margin="14,0,14,12"
+                            Background="#1C1C24" CornerRadius="10" Padding="12,0"
+                            BorderBrush="#2A2A35" BorderThickness="1">
+                        <Grid ColumnDefinitions="Auto,*" Height="36">
+                            <icons:MaterialIcon Grid.Column="0" Kind="Magnify"
+                                               Width="16" Height="16" Foreground="#4A4A58"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1"
+                                     PlaceholderText="Поиск..."
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#8E8E9A" FontSize="13"
+                                     VerticalContentAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Section tabs -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
+                                Margin="14,0,14,0" Spacing="2">
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Все разделы" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                        </Button>
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Транспорт" FontSize="12" Foreground="#636370"/>
+                        </Button>
+                        <Button Classes="TabBtn">
+                            <TextBlock Text="Продажи" FontSize="12" Foreground="#636370"/>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Active tab underline -->
+                    <Border DockPanel.Dock="Top" Height="2" Margin="24,4,0,12"
+                            HorizontalAlignment="Left" Width="72"
+                            Background="#FF6B35" CornerRadius="1"/>
+
+                    <!-- Nav items list -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="0">
+
+                            <!-- ТРАНСПОРТ group -->
+                            <TextBlock Text="ТРАНСПОРТ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="24,6,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowBusManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A3C" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Bus" Width="18" Height="18"
+                                                            Foreground="#4A9EFF"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Автобусы" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Парк транспортных средств" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowRouteManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A3A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="MapMarkerPath" Width="18" Height="18"
+                                                            Foreground="#4ACA7A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Маршруты" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Управление маршрутами" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowRouteSchedulesCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CalendarClock" Width="18" Height="18"
+                                                            Foreground="#CAAA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Расписание" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Расписание маршрутов" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowMaintenanceManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Wrench" Width="18" Height="18"
+                                                            Foreground="#CA6A4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Обслуживание" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="ТО и ремонт" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- ПРОДАЖИ group -->
+                            <TextBlock Text="ПРОДАЖИ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowTicketManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Ticket" Width="18" Height="18"
+                                                            Foreground="#AA6ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Билеты" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Управление билетами" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowSalesManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CashRegister" Width="18" Height="18"
+                                                            Foreground="#4ACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Продажи" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Кассовые операции" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowSalesStatisticsCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A1A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="ChartBar" Width="18" Height="18"
+                                                            Foreground="#4A6ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Статистика" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Аналитика продаж" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowIncomeReportCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="CurrencyRub" Width="18" Height="18"
+                                                            Foreground="#4ACACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Доходы" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Финансовые отчёты" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- ПЕРСОНАЛ group -->
+                            <TextBlock Text="ПЕРСОНАЛ" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A1A2A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="AccountGroup" Width="18" Height="18"
+                                                            Foreground="#CA4ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Сотрудники" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Кадровый учёт" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowJobManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#2A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Briefcase" Width="18" Height="18"
+                                                            Foreground="#CACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Должности" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Штатное расписание" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ShowUserManagementCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A3A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="ShieldAccount" Width="18" Height="18"
+                                                            Foreground="#4A8ACA"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="Пользователи" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Права доступа" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- СИСТЕМА group -->
+                            <TextBlock Text="СИСТЕМА" FontSize="10" FontWeight="Medium"
+                                       Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
+
+                            <Button Classes="NavItem" Command="{Binding ShowWebSocketDebugCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1A2A1A" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="Bug" Width="18" Height="18"
+                                                            Foreground="#4ACA4A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="WS Debug" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="WebSocket отладка" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding OpenAboutCommand}">
+                                <Grid ColumnDefinitions="38,*,Auto">
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
+                                            Background="#1C1C24" VerticalAlignment="Center">
+                                        <icons:MaterialIcon Kind="InformationOutline" Width="18" Height="18"
+                                                            Foreground="#8E8E9A"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="О программе" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBF5"/>
+                                        <TextBlock Text="Версия и лицензия" FontSize="11" Foreground="#4A4A58"/>
+                                    </StackPanel>
+                                    <icons:MaterialIcon Grid.Column="2" Kind="ChevronRight"
+                                                        Width="14" Height="14" Foreground="#3A3A48"
+                                                        VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                             
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+
+            <!-- ─────────────────────────────────────────
+                 COL 2  Main content area
+                 ───────────────────────────────────────── -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" Background="#111116">
+
+                <!-- Content header bar — inspired by email client action row -->
+                <Border Grid.Row="0" Background="#16161B"
+                        BorderBrush="#1E1E28" BorderThickness="0,0,0,1"
+                        Padding="24,12,24,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentSectionTitle}"
+                                       FontSize="17" FontWeight="Bold"
+                                       Foreground="#EBEBF5"
+                                       VerticalAlignment="Center"/>
+                            <Border Background="#1C1C24" CornerRadius="6" Padding="10,4"
+                                    BorderBrush="#2A2A35" BorderThickness="1"
+                                    IsVisible="{Binding CurrentSectionSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="{Binding CurrentSectionSubtitle}"
+                                           FontSize="11" Foreground="#636370"/>
                             </Border>
-                        </dock:VerticallySplittedView.BottomContent>
-                    </dock:VerticallySplittedView>
-                </dock:ReDock>
-                <dock:SideBar Name="RightSideBar"
-                              Grid.Column="2"
-                              BorderThickness="1,0,0,0"
-                              ItemTemplate="{StaticResource RightSideBarButtonDataTemplate}"
-                              Location="Right"
-                              LowerBottomToolsSource="{Binding RightLowerBottomTools}"
-                              LowerTopToolsSource="{Binding RightLowerTopTools}"
-                              UpperBottomToolsSource="{Binding RightUpperBottomTools}"
-                              UpperTopToolsSource="{Binding RightUpperTopTools}" />
+                        </StackPanel>
+
+                        <!-- Action buttons — pill style like Reply/Forward in reference -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="ActionPill"
+                                    Command="{Binding RefreshCommand}"
+                                    ToolTip.Tip="Обновить">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <icons:MaterialIcon Kind="Refresh" Width="14" Height="14" Foreground="#8E8E9A"/>
+                                    <TextBlock Text="Обновить" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="ActionPill"
+                                    Command="{Binding OpenHelpCommand}"
+                                    ToolTip.Tip="Справка">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <icons:MaterialIcon Kind="HelpCircleOutline" Width="14" Height="14" Foreground="#8E8E9A"/>
+                                    <TextBlock Text="Справка" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="RailBtn" Width="34" Height="34"
+                                    Command="{Binding OpenAboutCommand}"
+                                    ToolTip.Tip="О программе">
+                                <icons:MaterialIcon Kind="InformationOutline" Width="16" Height="16" Foreground="#636370"/>
+                            </Button>
+                            <Button Classes="RailBtn" Width="34" Height="34"
+                                    Command="{Binding ToggleNavPaneCommand}"
+                                    ToolTip.Tip="Настройки">
+                                <icons:MaterialIcon Kind="CogOutline" Width="16" Height="16" Foreground="#636370"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Tool window content — renders the actual management views -->
+                <ContentControl Grid.Row="1"
+                                Content="{Binding CurrentView}"
+                                Background="#111116"
+                                Margin="20,16,20,16"/>
+
+                <!-- Status bar — bottom info strip -->
+                <Border Grid.Row="2" Background="#111116"
+                        BorderBrush="#1E1E28" BorderThickness="0,1,0,0"
+                        Padding="20,6,20,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="8" Height="8" CornerRadius="4" Background="{Binding IsConnected, Converter={StaticResource BoolToBrushConverter}}"/>
+                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="11" Foreground="#4A4A58"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="БРУ Автопарк v3.0"
+                                   FontSize="11" Foreground="#2A2A35"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
             </Grid>
-        </dock:ReDockHost>
+
+        </Grid>
+        <!-- end 3-column -->
+
     </Grid>
+    <!-- end root -->
+
 </Window>

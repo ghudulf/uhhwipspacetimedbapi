@@ -2,12 +2,15 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
+using MsBoxIcon = MsBox.Avalonia.Enums.Icon;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
-using Classic.CommonControls.Dialogs;
 using System.Runtime.InteropServices;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
@@ -50,7 +53,7 @@ public partial class HelpWindow : Window
     {
         InitializeComponent();
 #if DEBUG
-        this.AttachDevTools();
+        DevToolsHelper.AttachOnce();
 #endif
         
         // Initialize collections
@@ -562,41 +565,41 @@ public partial class HelpWindow : Window
         info.AppendLine($"Архитектура: {RuntimeInformation.ProcessArchitecture}");
         info.AppendLine($"Версия приложения: 0.5A");
 
-        await MessageBox.ShowDialog(
-            this,
-            info.ToString(),
+        var box = MessageBoxManager.GetMessageBoxStandard(
             "Системная информация",
-            MessageBoxButtons.Ok,
-            MessageBoxIcon.Information);
+            info.ToString(),
+            ButtonEnum.Ok,
+            MsBoxIcon.Info);
+        await box.ShowWindowDialogAsync(this);
     }
 
     public async void ShowFeedback(object? sender, RoutedEventArgs e)
     {
-        await MessageBox.ShowDialog(
-            this,
-            "Для отправки отзыва или сообщения об ошибке, пожалуйста, напишите на email:\nsupport@buspark.example.com",
+        var box = MessageBoxManager.GetMessageBoxStandard(
             "Обратная связь",
-            MessageBoxButtons.Ok,
-            MessageBoxIcon.Information);
+            "Для отправки отзыва или сообщения об ошибке, пожалуйста, напишите на email:\nsupport@buspark.example.com",
+            ButtonEnum.Ok,
+            MsBoxIcon.Info);
+        await box.ShowWindowDialogAsync(this);
     }
 
     public async void PrintContent(object? sender, RoutedEventArgs e)
     {
-        await MessageBox.ShowDialog(
-            this,
-            "Функция печати будет доступна в следующей версии приложения.",
+        var box = MessageBoxManager.GetMessageBoxStandard(
             "Печать",
-            MessageBoxButtons.Ok,
-            MessageBoxIcon.Information);
+            "Функция печати будет доступна в следующей версии приложения.",
+            ButtonEnum.Ok,
+            MsBoxIcon.Info);
+        await box.ShowWindowDialogAsync(this);
     }
 
     public async void ExportContent(object? sender, RoutedEventArgs e)
     {
-        await MessageBox.ShowDialog(
-            this,
-            "Функция экспорта будет доступна в следующей версии приложения.",
+        var box = MessageBoxManager.GetMessageBoxStandard(
             "Экспорт",
-            MessageBoxButtons.Ok,
-            MessageBoxIcon.Information);
+            "Функция экспорта будет доступна в следующей версии приложения.",
+            ButtonEnum.Ok,
+            MsBoxIcon.Info);
+        await box.ShowWindowDialogAsync(this);
     }
 } 

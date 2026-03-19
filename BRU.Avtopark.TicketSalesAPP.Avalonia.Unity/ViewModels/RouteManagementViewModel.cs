@@ -503,14 +503,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var sp = new StackPanel { Spacing = 10 };
 
                 // Input Fields
-                var routeNumBox = new TextBox { Watermark = "Номер маршрута" };
-                var startPointBox = new TextBox { Watermark = "Начальная точка" };
-                var endPointBox = new TextBox { Watermark = "Конечная точка" };
-                var travelTimeBox = new TextBox { Watermark = "Время в пути (чч:мм)" };
-                var stopCountBox = new NumericUpDown { Watermark = "Количество остановок", Minimum = 0, Increment = 1 };
-                var lengthBox = new NumericUpDown { Watermark = "Длина (км)", Minimum = 0, Increment = 0.1M, FormatString = "N1" };
-                var descBox = new TextBox { Watermark = "Описание (необязательно)", AcceptsReturn = true, Height = 60 };
-                var typeBox = new TextBox { Watermark = "Тип маршрута (Городской, Пригородный и т.д.)" };
+                var routeNumBox = new TextBox { PlaceholderText = "Номер маршрута" };
+                var startPointBox = new TextBox { PlaceholderText = "Начальная точка" };
+                var endPointBox = new TextBox { PlaceholderText = "Конечная точка" };
+                var travelTimeBox = new TextBox { PlaceholderText = "Время в пути (чч:мм)" };
+                var stopCountBox = new NumericUpDown { PlaceholderText = "Количество остановок", Minimum = 0, Increment = 1 };
+                var lengthBox = new NumericUpDown { PlaceholderText = "Длина (км)", Minimum = 0, Increment = 0.1M, FormatString = "N1" };
+                var descBox = new TextBox { PlaceholderText = "Описание (необязательно)", AcceptsReturn = true, Height = 60 };
+                var typeBox = new TextBox { PlaceholderText = "Тип маршрута (Городской, Пригородный и т.д.)" };
                 var isActiveCheck = new CheckBox { Content = "Активен", IsChecked = true };
 
                  // Use SpacetimeDB.Types.Bus for Bus ComboBox ItemsSource
@@ -732,14 +732,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 var sp = new StackPanel { Spacing = 10 };
 
                 // Pre-populate fields using the SpacetimeDB Route object
-                var routeNumBox = new TextBox { Text = routeToEdit.RouteNumber, Watermark = "Номер маршрута" };
-                var startPointBox = new TextBox { Text = routeToEdit.StartPoint, Watermark = "Начальная точка" };
-                var endPointBox = new TextBox { Text = routeToEdit.EndPoint, Watermark = "Конечная точка" };
-                var travelTimeBox = new TextBox { Text = routeToEdit.TravelTime, Watermark = "Время в пути (чч:мм)" };
-                var stopCountBox = new NumericUpDown { Value = routeToEdit.StopCount, Watermark = "Количество остановок", Minimum = 0, Increment = 1 };
-                var lengthBox = new NumericUpDown { Value = (decimal?)routeToEdit.RouteLength, Watermark = "Длина (км)", Minimum = 0, Increment = 0.1M, FormatString = "N1" };
-                var descBox = new TextBox { Text = routeToEdit.RouteDescription, Watermark = "Описание", AcceptsReturn = true, Height = 60 };
-                var typeBox = new TextBox { Text = routeToEdit.RouteType, Watermark = "Тип маршрута" };
+                var routeNumBox = new TextBox { Text = routeToEdit.RouteNumber, PlaceholderText = "Номер маршрута" };
+                var startPointBox = new TextBox { Text = routeToEdit.StartPoint, PlaceholderText = "Начальная точка" };
+                var endPointBox = new TextBox { Text = routeToEdit.EndPoint, PlaceholderText = "Конечная точка" };
+                var travelTimeBox = new TextBox { Text = routeToEdit.TravelTime, PlaceholderText = "Время в пути (чч:мм)" };
+                var stopCountBox = new NumericUpDown { Value = routeToEdit.StopCount, PlaceholderText = "Количество остановок", Minimum = 0, Increment = 1 };
+                var lengthBox = new NumericUpDown { Value = (decimal?)routeToEdit.RouteLength, PlaceholderText = "Длина (км)", Minimum = 0, Increment = 0.1M, FormatString = "N1" };
+                var descBox = new TextBox { Text = routeToEdit.RouteDescription, PlaceholderText = "Описание", AcceptsReturn = true, Height = 60 };
+                var typeBox = new TextBox { Text = routeToEdit.RouteType, PlaceholderText = "Тип маршрута" };
                 var isActiveCheck = new CheckBox { Content = "Активен", IsChecked = routeToEdit.IsActive };
 
                 // Setup ComboBoxes
