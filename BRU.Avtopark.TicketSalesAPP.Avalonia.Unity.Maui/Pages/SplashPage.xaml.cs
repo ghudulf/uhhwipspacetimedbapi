@@ -29,7 +29,7 @@ public partial class SplashPage : ContentPage
                 Console.WriteLine("[SplashPage] Valid token found, navigating to main");
                 StatusLabel.Text = "Добро пожаловать!";
                 await Task.Delay(400);
-                await Shell.Current.GoToAsync("//main");
+                await AppShell.NavigateToMainAsync();
             }
             else
             {

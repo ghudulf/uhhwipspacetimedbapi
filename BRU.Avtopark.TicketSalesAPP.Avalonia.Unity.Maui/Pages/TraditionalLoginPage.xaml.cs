@@ -45,7 +45,7 @@ public partial class TraditionalLoginPage : ContentPage
                     {
                         Log.Information("[TraditionalLoginPage] Login success → navigating to //main");
                         Console.WriteLine("[TraditionalLoginPage] Login success → navigating to //main");
-                        await Shell.Current.GoToAsync("//main");
+                        await AppShell.NavigateToMainAsync();
                     }
                     else
                     {

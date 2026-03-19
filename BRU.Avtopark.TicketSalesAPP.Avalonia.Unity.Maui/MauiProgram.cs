@@ -6,6 +6,8 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Services;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Views;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls;
+using Avalonia.Controls.Maui.Compatibility;
+
 using Microsoft.Maui.LifecycleEvents;
 using Serilog;
 using Serilog.Events;
@@ -54,6 +56,7 @@ public static class MauiProgram
                 .UseAvaloniaEmbedding<BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.App>()
 #endif
                 .UseAvaloniaEssentials()
+                .UseAvaloniaCompatibility()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

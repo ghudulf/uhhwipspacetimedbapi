@@ -159,7 +159,7 @@ public partial class OAuthLoginPage : ContentPage
             {
                 Log.Information("[OAuthLoginPage] Token exchange OK — expires {Exp:u}", tokens.ExpiresAt);
                 // Shell.GoToAsync is thread-safe in MAUI
-                await Shell.Current.GoToAsync("//main");
+                await AppShell.NavigateToMainAsync();
             }
             else
             {

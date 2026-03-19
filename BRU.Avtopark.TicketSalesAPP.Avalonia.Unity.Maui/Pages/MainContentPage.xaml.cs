@@ -29,15 +29,19 @@ public partial class MainContentPage : ContentPage
         Log.Debug("[MainContentPage] Status refreshed, hasToken={H}", hasToken);
     }
 
+    // Route helper — desktop uses flat routes, mobile uses nested ones
+    private static string Route(string desktop, string mobile)
+        => AppShell.IsDesktop ? $"//{desktop}" : $"//{mobile}";
+
     private async void OnProfileTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/profile_tab/profile");
+        => await Shell.Current.GoToAsync(Route("profile", "dashboard_m"));
 
     private async void OnSellTicketTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/tickets_tab/tickets");
+        => await Shell.Current.GoToAsync(Route("tickets", "tickets_m"));
 
     private async void OnRoutesTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/routes_tab/routes");
+        => await Shell.Current.GoToAsync(Route("routes", "routes_m"));
 
     private async void OnScheduleTapped(object? sender, TappedEventArgs e)
-        => await Shell.Current.GoToAsync("//main/routes_tab/routes");
+        => await Shell.Current.GoToAsync(Route("routes", "routes_m"));
 }

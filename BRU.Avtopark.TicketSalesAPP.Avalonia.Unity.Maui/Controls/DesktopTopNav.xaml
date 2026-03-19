@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView
+    x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Controls.DesktopTopNav"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    IsVisible="False">
+
+    <Grid RowDefinitions="52,2">
+
+        <!-- Nav background -->
+        <Border Grid.Row="0"
+                StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light=#F8F7FF, Dark=#13131F}">
+
+            <Grid ColumnDefinitions="Auto,*,Auto" Padding="12,0">
+
+                <!-- App brand -->
+                <StackLayout Grid.Column="0"
+                             Orientation="Horizontal"
+                             Spacing="8"
+                             VerticalOptions="Center"
+                             Padding="4,0,20,0">
+                    <Border BackgroundColor="{StaticResource BrandPurple}"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 8"
+                            WidthRequest="28" HeightRequest="28"
+                            VerticalOptions="Center">
+                        <Label Text="🚌" FontSize="14"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                    <Label Text="BRU Авторпарк"
+                           FontSize="13"
+                           FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#3D3A5C, Dark=#E0DEFF}"
+                           VerticalOptions="Center" />
+                </StackLayout>
+
+                <!-- Nav tabs -->
+                <HorizontalStackLayout Grid.Column="1"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Fill"
+                                       Spacing="4">
+
+                    <Grid x:Name="TabDashboard" RowDefinitions="*,3" WidthRequest="120">
+                        <Button x:Name="BtnDashboard"
+                                Grid.Row="0"
+                                Text="Главная"
+                                Clicked="OnDashboardClicked"
+                                Style="{StaticResource TopNavButton}" />
+                        <BoxView x:Name="BarDashboard"
+                                 Grid.Row="1"
+                                 BackgroundColor="{StaticResource BrandPurple}"
+                                 IsVisible="False"
+                                 HeightRequest="3"
+                                 CornerRadius="2" />
+                    </Grid>
+
+                    <Grid x:Name="TabRoutes" RowDefinitions="*,3" WidthRequest="120">
+                        <Button x:Name="BtnRoutes"
+                                Grid.Row="0"
+                                Text="Маршруты"
+                                Clicked="OnRoutesClicked"
+                                Style="{StaticResource TopNavButton}" />
+                        <BoxView x:Name="BarRoutes"
+                                 Grid.Row="1"
+                                 BackgroundColor="{StaticResource BrandPurple}"
+                                 IsVisible="False"
+                                 HeightRequest="3"
+                                 CornerRadius="2" />
+                    </Grid>
+
+                    <Grid x:Name="TabTickets" RowDefinitions="*,3" WidthRequest="120">
+                        <Button x:Name="BtnTickets"
+                                Grid.Row="0"
+                                Text="Билеты"
+                                Clicked="OnTicketsClicked"
+                                Style="{StaticResource TopNavButton}" />
+                        <BoxView x:Name="BarTickets"
+                                 Grid.Row="1"
+                                 BackgroundColor="{StaticResource BrandPurple}"
+                                 IsVisible="False"
+                                 HeightRequest="3"
+                                 CornerRadius="2" />
+                    </Grid>
+
+                    <Grid x:Name="TabProfile" RowDefinitions="*,3" WidthRequest="120">
+                        <Button x:Name="BtnProfile"
+                                Grid.Row="0"
+                                Text="Профиль"
+                                Clicked="OnProfileClicked"
+                                Style="{StaticResource TopNavButton}" />
+                        <BoxView x:Name="BarProfile"
+                                 Grid.Row="1"
+                                 BackgroundColor="{StaticResource BrandPurple}"
+                                 IsVisible="False"
+                                 HeightRequest="3"
+                                 CornerRadius="2" />
+                    </Grid>
+
+                </HorizontalStackLayout>
+
+                <!-- Right side spacer (mirrors brand width) -->
+                <BoxView Grid.Column="2" WidthRequest="160" BackgroundColor="Transparent" />
+
+            </Grid>
+        </Border>
+
+        <!-- Bottom separator line -->
+        <BoxView Grid.Row="1"
+                 BackgroundColor="{AppThemeBinding Light=#E0DEFF, Dark=#2A2A40}"
+                 HeightRequest="1" />
+
+    </Grid>
+
+</ContentView>
