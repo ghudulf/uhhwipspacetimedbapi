@@ -143,6 +143,9 @@
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    background: var(--background-color);
+    /* Prevent white flash on mobile overscroll */
+    background-color: var(--background-color);
 }
 
 body {
@@ -151,7 +154,8 @@ body {
     line-height: 1.6;
     color: var(--text-color);
     background: var(--background-gradient);
-    background-attachment: fixed;
+    /* background-attachment: fixed breaks mobile scroll - use pseudo-element instead */
+    background-attachment: scroll;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -159,6 +163,8 @@ body {
     -moz-osx-font-smoothing: grayscale;
     transition: background var(--transition-slow), color var(--transition-base);
     letter-spacing: -0.01em;
+    /* Prevent white overscroll bounce on iOS/Android */
+    overscroll-behavior: none;
 }
 
 /* Subtle animated background - Warm tones */
