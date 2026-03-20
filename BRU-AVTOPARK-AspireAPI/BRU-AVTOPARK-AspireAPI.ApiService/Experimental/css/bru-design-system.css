@@ -608,6 +608,13 @@ body:has(.navbar) {
     border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* In light mode, card--dark uses the light card surface instead */
+:root:not([data-theme="dark"]) .card--dark {
+    background: var(--card-color);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
 .card--wide {
     max-width: min(880px, 95vw);
 }
@@ -647,6 +654,12 @@ body:has(.navbar) {
     border-radius: var(--radius-full);
     width: fit-content;
     color: white;
+}
+
+:root:not([data-theme="dark"]) .card-header--pill {
+    background: var(--glass-background);
+    border-color: var(--border-color);
+    color: var(--text-color);
 }
 
 .card-body {
@@ -720,6 +733,11 @@ label {
     color: rgba(255, 255, 255, 0.85);
 }
 
+/* In light mode, labels use normal text color */
+:root:not([data-theme="dark"]) .card--dark label {
+    color: var(--text-secondary);
+}
+
 input, select, textarea {
     width: 100%;
     padding: 0.8125rem 1rem;
@@ -746,10 +764,10 @@ input::placeholder {
     color: var(--text-muted);
 }
 
-/* Dark inputs for auth cards */
-.card--dark input,
-.card--dark select,
-.card--dark textarea,
+/* Dark inputs for auth cards — only in dark theme */
+[data-theme="dark"] .card--dark input,
+[data-theme="dark"] .card--dark select,
+[data-theme="dark"] .card--dark textarea,
 .auth-card input,
 .auth-card select {
     background: rgba(255, 255, 255, 0.06);
@@ -757,13 +775,13 @@ input::placeholder {
     color: white;
 }
 
-.card--dark input::placeholder,
+[data-theme="dark"] .card--dark input::placeholder,
 .auth-card input::placeholder {
     color: rgba(255, 255, 255, 0.4);
 }
 
-.card--dark input:focus,
-.card--dark select:focus,
+[data-theme="dark"] .card--dark input:focus,
+[data-theme="dark"] .card--dark select:focus,
 .auth-card input:focus,
 .auth-card select:focus {
     border-color: var(--primary-color);
@@ -1070,8 +1088,8 @@ button:active, .btn:active {
     background: var(--border-color);
 }
 
-.card--dark .divider::before,
-.card--dark .divider::after,
+[data-theme="dark"] .card--dark .divider::before,
+[data-theme="dark"] .card--dark .divider::after,
 .auth-card .divider::before,
 .auth-card .divider::after {
     background: rgba(255, 255, 255, 0.12);
@@ -1083,9 +1101,13 @@ button:active, .btn:active {
     font-size: 0.8125rem;
 }
 
-.card--dark .divider span,
+[data-theme="dark"] .card--dark .divider span,
 .auth-card .divider span {
     color: rgba(255, 255, 255, 0.4);
+}
+
+:root:not([data-theme="dark"]) .card--dark .divider span {
+    color: var(--text-muted);
 }
 
 /* ============================================
@@ -1335,6 +1357,13 @@ button:active, .btn:active {
     transition: all var(--transition-base);
 }
 
+/* Light mode pill */
+:root:not([data-theme="dark"]) .bru-id-header__inner {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
 .bru-id-header__inner:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -1353,6 +1382,10 @@ button:active, .btn:active {
     font-size: 0.9375rem;
     color: white;
     letter-spacing: 0.01em;
+}
+
+:root:not([data-theme="dark"]) .bru-id-header__text {
+    color: var(--text-color);
 }
 
 /* BRU ID Header action button - pill CTA style */
@@ -1397,6 +1430,16 @@ button:active, .btn:active {
     transform: scale(1.08);
 }
 
+/* Light mode overrides for bru-id-header__extra */
+:root:not([data-theme="dark"]) .bru-id-header__extra {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text-color);
+}
+
+:root:not([data-theme="dark"]) .bru-id-header__extra:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
 /* ============================================
    AUTH TITLE
    ============================================ */
@@ -1405,8 +1448,14 @@ button:active, .btn:active {
     font-size: 1.375rem;
     font-weight: 600;
     margin-bottom: var(--space-md);
-    color: var(--text-inverse);
+    color: var(--text-color);
     letter-spacing: -0.015em;
+}
+
+/* In dark mode inside dark card, keep white */
+[data-theme="dark"] .card--dark .auth-title,
+[data-theme="dark"] .auth-title {
+    color: var(--text-inverse);
 }
 
 .auth-subtitle {
@@ -1421,6 +1470,48 @@ button:active, .btn:active {
 .auth-subtitle strong {
     color: var(--primary-color);
     font-weight: 600;
+}
+
+.info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: rgba(255, 87, 34, 0.08);
+    border: 1px solid rgba(255, 87, 34, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--text-color);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: var(--space-lg);
+}
+
+.info-banner svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--primary-color);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    cursor: pointer;
+}
+
+.checkbox-input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-label-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    user-select: none;
 }
 
 /* ============================================
@@ -2006,7 +2097,7 @@ button:active, .btn:active {
     margin: 0 auto;
 }
 
-.card--dark .loader,
+[data-theme="dark"] .card--dark .loader,
 .auth-card .loader {
     border-color: rgba(255, 255, 255, 0.08);
     border-top-color: white;
