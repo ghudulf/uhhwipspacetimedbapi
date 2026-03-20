@@ -143,9 +143,10 @@
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
-    background: var(--background-color);
-    /* Prevent white flash on mobile overscroll */
+    /* Tracks the CSS variable — updates instantly when data-theme changes */
     background-color: var(--background-color);
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 body {
@@ -165,16 +166,21 @@ body {
     letter-spacing: -0.01em;
     /* Prevent white overscroll bounce on iOS/Android */
     overscroll-behavior: none;
+    /* Solid color fallback under the gradient — no white ever shows through */
+    background-color: var(--background-color);
+    /* Promote to GPU layer so scroll repaints never expose white */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    will-change: scroll-position;
 }
 
 /* Subtle animated background - Warm tones */
 body::before {
     content: '';
     position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     background: 
         radial-gradient(circle at 20% 80%, rgba(255, 87, 34, 0.04) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 107, 53, 0.03) 0%, transparent 50%),
@@ -182,6 +188,12 @@ body::before {
     pointer-events: none;
     z-index: -1;
     animation: backgroundFloat 40s ease-in-out infinite;
+    /* Own GPU layer — prevents this from triggering body repaints during scroll */
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Ensure it never shows white underneath itself */
+    background-color: transparent;
 }
 
 @keyframes backgroundFloat {

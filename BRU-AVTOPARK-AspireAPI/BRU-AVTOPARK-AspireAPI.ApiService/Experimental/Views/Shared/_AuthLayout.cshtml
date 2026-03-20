@@ -4,18 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0066ff">
+    <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>@ViewData["Title"] - BRU AVTOPARK</title>
+    <!-- MUST be first: sets theme before stylesheet paints, eliminates all flashes -->
+    <style>html{background-color:#F0F0F0}html[data-theme="dark"]{background-color:#121212}</style>
+    <script>(function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.backgroundColor='#121212';}else{document.documentElement.style.backgroundColor='#F0F0F0';}document.querySelector('meta[name="theme-color"]').setAttribute('content',t==='dark'?'#121212':'#F0F0F0');})()</script>
     <link rel="stylesheet" href="~/css/bru-design-system.css" asp-append-version="true" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <style>
-        /* Critical CSS for instant paint */
-        html { background: #f0f4f8; }
-        [data-theme="dark"] html { background: #0f172a; }
-    </style>
 </head>
 <body class="@ViewData["BodyClass"]">
     <header class="header-wrapper" role="navigation" aria-label="Main navigation">
