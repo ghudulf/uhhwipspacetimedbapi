@@ -241,6 +241,11 @@ builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>
 // Add Routing Diagnostics Service for debugging controller discovery issues
 builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();
 
+// Configure UPnP port mapping
+builder.Services.Configure<BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPOptions>(
+    builder.Configuration.GetSection(BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPOptions.SectionName));
+builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPService>();
+
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
 
