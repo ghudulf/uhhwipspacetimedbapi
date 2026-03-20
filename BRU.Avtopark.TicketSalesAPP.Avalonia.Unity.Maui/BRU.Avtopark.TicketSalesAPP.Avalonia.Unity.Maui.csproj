@@ -74,6 +74,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <!-- Avalonia core - explicit reference so Avalonia.Controls types resolve in this project -->
     <PackageReference Include="Avalonia" Version="12.0.0-preview2" />
+     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0-preview2-2" />
     <!-- Avalonia.Controls.Maui - replaces MAUI rendering pipeline with Avalonia/Skia -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-preview.2.26075.1512" />
     <!-- Desktop package: provides source-generated AppBuilder + run loop for net11.0 generic desktop TFM -->

@@ -3,7 +3,9 @@
     x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages.RoutesPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:maui="clr-namespace:Avalonia.Controls.Maui.Controls;assembly=Avalonia.Controls.Maui"
     xmlns:nav="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Controls"
+    xmlns:views="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;assembly=BRU.Avtopark.TicketSalesAPP.Avalonia.Unity"
     BackgroundColor="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}"
     Shell.NavBarIsVisible="False">
 
@@ -11,32 +13,87 @@
 
         <nav:DesktopTopNav Grid.Row="0" ActiveRoute="routes" />
 
-        <VerticalStackLayout Grid.Row="1"
-                             Padding="32,24,32,32"
-                             Spacing="0">
+        <!-- Main content area -->
+        <Grid Grid.Row="1">
 
-            <Label Text="Маршруты"
-                   FontSize="26"
-                   FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
-                   Margin="0,0,0,24" />
+            <!-- Avalonia RouteManagementToolWindow -->
+            <maui:AvaloniaView
+                x:Name="RoutesAvaloniaView"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill">
+                <views:RouteManagementToolWindow
+                    x:Name="RouteManagementControl" />
+            </maui:AvaloniaView>
 
-            <VerticalStackLayout HorizontalOptions="Center"
-                                 VerticalOptions="Center"
-                                 Spacing="12"
-                                 Margin="0,60,0,0">
-                <Label Text="🗺️" FontSize="52" HorizontalOptions="Center" />
-                <Label Text="Список маршрутов"
-                       FontSize="17"
-                       FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
-                       HorizontalOptions="Center" />
-                <Label Text="Здесь будет список маршрутов"
-                       FontSize="13"
-                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
+            <!-- Loading overlay (shown while Avalonia view initialises) -->
+            <Grid x:Name="LoadingOverlay"
+                  IsVisible="True"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill"
+                  InputTransparent="False"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}">
 
-        </VerticalStackLayout>
+                <VerticalStackLayout
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Spacing="20">
+
+                    <ActivityIndicator
+                        IsRunning="True"
+                        Color="{StaticResource BrandPrimary}"
+                        WidthRequest="48"
+                        HeightRequest="48"
+                        HorizontalOptions="Center" />
+
+                    <Label Text="Загрузка маршрутов..."
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                           FontSize="16"
+                           HorizontalOptions="Center" />
+
+                    <Label Text="Пожалуйста, подождите"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceMutedLight}, Dark={StaticResource OnSurfaceMutedDark}}"
+                           FontSize="13"
+                           HorizontalOptions="Center" />
+
+                </VerticalStackLayout>
+
+            </Grid>
+
+            <!-- Error overlay -->
+            <Grid x:Name="ErrorOverlay"
+                  IsVisible="False"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}">
+
+                <VerticalStackLayout
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Spacing="16">
+
+                    <Label Text="⚠️" FontSize="48" HorizontalOptions="Center" />
+
+                    <Label x:Name="ErrorLabel"
+                           Text=""
+                           TextColor="{StaticResource BrandAccentRed}"
+                           FontSize="15"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           Margin="32,0" />
+
+                    <Button Text="Повторить"
+                            BackgroundColor="{StaticResource BrandPrimary}"
+                            TextColor="White"
+                            CornerRadius="8"
+                            Padding="24,10"
+                            HorizontalOptions="Center"
+                            Clicked="OnRetryClicked" />
+
+                </VerticalStackLayout>
+
+            </Grid>
+
+        </Grid>
+
     </Grid>
 </ContentPage>
