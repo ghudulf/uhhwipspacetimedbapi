@@ -2677,9 +2677,9 @@ button:active, .btn:active {
 @media (max-width: 768px) {
     /* Separated header panels - mobile adjustments */
     .header-wrapper {
-        top: var(--space-sm);
-        left: var(--space-sm);
-        right: var(--space-sm);
+        top: 12px;
+        left: 12px;
+        right: 12px;
     }
     
     .header-logo-panel {
@@ -2711,10 +2711,10 @@ button:active, .btn:active {
     /* Floating navbar - adjust for mobile */
     .navbar {
         padding: var(--space-sm) var(--space-md);
-        top: var(--space-sm);
-        left: var(--space-sm);
-        right: var(--space-sm);
-        max-width: calc(100% - var(--space-md));
+        top: 12px;
+        left: 12px;
+        right: 12px;
+        max-width: calc(100% - 24px);
         border-radius: var(--radius-xl);
     }
     
@@ -2843,9 +2843,9 @@ button:active, .btn:active {
 @media (max-width: 480px) {
     /* Ultra-compact separated header for small screens */
     .header-wrapper {
-        top: var(--space-xs);
-        left: var(--space-xs);
-        right: var(--space-xs);
+        top: 10px;
+        left: 10px;
+        right: 10px;
     }
     
     .header-logo-panel {
@@ -2879,9 +2879,9 @@ button:active, .btn:active {
     .navbar {
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-lg);
-        top: var(--space-xs);
-        left: var(--space-xs);
-        right: var(--space-xs);
+        top: 10px;
+        left: 10px;
+        right: 10px;
     }
     
     body:has(.navbar) {
