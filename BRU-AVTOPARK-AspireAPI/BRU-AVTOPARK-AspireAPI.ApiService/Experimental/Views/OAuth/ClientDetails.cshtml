@@ -3,375 +3,701 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = Model.ClientId + " - Client Details";
-    ViewData["BodyClass"] = "";
+    ViewData["BodyClass"] = "client-details-body";
 }
 
-<div class="page-container slide-up">
-    <!-- Page Header with Gradient -->
-    <div class="page-header-gradient glass-card">
-        <div class="page-header-content">
-            <div class="page-header-left">
-                <div class="client-avatar pulse-glow">
-                    @Model.DisplayName?.Substring(0, 1).ToUpper()
-                </div>
-                <div class="client-info">
-                    <h1 class="page-title">@Model.DisplayName</h1>
-                    <p class="client-id-display">@Model.ClientId</p>
-                </div>
-            </div>
-            <div class="page-header-actions">
-                <a href="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/edit@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
-                   class="btn btn-primary ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                    </svg>
-                    <span>Edit Client</span>
-                </a>
-                <button onclick="if(confirm('Are you sure you want to delete this client? This action cannot be undone.')) { document.getElementById('deleteForm').submit(); }" 
-                        class="btn btn-danger ripple-effect">
-                    <svg class="btn-icon-left" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Delete</span>
-                </button>
-            </div>
+<div class="client-details-page fade-in">
+    <!-- Hero Section with BRU ID Branding -->
+    <div class="client-details-hero">
+        <div class="client-details-hero__badge">
+            <div class="client-details-hero__icon"></div>
+            <span class="client-details-hero__text">OIDC Client</span>
         </div>
+        <div class="client-details-hero__avatar">
+            @Model.DisplayName?.Substring(0, 1).ToUpper()
+        </div>
+        <h1 class="client-details-hero__title">@Model.DisplayName</h1>
+        <p class="client-details-hero__subtitle">@Model.ClientId</p>
     </div>
 
-    <!-- Details Grid -->
-    <div class="details-grid">
-        <div class="detail-card glass-card slide-up" style="animation-delay: 0.1s;">
-            <div class="detail-card-header">
-                <div class="detail-icon-wrapper">
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-                    </svg>
+    <!-- Action Buttons -->
+    <div class="client-details-actions">
+        <a href="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/edit@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" 
+           class="client-details-action-btn client-details-action-btn--primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span>Edit Client</span>
+        </a>
+        <button onclick="if(confirm('Are you sure you want to delete this client? This action cannot be undone.')) { document.getElementById('deleteForm').submit(); }" 
+                class="client-details-action-btn client-details-action-btn--danger">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+            <span>Delete</span>
+        </button>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="client-details-content">
+        <!-- Client Info Cards Grid -->
+        <div class="client-details-grid">
+            <!-- Client ID Card -->
+            <div class="client-details-card">
+                <div class="client-details-card__header">
+                    <div class="client-details-card__icon client-details-card__icon--key">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                        </svg>
+                    </div>
+                    <span class="client-details-card__title">Client Identifier</span>
                 </div>
-                <h3 class="detail-card-title">Client Identifier</h3>
+                <div class="client-details-card__body">
+                    <div class="client-details-card__value client-details-card__value--mono">
+                        @Model.ClientId
+                    </div>
+                </div>
             </div>
-            <div class="detail-value-code glass-surface">@Model.ClientId</div>
+
+            <!-- Consent Type Card -->
+            <div class="client-details-card">
+                <div class="client-details-card__header">
+                    <div class="client-details-card__icon client-details-card__icon--check">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+                    <span class="client-details-card__title">Consent Type</span>
+                </div>
+                <div class="client-details-card__body">
+                    @if (Model.RequireConsent)
+                    {
+                        <div class="client-details-badge client-details-badge--warning">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                            <span>Explicit Consent Required</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="client-details-badge client-details-badge--success">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            <span>Implicit Consent</span>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
 
-        <div class="detail-card glass-card slide-up" style="animation-delay: 0.15s;">
-            <div class="detail-card-header">
-                <div class="detail-icon-wrapper">
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        <!-- Redirect URIs Section -->
+        <div class="client-details-section">
+            <div class="client-details-section__header">
+                <div class="client-details-section__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                     </svg>
                 </div>
-                <h3 class="detail-card-title">Consent Type</h3>
+                <span class="client-details-section__title">Redirect URIs</span>
+                <span class="client-details-section__count">@Model.RedirectUris.Length</span>
             </div>
-            <div class="status-badge @(Model.RequireConsent ? "status-warning" : "status-success")">
-                @if (Model.RequireConsent)
+            <div class="client-details-section__body">
+                @if (Model.RedirectUris.Length > 0)
                 {
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>Explicit Consent Required</span>
+                    <ul class="client-details-uri-list">
+                        @foreach (var uri in Model.RedirectUris)
+                        {
+                            <li class="client-details-uri-item">
+                                <svg class="client-details-uri-item__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                                <span class="client-details-uri-item__text">@uri</span>
+                            </li>
+                        }
+                    </ul>
                 }
                 else
                 {
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    <p class="client-details-empty">No redirect URIs configured</p>
+                }
+            </div>
+        </div>
+
+        <!-- Post-Logout Redirect URIs Section -->
+        <div class="client-details-section">
+            <div class="client-details-section__header">
+                <div class="client-details-section__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
                     </svg>
-                    <span>Implicit Consent</span>
-                }
+                </div>
+                <span class="client-details-section__title">Post-Logout Redirect URIs</span>
+                <span class="client-details-section__count">@Model.PostLogoutRedirectUris.Length</span>
             </div>
-        </div>
-    </div>
-
-    <!-- Redirect URIs -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.2s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <h3 class="detail-card-title">Redirect URIs</h3>
-        </div>
-        @if (Model.RedirectUris.Length > 0)
-        {
-            <ul class="uri-list">
-                @foreach (var uri in Model.RedirectUris)
+            <div class="client-details-section__body">
+                @if (Model.PostLogoutRedirectUris.Length > 0)
                 {
-                    <li class="uri-item glass-surface">
-                        <svg class="uri-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>@uri</span>
-                    </li>
+                    <ul class="client-details-uri-list">
+                        @foreach (var uri in Model.PostLogoutRedirectUris)
+                        {
+                            <li class="client-details-uri-item">
+                                <svg class="client-details-uri-item__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                                <span class="client-details-uri-item__text">@uri</span>
+                            </li>
+                        }
+                    </ul>
                 }
-            </ul>
-        }
-        else
-        {
-            <p class="empty-value">No redirect URIs configured</p>
-        }
-    </div>
-
-    <!-- Post-Logout Redirect URIs -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.25s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <h3 class="detail-card-title">Post-Logout Redirect URIs</h3>
-        </div>
-        @if (Model.PostLogoutRedirectUris.Length > 0)
-        {
-            <ul class="uri-list">
-                @foreach (var uri in Model.PostLogoutRedirectUris)
+                else
                 {
-                    <li class="uri-item glass-surface">
-                        <svg class="uri-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>@uri</span>
-                    </li>
+                    <p class="client-details-empty">No post-logout redirect URIs configured</p>
                 }
-            </ul>
-        }
-        else
-        {
-            <p class="empty-value">No post-logout redirect URIs configured</p>
-        }
-    </div>
-
-    <!-- Allowed Scopes -->
-    <div class="detail-card glass-card slide-up" style="animation-delay: 0.3s;">
-        <div class="detail-card-header">
-            <div class="detail-icon-wrapper">
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clip-rule="evenodd"/>
-                </svg>
             </div>
-            <h3 class="detail-card-title">Allowed Scopes</h3>
         </div>
-        @if (Model.AllowedScopes.Length > 0)
-        {
-            <div class="scope-badges">
-                @foreach (var scope in Model.AllowedScopes)
+
+        <!-- Allowed Scopes Section -->
+        <div class="client-details-section">
+            <div class="client-details-section__header">
+                <div class="client-details-section__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                </div>
+                <span class="client-details-section__title">Allowed Scopes</span>
+                <span class="client-details-section__count">@Model.AllowedScopes.Length</span>
+            </div>
+            <div class="client-details-section__body">
+                @if (Model.AllowedScopes.Length > 0)
                 {
-                    <span class="scope-badge">@scope</span>
+                    <div class="client-details-scope-list">
+                        @foreach (var scope in Model.AllowedScopes)
+                        {
+                            <span class="client-details-scope-badge">@scope</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="client-details-empty">No scopes configured</p>
                 }
             </div>
-        }
-        else
-        {
-            <p class="empty-value">No scopes configured</p>
-        }
-    </div>
+        </div>
 
-    <!-- Hidden Delete Form -->
-    <form id="deleteForm" method="POST" action="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/delete" style="display: none;">
-        <input type="hidden" name="token" value="@(Model.Token ?? "")" />
-    </form>
+        <!-- Hidden Delete Form -->
+        <form id="deleteForm" method="POST" action="/api/auth/connect/clients/@Uri.EscapeDataString(Model.ClientId)/delete" style="display: none;">
+            <input type="hidden" name="token" value="@(Model.Token ?? "")" />
+        </form>
 
-    <!-- Back Link -->
-    <div class="back-link-container">
-        <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="back-link">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
-            </svg>
-            <span>Back to All Clients</span>
-        </a>
+        <!-- Back Navigation -->
+        <div class="client-details-back-link">
+            <a href="/api/auth/connect/clients@(string.IsNullOrEmpty(Model.Token) ? "" : $"?token={Uri.EscapeDataString(Model.Token)}")" class="client-details-back-link__anchor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                <span>Back to All Clients</span>
+            </a>
+        </div>
     </div>
 </div>
 
 <style>
-    .page-header-gradient {
-        padding: 2rem;
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-xl);
-        color: white;
+/* Client Details Page - Modern Glass Morphism Layout */
+.client-details-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+/* Hero Section */
+.client-details-hero {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.client-details-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(30, 30, 30, 0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    margin-bottom: var(--space-lg);
+}
+
+.client-details-hero__icon {
+    width: 24px;
+    height: 24px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.35);
+}
+
+.client-details-hero__text {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: white;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.client-details-hero__avatar {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-md);
+    background: var(--primary-gradient);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 8px 24px rgba(255, 87, 34, 0.35);
+}
+
+.client-details-hero__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: var(--space-xs);
+    letter-spacing: -0.025em;
+}
+
+.client-details-hero__subtitle {
+    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Action Buttons */
+.client-details-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.client-details-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.client-details-action-btn--primary {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 0 4px 14px rgba(255, 87, 34, 0.3);
+}
+
+.client-details-action-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 87, 34, 0.4);
+}
+
+.client-details-action-btn--danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-color);
+    border: 1.5px solid rgba(239, 68, 68, 0.3);
+}
+
+.client-details-action-btn--danger:hover {
+    background: var(--error-color);
+    color: white;
+    border-color: var(--error-color);
+}
+
+/* Content Area */
+.client-details-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+/* Cards Grid */
+.client-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+/* Card Styles */
+.client-details-card {
+    background: var(--card-color);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.client-details-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 87, 34, 0.06);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.client-details-card__icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+}
+
+.client-details-card__icon--key {
+    background: rgba(255, 87, 34, 0.1);
+    color: var(--primary-color);
+}
+
+.client-details-card__icon--check {
+    background: rgba(56, 142, 60, 0.1);
+    color: var(--success-color);
+}
+
+.client-details-card__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.01em;
+}
+
+.client-details-card__body {
+    padding: var(--space-lg);
+}
+
+.client-details-card__value {
+    font-size: 0.9375rem;
+    color: var(--text-color);
+}
+
+.client-details-card__value--mono {
+    font-family: var(--font-mono);
+    padding: 0.75rem 1rem;
+    background: var(--surface-overlay);
+    border-radius: var(--radius-md);
+    word-break: break-all;
+}
+
+/* Badges */
+.client-details-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: var(--radius-full);
+}
+
+.client-details-badge--success {
+    background: rgba(56, 142, 60, 0.1);
+    color: var(--success-color);
+}
+
+.client-details-badge--warning {
+    background: rgba(245, 124, 0, 0.1);
+    color: var(--warning-color);
+}
+
+/* Section Styles */
+.client-details-section {
+    background: var(--card-color);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.client-details-section__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 87, 34, 0.06);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.client-details-section__icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: rgba(255, 87, 34, 0.1);
+    color: var(--primary-color);
+}
+
+.client-details-section__title {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.client-details-section__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-full);
+}
+
+.client-details-section__body {
+    padding: var(--space-lg);
+}
+
+/* URI List */
+.client-details-uri-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.client-details-uri-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0.75rem 1rem;
+    background: var(--surface-overlay);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-base);
+}
+
+.client-details-uri-item:hover {
+    background: var(--surface-elevated);
+    border-color: rgba(255, 87, 34, 0.2);
+}
+
+.client-details-uri-item__icon {
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.client-details-uri-item__text {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--text-color);
+    word-break: break-all;
+}
+
+/* Scope List */
+.client-details-scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.client-details-scope-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: white;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-full);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.2);
+}
+
+/* Empty State */
+.client-details-empty {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Back Link */
+.client-details-back-link {
+    text-align: center;
+    padding-top: var(--space-md);
+}
+
+.client-details-back-link__anchor {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--primary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.client-details-back-link__anchor:hover {
+    color: var(--primary-dark);
+}
+
+.client-details-back-link__anchor svg {
+    transition: transform var(--transition-base);
+}
+
+.client-details-back-link__anchor:hover svg {
+    transform: translateX(-3px);
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] .client-details-card,
+[data-theme="dark"] .client-details-section {
+    background: var(--card-color);
+}
+
+[data-theme="dark"] .client-details-card__header,
+[data-theme="dark"] .client-details-section__header {
+    background: rgba(255, 112, 67, 0.08);
+}
+
+[data-theme="dark"] .client-details-card__value--mono,
+[data-theme="dark"] .client-details-uri-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .client-details-uri-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .client-details-page {
+        padding: var(--space-md);
     }
-    .page-header-content {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1.5rem;
+
+    .client-details-hero__title {
+        font-size: 1.5rem;
     }
-    .page-header-left {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-    .client-avatar {
+
+    .client-details-hero__avatar {
         width: 64px;
         height: 64px;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border-radius: var(--radius-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: white;
-    }
-    .client-info .page-title {
-        margin: 0 0 0.25rem 0;
         font-size: 1.5rem;
-        font-weight: 700;
     }
-    .client-id-display {
-        margin: 0;
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        opacity: 0.9;
+
+    .client-details-grid {
+        grid-template-columns: 1fr;
     }
-    .page-header-actions {
-        display: flex;
-        gap: 0.75rem;
-    }
-    .page-header-actions .btn {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-    }
-    .page-header-actions .btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-    .page-header-actions .btn-danger {
-        background: rgba(239, 68, 68, 0.8);
-    }
-    .page-header-actions .btn-danger:hover {
-        background: rgba(239, 68, 68, 1);
-    }
-    .details-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .detail-card {
-        padding: 1.5rem;
-        border-radius: var(--radius-xl);
-        margin-bottom: 1.5rem;
-    }
-    .details-grid .detail-card {
-        margin-bottom: 0;
-    }
-    .detail-card-header {
-        display: flex;
+
+    .client-details-actions {
+        flex-direction: column;
         align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
     }
-    .detail-icon-wrapper {
-        width: 40px;
-        height: 40px;
-        background: var(--primary-alpha);
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
+
+    .client-details-action-btn {
+        width: 100%;
+        max-width: 280px;
         justify-content: center;
     }
-    .detail-icon-wrapper svg {
-        width: 20px;
-        height: 20px;
-        color: var(--primary);
+
+    .client-details-section__header {
+        padding: var(--space-sm) var(--space-md);
     }
-    .detail-card-title {
-        margin: 0;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: var(--text-secondary);
+
+    .client-details-section__body {
+        padding: var(--space-md);
     }
-    .detail-value-code {
-        padding: 0.875rem 1rem;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        word-break: break-all;
+
+    .client-details-card__body {
+        padding: var(--space-md);
     }
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+    .client-details-hero__badge {
+        padding: var(--space-xs) var(--space-md);
+    }
+
+    .client-details-hero__text {
+        font-size: 0.75rem;
+    }
+
+    .client-details-hero__title {
+        font-size: 1.25rem;
+    }
+
+    .client-details-hero__subtitle {
+        font-size: 0.75rem;
+    }
+
+    .client-details-action-btn {
         padding: 0.625rem 1rem;
-        border-radius: var(--radius-full);
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    .status-badge svg {
-        width: 16px;
-        height: 16px;
-    }
-    .status-success {
-        background: rgba(34, 197, 94, 0.1);
-        color: rgb(34, 197, 94);
-    }
-    .status-warning {
-        background: rgba(251, 191, 36, 0.1);
-        color: rgb(202, 138, 4);
-    }
-    .uri-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    .uri-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius-md);
-        font-family: var(--font-mono);
-        font-size: 0.875rem;
-        word-break: break-all;
-    }
-    .uri-icon {
-        width: 16px;
-        height: 16px;
-        color: var(--primary);
-        flex-shrink: 0;
-    }
-    .scope-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .scope-badge {
-        background: var(--primary);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-full);
         font-size: 0.8125rem;
-        font-weight: 500;
     }
-    .empty-value {
-        color: var(--text-tertiary);
-        font-style: italic;
-        margin: 0;
+
+    .client-details-uri-item {
+        padding: 0.625rem 0.75rem;
     }
-    .back-link-container {
-        text-align: center;
-        margin-top: 2rem;
+
+    .client-details-uri-item__text {
+        font-size: 0.75rem;
     }
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-        transition: all var(--transition-fast);
+
+    .client-details-scope-badge {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
     }
-    .back-link:hover {
-        gap: 0.75rem;
+}
+
+/* Fade-in animation */
+.fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
     }
-    .back-link svg {
-        width: 20px;
-        height: 20px;
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
+}
 </style>
