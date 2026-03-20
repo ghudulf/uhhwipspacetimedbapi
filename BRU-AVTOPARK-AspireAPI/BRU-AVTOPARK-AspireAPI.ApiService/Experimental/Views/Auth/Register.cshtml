@@ -6,73 +6,156 @@
     ViewData["BodyClass"] = "auth-page-body";
 }
 
-<div class="login-container fade-in" style="max-width: 1000px; margin: 0 auto;">
-    <div class="card card--dark card--wide">
-        <div class="card__body">
-            <partial name="_BruIdHeader" />
+<div class="register-page fade-in">
+    <!-- Hero Section with BRU ID Branding -->
+    <div class="register-hero">
+        <div class="register-hero__badge">
+            <div class="register-hero__icon"></div>
+            <span class="register-hero__text">BRU ID</span>
+        </div>
+        <h1 class="register-hero__title">Create New Account</h1>
+        <p class="register-hero__subtitle">Register a new user for BRU AVTOPARK system</p>
+    </div>
 
-            <h1 class="auth-title">Create New Account</h1>
-
-            <partial name="_StatusMessages"
-                     model="new StatusViewModel(Model.Error, Model.Message)" />
-
-            <div class="register-layout">
-                @* Left panel - admin status *@
-                <div class="register-layout__sidebar">
-                    <div class="info-box info-box--dark">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;" aria-hidden="true">
+    <!-- Main Content Area -->
+    <div class="register-content">
+        <!-- Admin Status Card -->
+        <div class="register-status-card">
+            <div class="register-status-card__header">
+                <svg class="register-status-card__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span class="register-status-card__title">Admin Authorization</span>
+            </div>
+            
+            <div class="register-status-card__body">
+                <div class="register-status-item register-status-item--info">
+                    <div class="register-status-item__icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="12" cy="12" r="10"/>
                             <line x1="12" y1="16" x2="12" y2="12"/>
                             <line x1="12" y1="8" x2="12.01" y2="8"/>
                         </svg>
-                        <span><strong>Note:</strong> Only administrators can register new users. Admin login is required.</span>
                     </div>
+                    <div class="register-status-item__content">
+                        <strong>Administrator Required</strong>
+                        <p>Only administrators can register new users. Admin login is required to proceed.</p>
+                    </div>
+                </div>
 
-                    <div id="admin-check-status"
-                         class="status-message status-message--success"
-                         style="display: @(Model.IsAdmin ? "flex" : "none");"
-                         role="status">
-                        <svg class="status-message__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <div id="admin-check-status"
+                     class="register-status-item register-status-item--success"
+                     style="display: @(Model.IsAdmin ? "flex" : "none");"
+                     role="status">
+                    <div class="register-status-item__icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                             <polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
-                        <span><strong>Logged in as administrator.</strong></span>
                     </div>
-
-                    <div id="admin-check-pending"
-                         class="status-message status-message--warning"
-                         style="display: @(!Model.IsAdmin && Model.AdminCheckAttempt.HasValue ? "flex" : "none");"
-                         role="status">
-                        <div class="loader" style="width: 18px; height: 18px; margin-right: 8px;" aria-hidden="true"></div>
-                        <div>
-                            <strong>Checking admin permissions... (Attempt @(Model.AdminCheckAttempt ?? 0)/3)</strong>
-                            <p style="margin: 8px 0 0 0; font-size: 0.875rem;">If verification fails, <a href="/api/auth/login?returnUrl=/api/auth/register" class="link link--blue">log in again</a>.</p>
-                        </div>
+                    <div class="register-status-item__content">
+                        <strong>Admin privileges verified</strong>
+                        <p>You can proceed with user registration.</p>
                     </div>
-
-                    <div id="register-status" aria-live="polite"></div>
                 </div>
 
-                @* Right panel - registration form *@
-                <div class="register-layout__form">
-                    <form id="registerForm" style="display: @(Model.IsAdmin ? "block" : "none");" novalidate onsubmit="return submitRegisterForm();">
-                        <div class="form-row">
-                            <partial name="_FormField"
-                                     model='new FormFieldViewModel("username", "Username", Required: true)' />
-                            <partial name="_FormField"
-                                     model='new FormFieldViewModel("password", "Password", Type: "password", Required: true)' />
-                        </div>
+                <div id="admin-check-pending"
+                     class="register-status-item register-status-item--warning"
+                     style="display: @(!Model.IsAdmin && Model.AdminCheckAttempt.HasValue ? "flex" : "none");"
+                     role="status">
+                    <div class="register-status-item__icon">
+                        <div class="loader loader--sm" aria-hidden="true"></div>
+                    </div>
+                    <div class="register-status-item__content">
+                        <strong>Checking admin permissions... (Attempt @(Model.AdminCheckAttempt ?? 0)/3)</strong>
+                        <p>If verification fails, <a href="/api/auth/login?returnUrl=/api/auth/register" class="link link--primary">log in again</a>.</p>
+                    </div>
+                </div>
+            </div>
 
-                        <div class="form-row">
-                            <partial name="_FormField"
-                                     model='new FormFieldViewModel("email", "Email (optional)", Type: "email", Placeholder: "example@example.com")' />
-                            <partial name="_FormField"
-                                     model='new FormFieldViewModel("phoneNumber", "Phone (optional)", Type: "tel", Placeholder: "+375 XX XXX-XX-XX")' />
-                        </div>
+            <div id="register-status" aria-live="polite"></div>
+        </div>
 
-                        <div class="form-group">
-                            <label for="role">Role</label>
-                            <select id="role" name="role" class="select--dark" aria-describedby="role-help">
+        <partial name="_StatusMessages"
+                 model="new StatusViewModel(Model.Error, Model.Message)" />
+
+        <!-- Registration Form Card -->
+        <form id="registerForm" 
+              class="register-form-card" 
+              style="display: @(Model.IsAdmin ? "block" : "none");" 
+              novalidate 
+              onsubmit="return submitRegisterForm();">
+            
+            <div class="register-form-card__header">
+                <svg class="register-form-card__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                <span class="register-form-card__title">Account Details</span>
+            </div>
+
+            <div class="register-form-card__body">
+                <!-- Credentials Section -->
+                <div class="register-form-section">
+                    <div class="register-form-section__label">Credentials</div>
+                    <div class="register-form-row">
+                        <div class="register-form-field">
+                            <label for="username" class="register-form-field__label">Username</label>
+                            <input type="text" 
+                                   id="username" 
+                                   name="username" 
+                                   class="register-form-field__input" 
+                                   placeholder="Enter username"
+                                   required
+                                   autocomplete="username" />
+                        </div>
+                        <div class="register-form-field">
+                            <label for="password" class="register-form-field__label">Password</label>
+                            <input type="password" 
+                                   id="password" 
+                                   name="password" 
+                                   class="register-form-field__input" 
+                                   placeholder="Enter password"
+                                   required
+                                   autocomplete="new-password" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information Section -->
+                <div class="register-form-section">
+                    <div class="register-form-section__label">Contact Information (Optional)</div>
+                    <div class="register-form-row">
+                        <div class="register-form-field">
+                            <label for="email" class="register-form-field__label">Email</label>
+                            <input type="email" 
+                                   id="email" 
+                                   name="email" 
+                                   class="register-form-field__input" 
+                                   placeholder="example@example.com"
+                                   autocomplete="email" />
+                        </div>
+                        <div class="register-form-field">
+                            <label for="phoneNumber" class="register-form-field__label">Phone Number</label>
+                            <input type="tel" 
+                                   id="phoneNumber" 
+                                   name="phoneNumber" 
+                                   class="register-form-field__input" 
+                                   placeholder="+375 XX XXX-XX-XX"
+                                   autocomplete="tel" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Section -->
+                <div class="register-form-section">
+                    <div class="register-form-section__label">Access Level</div>
+                    <div class="register-form-field">
+                        <label for="role" class="register-form-field__label">User Role</label>
+                        <div class="register-select-wrapper">
+                            <select id="role" name="role" class="register-form-field__select" aria-describedby="role-help">
                                 <option value="0">User</option>
                                 <option value="1">Administrator</option>
                                 <option value="2">Manager</option>
@@ -80,36 +163,470 @@
                                 <option value="4">Conductor</option>
                                 <option value="5">Dispatcher</option>
                             </select>
-                            <span id="role-help" class="text--xs text--secondary" style="display: block; margin-top: 4px;">Select the appropriate role for the new user</span>
+                            <svg class="register-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
                         </div>
-
-                        <div class="text-center" style="margin-top: 2rem;">
-                            <button type="submit" class="btn btn--auth-primary" style="min-width: 220px;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="8.5" cy="7" r="4"/>
-                                    <line x1="20" y1="8" x2="20" y2="14"/>
-                                    <line x1="23" y1="11" x2="17" y2="11"/>
-                                </svg>
-                                <span>Create Account</span>
-                            </button>
-                        </div>
-
-                        <div class="text-center" style="margin-top: 1.5rem;">
-                            <a href="/api/auth/profile" class="link link--blue">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;" aria-hidden="true">
-                                    <line x1="19" y1="12" x2="5" y2="12"/>
-                                    <polyline points="12 19 5 12 12 5"/>
-                                </svg>
-                                Back to Profile
-                            </a>
-                        </div>
-                    </form>
+                        <span id="role-help" class="register-form-field__hint">Select the appropriate role for the new user</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- Form Actions -->
+            <div class="register-form-card__footer">
+                <button type="submit" class="register-submit-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                    <span>Create Account</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Back Navigation -->
+        <div class="register-back-link">
+            <a href="/api/auth/profile" class="register-back-link__anchor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                <span>Back to Profile</span>
+            </a>
         </div>
     </div>
 </div>
+
+<style>
+/* Register Page - Modern Glass Morphism Layout */
+.register-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+/* Hero Section */
+.register-hero {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+}
+
+.register-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(30, 30, 30, 0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    margin-bottom: var(--space-lg);
+}
+
+.register-hero__icon {
+    width: 24px;
+    height: 24px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.35);
+}
+
+.register-hero__text {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: white;
+    letter-spacing: 0.01em;
+}
+
+.register-hero__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: var(--space-sm);
+    letter-spacing: -0.025em;
+}
+
+.register-hero__subtitle {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Content Area */
+.register-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+/* Status Card - Admin Authorization */
+.register-status-card {
+    background: var(--card-color);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.register-status-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 87, 34, 0.06);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.register-status-card__icon {
+    color: var(--primary-color);
+}
+
+.register-status-card__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: 0.01em;
+}
+
+.register-status-card__body {
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+/* Status Items */
+.register-status-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-color);
+}
+
+.register-status-item__icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+}
+
+.register-status-item--info .register-status-item__icon {
+    background: rgba(25, 118, 210, 0.1);
+    color: var(--info-color);
+}
+
+.register-status-item--success .register-status-item__icon {
+    background: rgba(56, 142, 60, 0.1);
+    color: var(--success-color);
+}
+
+.register-status-item--warning .register-status-item__icon {
+    background: rgba(245, 124, 0, 0.1);
+    color: var(--warning-color);
+}
+
+.register-status-item__content {
+    flex: 1;
+}
+
+.register-status-item__content strong {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+}
+
+.register-status-item__content p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Form Card */
+.register-form-card {
+    background: var(--card-color);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.register-form-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 87, 34, 0.06);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.register-form-card__icon {
+    color: var(--primary-color);
+}
+
+.register-form-card__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: 0.01em;
+}
+
+.register-form-card__body {
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+/* Form Sections */
+.register-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.register-form-section__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.register-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+/* Form Fields */
+.register-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.register-form-field__label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.register-form-field__input,
+.register-form-field__select {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: var(--text-color);
+    background: var(--surface-overlay);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
+}
+
+.register-form-field__input:hover,
+.register-form-field__select:hover {
+    border-color: rgba(255, 87, 34, 0.3);
+    background: var(--surface-elevated);
+}
+
+.register-form-field__input:focus,
+.register-form-field__select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: var(--card-solid);
+    box-shadow: 0 0 0 3px var(--border-focus);
+}
+
+.register-form-field__input::placeholder {
+    color: var(--text-muted);
+}
+
+.register-form-field__hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Select Wrapper */
+.register-select-wrapper {
+    position: relative;
+}
+
+.register-form-field__select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+.register-select-arrow {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* Form Footer */
+.register-form-card__footer {
+    padding: var(--space-lg);
+    padding-top: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* Submit Button */
+.register-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-width: 220px;
+    padding: 0.9375rem 2rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(255, 87, 34, 0.3);
+    transition: all var(--transition-base);
+}
+
+.register-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 87, 34, 0.4);
+}
+
+.register-submit-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.25);
+}
+
+/* Back Link */
+.register-back-link {
+    text-align: center;
+    padding-top: var(--space-md);
+}
+
+.register-back-link__anchor {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--primary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.register-back-link__anchor:hover {
+    color: var(--primary-dark);
+}
+
+.register-back-link__anchor svg {
+    transition: transform var(--transition-base);
+}
+
+.register-back-link__anchor:hover svg {
+    transform: translateX(-3px);
+}
+
+/* Loader Small */
+.loader--sm {
+    width: 18px;
+    height: 18px;
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] .register-status-card,
+[data-theme="dark"] .register-form-card {
+    background: var(--card-color);
+}
+
+[data-theme="dark"] .register-status-card__header,
+[data-theme="dark"] .register-form-card__header {
+    background: rgba(255, 112, 67, 0.08);
+}
+
+[data-theme="dark"] .register-status-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .register-form-field__input,
+[data-theme="dark"] .register-form-field__select {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+[data-theme="dark"] .register-form-field__input:hover,
+[data-theme="dark"] .register-form-field__select:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .register-form-field__input:focus,
+[data-theme="dark"] .register-form-field__select:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.2);
+}
+
+[data-theme="dark"] .register-form-field__input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .register-hero__title {
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .register-page {
+        padding: var(--space-md);
+    }
+    
+    .register-hero__title {
+        font-size: 1.5rem;
+    }
+    
+    .register-form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .register-submit-btn {
+        width: 100%;
+    }
+    
+    .register-status-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
+}
+</style>
 
 @section Scripts {
     <script src="~/js/auth/register.js" defer></script>
