@@ -280,7 +280,71 @@ p {
 }
 
 /* ============================================
+   HEADER WRAPPER - Separated Panel Layout
+   ============================================ */
+.header-wrapper {
+    position: fixed;
+    top: var(--space-md);
+    left: var(--space-md);
+    right: var(--space-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: var(--z-sticky);
+    pointer-events: none;
+}
+
+.header-wrapper > * {
+    pointer-events: auto;
+}
+
+/* Logo Panel - Left side floating pill */
+.header-logo-panel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transition: all var(--transition-base);
+}
+
+.header-logo-panel:hover {
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Controls Panel - Right side floating pill */
+.header-controls-panel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transition: all var(--transition-base);
+}
+
+.header-controls-panel:hover {
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Body padding to account for floating header */
+body:has(.header-wrapper) {
+    padding-top: calc(70px + var(--space-xl));
+}
+
+/* ============================================
    NAVBAR - Floating Glass Effect (Samsung One UI / Yandex inspired)
+   Legacy support for single unified navbar
    ============================================ */
 .navbar {
     display: flex;
@@ -350,6 +414,31 @@ body:has(.navbar) {
 .logo:hover::before {
     transform: scale(1.08) rotate(-3deg);
     box-shadow: 0 5px 16px rgba(255, 87, 34, 0.35);
+}
+
+/* Logo icon and text for separated header */
+.logo-icon {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 3px 10px rgba(255, 87, 34, 0.25);
+    transition: all var(--transition-base);
+    flex-shrink: 0;
+}
+
+.header-logo-panel:hover .logo-icon {
+    transform: scale(1.08) rotate(-3deg);
+    box-shadow: 0 5px 16px rgba(255, 87, 34, 0.35);
+}
+
+.logo-text {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
 }
 
 .theme-toggle {
@@ -2585,6 +2674,39 @@ button:active, .btn:active {
    RESPONSIVE STYLES
    ============================================ */
 @media (max-width: 768px) {
+    /* Separated header panels - mobile adjustments */
+    .header-wrapper {
+        top: var(--space-sm);
+        left: var(--space-sm);
+        right: var(--space-sm);
+    }
+    
+    .header-logo-panel {
+        padding: var(--space-xs) var(--space-md);
+    }
+    
+    .logo-icon {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .logo-text {
+        font-size: 0.9375rem;
+    }
+    
+    .header-controls-panel {
+        padding: var(--space-xs);
+    }
+    
+    .header-controls-panel .theme-toggle {
+        width: 38px;
+        height: 38px;
+    }
+    
+    body:has(.header-wrapper) {
+        padding-top: calc(60px + var(--space-lg));
+    }
+    
     /* Floating navbar - adjust for mobile */
     .navbar {
         padding: var(--space-sm) var(--space-md);
@@ -2718,6 +2840,40 @@ button:active, .btn:active {
 }
 
 @media (max-width: 480px) {
+    /* Ultra-compact separated header for small screens */
+    .header-wrapper {
+        top: var(--space-xs);
+        left: var(--space-xs);
+        right: var(--space-xs);
+    }
+    
+    .header-logo-panel {
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-lg);
+    }
+    
+    .logo-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .logo-text {
+        font-size: 0.875rem;
+    }
+    
+    .header-controls-panel {
+        border-radius: var(--radius-lg);
+    }
+    
+    .header-controls-panel .theme-toggle {
+        width: 36px;
+        height: 36px;
+    }
+    
+    body:has(.header-wrapper) {
+        padding-top: calc(54px + var(--space-md));
+    }
+    
     /* Ultra-compact floating navbar for small screens */
     .navbar {
         padding: var(--space-xs) var(--space-sm);
