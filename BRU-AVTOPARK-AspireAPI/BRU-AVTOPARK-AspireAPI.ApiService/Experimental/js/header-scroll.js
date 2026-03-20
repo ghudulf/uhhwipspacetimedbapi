@@ -69,8 +69,20 @@
         }
     }, { passive: true });
 
-    // Tap anywhere → reveal (so it's never permanently lost on mobile)
-    document.addEventListener('touchstart', function () {
-        if (logoHidden) show();
+    // Swipe-up gesture → reveal header (avoids popping up on every tap/click)
+    let touchStartY = 0;
+    const SWIPE_UP_THRESHOLD = 20; // px of upward movement to count as intentional swipe
+
+    document.addEventListener('touchstart', function (e) {
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+        if (!logoHidden) return;
+        const deltaY = e.touches[0].clientY - touchStartY;
+        if (deltaY > SWIPE_UP_THRESHOLD) {
+            // User is swiping down-the-finger (scrolling up the page) — reveal header
+            show();
+        }
     }, { passive: true });
 })();
