@@ -177,11 +177,6 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
                     break;
 
                 case "auth:refresh":
-                    if (claimsHolder.Claims == null)
-                    {
-                        await WsSendAsync(webSocket, new { type = "auth:error", requestId, error = "Authentication required for auth:refresh" }, sendLock, cts.Token);
-                        break;
-                    }
                     await HandleRefreshAsync(webSocket, root, requestId, sendLock,
                         connectionId, claimsHolder.Claims, sourceIp, cts.Token);
                     break;
@@ -194,6 +189,11 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
                     }
                     await HandleQrStatusAsync(webSocket, root, requestId, sendLock,
                         connectionId, claimsHolder.Claims, qrSubscriptions, qrPollerTasks, sourceIp, cts);
+                    break;
+
+                case "auth:login":
+                    await HandleLoginAsync(webSocket, root, requestId, sendLock,
+                        connectionId, claimsHolder, sourceIp, cts.Token);
                     break;
 
                 case "auth:ping":
@@ -214,6 +214,85 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             _logger.LogError(ex, "[AuthWS:{ConnId}] Error handling message type {Type}", connectionId, messageType);
             await WsSendAsync(webSocket, new { type = "auth:error", requestId, error = "Internal server error" }, sendLock, cts.Token);
         }
+    }
+
+    // ── auth:login ────────────────────────────────────────────────────────────
+
+    private async Task HandleLoginAsync(
+        WebSocket webSocket,
+        JsonElement root,
+        string? requestId,
+        SemaphoreSlim sendLock,
+        string connectionId,
+        WsClaimsHolder claimsHolder,
+        string? sourceIp,
+        CancellationToken cancellationToken)
+    {
+        var username = root.TryGetProperty("username", out var u) ? u.GetString() : null;
+        var password = root.TryGetProperty("password", out var p) ? p.GetString() : null;
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            await WsSendAsync(webSocket, new { type = "auth:login-result", requestId, success = false, error = "username and password are required" }, sendLock, cancellationToken);
+            return;
+        }
+
+        _logger.LogInformation("[AuthWS:{ConnId}] auth:login attempt for user {User}", connectionId, SanitizeLogValue(username));
+
+        var result = await _orchestration.LoginAsync(username, password);
+
+        if (!result.Success)
+        {
+            if (result.RequiresTwoFactor)
+            {
+                _logger.LogInformation("[AuthWS:{ConnId}] auth:login requires 2FA for {User}", connectionId, SanitizeLogValue(username));
+                await WsSendAsync(webSocket, new
+                {
+                    type = "auth:login-result",
+                    requestId,
+                    success = false,
+                    requiresTwoFactor = true,
+                    twoFactorType = result.TwoFactorType,
+                    tempToken = result.TempToken,
+                    totpEnabled = result.TotpEnabled,
+                    webAuthnEnabled = result.WebAuthnEnabled
+                }, sendLock, cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning("[AuthWS:{ConnId}] auth:login failed for {User}: {Error}", connectionId, SanitizeLogValue(username), result.ErrorMessage);
+                await WsSendAsync(webSocket, new { type = "auth:login-result", requestId, success = false, error = result.ErrorMessage ?? "Authentication failed" }, sendLock, cancellationToken);
+            }
+            return;
+        }
+
+        // Upgrade the connection's auth state with the new claims
+        if (result.Claims != null)
+            claimsHolder.Claims = result.Claims;
+
+        await PublishAuthEventAsync("auth.login.websocket",
+            result.User?.Id.ToString(),
+            result.User?.Username,
+            sourceIp,
+            new Dictionary<string, string> { ["source"] = "websocket" });
+
+        _logger.LogInformation("[AuthWS:{ConnId}] auth:login succeeded for {User}", connectionId, SanitizeLogValue(username));
+
+        await WsSendAsync(webSocket, new
+        {
+            type = "auth:login-result",
+            requestId,
+            success = true,
+            token = result.Token,
+            user = result.User == null ? null : new
+            {
+                id = result.User.Id,
+                username = result.User.Username,
+                email = result.User.Email,
+                role = result.User.Role
+            },
+            claims = result.Claims != null ? BuildSafeClaims(result.Claims) : null
+        }, sendLock, cancellationToken);
     }
 
     // ── auth:validate ─────────────────────────────────────────────────────────
@@ -280,7 +359,6 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         }
 
         var result = await _orchestration.RefreshTokenAsync(refreshToken);
-
         if (!result.Success)
         {
             _logger.LogWarning("[AuthWS:{ConnId}] auth:refresh failed: {Error}", connectionId, result.ErrorMessage);

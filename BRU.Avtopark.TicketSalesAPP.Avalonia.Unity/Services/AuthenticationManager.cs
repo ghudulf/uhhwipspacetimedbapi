@@ -22,6 +22,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private bool _isResetting = false; // Prevent retry during reset
 
         /// <summary>
+/// Deletes WebView2 user-data directories and OAuth temp files so the next
+/// login starts with a clean browser session.  Called by LogoutAsync() and
+/// by OAuthLoginControl when a cookie-loop retry is requested.
+/// </summary>
+public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
+
+        /// <summary>
         /// Path to the persistent logout-pending marker file.
         /// Survives app restarts so the WebView session is cleared even after a crash/restart.
         /// </summary>

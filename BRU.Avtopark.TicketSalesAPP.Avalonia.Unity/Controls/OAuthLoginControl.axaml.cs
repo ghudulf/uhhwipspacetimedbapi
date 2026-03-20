@@ -202,6 +202,7 @@ public partial class OAuthLoginControl : UserControl
         // NativeWebView does not expose a direct ClearData API in this version;
         // session clearing is handled by deleting the WebView2 user-data directory
         // (done by AuthenticationManager.CleanupStateFilesAsync on logout).
+        await AuthenticationManager.CleanupWebViewDataAsync();
         await Task.CompletedTask;
     }
 
