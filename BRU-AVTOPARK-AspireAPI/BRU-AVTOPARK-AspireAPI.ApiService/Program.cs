@@ -423,7 +423,9 @@ builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    // SameAsRequest allows cookies over HTTP when accessed via LAN IP (http://192.168.x.x:5000)
+    // while still using Secure cookies when accessed over HTTPS in production.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -1157,6 +1159,10 @@ app.MapGet("/health", () =>
             </html>
         ", "text/html");
 }).AllowAnonymous();
+
+// Discovery ping endpoint - allows clients to auto-detect the API server on local networks
+app.MapGet("/api/discovery/ping", () => Results.Json(new { status = "ok", service = "BRU-AVTOPARK-API" }))
+    .AllowAnonymous();
 
 // Map controllers - let each endpoint specify its own authorization policy
 // ENHANCED: Add endpoint routing diagnostics and fallback mechanisms

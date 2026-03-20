@@ -22,7 +22,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private readonly TokenStorageService _tokenStorage;
 
     [ObservableProperty]
-    private string _serverUrl = "http://localhost:5000";
+    private string _serverUrl = ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/').Replace("/api", "") ?? "http://localhost:5000";
 
     [ObservableProperty]
     private string _accessToken = "";

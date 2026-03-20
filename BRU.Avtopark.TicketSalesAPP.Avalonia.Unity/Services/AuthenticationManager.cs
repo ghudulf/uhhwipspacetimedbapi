@@ -14,6 +14,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
     public class AuthenticationManager
     {
         private readonly OAuthService _oauthService;
+        private readonly string _serverRoot;
         private static AuthenticationManager? _instance;
         private static readonly object _lock = new object();
         private bool _isResetting = false; // Prevent retry during reset
@@ -86,16 +87,23 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private AuthenticationManager()
         {
             var tokenStorage = new TokenStorageService();
-            
-            // Configure OAuth settings
+
             var clientId = "bru-avtopark-desktop-client";
             var clientSecret = "your-secure-client-secret-here-change-in-production";
-            // Use HTTPS for authorization endpoint (server listens on HTTPS 5001)
-            var authorizationEndpoint = "https://localhost:5001/connect/authorize";
-            // Use HTTPS for token endpoint (server listens on HTTPS 5001)
-            var tokenEndpoint = "https://localhost:5001/connect/token";
-            // Callback uses HTTP on port 5000 (server listens on HTTP 5000)
-            var redirectUri = "http://localhost:5000/callback";
+
+            // Derive server root from the discovered base URL (set during splash screen)
+            var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
+            var serverRoot = baseUrl.EndsWith("api/", StringComparison.OrdinalIgnoreCase)
+                ? baseUrl[..^4].TrimEnd('/')
+                : baseUrl.TrimEnd('/');
+
+            var authorizationEndpoint = $"{serverRoot}/connect/authorize";
+            var tokenEndpoint         = $"{serverRoot}/connect/token";
+            // Redirect URI must always be localhost — it's a server-side callback endpoint
+            // registered in OpenIddict. The LAN IP is only used for authorize/token endpoints.
+            var redirectUri           = "http://localhost:5000/callback";
+
+            _serverRoot = serverRoot;
 
             _oauthService = new OAuthService(
                 clientId,
@@ -526,7 +534,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 httpClient.DefaultRequestHeaders.Authorization = 
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 
-                var response = await httpClient.GetAsync("http://localhost:5000/connect/tokeninfo");
+                var response = await httpClient.GetAsync($"{_serverRoot}/connect/tokeninfo");
                 
                 if (response.IsSuccessStatusCode)
                 {

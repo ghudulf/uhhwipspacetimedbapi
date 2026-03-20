@@ -262,7 +262,7 @@ public partial class MainWindow : Window
             
             var apiClient = ApiClientService.Instance;
             var httpClient = apiClient.CreateClient();
-            httpClient.BaseAddress = new Uri("http://localhost:5000/");
+            // BaseAddress is already set by CreateClient() to the discovered server
             var response = await httpClient.GetAsync("debug/tokentest");
             
             if (response.IsSuccessStatusCode)

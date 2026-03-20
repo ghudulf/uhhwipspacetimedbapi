@@ -108,6 +108,7 @@ public partial class OAuthLoginControl : UserControl
 
         Log.Information("[OAuthLoginControl] Starting OAuth flow");
         Log.Debug("[OAuthLoginControl] AuthorizationUrl: {Url}", AuthorizationUrl);
+        Log.Information("[OAuthLoginControl] RedirectUri (intercept target): {RedirectUri}", RedirectUri);
 
         // Validate URL is not already a callback
         if (AuthorizationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
@@ -149,12 +150,21 @@ public partial class OAuthLoginControl : UserControl
             await ClearWebViewDataAsync(_webView);
         }
 
-        // Convert HTTPS localhost:5001 → HTTP localhost:5000 for dev self-signed cert compat
+        // If the auth URL uses HTTPS but the server was discovered on HTTP, convert for WebView compat
         var navUrl = AuthorizationUrl;
-        if (navUrl.StartsWith("https://localhost:5001", StringComparison.OrdinalIgnoreCase))
-            navUrl = navUrl.Replace("https://localhost:5001", "http://localhost:5000");
-        else if (navUrl.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase))
-            navUrl = navUrl.Replace("https://localhost", "http://localhost");
+        if (navUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            var discoveredBase = Services.ApiClientService.Instance.CurrentBaseUrl ?? string.Empty;
+            if (discoveredBase.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract host:port from discovered URL and substitute into auth URL
+                var discoveredUri = new Uri(discoveredBase);
+                var authUri = new Uri(navUrl);
+                navUrl = navUrl.Replace($"https://{authUri.Host}:{authUri.Port}", $"http://{discoveredUri.Host}:{discoveredUri.Port}");
+                navUrl = navUrl.Replace($"https://{authUri.Host}", $"http://{discoveredUri.Host}:{discoveredUri.Port}");
+                Log.Information("[OAuthLoginControl] Converted auth URL to HTTP for WebView: {Url}", navUrl);
+            }
+        }
 
         Log.Information("[OAuthLoginControl] Navigating to: {Url}", navUrl);
         _webView.Source = new Uri(navUrl);
@@ -237,7 +247,8 @@ public partial class OAuthLoginControl : UserControl
         if (_loadingPanel != null) _loadingPanel.IsVisible = false;
 
         var currentUrl = _webView?.Source?.ToString() ?? string.Empty;
-        Log.Debug("[OAuthLoginControl] NavigationCompleted — success={S}, url={U}", e.IsSuccess, currentUrl);
+        Log.Information("[OAuthLoginControl] NavigationCompleted — success={S}, url={U}", e.IsSuccess, currentUrl);
+        Log.Debug("[OAuthLoginControl] Watching for redirect to: {RedirectUri}", RedirectUri);
 
         if (currentUrl.StartsWith(RedirectUri, StringComparison.OrdinalIgnoreCase))
         {
@@ -245,9 +256,18 @@ public partial class OAuthLoginControl : UserControl
             return;
         }
 
+        // If we landed back on the authorize endpoint after a login attempt, the cookie
+        // was not sent (likely SecurePolicy=Always blocking HTTP cookies). Log a clear warning.
+        if (currentUrl.Contains("/connect/authorize", StringComparison.OrdinalIgnoreCase) && e.IsSuccess)
+        {
+            Log.Warning("[OAuthLoginControl] Landed back on /connect/authorize after login — " +
+                        "this usually means the auth cookie was not sent (SecurePolicy=Always blocks HTTP). " +
+                        "Server cookie policy should be SameAsRequest for LAN HTTP access.");
+        }
+
         if (!e.IsSuccess)
         {
-            Log.Warning("[OAuthLoginControl] Navigation failed");
+            Log.Warning("[OAuthLoginControl] Navigation failed — url={U}", currentUrl);
             Dispatcher.UIThread.InvokeAsync(() =>
                 ShowError("Не удалось загрузить страницу авторизации. Проверьте подключение к серверу."));
         }

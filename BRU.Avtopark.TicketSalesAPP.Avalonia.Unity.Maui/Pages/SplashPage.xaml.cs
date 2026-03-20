@@ -19,8 +19,17 @@ public partial class SplashPage : ContentPage
     {
         try
         {
+            // Discover the API server on the local network before anything else
+            StatusLabel.Text = "Поиск сервера в сети...";
+            await MauiAuthService.Instance.InitializeAsync();
+
+            var serverUrl = BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ApiClientService.Instance.CurrentBaseUrl;
+            var host = serverUrl?.Replace("http://", "").Replace("/api/", "") ?? "localhost:5000";
+            StatusLabel.Text = $"Сервер: {host}";
+            await Task.Delay(400);
+
             StatusLabel.Text = "Проверка авторизации...";
-            await Task.Delay(800);
+            await Task.Delay(400);
 
             // RestoreSessionAsync loads the token from disk AND sets ApiClientService.AuthToken
             // so HasValidTokenSync() works correctly on all subsequent pages.
