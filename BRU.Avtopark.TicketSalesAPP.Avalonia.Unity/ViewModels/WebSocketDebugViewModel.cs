@@ -181,6 +181,26 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     /// Builds a WebSocket URI from an HTTP/HTTPS server URI with proper scheme selection.
     /// Forces wss:// for non-loopback hosts, allows ws:// only for localhost/loopback.
     /// </summary>
+    /// <summary>
+    /// Returns true for localhost and RFC-1918 private LAN ranges (10.x, 172.16-31.x, 192.168.x).
+    /// These hosts use plain ws://, everything else uses wss://.
+    /// </summary>
+    private static bool IsPrivateOrLocalHost(string host)
+    {
+        if (host == "localhost" || host == "127.0.0.1" || host == "[::1]")
+            return true;
+
+        if (!System.Net.IPAddress.TryParse(host, out var ip))
+            return false;
+
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length != 4) return false; // IPv6 non-loopback → wss
+
+        return bytes[0] == 10 ||                                      // 10.0.0.0/8
+               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) || // 172.16.0.0/12
+               (bytes[0] == 192 && bytes[1] == 168);                  // 192.168.0.0/16
+    }
+
     private static (bool success, Uri? wsUri, string? errorMessage) BuildWebSocketUri(Uri serverUri, string path)
     {
         string wsScheme;
@@ -190,18 +210,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         }
         else if (serverUri.Scheme == "http")
         {
-            // Only allow ws:// for localhost/loopback
-            if (serverUri.IsLoopback || 
-                serverUri.Host == "localhost" || 
-                serverUri.Host == "127.0.0.1" || 
-                serverUri.Host == "[::1]")
-            {
-                wsScheme = "ws";
-            }
-            else
-            {
-                wsScheme = "wss"; // Force secure for remote hosts
-            }
+            wsScheme = IsPrivateOrLocalHost(serverUri.Host) ? "ws" : "wss";
         }
         else
         {

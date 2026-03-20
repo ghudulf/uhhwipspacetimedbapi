@@ -147,7 +147,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         // True when embedded inside a MAUI host — dialogs/windows are not available
-        public static bool IsMauiHost => AppContext.GetData("MAUI_HOST") as bool? == true;
+        public static bool IsMauiHost => HostEnvironment.IsMauiHost;
 
         // Inverse — used by AXAML to show/hide dialog-dependent buttons
         public static bool IsDialogCapable => !IsMauiHost;

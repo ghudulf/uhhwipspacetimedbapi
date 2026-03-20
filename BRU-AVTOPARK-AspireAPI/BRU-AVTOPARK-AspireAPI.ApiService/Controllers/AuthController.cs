@@ -4615,6 +4615,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </summary>
         [HttpGet("~/debug/tokentest")]
         [AllowAnonymous]
+        [LegacyAction(nameof(FeatureFlagOptions.EnableDebugTokenTestRefactoring))]
         public async Task<IActionResult> TokenTest()
         {
             try

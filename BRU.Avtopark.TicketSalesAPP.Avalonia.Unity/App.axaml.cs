@@ -4,7 +4,7 @@ using Avalonia.Markup.Xaml;
 
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
-using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 using Serilog;
 using System;
 using System.Threading.Tasks;
@@ -193,9 +193,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var isMauiHost = AppContext.GetData("MAUI_HOST") as bool? == true;
-
-        if (!isMauiHost && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (!HostEnvironment.IsMauiHost && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
           try
             {

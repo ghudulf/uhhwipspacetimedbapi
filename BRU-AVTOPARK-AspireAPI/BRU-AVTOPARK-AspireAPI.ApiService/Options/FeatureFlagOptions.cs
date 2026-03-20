@@ -337,6 +337,15 @@ namespace TicketSalesApp.AdminServer.Configuration
         public bool EnableWebSocketAuthRefactoring { get; set; } = false;
 
         // ============================================
+        // Debug Endpoints (1 endpoint)
+        // ============================================
+
+        /// <summary>
+        /// GET ~/debug/tokentest - Debug endpoint for token parsing and validation
+        /// </summary>
+        public bool EnableDebugTokenTestRefactoring { get; set; } = false;
+
+        // ============================================
         // Utility Pages (4 endpoints)
         // ============================================
         

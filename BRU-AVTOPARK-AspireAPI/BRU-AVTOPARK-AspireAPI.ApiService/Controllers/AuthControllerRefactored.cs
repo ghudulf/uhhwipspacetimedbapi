@@ -29,11 +29,6 @@ using Identity = SpacetimeDB.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.Extensions.Caching.Memory;
 using TicketSalesApp.Services.Interfaces;
-using System.Net.WebSockets;
-using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Collections.Concurrent;
 using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
@@ -48,11 +43,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
     [Route("api/Auth")]
     public class AuthControllerRefactored : BaseController
     {
-        private static readonly JsonSerializerOptions WsJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
         private readonly IAuthOrchestrationService _authOrchestrationService;
         private readonly IHtmlRenderingService _htmlRenderingService;
         private readonly IRequestDetector _requestDetector;
@@ -63,6 +53,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly IOpenIdConnectService _openIdConnectService;
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly IRealtimeEventBus _realtimeEventBus;
+        private readonly IAuthWebSocketService _authWebSocketService;
 
         public AuthControllerRefactored(
             IAuthOrchestrationService authOrchestrationService,
@@ -74,7 +65,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             IOidcHelperService oidcHelperService,
             IOpenIdConnectService openIdConnectService,
             ISpacetimeDBService spacetimeService,
-            IRealtimeEventBus realtimeEventBus)
+            IRealtimeEventBus realtimeEventBus,
+            IAuthWebSocketService authWebSocketService)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
             _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
@@ -86,6 +78,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _openIdConnectService = openIdConnectService ?? throw new ArgumentNullException(nameof(openIdConnectService));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
             _realtimeEventBus = realtimeEventBus ?? throw new ArgumentNullException(nameof(realtimeEventBus));
+            _authWebSocketService = authWebSocketService ?? throw new ArgumentNullException(nameof(authWebSocketService));
         }
 
         #region Traditional Authentication (2 endpoints)
@@ -2789,6 +2782,76 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         #region Missing Endpoints - OAuth Callback and Form Submissions
 
+        
+        [HttpGet("~/debug/tokentest")]
+        [AllowAnonymous]
+        [RefactoredAction(nameof(FeatureFlagOptions.EnableDebugTokenTestRefactoring))]
+        public async Task<IActionResult> TokenTest()
+        {
+            try
+            {
+                var authHeader = Request.Headers["Authorization"].ToString();
+                _logger.LogInformation("TokenTest - Authorization header present: {Present}, length: {Len}",
+                    !string.IsNullOrEmpty(authHeader), authHeader?.Length ?? 0);
+
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                    return Ok(new { error = "No Bearer token found", hint = "Send Authorization: Bearer <token>" });
+
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+                _logger.LogInformation("TokenTest - Token length: {Length}, starts with: {Start}",
+                    token.Length, token.Substring(0, Math.Min(20, token.Length)));
+
+                // Detect JWE (5 parts) vs JWT (3 parts)
+                var parts = token.Split('.');
+                bool isJwe = parts.Length == 5 ||
+                             (parts.Length == 3 && TryDecodeBase64Json(parts[0], out var hdr) && hdr.Contains("\"enc\""));
+
+                _logger.LogInformation("TokenTest - Parts: {Parts}, IsJWE: {IsJwe}", parts.Length, isJwe);
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var canRead = tokenHandler.CanReadToken(token);
+
+                if (canRead && !isJwe)
+                {
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    var claims = jwtToken.Claims.Select(c => new { c.Type, c.Value }).ToList();
+                    return Ok(new { token_type = "JWT", can_read = true, is_encrypted = false, claims, claim_count = claims.Count });
+                }
+
+                // JWE or unreadable — validate via OpenIddict
+                var authResult = await HttpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                if (authResult.Succeeded && authResult.Principal != null)
+                {
+                    var claims = authResult.Principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
+                    _logger.LogInformation("TokenTest - OpenIddict validation SUCCESS, {Count} claims", claims.Count);
+                    return Ok(new { token_type = isJwe ? "JWE" : "JWT", can_read = canRead, is_encrypted = isJwe,
+                        openiddict_validation = "SUCCESS", claims, claim_count = claims.Count });
+                }
+
+                _logger.LogWarning("TokenTest - OpenIddict validation FAILED: {Msg}", authResult.Failure?.Message);
+                return Ok(new { token_type = isJwe ? "JWE" : "JWT", can_read = canRead, is_encrypted = isJwe,
+                    openiddict_validation = "FAILED", error = authResult.Failure?.Message, claims = Array.Empty<object>(), claim_count = 0 });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TokenTest error");
+                return Ok(new { error = ex.Message });
+            }
+        }
+
+        private static bool TryDecodeBase64Json(string base64, out string json)
+        {
+            json = string.Empty;
+            try
+            {
+                var padded = base64.Replace('-', '+').Replace('_', '/').PadRight(base64.Length + (4 - base64.Length % 4) % 4, '=');
+                json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded));
+                return true;
+            }
+            catch { return false; }
+        }
+
+
         /// <summary>
         /// GET ~/connect/tokeninfo - Token validation endpoint used by BaseController for OAuth token validation
         /// </summary>
@@ -3397,687 +3460,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return;
             }
 
-            // Accept the connection first – auth is validated per-message for auth:validate,
-            // or pre-validated here for all other message types.
-            // This mirrors the pattern used in RealtimeController.StreamEvents but is more
-            // permissive: unauthenticated clients can still call auth:validate.
             var preValidatedClaims = await ValidateOAuthTokenAsync();
             var connectionId = Guid.NewGuid().ToString("N")[..12];
+            var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString();
 
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            _logger.LogInformation("[AuthWS:{ConnId}] Connection established. Pre-authenticated: {Auth}",
-                connectionId, preValidatedClaims != null);
 
-            // Send welcome frame
-            var sendLock = new SemaphoreSlim(1, 1);
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
-
-            await WsSendAsync(webSocket, new
-            {
-                type = "auth:connected",
+            await _authWebSocketService.RunSessionAsync(
+                webSocket,
                 connectionId,
-                authenticated = preValidatedClaims != null,
-                serverTimeUtc = DateTimeOffset.UtcNow
-            }, sendLock, cts.Token);
-
-            // Track QR-status subscriptions: deviceId → polling task
-            var qrSubscriptions = new ConcurrentDictionary<string, CancellationTokenSource>();
-            // Track the actual poller Task objects so we can await them before disposing sendLock.
-            var qrPollerTasks = new ConcurrentDictionary<string, Task>();
-
-            // Mutable holder so async handlers can upgrade the connection's auth state
-            var claimsHolder = new ClaimsHolder { Claims = preValidatedClaims };
-
-            var buffer = new byte[4096];
-            const int MaxMessageBytes = 64 * 1024; // 64 KB per message
-
-            try
-            {
-                while (webSocket.State == WebSocketState.Open && !cts.Token.IsCancellationRequested)
-                {
-                    using var ms = new MemoryStream();
-                    WebSocketReceiveResult result;
-
-                    do
-                    {
-                        result = await webSocket.ReceiveAsync(buffer, cts.Token);
-                        if (ms.Length + result.Count > MaxMessageBytes)
-                        {
-                            _logger.LogWarning("[AuthWS:{ConnId}] Message exceeds max size ({Max} bytes), closing", connectionId, MaxMessageBytes);
-                            await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Message too large", CancellationToken.None);
-                            return;
-                        }
-                        ms.Write(buffer, 0, result.Count);
-                    } while (!result.EndOfMessage);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", CancellationToken.None);
-                        break;
-                    }
-
-                    if (result.MessageType != WebSocketMessageType.Text)
-                        continue;
-
-                    var json = Encoding.UTF8.GetString(ms.ToArray());
-                    await HandleAuthWsMessageAsync(webSocket, json, sendLock, connectionId,
-                        claimsHolder, qrSubscriptions, qrPollerTasks, cts);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogDebug("[AuthWS:{ConnId}] Cancelled", connectionId);
-            }
-            catch (WebSocketException ex) when (ex.WebSocketErrorCode == WebSocketError.ConnectionClosedPrematurely)
-            {
-                _logger.LogWarning("[AuthWS:{ConnId}] Connection closed prematurely", connectionId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[AuthWS:{ConnId}] Unexpected error", connectionId);
-            }
-            finally
-            {
-                cts.Cancel();
-                // Cancel all QR polling tasks – only cancel here; each poller's finally block
-                // is responsible for disposing its own subCts to avoid double-dispose races.
-                foreach (var sub in qrSubscriptions.Values)
-                {
-                    sub.Cancel();
-                }
-                // Await all pollers so they finish using sendLock before we dispose it.
-                // Capture a snapshot of all current tasks to await every tracked poller.
-                if (qrPollerTasks.Count > 0)
-                {
-                    var allPollerTasks = qrPollerTasks.Values.ToArray();
-                    try
-                    {
-                        // Give pollers up to 5 s to finish; abandon any that are still running after that.
-                        using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                        await Task.WhenAny(Task.WhenAll(allPollerTasks), Task.Delay(Timeout.Infinite, shutdownCts.Token));
-                        if (allPollerTasks.Any(t => !t.IsCompleted))
-                            _logger.LogWarning("[AuthWS:{ConnId}] {Count} QR poller task(s) did not finish within shutdown timeout; abandoning.",
-                                connectionId, allPollerTasks.Count(t => !t.IsCompleted));
-                    }
-                    catch { /* individual poller exceptions are already logged */ }
-                }
-                sendLock.Dispose();
-                _logger.LogInformation("[AuthWS:{ConnId}] Connection closed", connectionId);
-            }
-        }
-
-        /// <summary>
-        /// Dispatches an incoming WebSocket message to the appropriate auth handler.
-        /// </summary>
-        private async Task HandleAuthWsMessageAsync(
-            WebSocket webSocket,
-            string json,
-            SemaphoreSlim sendLock,
-            string connectionId,
-            ClaimsHolder claimsHolder,
-            ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
-            ConcurrentDictionary<string, Task> qrPollerTasks,
-            CancellationTokenSource cts)
-        {
-            string? requestId = null;
-            string? messageType = null;
-
-            try
-            {
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                requestId = root.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
-                messageType = root.TryGetProperty("type", out var t) ? t.GetString() : null;
-
-                // Sanitize client-controlled values before logging to prevent log forging
-                var safeRequestId = SanitizeLogValue(requestId);
-                var safeMessageType = SanitizeLogValue(messageType);
-
-                _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
-                    connectionId, safeMessageType, safeRequestId);
-
-                switch (messageType?.ToLowerInvariant())
-                {
-                    case "auth:validate":
-                        await HandleWsValidateAsync(webSocket, root, requestId, sendLock,
-                            connectionId, claimsHolder, cts.Token);
-                        break;
-
-                    case "auth:refresh":
-                        if (claimsHolder.Claims == null)
-                        {
-                            await WsSendAsync(webSocket, new
-                            {
-                                type = "auth:error",
-                                requestId,
-                                error = "Authentication required for auth:refresh"
-                            }, sendLock, cts.Token);
-                            break;
-                        }
-                        await HandleWsRefreshAsync(webSocket, root, requestId, sendLock,
-                            connectionId, claimsHolder.Claims, cts.Token);
-                        break;
-
-                    case "auth:qr-status":
-                        if (claimsHolder.Claims == null)
-                        {
-                            await WsSendAsync(webSocket, new
-                            {
-                                type = "auth:error",
-                                requestId,
-                                error = "Authentication required for auth:qr-status"
-                            }, sendLock, cts.Token);
-                            break;
-                        }
-                        await HandleWsQrStatusAsync(webSocket, root, requestId, sendLock,
-                            connectionId, claimsHolder.Claims, qrSubscriptions, qrPollerTasks, cts);
-                        break;
-
-                    case "auth:ping":
-                        await WsSendAsync(webSocket, new
-                        {
-                            type = "auth:pong",
-                            requestId,
-                            serverTimeUtc = DateTimeOffset.UtcNow
-                        }, sendLock, cts.Token);
-                        break;
-
-                    default:
-                        await WsSendAsync(webSocket, new
-                        {
-                            type = "auth:error",
-                            requestId,
-                            error = $"Unknown message type: {messageType}"
-                        }, sendLock, cts.Token);
-                        break;
-                }
-            }
-            catch (JsonException)
-            {
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:error",
-                    requestId,
-                    error = "Invalid JSON"
-                }, sendLock, cts.Token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[AuthWS:{ConnId}] Error handling message type {Type}", connectionId, messageType);
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:error",
-                    requestId,
-                    error = "Internal server error"
-                }, sendLock, cts.Token);
-            }
-        }
-
-        /// <summary>
-        /// Handles auth:validate – validates a bearer token supplied in the message payload
-        /// (or falls back to the connection-level token) and returns the claims.
-        /// On success, upgrades the connection's validated claims so subsequent messages
-        /// can use the authenticated context.
-        /// </summary>
-        private async Task HandleWsValidateAsync(
-            WebSocket webSocket,
-            JsonElement root,
-            string? requestId,
-            SemaphoreSlim sendLock,
-            string connectionId,
-            ClaimsHolder claimsHolder,
-            CancellationToken cancellationToken)
-        {
-            // Token can be supplied inline in the message or fall back to connection-level claims
-            string? inlineToken = root.TryGetProperty("token", out var tok) ? tok.GetString() : null;
-
-            Dictionary<string, object>? claims = null;
-
-            if (!string.IsNullOrWhiteSpace(inlineToken))
-            {
-                // Validate the inline token directly, supporting both JWE (5-segment encrypted
-                // OpenIddict tokens) and plain JWT (3-segment signed tokens).
-                // ITokenService.ValidateToken only handles JWTs and cannot decrypt JWEs, which
-                // would cause runtime failures when clients supply OpenIddict-issued access tokens.
-                // ValidateTokenDirectAsync routes JWEs to /connect/tokeninfo and JWTs to local
-                // signature validation, matching the behaviour of ValidateOAuthTokenAsync without
-                // relying on HttpContext headers.
-                claims = await ValidateTokenDirectAsync(inlineToken, cancellationToken);
-            }
-            else
-            {
-                // Use connection-level claims (already validated at connection time)
-                claims = claimsHolder.Claims;
-            }
-
-            if (claims == null || claims.Count == 0)
-            {
-                _logger.LogWarning("[AuthWS:{ConnId}] auth:validate failed – invalid or missing token", connectionId);
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:validated",
-                    requestId,
-                    success = false,
-                    error = "Invalid or expired token"
-                }, sendLock, cancellationToken);
-                return;
-            }
-
-            // Upgrade connection-level claims if inline token was provided and valid
-            if (!string.IsNullOrWhiteSpace(inlineToken))
-            {
-                claimsHolder.Claims = claims;
-                _logger.LogInformation("[AuthWS:{ConnId}] Connection upgraded to authenticated via auth:validate", connectionId);
-            }
-
-            // Publish auth event to the realtime bus so SignalR clients also see it
-            await PublishAuthEventAsync("auth.token.validated",
-                claims.TryGetValue("sub", out var sub) ? sub?.ToString() : null,
-                claims.TryGetValue("unique_name", out var name) ? name?.ToString() : null,
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                new Dictionary<string, string> { ["source"] = "websocket" });
-
-            await WsSendAsync(webSocket, new
-            {
-                type = "auth:validated",
-                requestId,
-                success = true,
-                claims = BuildSafeClaims(claims)
-            }, sendLock, cancellationToken);
-        }
-
-        /// <summary>
-        /// Handles auth:refresh – exchanges a refresh token for a new access token
-        /// using the orchestration service, then pushes the new token back.
-        /// Requires an authenticated connection (or inline refreshToken in the message).
-        /// </summary>
-        private async Task HandleWsRefreshAsync(
-            WebSocket webSocket,
-            JsonElement root,
-            string? requestId,
-            SemaphoreSlim sendLock,
-            string connectionId,
-            Dictionary<string, object>? validatedClaims,
-            CancellationToken cancellationToken)
-        {
-            var refreshToken = root.TryGetProperty("refreshToken", out var rt) ? rt.GetString() : null;
-
-            if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:refreshed",
-                    requestId,
-                    success = false,
-                    error = "refreshToken is required"
-                }, sendLock, cancellationToken);
-                return;
-            }
-
-            var result = await _authOrchestrationService.RefreshTokenAsync(refreshToken);
-
-            if (!result.Success)
-            {
-                _logger.LogWarning("[AuthWS:{ConnId}] auth:refresh failed: {Error}", connectionId, result.ErrorMessage);
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:refreshed",
-                    requestId,
-                    success = false,
-                    error = result.ErrorMessage ?? "Token refresh failed"
-                }, sendLock, cancellationToken);
-                return;
-            }
-
-            await PublishAuthEventAsync("auth.token.refreshed",
-                validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,
-                validatedClaims?.TryGetValue("unique_name", out var name) == true ? name?.ToString() : null,
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                new Dictionary<string, string> { ["source"] = "websocket" });
-
-            await WsSendAsync(webSocket, new
-            {
-                type = "auth:refreshed",
-                requestId,
-                success = true,
-                token = result.Token,
-                refreshToken = result.RefreshToken,
-                expiresAt = result.ExpiresAt
-            }, sendLock, cancellationToken);
-        }
-
-        /// <summary>
-        /// Handles auth:qr-status – subscribes to real-time QR login completion events
-        /// for a given deviceId. Polls the orchestration service and pushes a single
-        /// auth:qr-completed or auth:qr-failed message when the status resolves.
-        /// Multiple subscriptions for different deviceIds are supported concurrently.
-        /// </summary>
-        private async Task HandleWsQrStatusAsync(
-            WebSocket webSocket,
-            JsonElement root,
-            string? requestId,
-            SemaphoreSlim sendLock,
-            string connectionId,
-            Dictionary<string, object>? validatedClaims,
-            ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
-            ConcurrentDictionary<string, Task> qrPollerTasks,
-            CancellationTokenSource connectionCts)
-        {
-            var deviceId = root.TryGetProperty("deviceId", out var did) ? did.GetString() : null;
-
-            if (string.IsNullOrWhiteSpace(deviceId))
-            {
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:error",
-                    requestId,
-                    error = "deviceId is required for auth:qr-status"
-                }, sendLock, connectionCts.Token);
-                return;
-            }
-
-            // Cancel any existing subscription for this deviceId
-            if (qrSubscriptions.TryRemove(deviceId, out var existing))
-            {
-                existing.Cancel();
-            }
-
-            // Cap concurrent QR subscriptions to prevent task amplification
-            const int MaxQrSubscriptions = 50;
-            if (qrPollerTasks.Count >= MaxQrSubscriptions)
-            {
-                await WsSendAsync(webSocket, new
-                {
-                    type = "auth:qr-error",
-                    requestId,
-                    deviceId,
-                    reason = "Too many concurrent QR subscriptions. Please try again later."
-                }, sendLock, connectionCts.Token);
-                return;
-            }
-
-            var subCts = CancellationTokenSource.CreateLinkedTokenSource(connectionCts.Token);
-            qrSubscriptions[deviceId] = subCts;
-
-            // Acknowledge subscription immediately
-            await WsSendAsync(webSocket, new
-            {
-                type = "auth:qr-subscribed",
-                requestId,
-                deviceId
-            }, sendLock, connectionCts.Token);
-
-            // Capture IP address before background task to avoid accessing HttpContext from background thread
-            var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            // Start background polling task – does not block the message loop
-            // Use unique key (deviceId + Guid) to track multiple concurrent pollers for the same device
-            var pollerKey = $"{deviceId}_{Guid.NewGuid():N}";
-
-            // Pre-create a placeholder to avoid race where the task completes before assignment
-            var tcs = new TaskCompletionSource<Task>();
-            qrPollerTasks[pollerKey] = tcs.Task.Unwrap();
-
-            var pollerTask = Task.Run(async () =>
-            {
-                const int pollIntervalMs = 1500;
-                const int jitterMs = 300; // +/- 300ms jitter to avoid synchronized storms
-                const int maxPollSeconds = 300; // 5-minute QR expiry
-                var deadline = DateTimeOffset.UtcNow.AddSeconds(maxPollSeconds);
-
-                try
-                {
-                    while (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow < deadline)
-                    {
-                        string? pollStatus;
-                        string? pollToken;
-                        try
-                        {
-                           // using var pollCts = CancellationTokenSource.CreateLinkedTokenSource(subCts.Token);
-                           // pollCts.CancelAfter(TimeSpan.FromSeconds(10));
-                            var status = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
-                            if (status == null)
-                            {
-                                if (qrSubscriptions.TryGetValue(deviceId, out var cur1) && ReferenceEquals(cur1, subCts))
-                                {
-                                    await WsSendAsync(webSocket, new
-                                    {
-                                        type = "auth:qr-error",
-                                        deviceId,
-                                        reason = "QR status check returned null"
-                                    }, sendLock, subCts.Token);
-                                    await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
-                                        new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "null_status" });
-                                }
-                                break;
-                            }
-                            if (!status.Success)
-                            {
-                                if (qrSubscriptions.TryGetValue(deviceId, out var cur2) && ReferenceEquals(cur2, subCts))
-                                {
-                                    await WsSendAsync(webSocket, new
-                                    {
-                                        type = "auth:qr-error",
-                                        deviceId,
-                                        reason = "QR status check indicated failure"
-                                    }, sendLock, subCts.Token);
-                                    await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
-                                        new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "status_not_success" });
-                                }
-                                break;
-                            }
-                            pollStatus = status.Status;
-                            pollToken = status.Token;
-                        }
-                        catch (Exception pollEx)
-                        {
-                            _logger.LogError(pollEx, "[AuthWS:{ConnId}] QR poll exception for device {DeviceId}", connectionId, deviceId);
-                            if (qrSubscriptions.TryGetValue(deviceId, out var cur3) && ReferenceEquals(cur3, subCts))
-                            {
-                                await WsSendAsync(webSocket, new
-                                {
-                                    type = "auth:qr-error",
-                                    deviceId,
-                                    reason = "Internal error during QR status check"
-                                }, sendLock, subCts.Token);
-                                await PublishAuthEventAsync("auth.qr.error", null, null, sourceIp,
-                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "poll_exception" });
-                            }
-                            break;
-                        }
-
-                        if (pollStatus == "completed" && !string.IsNullOrEmpty(pollToken))
-                        {
-                            if (qrSubscriptions.TryGetValue(deviceId, out var cur4) && ReferenceEquals(cur4, subCts))
-                            {
-                                await WsSendAsync(webSocket, new
-                                {
-                                    type = "auth:qr-completed",
-                                    deviceId,
-                                    token = pollToken
-                                }, sendLock, subCts.Token);
-
-                                await PublishAuthEventAsync("auth.qr.completed", null, null, sourceIp,
-                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["source"] = "websocket" });
-                            }
-                            break;
-                        }
-
-                        if (pollStatus == "failed" || pollStatus == "cancelled" || pollStatus == "expired")
-                        {
-                            if (qrSubscriptions.TryGetValue(deviceId, out var cur5) && ReferenceEquals(cur5, subCts))
-                            {
-                                await WsSendAsync(webSocket, new
-                                {
-                                    type = "auth:qr-failed",
-                                    deviceId,
-                                    reason = pollStatus
-                                }, sendLock, subCts.Token);
-
-                                await PublishAuthEventAsync("auth.qr.failed", null, null, sourceIp,
-                                    new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = pollStatus, ["source"] = "websocket" });
-                            }
-                            break;
-                        }
-
-                        // Add jitter to prevent synchronized polling storms
-                        var jitter = Random.Shared.Next(-jitterMs, jitterMs);
-                        var delayMs = pollIntervalMs + jitter;
-                        await Task.Delay(delayMs, subCts.Token);
-                    }
-
-                    // Timed out without resolution
-                    if (!subCts.Token.IsCancellationRequested && DateTimeOffset.UtcNow >= deadline)
-                    {
-                        if (qrSubscriptions.TryGetValue(deviceId, out var cur6) && ReferenceEquals(cur6, subCts))
-                        {
-                            await WsSendAsync(webSocket, new
-                            {
-                                type = "auth:qr-failed",
-                                deviceId,
-                                reason = "timeout"
-                            }, sendLock, subCts.Token);
-
-                            await PublishAuthEventAsync("auth.qr.failed", null, null, sourceIp,
-                                new Dictionary<string, string> { ["deviceId"] = deviceId, ["reason"] = "timeout", ["source"] = "websocket" });
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // Connection closed or subscription cancelled – normal
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "[AuthWS:{ConnId}] QR status polling error for device {DeviceId}",
-                        connectionId, deviceId);
-                }
-                finally
-                {
-                    if (qrSubscriptions.TryGetValue(deviceId, out var current) && ReferenceEquals(current, subCts))
-                        qrSubscriptions.TryRemove(deviceId, out _);
-                    subCts?.Dispose();
-                    // Remove this poller from the tracked tasks
-                    qrPollerTasks.TryRemove(pollerKey, out _);
-                }
-            });
-
-            // Complete the placeholder with the actual task
-            tcs.SetResult(pollerTask);
-        }
-
-        /// <summary>
-        /// Publishes an auth domain event to the realtime event bus so that
-        /// SignalR subscribers and WebSocket stream clients also receive auth events.
-        /// </summary>
-        /// <param name="eventName">The name of the event.</param>
-        /// <param name="userId">Optional user ID associated with the event.</param>
-        /// <param name="userName">Optional user name associated with the event.</param>
-        /// <param name="sourceIp">The source IP address. Must be captured before background task execution.</param>
-        /// <param name="metadata">Optional metadata dictionary.</param>
-        private async Task PublishAuthEventAsync(
-            string eventName,
-            string? userId,
-            string? userName,
-            string? sourceIp,
-            Dictionary<string, string>? metadata = null)
-        {
-            try
-            {
-                var domainEvent = new ApiDomainEvent(
-                    EventName: eventName,
-                    Resource: "auth",
-                    HttpMethod: "WS",
-                    StatusCode: 200,
-                    OccurredAt: DateTimeOffset.UtcNow,
-                    CorrelationId: Guid.NewGuid().ToString("N"),
-                    UserId: userId,
-                    UserName: userName,
-                    Tenant: null,
-                    SourceIp: sourceIp ?? "unknown",
-                    Metadata: (metadata ?? new Dictionary<string, string>()).AsReadOnly());
-
-                await _realtimeEventBus.PublishAsync(domainEvent);
-            }
-            catch (Exception ex)
-            {
-                // Non-critical – don't let event bus failures break auth flows
-                _logger.LogWarning(ex, "Failed to publish auth event {EventName} to realtime bus", eventName);
-            }
-        }
-
-        /// <summary>
-        /// Builds a safe claims dictionary for sending to the client,
-        /// stripping any internal/sensitive claim types.
-        /// </summary>
-        private static Dictionary<string, object> BuildSafeClaims(Dictionary<string, object> claims)
-        {
-            var sensitive = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "oi_tkn_id", "oi_au_id", "oi_app_id"
-            };
-
-            return claims
-                .Where(kv => !sensitive.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-        }
-
-        /// <summary>
-        /// Sanitizes a client-controlled string value before use in log messages to prevent log forging.
-        /// Trims whitespace, strips control characters and newlines, enforces max length, and returns a
-        /// safe placeholder for null/empty values.
-        /// </summary>
-        private static string SanitizeLogValue(string? value, int maxLength = 100)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return "(none)";
-            // Strip control characters (including CR/LF) to prevent log injection
-            var sanitized = new string(value.Where(c => !char.IsControl(c)).ToArray()).Trim();
-            if (sanitized.Length == 0) return "(none)";
-            return sanitized.Length > maxLength ? sanitized[..maxLength] + "…" : sanitized;
-        }
-
-        /// <summary>
-        /// Thread-safe JSON serialization and send over WebSocket.
-        /// sendLock serializes all SendAsync calls on this connection so only one
-        /// send is in-flight at a time (WebSocket.SendAsync is not thread-safe).
-        /// </summary>
-        private async Task WsSendAsync(WebSocket webSocket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
-        {
-            if (webSocket.State != WebSocketState.Open)
-                return;
-
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, WsJsonOptions);
-
-            await sendLock.WaitAsync(cancellationToken);
-            try
-            {
-                await webSocket.SendAsync(
-                    new ArraySegment<byte>(bytes),
-                    WebSocketMessageType.Text,
-                    endOfMessage: true,
-                    cancellationToken);
-            }
-            finally
-            {
-                sendLock.Release();
-            }
+                preValidatedClaims,
+                sourceIp,
+                HttpContext.RequestAborted);
         }
 
         #endregion
     }
-
-    /// <summary>
-    /// Mutable wrapper for validated claims, allowing async WebSocket handlers
-    /// to upgrade the connection's authentication state without ref parameters.
-    /// 
-    /// Single-writer assumption: Claims is only mutated by HandleWsValidateAsync
-    /// when a valid inline token is provided. The WebSocket message loop is
-    /// sequential (one message processed at a time), so concurrent writes are
-    /// not possible and no synchronization is needed on this property.
-    /// </summary>
-    internal sealed class ClaimsHolder
-    {
-        public Dictionary<string, object>? Claims { get; set; }
-    }
-} 
+}

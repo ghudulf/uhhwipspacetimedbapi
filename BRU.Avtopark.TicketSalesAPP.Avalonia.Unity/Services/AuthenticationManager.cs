@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web;
 using Avalonia;
@@ -521,20 +523,33 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         }
 
         /// <summary>
-        /// ENHANCEMENT: Fetches and logs token claims from the server's tokeninfo endpoint
-        /// This is useful for encrypted/opaque tokens where client-side parsing isn't possible
+        /// ENHANCEMENT: Fetches and logs token claims from the server's tokeninfo endpoint.
+        /// connect/tokeninfo is registered as an absolute route (~/connect/tokeninfo) — no /api/ prefix.
         /// </summary>
-        private async Task FetchAndLogTokenClaimsAsync(string accessToken)
+        private static async Task FetchAndLogTokenClaimsAsync(string accessToken)
         {
             try
             {
                 Log.Information("Fetching token claims from server tokeninfo endpoint");
-                
-                using var httpClient = new System.Net.Http.HttpClient();
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                
-                var response = await httpClient.GetAsync($"{_serverRoot}/connect/tokeninfo");
+
+                // Build server root URL — strip /api/ suffix because connect/tokeninfo is at root
+                var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
+                var serverRoot = baseUrl.TrimEnd('/');
+                if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+                    serverRoot = serverRoot[..^4];
+                serverRoot = serverRoot.TrimEnd('/') + "/";
+
+                var fullUrl = $"{serverRoot}connect/tokeninfo";
+                Log.Information("Fetching token claims from: {Url}", fullUrl);
+
+                using var httpClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", accessToken);
+
+                var response = await httpClient.GetAsync("connect/tokeninfo");
+
+                Log.Information("TokenInfo response status: {Status} from {Url}",
+                    response.StatusCode, fullUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -552,8 +567,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                                 var values = new List<string>();
                                 foreach (var item in claim.Value.EnumerateArray())
                                 {
-                                    // Guard against non-string JsonElement kinds (numbers, booleans, objects, arrays)
-                                    // to prevent InvalidOperationException from GetString() on non-string elements.
                                     string itemValue = item.ValueKind == System.Text.Json.JsonValueKind.String || item.ValueKind == System.Text.Json.JsonValueKind.Null
                                         ? (item.GetString() ?? string.Empty)
                                         : item.GetRawText();
@@ -582,7 +595,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 }
                 else
                 {
-                    Log.Warning("Failed to fetch token claims from server. Status: {StatusCode}", response.StatusCode);
+                    var body = await response.Content.ReadAsStringAsync();
+                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, body);
                 }
             }
             catch (Exception ex)

@@ -225,6 +225,10 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BR
 // Add input sanitization service for security
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationService, BRU_AVTOPARK.Services.Implementations.InputSanitizationService>();
 
+// WebSocket auth service (extracted from AuthControllerRefactored)
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthWebSocketService, BRU_AVTOPARK.Services.Implementations.AuthWebSocketService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthWebSocketTokenValidator, BRU_AVTOPARK.Services.Implementations.HttpContextAuthWebSocketTokenValidator>();
+
 // Configure FeatureFlagOptions from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
@@ -684,10 +688,13 @@ var webSocketOptions = new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(15)
 };
 
+// Add configured origins; also always allow native desktop clients (no Origin header = allowed by default)
 foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.IsNullOrWhiteSpace(origin)))
 {
     webSocketOptions.AllowedOrigins.Add(origin);
 }
+// Allow any LAN IP — native Avalonia clients don't send Origin headers so this covers browser-based access
+webSocketOptions.AllowedOrigins.Add("*");
 
 app.UseWebSockets(webSocketOptions);
 
