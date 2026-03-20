@@ -3,86 +3,399 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
              x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.RouteManagementToolWindow"
              x:DataType="vm:RouteManagementViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="10">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-            <TextBox Grid.Column="0" 
-                     Text="{Binding SearchText}"
-                     PlaceholderText="Поиск по начальной точке, конечной точке, модели автобуса или водителю..."
-                     Margin="0,0,10,0"/>
-            <Button Grid.Column="1" 
-                    Command="{Binding AddCommand}"
-                    Content="Добавить маршрут"
-                    IsEnabled="{Binding !IsBusy}"/>
-        </Grid>
+  <!-- ══ Self-contained theme tokens — work in both standalone and MAUI-embedded ══ -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
 
-        <DataGrid Grid.Row="1"
-                  ItemsSource="{Binding Routes}"
-                  SelectedItem="{Binding SelectedRoute}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  GridLinesVisibility="All"
-                  BorderThickness="1"
-                  BorderBrush="Gray"
-                  Margin="0,0,0,10">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" 
-                                  Binding="{ReflectionBinding RouteId}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Номер" 
-                                  Binding="{ReflectionBinding RouteNumber}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Начальная точка" 
-                                  Binding="{ReflectionBinding StartPoint}"
-                                  Width="*"/>
-                <DataGridTextColumn Header="Конечная точка" 
-                                  Binding="{ReflectionBinding EndPoint}"
-                                  Width="*"/>
-                <DataGridTextColumn Header="Время в пути" 
-                                  Binding="{ReflectionBinding TravelTime}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Автобус" 
-                                  Binding="{ReflectionBinding BusModel}"
-                                  Width="*"/>
-                <DataGridTextColumn Header="Водитель" 
-                                  Binding="{ReflectionBinding DriverName}"
-                                  Width="*"/>
-                <DataGridTextColumn Header="Билеты" 
-                                  Binding="{ReflectionBinding TicketCount}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Остановки" 
-                                  Binding="{ReflectionBinding StopCount}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Длина (км)" 
-                                  Binding="{ReflectionBinding RouteLengthDisplay}"
-                                  Width="Auto"/>
-                <DataGridTextColumn Header="Тип" 
-                                  Binding="{ReflectionBinding RouteType}"
-                                  Width="Auto"/>
-                <DataGridCheckBoxColumn Header="Активен" 
-                                  Binding="{ReflectionBinding IsActive}"
-                                  Width="Auto"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="RtBg">#FAFAFA</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSurface">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSurfaceVar">#F5F5F5</SolidColorBrush>
+          <SolidColorBrush x:Key="RtDivider">#E0E0E0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtOnSurface">#1A1A1A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtOnSurface2">#424242</SolidColorBrush>
+          <SolidColorBrush x:Key="RtMuted">#757575</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSearchBg">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowHover">#FFF3EE</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowSel">#FFE0D0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowSelHover">#FFD0BC</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowDiv">#E0E0E0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtLoadingBg">#CCFAFAFA</SolidColorBrush>
+          <SolidColorBrush x:Key="RtEmptyText">#BDBDBD</SolidColorBrush>
+          <SolidColorBrush x:Key="RtStatusBg">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="RtStatusText">#9E9E9E</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrBg">#FFEBEE</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrBorder">#EF9A9A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrText">#C62828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralBg">#F5F5F5</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralFg">#424242</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralBorder">#E0E0E0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralHover">#EEEEEE</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerBg">#FFEBEE</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerFg">#C62828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerBorder">#EF9A9A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerHover">#FFCDD2</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenBg">#E8F5E9</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenBorder">#388E3C</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenText">#2E7D32</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedBg">#FFEBEE</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedBorder">#D32F2F</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedText">#C62828</SolidColorBrush>
+        </ResourceDictionary>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" 
-                       Text="{Binding ErrorMessage}"
-                       Foreground="Red"
-                       IsVisible="{Binding HasError}"
-                       VerticalAlignment="Center"/>
-            <Button Grid.Column="1" 
-                    Command="{Binding EditCommand}"
-                    Content="Редактировать"
-                    IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Margin="0,0,10,0"/>
-            <Button Grid.Column="2" 
-                    Command="{Binding DeleteCommand}"
-                    Content="Удалить"
-                    IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="RtBg">#121212</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSurface">#1E1E1E</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSurfaceVar">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtDivider">#333333</SolidColorBrush>
+          <SolidColorBrush x:Key="RtOnSurface">#FAFAFA</SolidColorBrush>
+          <SolidColorBrush x:Key="RtOnSurface2">#E0E0E0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtMuted">#9E9E9E</SolidColorBrush>
+          <SolidColorBrush x:Key="RtSearchBg">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowHover">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowSel">#2A1A0E</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowSelHover">#3A2010</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRowDiv">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtLoadingBg">#CC121212</SolidColorBrush>
+          <SolidColorBrush x:Key="RtEmptyText">#424242</SolidColorBrush>
+          <SolidColorBrush x:Key="RtStatusBg">#1E1E1E</SolidColorBrush>
+          <SolidColorBrush x:Key="RtStatusText">#616161</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrBg">#3A1A1A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrBorder">#D32F2F</SolidColorBrush>
+          <SolidColorBrush x:Key="RtErrText">#EF9A9A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralBg">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralFg">#E0E0E0</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralBorder">#333333</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnNeutralHover">#333333</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerBg">#3A1A1A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerFg">#EF9A9A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerBorder">#D32F2F</SolidColorBrush>
+          <SolidColorBrush x:Key="RtBtnDangerHover">#4A2020</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenBg">#1B3A1F</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenBorder">#388E3C</SolidColorBrush>
+          <SolidColorBrush x:Key="RtGreenText">#66BB6A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedBg">#3A1A1A</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedBorder">#D32F2F</SolidColorBrush>
+          <SolidColorBrush x:Key="RtRedText">#EF9A9A</SolidColorBrush>
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Brand orange — identical in both themes -->
+      <SolidColorBrush x:Key="RtBrand">#FF5722</SolidColorBrush>
+      <SolidColorBrush x:Key="RtBrandDark">#E64A19</SolidColorBrush>
+
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+
+    <Style Selector="Border.col-header">
+      <Setter Property="Background" Value="{DynamicResource RtSurface}"/>
+      <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style Selector="TextBlock.col-header-text">
+      <Setter Property="Foreground" Value="{DynamicResource RtMuted}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style Selector="TextBlock.cell">
+      <Setter Property="Foreground" Value="{DynamicResource RtOnSurface}"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+      <Setter Property="Padding" Value="8,0"/>
+    </Style>
+    <Style Selector="TextBlock.cell-dim">
+      <Setter Property="Foreground" Value="{DynamicResource RtMuted}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+      <Setter Property="Padding" Value="8,0"/>
+    </Style>
+
+    <Style Selector="Border.badge-active">
+      <Setter Property="Background" Value="{DynamicResource RtGreenBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RtGreenBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="Margin" Value="8,0"/>
+    </Style>
+    <Style Selector="Border.badge-inactive">
+      <Setter Property="Background" Value="{DynamicResource RtRedBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RtRedBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="Margin" Value="8,0"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn">
+      <Setter Property="Background" Value="{DynamicResource RtBtnNeutralBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource RtBtnNeutralFg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RtBtnNeutralBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RtBtnNeutralHover}"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.38"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn-primary">
+      <Setter Property="Background" Value="{DynamicResource RtBrand}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RtBrandDark}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn-primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RtBrandDark}"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn-primary:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.38"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn-danger">
+      <Setter Property="Background" Value="{DynamicResource RtBtnDangerBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource RtBtnDangerFg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RtBtnDangerBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn-danger:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RtBtnDangerHover}"/>
+    </Style>
+    <Style Selector="Button.toolbar-btn-danger:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.38"/>
+    </Style>
+
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto"
+        Background="{DynamicResource RtBg}">
+
+    <!-- ══ TOOLBAR ══ -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource RtSurface}"
+            BorderBrush="{DynamicResource RtDivider}"
+            BorderThickness="0,0,0,1"
+            Padding="16,12">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+          <TextBlock Text="Маршруты"
+                     Foreground="{DynamicResource RtOnSurface}"
+                     FontSize="16"
+                     FontWeight="SemiBold"/>
+          <TextBlock Text="Управление маршрутами автопарка"
+                     Foreground="{DynamicResource RtMuted}"
+                     FontSize="11"/>
+        </StackPanel>
+
+        <TextBox Grid.Column="1"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Поиск по начальной точке, конечной точке, автобусу или водителю…"
+                 Background="{DynamicResource RtSearchBg}"
+                 Foreground="{DynamicResource RtOnSurface2}"
+                 BorderBrush="{DynamicResource RtDivider}"
+                 BorderThickness="1"
+                 CornerRadius="8"
+                 Padding="10,7"
+                 FontSize="13"
+                 Margin="0,0,12,0"
+                 VerticalAlignment="Center"/>
+
+        <Button Grid.Column="2"
+                Classes="toolbar-btn-primary"
+                Command="{Binding AddCommand}"
+                IsEnabled="{Binding !IsBusy}"
+                IsVisible="{Binding IsDialogCapable}"
+                Margin="0,0,8,0">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="+" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="Добавить маршрут" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Column="3"
+                Classes="toolbar-btn"
+                Command="{Binding EditCommand}"
+                IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsVisible="{Binding IsDialogCapable}"
+                Margin="0,0,8,0"
+                Content="Редактировать"/>
+
+        <Button Grid.Column="4"
+                Classes="toolbar-btn-danger"
+                Command="{Binding DeleteCommand}"
+                IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsVisible="{Binding IsDialogCapable}"
+                Content="Удалить"/>
+      </Grid>
+    </Border>
+
+    <!-- ══ ERROR BAR ══ -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource RtErrBg}"
+            BorderBrush="{DynamicResource RtErrBorder}"
+            BorderThickness="0,0,0,1"
+            Padding="16,8"
+            IsVisible="{Binding HasError}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="⚠" Foreground="{DynamicResource RtErrText}" FontSize="13" VerticalAlignment="Center"/>
+        <TextBlock Text="{Binding ErrorMessage}"
+                   Foreground="{DynamicResource RtErrText}"
+                   FontSize="12"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ══ TABLE ══ -->
+    <Grid Grid.Row="2" RowDefinitions="Auto,*">
+
+      <Border Grid.Row="0"
+              Classes="col-header"
+              BorderBrush="{DynamicResource RtDivider}"
+              BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="60,80,*,*,90,*,*,70,80,90,90,80">
+          <Border Grid.Column="0"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="ID"/></Border>
+          <Border Grid.Column="1"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="НОМЕР"/></Border>
+          <Border Grid.Column="2"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="НАЧАЛЬНАЯ ТОЧКА"/></Border>
+          <Border Grid.Column="3"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="КОНЕЧНАЯ ТОЧКА"/></Border>
+          <Border Grid.Column="4"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="В ПУТИ"/></Border>
+          <Border Grid.Column="5"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="АВТОБУС"/></Border>
+          <Border Grid.Column="6"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="ВОДИТЕЛЬ"/></Border>
+          <Border Grid.Column="7"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="БИЛЕТЫ"/></Border>
+          <Border Grid.Column="8"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="ОСТАНОВКИ"/></Border>
+          <Border Grid.Column="9"  Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="ДЛИНА (КМ)"/></Border>
+          <Border Grid.Column="10" Classes="col-header" BorderBrush="{DynamicResource RtDivider}" BorderThickness="0,0,1,0"><TextBlock Classes="col-header-text" Text="ТИП"/></Border>
+          <Border Grid.Column="11" Classes="col-header"><TextBlock Classes="col-header-text" Text="СТАТУС"/></Border>
         </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+        <Panel>
+
+          <!-- Loading overlay -->
+          <Border Background="{DynamicResource RtLoadingBg}"
+                  IsVisible="{Binding IsBusy}"
+                  ZIndex="10">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+              <Border Width="40" Height="40"
+                      BorderBrush="{DynamicResource RtBrand}"
+                      BorderThickness="3"
+                      CornerRadius="20"
+                      HorizontalAlignment="Center"/>
+              <TextBlock Text="Загрузка…"
+                         Foreground="{DynamicResource RtMuted}"
+                         FontSize="14"
+                         HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Empty state -->
+          <Border Padding="0,60" IsVisible="{Binding !IsBusy}">
+            <TextBlock Text="Маршруты не найдены"
+                       Foreground="{DynamicResource RtEmptyText}"
+                       FontSize="14"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding Routes.Count, Converter={x:Static ObjectConverters.IsNull}}"/>
+          </Border>
+
+          <ListBox ItemsSource="{Binding Routes}"
+                   SelectedItem="{Binding SelectedRoute}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   Padding="0">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+              </Style>
+              <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource RtRowSel}"/>
+              </Style>
+              <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource RtRowHover}"/>
+              </Style>
+              <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource RtRowSelHover}"/>
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:RouteDisplayModel">
+                <Border BorderBrush="{DynamicResource RtRowDiv}"
+                        BorderThickness="0,0,0,1"
+                        MinHeight="42">
+                  <Grid ColumnDefinitions="60,80,*,*,90,*,*,70,80,90,90,80">
+                    <TextBlock Grid.Column="0"  Classes="cell-dim" Text="{Binding RouteId}"/>
+                    <TextBlock Grid.Column="1"  Classes="cell" FontWeight="Medium" Text="{Binding RouteNumber}"/>
+                    <TextBlock Grid.Column="2"  Classes="cell" Text="{Binding StartPoint}"/>
+                    <TextBlock Grid.Column="3"  Classes="cell" Text="{Binding EndPoint}"/>
+                    <TextBlock Grid.Column="4"  Classes="cell-dim" Text="{Binding TravelTime}"/>
+                    <TextBlock Grid.Column="5"  Classes="cell" Text="{Binding BusModel}"/>
+                    <TextBlock Grid.Column="6"  Classes="cell" Text="{Binding DriverName}"/>
+                    <TextBlock Grid.Column="7"  Classes="cell-dim" HorizontalAlignment="Center" Text="{Binding TicketCount}"/>
+                    <TextBlock Grid.Column="8"  Classes="cell-dim" HorizontalAlignment="Center" Text="{Binding StopCount}"/>
+                    <TextBlock Grid.Column="9"  Classes="cell-dim" HorizontalAlignment="Right" Padding="0,0,12,0" Text="{Binding RouteLengthDisplay}"/>
+                    <TextBlock Grid.Column="10" Classes="cell-dim" Text="{Binding RouteType}"/>
+                    <Panel Grid.Column="11" VerticalAlignment="Center">
+                      <Border Classes="badge-active" IsVisible="{Binding IsActive}">
+                        <TextBlock Text="Активен" Foreground="{DynamicResource RtGreenText}" FontSize="10" FontWeight="SemiBold"/>
+                      </Border>
+                      <Border Classes="badge-inactive" IsVisible="{Binding !IsActive}">
+                        <TextBlock Text="Неактивен" Foreground="{DynamicResource RtRedText}" FontSize="10" FontWeight="SemiBold"/>
+                      </Border>
+                    </Panel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+        </Panel>
+      </ScrollViewer>
     </Grid>
+
+    <!-- ══ STATUS BAR ══ -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource RtStatusBg}"
+            BorderBrush="{DynamicResource RtDivider}"
+            BorderThickness="0,1,0,0"
+            Padding="16,6">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Border Width="6" Height="6"
+                Background="{DynamicResource RtBrand}"
+                CornerRadius="3"
+                VerticalAlignment="Center"/>
+        <TextBlock Foreground="{DynamicResource RtStatusText}"
+                   FontSize="11"
+                   Text="{Binding Routes.Count, StringFormat='Маршрутов: {0}'}"/>
+      </StackPanel>
+    </Border>
+
+  </Grid>
 </UserControl>

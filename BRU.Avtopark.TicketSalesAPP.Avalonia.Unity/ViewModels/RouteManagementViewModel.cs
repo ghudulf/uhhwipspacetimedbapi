@@ -146,6 +146,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _hasError, value);
         }
 
+        // True when embedded inside a MAUI host — dialogs/windows are not available
+        public static bool IsMauiHost => AppContext.GetData("MAUI_HOST") as bool? == true;
+
+        // Inverse — used by AXAML to show/hide dialog-dependent buttons
+        public static bool IsDialogCapable => !IsMauiHost;
+
         public RouteManagementViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
@@ -464,6 +470,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Add()
         {
+            if (IsMauiHost)
+            {
+                Log.Information("Add Route skipped: running under MAUI host, dialogs not supported.");
+                return;
+            }
             Log.Information("Add Route command initiated.");
             // Ensure helper data is loaded (optional check, LoadData should run first)
             if (!AvailableBuses.Any() || !AvailableDrivers.Any())
@@ -685,6 +696,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Edit()
         {
+             if (IsMauiHost)
+             {
+                 Log.Information("Edit Route skipped: running under MAUI host, dialogs not supported.");
+                 return;
+             }
              if (SelectedRoute == null)
              {
                   Log.Warning("Edit Route command initiated but no route selected.");
@@ -921,6 +937,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Delete()
         {
+            if (IsMauiHost)
+            {
+                Log.Information("Delete Route skipped: running under MAUI host, dialogs not supported.");
+                return;
+            }
             if (SelectedRoute == null)
             {
                 Log.Warning("Delete Route command initiated but no route selected.");
