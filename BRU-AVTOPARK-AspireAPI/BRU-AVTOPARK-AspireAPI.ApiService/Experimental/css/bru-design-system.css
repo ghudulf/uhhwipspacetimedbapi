@@ -311,6 +311,7 @@ p {
     border-radius: var(--radius-full);
     box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
     transition: all var(--transition-base);
+    text-decoration: none;
 }
 
 .header-logo-panel:hover {
