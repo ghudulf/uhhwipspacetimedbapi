@@ -41,53 +41,53 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<Bus, uint> BusId { get; }
         public global::SpacetimeDB.Col<Bus, string> Model { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> RegistrationNumber { get; }
+        public global::SpacetimeDB.Col<Bus, string> RegistrationNumber { get; }
         public global::SpacetimeDB.Col<Bus, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Bus, string> BusType { get; }
         public global::SpacetimeDB.Col<Bus, uint> Capacity { get; }
-        public global::SpacetimeDB.NullableCol<Bus, uint> SeatedCapacity { get; }
-        public global::SpacetimeDB.NullableCol<Bus, uint> StandingCapacity { get; }
+        public global::SpacetimeDB.Col<Bus, uint> SeatedCapacity { get; }
+        public global::SpacetimeDB.Col<Bus, uint> StandingCapacity { get; }
         public global::SpacetimeDB.Col<Bus, uint> Year { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> Vin { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> LicensePlate { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> CurrentStatus { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> CurrentLocation { get; }
-        public global::SpacetimeDB.NullableCol<Bus, ulong> LastLocationUpdate { get; }
-        public global::SpacetimeDB.NullableCol<Bus, double> FuelConsumption { get; }
-        public global::SpacetimeDB.NullableCol<Bus, double> CurrentFuelLevel { get; }
-        public global::SpacetimeDB.NullableCol<Bus, string> FuelType { get; }
-        public global::SpacetimeDB.NullableCol<Bus, uint> MileageTotal { get; }
-        public global::SpacetimeDB.NullableCol<Bus, uint> MileageSinceService { get; }
-        public global::SpacetimeDB.NullableCol<Bus, bool> HasAccessibility { get; }
-        public global::SpacetimeDB.NullableCol<Bus, bool> HasAirConditioning { get; }
-        public global::SpacetimeDB.NullableCol<Bus, bool> HasWifi { get; }
-        public global::SpacetimeDB.NullableCol<Bus, bool> HasUsbCharging { get; }
+        public global::SpacetimeDB.Col<Bus, string> Vin { get; }
+        public global::SpacetimeDB.Col<Bus, string> LicensePlate { get; }
+        public global::SpacetimeDB.Col<Bus, string> CurrentStatus { get; }
+        public global::SpacetimeDB.Col<Bus, string> CurrentLocation { get; }
+        public global::SpacetimeDB.Col<Bus, ulong> LastLocationUpdate { get; }
+        public global::SpacetimeDB.Col<Bus, double> FuelConsumption { get; }
+        public global::SpacetimeDB.Col<Bus, double> CurrentFuelLevel { get; }
+        public global::SpacetimeDB.Col<Bus, string> FuelType { get; }
+        public global::SpacetimeDB.Col<Bus, uint> MileageTotal { get; }
+        public global::SpacetimeDB.Col<Bus, uint> MileageSinceService { get; }
+        public global::SpacetimeDB.Col<Bus, bool> HasAccessibility { get; }
+        public global::SpacetimeDB.Col<Bus, bool> HasAirConditioning { get; }
+        public global::SpacetimeDB.Col<Bus, bool> HasWifi { get; }
+        public global::SpacetimeDB.Col<Bus, bool> HasUsbCharging { get; }
 
         public BusCols(string tableName)
         {
             BusId = new global::SpacetimeDB.Col<Bus, uint>(tableName, "bus_id");
             Model = new global::SpacetimeDB.Col<Bus, string>(tableName, "model");
-            RegistrationNumber = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "registration_number");
+            RegistrationNumber = new global::SpacetimeDB.Col<Bus, string>(tableName, "registration_number");
             IsActive = new global::SpacetimeDB.Col<Bus, bool>(tableName, "is_active");
             BusType = new global::SpacetimeDB.Col<Bus, string>(tableName, "bus_type");
             Capacity = new global::SpacetimeDB.Col<Bus, uint>(tableName, "capacity");
-            SeatedCapacity = new global::SpacetimeDB.NullableCol<Bus, uint>(tableName, "seated_capacity");
-            StandingCapacity = new global::SpacetimeDB.NullableCol<Bus, uint>(tableName, "standing_capacity");
+            SeatedCapacity = new global::SpacetimeDB.Col<Bus, uint>(tableName, "seated_capacity");
+            StandingCapacity = new global::SpacetimeDB.Col<Bus, uint>(tableName, "standing_capacity");
             Year = new global::SpacetimeDB.Col<Bus, uint>(tableName, "year");
-            Vin = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "vin");
-            LicensePlate = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "license_plate");
-            CurrentStatus = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "current_status");
-            CurrentLocation = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "current_location");
-            LastLocationUpdate = new global::SpacetimeDB.NullableCol<Bus, ulong>(tableName, "last_location_update");
-            FuelConsumption = new global::SpacetimeDB.NullableCol<Bus, double>(tableName, "fuel_consumption");
-            CurrentFuelLevel = new global::SpacetimeDB.NullableCol<Bus, double>(tableName, "current_fuel_level");
-            FuelType = new global::SpacetimeDB.NullableCol<Bus, string>(tableName, "fuel_type");
-            MileageTotal = new global::SpacetimeDB.NullableCol<Bus, uint>(tableName, "mileage_total");
-            MileageSinceService = new global::SpacetimeDB.NullableCol<Bus, uint>(tableName, "mileage_since_service");
-            HasAccessibility = new global::SpacetimeDB.NullableCol<Bus, bool>(tableName, "has_accessibility");
-            HasAirConditioning = new global::SpacetimeDB.NullableCol<Bus, bool>(tableName, "has_air_conditioning");
-            HasWifi = new global::SpacetimeDB.NullableCol<Bus, bool>(tableName, "has_wifi");
-            HasUsbCharging = new global::SpacetimeDB.NullableCol<Bus, bool>(tableName, "has_usb_charging");
+            Vin = new global::SpacetimeDB.Col<Bus, string>(tableName, "vin");
+            LicensePlate = new global::SpacetimeDB.Col<Bus, string>(tableName, "license_plate");
+            CurrentStatus = new global::SpacetimeDB.Col<Bus, string>(tableName, "current_status");
+            CurrentLocation = new global::SpacetimeDB.Col<Bus, string>(tableName, "current_location");
+            LastLocationUpdate = new global::SpacetimeDB.Col<Bus, ulong>(tableName, "last_location_update");
+            FuelConsumption = new global::SpacetimeDB.Col<Bus, double>(tableName, "fuel_consumption");
+            CurrentFuelLevel = new global::SpacetimeDB.Col<Bus, double>(tableName, "current_fuel_level");
+            FuelType = new global::SpacetimeDB.Col<Bus, string>(tableName, "fuel_type");
+            MileageTotal = new global::SpacetimeDB.Col<Bus, uint>(tableName, "mileage_total");
+            MileageSinceService = new global::SpacetimeDB.Col<Bus, uint>(tableName, "mileage_since_service");
+            HasAccessibility = new global::SpacetimeDB.Col<Bus, bool>(tableName, "has_accessibility");
+            HasAirConditioning = new global::SpacetimeDB.Col<Bus, bool>(tableName, "has_air_conditioning");
+            HasWifi = new global::SpacetimeDB.Col<Bus, bool>(tableName, "has_wifi");
+            HasUsbCharging = new global::SpacetimeDB.Col<Bus, bool>(tableName, "has_usb_charging");
         }
     }
 

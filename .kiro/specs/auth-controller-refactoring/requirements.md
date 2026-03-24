@@ -772,7 +772,8 @@ The refactoring follows a strict **copy-first, modify-later** approach to ensure
 **Phase 6: Cleanup (After full validation)**
 - Delete legacy AuthController.cs file (8,293 lines)
 - Rename AuthControllerRefactored.cs to AuthController.cs
-- Remove routing infrastructure ([LegacyAction]/[RefactoredAction] attributes)
+- Remove [RefactoredAction] attributes (no longer needed with single controller)
+- KEEP routing infrastructure (FeatureFlagActionConstraint.cs) for future use
 - KEEP feature flag infrastructure for operational flexibility
 - Repurpose feature flags for endpoint availability control
 - Add feature flag checks to enable/disable endpoints (503 if disabled)
@@ -1093,7 +1094,8 @@ public async Task<LoginResult> LoginAsync(string username, string password)
 **Phase 6: Legacy Code Cleanup and Repurposing (After validation)** - Zero Risk
 - Delete legacy AuthController.cs file
 - Rename AuthControllerRefactored.cs to AuthController.cs
-- Remove routing infrastructure
+- Remove [RefactoredAction] attributes (no longer needed with single controller)
+- KEEP routing infrastructure (FeatureFlagActionConstraint.cs) for future use
 - KEEP feature flags for operational flexibility (repurposed for endpoint availability control)
 - **Risk Level**: ZERO - new code already validated
 - Clean up and optimize

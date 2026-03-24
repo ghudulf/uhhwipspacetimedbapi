@@ -46,7 +46,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.0.0" />
+    <PackageReference Include="SpacetimeDB.ClientSDK" Version="2.1.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.4.0" />
     <PackageReference Include="R3" Version="1.2.9" />
     <PackageReference Include="System.Text.Json" Version="9.0.1" />

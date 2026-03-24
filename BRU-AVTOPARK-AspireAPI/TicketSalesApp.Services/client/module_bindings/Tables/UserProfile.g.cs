@@ -61,33 +61,33 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<UserProfile, SpacetimeDB.Identity> UserId { get; }
         public global::SpacetimeDB.Col<UserProfile, uint> LegacyUserId { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, double> Xuid { get; }
+        public global::SpacetimeDB.Col<UserProfile, double> Xuid { get; }
         public global::SpacetimeDB.Col<UserProfile, string> Login { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, string> PasswordHash { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, string> Email { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, string> PhoneNumber { get; }
+        public global::SpacetimeDB.Col<UserProfile, string> PasswordHash { get; }
+        public global::SpacetimeDB.Col<UserProfile, string> Email { get; }
+        public global::SpacetimeDB.Col<UserProfile, string> PhoneNumber { get; }
         public global::SpacetimeDB.Col<UserProfile, bool> IsActive { get; }
         public global::SpacetimeDB.Col<UserProfile, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, ulong> LastLoginAt { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, string> LegacyGuid { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, bool> EmailConfirmed { get; }
-        public global::SpacetimeDB.NullableCol<UserProfile, bool> PhoneNumberConfirmed { get; }
+        public global::SpacetimeDB.Col<UserProfile, ulong> LastLoginAt { get; }
+        public global::SpacetimeDB.Col<UserProfile, string> LegacyGuid { get; }
+        public global::SpacetimeDB.Col<UserProfile, bool> EmailConfirmed { get; }
+        public global::SpacetimeDB.Col<UserProfile, bool> PhoneNumberConfirmed { get; }
 
         public UserProfileCols(string tableName)
         {
             UserId = new global::SpacetimeDB.Col<UserProfile, SpacetimeDB.Identity>(tableName, "user_id");
             LegacyUserId = new global::SpacetimeDB.Col<UserProfile, uint>(tableName, "legacy_user_id");
-            Xuid = new global::SpacetimeDB.NullableCol<UserProfile, double>(tableName, "xuid");
+            Xuid = new global::SpacetimeDB.Col<UserProfile, double>(tableName, "xuid");
             Login = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "login");
-            PasswordHash = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "password_hash");
-            Email = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "email");
-            PhoneNumber = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "phone_number");
+            PasswordHash = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "password_hash");
+            Email = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "email");
+            PhoneNumber = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "phone_number");
             IsActive = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "is_active");
             CreatedAt = new global::SpacetimeDB.Col<UserProfile, ulong>(tableName, "created_at");
-            LastLoginAt = new global::SpacetimeDB.NullableCol<UserProfile, ulong>(tableName, "last_login_at");
-            LegacyGuid = new global::SpacetimeDB.NullableCol<UserProfile, string>(tableName, "legacy_guid");
-            EmailConfirmed = new global::SpacetimeDB.NullableCol<UserProfile, bool>(tableName, "email_confirmed");
-            PhoneNumberConfirmed = new global::SpacetimeDB.NullableCol<UserProfile, bool>(tableName, "phone_number_confirmed");
+            LastLoginAt = new global::SpacetimeDB.Col<UserProfile, ulong>(tableName, "last_login_at");
+            LegacyGuid = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "legacy_guid");
+            EmailConfirmed = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "email_confirmed");
+            PhoneNumberConfirmed = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "phone_number_confirmed");
         }
     }
 

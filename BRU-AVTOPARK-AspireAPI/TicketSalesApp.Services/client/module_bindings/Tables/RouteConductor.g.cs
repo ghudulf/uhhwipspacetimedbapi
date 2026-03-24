@@ -67,12 +67,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<RouteConductor, long> ElectronicPaymentsCount { get; }
         public global::SpacetimeDB.Col<RouteConductor, long> CashPaymentsCount { get; }
         public global::SpacetimeDB.Col<RouteConductor, ulong> Timestamp { get; }
-        public global::SpacetimeDB.NullableCol<RouteConductor, string> Notes { get; }
+        public global::SpacetimeDB.Col<RouteConductor, string> Notes { get; }
         public global::SpacetimeDB.Col<RouteConductor, bool> ShiftHandoverCompleted { get; }
         public global::SpacetimeDB.Col<RouteConductor, double> CashCollected { get; }
-        public global::SpacetimeDB.NullableCol<RouteConductor, string> HandoverNotes { get; }
-        public global::SpacetimeDB.NullableCol<RouteConductor, string> CurrentLocation { get; }
-        public global::SpacetimeDB.NullableCol<RouteConductor, string> EmployeeStatus { get; }
+        public global::SpacetimeDB.Col<RouteConductor, string> HandoverNotes { get; }
+        public global::SpacetimeDB.Col<RouteConductor, string> CurrentLocation { get; }
+        public global::SpacetimeDB.Col<RouteConductor, string> EmployeeStatus { get; }
 
         public RouteConductorCols(string tableName)
         {
@@ -104,12 +104,12 @@ namespace SpacetimeDB.Types
             ElectronicPaymentsCount = new global::SpacetimeDB.Col<RouteConductor, long>(tableName, "electronic_payments_count");
             CashPaymentsCount = new global::SpacetimeDB.Col<RouteConductor, long>(tableName, "cash_payments_count");
             Timestamp = new global::SpacetimeDB.Col<RouteConductor, ulong>(tableName, "timestamp");
-            Notes = new global::SpacetimeDB.NullableCol<RouteConductor, string>(tableName, "notes");
+            Notes = new global::SpacetimeDB.Col<RouteConductor, string>(tableName, "notes");
             ShiftHandoverCompleted = new global::SpacetimeDB.Col<RouteConductor, bool>(tableName, "shift_handover_completed");
             CashCollected = new global::SpacetimeDB.Col<RouteConductor, double>(tableName, "cash_collected");
-            HandoverNotes = new global::SpacetimeDB.NullableCol<RouteConductor, string>(tableName, "handover_notes");
-            CurrentLocation = new global::SpacetimeDB.NullableCol<RouteConductor, string>(tableName, "current_location");
-            EmployeeStatus = new global::SpacetimeDB.NullableCol<RouteConductor, string>(tableName, "employee_status");
+            HandoverNotes = new global::SpacetimeDB.Col<RouteConductor, string>(tableName, "handover_notes");
+            CurrentLocation = new global::SpacetimeDB.Col<RouteConductor, string>(tableName, "current_location");
+            EmployeeStatus = new global::SpacetimeDB.Col<RouteConductor, string>(tableName, "employee_status");
         }
     }
 

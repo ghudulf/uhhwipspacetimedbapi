@@ -47,23 +47,23 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<EmployeeShift, ulong> ShiftEndTime { get; }
         public global::SpacetimeDB.Col<EmployeeShift, string> ShiftType { get; }
         public global::SpacetimeDB.Col<EmployeeShift, string> ShiftStatus { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, uint> RouteId { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> Notes { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, SpacetimeDB.Identity> AssignedBy { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, uint> RouteId { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> Notes { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, SpacetimeDB.Identity> AssignedBy { get; }
         public global::SpacetimeDB.Col<EmployeeShift, ulong> AssignedAt { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> ShiftForm { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> ShiftForm { get; }
         public global::SpacetimeDB.Col<EmployeeShift, double> ShiftDuration { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, ulong> BreakStartTime { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, ulong> BreakEndTime { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, double> BreakDuration { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, bool> IsOvertime { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, double> OvertimeHours { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> ReplacementFor { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, bool> IsTraining { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> TrainerName { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> ShiftLocation { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, string> ShiftFeedback { get; }
-        public global::SpacetimeDB.NullableCol<EmployeeShift, bool> ComplianceWithRegulations { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, ulong> BreakStartTime { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, ulong> BreakEndTime { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, double> BreakDuration { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, bool> IsOvertime { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, double> OvertimeHours { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> ReplacementFor { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, bool> IsTraining { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> TrainerName { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> ShiftLocation { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, string> ShiftFeedback { get; }
+        public global::SpacetimeDB.Col<EmployeeShift, bool> ComplianceWithRegulations { get; }
 
         public EmployeeShiftCols(string tableName)
         {
@@ -75,23 +75,23 @@ namespace SpacetimeDB.Types
             ShiftEndTime = new global::SpacetimeDB.Col<EmployeeShift, ulong>(tableName, "shift_end_time");
             ShiftType = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "shift_type");
             ShiftStatus = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "shift_status");
-            RouteId = new global::SpacetimeDB.NullableCol<EmployeeShift, uint>(tableName, "route_id");
-            Notes = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "notes");
-            AssignedBy = new global::SpacetimeDB.NullableCol<EmployeeShift, SpacetimeDB.Identity>(tableName, "assigned_by");
+            RouteId = new global::SpacetimeDB.Col<EmployeeShift, uint>(tableName, "route_id");
+            Notes = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "notes");
+            AssignedBy = new global::SpacetimeDB.Col<EmployeeShift, SpacetimeDB.Identity>(tableName, "assigned_by");
             AssignedAt = new global::SpacetimeDB.Col<EmployeeShift, ulong>(tableName, "assigned_at");
-            ShiftForm = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "shift_form");
+            ShiftForm = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "shift_form");
             ShiftDuration = new global::SpacetimeDB.Col<EmployeeShift, double>(tableName, "shift_duration");
-            BreakStartTime = new global::SpacetimeDB.NullableCol<EmployeeShift, ulong>(tableName, "break_start_time");
-            BreakEndTime = new global::SpacetimeDB.NullableCol<EmployeeShift, ulong>(tableName, "break_end_time");
-            BreakDuration = new global::SpacetimeDB.NullableCol<EmployeeShift, double>(tableName, "break_duration");
-            IsOvertime = new global::SpacetimeDB.NullableCol<EmployeeShift, bool>(tableName, "is_overtime");
-            OvertimeHours = new global::SpacetimeDB.NullableCol<EmployeeShift, double>(tableName, "overtime_hours");
-            ReplacementFor = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "replacement_for");
-            IsTraining = new global::SpacetimeDB.NullableCol<EmployeeShift, bool>(tableName, "is_training");
-            TrainerName = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "trainer_name");
-            ShiftLocation = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "shift_location");
-            ShiftFeedback = new global::SpacetimeDB.NullableCol<EmployeeShift, string>(tableName, "shift_feedback");
-            ComplianceWithRegulations = new global::SpacetimeDB.NullableCol<EmployeeShift, bool>(tableName, "compliance_with_regulations");
+            BreakStartTime = new global::SpacetimeDB.Col<EmployeeShift, ulong>(tableName, "break_start_time");
+            BreakEndTime = new global::SpacetimeDB.Col<EmployeeShift, ulong>(tableName, "break_end_time");
+            BreakDuration = new global::SpacetimeDB.Col<EmployeeShift, double>(tableName, "break_duration");
+            IsOvertime = new global::SpacetimeDB.Col<EmployeeShift, bool>(tableName, "is_overtime");
+            OvertimeHours = new global::SpacetimeDB.Col<EmployeeShift, double>(tableName, "overtime_hours");
+            ReplacementFor = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "replacement_for");
+            IsTraining = new global::SpacetimeDB.Col<EmployeeShift, bool>(tableName, "is_training");
+            TrainerName = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "trainer_name");
+            ShiftLocation = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "shift_location");
+            ShiftFeedback = new global::SpacetimeDB.Col<EmployeeShift, string>(tableName, "shift_feedback");
+            ComplianceWithRegulations = new global::SpacetimeDB.Col<EmployeeShift, bool>(tableName, "compliance_with_regulations");
         }
     }
 
