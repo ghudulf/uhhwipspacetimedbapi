@@ -80,8 +80,8 @@ public static class MauiProgram
                             {
                                 bool hasValidToken = await MauiAuthService.Instance.HasValidTokenAsync();
 
-                                Console.WriteLine($"[MAUI] OnLaunched: hasValidToken={hasValidToken}, navigating to //splash");
-                                await Shell.Current.GoToAsync("//splash");
+                                Console.WriteLine($"[MAUI] OnLaunched: hasValidToken={hasValidToken}, navigating to {(hasValidToken ? "//main" : "//splash")}");
+                                await Shell.Current.GoToAsync(hasValidToken ? "//main" : "//splash");
                             }
                             catch (Exception ex)
                             {

@@ -14,7 +14,7 @@
             <span class="client-details-hero__text">OIDC Client</span>
         </div>
         <div class="client-details-hero__avatar">
-            @Model.DisplayName?.Substring(0, 1).ToUpper()
+            @(string.IsNullOrEmpty(Model.DisplayName) ? (string.IsNullOrEmpty(Model.ClientId) ? "?" : Model.ClientId.Substring(0, 1).ToUpper()) : Model.DisplayName.Substring(0, 1).ToUpper())
         </div>
         <h1 class="client-details-hero__title">@Model.DisplayName</h1>
         <p class="client-details-hero__subtitle">@Model.ClientId</p>

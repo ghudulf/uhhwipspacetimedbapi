@@ -553,7 +553,17 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
 
-                var response = await httpClient.GetAsync("connect/tokeninfo");
+                using var probeCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                HttpResponseMessage response;
+                try
+                {
+                    response = await httpClient.GetAsync("connect/tokeninfo", probeCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Warning("TokenInfo probe timed out after 3 seconds");
+                    return;
+                }
 
                 Log.Information("TokenInfo response status: {Status} from {Url}",
                     response.StatusCode, fullUrl);

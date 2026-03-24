@@ -33,13 +33,13 @@
   </PropertyGroup>
 
   <!-- Android-specific properties -->
-  <PropertyGroup Condition="$(TargetFramework.StartsWith('net10.0-android'))">
+  <PropertyGroup Condition="$(TargetFramework.StartsWith('net11.0-android'))">
     <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion>21.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
   <!-- iOS-specific properties -->
-  <PropertyGroup Condition="$(TargetFramework.StartsWith('net10.0-ios'))">
+  <PropertyGroup Condition="$(TargetFramework.StartsWith('net11.0-ios'))">
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 

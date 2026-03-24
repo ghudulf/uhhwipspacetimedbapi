@@ -1255,13 +1255,15 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
   - [ ] 34.3 Add backchannel authorize endpoint (`POST /api/auth/oauth/authorize`) for headless clients
     - **Purpose**: Allows headless clients (mobile, desktop, CLI) to complete the OAuth authorization flow without a browser redirect
     - **How it works**:
-      1. Client POSTs `{ clientId, redirectUri, scope, state, username, password }` (or `{ clientId, redirectUri, scope, state, token }` if already authenticated)
+      1. Client POSTs `{ clientId, redirectUri, scope, state, code_challenge, code_challenge_method, nonce, username, password }` (or `{ clientId, redirectUri, scope, state, code_challenge, code_challenge_method, nonce, token }` if already authenticated)
       2. Endpoint validates the client (same logic as `~/connect/authorize`)
       3. Endpoint authenticates the user (same logic as the OAuth login form)
       4. Endpoint creates the OpenIddict authorization and generates an authorization code
-      5. Returns `{ code, state, redirectUri }` as JSON — the client uses `code` to call `~/connect/token`
+      5. The authorization record MUST persist `code_challenge`, `code_challenge_method`, and `nonce` alongside the generated authorization code so that `~/connect/token` can validate `code_verifier` during the authorization_code exchange
+      6. Returns `{ code, state, redirectUri }` as JSON — the client uses `code` to call `~/connect/token`
+    - **PKCE/nonce storage**: The stored authorization record (or a short-lived cache entry keyed by the authorization code) MUST include the original `code_challenge` and `code_challenge_method` so `~/connect/token` can validate the `code_verifier`. The `nonce` MUST also be stored and included in the resulting `id_token`. Alternatively, the endpoint may accept a `requestId` that references the cached `OpenIddictServerRequest` created by the login flow (tasks 34.1-34.2), which already carries the full PKCE/nonce context.
     - **Security**: Requires the OAuth client to be registered as a "native/confidential" client type that is allowed to use the backchannel flow. Public browser clients MUST NOT use this endpoint (enforced by client type check).
-    - **2FA support**: If the user has TOTP or WebAuthn enabled, return `{ requiresTwoFactor: true, tempToken, twoFactorType }` and the client completes 2FA via the existing `/api/auth/totp/validate` or `/api/auth/webauthn/validate` endpoints before retrying
+    - **2FA support**: If the user has TOTP or WebAuthn enabled, return `{ requiresTwoFactor: true, tempToken, twoFactorType }` and the client completes 2FA via the existing `/api/auth/totp/validate` or `/api/auth/webauthn/validate` endpoints before retrying. The `requiresTwoFactor`/`tempToken` flow is unchanged.
     - **Does NOT replace** `~/connect/authorize` — browser-based OAuth flows continue to use the redirect endpoint unchanged
     - Location: `Controllers/AuthController.cs` (new action method)
     - _Requirements: Future vision - Headless OAuth_
@@ -1612,53 +1614,6 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 - **Phase 11**: CSHTML Deprecation (Months 9-12 Post-Refactoring)
   - Tasks 44-48: Remove Razor engine, remove CSHTML views, JSON-only API, final deployment
   - Duration: 1-2 months
-  - Enable flags incrementally (1% → 10% → 50% → 100%)
-  - Monitor error rates, performance, user feedback
-  - Duration: 1-2 months
-
-- **Phase 7**: Legacy Code Cleanup (Weeks 20+) - Zero Risk
-  - Delete legacy AuthController.cs file
-  - Rename AuthControllerRefactored.cs to AuthController.cs
-  - Remove [RefactoredAction] attributes (no longer needed with single controller)
-  - KEEP routing infrastructure (FeatureFlagActionConstraint.cs) for future use
-  - KEEP feature flag infrastructure for operational flexibility
-  - Duration: 2-3 days
-  - **Prerequisite**: All endpoints at 100% rollout for several weeks/months with stable operation
-
-**Total Duration**: 3-4 months from start to legacy code removal
-
-### Future Vision (Phases 8-11) - OPTIONAL
-
-**Note**: These phases are OPTIONAL and represent different paths forward. Choose based on your team's needs:
-
-- **Option 1 (Keep Current)**: Skip all future phases - use refactored controller with CSHTML
-- **Option 2 (Full Decoupling)**: Complete all phases 8-11 for frontend-agnostic architecture
-- **Option 3 (API-First Hybrid)**: Complete Phase 8 only, keep CSHTML for browsers
-- **Option 4 (Fast Replacement)**: Skip to Phase 10, build new frontend immediately
-- **Option 5 (Stay Simple)**: Skip all future phases, keep CSHTML forever
-
-**If pursuing Option 2 (Full Decoupling)**:
-- **Phase 8**: API-First Endpoints (Months 1-2 Post-Refactoring)
-  - Add JSON API support alongside HTML
-  - Duration: 2-3 weeks
-
-- **Phase 9**: Extract Rendering (Months 3-4 Post-Refactoring)
-  - Create view rendering abstraction
-  - Duration: 2-3 weeks
-
-- **Phase 10**: Frontend Decoupling (Months 5-8 Post-Refactoring)
-  - Build Next.js frontend (or React, Vue, etc.)
-  - Run side-by-side with CSHTML
-  - Duration: 8-12 weeks
-
-- **Phase 11**: CSHTML Deprecation (Months 9-12 Post-Refactoring)
-  - Remove Razor view engine
-  - Pure JSON API backend
-  - Duration: 2-3 weeks
-
-**Total Duration (Option 2)**: 12+ months for complete frontend-agnostic architecture
-
-**Most teams should choose Option 1 or Option 3** - the refactored controller with CSHTML views works well for most use cases.
 
 ## Risk Assessment by Phase
 

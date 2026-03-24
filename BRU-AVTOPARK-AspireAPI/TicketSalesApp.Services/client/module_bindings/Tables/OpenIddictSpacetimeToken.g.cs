@@ -41,33 +41,33 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint> Id { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> OpenIddictTokenId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint> AuthorizationId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> ApplicationClientId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong> CreationDate { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong> ExpirationDate { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Payload { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Properties { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong> RedemptionDate { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> ReferenceId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Status { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Subject { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Type { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, uint> AuthorizationId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> ApplicationClientId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong> CreationDate { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong> ExpirationDate { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> Payload { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> Properties { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong> RedemptionDate { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> ReferenceId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> Status { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> Subject { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string> Type { get; }
 
         public OpenIddictSpacetimeTokenCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint>(tableName, "id");
             OpenIddictTokenId = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "open_iddict_token_id");
-            AuthorizationId = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint>(tableName, "authorization_id");
-            ApplicationClientId = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "application_client_id");
-            CreationDate = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong>(tableName, "creation_date");
-            ExpirationDate = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong>(tableName, "expiration_date");
-            Payload = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "payload");
-            Properties = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "properties");
-            RedemptionDate = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, ulong>(tableName, "redemption_date");
-            ReferenceId = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "reference_id");
-            Status = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "status");
-            Subject = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "subject");
-            Type = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "type");
+            AuthorizationId = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, uint>(tableName, "authorization_id");
+            ApplicationClientId = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "application_client_id");
+            CreationDate = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong>(tableName, "creation_date");
+            ExpirationDate = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong>(tableName, "expiration_date");
+            Payload = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "payload");
+            Properties = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "properties");
+            RedemptionDate = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, ulong>(tableName, "redemption_date");
+            ReferenceId = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "reference_id");
+            Status = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "status");
+            Subject = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "subject");
+            Type = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeToken, string>(tableName, "type");
         }
     }
 

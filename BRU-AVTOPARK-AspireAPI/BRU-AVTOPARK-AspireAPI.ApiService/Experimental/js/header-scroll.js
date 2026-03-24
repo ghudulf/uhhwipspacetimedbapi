@@ -30,12 +30,15 @@
     const ro = new ResizeObserver(recalc);
     ro.observe(document.documentElement);
 
-    let lastScrollY = window.scrollY;
+    const scrollContainer = document.querySelector('.profile-main-content') || window;
+    const getScrollY = () => scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+
+    let lastScrollY = getScrollY();
     let ticking = false;
     let logoHidden = false;
 
     function update() {
-        const currentY = window.scrollY;
+        const currentY = getScrollY();
         const delta = currentY - lastScrollY;
 
         if (currentY < scrollThreshold) {
@@ -62,7 +65,7 @@
         controls.classList.remove('header-compact');
     }
 
-    window.addEventListener('scroll', function () {
+    scrollContainer.addEventListener('scroll', function () {
         if (!ticking) {
             requestAnimationFrame(update);
             ticking = true;

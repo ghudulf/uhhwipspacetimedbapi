@@ -21,6 +21,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private string? _discoveredBaseUrl;
         private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
 
+        // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
+        private static readonly HttpClient _probeClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
+
         // IP range to scan: 192.168.0.100 – 192.168.0.249
         private const int ScanRangeStart = 100;
         private const int ScanRangeEnd = 249;
@@ -57,7 +60,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Information("ApiClientService.AuthToken: Setting new token");
                     if (value != null)
                     {
-                        Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...",
+                       Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...",
                             value.Length, value.Length > 20 ? value.Substring(0, 20) : value);
                     }
                     else
@@ -143,12 +146,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     return _discoveredBaseUrl;
                 }
 
-                // 2. Scan LAN range in parallel
-                Serilog.Log.Information("ApiClientService: Scanning LAN range 192.168.0.{Start}-{End}...",
-                    ScanRangeStart, ScanRangeEnd);
+                // 2. Scan LAN range in parallel — subnet from config or auto-detected local /24
+                var subnet = GetDiscoverySubnet();
+                Serilog.Log.Information("ApiClientService: Scanning LAN range {Subnet}.{Start}-{End}...",
+                    subnet, ScanRangeStart, ScanRangeEnd);
 
                 var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
-                    .Select(i => $"http://192.168.0.{i}:{ApiPort}/");
+                    .Select(i => $"http://{subnet}.{i}:{ApiPort}/");
 
                 var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
                 if (found != null)
@@ -178,6 +182,36 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             Serilog.Log.Information("ApiClientService: Discovery cache cleared");
         }
 
+        /// <summary>
+        /// Returns the /24 subnet prefix to scan (e.g. "192.168.0").
+        /// Reads DiscoverySubnet from app config if available, otherwise auto-detects
+        /// the local machine's first non-loopback IPv4 /24.
+        /// </summary>
+        private static string GetDiscoverySubnet()
+        {
+            // Check environment variable override first
+            var envSubnet = Environment.GetEnvironmentVariable("BRU_DISCOVERY_SUBNET");
+            if (!string.IsNullOrWhiteSpace(envSubnet))
+                return envSubnet.TrimEnd('.');
+
+            // Auto-detect: find first non-loopback IPv4 address and use its /24
+            try
+            {
+                var host = System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName());
+                foreach (var addr in host.AddressList)
+                {
+                    if (addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                        continue;
+                    var bytes = addr.GetAddressBytes();
+                    if (bytes[0] == 127) continue; // skip loopback
+                    return $"{bytes[0]}.{bytes[1]}.{bytes[2]}";
+                }
+            }
+            catch { /* fall through to default */ }
+
+            return "192.168.0";
+        }
+
         public HttpClient CreateClient()
         {
             var baseUrl = _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
@@ -191,8 +225,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", _authToken);
                 Serilog.Log.Debug("ApiClientService.CreateClient: Authorization header added with token (length: {Length})", _authToken.Length);
-                Serilog.Log.Debug("ApiClientService.CreateClient: Token preview: {TokenPreview}...",
-                    _authToken.Length > 20 ? _authToken.Substring(0, 20) : _authToken);
             }
             else
             {
@@ -213,9 +245,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(ProbeTimeoutMs);
 
-                using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
-                var response = await client.GetAsync($"{baseUrl.TrimEnd('/')}/{PingPath}", cts.Token);
-                return response.IsSuccessStatusCode;
+                var response = await _probeClient.GetAsync($"{baseUrl.TrimEnd('/')}/{PingPath}", cts.Token);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync(cts.Token);
+                using var doc = System.Text.Json.JsonDocument.Parse(body);
+                return doc.RootElement.TryGetProperty("status", out var status)
+                    && status.GetString() == "ok";
             }
             catch
             {

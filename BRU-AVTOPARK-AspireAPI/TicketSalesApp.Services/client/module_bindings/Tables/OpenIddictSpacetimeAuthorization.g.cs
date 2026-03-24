@@ -41,25 +41,25 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint> Id { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> OpenIddictAuthorizationId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> ApplicationClientId { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, ulong> CreationDate { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Properties { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Scopes { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Status { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Subject { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Type { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> ApplicationClientId { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, ulong> CreationDate { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Properties { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Scopes { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Status { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Subject { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string> Type { get; }
 
         public OpenIddictSpacetimeAuthorizationCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint>(tableName, "id");
             OpenIddictAuthorizationId = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "open_iddict_authorization_id");
-            ApplicationClientId = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "application_client_id");
-            CreationDate = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, ulong>(tableName, "creation_date");
-            Properties = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "properties");
-            Scopes = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "scopes");
-            Status = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "status");
-            Subject = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "subject");
-            Type = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "type");
+            ApplicationClientId = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "application_client_id");
+            CreationDate = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, ulong>(tableName, "creation_date");
+            Properties = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "properties");
+            Scopes = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "scopes");
+            Status = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "status");
+            Subject = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "subject");
+            Type = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeAuthorization, string>(tableName, "type");
         }
     }
 

@@ -42,24 +42,24 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, uint> Id { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> OpenIddictScopeId { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> Name { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> Description { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> Descriptions { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> DisplayName { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> DisplayNames { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> Properties { get; }
-        public global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string> Resources { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> Description { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> Descriptions { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> DisplayName { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> DisplayNames { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> Properties { get; }
+        public global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string> Resources { get; }
 
         public OpenIddictSpacetimeScopeCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, uint>(tableName, "id");
             OpenIddictScopeId = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "open_iddict_scope_id");
             Name = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "name");
-            Description = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "description");
-            Descriptions = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "descriptions");
-            DisplayName = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "display_name");
-            DisplayNames = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "display_names");
-            Properties = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "properties");
-            Resources = new global::SpacetimeDB.Col<OpenIddictSpacetimeScope, string>(tableName, "resources");
+            Description = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "description");
+            Descriptions = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "descriptions");
+            DisplayName = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "display_name");
+            DisplayNames = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "display_names");
+            Properties = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "properties");
+            Resources = new global::SpacetimeDB.NullableCol<OpenIddictSpacetimeScope, string>(tableName, "resources");
         }
     }
 

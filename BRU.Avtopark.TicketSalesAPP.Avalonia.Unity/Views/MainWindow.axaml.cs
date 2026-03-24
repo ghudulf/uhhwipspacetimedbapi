@@ -257,6 +257,7 @@ public partial class MainWindow : Window
             Serilog.Log.Information("Testing token via debug endpoint");
 
             var apiClient = ApiClientService.Instance;
+            await apiClient.DiscoverApiBaseUrlAsync();
             var baseUrl = apiClient.CurrentBaseUrl ?? "http://localhost:5000/api/";
             var token = apiClient.AuthToken;
 
@@ -307,48 +308,62 @@ public partial class MainWindow : Window
                 }
             }
 
-            var dialog = new Window
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
             {
-                Title = "Результат Теста Токена",
-                Width = 650,
-                Height = 450,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new ScrollViewer
+                var dialog = new Window
                 {
-                    Content = new TextBox
+                    Title = "Результат Теста Токена",
+                    Width = 650,
+                    Height = 450,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Content = new ScrollViewer
                     {
-                        Text = results.ToString(),
-                        IsReadOnly = true,
-                        TextWrapping = TextWrapping.Wrap,
-                        Margin = new Thickness(10)
+                        Content = new TextBox
+                        {
+                            Text = results.ToString(),
+                            IsReadOnly = true,
+                            TextWrapping = TextWrapping.Wrap,
+                            Margin = new Thickness(10)
+                        }
                     }
-                }
-            };
+                };
 
-            await dialog.ShowDialog(this);
+                await dialog.ShowDialog(this);
+            }
+            else
+            {
+                Serilog.Log.Information("TokenTest results (non-desktop fallback):\n{Results}", results.ToString());
+            }
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Error testing token");
 
-            var dialog = new Window
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
             {
-                Title = "Ошибка",
-                Width = 400,
-                Height = 200,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new StackPanel
+                var dialog = new Window
                 {
-                    Margin = new Thickness(20),
-                    Children =
+                    Title = "Ошибка",
+                    Width = 400,
+                    Height = 200,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Content = new StackPanel
                     {
-                        new TextBlock { Text = "Ошибка при тестировании токена:", FontSize = 14, Margin = new Thickness(0, 0, 0, 10) },
-                        new TextBlock { Text = ex.Message, TextWrapping = TextWrapping.Wrap }
+                        Margin = new Thickness(20),
+                        Children =
+                        {
+                            new TextBlock { Text = "Ошибка при тестировании токена:", FontSize = 14, Margin = new Thickness(0, 0, 0, 10) },
+                            new TextBlock { Text = ex.Message, TextWrapping = TextWrapping.Wrap }
+                        }
                     }
-                }
-            };
+                };
 
-            await dialog.ShowDialog(this);
+                await dialog.ShowDialog(this);
+            }
+            else
+            {
+                Serilog.Log.Error("TokenTest error (non-desktop fallback): {Message}", ex.Message);
+            }
         }
     }
 

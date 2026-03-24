@@ -93,7 +93,11 @@ public sealed class HttpContextAuthWebSocketTokenValidator : IAuthWebSocketToken
 
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase.ToUriComponent()}";
+        // Use server-controlled base URL from configuration to prevent SSRF via spoofed Host header
+        var configuredBase = _config["TokenInfo:BaseUrl"]
+            ?? _config["Kestrel:Endpoints:Http:Url"]
+            ?? "http://localhost:5000";
+        var baseUrl = configuredBase.TrimEnd('/');
         var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
 
         _logger.LogDebug("ValidateJweAsync - GET {Url}", tokeninfoUrl);

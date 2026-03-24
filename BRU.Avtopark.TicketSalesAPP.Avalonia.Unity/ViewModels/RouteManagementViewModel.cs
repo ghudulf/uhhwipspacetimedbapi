@@ -80,7 +80,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class RouteManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
-        private readonly string _baseUrl;
+        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
 
         // Store the full list for filtering
         private List<RouteDisplayModel> _allRoutes = new();
@@ -155,7 +155,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public RouteManagementViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
-            _baseUrl = ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
 
             // Subscribe to auth token changes
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>

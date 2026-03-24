@@ -38,7 +38,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class SalesStatisticsViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
-        private readonly string _baseUrl;
+        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
         private readonly JsonSerializerOptions _jsonOptions;
 
         private List<RouteStatistic> _allRouteStatistics = new();
@@ -152,7 +152,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public SalesStatisticsViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
-            _baseUrl = ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,

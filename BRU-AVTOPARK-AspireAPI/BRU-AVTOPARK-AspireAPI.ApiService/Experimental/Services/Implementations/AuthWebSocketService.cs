@@ -59,14 +59,6 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         var sendLock = new SemaphoreSlim(1, 1);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await WsSendAsync(webSocket, new
-        {
-            type = "auth:connected",
-            connectionId,
-            authenticated = preValidatedClaims != null,
-            serverTimeUtc = DateTimeOffset.UtcNow
-        }, sendLock, cts.Token);
-
         var qrSubscriptions = new ConcurrentDictionary<string, CancellationTokenSource>();
         var qrPollerTasks = new ConcurrentDictionary<string, Task>();
         var claimsHolder = new WsClaimsHolder { Claims = preValidatedClaims };
@@ -74,6 +66,14 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
         try
         {
+            await WsSendAsync(webSocket, new
+            {
+                type = "auth:connected",
+                connectionId,
+                authenticated = preValidatedClaims != null,
+                serverTimeUtc = DateTimeOffset.UtcNow
+            }, sendLock, cts.Token);
+
             while (webSocket.State == WebSocketState.Open && !cts.Token.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
@@ -163,8 +163,14 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            requestId = root.TryGetProperty("requestId", out var rid) ? rid.GetString() : null;
-            messageType = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            requestId = root.TryGetProperty("requestId", out var rid) ? (rid.ValueKind == JsonValueKind.String ? rid.GetString() : null) : null;
+            messageType = root.TryGetProperty("type", out var t) ? (t.ValueKind == JsonValueKind.String ? t.GetString() : null) : null;
+
+            if (messageType == null && root.TryGetProperty("type", out var tRaw) && tRaw.ValueKind != JsonValueKind.String)
+            {
+                await WsSendAsync(webSocket, new { type = "auth:error", requestId, error = "Protocol error: 'type' field must be a string" }, sendLock, cts.Token);
+                return;
+            }
 
             _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
                 connectionId, SanitizeLogValue(messageType), SanitizeLogValue(requestId));
@@ -409,7 +415,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         if (qrSubscriptions.TryRemove(deviceId, out var existing))
             existing.Cancel();
 
-        if (qrPollerTasks.Count >= MaxQrSubscriptions)
+        if (qrSubscriptions.Count >= MaxQrSubscriptions)
         {
             await WsSendAsync(webSocket, new { type = "auth:qr-error", requestId, deviceId, reason = "Too many concurrent QR subscriptions. Please try again later." }, sendLock, connectionCts.Token);
             return;
