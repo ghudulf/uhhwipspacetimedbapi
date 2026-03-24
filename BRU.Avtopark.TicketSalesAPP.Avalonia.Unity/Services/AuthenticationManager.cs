@@ -552,8 +552,8 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 using var httpClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
-
-                using var probeCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+// what fucking 3 seconds - TOKENINFO IS SLOW 
+                using var probeCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 HttpResponseMessage response;
                 try
                 {
@@ -561,7 +561,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Warning("TokenInfo probe timed out after 3 seconds");
+                    Log.Warning("TokenInfo probe timed out after 60 seconds");
                     return;
                 }
 
