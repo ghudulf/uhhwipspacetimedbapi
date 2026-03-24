@@ -580,8 +580,7 @@ builder.Services.AddControllersWithViews(options =>
             })
             .ConfigureApplicationPartManager(manager =>
             {
-                // ENHANCED: Ensure both controllers are discovered
-                // This explicitly adds both AuthController and AuthControllerRefactored to the application parts
+                // Ensure AuthController is discovered
                 var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("ApplicationPartManager");
                 logger.LogInformation("Application parts count: {Count}", manager.ApplicationParts.Count);
                 
@@ -590,17 +589,17 @@ builder.Services.AddControllersWithViews(options =>
                     logger.LogInformation("  Part: {PartName} ({PartType})", part.Name, part.GetType().Name);
                 }
                 
-                // Force discovery of both controllers by ensuring the assembly is loaded
+                // Force discovery of AuthController by ensuring the assembly is loaded
                 var controllerAssembly = typeof(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController).Assembly;
-                var refactoredControllerType = controllerAssembly.GetType("BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthControllerRefactored");
+                var controllerType = controllerAssembly.GetType("BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController");
                 
-                if (refactoredControllerType != null)
+                if (controllerType != null)
                 {
-                    logger.LogInformation("AuthControllerRefactored type found in assembly");
+                    logger.LogInformation("AuthController type found in assembly");
                 }
                 else
                 {
-                    logger.LogWarning("AuthControllerRefactored type NOT found in assembly!");
+                    logger.LogWarning("AuthController type NOT found in assembly!");
                 }
             });
 

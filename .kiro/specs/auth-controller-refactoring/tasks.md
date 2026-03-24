@@ -862,40 +862,40 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 
 **IMPORTANT**: Feature flag infrastructure is KEPT for operational flexibility. This allows operational disablement (flags disable endpoints with 503 response after legacy controller deletion, rather than restoring implementations) and endpoint availability control even after cleanup.
 
-- [ ] 23. Delete legacy AuthController.cs file
-  - [ ] 23.1 Verify all feature flags are enabled and stable
+- [x] 23. Delete legacy AuthController.cs file
+  - [x] 23.1 Verify all feature flags are enabled and stable
     - Confirm all 56 endpoints have been at 100% rollout for at least 2-4 weeks
     - Verify error rates, performance metrics are acceptable
     - Confirm no production incidents related to refactored endpoints
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 23.2 Delete Controllers/AuthController.cs
+  - [x] 23.2 Delete Controllers/AuthController.cs
     - Remove the entire 8,293-line legacy controller file
     - This file contains all legacy implementations with [LegacyAction] attributes
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 23.3 Update integration tests for post-cleanup behavior
+  - [x] 23.3 Update integration tests for post-cleanup behavior
     - Remove tests that specifically test legacy AuthController implementations
     - Keep tests for AuthController
     - Keep/rewrite feature flag toggle tests to validate endpoint-disable semantics (503 responses when disabled)
     - Remove only legacy-controller-specific test logic, not toggle validation assertions
     - _Requirements: 5.5_
 
-- [ ] 24. Clean up AuthControllerRefactored.cs
-  - [ ] 24.1 Remove [RefactoredAction] attributes from all endpoints
+- [x] 24. Clean up AuthControllerRefactored.cs
+  - [x] 24.1 Remove [RefactoredAction] attributes from all endpoints
     - These attributes are no longer needed since legacy controller is deleted
     - Keep [AllowAnonymous], [HttpPost], [HttpGet], etc. attributes
     - NOTE: Authentication is handled manually in BaseController via hybrid auth model, NOT via [Authorize] attribute
     - Location: Controllers/AuthControllerRefactored.cs
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 24.2 Rename AuthControllerRefactored.cs to AuthController.cs
+  - [x] 24.2 Rename AuthControllerRefactored.cs to AuthController.cs
     - This becomes the new primary AuthController
     - Update class name from AuthControllerRefactored to AuthController
     - Update constructor and all internal references
     - _Requirements: 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
   
-  - [ ] 24.3 Update route attribute to use token replacement
+  - [x] 24.3 Update route attribute to use token replacement
     - Change `[Route("api/Auth")]` to `[Route("api/[controller]")]` for consistency with ASP.NET Core conventions
     - This maintains the same route ("api/Auth") but uses standard token replacement pattern
     - Verify all routes still match expected patterns after change

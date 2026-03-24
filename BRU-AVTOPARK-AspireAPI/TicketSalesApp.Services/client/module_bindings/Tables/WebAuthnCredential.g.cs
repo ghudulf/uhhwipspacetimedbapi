@@ -46,7 +46,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<WebAuthnCredential, uint> Counter { get; }
         public global::SpacetimeDB.Col<WebAuthnCredential, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<WebAuthnCredential, bool> IsActive { get; }
-        public global::SpacetimeDB.NullableCol<WebAuthnCredential, string> DeviceName { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, string> DeviceName { get; }
 
         public WebAuthnCredentialCols(string tableName)
         {
@@ -57,7 +57,7 @@ namespace SpacetimeDB.Types
             Counter = new global::SpacetimeDB.Col<WebAuthnCredential, uint>(tableName, "counter");
             CreatedAt = new global::SpacetimeDB.Col<WebAuthnCredential, ulong>(tableName, "created_at");
             IsActive = new global::SpacetimeDB.Col<WebAuthnCredential, bool>(tableName, "is_active");
-            DeviceName = new global::SpacetimeDB.NullableCol<WebAuthnCredential, string>(tableName, "device_name");
+            DeviceName = new global::SpacetimeDB.Col<WebAuthnCredential, string>(tableName, "device_name");
         }
     }
 
