@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using Serilog;
+using System.Threading;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 {

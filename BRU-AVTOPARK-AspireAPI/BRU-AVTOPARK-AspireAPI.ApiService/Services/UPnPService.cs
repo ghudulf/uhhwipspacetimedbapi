@@ -64,6 +64,12 @@ public sealed class UPnPService : IHostedService
             _logger.LogWarning("[UPnP] Discovery timed out after {Timeout}s — running without port mapping",
                 _options.DiscoveryTimeoutSeconds);
         }
+        catch (MappingException ex) when (ex.ErrorCode == 718)
+        {
+            // Error 718 = ConflictInMappingEntry — a mapping for this port already exists on the router
+            // (leftover from a previous session). Non-fatal, server starts normally.
+            _logger.LogDebug("[UPnP] Port mapping already exists on router (error 718) — server will still start normally");
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[UPnP] Port mapping failed — server will still start normally");

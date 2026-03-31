@@ -12,7 +12,7 @@ public record LoginRequest
     public required string Username { get; init; }
 
     [Required(ErrorMessage = "Password is required")]
-    [StringLength(256, MinimumLength = 6)]
+    [StringLength(256, MinimumLength = 1)]
     public required string Password { get; init; }
 
     /// <summary>When true, bypasses 2FA verification (e.g., during re-authentication flows).</summary>
