@@ -62,8 +62,13 @@ namespace TicketSalesApp.Services.Implementations
                     return (true, null);
                 }
 
-                // Generate a unique token
-                var token = GenerateRandomToken();
+                // Generate a unique token (URL-safe base64)
+                var randomBytes = new byte[32];
+                using (var rng = RandomNumberGenerator.Create())
+                {
+                    rng.GetBytes(randomBytes);
+                }
+                var token = Convert.ToBase64String(randomBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
                 
                 // Store the token in SpacetimeDB
                 var expiryTime = DateTime.UtcNow.AddMinutes(MAGIC_LINK_EXPIRY_MINUTES);
@@ -171,18 +176,6 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Generates a random token
-        /// </summary>
-        private string GenerateRandomToken()
-        {
-            var randomBytes = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-            }
-            return Convert.ToBase64String(randomBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
-        }
     }
 }
 

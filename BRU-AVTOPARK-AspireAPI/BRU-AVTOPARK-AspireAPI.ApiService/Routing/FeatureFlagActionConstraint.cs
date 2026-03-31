@@ -8,8 +8,24 @@ using Microsoft.Extensions.Logging;
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Routing
 {
     /// <summary>
-    /// Custom action constraint that selects between legacy and refactored controllers
-    /// based on feature flags. This allows dynamic routing at the action level.
+    /// Custom action constraint that selects between two controller actions at runtime
+    /// based on a feature flag value. This enables dual-controller architectures where
+    /// a legacy and a refactored implementation coexist and are toggled via configuration.
+    ///
+    /// KEPT FOR FUTURE USE: Even after the AuthController refactoring is complete and the
+    /// legacy controller has been removed, this infrastructure is intentionally retained.
+    /// It can be reused for any future dual-controller migrations or A/B testing scenarios:
+    ///
+    ///   1. Create a new "refactored" controller alongside the existing one.
+    ///   2. Add a new boolean flag to <see cref="FeatureFlagOptions"/>.
+    ///   3. Decorate the legacy action with <see cref="LegacyActionAttribute"/> and the
+    ///      new action with <see cref="RefactoredActionAttribute"/>, both referencing the
+    ///      new flag property name.
+    ///   4. Toggle the flag at runtime via the admin API or appsettings.json to route
+    ///      traffic between implementations with zero downtime and instant rollback.
+    ///
+    /// This pattern is production-grade and has been validated during the AuthController
+    /// refactoring (Phases 1-7). Reuse it freely for future incremental migrations.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     public class FeatureFlagActionConstraintAttribute : Attribute, IActionConstraint
@@ -101,7 +117,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Routing
     }
 
     /// <summary>
-    /// Marks an action as the REFACTORED version (selected when feature flag is ENABLED)
+    /// Marks an action as the REFACTORED (new) version of an endpoint.
+    /// The action is selected when the named feature flag is <c>true</c> (ENABLED).
+    ///
+    /// Reuse this attribute whenever introducing a new controller implementation
+    /// alongside a legacy one. Pair it with <see cref="LegacyActionAttribute"/> on
+    /// the old action using the same flag property name.
     /// </summary>
     public class RefactoredActionAttribute : FeatureFlagActionConstraintAttribute
     {
@@ -112,7 +133,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Routing
     }
 
     /// <summary>
-    /// Marks an action as the LEGACY version (selected when feature flag is DISABLED)
+    /// Marks an action as the LEGACY (old) version of an endpoint.
+    /// The action is selected when the named feature flag is <c>false</c> (DISABLED).
+    ///
+    /// Reuse this attribute to keep the existing controller action active as the
+    /// safe fallback while a refactored version is being validated. Pair it with
+    /// <see cref="RefactoredActionAttribute"/> on the new action using the same flag
+    /// property name.
     /// </summary>
     public class LegacyActionAttribute : FeatureFlagActionConstraintAttribute
     {

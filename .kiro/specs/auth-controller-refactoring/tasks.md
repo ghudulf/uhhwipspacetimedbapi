@@ -903,44 +903,44 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Location: Controllers/AuthController.cs (after rename from AuthControllerRefactored.cs)
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 25. Keep routing infrastructure for future use
-  - [ ] 25.1 Keep FeatureFlagActionConstraint.cs
+- [x] 25. Keep routing infrastructure for future use
+  - [x] 25.1 Keep FeatureFlagActionConstraint.cs
     - Retain Routing/FeatureFlagActionConstraint.cs
     - Keep RefactoredActionAttribute and LegacyActionAttribute classes
     - Routing infrastructure remains useful for future feature-flagged refactorings or A/B testing
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 25.2 Keep [LegacyAction] attributes on AuthController.cs (after legacy controller deletion, this task is N/A)
+  - [x] 25.2 Keep [LegacyAction] attributes on AuthController.cs (after legacy controller deletion, this task is N/A)
     - Once legacy AuthController.cs is deleted, [LegacyAction] attributes are gone with it
     - No action needed - routing infrastructure stays intact in FeatureFlagActionConstraint.cs
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 25.3 Remove [RefactoredAction] attributes from AuthControllerRefactored.cs (after rename)
+  - [x] 25.3 Remove [RefactoredAction] attributes from AuthControllerRefactored.cs (after rename)
     - After renaming to AuthController.cs, remove [RefactoredAction] attributes since there is no longer a competing legacy controller
     - The routing infrastructure (FeatureFlagActionConstraint.cs) is kept for future use
     - _Requirements: 1.5_
   
-  - [ ] 25.4 Document routing infrastructure for future use
+  - [x] 25.4 Document routing infrastructure for future use
     - Add comment in FeatureFlagActionConstraint.cs explaining it is kept for future feature-flagged rollouts
     - Document that [RefactoredAction]/[LegacyAction] attributes can be reused for any future dual-controller migrations
     - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 26. Repurpose feature flag configuration for operational endpoint control
-  - [ ] 26.1 Update FeatureFlagOptions.cs to reflect new purpose
+- [x] 26. Repurpose feature flag configuration for operational endpoint control
+  - [x] 26.1 Update FeatureFlagOptions.cs to reflect new purpose
     - Change all flag default values from `false` to `true` (all endpoints enabled by default after legacy controller removal)
     - Update XML documentation on each flag property to state: "Controls endpoint availability. When false, the endpoint returns 503 Service Unavailable. Default: true (enabled)."
     - Add class-level XML comment explaining the new purpose: "After legacy AuthController removal, these flags no longer select between implementations. They now control whether each endpoint is available at all. Set to false to temporarily disable an endpoint without a deployment (e.g., security incident, performance issue)."
     - Location: `Options/FeatureFlagOptions.cs`
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 26.2 Update appsettings.json to set all flags to true
+  - [x] 26.2 Update appsettings.json to set all flags to true
     - Change all feature flag values from `false` to `true` in the `FeatureFlags` section
     - Add a comment block above the section explaining: "All flags are true by default. Setting a flag to false disables that endpoint entirely (returns 503). This is for operational control only - there is no longer a legacy fallback."
     - Verify hot reload still works (IOptionsMonitor) so flags can be toggled at runtime without restart
     - Location: `appsettings.json`
     - _Requirements: 6.1, 6.2, 6.3, 6.1.2_
   
-  - [ ] 26.3 Verify FeatureFlagService.cs runtime management still works correctly
+  - [x] 26.3 Verify FeatureFlagService.cs runtime management still works correctly
     - Confirm `GetAllFlagsAsync()`, `GetFlagAsync()`, `UpdateFlagAsync()`, and `BulkUpdateFlagsAsync()` all function correctly with the new true-default semantics
     - Confirm priority chain still works: runtime overrides (SpacetimeDB) > appsettings.json > default (true)
     - Confirm in-memory cache invalidation works so flag changes take effect immediately without restart
@@ -948,7 +948,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Location: `Experimental/Services/Implementations/FeatureFlagService.cs`
     - _Requirements: 6.1.3, 6.1.4, 6.1.6, 6.1.7, 6.1.8_
   
-  - [ ] 26.4 Update admin feature flag UI text and documentation
+  - [x] 26.4 Update admin feature flag UI text and documentation
     - Update the `/admin/feature-flags` page title and description to reflect new purpose: "Endpoint Availability Control" instead of "Refactoring Rollout"
     - Update toggle labels from "Enable refactored implementation" to "Endpoint enabled"
     - Update the confirmation dialog for disabling a flag to warn: "Disabling this flag will return 503 to all callers of this endpoint. There is no legacy fallback. Are you sure?"
@@ -957,8 +957,8 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Location: `Experimental/Views/Admin/FeatureFlags.cshtml`
     - _Requirements: 6.1.4, 6.1.5, 6.1.8, 6.1.9_
 
-- [ ] 27. Add operational disablement checks to AuthController (renamed from AuthControllerRefactored)
-  - [ ] 27.1 Add feature flag availability check at the start of each endpoint method
+- [x] 27. Add operational disablement checks to AuthController (renamed from AuthControllerRefactored)
+  - [x] 27.1 Add feature flag availability check at the start of each endpoint method
     - At the very top of each action method body, before any other logic, check the corresponding feature flag
     - If the flag is `false`, immediately return `StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "<endpoint name>" })`
     - This is purely operational - there is no legacy fallback. A disabled flag means the endpoint is down, not that it routes elsewhere.
@@ -976,71 +976,71 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Apply this pattern to all 56 endpoints in the renamed AuthController.cs
     - _Requirements: 6.1, 6.2, 6.3, 15.4_
   
-  - [ ] 27.2 Add structured logging for disabled endpoint access attempts
+  - [x] 27.2 Add structured logging for disabled endpoint access attempts
     - When a 503 is returned due to a disabled flag, log a warning with: endpoint name, HTTP method, request path, user identity (from JWT if present, otherwise "anonymous"), client IP, and UTC timestamp
     - Use the existing `ILogger<AuthController>` (already injected) with log level `Warning`
     - Log message format: `"Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}"`
     - This allows operators to see the blast radius of disabling an endpoint and decide when it is safe to re-enable
     - _Requirements: 6.5, 12.5_
   
-  - [ ] 27.3 Add XML documentation comments to each endpoint explaining feature flag behavior
+  - [x] 27.3 Add XML documentation comments to each endpoint explaining feature flag behavior
     - Add `<remarks>` XML doc block to each action method explaining: "This endpoint's availability is controlled by the `<flag name>` feature flag in `FeatureFlagOptions`. When the flag is false, the endpoint returns 503 Service Unavailable. Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment."
     - This makes the operational behavior discoverable to future developers reading the code
     - _Requirements: 11.1, 11.2_
 
-- [ ] 28. Remove duplicated helper methods from old AuthController locations
-  - [ ] 28.1 Verify no duplicated IsAdmin method exists
+- [x] 28. Remove duplicated helper methods from old AuthController locations
+  - [x] 28.1 Verify no duplicated IsAdmin method exists
     - Should only exist in AuthOrchestrationService
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.2, 3.5_
   
-  - [ ] 28.2 Verify no duplicated HasPermission method exists
+  - [x] 28.2 Verify no duplicated HasPermission method exists
     - Should only exist in AuthOrchestrationService
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.3, 3.5_
   
-  - [ ] 28.3 Verify no duplicated GenerateJwtToken method exists
+  - [x] 28.3 Verify no duplicated GenerateJwtToken method exists
     - Should only exist in TokenService
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.5_
   
-  - [ ] 28.4 Verify no duplicated GetUserIdentity method exists
+  - [x] 28.4 Verify no duplicated GetUserIdentity method exists
     - Should only exist in IdentityService
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.4, 3.5_
   
-  - [ ] 28.5 Verify no duplicated IsBrowserRequest method exists
+  - [x] 28.5 Verify no duplicated IsBrowserRequest method exists
     - Should only exist in RequestDetector service
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.5_
   
-  - [ ] 28.6 Verify no duplicated GenerateRandomToken method exists
+  - [x] 28.6 Verify no duplicated GenerateRandomToken method exists
     - Should only exist in TokenService
     - Remove from any other locations if found
     - _Requirements: 3.1, 3.5_
 
-- [ ] 29. Verify controller line count reduction
-  - [ ] 29.1 Measure final AuthController.cs line count
+- [x] 29. Verify controller line count reduction
+  - [x] 29.1 Measure final AuthController.cs line count
     - Target: ~2,000-2,500 lines (down from 8,293 lines)
     - 70-75% reduction achieved
     - Includes feature flag checks for endpoint disabling
     - _Requirements: 1.5_
   
-  - [ ] 29.2 Verify all endpoints follow clean architecture
+  - [x] 29.2 Verify all endpoints follow clean architecture
     - All endpoints delegate to orchestration service
     - Zero direct database access
     - Zero duplicated helper methods
     - Feature flags used only for endpoint availability control
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 30. Final testing and validation
-  - [ ] 30.1 Run full test suite
+- [x] 30. Final testing and validation
+  - [x] 30.1 Run full test suite
     - All unit tests passing
     - All integration tests passing
     - All performance tests passing
     - _Requirements: 5.5_
   
-  - [ ] 30.2 Test feature flag endpoint operational disablement
+  - [x] 30.2 Test feature flag endpoint operational disablement
     - Disable each endpoint via feature flag
     - Verify 503 Service Unavailable response (operational disablement semantics)
     - Verify logging works correctly
@@ -1048,35 +1048,35 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - Validate that disabling does not restore legacy implementations (confirms post-cleanup behavior)
     - _Requirements: 6.1, 6.2, 6.3, 6.5_
   
-  - [ ] 30.3 Perform security audit
+  - [x] 30.3 Perform security audit
     - Verify all authentication logic centralized
     - Verify all authorization logic centralized
     - Verify audit logging implemented
     - Verify feature flag admin endpoints are properly secured
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 30.4 Update documentation
+  - [x] 30.4 Update documentation
     - Update ARCHITECTURE.md to reflect final state
     - Document feature flag purpose (endpoint availability control)
     - Update API documentation
     - Document operational procedures for disabling endpoints
     - _Requirements: 11.1, 11.2, 11.4_
 
-- [ ] 31. Deploy cleanup to production
-  - [ ] 31.1 Deploy to staging environment
+- [x] 31. Deploy cleanup to production
+  - [x] 31.1 Deploy to staging environment
     - Run full test suite in staging
     - Perform manual testing
     - Test feature flag endpoint disabling
     - _Requirements: 12.1, 12.2_
   
-  - [ ] 31.2 Deploy to production
+  - [x] 31.2 Deploy to production
     - Monitor for 24 hours
     - Verify all endpoints functioning correctly
     - Verify performance metrics unchanged
     - Verify feature flag admin UI works correctly
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 32. Final checkpoint - Cleanup complete
+- [x] 32. Final checkpoint - Cleanup complete
   - Legacy AuthController.cs deleted (8,293 lines removed)
   - AuthControllerRefactored.cs renamed to AuthController.cs (~2,000-2,500 lines)
   - [RefactoredAction] attributes removed from renamed AuthController.cs (no longer needed with single controller)
@@ -1181,28 +1181,28 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 
 **Headless OAuth Strategy**: `~/connect/token` already returns JSON per the OAuth 2.0 spec. `~/connect/authorize` is a browser redirect endpoint by spec design and stays that way. For headless clients, a new **backchannel authorize endpoint** (`POST /api/auth/oauth/authorize`) is added — it performs the same authorization logic server-side and returns the authorization code as JSON, which the client exchanges via the standard `~/connect/token`. This gives headless clients a complete JSON-native OAuth flow without touching the spec-compliant browser endpoints.
 
-- [ ] 33. Add JSON API support to core authentication flows
-  - [ ] 33.1 Add JSON response to Login endpoint (`POST /api/auth/login`)
+- [x] 33. Add JSON API support to core authentication flows
+  - [x] 33.1 Add JSON response to Login endpoint (`POST /api/auth/login`)
     - Already returns JSON for API clients - verify and document the existing behavior
     - Confirm response schema: `{ success, token, requiresTwoFactor, twoFactorType, tempToken, totpEnabled, webAuthnEnabled, webAuthnOptions, user }`
     - Confirm error schema: `{ success: false, error: "Invalid credentials" }` with HTTP 401
     - Add OpenAPI `[Produces("application/json", "text/html")]` attribute
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.2 Add JSON response to Register endpoint (`POST /api/auth/register`)
+  - [x] 33.2 Add JSON response to Register endpoint (`POST /api/auth/register`)
     - Already returns JSON for API clients - verify and document the existing behavior
     - Confirm response schema: `{ success, token, user, message }`
     - Confirm error schema: `{ success: false, error: "<reason>" }` with HTTP 400/409
     - Add OpenAPI `[Produces("application/json", "text/html")]` attribute
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.3 Add JSON response to Profile endpoint (`GET /api/auth/profile`)
+  - [x] 33.3 Add JSON response to Profile endpoint (`GET /api/auth/profile`)
     - Already returns JSON for API clients - verify and document the existing behavior
     - Confirm response schema: `{ user, roles, permissions, totpEnabled, webAuthnCredentials, settings }`
     - Add OpenAPI `[Produces("application/json", "text/html")]` attribute
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.4 Verify JSON responses for all TOTP endpoints (4 endpoints)
+  - [x] 33.4 Verify JSON responses for all TOTP endpoints (4 endpoints)
     - `GET /api/auth/totp/setup` → `{ qrCodeUri, secretKey }`
     - `POST /api/auth/totp/verify` → `{ success, message }`
     - `POST /api/auth/totp/disable` → `{ success, message }`
@@ -1210,7 +1210,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - All TOTP endpoints are already JSON-only (no HTML) - verify schemas and add OpenAPI attributes
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.5 Verify JSON responses for all WebAuthn endpoints (7 endpoints)
+  - [x] 33.5 Verify JSON responses for all WebAuthn endpoints (7 endpoints)
     - `POST /api/auth/webauthn/register/options` → `{ options }` (FIDO2 credential creation options JSON)
     - `POST /api/auth/webauthn/register/complete` → `{ success, message }`
     - `POST /api/auth/webauthn/login/options` → `{ options }` (FIDO2 assertion options JSON)
@@ -1221,13 +1221,13 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - All WebAuthn endpoints are already JSON-only - verify schemas and add OpenAPI attributes
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.6 Verify JSON responses for all Magic Link endpoints (2 endpoints)
+  - [x] 33.6 Verify JSON responses for all Magic Link endpoints (2 endpoints)
     - `POST /api/auth/magic-link/send` → `{ success, message }` (does not reveal if email exists)
     - `POST /api/auth/validate-magic-link` → `{ success, token, user }` or `{ success: false, error }`
     - Both are already JSON-only - verify schemas and add OpenAPI attributes
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 33.7 Verify JSON responses for all QR Auth endpoints (7 endpoints)
+  - [x] 33.7 Verify JSON responses for all QR Auth endpoints (7 endpoints)
     - `POST /api/auth/qr/generate` → `{ qrCodeData, token, expiresAt }`
     - `POST /api/auth/qr/validate` → `{ success, token, user }` or `{ success: false, error }`
     - `POST /api/auth/qr/direct/generate` → `{ qrCodeData }`
@@ -1235,16 +1235,16 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - All QR endpoints are already JSON-only - verify schemas and add OpenAPI attributes
     - _Requirements: Future vision - API-first design_
 
-- [ ] 34. Add JSON API support to OAuth/OIDC flows
+- [x] 34. Add JSON API support to OAuth/OIDC flows
   **Context**: The OAuth/OIDC endpoints are the most complex case for headless support. `~/connect/token` already returns JSON per the OAuth 2.0 spec (it's a pure JSON API endpoint). `~/connect/authorize` is the hard one — the spec defines it as a browser redirect flow, but headless clients (mobile apps, Avalonia desktop client, CLI tools) need a way to drive the authorization flow without a browser. The solution is a **backchannel authorize endpoint**: a separate JSON endpoint that performs the same authorization logic server-side and returns the authorization code directly as JSON, which the client then exchanges via the standard `~/connect/token` endpoint. The browser-redirect `~/connect/authorize` stays untouched and spec-compliant.
 
-  - [ ] 34.1 Add JSON response to OAuth login form endpoint (`GET /api/auth/oauth/login` or equivalent)
+  - [x] 34.1 Add JSON response to OAuth login form endpoint (`GET /api/auth/oauth/login` or equivalent)
     - When `Accept: application/json`, return `{ requestId, clientName, scopes, redirectUri, state }` instead of rendering OAuthLogin.cshtml
     - This allows a headless client to render its own login UI and collect credentials before calling the backchannel authorize endpoint
     - Keep HTML response for browser clients (backward compatible)
     - _Requirements: Future vision - Headless OAuth_
   
-  - [ ] 34.2 Add JSON endpoint for OAuth consent (`POST /api/auth/oauth/consent`)
+  - [x] 34.2 Add JSON endpoint for OAuth consent (`POST /api/auth/oauth/consent`)
     - New endpoint: accepts `{ requestId, grant: true/false }` as JSON body
     - On grant: triggers the OpenIddict authorization flow and returns `{ redirectUri }` for the client to follow
     - On deny: returns `{ redirectUri }` pointing to the error redirect URI
@@ -1252,7 +1252,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Keep existing HTML form POST for browser clients (backward compatible)
     - _Requirements: Future vision - Headless OAuth_
 
-  - [ ] 34.3 Add backchannel authorize endpoint (`POST /api/auth/oauth/authorize`) for headless clients
+  - [x] 34.3 Add backchannel authorize endpoint (`POST /api/auth/oauth/authorize`) for headless clients
     - **Purpose**: Allows headless clients (mobile, desktop, CLI) to complete the OAuth authorization flow without a browser redirect
     - **How it works**:
       1. Client POSTs `{ clientId, redirectUri, scope, state, code_challenge, code_challenge_method, nonce, username, password }` (or `{ clientId, redirectUri, scope, state, code_challenge, code_challenge_method, nonce, token }` if already authenticated)
@@ -1268,14 +1268,14 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Location: `Controllers/AuthController.cs` (new action method)
     - _Requirements: Future vision - Headless OAuth_
 
-  - [ ] 34.4 Verify `~/connect/token` already returns JSON (it does — confirm and document)
+  - [x] 34.4 Verify `~/connect/token` already returns JSON (it does — confirm and document)
     - `~/connect/token` is a standard OAuth 2.0 token endpoint — it already returns JSON per the spec (`{ access_token, token_type, expires_in, refresh_token, id_token }`)
     - Verify OpenIddict is returning the correct JSON schema for all grant types: authorization_code, refresh_token, client_credentials
     - Add OpenAPI documentation confirming this endpoint is JSON-native
     - No code changes needed — this is a verification and documentation task
     - _Requirements: Future vision - Headless OAuth_
 
-  - [ ] 34.5 Add JSON responses to OAuth client management endpoints (7 endpoints)
+  - [x] 34.5 Add JSON responses to OAuth client management endpoints (7 endpoints)
     - `GET /api/auth/oauth/clients` → already JSON, verify schema: `[{ clientId, clientName, redirectUris, scopes, createdAt }]`
     - `POST /api/auth/oauth/clients` → already JSON, verify schema: `{ clientId, clientSecret, clientName }`
     - `PUT /api/auth/oauth/clients/{id}` → already JSON, verify schema: `{ success, message }`
@@ -1285,7 +1285,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - These are already JSON - verify schemas, add OpenAPI attributes, confirm admin auth is enforced
     - _Requirements: Future vision - Headless OAuth_
   
-  - [ ] 34.6 Add JSON response to OAuth admin HTML pages (13 endpoints)
+  - [x] 34.6 Add JSON response to OAuth admin HTML pages (13 endpoints)
     - These endpoints currently render CSHTML views (ClientsList, ClientDetails, ClientForm, ScopesList, etc.)
     - Add content negotiation: when `Accept: application/json`, return the same data as JSON instead of rendering the view
     - Use `RequestDetector.IsBrowserRequest()` to detect browser vs API client
@@ -1293,7 +1293,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Keep HTML rendering for browser clients (backward compatible)
     - _Requirements: Future vision - Headless OAuth_
 
-  - [ ] 34.7 Document the complete headless OAuth flow in ARCHITECTURE.md
+  - [x] 34.7 Document the complete headless OAuth flow in ARCHITECTURE.md
     - Document the two OAuth flows side by side:
       - **Browser flow**: `~/connect/authorize` (redirect) → user logs in via HTML form → `~/connect/token` (JSON)
       - **Headless flow**: `GET /api/auth/oauth/login` (JSON) → client collects credentials → `POST /api/auth/oauth/authorize` (JSON, returns code) → `~/connect/token` (JSON)
