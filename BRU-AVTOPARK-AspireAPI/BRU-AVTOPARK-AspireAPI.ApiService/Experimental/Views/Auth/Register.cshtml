@@ -469,12 +469,13 @@
     position: relative;
 }
 
-.register-form-field__select {
+.register-form-field__select,
+.register-form-field__select:not(.select--dark) {
     appearance: none;
     -webkit-appearance: none;
     padding-right: 2.5rem;
     cursor: pointer;
-    background-image: none;
+    background-image: none !important;
 }
 
 .register-select-arrow {
