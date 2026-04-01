@@ -19,6 +19,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         // Cached discovered base URL (null = not yet discovered)
         private string? _discoveredBaseUrl;
+        // True only when a live host was confirmed via PingApiAsync (not the localhost fallback)
+        private bool _wasDiscoveredSuccessfully;
         private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
 
         // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
@@ -119,6 +121,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public string? CurrentBaseUrl => _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
 
         /// <summary>
+        /// True when a live host was confirmed via the ping endpoint during discovery
+        /// (as opposed to the localhost fallback used when no server was found).
+        /// </summary>
+        public bool WasDiscoveredSuccessfully => _wasDiscoveredSuccessfully;
+
+        /// <summary>
         /// Probes localhost first, then scans 192.168.0.100–249 in parallel.
         /// Caches the first responding host and returns it.
         /// </summary>
@@ -143,6 +151,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 {
                     Serilog.Log.Information("ApiClientService: API found at localhost");
                     _discoveredBaseUrl = $"{localhostUrl}api/";
+                    _wasDiscoveredSuccessfully = true;
                     return _discoveredBaseUrl;
                 }
 
@@ -159,6 +168,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 {
                     Serilog.Log.Information("ApiClientService: API found at {Url}", found);
                     _discoveredBaseUrl = $"{found}api/";
+                    _wasDiscoveredSuccessfully = true;
                     return _discoveredBaseUrl;
                 }
 
@@ -179,6 +189,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public void ResetDiscovery()
         {
             _discoveredBaseUrl = null;
+            _wasDiscoveredSuccessfully = false;
             Serilog.Log.Information("ApiClientService: Discovery cache cleared");
         }
 

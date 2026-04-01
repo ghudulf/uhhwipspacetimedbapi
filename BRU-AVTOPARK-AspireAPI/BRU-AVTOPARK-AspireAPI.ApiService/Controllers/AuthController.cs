@@ -92,6 +92,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpGet("login")]
         [AllowAnonymous]
+        [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public IActionResult LoginPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (!_featureFlags.Value.EnableLoginRefactoring)
@@ -134,6 +137,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("login")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<TwoFactorResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (!_featureFlags.Value.EnableLoginRefactoring)
@@ -243,6 +251,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpGet("register")]
         [AllowAnonymous]
+        [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public IActionResult RegisterPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (!_featureFlags.Value.EnableRegisterRefactoring)
@@ -285,6 +296,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("register")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<RegisterResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (!_featureFlags.Value.EnableRegisterRefactoring)
@@ -375,6 +390,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("totp/setup")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<TotpSetupResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpSetup()
         {
             if (!_featureFlags.Value.EnableTotpSetupRefactoring)
@@ -434,6 +452,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("totp/verify")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpVerify([FromBody] VerifyTotpRequest request)
         {
             if (!_featureFlags.Value.EnableTotpVerifyRefactoring)
@@ -488,6 +510,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("totp/disable")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpDisable()
         {
             if (!_featureFlags.Value.EnableTotpDisableRefactoring)
@@ -541,6 +567,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("totp/validate")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpValidate([FromBody] ValidateTotpRequest request)
         {
             if (!_featureFlags.Value.EnableTotpValidateRefactoring)
@@ -634,6 +664,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/register/options")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnRegisterOptions()
         {
             if (!_featureFlags.Value.EnableWebAuthnRegisterOptionsRefactoring)
@@ -687,6 +721,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/register/complete")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnRegisterComplete([FromBody] WebAuthnRegisterCompleteRequest request)
         {
             if (!_featureFlags.Value.EnableWebAuthnRegisterCompleteRefactoring)
@@ -742,6 +780,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/login/options")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnLoginOptions([FromBody] WebAuthnLoginOptionsRequest request)
         {
             if (!_featureFlags.Value.EnableWebAuthnLoginOptionsRefactoring)
@@ -784,6 +825,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/login/complete")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnLoginComplete([FromBody] WebAuthnLoginCompleteRequest request)
         {
             if (!_featureFlags.Value.EnableWebAuthnLoginCompleteRefactoring)
@@ -864,6 +909,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("webauthn/validate")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnValidate([FromBody] WebAuthnValidateRequest request)
         {
             if (!_featureFlags.Value.EnableWebAuthnValidateRefactoring)
@@ -953,6 +1002,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("webauthn/credentials")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<List<object>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnCredentials()
         {
             if (!_featureFlags.Value.EnableWebAuthnCredentialsRefactoring)
@@ -1010,6 +1062,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpDelete("webauthn/credentials/{id}")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnCredentialDelete(string id)
         {
             if (!_featureFlags.Value.EnableWebAuthnCredentialDeleteRefactoring)
@@ -1067,6 +1123,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("magic-link/send")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<MagicLinkResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> MagicLinkSend([FromBody] MagicLinkRequest request)
         {
             if (!_featureFlags.Value.EnableMagicLinkSendRefactoring)
@@ -1120,6 +1179,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("validate-magic-link")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> MagicLinkValidate([FromBody] MagicLinkValidateRequest request)
         {
             if (!_featureFlags.Value.EnableMagicLinkValidateRefactoring)
@@ -1208,6 +1271,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpGet("magic-link")]
         [AllowAnonymous]
+        [Produces("application/json", "text/html")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public Task<IActionResult> MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
             if (!_featureFlags.Value.EnableMagicLinkPageRefactoring)
@@ -1238,6 +1304,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpGet("qr-login")]
         [AllowAnonymous]
+        [Produces("application/json", "text/html")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public Task<IActionResult> QRLoginPage()
         {
             if (!_featureFlags.Value.EnableQRLoginPageRefactoring)
@@ -1266,6 +1335,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("qr-login/generate")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<QRLoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginGenerate()
         {
             if (!_featureFlags.Value.EnableQRLoginGenerateRefactoring)
@@ -1325,6 +1398,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("qr-login/validate")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginValidate([FromBody] QRLoginValidateRequest request)
         {
             if (!_featureFlags.Value.EnableQRLoginValidateRefactoring)
@@ -1388,6 +1465,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("qr-login/direct")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginDirect([FromBody] QRLoginDirectRequest request)
         {
             if (!_featureFlags.Value.EnableQRLoginDirectRefactoring)
@@ -1444,6 +1525,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("qr-login/status")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<QRLoginStatusResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginStatus([FromQuery] string deviceId)
         {
             if (!_featureFlags.Value.EnableQRLoginStatusRefactoring)
@@ -1499,6 +1583,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("qr-login/cancel")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginCancel([FromBody] QRLoginCancelRequest request)
         {
             if (!_featureFlags.Value.EnableQRLoginCancelRefactoring)
@@ -1549,6 +1636,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("qr-login/notify")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginNotify([FromBody] QRLoginNotifyRequest request)
         {
             if (!_featureFlags.Value.EnableQRLoginNotifyRefactoring)
@@ -1612,6 +1703,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [AllowAnonymous]
+        [Produces("application/json", "text/html")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status302Found)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Authorize()
         {
             if (!_featureFlags.Value.EnableOAuthAuthorizeRefactoring)
@@ -1781,6 +1877,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("~/connect/token")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Exchange()
         {
             if (!_featureFlags.Value.EnableOAuthTokenRefactoring)
@@ -1978,6 +2078,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("~/connect/userinfo")]
         [Authorize]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(UserInfoResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthUserInfo()
         {
             if (!_featureFlags.Value.EnableOAuthUserInfoRefactoring)
@@ -2038,6 +2141,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("oauth/authorize")]
         [AllowAnonymous]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthBackchannelAuthorize([FromBody] OAuthBackchannelAuthorizeRequest request)
         {
             if (!_featureFlags.Value.EnableOAuthBackchannelAuthorizeRefactoring)
@@ -2227,6 +2334,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpPost("connect/clients")]
         [Authorize(Roles = "Administrator")]
         [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<OAuthClientDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientRegister([FromBody] RegisterClientRequest request)
         {
             if (!_featureFlags.Value.EnableOAuthClientRegisterRefactoring)
@@ -2289,6 +2400,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("connect/clients")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<List<ClientDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientList([FromQuery] string? token = null)
         {
             if (!_featureFlags.Value.EnableOAuthClientListRefactoring)
@@ -2353,6 +2467,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [HttpGet("connect/clients/{id}")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
+        [ProducesResponseType(typeof(ApiResponse<OAuthClientDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientDetails(string id, [FromQuery] string? token = null)
         {
             if (!_featureFlags.Value.EnableOAuthClientDetailsRefactoring)
@@ -2572,6 +2689,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpPost("connect/clients/{id}/regenerate-secret")]
         [Authorize(Roles = "Administrator")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<OAuthClientSecretDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientRegenerateSecret(string id)
         {
             if (!_featureFlags.Value.EnableOAuthClientRegenerateSecretRefactoring)

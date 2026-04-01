@@ -1,0 +1,295 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="using:Material.Icons.Avalonia"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.TrayPopupWindow"
+        Width="300"
+        SizeToContent="Height"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        CanResize="False">
+
+    <Window.Styles>
+        <!-- Module button style -->
+        <Style Selector="Button.module">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Padding" Value="8,10"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.module:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <Style Selector="Button.module:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#55FF5722"/>
+        </Style>
+
+        <!-- Footer action button -->
+        <Style Selector="Button.footer-action">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#B0B0B0"/>
+            <Setter Property="Padding" Value="8,7"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.footer-action:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+        </Style>
+
+        <!-- Danger footer button -->
+        <Style Selector="Button.footer-danger">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FF6B6B"/>
+            <Setter Property="Padding" Value="8,7"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.footer-danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FF4444"/>
+        </Style>
+    </Window.Styles>
+
+    <!-- Outer border gives the rounded card + shadow feel -->
+    <Border CornerRadius="12"
+            Background="#E8202030"
+            BorderBrush="#44FFFFFF"
+            BorderThickness="1"
+            BoxShadow="0 8 32 0 #88000000">
+
+        <StackPanel>
+
+            <!-- ── Header ──────────────────────────────────────────────── -->
+            <Border Background="#28FFFFFF"
+                    CornerRadius="11,11,0,0"
+                    Padding="14,12">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+
+                    <!-- Status dot + logo area -->
+                    <Border Grid.Column="0"
+                            Width="38" Height="38"
+                            CornerRadius="10"
+                            Background="#FF5722"
+                            VerticalAlignment="Center"
+                            Margin="0,0,10,0">
+                        <materialIcons:MaterialIcon Kind="Bus"
+                                                   Width="22" Height="22"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- App name + status text -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="BRU Авторпарк"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <!-- Connection status dot -->
+                            <Ellipse x:Name="StatusDot"
+                                     Width="7" Height="7"
+                                     Fill="#4CAF50"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock x:Name="StatusLabel"
+                                       Text="Подключено"
+                                       FontSize="11"
+                                       Foreground="#90FFFFFF"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Close button -->
+                    <Button Grid.Column="2"
+                            x:Name="ClosePopupButton"
+                            Width="24" Height="24"
+                            Padding="0"
+                            Background="Transparent"
+                            Foreground="#60FFFFFF"
+                            VerticalAlignment="Top"
+                            CornerRadius="4"
+                            ToolTip.Tip="Закрыть">
+                        <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ── Status info row ─────────────────────────────────────── -->
+            <Border Padding="14,8,14,4">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Роль"
+                               FontSize="11"
+                               Foreground="#60FFFFFF"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1"
+                               x:Name="RoleLabel"
+                               Text="—"
+                               FontSize="11"
+                               FontWeight="Medium"
+                               Foreground="#CCFFFFFF"
+                               HorizontalAlignment="Right"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Сервер"
+                               FontSize="11"
+                               Foreground="#60FFFFFF"
+                               Margin="0,3,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               x:Name="ServerLabel"
+                               Text="localhost:5000"
+                               FontSize="11"
+                               Foreground="#CCFFFFFF"
+                               HorizontalAlignment="Right"
+                               Margin="0,3,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- ── Divider ─────────────────────────────────────────────── -->
+            <Rectangle Height="1" Fill="#22FFFFFF" Margin="14,4"/>
+
+            <!-- ── Pre-auth overlay (shown when not authenticated) ────── -->
+            <Border x:Name="AuthOverlay"
+                    IsVisible="False"
+                    Background="#CC1A1A28"
+                    CornerRadius="0"
+                    Padding="16,14">
+                <StackPanel Spacing="10" HorizontalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="LockOutline"
+                                               Width="28" Height="28"
+                                               Foreground="#FF5722"
+                                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Требуется авторизация"
+                               FontSize="13"
+                               FontWeight="Medium"
+                               Foreground="#CCFFFFFF"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Войдите, чтобы использовать функции"
+                               FontSize="11"
+                               Foreground="#70FFFFFF"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <Button x:Name="LoginFromOverlayBtn"
+                            HorizontalAlignment="Center"
+                            Padding="20,8"
+                            CornerRadius="6"
+                            Background="#FF5722"
+                            Foreground="White"
+                            FontSize="13"
+                            FontWeight="Medium"
+                            Cursor="Hand"
+                            Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <materialIcons:MaterialIcon Kind="Login" Width="16" Height="16"/>
+                            <TextBlock Text="Войти" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Module buttons ──────────────────────────────────────── -->
+            <StackPanel x:Name="ModulePanel"
+                        Margin="8,2,8,2"
+                        Spacing="1">
+
+                <Button x:Name="CentralViewBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="ViewDashboard" Width="18" Height="18" Foreground="#FF5722"/>
+                        <TextBlock Text="Центральный вид" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="EmployeeBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="AccountGroup" Width="18" Height="18" Foreground="#90CAF9"/>
+                        <TextBlock Text="Сотрудники" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="BusBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="Bus" Width="18" Height="18" Foreground="#A5D6A7"/>
+                        <TextBlock Text="Автобусы" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="RouteBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="MapMarkerPath" Width="18" Height="18" Foreground="#CE93D8"/>
+                        <TextBlock Text="Маршруты" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="TicketBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="Ticket" Width="18" Height="18" Foreground="#FFD54F"/>
+                        <TextBlock Text="Продажа билетов" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="MaintenanceBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="Wrench" Width="18" Height="18" Foreground="#FFAB91"/>
+                        <TextBlock Text="Техобслуживание" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="SalesBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="ChartBar" Width="18" Height="18" Foreground="#80DEEA"/>
+                        <TextBlock Text="Статистика продаж" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="SchedulesBtn" Classes="module">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="CalendarClock" Width="18" Height="18" Foreground="#B0BEC5"/>
+                        <TextBlock Text="Расписание" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+
+            <!-- ── Divider ─────────────────────────────────────────────── -->
+            <Rectangle Height="1" Fill="#22FFFFFF" Margin="14,4"/>
+
+            <!-- ── Footer actions ──────────────────────────────────────── -->
+            <StackPanel Margin="8,2,8,8" Spacing="1">
+
+                <Button x:Name="ShowMainWindowBtn"
+                        Classes="footer-action"
+                        IsVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <materialIcons:MaterialIcon Kind="WindowRestore" Width="15" Height="15"/>
+                        <TextBlock x:Name="ShowMainWindowLabel" Text="Показать главное окно" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="LogoutBtn" Classes="footer-danger">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <materialIcons:MaterialIcon Kind="Logout" Width="15" Height="15"/>
+                        <TextBlock Text="Выйти из аккаунта" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="ExitBtn" Classes="footer-action">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <materialIcons:MaterialIcon Kind="ExitToApp" Width="15" Height="15"/>
+                        <TextBlock Text="Выход из приложения" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</Window>

@@ -1302,8 +1302,8 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Document that `~/connect/authorize` remains the canonical browser redirect endpoint and is unchanged
     - _Requirements: Future vision - Headless OAuth_
 
-- [ ] 35. Add content negotiation infrastructure
-  - [ ] 35.1 Verify RequestDetector.IsBrowserRequest() covers all content negotiation cases
+- [x] 35. Add content negotiation infrastructure
+  - [x] 35.1 Verify RequestDetector.IsBrowserRequest() covers all content negotiation cases
     - Confirm it checks `Accept: text/html` header correctly
     - Confirm it handles missing Accept header (default to HTML for backward compatibility)
     - Confirm it handles `Accept: application/json` correctly
@@ -1311,13 +1311,13 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Location: `Experimental/Services/Implementations/RequestDetector.cs`
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 35.2 Apply consistent content negotiation pattern across all dual-mode endpoints
+  - [x] 35.2 Apply consistent content negotiation pattern across all dual-mode endpoints
     - All endpoints that serve both HTML and JSON must use the same detection pattern
     - Use `_requestDetector.IsBrowserRequest(HttpContext)` as the single decision point
     - Do NOT use ad-hoc Accept header checks inline - always go through RequestDetector
     - _Requirements: Future vision - API-first design_
   
-  - [ ] 35.3 Add OpenAPI/Swagger documentation for all JSON endpoints
+  - [x] 35.3 Add OpenAPI/Swagger documentation for all JSON endpoints
     - Add `[Produces("application/json")]` or `[Produces("application/json", "text/html")]` to all endpoints
     - Add `[ProducesResponseType(typeof(LoginResponse), 200)]` etc. to document response schemas
     - Add `[ProducesResponseType(typeof(ErrorResponse), 400)]` etc. to document error schemas
@@ -1361,7 +1361,7 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
     - Test missing Accept header returns HTML (backward compatible default)
     - _Requirements: Future vision - API-first design_
 
-- [ ] 37. Checkpoint - Verify dual-mode system working
+- [x] 37. Checkpoint - Verify dual-mode system working
   - All 56 endpoints support JSON responses (either natively or via content negotiation)
   - Backchannel authorize endpoint (`POST /api/auth/oauth/authorize`) implemented and tested for headless OAuth flows
   - `~/connect/authorize` remains unchanged and spec-compliant for browser redirect flows
@@ -1373,29 +1373,42 @@ The tasks below describe **Option 2** (full frontend decoupling with Next.js) as
 
 ### Phase 9: Extract Rendering (Months 3-4 Post-Refactoring)
 
-- [ ] 38. Create view rendering abstraction layer
-  - [ ] 38.1 Expand IViewRenderingService interface
-    - Add methods for all HTML rendering operations
-    - Define clear contracts for view rendering
-    - Location: `Experimental/Services/Interfaces/IViewRenderingService.cs`
+- [ ] 38. Complete view rendering abstraction layer
+  **Context**: `IHtmlRenderingService` and `HtmlRenderingService` already exist and are fully implemented. `AuthController` already delegates all HTML rendering to this service. The remaining work is completing the 8 OAuth sub-page views that currently fall back to `RenderErrorPage` with placeholder messages.
+
+  - [x] 38.1 IHtmlRenderingService interface exists and is complete
+    - Interface defined at `Experimental/Services/Interfaces/IHtmlRenderingService.cs`
+    - Covers all auth views: Login, Register, TOTP, WebAuthn, MagicLink, QrLogin, OAuthLogin, ClaimAccount, Success, Error, Logout, Profile, OIDC clients/scopes/details/form
+    - Registered in DI as `AddScoped<IHtmlRenderingService, HtmlRenderingService>()`
     - _Requirements: Future vision - Rendering abstraction_
-  
-  - [ ] 38.2 Move all HTML generation to HtmlRenderingService
-    - Extract inline HTML strings from controllers
-    - Move CSHTML view rendering to service
-    - Centralize all HTML generation logic
+
+  - [x] 38.2 HtmlRenderingService is fully implemented
+    - All rendering methods implemented using `RenderViewToStringAsync` with Razor views
+    - All CSHTML templates exist in `Experimental/Views/` (Auth/, OAuth/, Profile/, Shared/, Admin/)
+    - `AuthController` already uses `_htmlRenderingService` for all HTML responses — no inline HTML strings remain
     - _Requirements: Future vision - Rendering abstraction_
-  
-  - [ ] 38.3 Update controllers to use rendering service
-    - Replace direct view rendering with service calls
-    - Replace inline HTML with service calls
-    - Maintain same HTML output for backward compatibility
+
+  - [ ] 38.3 Implement missing OAuth sub-page views in IHtmlRenderingService
+    - 8 OAuth sub-pages currently return `RenderErrorPage("... not yet implemented")` as placeholders in `AuthController`. Exact routes and controller methods:
+      - `GET /api/auth/oauth/authorizations` → `OAuthAuthorizationsPage([FromQuery] string? token)` → needs `RenderOAuthAuthorizationsPage(string? token = null)`
+      - `GET /api/auth/connect/tokens` → `OAuthTokensPage([FromQuery] string? token)` → needs `RenderOAuthTokensPage(string? token = null)`
+      - `GET /api/auth/oauth/dashboard` → `OAuthDashboardPage([FromQuery] string? token)` → needs `RenderOAuthDashboardPage(string? token = null)`
+      - `GET /api/auth/connect/settings` → `OAuthSettingsPage([FromQuery] string? token)` → needs `RenderOAuthSettingsPage(string? token = null)`
+      - `GET /api/auth/connect/logs` → `OAuthLogsPage([FromQuery] string? token)` → needs `RenderOAuthLogsPage(string? token = null)`
+      - `GET /api/auth/connect/help` → `OAuthHelpPage([FromQuery] string? token)` → needs `RenderOAuthHelpPage(string? token = null)`
+      - `GET /api/auth/connect/test` → `OAuthTestPage([FromQuery] string? token)` → needs `RenderOAuthTestPage(string? token = null)`
+      - `GET /api/auth/connect/callback` → `OAuthCallbackPage([FromQuery] string? code, [FromQuery] string? error)` → needs `RenderOAuthCallbackPage(string? code = null, string? error = null)`
+    - Add these 8 methods to `IHtmlRenderingService` interface
+    - Implement them in `HtmlRenderingService` using `RenderViewToStringAsync`
+    - Create corresponding CSHTML templates in `Experimental/Views/OAuth/` (e.g., `Authorizations.cshtml`, `Tokens.cshtml`, `Dashboard.cshtml`, `Settings.cshtml`, `Logs.cshtml`, `Help.cshtml`, `Test.cshtml`, `Callback.cshtml`)
+    - Update `AuthController` to call the new methods instead of the placeholder `RenderErrorPage` calls (lines ~2907, ~2940, ~2973, ~3006, ~3039, ~3072, ~3105, ~3140)
+    - Location: `Experimental/Services/Interfaces/IHtmlRenderingService.cs`, `Experimental/Services/Implementations/HtmlRenderingService.cs`, `Experimental/Views/OAuth/`
     - _Requirements: Future vision - Rendering abstraction_
-  
+
   - [ ]* 38.4 Write tests for rendering service
-    - Test all rendering methods produce correct HTML
-    - Test view data binding
-    - Test error handling
+    - Test all rendering methods produce correct HTML (non-empty, contains expected elements)
+    - Test view data binding (error/message params appear in output)
+    - Test error handling (graceful fallback when view not found)
     - _Requirements: Future vision - Rendering abstraction_
 
 - [ ] 39. Prepare for view engine swap
