@@ -202,7 +202,7 @@ public partial class TrayPopupWindow : Window
         double popupH = DesiredSize.Height > 0 ? DesiredSize.Height : 480;
 
         Position = new PixelPoint(
-            (int)((workRight  - popupW) * scaling),
+            (int)((workRight  - popupW - 10) * scaling),
             (int)((workBottom - popupH) * scaling));
 
         Show();
