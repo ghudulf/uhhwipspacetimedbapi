@@ -21,48 +21,48 @@
     --secondary-light: #FFB74D;
     
     /* Surface Colors - Light Theme (Yandex clean whites) */
-    --background-color: #FAFAFA;
-    --background-gradient: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%);
-    --card-color: rgba(255, 255, 255, 0.85);
+    --background-color: #F0F0F0;
+    --background-gradient: linear-gradient(180deg, #F2F2F2 0%, #E8E8E8 100%);
+    --card-color: rgba(255, 255, 255, 0.95);
     --card-solid: #FFFFFF;
-    --surface-elevated: rgba(255, 255, 255, 0.92);
-    --surface-overlay: rgba(255, 255, 255, 0.75);
+    --surface-elevated: rgba(255, 255, 255, 0.98);
+    --surface-overlay: rgba(248, 248, 248, 0.92);
     
     /* Glass Effects - Refined for cleaner look */
-    --glass-background: rgba(255, 255, 255, 0.78);
-    --glass-border: rgba(255, 255, 255, 0.5);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    --glass-background: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(0, 0, 0, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     --glass-blur: blur(20px);
     --glass-saturate: saturate(180%);
     
     /* Text Colors - High contrast for readability */
-    --text-color: #1A1A1A;
-    --text-secondary: #424242;
-    --text-muted: #757575;
+    --text-color: #111111;
+    --text-secondary: #333333;
+    --text-muted: #666666;
     --text-inverse: #FFFFFF;
     
     /* Border Colors */
-    --border-color: rgba(0, 0, 0, 0.08);
-    --border-light: rgba(255, 255, 255, 0.3);
+    --border-color: rgba(0, 0, 0, 0.14);
+    --border-light: rgba(0, 0, 0, 0.07);
     --border-focus: rgba(255, 87, 34, 0.4);
     
     /* Status Colors */
-    --error-color: #D32F2F;
-    --error-bg: rgba(211, 47, 47, 0.08);
-    --success-color: #388E3C;
-    --success-bg: rgba(56, 142, 60, 0.08);
-    --warning-color: #F57C00;
-    --warning-bg: rgba(245, 124, 0, 0.08);
-    --info-color: #1976D2;
-    --info-bg: rgba(25, 118, 210, 0.08);
+    --error-color: #C62828;
+    --error-bg: rgba(198, 40, 40, 0.1);
+    --success-color: #2E7D32;
+    --success-bg: rgba(46, 125, 50, 0.1);
+    --warning-color: #E65100;
+    --warning-bg: rgba(230, 81, 0, 0.1);
+    --info-color: #1565C0;
+    --info-bg: rgba(21, 101, 192, 0.1);
     
-    /* Shadows - Softer Yandex-style */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
-    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1);
-    --shadow-glow: 0 0 40px rgba(255, 87, 34, 0.12);
-    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+    /* Shadows - More visible for light mode depth */
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.13);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.16);
+    --shadow-glow: 0 0 40px rgba(255, 87, 34, 0.15);
+    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
     
     /* Border Radius - Slightly softer */
     --radius-sm: 8px;
@@ -143,6 +143,10 @@
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* Tracks the CSS variable — updates instantly when data-theme changes */
+    background-color: var(--background-color);
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 body {
@@ -151,7 +155,8 @@ body {
     line-height: 1.6;
     color: var(--text-color);
     background: var(--background-gradient);
-    background-attachment: fixed;
+    /* background-attachment: fixed breaks mobile scroll - use pseudo-element instead */
+    background-attachment: scroll;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -159,16 +164,23 @@ body {
     -moz-osx-font-smoothing: grayscale;
     transition: background var(--transition-slow), color var(--transition-base);
     letter-spacing: -0.01em;
+    /* Prevent white overscroll bounce on iOS/Android */
+    overscroll-behavior: none;
+    /* Solid color fallback under the gradient — no white ever shows through */
+    background-color: var(--background-color);
+    /* Promote to GPU layer so scroll repaints never expose white */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    will-change: scroll-position;
 }
 
 /* Subtle animated background - Warm tones */
 body::before {
     content: '';
     position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     background: 
         radial-gradient(circle at 20% 80%, rgba(255, 87, 34, 0.04) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 107, 53, 0.03) 0%, transparent 50%),
@@ -176,6 +188,12 @@ body::before {
     pointer-events: none;
     z-index: -1;
     animation: backgroundFloat 40s ease-in-out infinite;
+    /* Own GPU layer — prevents this from triggering body repaints during scroll */
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Ensure it never shows white underneath itself */
+    background-color: transparent;
 }
 
 @keyframes backgroundFloat {
@@ -280,7 +298,94 @@ p {
 }
 
 /* ============================================
-   NAVBAR - Clean Glass Effect
+   HEADER WRAPPER - Separated Panel Layout
+   ============================================ */
+.header-wrapper {
+    position: fixed;
+    top: var(--space-md);
+    left: var(--space-md);
+    right: var(--space-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: var(--z-sticky);
+    pointer-events: none;
+}
+
+.header-wrapper > * {
+    pointer-events: auto;
+}
+
+/* Logo Panel - Left side floating pill */
+.header-logo-panel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transition: all var(--transition-base);
+    text-decoration: none;
+}
+
+.header-logo-panel:hover {
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Scroll-hide states - logo slides out left, controls shrink to icon-only */
+.header-logo-panel.header-hidden {
+    opacity: 0;
+    transform: translateX(-110%) translateY(0);
+    pointer-events: none;
+}
+
+.header-controls-panel.header-compact {
+    gap: 0;
+}
+
+/* Theme toggle peek — shrinks to just the icon when logo is hidden */
+.header-controls-panel.header-compact .theme-toggle {
+    width: 38px;
+    height: 38px;
+    opacity: 0.7;
+}
+
+.header-controls-panel.header-compact .theme-toggle:hover {
+    opacity: 1;
+}
+
+/* Controls Panel - Right side floating pill */
+.header-controls-panel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transition: all var(--transition-base);
+}
+
+.header-controls-panel:hover {
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Body padding to account for floating header */
+body:has(.header-wrapper) {
+    padding-top: calc(70px + var(--space-xl));
+}
+
+/* ============================================
+   NAVBAR - Floating Glass Effect (Samsung One UI / Yandex inspired)
+   Legacy support for single unified navbar
    ============================================ */
 .navbar {
     display: flex;
@@ -290,11 +395,39 @@ p {
     background: var(--glass-background);
     backdrop-filter: var(--glass-blur) var(--glass-saturate);
     -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-2xl);
+    position: fixed;
+    top: var(--space-md);
+    left: var(--space-md);
+    right: var(--space-md);
+    margin: 0 auto;
+    max-width: calc(100% - var(--space-xl));
     z-index: var(--z-sticky);
     transition: all var(--transition-base);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Navbar floating pill variant - compact header style */
+.navbar--pill {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-full);
+    max-width: fit-content;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
+/* Navbar scrolled state - more compact and elevated */
+.navbar--scrolled {
+    padding: var(--space-sm) var(--space-lg);
+    box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    background: var(--surface-elevated);
+}
+
+/* Body padding to account for floating navbar */
+body:has(.navbar) {
+    padding-top: calc(80px + var(--space-xl));
 }
 
 .logo {
@@ -322,6 +455,31 @@ p {
 .logo:hover::before {
     transform: scale(1.08) rotate(-3deg);
     box-shadow: 0 5px 16px rgba(255, 87, 34, 0.35);
+}
+
+/* Logo icon and text for separated header */
+.logo-icon {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 3px 10px rgba(255, 87, 34, 0.25);
+    transition: all var(--transition-base);
+    flex-shrink: 0;
+}
+
+.header-logo-panel:hover .logo-icon {
+    transform: scale(1.08) rotate(-3deg);
+    box-shadow: 0 5px 16px rgba(255, 87, 34, 0.35);
+}
+
+.logo-text {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
 }
 
 .theme-toggle {
@@ -450,6 +608,13 @@ p {
     border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* In light mode, card--dark uses the light card surface instead */
+:root:not([data-theme="dark"]) .card--dark {
+    background: var(--card-color);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
 .card--wide {
     max-width: min(880px, 95vw);
 }
@@ -461,6 +626,40 @@ p {
 .card-header {
     padding: var(--space-lg);
     border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    position: relative;
+}
+
+/* Floating card header variant - detached look */
+.card-header--floating {
+    margin: var(--space-md);
+    margin-bottom: 0;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Pill-shaped card header */
+.card-header--pill {
+    margin: var(--space-md);
+    margin-bottom: 0;
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(30, 30, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-full);
+    width: fit-content;
+    color: white;
+}
+
+:root:not([data-theme="dark"]) .card-header--pill {
+    background: var(--glass-background);
+    border-color: var(--border-color);
+    color: var(--text-color);
 }
 
 .card-body {
@@ -473,6 +672,20 @@ p {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* Floating card footer variant */
+.card-footer--floating {
+    margin: var(--space-md);
+    margin-top: 0;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
 }
 
 /* Auth Card - Dark Glass */
@@ -520,6 +733,11 @@ label {
     color: rgba(255, 255, 255, 0.85);
 }
 
+/* In light mode, labels use normal text color */
+:root:not([data-theme="dark"]) .card--dark label {
+    color: var(--text-secondary);
+}
+
 input, select, textarea {
     width: 100%;
     padding: 0.8125rem 1rem;
@@ -546,10 +764,10 @@ input::placeholder {
     color: var(--text-muted);
 }
 
-/* Dark inputs for auth cards */
-.card--dark input,
-.card--dark select,
-.card--dark textarea,
+/* Dark inputs for auth cards — only in dark theme */
+[data-theme="dark"] .card--dark input,
+[data-theme="dark"] .card--dark select,
+[data-theme="dark"] .card--dark textarea,
 .auth-card input,
 .auth-card select {
     background: rgba(255, 255, 255, 0.06);
@@ -557,13 +775,13 @@ input::placeholder {
     color: white;
 }
 
-.card--dark input::placeholder,
+[data-theme="dark"] .card--dark input::placeholder,
 .auth-card input::placeholder {
     color: rgba(255, 255, 255, 0.4);
 }
 
-.card--dark input:focus,
-.card--dark select:focus,
+[data-theme="dark"] .card--dark input:focus,
+[data-theme="dark"] .card--dark select:focus,
 .auth-card input:focus,
 .auth-card select:focus {
     border-color: var(--primary-color);
@@ -870,8 +1088,8 @@ button:active, .btn:active {
     background: var(--border-color);
 }
 
-.card--dark .divider::before,
-.card--dark .divider::after,
+[data-theme="dark"] .card--dark .divider::before,
+[data-theme="dark"] .card--dark .divider::after,
 .auth-card .divider::before,
 .auth-card .divider::after {
     background: rgba(255, 255, 255, 0.12);
@@ -883,9 +1101,13 @@ button:active, .btn:active {
     font-size: 0.8125rem;
 }
 
-.card--dark .divider span,
+[data-theme="dark"] .card--dark .divider span,
 .auth-card .divider span {
     color: rgba(255, 255, 255, 0.4);
+}
+
+:root:not([data-theme="dark"]) .card--dark .divider span {
+    color: var(--text-muted);
 }
 
 /* ============================================
@@ -971,7 +1193,150 @@ button:active, .btn:active {
 }
 
 /* ============================================
-   BRU ID HEADER
+   FLOATING ACTION BUTTONS (FAB) - Samsung/Huawei/Tencent QQ Style
+   ============================================ */
+.fab {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg), 0 4px 20px rgba(255, 87, 34, 0.35);
+    transition: all var(--transition-base);
+    z-index: var(--z-sticky);
+}
+
+.fab:hover {
+    transform: scale(1.08);
+    box-shadow: var(--shadow-xl), 0 8px 30px rgba(255, 87, 34, 0.45);
+}
+
+.fab:active {
+    transform: scale(0.95);
+}
+
+/* FAB positions */
+.fab--bottom-right {
+    bottom: var(--space-xl);
+    right: var(--space-xl);
+}
+
+.fab--bottom-left {
+    bottom: var(--space-xl);
+    left: var(--space-xl);
+}
+
+.fab--bottom-center {
+    bottom: var(--space-xl);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.fab--bottom-center:hover {
+    transform: translateX(-50%) scale(1.08);
+}
+
+/* Extended FAB - Pill shaped with text */
+.fab--extended {
+    width: auto;
+    padding: var(--space-md) var(--space-xl);
+    gap: var(--space-sm);
+    border-radius: var(--radius-full);
+}
+
+/* Mini FAB */
+.fab--mini {
+    width: 44px;
+    height: 44px;
+}
+
+/* FAB Group - Multiple floating buttons */
+.fab-group {
+    position: fixed;
+    display: flex;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-sticky);
+}
+
+.fab-group--bottom-center {
+    bottom: var(--space-xl);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.fab-group--bottom-right {
+    bottom: var(--space-xl);
+    right: var(--space-xl);
+}
+
+.fab-group__item {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+}
+
+.fab-group__item:hover {
+    background: var(--surface-overlay);
+    transform: scale(1.1);
+}
+
+.fab-group__item--primary {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+}
+
+.fab-group__item--primary:hover {
+    box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+}
+
+/* Separate FAB button outside group */
+.fab-separate {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+}
+
+.fab-separate:hover {
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-lg);
+    transform: scale(1.05);
+}
+
+/* ============================================
+   BRU ID HEADER - Floating Pill Style
    ============================================ */
 .bru-id-header {
     margin-bottom: var(--space-xl);
@@ -982,15 +1347,31 @@ button:active, .btn:active {
     display: inline-flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-md);
-    background: rgba(255, 255, 255, 0.08);
+    padding: var(--space-sm) var(--space-lg);
+    background: rgba(30, 30, 30, 0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-radius: var(--radius-full);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: all var(--transition-base);
+}
+
+/* Light mode pill */
+:root:not([data-theme="dark"]) .bru-id-header__inner {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.bru-id-header__inner:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .bru-id-header__icon {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     background: var(--primary-gradient);
     border-radius: var(--radius-sm);
     box-shadow: 0 2px 8px rgba(255, 87, 34, 0.35);
@@ -998,9 +1379,65 @@ button:active, .btn:active {
 
 .bru-id-header__text {
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     color: white;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
+}
+
+:root:not([data-theme="dark"]) .bru-id-header__text {
+    color: var(--text-color);
+}
+
+/* BRU ID Header action button - pill CTA style */
+.bru-id-header__action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-md);
+    margin-left: var(--space-sm);
+    background: white;
+    color: #1A1A1A;
+    border-radius: var(--radius-full);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.bru-id-header__action:hover {
+    background: #F5F5F5;
+    transform: scale(1.02);
+}
+
+/* Floating header additional actions */
+.bru-id-header__extra {
+    width: 36px;
+    height: 36px;
+    margin-left: var(--space-sm);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: var(--radius-full);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+}
+
+.bru-id-header__extra:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.08);
+}
+
+/* Light mode overrides for bru-id-header__extra */
+:root:not([data-theme="dark"]) .bru-id-header__extra {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text-color);
+}
+
+:root:not([data-theme="dark"]) .bru-id-header__extra:hover {
+    background: rgba(0, 0, 0, 0.1);
 }
 
 /* ============================================
@@ -1011,8 +1448,14 @@ button:active, .btn:active {
     font-size: 1.375rem;
     font-weight: 600;
     margin-bottom: var(--space-md);
-    color: var(--text-inverse);
+    color: var(--text-color);
     letter-spacing: -0.015em;
+}
+
+/* In dark mode inside dark card, keep white */
+[data-theme="dark"] .card--dark .auth-title,
+[data-theme="dark"] .auth-title {
+    color: var(--text-inverse);
 }
 
 .auth-subtitle {
@@ -1027,6 +1470,48 @@ button:active, .btn:active {
 .auth-subtitle strong {
     color: var(--primary-color);
     font-weight: 600;
+}
+
+.info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: rgba(255, 87, 34, 0.08);
+    border: 1px solid rgba(255, 87, 34, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--text-color);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: var(--space-lg);
+}
+
+.info-banner svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--primary-color);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    cursor: pointer;
+}
+
+.checkbox-input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-label-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    user-select: none;
 }
 
 /* ============================================
@@ -1147,6 +1632,34 @@ button:active, .btn:active {
 .section__heading {
     margin-bottom: var(--space-lg);
     padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Floating section heading - pill style */
+.section__heading--floating {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    margin-bottom: var(--space-lg);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+    border-bottom: none;
+    padding-bottom: var(--space-sm);
+}
+
+/* Floating section heading - card style */
+.section__heading--card {
+    padding: var(--space-md) var(--space-lg);
+    margin: calc(var(--space-md) * -1);
+    margin-bottom: var(--space-lg);
+    background: var(--surface-overlay);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1584,7 +2097,7 @@ button:active, .btn:active {
     margin: 0 auto;
 }
 
-.card--dark .loader,
+[data-theme="dark"] .card--dark .loader,
 .auth-card .loader {
     border-color: rgba(255, 255, 255, 0.08);
     border-top-color: white;
@@ -1642,7 +2155,7 @@ button:active, .btn:active {
 }
 
 /* ============================================
-   PAGE HEADER
+   PAGE HEADER - Floating Overlay Style
    ============================================ */
 .page-header {
     display: flex;
@@ -1651,6 +2164,42 @@ button:active, .btn:active {
     margin-bottom: var(--space-xl);
     flex-wrap: wrap;
     gap: var(--space-md);
+    background: var(--glass-background);
+    backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    -webkit-backdrop-filter: var(--glass-blur) var(--glass-saturate);
+    padding: var(--space-lg) var(--space-xl);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    transition: all var(--transition-base);
+}
+
+.page-header:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Sticky floating page header variant */
+.page-header--sticky {
+    position: sticky;
+    top: calc(80px + var(--space-xl));
+    z-index: calc(var(--z-sticky) - 1);
+    margin-left: calc(var(--space-md) * -1);
+    margin-right: calc(var(--space-md) * -1);
+    margin-top: calc(var(--space-md) * -1);
+}
+
+/* Compact floating page header */
+.page-header--compact {
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-lg);
+}
+
+/* Pill-shaped page header */
+.page-header--pill {
+    border-radius: var(--radius-full);
+    padding: var(--space-sm) var(--space-lg);
+    width: fit-content;
 }
 
 .page-title {
@@ -1880,11 +2429,21 @@ button:active, .btn:active {
     font-weight: 600;
     color: var(--text-color);
     margin-bottom: var(--space-md);
-    padding-bottom: var(--space-sm);
-    border-bottom: 2px solid var(--border-color);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--glass-background);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.category-header:hover {
+    box-shadow: var(--shadow-md);
 }
 
 .category-header::before {
@@ -1893,6 +2452,13 @@ button:active, .btn:active {
     height: 18px;
     background: var(--primary-gradient);
     border-radius: var(--radius-full);
+}
+
+/* Floating pill variant for category headers */
+.category-header--pill {
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-full);
+    width: fit-content;
 }
 
 .flag-item {
@@ -1953,9 +2519,21 @@ button:active, .btn:active {
     font-weight: 600;
     color: var(--text-color);
     margin-bottom: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--glass-background);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.audit-log-header:hover {
+    box-shadow: var(--shadow-md);
 }
 
 .audit-log-header::before {
@@ -1964,6 +2542,13 @@ button:active, .btn:active {
     height: 18px;
     background: var(--primary-gradient);
     border-radius: var(--radius-full);
+}
+
+/* Floating pill variant */
+.audit-log-header--pill {
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-full);
+    width: fit-content;
 }
 
 .audit-log-table {
@@ -2068,6 +2653,18 @@ button:active, .btn:active {
     font-weight: 600;
     color: var(--text-color);
     margin-bottom: var(--space-md);
+}
+
+/* Floating modal header variant */
+.modal-header--floating {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-lg);
 }
 
 .modal-body {
@@ -2209,8 +2806,52 @@ button:active, .btn:active {
    RESPONSIVE STYLES
    ============================================ */
 @media (max-width: 768px) {
+    /* Separated header panels - mobile adjustments */
+    .header-wrapper {
+        top: env(safe-area-inset-top, 20px);
+        top: max(20px, env(safe-area-inset-top, 20px));
+        left: 16px;
+        right: 16px;
+    }
+    
+    .header-logo-panel {
+        padding: var(--space-xs) var(--space-md);
+    }
+    
+    .logo-icon {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .logo-text {
+        font-size: 0.9375rem;
+    }
+    
+    .header-controls-panel {
+        padding: var(--space-xs);
+    }
+    
+    .header-controls-panel .theme-toggle {
+        width: 38px;
+        height: 38px;
+    }
+    
+    body:has(.header-wrapper) {
+        padding-top: calc(60px + var(--space-lg));
+    }
+    
+    /* Floating navbar - adjust for mobile */
     .navbar {
-        padding: var(--space-md) var(--space-md);
+        padding: var(--space-sm) var(--space-md);
+        top: max(20px, env(safe-area-inset-top, 20px));
+        left: 16px;
+        right: 16px;
+        max-width: calc(100% - 32px);
+        border-radius: var(--radius-xl);
+    }
+    
+    body:has(.navbar) {
+        padding-top: calc(70px + var(--space-lg));
     }
     
     .container {
@@ -2219,6 +2860,7 @@ button:active, .btn:active {
     
     .login-container {
         padding: var(--space-lg);
+        padding-bottom: max(var(--space-xl), env(safe-area-inset-bottom, var(--space-xl)));
     }
     
     .profile-content-wrapper {
@@ -2276,9 +2918,39 @@ button:active, .btn:active {
     h1 { font-size: 1.5rem; }
     h2 { font-size: 1.375rem; }
     
+    /* Floating page header - mobile adjustments */
     .page-header {
         flex-direction: column;
         align-items: flex-start;
+        padding: var(--space-md) var(--space-lg);
+        border-radius: var(--radius-lg);
+    }
+    
+    .page-header--sticky {
+        top: calc(70px + var(--space-lg));
+    }
+    
+    /* FAB adjustments for mobile */
+    .fab--bottom-right,
+    .fab--bottom-left {
+        bottom: var(--space-lg);
+    }
+    
+    .fab--bottom-right {
+        right: var(--space-lg);
+    }
+    
+    .fab--bottom-left {
+        left: var(--space-lg);
+    }
+    
+    .fab-group--bottom-center,
+    .fab-group--bottom-right {
+        bottom: var(--space-lg);
+    }
+    
+    .fab-group--bottom-right {
+        right: var(--space-lg);
     }
     
     .bulk-actions {
@@ -2302,8 +2974,52 @@ button:active, .btn:active {
 }
 
 @media (max-width: 480px) {
+    /* Ultra-compact separated header for small screens */
+    .header-wrapper {
+        top: env(safe-area-inset-top, 20px);
+        top: max(20px, env(safe-area-inset-top, 20px));
+        left: 14px;
+        right: 14px;
+    }
+    
+    .header-logo-panel {
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-lg);
+    }
+    
+    .logo-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .logo-text {
+        font-size: 0.875rem;
+    }
+    
+    .header-controls-panel {
+        border-radius: var(--radius-lg);
+    }
+    
+    .header-controls-panel .theme-toggle {
+        width: 36px;
+        height: 36px;
+    }
+    
+    body:has(.header-wrapper) {
+        padding-top: calc(54px + var(--space-md));
+    }
+    
+    /* Ultra-compact floating navbar for small screens */
     .navbar {
-        padding: var(--space-sm) var(--space-md);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-lg);
+        top: 10px;
+        left: 10px;
+        right: 10px;
+    }
+    
+    body:has(.navbar) {
+        padding-top: calc(60px + var(--space-md));
     }
     
     .logo {
@@ -2344,6 +3060,55 @@ button:active, .btn:active {
     .modal-content {
         margin: 10vh auto;
         padding: var(--space-lg);
+    }
+    
+    /* Smaller FABs on mobile */
+    .fab {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .fab--mini {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .fab-group {
+        padding: var(--space-xs);
+    }
+    
+    .fab-group__item {
+        width: 40px;
+        height: 40px;
+    }
+    
+    /* BRU ID Header compact on mobile */
+    .bru-id-header__inner {
+        padding: var(--space-xs) var(--space-md);
+    }
+    
+    .bru-id-header__icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .bru-id-header__text {
+        font-size: 0.8125rem;
+    }
+    
+    .bru-id-header__action {
+        padding: var(--space-xs) var(--space-sm);
+        font-size: 0.75rem;
+    }
+    
+    /* Page header compact */
+    .page-header {
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-md);
+    }
+    
+    .page-header--sticky {
+        top: calc(60px + var(--space-md));
     }
 }
 
@@ -2443,4 +3208,67 @@ button:active, .btn:active {
     color: var(--text-color);
     line-height: 1.5;
     flex: 1;
+}
+
+/* ─── Custom scrollbars ──────────────────────────────────────────────────── */
+
+/* Tell the browser to use dark-mode native UI in dark theme */
+html {
+    color-scheme: dark;
+}
+[data-theme="light"] {
+    color-scheme: light;
+}
+
+/* Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+    transition: background 0.2s;
+}
+
+/* Only reveal thumb while actively scrolling / hovering the scrollable area */
+:hover::-webkit-scrollbar-thumb,
+:active::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="light"] :hover::-webkit-scrollbar-thumb,
+[data-theme="light"] :active::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.22);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+*:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+[data-theme="light"] *:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }

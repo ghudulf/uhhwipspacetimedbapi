@@ -32,7 +32,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<BusStatusEvent, string> NewStatus { get; }
         public global::SpacetimeDB.Col<BusStatusEvent, ulong> Timestamp { get; }
         public global::SpacetimeDB.Col<BusStatusEvent, SpacetimeDB.Identity> ChangedBy { get; }
-        public global::SpacetimeDB.NullableCol<BusStatusEvent, string> Reason { get; }
+        public global::SpacetimeDB.Col<BusStatusEvent, string> Reason { get; }
 
         public BusStatusEventCols(string tableName)
         {
@@ -41,7 +41,7 @@ namespace SpacetimeDB.Types
             NewStatus = new global::SpacetimeDB.Col<BusStatusEvent, string>(tableName, "new_status");
             Timestamp = new global::SpacetimeDB.Col<BusStatusEvent, ulong>(tableName, "timestamp");
             ChangedBy = new global::SpacetimeDB.Col<BusStatusEvent, SpacetimeDB.Identity>(tableName, "changed_by");
-            Reason = new global::SpacetimeDB.NullableCol<BusStatusEvent, string>(tableName, "reason");
+            Reason = new global::SpacetimeDB.Col<BusStatusEvent, string>(tableName, "reason");
         }
     }
 

@@ -70,7 +70,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class EmployeeManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
-        private readonly string _baseUrl;
+        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
         private readonly JsonSerializerOptions _jsonOptions;
 
         private List<EmployeeDisplayModel> _allEmployees = new();
@@ -131,7 +131,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public EmployeeManagementViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
-            _baseUrl = "http://localhost:5000/api";
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,

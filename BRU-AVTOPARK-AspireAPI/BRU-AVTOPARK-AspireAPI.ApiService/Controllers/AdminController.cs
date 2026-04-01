@@ -17,7 +17,7 @@ namespace TicketSalesApp.AdminServer.Controllers
     [ApiController]
     [Route("api/admin")]
     [Authorize(Roles = "Admin")]
-    public class AdminController : Controller
+    public class AdminController : BaseController
     {
         private readonly IFeatureFlagService _featureFlagService;
         private readonly ILogger<AdminController> _logger;
@@ -342,46 +342,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                     error = "Failed to retrieve audit log",
                     message = ex.Message
                 });
-            }
-        }
-
-        /// <summary>
-        /// Helper method to check if the current user has administrator role.
-        /// </summary>
-        private bool IsAdmin()
-        {
-            try
-            {
-                if (User?.Identity?.IsAuthenticated == true)
-                {
-                    // Check primary role first
-                    var primaryRole = User.FindFirst("primary_role");
-                    if (primaryRole?.Value == "1")
-                    {
-                        return true;
-                    }
-
-                    // Check role claims
-                    var roleClaims = User.FindAll("role");
-                    if (roleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
-                    {
-                        return true;
-                    }
-
-                    // Check standard role claims
-                    var standardRoleClaims = User.FindAll(System.Security.Claims.ClaimTypes.Role);
-                    if (standardRoleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking admin status");
-                return false;
             }
         }
 

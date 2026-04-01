@@ -16,8 +16,9 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
 {
     /// <summary>
     /// Service for managing feature flags with runtime configuration support.
-    /// Implements priority: runtime overrides (database) > appsettings.json > default (false)
+    /// Implements priority: runtime overrides (database) > appsettings.json > default (true)
     /// Uses in-memory cache for hot reload (immediate effect without restart).
+    /// After legacy AuthController removal, flags control endpoint availability (false = 503).
     /// </summary>
     public class FeatureFlagService : IFeatureFlagService
     {
@@ -109,9 +110,9 @@ namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
                 return value;
             }
 
-            // Priority 3: Default to false (disabled)
-            _logger.LogDebug("Feature flag {FlagName} not found, defaulting to false", flagName);
-            return false;
+            // Priority 3: Default to true (enabled) - all endpoints active after legacy removal
+            _logger.LogDebug("Feature flag {FlagName} not found, defaulting to true", flagName);
+            return true;
         }
 
         public async Task UpdateFlagAsync(string flagName, bool enabled, Identity updatedBy)

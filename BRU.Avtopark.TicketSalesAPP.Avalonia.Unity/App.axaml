@@ -31,6 +31,36 @@
                     <SolidColorBrush x:Key="BgElevated">#F5F5FA</SolidColorBrush>
                     <SolidColorBrush x:Key="TextFaint">#D0D0D8</SolidColorBrush>
                     <SolidColorBrush x:Key="TextMuted">#707080</SolidColorBrush>
+                    <!-- ── Route view tokens (light) — mirrors MAUI Colors.xaml Light ── -->
+                    <SolidColorBrush x:Key="RouteBackground">#FAFAFA</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSurface">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSurfaceVariant">#F5F5F5</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteDivider">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurface">#1A1A1A</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurfaceSecondary">#424242</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurfaceMuted">#757575</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteColHeaderBg">#F5F5F5</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowHover">#FFF3EE</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowSelected">#FFE0D0</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowSelectedHover">#FFD0BC</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowDivider">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSearchBg">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteLoadingOverlay">#CCFAFAFA</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteEmptyText">#BDBDBD</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteStatusBarBg">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteStatusBarText">#9E9E9E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorBg">#FFEBEE</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorBorder">#EF9A9A</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorText">#C62828</SolidColorBrush>
+                    <!-- brand — same in both themes -->
+                    <SolidColorBrush x:Key="BrandPrimary">#FF5722</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandPrimaryDark">#E64A19</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreen">#388E3C</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreenBg">#E8F5E9</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreenText">#2E7D32</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRed">#D32F2F</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRedBg">#FFEBEE</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRedText">#C62828</SolidColorBrush>
                 </ResourceDictionary>
 
                 <!-- ── Dark theme ────────────────────────────────────────── -->
@@ -49,6 +79,36 @@
                     <SolidColorBrush x:Key="BgElevated">#1E1E28</SolidColorBrush>
                     <SolidColorBrush x:Key="TextFaint">#3A3A48</SolidColorBrush>
                     <SolidColorBrush x:Key="TextMuted">#4A4A58</SolidColorBrush>
+                    <!-- ── Route view tokens (dark) — mirrors MAUI Colors.xaml Dark ── -->
+                    <SolidColorBrush x:Key="RouteBackground">#121212</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSurface">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSurfaceVariant">#282828</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteDivider">#333333</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurface">#FAFAFA</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurfaceSecondary">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteOnSurfaceMuted">#9E9E9E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteColHeaderBg">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowHover">#282828</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowSelected">#2A1A0E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowSelectedHover">#3A2010</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteRowDivider">#282828</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteSearchBg">#282828</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteLoadingOverlay">#CC121212</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteEmptyText">#424242</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteStatusBarBg">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteStatusBarText">#616161</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorBg">#3A1A1A</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorBorder">#D32F2F</SolidColorBrush>
+                    <SolidColorBrush x:Key="RouteErrorText">#EF9A9A</SolidColorBrush>
+                    <!-- brand — same in both themes -->
+                    <SolidColorBrush x:Key="BrandPrimary">#FF5722</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandPrimaryDark">#E64A19</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreen">#388E3C</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreenBg">#1B3A1F</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentGreenText">#66BB6A</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRed">#D32F2F</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRedBg">#3A1A1A</SolidColorBrush>
+                    <SolidColorBrush x:Key="BrandAccentRedText">#EF9A9A</SolidColorBrush>
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>

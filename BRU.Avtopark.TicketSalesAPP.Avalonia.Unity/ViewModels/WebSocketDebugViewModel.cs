@@ -22,7 +22,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private readonly TokenStorageService _tokenStorage;
 
     [ObservableProperty]
-    private string _serverUrl = "http://localhost:5000";
+    private string _serverUrl = ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/').Replace("/api", "") ?? "http://localhost:5000";
 
     [ObservableProperty]
     private string _accessToken = "";
@@ -36,7 +36,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     /// <summary>
     /// Indicates whether either WebSocket connection is active.
     /// </summary>
-    public bool IsAnyConnected => IsConnected || IsInteractiveConnected;
+    public bool IsAnyConnected => IsConnected || IsInteractiveConnected || IsAuthWsConnected;
 
     [ObservableProperty]
     private string _statusMessage = "Ready";
@@ -51,6 +51,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     }
 
     partial void OnIsInteractiveConnectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsAnyConnected));
+    }
+
+    partial void OnIsAuthWsConnectedChanged(bool value)
     {
         OnPropertyChanged(nameof(IsAnyConnected));
     }
@@ -80,6 +85,33 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _interactivePending = new();
     // Tracks active stream IDs returned by stream:started responses so the UI can stop them.
     private readonly ConcurrentDictionary<string, string> _activeStreamIds = new(); // streamId -> resource
+
+    // ── Auth WebSocket test (isolated — never touches TokenStorageService) ──────────
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsValidateCommand))]
+    private string _authWsTestToken = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsRefreshCommand))]
+    private string _authWsRefreshToken = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsLoginCommand))]
+    private string _authWsUsername = "";
+
+    [ObservableProperty]
+    private string _authWsPassword = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsValidateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsRefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsPingCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SendAuthWsLoginCommand))]
+    private bool _isAuthWsConnected;
+
+    private ClientWebSocket? _authWsSocket;
+    private CancellationTokenSource? _authWsCts;
+    private readonly SemaphoreSlim _authWsSendLock = new SemaphoreSlim(1, 1);
 
     private readonly Dictionary<string, string> _controllerEndpoints = new()
     {
@@ -181,6 +213,26 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     /// Builds a WebSocket URI from an HTTP/HTTPS server URI with proper scheme selection.
     /// Forces wss:// for non-loopback hosts, allows ws:// only for localhost/loopback.
     /// </summary>
+    /// <summary>
+    /// Returns true for localhost and RFC-1918 private LAN ranges (10.x, 172.16-31.x, 192.168.x).
+    /// These hosts use plain ws://, everything else uses wss://.
+    /// </summary>
+    private static bool IsPrivateOrLocalHost(string host)
+    {
+        if (host == "localhost" || host == "127.0.0.1" || host == "[::1]")
+            return true;
+
+        if (!System.Net.IPAddress.TryParse(host, out var ip))
+            return false;
+
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length != 4) return false; // IPv6 non-loopback → wss
+
+        return bytes[0] == 10 ||                                      // 10.0.0.0/8
+               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) || // 172.16.0.0/12
+               (bytes[0] == 192 && bytes[1] == 168);                  // 192.168.0.0/16
+    }
+
     private static (bool success, Uri? wsUri, string? errorMessage) BuildWebSocketUri(Uri serverUri, string path)
     {
         string wsScheme;
@@ -190,18 +242,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         }
         else if (serverUri.Scheme == "http")
         {
-            // Only allow ws:// for localhost/loopback
-            if (serverUri.IsLoopback || 
-                serverUri.Host == "localhost" || 
-                serverUri.Host == "127.0.0.1" || 
-                serverUri.Host == "[::1]")
-            {
-                wsScheme = "ws";
-            }
-            else
-            {
-                wsScheme = "wss"; // Force secure for remote hosts
-            }
+            wsScheme = IsPrivateOrLocalHost(serverUri.Host) ? "ws" : "wss";
         }
         else
         {
@@ -1726,8 +1767,200 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         };
     }
     
+    // ── Auth WebSocket test commands ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// One-time snapshot: reads the stored access token into AuthWsTestToken without
+    /// creating any live binding to TokenStorageService.
+    /// </summary>
+    [RelayCommand]
+    private async Task LoadAuthWsTokenFromStorage()
+    {
+        try
+        {
+            var tokens = await _tokenStorage.GetTokensAsync();
+            if (tokens != null && !string.IsNullOrEmpty(tokens.AccessToken))
+            {
+                AuthWsTestToken = NormalizeAccessToken(tokens.AccessToken);
+                if (!string.IsNullOrEmpty(tokens.RefreshToken))
+                    AuthWsRefreshToken = tokens.RefreshToken;
+                AddLog("🔑 [AuthWS] Loaded token snapshot from storage (not linked)");
+            }
+            else
+            {
+                AddLog("⚠ [AuthWS] No stored token found");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ [AuthWS] Failed to load token: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task ConnectAuthWs()
+    {
+        if (IsAuthWsConnected)
+        {
+            await DisconnectAuthWs();
+            return;
+        }
+
+        var token = NormalizeAccessToken(AuthWsTestToken);
+        if (string.IsNullOrEmpty(token))
+        {
+            AddLog("❌ [AuthWS] Paste a token or load from storage first");
+            return;
+        }
+
+        Uri serverUri;
+        if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
+        {
+            AddLog("❌ [AuthWS] Invalid server URL");
+            return;
+        }
+
+        var buildResult = BuildWebSocketUri(serverUri, "/api/auth/ws");
+        if (!buildResult.success)
+        {
+            AddLog($"❌ [AuthWS] {buildResult.errorMessage}");
+            return;
+        }
+
+        try
+        {
+            _authWsCts = new CancellationTokenSource();
+            _authWsSocket = new ClientWebSocket();
+            _authWsSocket.Options.SetRequestHeader("Authorization", $"Bearer {token}");
+
+            AddLog($"🔌 [AuthWS] Connecting to {buildResult.wsUri}...");
+            using var timeoutCts = new CancellationTokenSource(HandshakeTimeout);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_authWsCts.Token, timeoutCts.Token);
+            await _authWsSocket.ConnectAsync(buildResult.wsUri!, linked.Token);
+
+            IsAuthWsConnected = true;
+            AddLog("✅ [AuthWS] Connected");
+
+            var capturedWs = _authWsSocket;
+            var capturedCts = _authWsCts;
+            _ = Task.Run(async () =>
+            {
+                var buf = new byte[8192];
+                try
+                {
+                    while (!capturedCts.Token.IsCancellationRequested && capturedWs.State == WebSocketState.Open)
+                    {
+                        using var ms = new System.IO.MemoryStream();
+                        WebSocketReceiveResult r;
+                        try
+                        {
+                            do
+                            {
+                                r = await capturedWs.ReceiveAsync(buf, capturedCts.Token);
+                                ms.Write(buf, 0, r.Count);
+                            } while (!r.EndOfMessage);
+                        }
+                        catch (OperationCanceledException) { break; }
+                        catch { break; }
+
+                        if (r.MessageType == WebSocketMessageType.Close) break;
+                        AddLog($"📨 [AuthWS] {Encoding.UTF8.GetString(ms.ToArray())}");
+                    }
+                }
+                finally
+                {
+                    if (ReferenceEquals(_authWsSocket, capturedWs))
+                        IsAuthWsConnected = false;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ [AuthWS] Connect failed: {ex.Message}");
+            _authWsCts?.Dispose();
+            _authWsCts = null;
+            _authWsSocket?.Dispose();
+            _authWsSocket = null;
+            IsAuthWsConnected = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DisconnectAuthWs()
+    {
+        _authWsCts?.Cancel();
+        if (_authWsSocket?.State == WebSocketState.Open)
+        {
+            try
+            {
+                using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await _authWsSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "User disconnect", closeCts.Token);
+            }
+            catch { _authWsSocket?.Abort(); }
+        }
+        _authWsCts?.Dispose(); _authWsCts = null;
+        _authWsSocket?.Dispose(); _authWsSocket = null;
+        IsAuthWsConnected = false;
+        AddLog("🔌 [AuthWS] Disconnected");
+    }
+
+    private async Task SendAuthWsMessage(object message)
+    {
+        if (_authWsSocket?.State != WebSocketState.Open)
+        {
+            AddLog("❌ [AuthWS] Not connected");
+            return;
+        }
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+        await SendAsyncWithLock(_authWsSocket, bytes, _authWsSendLock, _authWsCts?.Token ?? CancellationToken.None);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSendAuthWsValidate))]
+    private async Task SendAuthWsValidate()
+    {
+        var token = NormalizeAccessToken(AuthWsTestToken);
+        if (string.IsNullOrEmpty(token)) { AddLog("❌ [AuthWS] No test token set"); return; }
+        var rid = Guid.NewGuid().ToString("N")[..8];
+        AddLog($"📤 [AuthWS] auth:validate (ID: {rid})");
+        await SendAuthWsMessage(new { type = "auth:validate", token, requestId = rid });
+    }
+    private bool CanSendAuthWsValidate() => IsAuthWsConnected && !string.IsNullOrWhiteSpace(AuthWsTestToken);
+
+    [RelayCommand(CanExecute = nameof(CanSendAuthWsRefresh))]
+    private async Task SendAuthWsRefresh()
+    {
+        var rt = AuthWsRefreshToken?.Trim();
+        if (string.IsNullOrEmpty(rt)) { AddLog("❌ [AuthWS] No refresh token set"); return; }
+        var rid = Guid.NewGuid().ToString("N")[..8];
+        AddLog($"📤 [AuthWS] auth:refresh (ID: {rid})");
+        await SendAuthWsMessage(new { type = "auth:refresh", refreshToken = rt, requestId = rid });
+    }
+    private bool CanSendAuthWsRefresh() => IsAuthWsConnected && !string.IsNullOrWhiteSpace(AuthWsRefreshToken);
+
+    [RelayCommand(CanExecute = nameof(CanSendAuthWsPing))]
+    private async Task SendAuthWsPing()
+    {
+        var rid = Guid.NewGuid().ToString("N")[..8];
+        AddLog($"📤 [AuthWS] auth:ping (ID: {rid})");
+        await SendAuthWsMessage(new { type = "auth:ping", requestId = rid });
+    }
+    private bool CanSendAuthWsPing() => IsAuthWsConnected;
+
+    [RelayCommand(CanExecute = nameof(CanSendAuthWsLogin))]
+    private async Task SendAuthWsLogin()
+    {
+        var rid = Guid.NewGuid().ToString("N")[..8];
+        AddLog($"📤 [AuthWS] auth:login for user '{AuthWsUsername}' (ID: {rid})");
+        await SendAuthWsMessage(new { type = "auth:login", username = AuthWsUsername, password = AuthWsPassword, requestId = rid });
+    }
+    private bool CanSendAuthWsLogin() => IsAuthWsConnected && !string.IsNullOrWhiteSpace(AuthWsUsername);
+
     public void Dispose()
     {
+        _authWsCts?.Cancel();
+        _authWsCts?.Dispose();
+        _authWsSocket?.Dispose();
+        _authWsSendLock?.Dispose();
         // Use fire-and-forget with ConfigureAwait(false) to avoid deadlocking the UI thread
         Task.Run(async () => await CleanupWebSocketAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
 
@@ -1749,6 +1982,11 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     public async ValueTask DisposeAsync()
     {
         await CleanupWebSocketAsync().ConfigureAwait(false);
+
+        _authWsCts?.Cancel();
+        _authWsCts?.Dispose();
+        _authWsSocket?.Dispose();
+        _authWsSendLock?.Dispose();
 
         _interactiveCts?.Cancel();
         _interactiveCts?.Dispose();

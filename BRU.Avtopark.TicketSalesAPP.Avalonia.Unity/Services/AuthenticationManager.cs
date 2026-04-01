@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Web;
 using Avalonia;
@@ -8,15 +10,24 @@ using System.Collections.Generic;
 using Avalonia.Controls.ApplicationLifetimes;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using Serilog;
+using System.Threading;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 {
     public class AuthenticationManager
     {
         private readonly OAuthService _oauthService;
+        private readonly string _serverRoot;
         private static AuthenticationManager? _instance;
         private static readonly object _lock = new object();
         private bool _isResetting = false; // Prevent retry during reset
+
+        /// <summary>
+/// Deletes WebView2 user-data directories and OAuth temp files so the next
+/// login starts with a clean browser session.  Called by LogoutAsync() and
+/// by OAuthLoginControl when a cookie-loop retry is requested.
+/// </summary>
+public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
 
         /// <summary>
         /// Path to the persistent logout-pending marker file.
@@ -86,16 +97,23 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private AuthenticationManager()
         {
             var tokenStorage = new TokenStorageService();
-            
-            // Configure OAuth settings
+
             var clientId = "bru-avtopark-desktop-client";
             var clientSecret = "your-secure-client-secret-here-change-in-production";
-            // Use HTTPS for authorization endpoint (server listens on HTTPS 5001)
-            var authorizationEndpoint = "https://localhost:5001/connect/authorize";
-            // Use HTTPS for token endpoint (server listens on HTTPS 5001)
-            var tokenEndpoint = "https://localhost:5001/connect/token";
-            // Callback uses HTTP on port 5000 (server listens on HTTP 5000)
-            var redirectUri = "http://localhost:5000/callback";
+
+            // Derive server root from the discovered base URL (set during splash screen)
+            var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
+            var serverRoot = baseUrl.EndsWith("api/", StringComparison.OrdinalIgnoreCase)
+                ? baseUrl[..^4].TrimEnd('/')
+                : baseUrl.TrimEnd('/');
+
+            var authorizationEndpoint = $"{serverRoot}/connect/authorize";
+            var tokenEndpoint         = $"{serverRoot}/connect/token";
+            // Redirect URI must always be localhost — it's a server-side callback endpoint
+            // registered in OpenIddict. The LAN IP is only used for authorize/token endpoints.
+            var redirectUri           = "http://localhost:5000/callback";
+
+            _serverRoot = serverRoot;
 
             _oauthService = new OAuthService(
                 clientId,
@@ -513,20 +531,43 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         }
 
         /// <summary>
-        /// ENHANCEMENT: Fetches and logs token claims from the server's tokeninfo endpoint
-        /// This is useful for encrypted/opaque tokens where client-side parsing isn't possible
+        /// ENHANCEMENT: Fetches and logs token claims from the server's tokeninfo endpoint.
+        /// connect/tokeninfo is registered as an absolute route (~/connect/tokeninfo) — no /api/ prefix.
         /// </summary>
-        private async Task FetchAndLogTokenClaimsAsync(string accessToken)
+        private static async Task FetchAndLogTokenClaimsAsync(string accessToken)
         {
             try
             {
                 Log.Information("Fetching token claims from server tokeninfo endpoint");
-                
-                using var httpClient = new System.Net.Http.HttpClient();
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                
-                var response = await httpClient.GetAsync("http://localhost:5000/connect/tokeninfo");
+
+                // Build server root URL — strip /api/ suffix because connect/tokeninfo is at root
+                var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
+                var serverRoot = baseUrl.TrimEnd('/');
+                if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+                    serverRoot = serverRoot[..^4];
+                serverRoot = serverRoot.TrimEnd('/') + "/";
+
+                var fullUrl = $"{serverRoot}connect/tokeninfo";
+                Log.Information("Fetching token claims from: {Url}", fullUrl);
+
+                using var httpClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", accessToken);
+// what fucking 3 seconds - TOKENINFO IS SLOW 
+                using var probeCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                HttpResponseMessage response;
+                try
+                {
+                    response = await httpClient.GetAsync("connect/tokeninfo", probeCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Warning("TokenInfo probe timed out after 60 seconds");
+                    return;
+                }
+
+                Log.Information("TokenInfo response status: {Status} from {Url}",
+                    response.StatusCode, fullUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -544,8 +585,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                                 var values = new List<string>();
                                 foreach (var item in claim.Value.EnumerateArray())
                                 {
-                                    // Guard against non-string JsonElement kinds (numbers, booleans, objects, arrays)
-                                    // to prevent InvalidOperationException from GetString() on non-string elements.
                                     string itemValue = item.ValueKind == System.Text.Json.JsonValueKind.String || item.ValueKind == System.Text.Json.JsonValueKind.Null
                                         ? (item.GetString() ?? string.Empty)
                                         : item.GetRawText();
@@ -574,7 +613,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 }
                 else
                 {
-                    Log.Warning("Failed to fetch token claims from server. Status: {StatusCode}", response.StatusCode);
+                    var body = await response.Content.ReadAsStringAsync();
+                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, body);
                 }
             }
             catch (Exception ex)

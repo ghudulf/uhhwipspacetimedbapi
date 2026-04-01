@@ -43,7 +43,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<RolePermission, uint> RoleId { get; }
         public global::SpacetimeDB.Col<RolePermission, uint> PermissionId { get; }
         public global::SpacetimeDB.Col<RolePermission, ulong> GrantedAt { get; }
-        public global::SpacetimeDB.NullableCol<RolePermission, string> GrantedBy { get; }
+        public global::SpacetimeDB.Col<RolePermission, string> GrantedBy { get; }
 
         public RolePermissionCols(string tableName)
         {
@@ -51,7 +51,7 @@ namespace SpacetimeDB.Types
             RoleId = new global::SpacetimeDB.Col<RolePermission, uint>(tableName, "role_id");
             PermissionId = new global::SpacetimeDB.Col<RolePermission, uint>(tableName, "permission_id");
             GrantedAt = new global::SpacetimeDB.Col<RolePermission, ulong>(tableName, "granted_at");
-            GrantedBy = new global::SpacetimeDB.NullableCol<RolePermission, string>(tableName, "granted_by");
+            GrantedBy = new global::SpacetimeDB.Col<RolePermission, string>(tableName, "granted_by");
         }
     }
 

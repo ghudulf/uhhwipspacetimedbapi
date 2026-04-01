@@ -45,22 +45,22 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Route, string> EndPoint { get; }
         public global::SpacetimeDB.Col<Route, uint> DriverId { get; }
         public global::SpacetimeDB.Col<Route, uint> BusId { get; }
-        public global::SpacetimeDB.NullableCol<Route, string> TravelTime { get; }
+        public global::SpacetimeDB.Col<Route, string> TravelTime { get; }
         public global::SpacetimeDB.Col<Route, uint> StopCount { get; }
-        public global::SpacetimeDB.NullableCol<Route, string> RouteDescription { get; }
+        public global::SpacetimeDB.Col<Route, string> RouteDescription { get; }
         public global::SpacetimeDB.Col<Route, double> RouteLength { get; }
         public global::SpacetimeDB.Col<Route, bool> IsActive { get; }
-        public global::SpacetimeDB.NullableCol<Route, string> RouteType { get; }
-        public global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>> AlternativeRoutes { get; }
-        public global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>> PeakHours { get; }
-        public global::SpacetimeDB.NullableCol<Route, uint> FrequencyPeak { get; }
-        public global::SpacetimeDB.NullableCol<Route, uint> FrequencyOffPeak { get; }
-        public global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>> SpecialInstructions { get; }
-        public global::SpacetimeDB.NullableCol<Route, bool> IsAccessible { get; }
-        public global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>> RouteFeatures { get; }
+        public global::SpacetimeDB.Col<Route, string> RouteType { get; }
+        public global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>> AlternativeRoutes { get; }
+        public global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>> PeakHours { get; }
+        public global::SpacetimeDB.Col<Route, uint> FrequencyPeak { get; }
+        public global::SpacetimeDB.Col<Route, uint> FrequencyOffPeak { get; }
+        public global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>> SpecialInstructions { get; }
+        public global::SpacetimeDB.Col<Route, bool> IsAccessible { get; }
+        public global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>> RouteFeatures { get; }
         public global::SpacetimeDB.Col<Route, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Route, ulong> UpdatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Route, string> UpdatedBy { get; }
+        public global::SpacetimeDB.Col<Route, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.Col<Route, string> UpdatedBy { get; }
 
         public RouteCols(string tableName)
         {
@@ -70,22 +70,22 @@ namespace SpacetimeDB.Types
             EndPoint = new global::SpacetimeDB.Col<Route, string>(tableName, "end_point");
             DriverId = new global::SpacetimeDB.Col<Route, uint>(tableName, "driver_id");
             BusId = new global::SpacetimeDB.Col<Route, uint>(tableName, "bus_id");
-            TravelTime = new global::SpacetimeDB.NullableCol<Route, string>(tableName, "travel_time");
+            TravelTime = new global::SpacetimeDB.Col<Route, string>(tableName, "travel_time");
             StopCount = new global::SpacetimeDB.Col<Route, uint>(tableName, "stop_count");
-            RouteDescription = new global::SpacetimeDB.NullableCol<Route, string>(tableName, "route_description");
+            RouteDescription = new global::SpacetimeDB.Col<Route, string>(tableName, "route_description");
             RouteLength = new global::SpacetimeDB.Col<Route, double>(tableName, "route_length");
             IsActive = new global::SpacetimeDB.Col<Route, bool>(tableName, "is_active");
-            RouteType = new global::SpacetimeDB.NullableCol<Route, string>(tableName, "route_type");
-            AlternativeRoutes = new global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>>(tableName, "alternative_routes");
-            PeakHours = new global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>>(tableName, "peak_hours");
-            FrequencyPeak = new global::SpacetimeDB.NullableCol<Route, uint>(tableName, "frequency_peak");
-            FrequencyOffPeak = new global::SpacetimeDB.NullableCol<Route, uint>(tableName, "frequency_off_peak");
-            SpecialInstructions = new global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>>(tableName, "special_instructions");
-            IsAccessible = new global::SpacetimeDB.NullableCol<Route, bool>(tableName, "is_accessible");
-            RouteFeatures = new global::SpacetimeDB.NullableCol<Route, System.Collections.Generic.List<string>>(tableName, "route_features");
+            RouteType = new global::SpacetimeDB.Col<Route, string>(tableName, "route_type");
+            AlternativeRoutes = new global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>>(tableName, "alternative_routes");
+            PeakHours = new global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>>(tableName, "peak_hours");
+            FrequencyPeak = new global::SpacetimeDB.Col<Route, uint>(tableName, "frequency_peak");
+            FrequencyOffPeak = new global::SpacetimeDB.Col<Route, uint>(tableName, "frequency_off_peak");
+            SpecialInstructions = new global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>>(tableName, "special_instructions");
+            IsAccessible = new global::SpacetimeDB.Col<Route, bool>(tableName, "is_accessible");
+            RouteFeatures = new global::SpacetimeDB.Col<Route, System.Collections.Generic.List<string>>(tableName, "route_features");
             CreatedAt = new global::SpacetimeDB.Col<Route, ulong>(tableName, "created_at");
-            UpdatedAt = new global::SpacetimeDB.NullableCol<Route, ulong>(tableName, "updated_at");
-            UpdatedBy = new global::SpacetimeDB.NullableCol<Route, string>(tableName, "updated_by");
+            UpdatedAt = new global::SpacetimeDB.Col<Route, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.Col<Route, string>(tableName, "updated_by");
         }
     }
 

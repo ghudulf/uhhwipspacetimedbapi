@@ -112,7 +112,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
                             // Store the routing decision in HttpContext.Items for logging/debugging
                             context.Items["FeatureFlagRouting_Flag"] = featureFlagProperty;
                             context.Items["FeatureFlagRouting_Value"] = flagValue;
-                            context.Items["FeatureFlagRouting_Controller"] = flagValue ? "AuthControllerRefactored" : "AuthController";
+                            context.Items["FeatureFlagRouting_Controller"] = "AuthController";
                         }
                         else
                         {

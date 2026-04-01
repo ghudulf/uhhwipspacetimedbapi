@@ -8,14 +8,13 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
-using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
-using Material.Icons;
-using Reactive.Bindings;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
  
 using System;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Net.Http;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 
@@ -58,33 +57,31 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-#if DESKTOP
-        WindowDecorations = WindowDecorations.None;
-#else
-        // On MAUI mobile/browser targets, hide the custom titlebar row at runtime
-        // since #if guards cannot be used in .axaml files.
-        this.Loaded += (_, _) =>
-        {
-            var titleBarGrid = this.FindControl<Grid>("TitleBarGrid");
-            if (titleBarGrid != null)
-                titleBarGrid.IsVisible = false;
-
-            var rootGrid = this.FindControl<Grid>("RootGrid");
-            if (rootGrid?.RowDefinitions.Count > 0)
-                rootGrid.RowDefinitions[0].Height = new GridLength(0);
-        };
-#endif
         _viewModel = new MainWindowViewModel();
-        
         DataContext = _viewModel;
 
         InitializeComponent();
 
-#if DESKTOP
-        // Setup title bar after components are initialized
-        SetupTitleBar();
-#endif
-        
+        if (HostEnvironment.IsStandaloneDesktop)
+        {
+            WindowDecorations = WindowDecorations.None;
+            SetupTitleBar();
+        }
+        else
+        {
+            // Running under MAUI — hide the custom titlebar row
+            this.Loaded += (_, _) =>
+            {
+                var titleBarGrid = this.FindControl<Grid>("TitleBarGrid");
+                if (titleBarGrid != null)
+                    titleBarGrid.IsVisible = false;
+
+                var rootGrid = this.FindControl<Grid>("RootGrid");
+                if (rootGrid?.RowDefinitions.Count > 0)
+                    rootGrid.RowDefinitions[0].Height = new GridLength(0);
+            };
+        }
+
         SubscribeToWindowState();
     }
 
@@ -117,9 +114,8 @@ public partial class MainWindow : Window
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
-#if DESKTOP
-            BeginMoveDrag(e);
-#endif
+            if (HostEnvironment.IsStandaloneDesktop)
+                BeginMoveDrag(e);
         }
     }
 
@@ -259,45 +255,95 @@ public partial class MainWindow : Window
         try
         {
             Serilog.Log.Information("Testing token via debug endpoint");
-            
+
             var apiClient = ApiClientService.Instance;
-            var httpClient = apiClient.CreateClient();
-            httpClient.BaseAddress = new Uri("http://localhost:5000/");
-            var response = await httpClient.GetAsync("debug/tokentest");
-            
-            if (response.IsSuccessStatusCode)
+            await apiClient.DiscoverApiBaseUrlAsync();
+            var baseUrl = apiClient.CurrentBaseUrl ?? "http://localhost:5000/api/";
+            var token = apiClient.AuthToken;
+
+            // Strip /api/ suffix to get the server root (connect/tokeninfo and debug/tokentest
+            // are registered as absolute routes at the root, NOT under /api/)
+            var serverRoot = baseUrl.TrimEnd('/');
+            if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+                serverRoot = serverRoot[..^4];
+            serverRoot = serverRoot.TrimEnd('/') + "/";
+
+            Serilog.Log.Information("Token test: base URL = {BaseUrl}, server root = {Root}, token present = {HasToken}, token length = {Length}",
+                baseUrl, serverRoot, token != null, token?.Length ?? 0);
+
+            if (string.IsNullOrEmpty(token))
+                Serilog.Log.Warning("Token test: no auth token set in ApiClientService");
+
+            // Build a root-level client (no /api/ prefix) with the Bearer token
+            using var rootClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+            if (!string.IsNullOrEmpty(token))
+                rootClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var results = new System.Text.StringBuilder();
+            results.AppendLine($"Server root: {serverRoot}");
+            results.AppendLine($"Token length: {token?.Length ?? 0}");
+            results.AppendLine();
+
+            // Try BOTH endpoints independently — log each one
+            foreach (var (path, label) in new[] { ("connect/tokeninfo", "connect/tokeninfo"), ("debug/tokentest", "debug/tokentest") })
             {
-                var content = await response.Content.ReadAsStringAsync();
-                Serilog.Log.Information("Token test response: {Response}", content);
-                
-                // Show dialog with results
+                var fullUrl = new Uri(new Uri(serverRoot), path).ToString();
+                Serilog.Log.Information("Token test: trying {Label} → {Url}", label, fullUrl);
+                try
+                {
+                    var resp = await rootClient.GetAsync(path);
+                    var body = await resp.Content.ReadAsStringAsync();
+                    Serilog.Log.Information("Token test [{Label}] → {Status} | URL: {Url} | Body: {Body}",
+                        label, resp.StatusCode, fullUrl, body);
+                    results.AppendLine($"[{label}] {resp.StatusCode} ({fullUrl})");
+                    results.AppendLine(body);
+                    results.AppendLine();
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Token test [{Label}] → exception: {Msg}", label, ex.Message);
+                    results.AppendLine($"[{label}] EXCEPTION: {ex.Message}");
+                    results.AppendLine();
+                }
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
+            {
                 var dialog = new Window
                 {
                     Title = "Результат Теста Токена",
-                    Width = 600,
-                    Height = 400,
+                    Width = 650,
+                    Height = 450,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     Content = new ScrollViewer
                     {
                         Content = new TextBox
                         {
-                            Text = content,
+                            Text = results.ToString(),
                             IsReadOnly = true,
                             TextWrapping = TextWrapping.Wrap,
                             Margin = new Thickness(10)
                         }
                     }
                 };
-                
+
                 await dialog.ShowDialog(this);
             }
             else
             {
-                Serilog.Log.Warning("Token test failed with status: {Status}", response.StatusCode);
-                
+                Serilog.Log.Information("TokenTest results (non-desktop fallback):\n{Results}", results.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Error testing token");
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
+            {
                 var dialog = new Window
                 {
-                    Title = "Ошибка Теста Токена",
+                    Title = "Ошибка",
                     Width = 400,
                     Height = 200,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -306,55 +352,18 @@ public partial class MainWindow : Window
                         Margin = new Thickness(20),
                         Children =
                         {
-                            new TextBlock 
-                            { 
-                                Text = $"Ошибка: {response.StatusCode}",
-                                FontSize = 14,
-                                Margin = new Thickness(0, 0, 0, 10)
-                            },
-                            new TextBlock 
-                            { 
-                                Text = await response.Content.ReadAsStringAsync(),
-                                TextWrapping = TextWrapping.Wrap
-                            }
+                            new TextBlock { Text = "Ошибка при тестировании токена:", FontSize = 14, Margin = new Thickness(0, 0, 0, 10) },
+                            new TextBlock { Text = ex.Message, TextWrapping = TextWrapping.Wrap }
                         }
                     }
                 };
-                
+
                 await dialog.ShowDialog(this);
             }
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "Error testing token");
-            
-            var dialog = new Window
+            else
             {
-                Title = "Ошибка",
-                Width = 400,
-                Height = 200,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new StackPanel
-                {
-                    Margin = new Thickness(20),
-                    Children =
-                    {
-                        new TextBlock 
-                        { 
-                            Text = "Ошибка при тестировании токена:",
-                            FontSize = 14,
-                            Margin = new Thickness(0, 0, 0, 10)
-                        },
-                        new TextBlock 
-                        { 
-                            Text = ex.Message,
-                            TextWrapping = TextWrapping.Wrap
-                        }
-                    }
-                }
-            };
-            
-            await dialog.ShowDialog(this);
+                Serilog.Log.Error("TokenTest error (non-desktop fallback): {Message}", ex.Message);
+            }
         }
     }
 

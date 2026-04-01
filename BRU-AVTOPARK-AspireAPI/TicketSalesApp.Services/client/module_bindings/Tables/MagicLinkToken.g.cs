@@ -43,8 +43,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<MagicLinkToken, SpacetimeDB.Identity> UserId { get; }
         public global::SpacetimeDB.Col<MagicLinkToken, ulong> ExpiresAt { get; }
         public global::SpacetimeDB.Col<MagicLinkToken, bool> IsUsed { get; }
-        public global::SpacetimeDB.NullableCol<MagicLinkToken, string> DeviceInfo { get; }
-        public global::SpacetimeDB.NullableCol<MagicLinkToken, string> IpAddress { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, string> DeviceInfo { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, string> IpAddress { get; }
 
         public MagicLinkTokenCols(string tableName)
         {
@@ -52,8 +52,8 @@ namespace SpacetimeDB.Types
             UserId = new global::SpacetimeDB.Col<MagicLinkToken, SpacetimeDB.Identity>(tableName, "user_id");
             ExpiresAt = new global::SpacetimeDB.Col<MagicLinkToken, ulong>(tableName, "expires_at");
             IsUsed = new global::SpacetimeDB.Col<MagicLinkToken, bool>(tableName, "is_used");
-            DeviceInfo = new global::SpacetimeDB.NullableCol<MagicLinkToken, string>(tableName, "device_info");
-            IpAddress = new global::SpacetimeDB.NullableCol<MagicLinkToken, string>(tableName, "ip_address");
+            DeviceInfo = new global::SpacetimeDB.Col<MagicLinkToken, string>(tableName, "device_info");
+            IpAddress = new global::SpacetimeDB.Col<MagicLinkToken, string>(tableName, "ip_address");
         }
     }
 

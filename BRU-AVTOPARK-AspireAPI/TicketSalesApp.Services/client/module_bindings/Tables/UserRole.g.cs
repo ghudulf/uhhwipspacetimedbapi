@@ -43,7 +43,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<UserRole, SpacetimeDB.Identity> UserId { get; }
         public global::SpacetimeDB.Col<UserRole, uint> RoleId { get; }
         public global::SpacetimeDB.Col<UserRole, ulong> AssignedAt { get; }
-        public global::SpacetimeDB.NullableCol<UserRole, string> AssignedBy { get; }
+        public global::SpacetimeDB.Col<UserRole, string> AssignedBy { get; }
 
         public UserRoleCols(string tableName)
         {
@@ -51,7 +51,7 @@ namespace SpacetimeDB.Types
             UserId = new global::SpacetimeDB.Col<UserRole, SpacetimeDB.Identity>(tableName, "user_id");
             RoleId = new global::SpacetimeDB.Col<UserRole, uint>(tableName, "role_id");
             AssignedAt = new global::SpacetimeDB.Col<UserRole, ulong>(tableName, "assigned_at");
-            AssignedBy = new global::SpacetimeDB.NullableCol<UserRole, string>(tableName, "assigned_by");
+            AssignedBy = new global::SpacetimeDB.Col<UserRole, string>(tableName, "assigned_by");
         }
     }
 

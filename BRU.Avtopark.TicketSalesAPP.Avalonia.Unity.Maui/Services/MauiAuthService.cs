@@ -5,10 +5,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Services;
 
 /// <summary>
 /// MAUI-side authentication service.
-/// Owns the <see cref="OAuthService"/> and <see cref="TokenStorageService"/> instances
-/// so MAUI pages don't need to reach into the Avalonia-side AuthenticationManager via
-/// reflection. Registered as a singleton in <see cref="MauiProgram"/> and injected into
-/// pages that need it.
+/// Call <see cref="InitializeAsync"/> once at startup (SplashPage) to run API
+/// server discovery before any OAuth or API calls are made.
 /// </summary>
 public sealed class MauiAuthService
 {
@@ -17,10 +15,6 @@ public sealed class MauiAuthService
     private static MauiAuthService? _instance;
     private static readonly object _lock = new();
 
-    /// <summary>
-    /// Process-wide singleton — accessible from pages that can't use DI injection
-    /// (e.g. XAML-constructed pages). Prefer constructor injection where possible.
-    /// </summary>
     public static MauiAuthService Instance
     {
         get
@@ -34,31 +28,52 @@ public sealed class MauiAuthService
 
     // ── Core services ────────────────────────────────────────────────────
 
-    public OAuthService OAuthService { get; }
-    public TokenStorageService TokenStorage { get; }
+    private OAuthService? _oAuthService;
+
+    /// <summary>
+    /// The OAuth service, built with the discovered server URL.
+    /// Falls back to localhost if <see cref="InitializeAsync"/> hasn't run yet.
+    /// </summary>
+    public OAuthService OAuthService
+    {
+        get
+        {
+            if (_oAuthService is null)
+                _oAuthService = BuildOAuthService(ApiClientService.Instance.CurrentBaseUrl);
+            return _oAuthService;
+        }
+    }
+
+    public TokenStorageService TokenStorage { get; } = new TokenStorageService();
 
     // ── Constructor ──────────────────────────────────────────────────────
 
-    public MauiAuthService()
-    {
-        TokenStorage = new TokenStorageService();
+    public MauiAuthService() { }
 
-        OAuthService = new OAuthService(
-            clientId: "bru-avtopark-desktop-client",
-            clientSecret: "your-secure-client-secret-here-change-in-production",
-            authorizationEndpoint: "https://localhost:5001/connect/authorize",
-            tokenEndpoint: "https://localhost:5001/connect/token",
-            redirectUri: "http://localhost:5000/callback",
-            tokenStorage: TokenStorage
-        );
+    // ── Initialization (discovery) ───────────────────────────────────────
+
+    /// <summary>
+    /// Runs API server discovery and rebuilds <see cref="OAuthService"/> with the
+    /// correct server URL. Must be awaited once at startup before any API/OAuth calls.
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        Log.Information("[MauiAuthService] InitializeAsync: starting API server discovery");
+
+        var baseUrl = await ApiClientService.Instance.DiscoverApiBaseUrlAsync(cancellationToken);
+
+        // baseUrl = "http://<host>:5000/api/" — derive server root
+        var serverRoot = baseUrl.EndsWith("api/", StringComparison.OrdinalIgnoreCase)
+            ? baseUrl[..^4]
+            : baseUrl.TrimEnd('/') + "/";
+
+        Log.Information("[MauiAuthService] InitializeAsync: server root = {Root}", serverRoot);
+
+        _oAuthService = BuildOAuthService(serverRoot);
     }
 
     // ── Token helpers ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Loads persisted tokens from disk and restores them into ApiClientService.
-    /// Must be called once at startup before any HasValidToken* checks.
-    /// </summary>
     public async Task<bool> RestoreSessionAsync()
     {
         try
@@ -88,7 +103,6 @@ public sealed class MauiAuthService
                 return false;
             }
 
-            // Restore into in-memory state
             ApiClientService.Instance.AuthToken = tokens.AccessToken;
             TokenExpiresAt = tokens.ExpiresAt;
 
@@ -103,10 +117,6 @@ public sealed class MauiAuthService
         }
     }
 
-    /// <summary>
-    /// Returns true if a non-expired access token is stored on disk.
-    /// NOTE: does NOT restore the token into ApiClientService — call RestoreSessionAsync() for that.
-    /// </summary>
     public async Task<bool> HasValidTokenAsync()
     {
         try
@@ -126,33 +136,19 @@ public sealed class MauiAuthService
         }
     }
 
-    /// <summary>
-    /// Synchronous check — uses the in-memory ApiClientService token as a fast path.
-    /// Suitable for UI refresh calls that must not block.
-    /// </summary>
     public bool HasValidTokenSync()
         => !string.IsNullOrEmpty(ApiClientService.Instance.AuthToken)
            && TokenExpiresAt != DateTime.MinValue
            && DateTime.UtcNow < TokenExpiresAt;
 
-    /// <summary>
-    /// Expiry time of the currently cached token, or MinValue if none.
-    /// Loaded lazily from the last successful exchange.
-    /// </summary>
     public DateTime TokenExpiresAt { get; private set; } = DateTime.MinValue;
 
-    /// <summary>
-    /// Exchanges an authorization code for tokens, persists them, and sets the
-    /// access token on <see cref="ApiClientService.Instance"/> so API calls work.
-    /// Returns the token response on success, null on failure.
-    /// </summary>
     public async Task<OAuthTokenResponse?> ExchangeAndPersistAsync(string code, string codeVerifier)
     {
         try
         {
             Log.Information("[MauiAuthService] ExchangeAndPersistAsync — code.Length={CodeLen}, verifier.Length={VerLen}",
                 code?.Length ?? -1, codeVerifier?.Length ?? -1);
-            Console.WriteLine($"[MauiAuthService] Exchanging authorization code for tokens (code={code?.Length}ch)");
 
             var tokens = await OAuthService.ExchangeCodeForTokenAsync(code ?? string.Empty, codeVerifier ?? string.Empty);
 
@@ -161,31 +157,24 @@ public sealed class MauiAuthService
                 ApiClientService.Instance.AuthToken = tokens.AccessToken;
                 TokenExpiresAt = tokens.ExpiresAt;
                 Log.Information("[MauiAuthService] Token exchange OK — expires {ExpiresAt:u}", tokens.ExpiresAt);
-                Console.WriteLine($"[MauiAuthService] Token exchange OK — expires {tokens.ExpiresAt:u}");
                 return tokens;
             }
 
             Log.Warning("[MauiAuthService] ExchangeCodeForTokenAsync returned null/empty token");
-            Console.Error.WriteLine("[MauiAuthService] ExchangeCodeForTokenAsync returned null/empty token");
             return null;
         }
         catch (OAuthAuthorizationException ex)
         {
             Log.Error(ex, "[MauiAuthService] Authorization error: {Message}", ex.Message);
-            Console.Error.WriteLine($"[MauiAuthService] Authorization error: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[MauiAuthService] Token exchange error: {Message}", ex.Message);
-            Console.Error.WriteLine($"[MauiAuthService] Token exchange error: {ex}");
             return null;
         }
     }
 
-    /// <summary>
-    /// Clears all stored tokens and resets the ApiClientService auth state.
-    /// </summary>
     public async Task LogoutAsync()
     {
         try
@@ -197,13 +186,40 @@ public sealed class MauiAuthService
             ApiClientService.Instance.UserRole = null;
             TokenExpiresAt = DateTime.MinValue;
             Log.Information("[MauiAuthService] Logged out — tokens cleared");
-            Console.WriteLine("[MauiAuthService] Logged out — tokens cleared");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[MauiAuthService] LogoutAsync failed");
-            Console.Error.WriteLine($"[MauiAuthService] LogoutAsync failed: {ex}");
             throw;
         }
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────
+
+    private OAuthService BuildOAuthService(string? serverRoot)
+    {
+        // serverRoot may be the full "api/" base — strip to get server root
+        var root = serverRoot ?? $"http://localhost:5000/";
+        if (root.EndsWith("api/", StringComparison.OrdinalIgnoreCase))
+            root = root[..^4];
+        root = root.TrimEnd('/');
+
+        var authEndpoint  = $"{root}/connect/authorize";
+        var tokenEndpoint = $"{root}/connect/token";
+        // Redirect URI is always localhost — it's a server-side endpoint registered in OpenIddict.
+        // Only authorize/token endpoints use the discovered LAN IP.
+        var redirectUri   = "http://localhost:5000/callback";
+
+        Log.Information("[MauiAuthService] Building OAuthService: auth={Auth}, token={Token}",
+            authEndpoint, tokenEndpoint);
+
+        return new OAuthService(
+            clientId: "bru-avtopark-desktop-client",
+            clientSecret: "your-secure-client-secret-here-change-in-production",
+            authorizationEndpoint: authEndpoint,
+            tokenEndpoint: tokenEndpoint,
+            redirectUri: redirectUri,
+            tokenStorage: TokenStorage
+        );
     }
 }
