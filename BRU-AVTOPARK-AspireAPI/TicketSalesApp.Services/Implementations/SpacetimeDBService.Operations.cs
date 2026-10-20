@@ -142,6 +142,7 @@ public partial class SpacetimeDBService
     private void SetState(DatabaseConnectionState state)
     {
         if (_state == state) return;
+        if (_state == DatabaseConnectionState.Ready) Changes.Reset();
         _logger.LogInformation("Database state {PreviousState} -> {State}; pending {PendingCount}", _state, state, _pending.Count);
         _state = state;
     }

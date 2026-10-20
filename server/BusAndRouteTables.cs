@@ -596,7 +596,11 @@ public static partial class Module
         {
             maintenance.MileageThreshold = mileage;
         }
+        if (ctx.Db.Bus.BusId.Find(maintenance.BusId) == null) throw new Exception("Bus not found.");
+        ValidateMaintenanceFields(maintenance.LastServiceDate, maintenance.NextServiceDate, maintenance.ServiceEngineer,
+            maintenance.FoundIssues, maintenance.Roadworthiness, maintenance.MaintenanceType, maintenance.MileageThreshold);
         ctx.Db.Maintenance.MaintenanceId.Update(maintenance);
+        AdvanceEntityRevision(ctx, "maintenance", maintenanceId);
         Log.Info($"Maintenance {maintenanceId} updated");
 
         // Publish maintenance event
@@ -634,6 +638,7 @@ public static partial class Module
         var busId = maintenance.BusId;
 
         ctx.Db.Maintenance.MaintenanceId.Delete(maintenanceId);
+        AdvanceEntityRevision(ctx, "maintenance", maintenanceId);
         Log.Info($"Maintenance {maintenanceId} has been deleted.");
 
         // Publish maintenance event

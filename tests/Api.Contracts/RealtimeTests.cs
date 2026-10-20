@@ -45,6 +45,10 @@ internal static class RealtimeTests
         var welcome = await Receive(client, deadline.Token);
         Assert(welcome.Type == "welcome" && welcome.Data?.Deserialize<Capabilities>(ApiProtocol.Json)?.Operations.Any(o => o.Name == "sales.create") == true, "capabilities missing");
 
+        await Send(client, "subscriptions.open", new SubscriptionRequest(Guid.NewGuid().ToString("N"), "session.access", JsonSerializer.SerializeToElement(new EmptyRequest())), deadline.Token);
+        Assert((await Receive(client, deadline.Token)).Code == "unauthenticated", "anonymous subscription accepted");
+        await Send(client, "subscriptions.close", new SubscriptionClose(Guid.NewGuid().ToString("N")), deadline.Token);
+        Assert((await Receive(client, deadline.Token)).Code == "unauthenticated", "anonymous operation outside allowlist accepted");
         var read = await Send(client, "sales.list", new PageRequest(), deadline.Token);
         var denied = await Receive(client, deadline.Token);
         Assert(denied.RequestId == read && denied.Code == "unauthenticated", "anonymous sales access not denied");

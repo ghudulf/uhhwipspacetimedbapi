@@ -29,8 +29,10 @@ internal static class FleetTests
         var service = new BusService(database, NullLogger<BusService>.Instance);
         var firstId = Guid.NewGuid().ToString("N");
         var secondId = Guid.NewGuid().ToString("N");
+        var watermark = database.Changes.Current;
         var concurrent = await Task.WhenAll(service.CreateBusAsync("synthetic-A", "A", owner, firstId, details: new(40, "Urban", 2024, "VIN-SYNTHETIC", "PLATE", "Ready", false)), service.CreateBusAsync("synthetic-B", "B", owner, secondId));
         var first = concurrent[0]!; var second = concurrent[1]!;
+        Assert(database.Changes.Read(watermark).Changes.Any(c => c.Resource == "buses"), "actual committed fleet rows did not publish invalidation");
         Assert(first.Capacity == 40 && first.Year == 2024 && first.Vin == "VIN-SYNTHETIC" && first.LicensePlate == "PLATE" && !first.IsActive,
             "existing page details were silently discarded");
         var operations = new ApplicationOperations(database, new TicketSalesService(database, NullLogger<TicketSalesService>.Instance), service,
@@ -44,7 +46,9 @@ internal static class FleetTests
         await Reject(() => service.CreateBusAsync("changed-payload", "A", owner, firstId));
         await service.UpdateBusAsync(first.BusId, "synthetic-updated", "A", owner, expectedRevision: 1, details: new(Capacity: 45, IsActive: true));
         Assert((await service.GetBusByIdAsync(first.BusId)) is { Capacity: 45, IsActive: true, Vin: "VIN-SYNTHETIC" }, "bus detail update lost preserved fields");
+        var beforeRejection = database.Changes.Current;
         await Reject(() => service.UpdateBusAsync(first.BusId, "stale", "A", owner, expectedRevision: 1));
+        Assert(database.Changes.Current == beforeRejection, "rejected reducer emitted a committed invalidation");
         // A legacy writer must also invalidate a v2 draft.
         await database.ExecuteReducerAsync(new Reducer.UpdateBus(first.BusId, "legacy-updated", null, owner), _ => true);
         await Reject(() => service.UpdateBusAsync(first.BusId, "stale-v2", null, owner, expectedRevision: 2));

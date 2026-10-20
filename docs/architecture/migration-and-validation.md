@@ -73,3 +73,9 @@ The additive `BusRevision` table treats existing vehicles as revision zero until
 Existing package families are retained. DataProtection.Extensions is patched to 10.0.13; SQLite's native library is pinned to 2.1.14; OTLP exporter/hosting use 1.15.3 with matching 1.15 instrumentation. The standalone Services graph pins IdentityModel 6.34.0 and its compatible encoder 4.7.2, preserving OpenIddict 4.1.0. Higher API/client IdentityModel versions remain unchanged. Audit all transitive dependencies with `dotnet list <project> package --vulnerable --include-transitive --format json`; absence of reported advisories does not replace application authorization tests.
 
 SecurityCodeScan installs all three declared SDKs and builds module, API, Aspire host, desktop and generic MAUI from their project directories. This preserves their individual SDK selection and avoids using SDK 10 for the SDK 8 WASI module or net11 MAUI. The Windows workflow still needs execution in GitHub Actions. CodeQL and DevSkim remain configured.
+
+### Additive catalog revisions
+
+`EntityRevision` records route, employee, job and maintenance revisions without rewriting existing business rows. Existing rows begin at revision zero; legacy writes advance the same counter as v2 mutations. New receipts are stored in the existing actor-scoped `MutationReceipt` table. Publish the module and regenerated 2.1.0 API bindings together. Legacy direct create calls now require current sender permissions; API callers must use the actor-aware v2 adapters. No accounts or business IDs are cleared.
+
+The query-change journal is process memory, contains resource names only and is deliberately not durable. API/database reconnects change its epoch. Clients must reacquire snapshots; a previous process watermark is never accepted as current.

@@ -13,6 +13,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 internal static class ApplicationQueryClient
 {
     private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) };
+    public static async System.Collections.Generic.IAsyncEnumerable<BRU.Avtopark.Client.QueryUpdate<TResponse>> WatchAsync<TRequest, TResponse>(
+        string operation, TRequest request, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var api = ApiClientService.Instance;
+        var origin = await api.DiscoverApiBaseUrlAsync(cancellationToken);
+        var token = api.AuthToken ?? throw new ApplicationCommandException("unauthenticated");
+        await foreach (var update in ApplicationClientCoordinator.WatchAsync<TRequest, TResponse>(origin, token, operation, request, cancellationToken))
+            yield return update;
+    }
     public static async Task<TResponse> ReadAsync<TRequest, TResponse>(string operation, TRequest request, CancellationToken cancellationToken)
     {
         if (operation is not ("reports.sales" or "buses.list")) throw new ArgumentException("Read operation is not registered.", nameof(operation));

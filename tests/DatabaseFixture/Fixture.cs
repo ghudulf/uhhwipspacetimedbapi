@@ -31,8 +31,12 @@ public static partial class Module
     public static void PrepareFleetTest(ReducerContext ctx)
     {
         RequireDeploymentOwner(ctx);
+        // Tickets in the synthetic baseline deliberately refer to route 1. Keep catalog test IDs separate.
+        var routeCounter = ctx.Db.RouteIdCounter.Key.Find("routeId");
+        if (routeCounter == null) ctx.Db.RouteIdCounter.Insert(new RouteIdCounter { Key = "routeId", NextId = 100 });
+        else if (routeCounter.NextId < 100) { routeCounter.NextId = 100; ctx.Db.RouteIdCounter.Key.Update(routeCounter); }
         var next = ctx.Db.Permission.Iter().Select(p => p.PermissionId).DefaultIfEmpty(0u).Max();
-        foreach (var name in new[] { "buses.create", "buses.edit", "buses.delete", "buses.view", "routes.view", "maintenance.view" })
+        foreach (var name in new[] { "buses.create", "buses.edit", "buses.delete", "buses.view", "routes.view", "routes.create", "routes.edit", "routes.delete", "maintenance.view", "maintenance.create", "maintenance.edit", "maintenance.delete", "employees.view", "employees.create", "employees.edit", "employees.delete", "jobs.view", "jobs.create", "jobs.edit", "jobs.delete" })
         {
             if (ctx.Db.Permission.Iter().Any(p => p.Name == name)) continue;
             var id = checked(++next);
@@ -50,5 +54,13 @@ public static partial class Module
         ctx.Db.Route.RouteId.Delete(routeId);
         if (present) ctx.Db.Route.Insert(new Route { RouteId = routeId, BusId = busId, DriverId = 0,
             RouteNumber = "synthetic-reference", StartPoint = "A", EndPoint = "B", TravelTime = "00:10", IsActive = false });
+    }
+    [SpacetimeDB.Reducer]
+    public static void SetCatalogEmployeeReference(ReducerContext ctx, uint employeeId, bool present)
+    {
+        RequireDeploymentOwner(ctx);
+        const uint id = 4000000000;
+        ctx.Db.Maintenance.MaintenanceId.Delete(id);
+        if (present) ctx.Db.Maintenance.Insert(new Maintenance { MaintenanceId = id, BusId = 0, ScheduledByEmployeeId = employeeId });
     }
 }

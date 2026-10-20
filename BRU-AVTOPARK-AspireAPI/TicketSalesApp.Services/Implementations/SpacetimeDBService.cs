@@ -1438,6 +1438,7 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Connected to SpacetimeDB with identity: {Identity}", identity);
                 _localIdentity = identity;
                 ObserveReducerCompletions(conn);
+                ObserveApplicationChanges(conn);
                 SetState(DatabaseConnectionState.Subscribing);
                 if (string.IsNullOrEmpty(_configuration["SpacetimeDB:Token"])) AuthToken.SaveToken(token);
 

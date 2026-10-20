@@ -131,6 +131,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         private readonly Func<BusQuery, CancellationToken, Task<BusPageResult>> _load;
+        private readonly Func<BusQuery, CancellationToken, IAsyncEnumerable<BRU.Avtopark.Client.QueryUpdate<BusPageResult>>>? _watch;
+        private CancellationTokenSource? _watchCancellation;
+        private Task? _watchTask;
+        private bool _isSynchronized;
+        public bool IsSynchronized
+        {
+            get => _isSynchronized;
+            private set { this.RaiseAndSetIfChanged(ref _isSynchronized, value); NotifyAvailability(); this.RaisePropertyChanged(nameof(SynchronizationMessage)); }
+        }
+        public string SynchronizationMessage => IsSynchronized ? string.Empty : "Синхронизация… Изменения временно недоступны.";
         private bool _active;
         private Task? _activation;
         private CancellationTokenSource? _cancellation;
@@ -143,10 +153,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public bool CanGoPrevious => !IsBusy && _page > 1;
         public bool CanGoNext => !IsBusy && _page * 100 < _totalCount;
 
-        public BusManagementViewModel() : this((query, ct) => ApplicationQueryClient.ReadAsync<BusQuery, BusPageResult>("buses.list", query, ct)) { }
-        public BusManagementViewModel(Func<BusQuery, CancellationToken, Task<BusPageResult>> load)
+        public BusManagementViewModel() : this((query, ct) => ApplicationQueryClient.ReadAsync<BusQuery, BusPageResult>("buses.list", query, ct),
+            Environment.GetEnvironmentVariable("BRU_TRANSPORT") == "http" ? null :
+                (query, ct) => ApplicationQueryClient.WatchAsync<BusQuery, BusPageResult>("buses.list", query, ct)) { }
+        public BusManagementViewModel(Func<BusQuery, CancellationToken, Task<BusPageResult>> load,
+            Func<BusQuery, CancellationToken, IAsyncEnumerable<BRU.Avtopark.Client.QueryUpdate<BusPageResult>>>? watch = null)
         {
             _load = load;
+            _watch = watch;
 
         }
         public Task ActivateAsync()
@@ -161,6 +175,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public void Deactivate()
         {
             _active = false;
+            _watchCancellation?.Cancel();
+            IsSynchronized = false;
             _generation++;
             _cancellation?.Cancel();
             IsBusy = false;
@@ -199,6 +215,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private async Task LoadData()
         {
             if (!_active) return;
+            _watchCancellation?.Cancel();
+            IsSynchronized = false;
             _cancellation?.Cancel();
             var cancellation = new CancellationTokenSource();
             _cancellation = cancellation;
@@ -210,6 +228,36 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (!_active || generation != _generation || cancellation.IsCancellationRequested) return;
+                    ApplyPage(result);
+                    IsSynchronized = _watch == null;
+                    if (_watch != null)
+                    {
+                        _watchCancellation = new CancellationTokenSource();
+                        _watchTask = WatchDataAsync(new BusQuery(_page, 100, SearchText), generation, _watchCancellation);
+                    }
+                });
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Log.Warning("Bus query failed: {ErrorType}", ex.GetType().Name);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!_active || generation != _generation) return;
+                    if (ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "forbidden" or "unauthenticated" or "session_expired" }) ClearSessionData();
+                    HasError = true; ErrorMessage = "Не удалось обновить автобусы. Показаны ранее загруженные данные. Повторите загрузку.";
+                });
+            }
+            finally
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => { if (generation == _generation) IsBusy = false; });
+                if (ReferenceEquals(_cancellation, cancellation)) _cancellation = null;
+                cancellation.Dispose();
+            }
+        }
+
+        private void ApplyPage(BusPageResult result)
+        {
                     var selected = SelectedBus?.BusId;
                     var existing = Buses.ToDictionary(b => b.BusId);
                     var updated = result.Items.Select(row =>
@@ -229,23 +277,35 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     _page = result.Page; _totalCount = result.TotalCount;
                     _canCreate = result.CanCreate; _canEdit = result.CanEdit; _canDelete = result.CanDelete;
                     NotifyPaging();
-                });
+        }
+        private async Task WatchDataAsync(BusQuery query, long generation, CancellationTokenSource cancellation)
+        {
+            try
+            {
+                await foreach (var update in _watch!(query, cancellation.Token))
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (!_active || generation != _generation || cancellation.IsCancellationRequested) return;
+                        IsSynchronized = update.IsSynchronized;
+                        if (update.Data is { } result) { ApplyPage(result); HasError = false; }
+                        if (update.Reason == "forbidden") ClearSessionData();
+                    });
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                Log.Warning("Bus query failed: {ErrorType}", ex.GetType().Name);
+                Log.Warning("Bus synchronization stopped: {ErrorType}", ex.GetType().Name);
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (!_active || generation != _generation) return;
-                    if (ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "forbidden" or "unauthenticated" or "session_expired" }) ClearSessionData();
-                    HasError = true; ErrorMessage = "Не удалось обновить автобусы. Показаны ранее загруженные данные. Повторите загрузку.";
+                    IsSynchronized = false;
+                    if (ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "forbidden" or "unauthenticated" or "session_expired" or "session_changed" or "invalid_credentials" }) ClearSessionData();
+                    HasError = true; ErrorMessage = "Синхронизация остановлена. Повторите загрузку.";
                 });
             }
             finally
             {
-                await Dispatcher.UIThread.InvokeAsync(() => { if (generation == _generation) IsBusy = false; });
-                if (ReferenceEquals(_cancellation, cancellation)) _cancellation = null;
+                if (ReferenceEquals(_watchCancellation, cancellation)) _watchCancellation = null;
                 cancellation.Dispose();
             }
         }
@@ -321,6 +381,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 addButton.Click += async (s, e) =>
                 {
+                    if (!CanCreate) { await ShowSynchronizationRequiredAsync(); return; }
                     Log.Debug("Attempting to add new bus.");
                     // Validation
                     if (string.IsNullOrWhiteSpace(modelBox.Text) || !capacityBox.Value.HasValue || !yearBox.Value.HasValue)
@@ -453,6 +514,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 saveButton.Click += async (s, e) =>
                 {
+                    if (!CanMutate || !_canEdit) { await ShowSynchronizationRequiredAsync(); return; }
                     Log.Debug("Attempting to save changes for BusId: {BusId}", busToEdit.BusId);
                     // Validation
                     if (string.IsNullOrWhiteSpace(modelBox.Text) || !capacityBox.Value.HasValue || !yearBox.Value.HasValue)
@@ -547,6 +609,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
             if (result == ButtonResult.Yes)
             {
+                if (!CanMutate || !_canDelete) { await ShowSynchronizationRequiredAsync(); return; }
                 Log.Debug("Deletion confirmed for BusId: {BusId}", busToDelete.BusId);
                 IsBusy = true;
                 Log.Information("Sending request to delete bus {BusId}", busToDelete.BusId);
@@ -568,7 +631,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
-        public bool CanMutate => _active && !IsBusy && !HasError && !string.IsNullOrEmpty(_sessionToken)
+        public bool CanMutate => _active && IsSynchronized && !IsBusy && !HasError && !string.IsNullOrEmpty(_sessionToken)
             && _sessionToken == ApiClientService.Instance.AuthToken;
         public bool CanCreate => CanMutate && _canCreate;
         public bool CanEdit => CanMutate && _canEdit && SelectedBus != null;
@@ -581,6 +644,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             this.RaisePropertyChanged(nameof(CanDelete));
             AddCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged();
         }
+        private static async Task ShowSynchronizationRequiredAsync() =>
+            await MessageBoxManager.GetMessageBoxStandard("Синхронизация", "Дождитесь синхронизации и проверьте права доступа. Черновик сохранён.", ButtonEnum.Ok, Icon.Warning).ShowAsync();
         private static bool CanRetryMutation(Exception ex) => ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "validation_failed" or "forbidden" };
         private async Task ShowMutationFailureAsync(Exception ex)
         {

@@ -21,11 +21,12 @@ public sealed partial class ApplicationOperations
     private readonly ILogger<ApplicationOperations> _logger;
     private sealed record Handler(OperationCapability Capability, Func<Identity, JsonElement, string?, CancellationToken, Task<object?>> Execute);
 
-    public ApplicationOperations(ISpacetimeDBService database, ITicketSalesService sales, IBusService buses, ILogger<ApplicationOperations> logger, IConfiguration? configuration = null)
+    public ApplicationOperations(ISpacetimeDBService database, ITicketSalesService sales, IBusService buses, ILogger<ApplicationOperations> logger, IConfiguration? configuration = null, IRouteService? routes = null, IEmployeeService? employees = null, IMaintenanceService? maintenance = null)
     {
         _access = new(database);
         _logger = logger;
         RegisterFleet(database, buses);
+        RegisterCatalog(database, routes, employees, maintenance);
         var businessZone = TimeZoneInfo.FindSystemTimeZoneById(configuration?["Business:TimeZone"] ?? "UTC");
         Register<SalesReportRequest>("reports.sales", "sales.view", false, async (_, request, _, ct) =>
             await SalesReportProjection.ReadAsync(database, request, businessZone, ct));
@@ -89,9 +90,7 @@ public sealed partial class ApplicationOperations
     {
         if (!_handlers.TryGetValue(operation, out var handler)) throw new OperationException("unsupported_operation");
         if (handler.Capability.Mutation) ValidateOperationId(operationId);
-        var access = await _access.GetAsync(actor, ct);
-        if (!access.IsActive || (handler.Capability.Permission is { } permission && !access.Allows(permission)))
-            throw new OperationException("forbidden");
+        await AuthorizeAsync(operation, actor, ct);
         var started = Stopwatch.GetTimestamp();
         try
         {
@@ -100,6 +99,14 @@ public sealed partial class ApplicationOperations
             return result;
         }
         catch (JsonException) { throw new OperationException("validation_failed"); }
+    }
+
+    public async Task AuthorizeAsync(string operation, Identity actor, CancellationToken ct)
+    {
+        if (!_handlers.TryGetValue(operation, out var handler)) throw new OperationException("unsupported_operation");
+        var access = await _access.GetAsync(actor, ct);
+        if (!access.IsActive || (handler.Capability.Permission is { } permission && !access.Allows(permission)))
+            throw new OperationException("forbidden");
     }
 
     private void Register<T>(string name, string? permission, bool mutation, Func<Identity, T, string?, CancellationToken, Task<object?>> execute) =>

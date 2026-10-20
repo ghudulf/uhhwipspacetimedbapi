@@ -2,7 +2,7 @@
 
 `GET /api/realtime/stream` accepts `bru.api.v2`. The existing `bru.events.v1` endpoint remains available. V2 requires HTTPS; a loopback peer in Development can use HTTP. Browser origins must exactly match `Realtime:AllowedOrigins`; native clients send no Origin. Configure forwarded headers for trusted proxies before relying on remote-address limits.
 
-This is a partial operation rollout. Capability negotiation is authoritative: operations absent from it are not implemented in v2. All-operation parity, snapshot/event watermarks, durable receipts outside sales/fleet, provider ceremony binding and broad screen migration remain outstanding.
+This is a partial operation rollout. Capability negotiation is authoritative: operations absent from it are not implemented in v2. All-operation parity, receipts for the remaining resources, provider ceremony binding and broad screen migration remain outstanding. Snapshot subscriptions are available for the explicitly listed queries below.
 
 ## Messages
 
@@ -35,9 +35,9 @@ Connections are limited to 128 per process and four per source address. Authenti
 | `mutations.receipt` | Active account; only that actor's receipt |
 | `reports.income`, `reports.sales` | `sales.view`; recorded amounts and explicit historical gaps |
 
-Session attach revalidates token proof; every protected command revalidates its token and current database permissions. There are no v2 subscriptions yet. Password/TOTP orchestration shares the existing authentication service. Windows/Entra/WebAuthn browser and platform ceremonies must not be replaced with client-supplied usernames or biometric data.
+Session attach revalidates token proof; every protected command revalidates its token and current database permissions. Query subscriptions reauthorize on delivery and expire their snapshot lease when committed data changes. Password/TOTP orchestration shares the existing authentication service. Windows/Entra/WebAuthn browser and platform ceremonies must not be replaced with client-supplied usernames or biometric data.
 
-Sale and fleet mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
+Sale, fleet, route, employee, job and maintenance mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
 
 The shared HTTP adapter is `POST /api/operations/{operation}` with the same payload and bearer authorization. Mutations use `Idempotency-Key`. Existing HTTP sale/fleet mutations and resource socket mutations invoke the same registered sale handlers and preserve their original response formats. Existing `/api/session/access` also invokes the shared handler.
 
@@ -54,3 +54,21 @@ Reports use `Business:TimeZone` (default `UTC`) to select inclusive business dat
 Server operation logs include connection ID, request ID, generation, outcome and duration. Envelopes carry trace IDs. `BRU.Application` emits command duration/count, connection and pending-work metrics and activities through the configured OpenTelemetry pipeline. Client logs include operation, request ID, transport, generation, outcome and elapsed time. Payloads, password/second-factor values and bearer tokens are excluded from these diagnostics.
 
 `tests/Api.Contracts` exercises framed sockets and an ephemeral Kestrel host with the production shared client. It covers capability negotiation, explicit dispatch, anonymous rejection, budgets, challenge ownership, cancellation, logout, account revocation, token expiry and uncertain mutation disconnect. Authentication/database test doubles isolate these boundaries; the separate database integration suite validates actual receipts and reducer integrity. These tests do not establish real Windows/Entra/Hello interoperability or visual correctness.
+
+## Query subscriptions and resynchronization
+
+`subscriptions.open` accepts `{subscriptionId, operation, payload}`. Use a GUID in N format for the subscription ID. Supported queries: `session.access`, `buses.list`, `sales.list`, `reports.sales`, `reports.income`, `routes.list`, `employees.list`, `jobs.list`, `maintenance.list`. Mutations, token lookup and authentication operations cannot be subscribed. A socket may hold 16 snapshot leases.
+
+The correlated response contains `subscriptionId`, `operation`, `data` and `watermark: {epoch, sequence}`. The server captures the watermark **before** acquiring the snapshot. Committed table callbacks append resource-only invalidations to a bounded journal; changes during snapshot acquisition remain visible after that watermark. There are no credentials, row payloads or uncommitted mutation notifications in this journal.
+
+When a dependency changes, the server pushes a result envelope with `type: "invalidation"`. Its data contains `subscriptionId`, `from`, `watermark` and `reason` (`changed`, `forbidden` or `resync_required`). This ends the snapshot lease. Reopen the same subscription ID to obtain an authoritative replacement snapshot. Changes may be coalesced; sequence ranges are not counts of visible entities. These are query invalidations, not row patches. Do not merge partial history into local data.
+
+The journal holds 2,048 entries. An expired watermark, overflow or database connection-epoch change requires a fresh snapshot. The server rechecks token proof and current operation access on the serialized worker at least once per idle second while subscriptions exist. Failed authorization ends the subscription. Failed reauthorization, outbound queue overflow or a slow writer closes the connection, requiring authentication and fresh snapshots. Logout/attach changes the session generation and clears all leases. `subscriptions.close` explicitly releases a lease.
+
+The shared client's `WatchAsync` buffers an invalidation arriving before the snapshot waiter resumes, detects watermark mismatch, emits an unsynchronized state and acquires a new snapshot. The native coordinator reconnects with bounded backoff/jitter. Account/origin changes cancel the previous stream. The bus screen uses this path, preserves row/selection identity, keeps stale rows visible and disables mutations until synchronized. `BRU_TRANSPORT=http` remains an explicit transport rollback; it uses authoritative reads without live subscriptions.
+
+## Catalog mutations
+
+`routes`, `employees`, `jobs` and `maintenance` expose `.list`, `.create`, `.update`, `.delete`; routes also exposes `.set-active`. Lists are bounded, sorted pages of explicit DTOs. Writes return actor/payload-bound committed receipts. `EntityRevision` is additive; existing rows start at revision zero, and both legacy and v2 writes advance it. Deletes retain revision tombstones. Optional `expectedRevision` rejects stale drafts.
+
+Existing HTTP/resource-socket catalog mutations share the same committed services and preserve their response shapes. Creation returns the exact receipt entity, including concurrent employees with identical names. Legacy direct creation of routes/employees/jobs now checks the sender's permission; it no longer accepts unauthenticated writes. Trusted API delegation remains required for v2 actors. Route/job/employee deletion protects existing references, and maintenance date/reference validation occurs in the transaction.

@@ -32,7 +32,7 @@ internal static class FleetOperationTests
         {
             if (method.Name == "get_State") return DatabaseConnectionState.Ready;
             if (method.Name == "ReadAsync" && method.GetGenericArguments()[0] == typeof(UserAccessSnapshot))
-                return Task.FromResult(new UserAccessSnapshot(true, false, [], allowed ? ["buses.create", "buses.edit", "buses.delete", "buses.view"] : []));
+                return Task.FromResult(new UserAccessSnapshot(true, false, [], allowed ? new[] { "buses", "routes", "employees", "jobs", "maintenance" }.SelectMany(r => new[] { "create", "edit", "delete", "view" }.Select(a => r + "." + a)).ToArray() : []));
             if (method.Name == "ReadAsync" && method.GetGenericArguments()[0] == typeof(MutationResult)) return Task.FromResult(lastReceipt);
             throw new Exception("Unexpected fleet database call " + method.Name);
         });
@@ -49,6 +49,18 @@ internal static class FleetOperationTests
             lastReceipt = new((string)args[idIndex]!, name, 7, 2, DateTimeOffset.UnixEpoch);
             return method.Name == "CreateBusAsync" ? Task.FromResult<Bus?>(null) : Task.FromResult(true);
         });
+        object CatalogSubmission(System.Reflection.MethodInfo method, object?[]? args)
+        {
+            var parameters = method.GetParameters();
+            var actorIndex = Array.FindIndex(parameters, p => p.Name == "actingUser");
+            var idIndex = Array.FindIndex(parameters, p => p.Name == "operationId");
+            Assert(actorIndex >= 0 && (Identity)args![actorIndex]! == actor, "catalog transport lost effective actor");
+            var resource = method.Name.Contains("Employee") ? "employees" : method.Name.Contains("Job") ? "jobs" : method.Name.Contains("Maintenance") ? "maintenance" : "routes";
+            var action = method.Name.StartsWith("Create") ? "create" : method.Name.StartsWith("Update") ? "update" : method.Name.StartsWith("Delete") ? "delete" : "set-active";
+            submissions++;
+            lastReceipt = new((string)args![idIndex]!, resource + "." + action, 7, 2, DateTimeOffset.UnixEpoch);
+            return method.Name == "CreateEmployeeAsync" ? Task.FromResult<Employee?>(null) : Task.FromResult(true);
+        }
         var tokens = Stub.Create<IAuthWebSocketTokenValidator>((_, _) => Task.FromResult<Dictionary<string, object>?>(new() { ["identity"] = actor.ToString() }));
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
@@ -56,6 +68,9 @@ internal static class FleetOperationTests
         builder.Services.AddControllers();
         builder.Services.AddSingleton(database); builder.Services.AddSingleton(buses); builder.Services.AddSingleton(tokens);
         builder.Services.AddSingleton(Stub.Create<ITicketSalesService>());
+        builder.Services.AddSingleton(Stub.Create<IRouteService>(CatalogSubmission));
+        builder.Services.AddSingleton(Stub.Create<IEmployeeService>(CatalogSubmission));
+        builder.Services.AddSingleton(Stub.Create<IMaintenanceService>(CatalogSubmission));
         builder.Services.AddSingleton(Stub.Create<IAuthOrchestrationService>());
         builder.Services.AddSingleton<ConnectionAdmission>();
         builder.Services.AddScoped<ApplicationOperations>(); builder.Services.AddScoped<ApiSocketSession>();
@@ -99,6 +114,19 @@ internal static class FleetOperationTests
             await Check("buses.update", new UpdateBusCommand(7, 1, "Changed"));
             await Check("buses.set-active", new SetBusActiveCommand(7, false, 1));
             await Check("buses.delete", new DeleteBusCommand(7, 1));
+            await Check("routes.create", new CreateRouteCommand("A", "B", 1, 1, "00:10", true));
+            await Check("routes.update", new UpdateRouteCommand(7, 1, "Changed"));
+            await Check("routes.delete", new DeleteRouteCommand(7, 1));
+            await Check("routes.set-active", new SetRouteActiveCommand(7, false, 1));
+            await Check("employees.create", new CreateEmployeeCommand("Synthetic", "Employee", "", 1));
+            await Check("employees.update", new UpdateEmployeeCommand(7, 1, "Changed"));
+            await Check("employees.delete", new DeleteEmployeeCommand(7, 1));
+            await Check("jobs.create", new CreateJobCommand("Synthetic", ""));
+            await Check("jobs.update", new UpdateJobCommand(7, 1, "Changed"));
+            await Check("jobs.delete", new DeleteJobCommand(7, 1));
+            await Check("maintenance.create", new CreateMaintenanceCommand(1, 1000, "Synthetic", "", 2000, "Ready", "Regular"));
+            await Check("maintenance.update", new UpdateMaintenanceCommand(7, 1, ServiceEngineer: "Changed"));
+            await Check("maintenance.delete", new DeleteMaintenanceCommand(7, 1));
             var before = submissions;
             foreach (var (permission, model, expectedCode, status) in new[]
                 { (false, "valid", "forbidden", HttpStatusCode.Forbidden), (true, " ", "validation_failed", HttpStatusCode.BadRequest) })
@@ -113,7 +141,7 @@ internal static class FleetOperationTests
                 catch (ApplicationCommandException ex) when (ex.Code == expectedCode) { }
             }
             Assert(submissions == before, "invalid or forbidden fleet operation reached persistence");
-            Console.WriteLine("PASS fleet HTTP/WebSocket mutation parity, actor/operation IDs, permission revocation and validation before persistence");
+            Console.WriteLine("PASS fleet/routes/employees/jobs/maintenance HTTP/WebSocket mutation parity, actor/operation IDs, permission revocation and validation before persistence");
         }
         finally { await app.StopAsync(); }
     }

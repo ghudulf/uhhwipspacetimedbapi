@@ -13,20 +13,20 @@ using TicketSalesApp.Services.Interfaces;
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2;
 
 /// <summary>One receiver, one command worker and one writer. Secrets are never logged or retained in receipts.</summary>
-public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebSocketTokenValidator tokens,
+public sealed partial class ApiSocketSession(ApplicationOperations operations, IAuthWebSocketTokenValidator tokens,
     IAuthOrchestrationService authentication, ISpacetimeDBService database, ConnectionAdmission admission,
     ILogger<ApiSocketSession> logger, TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService? runtimeFlags = null)
 {
     private static readonly OperationCapability[] SessionOperations =
     [new("capabilities", false, null), new("ping", false, null), new("auth.attach", false, null),
-     new("auth.login", false, null), new("auth.totp", false, null), new("auth.logout", false, null), new("cancel", false, null)];
+     new("subscriptions.open", false, null), new("subscriptions.close", false, null), new("auth.login", false, null), new("auth.totp", false, null), new("auth.logout", false, null), new("cancel", false, null)];
     private volatile string? _token;
     private string? _challenge;
     private string _state = "anonymous";
     private long _generation;
     private long _authenticateByTicks = DateTimeOffset.UtcNow.AddSeconds(45).UtcTicks;
     private DateTimeOffset AuthenticateBy => new(Interlocked.Read(ref _authenticateByTicks), TimeSpan.Zero);
-    private sealed record QueuedCommand(CommandEnvelope Command, long Generation);
+    private sealed record QueuedCommand(CommandEnvelope? Command, long Generation);
     private readonly string _connectionId = Guid.NewGuid().ToString("N");
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new(StringComparer.Ordinal);
 
@@ -34,12 +34,13 @@ public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebS
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var outbound = Channel.CreateBounded<ResultEnvelope>(new BoundedChannelOptions(32) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
-        var commands = Channel.CreateBounded<QueuedCommand>(new BoundedChannelOptions(ApiProtocol.MaxOutstanding) { SingleReader = true, SingleWriter = true });
+        var commands = Channel.CreateBounded<QueuedCommand>(new BoundedChannelOptions(ApiProtocol.MaxOutstanding) { SingleReader = true, SingleWriter = false });
         using var scope = logger.BeginScope(new Dictionary<string, object> { ["ConnectionId"] = _connectionId });
         logger.LogInformation("V2 connection opened");
         OperationTelemetry.Connections.Add(1);
         var writer = WriteAsync(socket, outbound.Reader, stop);
         var worker = WorkAsync(commands.Reader, outbound.Writer, address, stop);
+        var ticker = TickAsync(commands.Writer, stop.Token);
         try
         {
             await outbound.Writer.WriteAsync(Result(null, true, Capabilities(), null, "welcome"), stop.Token);
@@ -96,7 +97,7 @@ public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebS
             stop.Cancel();
             commands.Writer.TryComplete();
             outbound.Writer.TryComplete();
-            try { await Task.WhenAll(worker, writer); } catch (OperationCanceledException) { }
+            try { await Task.WhenAll(worker, writer, ticker); } catch (OperationCanceledException) { }
             foreach (var pending in _pending.ToArray()) RemovePending(pending.Key, pending.Value);
             _token = null;
             _challenge = null;
@@ -126,6 +127,12 @@ public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebS
             await foreach (var queued in commands.ReadAllAsync(stop.Token))
             {
                 var command = queued.Command;
+                if (command == null)
+                {
+                    Interlocked.Exchange(ref _tickQueued, 0);
+                    await PumpSubscriptionsAsync(output, stop.Token);
+                    continue;
+                }
                 if (!_pending.TryGetValue(command.RequestId, out var pending)) continue;
                 using var activity = OperationTelemetry.Traces.StartActivity("bru.operation") ?? new Activity("bru.operation").Start();
                 using var scope = logger.BeginScope(new Dictionary<string, object> { ["RequestId"] = command.RequestId, ["Operation"] = command.Operation, ["Generation"] = _generation });
@@ -211,10 +218,17 @@ public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebS
                 await AttachAsync(completed.Token, ct);
                 return new AuthenticationReply(_state, completed.Token);
         }
-        if (!operations.Contains(command.Operation)) throw new OperationException("unsupported_operation");
+        if (command.Operation != "subscriptions.open" && command.Operation != "subscriptions.close" && !operations.Contains(command.Operation)) throw new OperationException("unsupported_operation");
         if (_token == null) throw new OperationException("unauthenticated");
         var actor = await ResolveActorAsync(_token, ct);
         if (actor == null) { ResetSession("expired"); throw new OperationException("session_expired"); }
+        if (command.Operation == "subscriptions.close")
+        {
+            var close = command.Payload.Deserialize<SubscriptionClose>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
+            ValidateSubscriptionId(close.SubscriptionId);
+            return new { removed = _subscriptions.Remove(close.SubscriptionId) };
+        }
+        if (command.Operation == "subscriptions.open") return await OpenSubscriptionAsync(command, actor.Value, ct);
         return await operations.ExecuteAsync(command.Operation, actor.Value, command.Payload, command.OperationId, ct);
     }
     private async Task AttachAsync(string token, CancellationToken ct)
@@ -235,6 +249,7 @@ public sealed class ApiSocketSession(ApplicationOperations operations, IAuthWebS
     }
     private void ResetSession(string state = "anonymous")
     {
+        _subscriptions.Clear();
         _token = null; _challenge = null; _state = state;
         Interlocked.Exchange(ref _authenticateByTicks, DateTimeOffset.UtcNow.AddSeconds(45).UtcTicks);
         Interlocked.Increment(ref _generation);

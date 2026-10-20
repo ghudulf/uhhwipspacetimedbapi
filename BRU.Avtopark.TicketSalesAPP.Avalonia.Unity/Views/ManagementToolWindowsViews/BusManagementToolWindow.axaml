@@ -49,6 +49,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Content="Назад" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding CanGoPrevious}" AutomationProperties.Name="Предыдущая страница автобусов"/>
                     <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SynchronizationMessage}" VerticalAlignment="Center" AutomationProperties.Name="Состояние синхронизации"/>
                     <Button Content="Далее" Command="{Binding NextPageCommand}" IsEnabled="{Binding CanGoNext}" AutomationProperties.Name="Следующая страница автобусов"/>
                     <Button Content="Обновить" Command="{Binding LoadDataCommand}" IsEnabled="{Binding !IsBusy}"/>
                     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="80" AutomationProperties.Name="Загрузка автобусов"/>

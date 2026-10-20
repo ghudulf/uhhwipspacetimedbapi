@@ -39,6 +39,7 @@ namespace SpacetimeDB.Types
             AddTable(Discounts = new(conn));
             AddTable(Employee = new(conn));
             AddTable(EmployeeShift = new(conn));
+            AddTable(EntityRevision = new(conn));
             AddTable(ExternalAccountLink = new(conn));
             AddTable(FeatureFlagOverride = new(conn));
             AddTable(FuelRecord = new(conn));
@@ -572,6 +573,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Discounts().ToSql(),
             new QueryBuilder().From.Employee().ToSql(),
             new QueryBuilder().From.EmployeeShift().ToSql(),
+            new QueryBuilder().From.EntityRevision().ToSql(),
             new QueryBuilder().From.ExternalAccountLink().ToSql(),
             new QueryBuilder().From.FeatureFlagOverride().ToSql(),
             new QueryBuilder().From.FuelRecord().ToSql(),
@@ -629,6 +631,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Discounts, DiscountsCols, DiscountsIxCols> Discounts() => new("discounts", new DiscountsCols("discounts"), new DiscountsIxCols("discounts"));
         public global::SpacetimeDB.Table<Employee, EmployeeCols, EmployeeIxCols> Employee() => new("employee", new EmployeeCols("employee"), new EmployeeIxCols("employee"));
         public global::SpacetimeDB.Table<EmployeeShift, EmployeeShiftCols, EmployeeShiftIxCols> EmployeeShift() => new("employee_shift", new EmployeeShiftCols("employee_shift"), new EmployeeShiftIxCols("employee_shift"));
+        public global::SpacetimeDB.Table<EntityRevision, EntityRevisionCols, EntityRevisionIxCols> EntityRevision() => new("entity_revision", new EntityRevisionCols("entity_revision"), new EntityRevisionIxCols("entity_revision"));
         public global::SpacetimeDB.Table<ExternalAccountLink, ExternalAccountLinkCols, ExternalAccountLinkIxCols> ExternalAccountLink() => new("external_account_link", new ExternalAccountLinkCols("external_account_link"), new ExternalAccountLinkIxCols("external_account_link"));
         public global::SpacetimeDB.Table<FeatureFlagOverride, FeatureFlagOverrideCols, FeatureFlagOverrideIxCols> FeatureFlagOverride() => new("feature_flag_override", new FeatureFlagOverrideCols("feature_flag_override"), new FeatureFlagOverrideIxCols("feature_flag_override"));
         public global::SpacetimeDB.Table<FuelRecord, FuelRecordCols, FuelRecordIxCols> FuelRecord() => new("fuel_record", new FuelRecordCols("fuel_record"), new FuelRecordIxCols("fuel_record"));
@@ -764,9 +767,12 @@ namespace SpacetimeDB.Types
                 Reducer.CreateBus args => Reducers.InvokeCreateBus(eventContext, args),
                 Reducer.CreateBusV2 args => Reducers.InvokeCreateBusV2(eventContext, args),
                 Reducer.CreateEmployee args => Reducers.InvokeCreateEmployee(eventContext, args),
+                Reducer.CreateEmployeeV2 args => Reducers.InvokeCreateEmployeeV2(eventContext, args),
                 Reducer.CreateJob args => Reducers.InvokeCreateJob(eventContext, args),
+                Reducer.CreateJobV2 args => Reducers.InvokeCreateJobV2(eventContext, args),
                 Reducer.CreateMagicLinkToken args => Reducers.InvokeCreateMagicLinkToken(eventContext, args),
                 Reducer.CreateMaintenance args => Reducers.InvokeCreateMaintenance(eventContext, args),
+                Reducer.CreateMaintenanceV2 args => Reducers.InvokeCreateMaintenanceV2(eventContext, args),
                 Reducer.CreateOidcAuthorization args => Reducers.InvokeCreateOidcAuthorization(eventContext, args),
                 Reducer.CreateOidcScope args => Reducers.InvokeCreateOidcScope(eventContext, args),
                 Reducer.CreateOidcToken args => Reducers.InvokeCreateOidcToken(eventContext, args),
@@ -776,6 +782,7 @@ namespace SpacetimeDB.Types
                 Reducer.CreateRoleReducer args => Reducers.InvokeCreateRoleReducer(eventContext, args),
                 Reducer.CreateRoute args => Reducers.InvokeCreateRoute(eventContext, args),
                 Reducer.CreateRouteSchedule args => Reducers.InvokeCreateRouteSchedule(eventContext, args),
+                Reducer.CreateRouteV2 args => Reducers.InvokeCreateRouteV2(eventContext, args),
                 Reducer.CreateSale args => Reducers.InvokeCreateSale(eventContext, args),
                 Reducer.CreateSaleV2 args => Reducers.InvokeCreateSaleV2(eventContext, args),
                 Reducer.CreateTicket args => Reducers.InvokeCreateTicket(eventContext, args),
@@ -791,9 +798,12 @@ namespace SpacetimeDB.Types
                 Reducer.DeleteBus args => Reducers.InvokeDeleteBus(eventContext, args),
                 Reducer.DeleteBusV2 args => Reducers.InvokeDeleteBusV2(eventContext, args),
                 Reducer.DeleteEmployee args => Reducers.InvokeDeleteEmployee(eventContext, args),
+                Reducer.DeleteEmployeeV2 args => Reducers.InvokeDeleteEmployeeV2(eventContext, args),
                 Reducer.DeleteFeatureFlagOverride args => Reducers.InvokeDeleteFeatureFlagOverride(eventContext, args),
                 Reducer.DeleteJob args => Reducers.InvokeDeleteJob(eventContext, args),
+                Reducer.DeleteJobV2 args => Reducers.InvokeDeleteJobV2(eventContext, args),
                 Reducer.DeleteMaintenance args => Reducers.InvokeDeleteMaintenance(eventContext, args),
+                Reducer.DeleteMaintenanceV2 args => Reducers.InvokeDeleteMaintenanceV2(eventContext, args),
                 Reducer.DeleteOidcAuthorization args => Reducers.InvokeDeleteOidcAuthorization(eventContext, args),
                 Reducer.DeleteOidcScope args => Reducers.InvokeDeleteOidcScope(eventContext, args),
                 Reducer.DeleteOidcToken args => Reducers.InvokeDeleteOidcToken(eventContext, args),
@@ -804,6 +814,7 @@ namespace SpacetimeDB.Types
                 Reducer.DeleteRoleReducer args => Reducers.InvokeDeleteRoleReducer(eventContext, args),
                 Reducer.DeleteRoute args => Reducers.InvokeDeleteRoute(eventContext, args),
                 Reducer.DeleteRouteSchedule args => Reducers.InvokeDeleteRouteSchedule(eventContext, args),
+                Reducer.DeleteRouteV2 args => Reducers.InvokeDeleteRouteV2(eventContext, args),
                 Reducer.DeleteSale args => Reducers.InvokeDeleteSale(eventContext, args),
                 Reducer.DeleteSaleV2 args => Reducers.InvokeDeleteSaleV2(eventContext, args),
                 Reducer.DeleteTicket args => Reducers.InvokeDeleteTicket(eventContext, args),
@@ -837,15 +848,19 @@ namespace SpacetimeDB.Types
                 Reducer.SayHello args => Reducers.InvokeSayHello(eventContext, args),
                 Reducer.SeedDemoData args => Reducers.InvokeSeedDemoData(eventContext, args),
                 Reducer.SetBusActiveV2 args => Reducers.InvokeSetBusActiveV2(eventContext, args),
+                Reducer.SetRouteActiveV2 args => Reducers.InvokeSetRouteActiveV2(eventContext, args),
                 Reducer.StoreTotpSecret args => Reducers.InvokeStoreTotpSecret(eventContext, args),
                 Reducer.StoreWebAuthnChallenge args => Reducers.InvokeStoreWebAuthnChallenge(eventContext, args),
                 Reducer.UnlinkExternalAccount args => Reducers.InvokeUnlinkExternalAccount(eventContext, args),
                 Reducer.UpdateBus args => Reducers.InvokeUpdateBus(eventContext, args),
                 Reducer.UpdateBusV2 args => Reducers.InvokeUpdateBusV2(eventContext, args),
                 Reducer.UpdateEmployee args => Reducers.InvokeUpdateEmployee(eventContext, args),
+                Reducer.UpdateEmployeeV2 args => Reducers.InvokeUpdateEmployeeV2(eventContext, args),
                 Reducer.UpdateFeatureFlag args => Reducers.InvokeUpdateFeatureFlag(eventContext, args),
                 Reducer.UpdateJob args => Reducers.InvokeUpdateJob(eventContext, args),
+                Reducer.UpdateJobV2 args => Reducers.InvokeUpdateJobV2(eventContext, args),
                 Reducer.UpdateMaintenance args => Reducers.InvokeUpdateMaintenance(eventContext, args),
+                Reducer.UpdateMaintenanceV2 args => Reducers.InvokeUpdateMaintenanceV2(eventContext, args),
                 Reducer.UpdateOidcAuthorization args => Reducers.InvokeUpdateOidcAuthorization(eventContext, args),
                 Reducer.UpdateOidcScope args => Reducers.InvokeUpdateOidcScope(eventContext, args),
                 Reducer.UpdateOidcToken args => Reducers.InvokeUpdateOidcToken(eventContext, args),
@@ -856,6 +871,7 @@ namespace SpacetimeDB.Types
                 Reducer.UpdateRoleReducer args => Reducers.InvokeUpdateRoleReducer(eventContext, args),
                 Reducer.UpdateRoute args => Reducers.InvokeUpdateRoute(eventContext, args),
                 Reducer.UpdateRouteSchedule args => Reducers.InvokeUpdateRouteSchedule(eventContext, args),
+                Reducer.UpdateRouteV2 args => Reducers.InvokeUpdateRouteV2(eventContext, args),
                 Reducer.UpdateSale args => Reducers.InvokeUpdateSale(eventContext, args),
                 Reducer.UpdateSaleV2 args => Reducers.InvokeUpdateSaleV2(eventContext, args),
                 Reducer.UpdateTicket args => Reducers.InvokeUpdateTicket(eventContext, args),

@@ -19,9 +19,11 @@ internal static class SharedClientTests
 {
     public static async Task RunAsync()
     {
+        var changes = new DatabaseChangeJournal(2);
         var active = true;
         var valid = true;
         var slowRead = false;
+        var publishDuringRead = false;
         var readEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var holdRead = new TaskCompletionSource<UserAccessSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
         HttpContext? activeConnection = null;
@@ -30,9 +32,11 @@ internal static class SharedClientTests
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddSingleton(Stub.Create<ISpacetimeDBService>((method, args) =>
         {
+            if (method.Name == "get_Changes") return changes;
             if (method.Name == "get_State") return DatabaseConnectionState.Ready;
             if (method.Name == "ReadAsync" && method.GetGenericArguments()[0] == typeof(UserAccessSnapshot))
             {
+                if (publishDuringRead) { publishDuringRead = false; changes.Publish("access"); }
                 if (slowRead)
                 {
                     readEntered.TrySetResult();
@@ -67,9 +71,42 @@ internal static class SharedClientTests
         try
         {
             var origin = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             await using var client = new RealtimeApplicationClient();
             await client.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+            try
+            {
+                await client.CallAsync<SubscriptionRequest, SubscriptionSnapshot>("subscriptions.open", new(Guid.NewGuid().ToString("N"), "sales.create", System.Text.Json.JsonSerializer.SerializeToElement(new EmptyRequest())), null, deadline.Token);
+                throw new Exception("mutation accepted as subscription");
+            }
+            catch (ApplicationCommandException ex) when (ex.Code == "unsupported_subscription") { }
+            publishDuringRead = true;
+            await using (var race = client.WatchAsync<EmptyRequest, AccessSnapshot>("session.access", new(), deadline.Token).GetAsyncEnumerator())
+            {
+                Assert(await race.MoveNextAsync(), "snapshot race produced no update");
+                if (race.Current.IsSynchronized) Assert(await race.MoveNextAsync(), "change during snapshot was lost");
+                Assert(!race.Current.IsSynchronized, "change between watermark and snapshot was ignored");
+                Assert(await race.MoveNextAsync() && race.Current.IsSynchronized, "racing snapshot did not recover");
+            }
+            await using (var subscription = client.WatchAsync<EmptyRequest, AccessSnapshot>("session.access", new(), deadline.Token).GetAsyncEnumerator())
+            {
+                Assert(await subscription.MoveNextAsync() && subscription.Current.IsSynchronized, "initial subscription snapshot missing");
+                changes.Publish("access");
+                Assert(await subscription.MoveNextAsync() && !subscription.Current.IsSynchronized && subscription.Current.Reason == "changed", "committed change did not invalidate snapshot");
+                Assert(await subscription.MoveNextAsync() && subscription.Current.IsSynchronized, "subscription did not acquire replacement snapshot");
+                changes.Publish("buses"); changes.Publish("sales"); changes.Publish("access");
+                Assert(await subscription.MoveNextAsync() && subscription.Current.Reason == "resync_required", "overflow was silently ignored");
+                Assert(await subscription.MoveNextAsync() && subscription.Current.IsSynchronized, "overflow recovery did not refresh");
+                changes.Reset();
+                Assert(await subscription.MoveNextAsync() && subscription.Current.Reason == "resync_required", "database epoch change ignored");
+                Assert(await subscription.MoveNextAsync() && subscription.Current.IsSynchronized, "reconnect recovery missing");
+                active = false;
+                Assert(await subscription.MoveNextAsync() && subscription.Current.Reason == "forbidden", "idle subscription retained revoked access");
+                try { await subscription.MoveNextAsync(); throw new Exception("revoked subscription continued"); }
+                catch (ApplicationCommandException ex) when (ex.Code == "forbidden") { }
+                active = true;
+            }
+            Console.WriteLine("PASS production shared subscription snapshot, committed invalidation, bounded-history recovery, reconnect epoch and idle access revocation");
             var access = await client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, deadline.Token);
             Assert(access is { IsActive: true, IsAdministrator: true }, "shared client failed authenticated operation");
             var simultaneous = Enumerable.Range(0, 4).Select(_ => client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, deadline.Token));

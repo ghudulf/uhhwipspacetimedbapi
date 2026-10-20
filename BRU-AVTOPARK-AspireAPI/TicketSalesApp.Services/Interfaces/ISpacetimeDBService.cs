@@ -9,6 +9,7 @@ namespace TicketSalesApp.Services.Interfaces
     public interface ISpacetimeDBService
     {
         DatabaseConnectionState State { get; }
+        DatabaseChangeJournal Changes { get; }
         Task<TResult> ExecuteReducerAsync<TArgs, TResult>(TArgs args,
             Func<DbConnection, TResult> committedResult, System.Threading.CancellationToken cancellationToken = default)
             where TArgs : Reducer, IReducerArgs, new();

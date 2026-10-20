@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -34,7 +35,7 @@ Task<List<Employee>> GetEmployeesByJobIdAsync(uint jobId);
 /// <param name="jobId">The identifier of the Job to assign to the new employee.</param>
 /// <param name="actingUser">Optional identity of the user performing the operation for auditing.</param>
 /// <returns>The created <see cref="Employee"/> instance, or `null` if creation failed.</returns>
-Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null);
+Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default);
         /// <summary>
 /// Updates one or more fields of an existing employee identified by <paramref name="employeeId"/>.
 /// </summary>
@@ -45,22 +46,23 @@ Task<Employee?> CreateEmployeeAsync(string employeeName, string employeeSurname,
 /// <param name="jobId">New job identifier to assign; if null, the job is not changed.</param>
 /// <param name="actingUser">Optional identity of the user performing the update for auditing purposes.</param>
 /// <returns>`true` if the employee was found and the update was applied, `false` otherwise.</returns>
-Task<bool> UpdateEmployeeAsync(uint employeeId, string? employeeName = null, string? employeeSurname = null, string? employeePatronym = null, uint? jobId = null, Identity? actingUser = null);
+Task<bool> UpdateEmployeeAsync(uint employeeId, string? employeeName = null, string? employeeSurname = null, string? employeePatronym = null, uint? jobId = null, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
         /// <summary>
 /// Deletes the employee identified by the given ID.
 /// </summary>
 /// <param name="employeeId">The ID of the employee to delete.</param>
 /// <param name="actingUser">Optional identity of the user performing the deletion, used for auditing.</param>
 /// <returns>`true` if the employee was deleted, `false` otherwise.</returns>
-Task<bool> DeleteEmployeeAsync(uint employeeId, Identity? actingUser = null);
+Task<bool> DeleteEmployeeAsync(uint employeeId, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
         /// <summary>
 /// Retrieves all Job records.
 /// </summary>
 /// <returns>A list of all Job objects.</returns>
 Task<List<Job>> GetAllJobsAsync();
         Task<Job?> GetJobByIdAsync(uint jobId);
-        Task<bool> CreateJobAsync(string jobTitle, string jobInternship, Identity? actingUser = null);
-        Task<bool> UpdateJobAsync(uint jobId, string? jobTitle = null, string? jobInternship = null, Identity? actingUser = null);
-        Task<bool> DeleteJobAsync(uint jobId, Identity? actingUser = null);
+        Task<Job?> CreateJobRecordAsync(string jobTitle, string jobInternship, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default);
+        Task<bool> CreateJobAsync(string jobTitle, string jobInternship, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default);
+        Task<bool> UpdateJobAsync(uint jobId, string? jobTitle = null, string? jobInternship = null, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
+        Task<bool> DeleteJobAsync(uint jobId, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
     }
 } 

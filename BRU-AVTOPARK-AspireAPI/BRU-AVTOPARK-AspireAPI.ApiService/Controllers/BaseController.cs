@@ -217,6 +217,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Gets the current user's ID from claims.
         /// Supports both ASP.NET Core auth and custom JWT.
         /// </summary>
+        protected async Task<SpacetimeDB.Identity> RequireApplicationActorAsync()
+        {
+            var identity = await GetSpacetimeIdentityAsync();
+            if (string.IsNullOrWhiteSpace(identity)) throw new UnauthorizedAccessException("Authenticated actor required.");
+            return SpacetimeDB.Identity.FromHexString(identity);
+        }
+        protected string ApplicationOperationId() => (!HttpContext.WebSockets.IsWebSocketRequest
+            ? Request.Headers["Idempotency-Key"].FirstOrDefault() : null) ?? Guid.NewGuid().ToString("N");
+
         protected string? GetUserId()
         {
             return GetUserIdAsync().GetAwaiter().GetResult();

@@ -63,6 +63,7 @@ foreach (var enabled in new[] { false, true })
 Console.WriteLine("PASS Windows provider disabled, HTTPS and browser-origin boundaries (no platform negotiation simulated)");
 
 await RoutingTests.RunAsync();
+SubscriptionTests.Run();
 await RealtimeTests.RunAsync();
 ReportTests.Run();
 await SharedClientTests.RunAsync();

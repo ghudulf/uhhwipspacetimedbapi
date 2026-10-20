@@ -17,7 +17,7 @@ public sealed class OperationNotDispatchedException(string operation) : Exceptio
 /// <summary>A single origin/session transport. No automatic mutation replay or HTTP fallback after dispatch.</summary>
 public sealed record RealtimeDiagnostic(string Operation, string RequestId, string Outcome, double ElapsedMs, long Generation);
 
-public sealed class RealtimeApplicationClient : IAsyncDisposable
+public sealed partial class RealtimeApplicationClient : IAsyncDisposable
 {
     private readonly ClientWebSocket _socket = new();
     private readonly CancellationTokenSource _lifetime = new();
@@ -171,7 +171,10 @@ public sealed class RealtimeApplicationClient : IAsyncDisposable
                     continue;
                 }
                 if (result.Generation < Interlocked.Read(ref _generation)) continue;
+                if (result.Generation > Interlocked.Read(ref _generation)) EndSubscriptions(result.Type == "session" ? result.Code ?? "session_changed" : "session_changed");
                 Interlocked.Exchange(ref _generation, result.Generation);
+                if (result.Type == "invalidation") { ReceiveInvalidation(result); continue; }
+                if (result.Type == "session") { EndSubscriptions(result.Code ?? "session_changed"); continue; }
                 if (result.RequestId != null && _pending.TryGetValue(result.RequestId, out var pending)) pending.Completion.TrySetResult(result);
             }
         }
@@ -181,6 +184,7 @@ public sealed class RealtimeApplicationClient : IAsyncDisposable
         }
         finally
         {
+            EndSubscriptions("connection_lost");
             Volatile.Write(ref _connected, 0);
             _lifetime.Cancel();
             foreach (var pending in _pending.Values)

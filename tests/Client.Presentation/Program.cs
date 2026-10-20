@@ -81,6 +81,26 @@ Dispatcher.UIThread.Post(async () =>
         Assert(buses.SelectedBus == null, "prior-account bus selection survived reactivation");
         buses.Deactivate();
         Console.WriteLine("PASS bus DTO presentation, null counts, stable row/selection, calculated notifications and session lifecycle");
+        var liveUpdates = System.Threading.Channels.Channel.CreateUnbounded<BRU.Avtopark.Client.QueryUpdate<BusPageResult>>();
+        CancellationToken watchToken = default;
+        var liveBuses = new BusManagementViewModel((query, ct) => Task.FromResult(new BusPageResult([busRow], 1, 100, 1, true, true, true)),
+            (query, ct) => { watchToken = ct; return liveUpdates.Reader.ReadAllAsync(ct); });
+        await liveBuses.ActivateAsync();
+        Assert(!liveBuses.IsSynchronized && !liveBuses.CanCreate, "mutations enabled before subscription snapshot");
+        liveUpdates.Writer.TryWrite(new(new BusPageResult([busRow], 1, 100, 1, true, true, true), true));
+        await DrainUntil(() => liveBuses.IsSynchronized, stop.Token);
+        liveBuses.SelectedBus = liveBuses.Buses[0];
+        var liveSelection = liveBuses.SelectedBus;
+        Assert(liveBuses.CanEdit, "synchronized permitted mutation disabled");
+        liveUpdates.Writer.TryWrite(new(null, false, "reconnecting"));
+        await DrainUntil(() => !liveBuses.IsSynchronized, stop.Token);
+        Assert(!liveBuses.CanEdit && liveBuses.Buses.Count == 1, "reconnect lost rows or enabled unsafe mutation");
+        liveUpdates.Writer.TryWrite(new(new BusPageResult([busRow with { Model = "Live update" }], 1, 100, 1, true, true, true), true));
+        await DrainUntil(() => liveBuses.IsSynchronized, stop.Token);
+        Assert(ReferenceEquals(liveSelection, liveBuses.SelectedBus) && liveSelection.Model == "Live update", "live refresh lost selection or row update");
+        liveBuses.Deactivate();
+        Assert(watchToken.IsCancellationRequested && !liveBuses.CanEdit, "deactivation did not cancel live subscription");
+        Console.WriteLine("PASS live fleet synchronization gating, stale-row retention, stable selection and subscription disposal");
         finished = true;
     }
     catch (Exception ex) { failure = ex; }

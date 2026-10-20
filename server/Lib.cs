@@ -1381,7 +1381,11 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void CreateMaintenance(ReducerContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null)
+        => CreateMaintenanceCore(ctx, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser);
+
+    private static uint CreateMaintenanceCore(ReducerContext ctx, uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser)
     {
+        ValidateMaintenanceFields(lastServiceDate, nextServiceDate, serviceEngineer, foundIssues, roadworthiness, maintenanceType, null);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
@@ -1436,11 +1440,20 @@ public static partial class Module
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             ChangedBy = effectiveUser
         });
+        AdvanceEntityRevision(ctx, "maintenance", maintenanceId);
+        return maintenanceId;
     }
 
     [SpacetimeDB.Reducer]
     public static void CreateRoute(ReducerContext ctx, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime = null, bool isActive = true)
+        => CreateRouteCore(ctx, startPoint, endPoint, driverId, busId, travelTime, isActive, null);
+
+    private static uint CreateRouteCore(ReducerContext ctx, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, Identity? actingUser)
     {
+        ValidateRouteFields(startPoint, endPoint, travelTime);
+        if (isActive && ctx.Db.Bus.BusId.Find(busId)?.IsActive != true) throw new Exception("Active route requires an active bus.");
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        if (!HasPermission(ctx, effectiveUser, "routes.create")) throw new Exception("Missing routes.create permission.");
         // Validate that the employee (driver) exists
         if (!ctx.Db.Employee.Iter().Any(e => e.EmployeeId == driverId))
         {
@@ -1471,6 +1484,8 @@ public static partial class Module
         // Create a new route with the provided information
         var route = new Route
         {
+            RouteNumber = "", // No route number is supplied by the legacy form. Preserve unknown explicitly.
+            CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             RouteId = routeId,           // Set the route ID
             StartPoint = startPoint,     // Set the start point
             EndPoint = endPoint,         // Set the end point
@@ -1481,6 +1496,8 @@ public static partial class Module
         };
         // Insert the new route into the database
         ctx.Db.Route.Insert(route);
+        AdvanceEntityRevision(ctx, "routes", routeId);
+        return routeId;
     }
 
     [SpacetimeDB.Reducer]
@@ -1562,7 +1579,13 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void CreateEmployee(ReducerContext ctx, string employeeName, string employeeSurname, string employeePatronym, uint jobId)
+        => CreateEmployeeCore(ctx, employeeName, employeeSurname, employeePatronym, jobId, null);
+
+    private static uint CreateEmployeeCore(ReducerContext ctx, string employeeName, string employeeSurname, string employeePatronym, uint jobId, Identity? actingUser)
     {
+        ValidateEmployeeFields(employeeName, employeeSurname, employeePatronym);
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        if (!HasPermission(ctx, effectiveUser, "employees.create")) throw new Exception("Missing employees.create permission.");
         // Validate that the job exists
         if (!ctx.Db.Job.Iter().Any(r => r.JobId == jobId))
         {
@@ -1597,11 +1620,19 @@ public static partial class Module
         };
         // Insert the new employee into the database
         ctx.Db.Employee.Insert(employee);
+        AdvanceEntityRevision(ctx, "employees", employeeId);
+        return employeeId;
     }
 
     [SpacetimeDB.Reducer]
     public static void CreateJob(ReducerContext ctx, string jobTitle, string jobInternship)
+        => CreateJobCore(ctx, jobTitle, jobInternship, null);
+
+    private static uint CreateJobCore(ReducerContext ctx, string jobTitle, string jobInternship, Identity? actingUser)
     {
+        ValidateJobFields(ctx, null, jobTitle, jobInternship);
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        if (!HasPermission(ctx, effectiveUser, "jobs.create")) throw new Exception("Missing jobs.create permission.");
         // Get the next job ID from the counter
         uint jobId = 0;
         var counter = ctx.Db.JobIdCounter.Key.Find("jobId");
@@ -1627,6 +1658,8 @@ public static partial class Module
         };
         // Insert the new job into the database
         ctx.Db.Job.Insert(job);
+        AdvanceEntityRevision(ctx, "jobs", jobId);
+        return jobId;
     }
 
     
@@ -2051,6 +2084,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateRoute(ReducerContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, Identity? actingUser = null)
     {
+        ValidateRouteFields(startPoint, endPoint, travelTime);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
@@ -2102,7 +2136,10 @@ public static partial class Module
         {
             route.IsActive = isActive.Value;
         }
+        if (route.IsActive && ctx.Db.Bus.BusId.Find(route.BusId)?.IsActive != true) throw new Exception("Active route requires an active bus.");
+        if (!route.IsActive && ctx.Db.RouteSchedule.Iter().Any(r => r.RouteId == routeId && r.IsActive)) throw new Exception("Deactivate schedules first.");
         ctx.Db.Route.RouteId.Update(route);
+        AdvanceEntityRevision(ctx, "routes", routeId);
         Log.Info($"Route {routeId} updated");
     }
 
@@ -2123,7 +2160,9 @@ public static partial class Module
         {
             throw new Exception("Route not found.");
         }
+        EnsureRouteUnreferenced(ctx, routeId);
         ctx.Db.Route.RouteId.Delete(routeId);
+        AdvanceEntityRevision(ctx, "routes", routeId);
         Log.Info($"Route {routeId} has been deleted.");
     }
 
@@ -2163,6 +2202,7 @@ public static partial class Module
         
         route.IsActive = true;
         ctx.Db.Route.RouteId.Update(route);
+        AdvanceEntityRevision(ctx, "routes", routeId);
         Log.Info($"Route {routeId} activated by {effectiveUser}");
     }
     
@@ -2205,6 +2245,7 @@ public static partial class Module
         
         route.IsActive = false;
         ctx.Db.Route.RouteId.Update(route);
+        AdvanceEntityRevision(ctx, "routes", routeId);
         Log.Info($"Route {routeId} deactivated by {effectiveUser}");
     }
 
@@ -2412,6 +2453,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateJob(ReducerContext ctx, uint jobId, string? jobTitle, string? internship, Identity? actingUser = null)
     {
+        ValidateJobFields(ctx, jobId, jobTitle, internship);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
@@ -2438,6 +2480,7 @@ public static partial class Module
         }
 
         ctx.Db.Job.JobId.Update(job);
+        AdvanceEntityRevision(ctx, "jobs", jobId);
         Log.Info($"Job {jobId} updated");
     }
 
@@ -2457,13 +2500,16 @@ public static partial class Module
         {
             throw new Exception("Job not found.");
         }
+        if (ctx.Db.Employee.Iter().Any(e => e.JobId == jobId)) throw new Exception("Job is assigned to employees.");
         ctx.Db.Job.JobId.Delete(jobId);
+        AdvanceEntityRevision(ctx, "jobs", jobId);
         Log.Info($"Job {jobId} has been deleted.");
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateEmployee(ReducerContext ctx, uint employeeId, string? employeeName, string? employeeSurname, string? employeePatronym, uint? jobId, Identity? actingUser = null)
     {
+        ValidateEmployeeFields(employeeName, employeeSurname, employeePatronym);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
@@ -2500,6 +2546,7 @@ public static partial class Module
             employee.JobId = jobId.Value;
         }
         ctx.Db.Employee.EmployeeId.Update(employee);
+        AdvanceEntityRevision(ctx, "employees", employeeId);
         Log.Info($"Employee {employeeId} updated");
     }
 
@@ -2519,7 +2566,9 @@ public static partial class Module
         {
             throw new Exception("Employee not found");
         }
+        EnsureEmployeeUnreferenced(ctx, employeeId);
         ctx.Db.Employee.EmployeeId.Delete(employeeId);
+        AdvanceEntityRevision(ctx, "employees", employeeId);
         Log.Info($"Employee {employeeId} has been deleted.");
     }
 

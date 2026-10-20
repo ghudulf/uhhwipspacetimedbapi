@@ -52,6 +52,12 @@ try
     }
 
 
+    if (args.Contains("--catalog-only", StringComparer.Ordinal))
+    {
+        await CatalogTests.RunAsync(database, owner, ownerToken);
+        return;
+    }
+
     if (args.Contains("--fleet-only", StringComparer.Ordinal))
     {
         await FleetTests.RunAsync(database, owner, ownerToken);
