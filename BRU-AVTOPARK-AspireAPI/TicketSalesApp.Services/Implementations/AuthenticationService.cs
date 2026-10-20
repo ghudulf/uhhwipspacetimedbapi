@@ -98,42 +98,12 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken)
+        public Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken)
         {
-            try
-            {
-                _logger.LogInformation("Attempting direct QR authentication for user: {Login}", login);
-
-                if (string.IsNullOrEmpty(login))
-                {
-                    _logger.LogWarning("Direct QR authentication attempt with empty login");
-                    return null;
-                }
-
-                var conn = _spacetimeService.GetConnection();
-
-                // Find user by login
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login && u.IsActive);
-
-                if (userProfile == null)
-                {
-                    _logger.LogWarning("Direct QR authentication failed: User not found or inactive for login: {Login}", login);
-                    return null;
-                }
-
-                // In a real implementation, you would validate the QR token here
-                // For now, we'll just update the last login time
-                conn.Reducers.AuthenticateUser(login, "");
-
-                _logger.LogInformation("User {Login} authenticated successfully via direct QR", login);
-                return userProfile;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while authenticating user via direct QR: {Login}", login);
-                throw;
-            }
+            // Legacy interface has no bound QR session/challenge proof. The production QR
+            // session service owns that verification; a username alone must never log in.
+            _logger.LogWarning("Unbound direct QR authentication rejected; use the verified QR session flow");
+            return Task.FromResult<UserProfile?>(null);
         }
 
         public int GetUserRole(Identity userId)

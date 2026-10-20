@@ -14,6 +14,8 @@ using TicketSalesApp.AdminServer.Configuration;
 using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 
+await RoutingDiagnosticsTests.RunAsync();
+
 var loginAvailable = true;
 var runtimeFlags = Stub.Create<TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService>((method, args) =>
     method.Name == "GetFlagAsync" && (string)args![0]! == nameof(FeatureFlagOptions.EnableLoginRefactoring)
