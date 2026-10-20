@@ -69,7 +69,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("maintenance", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("maintenance", cancellationToken), "maintenance.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -89,6 +89,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when "read" is requested without an Id or when the Command value is unsupported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("maintenance", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {

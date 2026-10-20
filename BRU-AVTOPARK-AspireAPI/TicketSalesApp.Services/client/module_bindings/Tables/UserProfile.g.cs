@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "user_profile";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(UserProfile row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(UserProfileHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class LegacyUserIdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(UserProfile row) => row.LegacyUserId;
@@ -46,6 +55,7 @@ namespace SpacetimeDB.Types
 
             internal UserProfileHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 LegacyUserId = new(this);
                 Login = new(this);
                 UserId = new(this);
@@ -72,6 +82,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<UserProfile, string> LegacyGuid { get; }
         public global::SpacetimeDB.Col<UserProfile, bool> EmailConfirmed { get; }
         public global::SpacetimeDB.Col<UserProfile, bool> PhoneNumberConfirmed { get; }
+        public global::SpacetimeDB.Col<UserProfile, uint> ApiAccessPartition { get; }
 
         public UserProfileCols(string tableName)
         {
@@ -88,6 +99,7 @@ namespace SpacetimeDB.Types
             LegacyGuid = new global::SpacetimeDB.Col<UserProfile, string>(tableName, "legacy_guid");
             EmailConfirmed = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "email_confirmed");
             PhoneNumberConfirmed = new global::SpacetimeDB.Col<UserProfile, bool>(tableName, "phone_number_confirmed");
+            ApiAccessPartition = new global::SpacetimeDB.Col<UserProfile, uint>(tableName, "api_access_partition");
         }
     }
 
@@ -96,12 +108,14 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.IxCol<UserProfile, SpacetimeDB.Identity> UserId { get; }
         public global::SpacetimeDB.IxCol<UserProfile, uint> LegacyUserId { get; }
         public global::SpacetimeDB.IxCol<UserProfile, string> Login { get; }
+        public global::SpacetimeDB.IxCol<UserProfile, uint> ApiAccessPartition { get; }
 
         public UserProfileIxCols(string tableName)
         {
             UserId = new global::SpacetimeDB.IxCol<UserProfile, SpacetimeDB.Identity>(tableName, "user_id");
             LegacyUserId = new global::SpacetimeDB.IxCol<UserProfile, uint>(tableName, "legacy_user_id");
             Login = new global::SpacetimeDB.IxCol<UserProfile, string>(tableName, "login");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<UserProfile, uint>(tableName, "api_access_partition");
         }
     }
 }

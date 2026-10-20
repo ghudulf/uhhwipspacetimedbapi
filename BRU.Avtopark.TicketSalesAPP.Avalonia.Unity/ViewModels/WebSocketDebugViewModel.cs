@@ -131,7 +131,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     public WebSocketDebugViewModel()
     {
         _apiClient = ApiClientService.Instance;
-        _tokenStorage = new TokenStorageService();
+        _tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
 
         InitializeTestResults();
         LoadAuthenticationData().ContinueWith(t =>
@@ -209,53 +209,10 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         return token;
     }
 
-    /// <summary>
-    /// Builds a WebSocket URI from an HTTP/HTTPS server URI with proper scheme selection.
-    /// Forces wss:// for non-loopback hosts, allows ws:// only for localhost/loopback.
-    /// </summary>
-    /// <summary>
-    /// Returns true for localhost and RFC-1918 private LAN ranges (10.x, 172.16-31.x, 192.168.x).
-    /// These hosts use plain ws://, everything else uses wss://.
-    /// </summary>
-    private static bool IsPrivateOrLocalHost(string host)
-    {
-        if (host == "localhost" || host == "127.0.0.1" || host == "[::1]")
-            return true;
-
-        if (!System.Net.IPAddress.TryParse(host, out var ip))
-            return false;
-
-        var bytes = ip.GetAddressBytes();
-        if (bytes.Length != 4) return false; // IPv6 non-loopback → wss
-
-        return bytes[0] == 10 ||                                      // 10.0.0.0/8
-               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) || // 172.16.0.0/12
-               (bytes[0] == 192 && bytes[1] == 168);                  // 192.168.0.0/16
-    }
-
     private static (bool success, Uri? wsUri, string? errorMessage) BuildWebSocketUri(Uri serverUri, string path)
     {
-        string wsScheme;
-        if (serverUri.Scheme == "https")
-        {
-            wsScheme = "wss";
-        }
-        else if (serverUri.Scheme == "http")
-        {
-            wsScheme = IsPrivateOrLocalHost(serverUri.Host) ? "ws" : "wss";
-        }
-        else
-        {
-            return (false, null, $"Unsupported URL scheme: {serverUri.Scheme}");
-        }
-
-        var wsUri = new UriBuilder(serverUri)
-        {
-            Scheme = wsScheme,
-            Path = path
-        }.Uri;
-
-        return (true, wsUri, null);
+        try { return (true, BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(serverUri, path), null); }
+        catch (ArgumentException) { return (false, null, "Use a configured HTTPS server; HTTP is limited to loopback development."); }
     }
 
     [RelayCommand]
@@ -1807,11 +1764,6 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         }
 
         var token = NormalizeAccessToken(AuthWsTestToken);
-        if (string.IsNullOrEmpty(token))
-        {
-            AddLog("❌ [AuthWS] Paste a token or load from storage first");
-            return;
-        }
 
         Uri serverUri;
         if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out serverUri!))
@@ -1831,7 +1783,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
         {
             _authWsCts = new CancellationTokenSource();
             _authWsSocket = new ClientWebSocket();
-            _authWsSocket.Options.SetRequestHeader("Authorization", $"Bearer {token}");
+            if (!string.IsNullOrEmpty(token)) _authWsSocket.Options.SetRequestHeader("Authorization", $"Bearer {token}");
 
             AddLog($"🔌 [AuthWS] Connecting to {buildResult.wsUri}...");
             using var timeoutCts = new CancellationTokenSource(HandshakeTimeout);

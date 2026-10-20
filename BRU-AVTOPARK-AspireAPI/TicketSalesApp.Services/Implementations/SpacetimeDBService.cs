@@ -13,14 +13,14 @@ using System.Collections.Generic; // Import generic collections
 namespace TicketSalesApp.Services.Implementations
 {
     // Define the SpacetimeDBService class implementing ISpacetimeDBService interface
-    public class SpacetimeDBService : ISpacetimeDBService
+    public partial class SpacetimeDBService : ISpacetimeDBService
     {
         // Private fields for configuration, logger, and connection management
         private readonly IConfiguration _configuration; // Configuration for the service
         private readonly ILogger<SpacetimeDBService> _logger; // Logger for the service
         private DbConnection? _connection; // Database connection object
         private Identity? _localIdentity; // Local identity for the connection
-        private readonly ConcurrentQueue<(string Command, Dictionary<string, object> Args)> _inputQueue; // Thread-safe queue for commands
+
         private volatile bool _isConnecting = false; // Flag to track connection state
         private volatile bool _subscriptionApplied = false; // Flag to track if subscription has been applied
         private readonly bool _logReducerLogsToFile; // Flag to control whether reducer logs are logged to file
@@ -30,13 +30,25 @@ namespace TicketSalesApp.Services.Implementations
         {
             _configuration = configuration; // Assign configuration
             _logger = logger; // Assign logger
-            _inputQueue = new ConcurrentQueue<(string Command, Dictionary<string, object> Args)>(); // Initialize the input queue
+
             _logReducerLogsToFile = _configuration.GetValue<bool>("SpacetimeDB:LogReducerLogsToFile", true); // Default to true for backward compatibility
             _logger.LogInformation("SpacetimeDBService initialized");
         }
 
         // Method to establish a connection to the database
         public DbConnection Connect()
+        {
+            lock (_frameGate) return ConnectCore();
+        }
+
+        private long _connectionGeneration;
+        private void ForGeneration(long generation, Action callback)
+        {
+            lock (_frameGate)
+                if (_connectionGeneration == generation) callback();
+        }
+
+        private DbConnection ConnectCore()
         {
             // Prevent multiple connection attempts
             if (_isConnecting)
@@ -55,6 +67,9 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _isConnecting = true;
+                _subscriptionApplied = false;
+                _eventsApplied = false;
+                SetState(DatabaseConnectionState.Connecting);
 
                 // Retrieve host and database name from configuration
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
@@ -69,14 +84,15 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Build the database connection with necessary callbacks
                 _logger.LogDebug("Building database connection with callbacks");
+                var generation = ++_connectionGeneration;
                 _connection = DbConnection.Builder()
                         .WithUri(host) // Set the URI for the connection
                         .WithDatabaseName(databaseName) // Set the database name
-                        .WithToken(AuthToken.Token) // Set the authentication token
+                        .WithToken(_configuration["SpacetimeDB:Token"] ?? AuthToken.Token) // Set the authentication token
                         .WithConfirmedReads(true) // Enable confirmed reads for durability (default: true). Set to false for low-latency scenarios where eventual consistency is acceptable.
-                        .OnConnect(OnConnected) // Set the on-connect callback
-                        .OnConnectError(OnConnectError) // Set the on-connect-error callback
-                        .OnDisconnect(OnDisconnected) // Set the on-disconnect callback
+                        .OnConnect((conn, identity, token) => ForGeneration(generation, () => OnConnected(conn, identity, token))) // Set the on-connect callback
+                        .OnConnectError(error => ForGeneration(generation, () => OnConnectError(error))) // Set the on-connect-error callback
+                        .OnDisconnect((conn, error) => ForGeneration(generation, () => OnDisconnected(conn, error))) // Set the on-disconnect callback
                         .Build(); // Build the connection
 
                 _logger.LogInformation("Database connection built successfully");
@@ -404,33 +420,29 @@ namespace TicketSalesApp.Services.Implementations
         // Method to check if the subscription has been applied
         public bool IsSubscriptionReady()
         {
-            return _subscriptionApplied;
+            return IsConnected() && _subscriptionApplied && _eventsApplied;
         }
 
         // Method to disconnect from the database
         public void Disconnect()
         {
-            _logger.LogInformation("Disconnecting from SpacetimeDB...");
-
-            if (_connection != null)
+            lock (_frameGate)
             {
-                // Log the disconnection attempt
-                _logger.LogInformation("Disconnecting from SpacetimeDB connection...");
-                _connection.Disconnect(); // Disconnect the connection
-                _connection = null; // Reset the connection
-                _localIdentity = null; // Reset the local identity
-                _logger.LogInformation("SpacetimeDB disconnected successfully");
-            }
-            else
-            {
-                _logger.LogWarning("Disconnect called but no active connection exists");
+                ++_connectionGeneration; // Ignore callbacks from the retired connection.
+                var connection = _connection;
+                _connection = null;
+                _localIdentity = null;
+                _isConnecting = false;
+                InvalidateReadiness();
+                connection?.Disconnect();
+                _logger.LogInformation("SpacetimeDB disconnected; generation {Generation}", _connectionGeneration);
             }
         }
 
         // Method to enqueue a command for processing
         public void EnqueueCommand(string command, Dictionary<string, object> args)
         {
-            _inputQueue.Enqueue((command, args)); // Add the command to the queue
+            QueueLegacyCommand(command, args);
             _logger.LogDebug("Command enqueued: {Command} with {ArgCount} arguments", command, args.Count);
         }
 
@@ -446,20 +458,17 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogTrace("Processing frame tick");
-                _connection.FrameTick();
-                ProcessCommands();
-            }
-            catch (ArgumentException ex) when (ex.Message.Contains("An item with the same key has already been added"))
-            {
-                // This can happen when multiple reducers are called in rapid succession
-                // and the client cache hasn't been fully updated yet. This is not a critical error.
-                _logger.LogWarning("Duplicate key detected during frame tick processing. This is expected when multiple reducers are called rapidly. Key: {Message}", ex.Message);
-                // Continue processing - the data is already in the cache
+                lock (_frameGate)
+                {
+                    _connection?.FrameTick();
+                    ProcessQueuedOperations();
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing frame tick: {ErrorMessage}", ex.Message);
-                // Don't rethrow as this would break the application flow
+                _logger.LogError(ex, "Database frame failed; invalidating cached readiness");
+                Disconnect();
+                SetState(DatabaseConnectionState.Degraded);
             }
         }
 
@@ -492,8 +501,8 @@ namespace TicketSalesApp.Services.Implementations
 
             _logger.LogInformation("Subscribing to event tables");
             var subscriptionHandle = _connection.SubscriptionBuilder()
-                .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
-                .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                .OnApplied(ctx => { _eventsApplied = true; UpdateReadiness(); })
+                .OnError(OnSubscriptionError)
                 .Subscribe(new[] {
                     "SELECT * FROM AuthenticationEvent",
                     "SELECT * FROM TicketSaleEvent",
@@ -528,36 +537,6 @@ namespace TicketSalesApp.Services.Implementations
 
             _logger.LogInformation("Subscribed to {Count} queries successfully", queries.Length);
             return subscriptionHandle;
-        }
-
-        // Private method to process commands from the queue
-        private void ProcessCommands()
-        {
-            if (_connection == null)
-            {
-                _logger.LogDebug("ProcessCommands called but connection not fully established");
-                return;
-            }
-
-            int processedCount = 0;
-            while (_inputQueue.TryDequeue(out var command))
-            {
-                try
-                {
-                    _logger.LogDebug("Processing command: {Command}", command.Command);
-                    ProcessCommand(command.Command, command.Args);
-                    processedCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing command: {Command}, Error: {ErrorMessage}", command.Command, ex.Message);
-                }
-            }
-
-            if (processedCount > 0)
-            {
-                _logger.LogDebug("Processed {Count} commands from queue", processedCount);
-            }
         }
 
         // Private method to process a single command
@@ -1458,7 +1437,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Connected to SpacetimeDB with identity: {Identity}", identity);
                 _localIdentity = identity;
-                AuthToken.SaveToken(token);
+                ObserveReducerCompletions(conn);
+                SetState(DatabaseConnectionState.Subscribing);
+                if (string.IsNullOrEmpty(_configuration["SpacetimeDB:Token"])) AuthToken.SaveToken(token);
 
                 // Subscribe to all regular tables (event tables are excluded)
                 conn.SubscriptionBuilder()
@@ -1469,8 +1450,8 @@ namespace TicketSalesApp.Services.Implementations
                 // Subscribe to event tables explicitly (they are excluded from SubscribeToAllTables)
                 _logger.LogInformation("Subscribing to event tables");
                 conn.SubscriptionBuilder()
-                    .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
-                    .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                    .OnApplied(ctx => { _eventsApplied = true; UpdateReadiness(); })
+                    .OnError(OnSubscriptionError)
                     .Subscribe(new[] {
                         "SELECT * FROM AuthenticationEvent",
                         "SELECT * FROM TicketSaleEvent",
@@ -1497,6 +1478,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             // Log the connection error
             _logger.LogError(ex, "Error connecting to SpacetimeDB: {ErrorMessage}", ex.Message);
+            InvalidateReadiness();
             _connection = null; // Reset the connection
             _localIdentity = null; // Reset the local identity
             _isConnecting = false;
@@ -1515,6 +1497,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the normal disconnection
                 _logger.LogInformation("Disconnected from SpacetimeDB");
             }
+            InvalidateReadiness();
             _connection = null; // Reset the connection
             _localIdentity = null; // Reset the local identity
             _isConnecting = false;
@@ -1528,7 +1511,8 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the successful subscription application
                 _logger.LogInformation("SpacetimeDB subscription applied successfully");
                 _logger.LogDebug("Database tables are now available in the client cache");
-                _subscriptionApplied = true; // Set the flag to indicate subscription is ready
+                _subscriptionApplied = true;
+                UpdateReadiness();
             }
             catch (Exception ex)
             {
@@ -1541,7 +1525,9 @@ namespace TicketSalesApp.Services.Implementations
         // Callback method for subscription errors
         private void OnSubscriptionError(ErrorContext ctx, Exception ex)
         {
-            _logger.LogError(ex, "Error in subscription: {ErrorMessage}", ex.Message);
+            _logger.LogError(ex, "Database subscription failed");
+            Disconnect();
+            SetState(DatabaseConnectionState.Degraded);
         }
 
         // ***** Event Table Callback Registration *****

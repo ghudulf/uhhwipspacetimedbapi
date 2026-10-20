@@ -23,7 +23,7 @@ public static partial class Module
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission (e.g., "roles.create")
         if (!HasPermission(ctx, effectiveUser, "roles.create")) // CreateRoleReducer PERM CHECK
@@ -52,7 +52,7 @@ public static partial class Module
             UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             CreatedBy = effectiveUser.ToString(),
             UpdatedBy = effectiveUser.ToString(),
-            NormalizedName = name.ToUpperInvariant()
+            NormalizedName = NormalizeRoleName(name)
         };
         ctx.Db.Role.Insert(role);
         Log.Info($"Created new role: {role.Name} ({role.RoleId}) by {effectiveUser}");
@@ -73,7 +73,7 @@ public static partial class Module
     public static void UpdateRoleReducer(ReducerContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.edit")) // UpdateRoleReducer PERM CHECK
         {
@@ -97,7 +97,7 @@ public static partial class Module
                 throw new Exception("Another role with this name already exists");
             }
             role.Name = name;
-            role.NormalizedName = name.ToUpperInvariant();
+            role.NormalizedName = NormalizeRoleName(name);
         }
         if (description != null)
         {
@@ -128,7 +128,7 @@ public static partial class Module
     public static void DeleteRoleReducer(ReducerContext ctx, uint roleId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.delete")) // DeleteRoleReducer PERM CHECK
         {
@@ -176,7 +176,7 @@ public static partial class Module
     public static void UpdateRole(ReducerContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.edit")) // UpdateRole PERM CHECK
         {
@@ -220,7 +220,7 @@ public static partial class Module
     public static void DeleteRole(ReducerContext ctx, uint roleId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.delete")) // DeleteRole PERM CHECK
         {
@@ -268,7 +268,7 @@ public static partial class Module
     public static void UpdatePermission(ReducerContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "permissions.edit")) // UpdatePermission PERM CHECK Assuming you have a permission for this
         {
@@ -310,7 +310,7 @@ public static partial class Module
     public static void DeletePermission(ReducerContext ctx, uint permissionId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "permissions.delete")) // DeletePermission PERM CHECK
         {
@@ -342,7 +342,7 @@ public static partial class Module
     public static void AssignRole(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "assign_roles")) // AssignRole PERM CHECK
@@ -385,7 +385,7 @@ public static partial class Module
     public static void GrantPermissionToRole(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "grant_permissions")) // GrantPermissionToRole PERM CHECK
@@ -430,7 +430,7 @@ public static partial class Module
     public static void RevokePermissionFromRole(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "grant_permissions")) // RevokePermissionFromRole PERM CHECK
@@ -471,7 +471,7 @@ public static partial class Module
     public static void RemoveRole(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId = null)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "assign_roles")) // RemoveRole PERM CHECK
@@ -533,11 +533,12 @@ public static partial class Module
     /// <returns>True if the user has the specified permission; otherwise, false.</returns>
     private static bool HasPermission(ReducerContext ctx, Identity userId, string permissionName)
     {
+        if (ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true) return false;
         Log.Debug($"Checking permission '{permissionName}' for user {userId}");
         
         // Get all roles for the user
         var roleIds = ctx.Db.UserRole.Iter()
-                           .Where(ur => ur.UserId == userId)  // Find all role assignments for this user
+                           .Where(ur => ur.UserId == userId && ctx.Db.Role.RoleId.Find(ur.RoleId)?.IsActive == true)  // Find all role assignments for this user
                            .Select(ur => ur.RoleId)           // Get the role IDs
                            .ToList();                         // Convert to list
         
@@ -562,7 +563,7 @@ public static partial class Module
         // Final permission check - look for the specific permission name among the user's permissions
         bool hasPermission = ctx.Db.Permission.Iter()
                     .Where(p => permissionIds.Contains(p.PermissionId))  // Filter to user's permissions
-                    .Any(p => p.Name == permissionName && p.IsActive);   // Check for matching name and active status
+                    .Any(p => p.IsActive && BRU.Avtopark.Security.PermissionNames.Canonical(p.Name) == BRU.Avtopark.Security.PermissionNames.Canonical(permissionName));   // Check for matching name and active status
         
         Log.Debug($"Permission check result for '{permissionName}': {hasPermission}");
         return hasPermission;
@@ -582,7 +583,7 @@ public static partial class Module
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission (e.g., "permissions.create")
         if (!HasPermission(ctx, effectiveUser, "permissions.create")) // AddNewPermission PERM CHECK

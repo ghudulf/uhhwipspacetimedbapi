@@ -108,7 +108,7 @@
                 <StackPanel Grid.Column="1" 
                             Orientation="Horizontal" 
                             Spacing="0">
-                    <Button x:Name="CloseButton"
+                    <Button x:Name="CloseButton" AutomationProperties.Name="Закрыть" IsCancel="True"
                             Width="46" Height="36"
                             Background="Transparent"
                             BorderThickness="0"
@@ -159,23 +159,26 @@
                                HorizontalAlignment="Center"/>
                 </StackPanel>
 
+                <Button x:Name="WindowsAccountButton" Content="Учётная запись Windows / Kerberos"
+                        AutomationProperties.Name="Войти с учётной записью домена" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center" Click="WindowsAccount_Click" />
                 <!-- Login Method Cards -->
                 <StackPanel Spacing="12">
                     
                     <!-- Traditional Login Button -->
-                    <Border Background="{DynamicResource CardBackground}"
+                    <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Традиционный вход" Background="{DynamicResource CardBackground}"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="2"
                             CornerRadius="0"
                             Padding="20,15"
                             Cursor="Hand"
-                            PointerPressed="TraditionalLogin_Click">
-                        <Border.Styles>
-                            <Style Selector="Border:pointerover">
+                            Click="TraditionalLogin_Click">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover, Button:focus-visible">
                                 <Setter Property="BorderBrush" Value="#000080"/>
                                 <Setter Property="Background" Value="#E8E8E8"/>
                             </Style>
-                        </Border.Styles>
+                        </Button.Styles>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -214,22 +217,22 @@
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        VerticalAlignment="Center"/>
                         </Grid>
-                    </Border>
+                    </Button>
 
                     <!-- OAuth Login Button -->
-                    <Border Background="{DynamicResource CardBackground}"
+                    <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="OAuth / OpenID Connect" Background="{DynamicResource CardBackground}"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="2"
                             CornerRadius="0"
                             Padding="20,15"
                             Cursor="Hand"
-                            PointerPressed="OAuthLogin_Click">
-                        <Border.Styles>
-                            <Style Selector="Border:pointerover">
+                            Click="OAuthLogin_Click">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover, Button:focus-visible">
                                 <Setter Property="BorderBrush" Value="#000080"/>
                                 <Setter Property="Background" Value="#E8E8E8"/>
                             </Style>
-                        </Border.Styles>
+                        </Button.Styles>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -278,7 +281,7 @@
                                        Foreground="{DynamicResource MutedTextBrush}"
                                        VerticalAlignment="Center"/>
                         </Grid>
-                    </Border>
+                    </Button>
 
                 </StackPanel>
 

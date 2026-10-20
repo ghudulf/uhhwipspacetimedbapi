@@ -1,0 +1,117 @@
+using System.Net;
+using System.Net.WebSockets;
+using Microsoft.AspNetCore.Http;
+using BRU.Avtopark.Client;
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK.Services.Interfaces;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using TicketSalesApp.Services.Authorization;
+using TicketSalesApp.Services.Interfaces;
+
+internal static class SharedClientTests
+{
+    public static async Task RunAsync()
+    {
+        var active = true;
+        var valid = true;
+        var slowRead = false;
+        var readEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holdRead = new TaskCompletionSource<UserAccessSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        HttpContext? activeConnection = null;
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSingleton(Stub.Create<ISpacetimeDBService>((method, args) =>
+        {
+            if (method.Name == "get_State") return DatabaseConnectionState.Ready;
+            if (method.Name == "ReadAsync" && method.GetGenericArguments()[0] == typeof(UserAccessSnapshot))
+            {
+                if (slowRead)
+                {
+                    readEntered.TrySetResult();
+                    return holdRead.Task.WaitAsync((CancellationToken)args![1]!);
+                }
+                return Task.FromResult(new UserAccessSnapshot(active, true, ["Administrator"], ["sales.view", "sales.create"]));
+            }
+            throw new Exception("Unexpected database call: " + method.Name);
+        }));
+        builder.Services.AddSingleton(Stub.Create<ITicketSalesService>((method, _) =>
+        {
+            if (method.Name != "CreateSaleAsync") throw new Exception("Unexpected mutation");
+            activeConnection!.Abort();
+            return Task.FromException<uint?>(new CommitOutcomeUnknownException("synthetic interrupted mutation"));
+        }));
+        builder.Services.AddSingleton(Stub.Create<IBusService>());
+        builder.Services.AddSingleton(Stub.Create<IAuthOrchestrationService>());
+        builder.Services.AddSingleton(Stub.Create<IAuthWebSocketTokenValidator>((_, _) => Task.FromResult(valid
+            ? new Dictionary<string, object> { ["identity"] = new string('1', 64) } : null)));
+        builder.Services.AddSingleton<ConnectionAdmission>();
+        builder.Services.AddScoped<ApplicationOperations>();
+        builder.Services.AddScoped<ApiSocketSession>();
+        await using var app = builder.Build();
+        app.UseWebSockets();
+        app.MapGet("/api/realtime/stream", async context =>
+        {
+            activeConnection = context;
+            using var socket = await context.WebSockets.AcceptWebSocketAsync(ApiProtocol.Subprotocol);
+            await context.RequestServices.GetRequiredService<ApiSocketSession>().RunAsync(socket, "shared-client-test", context.RequestAborted);
+        });
+        await app.StartAsync();
+        try
+        {
+            var origin = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await using var client = new RealtimeApplicationClient();
+            await client.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+            var access = await client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, deadline.Token);
+            Assert(access is { IsActive: true, IsAdministrator: true }, "shared client failed authenticated operation");
+            var simultaneous = Enumerable.Range(0, 4).Select(_ => client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, deadline.Token));
+            Assert((await Task.WhenAll(simultaneous)).All(a => a?.IsActive == true), "multiplexed request correlation failed");
+            try { await client.CallAsync<EmptyRequest, AccessSnapshot>("not.registered", new(), null, deadline.Token); throw new Exception("unsupported operation dispatched"); }
+            catch (OperationNotDispatchedException) { }
+            slowRead = true;
+            using (var cancel = new CancellationTokenSource())
+            {
+                var reading = client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, cancel.Token);
+                await readEntered.Task.WaitAsync(deadline.Token);
+                cancel.Cancel();
+                try { await reading; throw new Exception("Cancelled client read completed"); } catch (OperationCanceledException) { }
+            }
+            slowRead = false;
+            Assert(client.IsConnected, "read cancellation destroyed the shared transport");
+            Assert((await client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, deadline.Token))?.IsActive == true,
+                "read after cancellation failed");
+            active = false;
+            await ExpectCode(client, "forbidden", deadline.Token);
+            active = true;
+            valid = false;
+            await ExpectCode(client, "session_expired", deadline.Token);
+            await ExpectCode(client, "unauthenticated", deadline.Token);
+            await client.DisposeAsync();
+            valid = true;
+            await using var interrupted = new RealtimeApplicationClient();
+            await interrupted.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+            try
+            {
+                await interrupted.CallAsync<CreateSaleCommand, MutationResult>("sales.create", new(1, "synthetic", ""), Guid.NewGuid().ToString("N"), deadline.Token);
+                throw new Exception("Disconnected mutation reported success");
+            }
+            catch (ApplicationCommandException ex) when (ex.Code == "commit_outcome_unknown") { }
+            Console.WriteLine("PASS shared client/server handshake, correlation, non-dispatch fallback, live revocation/expiry, read cancellation without disconnect and uncertain mutation after disconnect");
+        }
+        finally { await app.StopAsync(); }
+    }
+    private static async Task ExpectCode(RealtimeApplicationClient client, string code, CancellationToken ct)
+    {
+        try { await client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, ct); throw new Exception("Expected " + code); }
+        catch (ApplicationCommandException ex) when (ex.Code == code) { }
+    }
+    private static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
+}

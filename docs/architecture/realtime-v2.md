@@ -1,0 +1,56 @@
+# Realtime v2 rollout and debugging
+
+`GET /api/realtime/stream` accepts `bru.api.v2`. The existing `bru.events.v1` endpoint remains available. V2 requires HTTPS; a loopback peer in Development can use HTTP. Browser origins must exactly match `Realtime:AllowedOrigins`; native clients send no Origin. Configure forwarded headers for trusted proxies before relying on remote-address limits.
+
+This is a partial operation rollout. Capability negotiation is authoritative: operations absent from it are not implemented in v2. All-operation parity, snapshot/event watermarks, durable receipts outside sales/fleet, provider ceremony binding and broad screen migration remain outstanding.
+
+## Messages
+
+The server first sends a `welcome` result with protocol, operation descriptors, authentication methods, database state, connection ID and limits. Commands use:
+
+```json
+{"requestId":"a4eb970bff5040698f4f3b4b54f802bf8","operation":"sales.list","payload":{"page":1,"pageSize":100}}
+```
+
+Results contain `type`, `requestId`, `success`, optional `data`/`code`, `traceId`, and session `generation`. Use a new 32-character GUID (`N` format) for every request. A connection closes after 10,000 request IDs to bound duplicate tracking. Reconnect and obtain fresh state.
+
+The receiver, command worker and writer are separate. Each connection accepts at most eight outstanding operations, 64 KiB per command, 1 MiB per response, and 32 queued responses. The command deadline includes queue time. Commands execute serially, so session changes cannot race a business operation. Queued commands from an earlier session generation are rejected. Cancel uses `{"operation":"cancel","payload":{"requestId":"..."},"requestId":"new-guid"}` and can interrupt the worker. A cancellation after reducer submission can still mean `commit_outcome_unknown`.
+
+Connections are limited to 128 per process and four per source address. Authentication attempts share a ten-per-minute source-address budget across reconnects. Commands are capped at 180 per minute per connection. Anonymous sessions have a 45-second deadline; a pending second factor has two minutes. Idle authenticated connections close after 90 seconds. A slow outbound write has ten seconds to complete.
+
+## Implemented operations
+
+| Operation | Permission / behavior |
+| --- | --- |
+| `capabilities`, `ping` | Anonymous allowlist |
+| `auth.attach` | Validate supplied bearer token; establish a new generation |
+| `auth.login` | Existing password login and local second-factor policy |
+| `auth.totp` | Uses the challenge held by this socket; clients cannot substitute another challenge |
+| `auth.logout` | Clear this socket's credential/challenge; token revocation elsewhere remains a separate operation |
+| `buses.list` | Paged fleet DTOs and authorized route/maintenance counts |
+| `buses.create/update/delete/set-active` | Fleet permissions, actor-scoped receipts, revision conflicts and transactional reference checks |
+| `session.access` | Active account; current database roles and permissions |
+| `sales.list` | `sales.view`; deterministic paged detached DTOs |
+| `sales.create`, `sales.update`, `sales.delete` | Matching create/edit/delete permission and transactional reducer checks |
+| `mutations.receipt` | Active account; only that actor's receipt |
+| `reports.income`, `reports.sales` | `sales.view`; recorded amounts and explicit historical gaps |
+
+Session attach revalidates token proof; every protected command revalidates its token and current database permissions. There are no v2 subscriptions yet. Password/TOTP orchestration shares the existing authentication service. Windows/Entra/WebAuthn browser and platform ceremonies must not be replaced with client-supplied usernames or biometric data.
+
+Sale and fleet mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
+
+The shared HTTP adapter is `POST /api/operations/{operation}` with the same payload and bearer authorization. Mutations use `Idempotency-Key`. Existing HTTP sale/fleet mutations and resource socket mutations invoke the same registered sale handlers and preserve their original response formats. Existing `/api/session/access` also invokes the shared handler.
+
+## Client rollout
+
+`shared/BRU.Avtopark.Client` provides one serialized writer and one receiver with correlated pending requests. It shares contracts with the API, has no Avalonia or generated database dependency, and never retries writes automatically. Cancellation sends a cancel command after a complete frame; a partially sent frame closes the socket. Disconnect during a mutation raises `commit_outcome_unknown`.
+
+Avalonia/MAUI share `ApplicationClientCoordinator`. It binds a transport to the selected server and token, disposes it on session changes, and rejects stale results. Access checks, both reporting screens and the bus screen use it. Fleet queries return `BusPageResult` with paging and current create/edit/delete eligibility, preserve row identity/selection on refresh, and cancel superseded loads. Unauthorized dependent counts are null, not fabricated zeroes. Fleet mutations use shared commands and retain the dialog draft on rejection or uncertainty. All existing bus form fields are persisted atomically. `BRU_TRANSPORT=http` selects the shared HTTP adapters for migrated reads and fleet writes; writes are dispatched once and never replayed after an uncertain response. The remaining screens still need migration. The new report operation must be deployed with the client; an older API does not have the server projection.
+
+Reports use `Business:TimeZone` (default `UTC`) to select inclusive business dates. They retain sales with missing related rows, count unknown historical amounts, and average only recorded amounts (including genuine zero amounts). More than 200 route groups are folded into a clearly labelled remainder, retaining overall counts and revenue. View activation starts loading; deactivation cancels it. Superseded results are ignored and errors preserve previously loaded data with retry controls. Account changes clear the prior report.
+
+## Diagnostics and verification
+
+Server operation logs include connection ID, request ID, generation, outcome and duration. Envelopes carry trace IDs. `BRU.Application` emits command duration/count, connection and pending-work metrics and activities through the configured OpenTelemetry pipeline. Client logs include operation, request ID, transport, generation, outcome and elapsed time. Payloads, password/second-factor values and bearer tokens are excluded from these diagnostics.
+
+`tests/Api.Contracts` exercises framed sockets and an ephemeral Kestrel host with the production shared client. It covers capability negotiation, explicit dispatch, anonymous rejection, budgets, challenge ownership, cancellation, logout, account revocation, token expiry and uncertain mutation disconnect. Authentication/database test doubles isolate these boundaries; the separate database integration suite validates actual receipts and reducer integrity. These tests do not establish real Windows/Entra/Hello interoperability or visual correctness.

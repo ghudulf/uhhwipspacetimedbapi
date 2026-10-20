@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "open_iddict_spacetime_authorization";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(OpenIddictSpacetimeAuthorization row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(OpenIddictSpacetimeAuthorizationHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(OpenIddictSpacetimeAuthorization row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal OpenIddictSpacetimeAuthorizationHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -48,6 +58,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Status { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Subject { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string> Type { get; }
+        public global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint> ApiAccessPartition { get; }
 
         public OpenIddictSpacetimeAuthorizationCols(string tableName)
         {
@@ -60,16 +71,19 @@ namespace SpacetimeDB.Types
             Status = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "status");
             Subject = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "subject");
             Type = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, string>(tableName, "type");
+            ApiAccessPartition = new global::SpacetimeDB.Col<OpenIddictSpacetimeAuthorization, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class OpenIddictSpacetimeAuthorizationIxCols
     {
         public global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint> ApiAccessPartition { get; }
 
         public OpenIddictSpacetimeAuthorizationIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeAuthorization, uint>(tableName, "api_access_partition");
         }
     }
 }

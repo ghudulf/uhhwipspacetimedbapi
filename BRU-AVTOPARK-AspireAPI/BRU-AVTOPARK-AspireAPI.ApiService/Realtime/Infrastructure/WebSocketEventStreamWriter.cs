@@ -12,6 +12,8 @@ public sealed record RealtimeCrudRequest(
     uint? Id,
     JsonElement? Payload)
 {
+    public string? OperationId { get; init; }
+    public ulong? ExpectedRevision { get; init; }
     public int? Page { get; init; }
     public int? PageSize { get; init; }
 };
@@ -57,6 +59,8 @@ public static class WebSocketEventStreamWriter
 
         var eventPumpTask = Task.Run(async () =>
         {
+            try
+            {
             await foreach (var evt in events.WithCancellation(linkedCts.Token))
             {
                 if (webSocket.State != WebSocketState.Open)
@@ -72,6 +76,14 @@ public static class WebSocketEventStreamWriter
                     data = evt
                 }, sendLock, logger, linkedCts.Token);
             }
+            }
+            catch (OperationCanceledException) when (linkedCts.IsCancellationRequested) { }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Realtime event delivery stopped: {ErrorType}", ex.GetType().Name);
+            }
+            finally { linkedCts.Cancel(); }
+
         }, linkedCts.Token);
 
         try
@@ -158,7 +170,10 @@ public static class WebSocketEventStreamWriter
 
             if (webSocket.State == WebSocketState.Open)
             {
-                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Session completed", CancellationToken.None);
+                using var closeDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                try { await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Session completed", closeDeadline.Token); }
+                catch (OperationCanceledException) { webSocket.Abort(); }
+                catch (WebSocketException) { webSocket.Abort(); }
             }
         }
     }

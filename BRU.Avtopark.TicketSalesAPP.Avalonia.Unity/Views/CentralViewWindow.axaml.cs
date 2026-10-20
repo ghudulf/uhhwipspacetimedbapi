@@ -1,4 +1,6 @@
-﻿using Avalonia.Controls;
+using System;
+using System.Threading;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
@@ -7,9 +9,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views;
 
 public partial class CentralViewWindow : Window
 {
+    private readonly CancellationTokenSource _lifetime = new();
+
     public CentralViewWindow()
     {
         InitializeComponent();
+        Opened += async (_, _) =>
+        {
+            if (DataContext is BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel vm)
+                await vm.ActivateAsync(_lifetime.Token);
+        };
+        Closed += (_, _) => _lifetime.Cancel();
         DataContext ??= new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels.CentralViewWindowViewModel();
 
         if (!HostEnvironment.IsStandaloneDesktop)

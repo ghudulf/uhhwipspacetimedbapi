@@ -27,6 +27,8 @@ namespace SpacetimeDB.Types
         public string? DeviceInfo;
         [DataMember(Name = "ip_address")]
         public string? IpAddress;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public TwoFactorToken(
             uint Id,
@@ -35,7 +37,8 @@ namespace SpacetimeDB.Types
             ulong ExpiresAt,
             bool IsUsed,
             string? DeviceInfo,
-            string? IpAddress
+            string? IpAddress,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -45,6 +48,7 @@ namespace SpacetimeDB.Types
             this.IsUsed = IsUsed;
             this.DeviceInfo = DeviceInfo;
             this.IpAddress = IpAddress;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public TwoFactorToken()

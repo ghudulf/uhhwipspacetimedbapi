@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Serilog;
 using Serilog.Events;
 using System;
+using System.IO;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop;
 
@@ -13,14 +14,19 @@ class Program
     {
         try
         {
+            var userData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU.Avtopark.TicketSalesApp");
+            var logs = Path.Combine(userData, "logs");
+            Directory.CreateDirectory(logs);
+            // MSIX and Flatpak installation directories are read-only.
+            Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(userData, "WebView2"));
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .WriteTo.Debug()
-                .WriteTo.File("logs/app-.log",
+                .WriteTo.File(Path.Combine(logs, "app-.log"),
                     rollingInterval: RollingInterval.Day,
                     restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File("logs/debug-.log",
+                .WriteTo.File(Path.Combine(logs, "debug-.log"),
                     rollingInterval: RollingInterval.Day,
                     restrictedToMinimumLevel: LogEventLevel.Verbose)
                 .CreateLogger();

@@ -113,7 +113,7 @@ public partial class OAuthLoginControl : UserControl
         if (string.IsNullOrEmpty(AuthorizationUrl)) return;
 
         Log.Information("[OAuthLoginControl] Starting OAuth flow");
-        Log.Debug("[OAuthLoginControl] AuthorizationUrl: {Url}", AuthorizationUrl);
+        Log.Debug("[OAuthLoginControl] AuthorizationUrl: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(AuthorizationUrl));
         Log.Information("[OAuthLoginControl] RedirectUri (intercept target): {RedirectUri}", RedirectUri);
 
         // Reset loop counters on each new flow start
@@ -124,7 +124,7 @@ public partial class OAuthLoginControl : UserControl
 
         // Validate URL is not already a callback
         if (AuthorizationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
-            AuthorizationUrl.StartsWith(RedirectUri, StringComparison.OrdinalIgnoreCase))
+            BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(AuthorizationUrl, RedirectUri))
         {
             Log.Error("[OAuthLoginControl] AuthorizationUrl is a callback URL — aborting");
             ShowError("Обнаружен цикл авторизации. Данные авторизации будут очищены.");
@@ -162,23 +162,9 @@ public partial class OAuthLoginControl : UserControl
             await ClearWebViewDataAsync(_webView);
         }
 
-        // If the auth URL uses HTTPS but the server was discovered on HTTP, convert for WebView compat
         var navUrl = AuthorizationUrl;
-        if (navUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            var discoveredBase = Services.ApiClientService.Instance.CurrentBaseUrl ?? string.Empty;
-            if (discoveredBase.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-            {
-                // Extract host:port from discovered URL and substitute into auth URL
-                var discoveredUri = new Uri(discoveredBase);
-                var authUri = new Uri(navUrl);
-                navUrl = navUrl.Replace($"https://{authUri.Host}:{authUri.Port}", $"http://{discoveredUri.Host}:{discoveredUri.Port}");
-                navUrl = navUrl.Replace($"https://{authUri.Host}", $"http://{discoveredUri.Host}:{discoveredUri.Port}");
-                Log.Information("[OAuthLoginControl] Converted auth URL to HTTP for WebView: {Url}", navUrl);
-            }
-        }
 
-        Log.Information("[OAuthLoginControl] Navigating to: {Url}", navUrl);
+        Log.Information("[OAuthLoginControl] Navigating to: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(navUrl));
         _webView.Source = new Uri(navUrl);
 
         // 30-second navigation timeout
@@ -211,7 +197,7 @@ public partial class OAuthLoginControl : UserControl
     private void OnNavigationStarting(object? sender, WebViewNavigationStartingEventArgs e)
     {
         var url = e.Request?.ToString() ?? string.Empty;
-        Log.Debug("[OAuthLoginControl] NavigationStarting: {Url}", url);
+        Log.Debug("[OAuthLoginControl] NavigationStarting: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
 
         // Track when the user submits the login form (POST to /connect/authorize/callback)
         if (url.Contains("/connect/authorize/callback", StringComparison.OrdinalIgnoreCase))
@@ -220,7 +206,7 @@ public partial class OAuthLoginControl : UserControl
             Log.Information("[OAuthLoginControl] Login form submitted — watching for cookie redirect");
         }
 
-        if (!url.StartsWith(RedirectUri, StringComparison.OrdinalIgnoreCase)) return;
+        if (!BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(url, RedirectUri)) return;
 
         // Callback loop detection
         var elapsed = DateTime.UtcNow - _lastCallbackTime;
@@ -247,7 +233,7 @@ public partial class OAuthLoginControl : UserControl
             var query = HttpUtility.ParseQueryString(new Uri(url).Query);
             var error = query["error"];
             var desc = query["error_description"];
-            Log.Error("[OAuthLoginControl] OAuth error in callback: {Error} — {Desc}", error, desc);
+            Log.Error("[OAuthLoginControl] Provider returned an OAuth error");
             Dispatcher.UIThread.InvokeAsync(() =>
                 ShowError($"Ошибка авторизации: {desc ?? error}"));
             RaiseCompleted(new OAuthResult { Success = false, Error = error ?? "oauth_error" });
@@ -267,10 +253,10 @@ public partial class OAuthLoginControl : UserControl
         if (_loadingPanel != null) _loadingPanel.IsVisible = false;
 
         var currentUrl = _webView?.Source?.ToString() ?? string.Empty;
-        Log.Information("[OAuthLoginControl] NavigationCompleted — success={S}, url={U}", e.IsSuccess, currentUrl);
+        Log.Information("[OAuthLoginControl] NavigationCompleted — success={S}, url={U}", e.IsSuccess, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(currentUrl));
         Log.Debug("[OAuthLoginControl] Watching for redirect to: {RedirectUri}", RedirectUri);
 
-        if (currentUrl.StartsWith(RedirectUri, StringComparison.OrdinalIgnoreCase))
+        if (BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(currentUrl, RedirectUri))
         {
             ProcessCallback(currentUrl);
             return;
@@ -300,7 +286,7 @@ public partial class OAuthLoginControl : UserControl
 
         if (!e.IsSuccess)
         {
-            Log.Warning("[OAuthLoginControl] Navigation failed — url={U}", currentUrl);
+            Log.Warning("[OAuthLoginControl] Navigation failed — url={U}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(currentUrl));
             Dispatcher.UIThread.InvokeAsync(() =>
                 ShowError("Не удалось загрузить страницу авторизации. Проверьте подключение к серверу."));
         }
@@ -310,7 +296,7 @@ public partial class OAuthLoginControl : UserControl
 
     private void ProcessCallback(string url)
     {
-        Log.Information("[OAuthLoginControl] Processing callback: {Url}", url);
+        Log.Information("[OAuthLoginControl] Processing callback: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
         try
         {
             var query = HttpUtility.ParseQueryString(new Uri(url).Query);
@@ -333,7 +319,7 @@ public partial class OAuthLoginControl : UserControl
 
             if (state != ExpectedState)
             {
-                Log.Error("[OAuthLoginControl] State mismatch — expected {E}, got {G}", ExpectedState, state);
+                Log.Error("[OAuthLoginControl] OAuth state mismatch");
                 RaiseCompleted(new OAuthResult { Success = false, Error = "state_mismatch" });
                 return;
             }

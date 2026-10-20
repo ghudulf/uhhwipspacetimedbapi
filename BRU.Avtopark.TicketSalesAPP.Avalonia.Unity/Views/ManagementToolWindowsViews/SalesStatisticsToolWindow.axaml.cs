@@ -9,7 +9,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
         public SalesStatisticsToolWindow()
         {
             InitializeComponent();
-            DataContext = new SalesStatisticsViewModel();
+            var viewModel = new SalesStatisticsViewModel();
+            DataContext = viewModel;
+            AttachedToVisualTree += async (_, _) => await viewModel.ActivateAsync();
+            DetachedFromVisualTree += (_, _) => viewModel.Deactivate();
         }
 
         private void InitializeComponent()

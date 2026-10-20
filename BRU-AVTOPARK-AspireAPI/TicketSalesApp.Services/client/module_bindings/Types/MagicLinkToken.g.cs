@@ -25,6 +25,8 @@ namespace SpacetimeDB.Types
         public string? DeviceInfo;
         [DataMember(Name = "ip_address")]
         public string? IpAddress;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public MagicLinkToken(
             string Token,
@@ -32,7 +34,8 @@ namespace SpacetimeDB.Types
             ulong ExpiresAt,
             bool IsUsed,
             string? DeviceInfo,
-            string? IpAddress
+            string? IpAddress,
+            uint ApiAccessPartition
         )
         {
             this.Token = Token;
@@ -41,6 +44,7 @@ namespace SpacetimeDB.Types
             this.IsUsed = IsUsed;
             this.DeviceInfo = DeviceInfo;
             this.IpAddress = IpAddress;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public MagicLinkToken()

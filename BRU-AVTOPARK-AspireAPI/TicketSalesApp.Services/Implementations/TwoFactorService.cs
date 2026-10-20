@@ -1,203 +1,62 @@
-using System;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SpacetimeDB;
+using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
 
-namespace TicketSalesApp.Services.Implementations
+namespace TicketSalesApp.Services.Implementations;
+
+public sealed class TwoFactorService(ISpacetimeDBService database, ILogger<TwoFactorService> logger) : ITwoFactorService
 {
-    /// <summary>
-    /// Implementation of the two-factor authentication token service
-    /// </summary>
-    public class TwoFactorService : ITwoFactorService
+    public async Task<string> CreateTempTokenAsync(Identity userId, string tokenType, string? deviceInfo = null, string? ipAddress = null)
     {
-        private readonly ISpacetimeDBService _spacetimeService;
-        private readonly ILogger<TwoFactorService> _logger;
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var expires = (ulong)DateTimeOffset.UtcNow.AddMinutes(9).ToUnixTimeMilliseconds();
+        await database.ExecuteReducerAsync(new Reducer.CreateTwoFactorToken(userId, token, false, expires, deviceInfo, ipAddress), _ => true);
+        logger.LogInformation("Second-factor challenge committed; type {ChallengeType}", tokenType);
+        return token;
+    }
 
-        public TwoFactorService(
-            ISpacetimeDBService spacetimeService,
-            ILogger<TwoFactorService> logger)
+    public Task<(bool isValid, Identity? userId)> ValidateTempTokenAsync(string token) => database.ReadAsync(connection =>
+    {
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 128) return (false, (Identity?)null);
+        var row = connection.Db.TwoFactorToken.Iter().FirstOrDefault(t => t.Token == token);
+        var valid = row != null && !row.IsUsed && row.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            && connection.Db.UserProfile.UserId.Find(row.UserId)?.IsActive == true;
+        logger.LogDebug("Second-factor challenge validation: {Valid}", valid);
+        return (valid, valid ? (Identity?)row!.UserId : null);
+    });
+
+    public async Task<bool> MarkTokenAsUsedAsync(string token)
+    {
+        var row = await database.ReadAsync(connection => connection.Db.TwoFactorToken.Iter().FirstOrDefault(t => t.Token == token));
+        if (row == null) return false;
+        try
         {
-            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            await database.ExecuteReducerAsync(new Reducer.UpdateTwoFactorToken(row.Id, row.UserId, row.Token, true, row.ExpiresAt), _ => true);
+            logger.LogInformation("Second-factor challenge consumed at commit");
+            return true;
         }
-
-        /// <summary>
-        /// Creates a temporary token for 2FA validation (TOTP, WebAuthn, Magic Link)
-        /// </summary>
-        public async Task<string> CreateTempTokenAsync(Identity userId, string tokenType, string? deviceInfo = null, string? ipAddress = null)
+        catch (ReducerRejectedException)
         {
-            try
-            {
-                _logger.LogInformation("Creating temporary 2FA token for user: {UserId}, type: {TokenType}", userId, tokenType);
-
-                // Generate a secure random token
-                var token = GenerateSecureToken();
-
-                // Set expiration to 10 minutes from now
-                var expiresAt = (ulong)DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds();
-
-                var conn = _spacetimeService.GetConnection();
-
-                // Create the token in the database
-                conn.Reducers.CreateTwoFactorToken(
-                    userId,
-                    token,
-                    isUsed: false,
-                    expiresAt,
-                    deviceInfo,
-                    ipAddress
-                );
-
-                _logger.LogInformation("Successfully created temporary 2FA token for user: {UserId}", userId);
-
-                return token;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating temporary 2FA token for user: {UserId}", userId);
-                throw;
-            }
+            logger.LogWarning("Second-factor challenge consumption rejected (expired, replayed or disabled account)");
+            return false;
         }
+        // Uncertain commit outcomes propagate: callers must not issue a session without confirmation.
+    }
 
-        /// <summary>
-        /// Validates a temporary token and returns the associated user ID if valid
-        /// </summary>
-        public async Task<(bool isValid, Identity? userId)> ValidateTempTokenAsync(string token)
+    public async Task<int> CleanupExpiredTokensAsync()
+    {
+        var now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var ids = await database.ReadAsync(connection => connection.Db.TwoFactorToken.Iter()
+            .Where(t => t.ExpiresAt <= now).Take(128).Select(t => t.Id).ToArray());
+        var removed = 0;
+        foreach (var id in ids)
         {
-            try
-            {
-                _logger.LogInformation("Validating temporary 2FA token: {Token}", token);
-
-                var conn = _spacetimeService.GetConnection();
-
-                // Find the token
-                var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                    .FirstOrDefault(t => t.Token == token);
-
-                if (twoFactorToken == null)
-                {
-                    _logger.LogWarning("Two-factor token not found: {Token}", token);
-                    return (false, null);
-                }
-
-                // Check if token is expired
-                var currentTime = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (twoFactorToken.ExpiresAt < currentTime)
-                {
-                    _logger.LogWarning("Two-factor token expired: {Token}", token);
-                    return (false, null);
-                }
-
-                // Check if token has already been used
-                if (twoFactorToken.IsUsed)
-                {
-                    _logger.LogWarning("Two-factor token already used: {Token}", token);
-                    return (false, null);
-                }
-
-                _logger.LogInformation("Successfully validated temporary 2FA token for user: {UserId}", twoFactorToken.UserId);
-
-                return (true, twoFactorToken.UserId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating temporary 2FA token: {Token}", token);
-                return (false, null);
-            }
+            try { await database.ExecuteReducerAsync(new Reducer.DeleteTwoFactorToken(id), _ => true); removed++; }
+            catch (ReducerRejectedException) { /* A concurrent cleanup may already have removed this row. */ }
         }
-
-        /// <summary>
-        /// Marks a token as used to prevent replay attacks
-        /// </summary>
-        public async Task<bool> MarkTokenAsUsedAsync(string token)
-        {
-            try
-            {
-                _logger.LogInformation("Marking temporary 2FA token as used: {Token}", token);
-
-                var conn = _spacetimeService.GetConnection();
-
-                // Find the token
-                var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                    .FirstOrDefault(t => t.Token == token);
-
-                if (twoFactorToken == null)
-                {
-                    _logger.LogWarning("Two-factor token not found when marking as used: {Token}", token);
-                    return false;
-                }
-
-                // Update the token to mark it as used
-                conn.Reducers.UpdateTwoFactorToken(
-                    twoFactorToken.Id,
-                    twoFactorToken.UserId,
-                    twoFactorToken.Token,
-                    isUsed: true,
-                    twoFactorToken.ExpiresAt
-                );
-
-                _logger.LogInformation("Successfully marked temporary 2FA token as used: {Token}", token);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error marking temporary 2FA token as used: {Token}", token);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Removes expired tokens from the database (background cleanup job)
-        /// </summary>
-        public async Task<int> CleanupExpiredTokensAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Starting cleanup of expired 2FA tokens");
-
-                var conn = _spacetimeService.GetConnection();
-                var currentTime = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-                // Find all expired tokens
-                var expiredTokens = conn.Db.TwoFactorToken.Iter()
-                    .Where(t => t.ExpiresAt < currentTime)
-                    .ToList();
-
-                // Delete each expired token
-                foreach (var token in expiredTokens)
-                {
-                    conn.Reducers.DeleteTwoFactorToken(token.Id);
-                }
-
-                _logger.LogInformation("Successfully cleaned up {Count} expired 2FA tokens", expiredTokens.Count);
-
-                return expiredTokens.Count;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cleaning up expired 2FA tokens");
-                return 0;
-            }
-        }
-
-        /// <summary>
-        /// Generates a secure random token
-        /// </summary>
-        private string GenerateSecureToken()
-        {
-            var randomBytes = new byte[32]; // 256 bits
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-            }
-            return Convert.ToBase64String(randomBytes)
-                .Replace("+", "-")
-                .Replace("/", "_")
-                .Replace("=", "");
-        }
+        logger.LogInformation("Second-factor cleanup committed {Count} removals", removed);
+        return removed;
     }
 }

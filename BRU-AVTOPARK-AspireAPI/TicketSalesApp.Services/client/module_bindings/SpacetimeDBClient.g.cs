@@ -31,6 +31,7 @@ namespace SpacetimeDB.Types
             AddTable(AuthenticationEvent = new(conn));
             AddTable(Bus = new(conn));
             AddTable(BusLocation = new(conn));
+            AddTable(BusRevision = new(conn));
             AddTable(BusStatusEvent = new(conn));
             AddTable(BusStop = new(conn));
             AddTable(CashierDay = new(conn));
@@ -38,6 +39,7 @@ namespace SpacetimeDB.Types
             AddTable(Discounts = new(conn));
             AddTable(Employee = new(conn));
             AddTable(EmployeeShift = new(conn));
+            AddTable(ExternalAccountLink = new(conn));
             AddTable(FeatureFlagOverride = new(conn));
             AddTable(FuelRecord = new(conn));
             AddTable(Incident = new(conn));
@@ -45,6 +47,10 @@ namespace SpacetimeDB.Types
             AddTable(MagicLinkToken = new(conn));
             AddTable(Maintenance = new(conn));
             AddTable(MaintenanceEvent = new(conn));
+            AddTable(MutationReceipt = new(conn));
+            AddTable(OidcApplicationMetadata = new(conn));
+            AddTable(OidcScopeRevision = new(conn));
+            AddTable(OidcTokenRevision = new(conn));
             AddTable(OpenIdConnect = new(conn));
             AddTable(OpenIdConnectGrant = new(conn));
             AddTable(OpenIddictSpacetimeAuthorization = new(conn));
@@ -60,10 +66,12 @@ namespace SpacetimeDB.Types
             AddTable(RouteSchedule = new(conn));
             AddTable(RouteScheduleEvent = new(conn));
             AddTable(Sale = new(conn));
+            AddTable(SaleRevision = new(conn));
             AddTable(SeatConfiguration = new(conn));
             AddTable(Ticket = new(conn));
             AddTable(TicketSaleEvent = new(conn));
             AddTable(TotpSecret = new(conn));
+            AddTable(TrustedApiIdentity = new(conn));
             AddTable(TwoFactorToken = new(conn));
             AddTable(UserProfile = new(conn));
             AddTable(UserRole = new(conn));
@@ -556,6 +564,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.AuthenticationEvent().ToSql(),
             new QueryBuilder().From.Bus().ToSql(),
             new QueryBuilder().From.BusLocation().ToSql(),
+            new QueryBuilder().From.BusRevision().ToSql(),
             new QueryBuilder().From.BusStatusEvent().ToSql(),
             new QueryBuilder().From.BusStop().ToSql(),
             new QueryBuilder().From.CashierDay().ToSql(),
@@ -563,6 +572,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Discounts().ToSql(),
             new QueryBuilder().From.Employee().ToSql(),
             new QueryBuilder().From.EmployeeShift().ToSql(),
+            new QueryBuilder().From.ExternalAccountLink().ToSql(),
             new QueryBuilder().From.FeatureFlagOverride().ToSql(),
             new QueryBuilder().From.FuelRecord().ToSql(),
             new QueryBuilder().From.Incident().ToSql(),
@@ -570,6 +580,10 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.MagicLinkToken().ToSql(),
             new QueryBuilder().From.Maintenance().ToSql(),
             new QueryBuilder().From.MaintenanceEvent().ToSql(),
+            new QueryBuilder().From.MutationReceipt().ToSql(),
+            new QueryBuilder().From.OidcApplicationMetadata().ToSql(),
+            new QueryBuilder().From.OidcScopeRevision().ToSql(),
+            new QueryBuilder().From.OidcTokenRevision().ToSql(),
             new QueryBuilder().From.OpenIdConnect().ToSql(),
             new QueryBuilder().From.OpenIdConnectGrant().ToSql(),
             new QueryBuilder().From.OpenIddictSpacetimeAuthorization().ToSql(),
@@ -585,10 +599,12 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.RouteSchedule().ToSql(),
             new QueryBuilder().From.RouteScheduleEvent().ToSql(),
             new QueryBuilder().From.Sale().ToSql(),
+            new QueryBuilder().From.SaleRevision().ToSql(),
             new QueryBuilder().From.SeatConfiguration().ToSql(),
             new QueryBuilder().From.Ticket().ToSql(),
             new QueryBuilder().From.TicketSaleEvent().ToSql(),
             new QueryBuilder().From.TotpSecret().ToSql(),
+            new QueryBuilder().From.TrustedApiIdentity().ToSql(),
             new QueryBuilder().From.TwoFactorToken().ToSql(),
             new QueryBuilder().From.UserProfile().ToSql(),
             new QueryBuilder().From.UserRole().ToSql(),
@@ -605,6 +621,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<AuthenticationEvent, AuthenticationEventCols, AuthenticationEventIxCols> AuthenticationEvent() => new("authentication_event", new AuthenticationEventCols("authentication_event"), new AuthenticationEventIxCols("authentication_event"));
         public global::SpacetimeDB.Table<Bus, BusCols, BusIxCols> Bus() => new("bus", new BusCols("bus"), new BusIxCols("bus"));
         public global::SpacetimeDB.Table<BusLocation, BusLocationCols, BusLocationIxCols> BusLocation() => new("bus_location", new BusLocationCols("bus_location"), new BusLocationIxCols("bus_location"));
+        public global::SpacetimeDB.Table<BusRevision, BusRevisionCols, BusRevisionIxCols> BusRevision() => new("bus_revision", new BusRevisionCols("bus_revision"), new BusRevisionIxCols("bus_revision"));
         public global::SpacetimeDB.Table<BusStatusEvent, BusStatusEventCols, BusStatusEventIxCols> BusStatusEvent() => new("bus_status_event", new BusStatusEventCols("bus_status_event"), new BusStatusEventIxCols("bus_status_event"));
         public global::SpacetimeDB.Table<BusStop, BusStopCols, BusStopIxCols> BusStop() => new("bus_stop", new BusStopCols("bus_stop"), new BusStopIxCols("bus_stop"));
         public global::SpacetimeDB.Table<CashierDay, CashierDayCols, CashierDayIxCols> CashierDay() => new("cashier_day", new CashierDayCols("cashier_day"), new CashierDayIxCols("cashier_day"));
@@ -612,6 +629,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Discounts, DiscountsCols, DiscountsIxCols> Discounts() => new("discounts", new DiscountsCols("discounts"), new DiscountsIxCols("discounts"));
         public global::SpacetimeDB.Table<Employee, EmployeeCols, EmployeeIxCols> Employee() => new("employee", new EmployeeCols("employee"), new EmployeeIxCols("employee"));
         public global::SpacetimeDB.Table<EmployeeShift, EmployeeShiftCols, EmployeeShiftIxCols> EmployeeShift() => new("employee_shift", new EmployeeShiftCols("employee_shift"), new EmployeeShiftIxCols("employee_shift"));
+        public global::SpacetimeDB.Table<ExternalAccountLink, ExternalAccountLinkCols, ExternalAccountLinkIxCols> ExternalAccountLink() => new("external_account_link", new ExternalAccountLinkCols("external_account_link"), new ExternalAccountLinkIxCols("external_account_link"));
         public global::SpacetimeDB.Table<FeatureFlagOverride, FeatureFlagOverrideCols, FeatureFlagOverrideIxCols> FeatureFlagOverride() => new("feature_flag_override", new FeatureFlagOverrideCols("feature_flag_override"), new FeatureFlagOverrideIxCols("feature_flag_override"));
         public global::SpacetimeDB.Table<FuelRecord, FuelRecordCols, FuelRecordIxCols> FuelRecord() => new("fuel_record", new FuelRecordCols("fuel_record"), new FuelRecordIxCols("fuel_record"));
         public global::SpacetimeDB.Table<Incident, IncidentCols, IncidentIxCols> Incident() => new("incident", new IncidentCols("incident"), new IncidentIxCols("incident"));
@@ -619,6 +637,10 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<MagicLinkToken, MagicLinkTokenCols, MagicLinkTokenIxCols> MagicLinkToken() => new("magic_link_token", new MagicLinkTokenCols("magic_link_token"), new MagicLinkTokenIxCols("magic_link_token"));
         public global::SpacetimeDB.Table<Maintenance, MaintenanceCols, MaintenanceIxCols> Maintenance() => new("maintenance", new MaintenanceCols("maintenance"), new MaintenanceIxCols("maintenance"));
         public global::SpacetimeDB.Table<MaintenanceEvent, MaintenanceEventCols, MaintenanceEventIxCols> MaintenanceEvent() => new("maintenance_event", new MaintenanceEventCols("maintenance_event"), new MaintenanceEventIxCols("maintenance_event"));
+        public global::SpacetimeDB.Table<MutationReceipt, MutationReceiptCols, MutationReceiptIxCols> MutationReceipt() => new("mutation_receipt", new MutationReceiptCols("mutation_receipt"), new MutationReceiptIxCols("mutation_receipt"));
+        public global::SpacetimeDB.Table<OidcApplicationMetadata, OidcApplicationMetadataCols, OidcApplicationMetadataIxCols> OidcApplicationMetadata() => new("oidc_application_metadata", new OidcApplicationMetadataCols("oidc_application_metadata"), new OidcApplicationMetadataIxCols("oidc_application_metadata"));
+        public global::SpacetimeDB.Table<OidcScopeRevision, OidcScopeRevisionCols, OidcScopeRevisionIxCols> OidcScopeRevision() => new("oidc_scope_revision", new OidcScopeRevisionCols("oidc_scope_revision"), new OidcScopeRevisionIxCols("oidc_scope_revision"));
+        public global::SpacetimeDB.Table<OidcTokenRevision, OidcTokenRevisionCols, OidcTokenRevisionIxCols> OidcTokenRevision() => new("oidc_token_revision", new OidcTokenRevisionCols("oidc_token_revision"), new OidcTokenRevisionIxCols("oidc_token_revision"));
         public global::SpacetimeDB.Table<OpenIdConnect, OpenIdConnectCols, OpenIdConnectIxCols> OpenIdConnect() => new("open_id_connect", new OpenIdConnectCols("open_id_connect"), new OpenIdConnectIxCols("open_id_connect"));
         public global::SpacetimeDB.Table<OpenIdConnectGrant, OpenIdConnectGrantCols, OpenIdConnectGrantIxCols> OpenIdConnectGrant() => new("open_id_connect_grant", new OpenIdConnectGrantCols("open_id_connect_grant"), new OpenIdConnectGrantIxCols("open_id_connect_grant"));
         public global::SpacetimeDB.Table<OpenIddictSpacetimeAuthorization, OpenIddictSpacetimeAuthorizationCols, OpenIddictSpacetimeAuthorizationIxCols> OpenIddictSpacetimeAuthorization() => new("open_iddict_spacetime_authorization", new OpenIddictSpacetimeAuthorizationCols("open_iddict_spacetime_authorization"), new OpenIddictSpacetimeAuthorizationIxCols("open_iddict_spacetime_authorization"));
@@ -634,10 +656,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<RouteSchedule, RouteScheduleCols, RouteScheduleIxCols> RouteSchedule() => new("route_schedule", new RouteScheduleCols("route_schedule"), new RouteScheduleIxCols("route_schedule"));
         public global::SpacetimeDB.Table<RouteScheduleEvent, RouteScheduleEventCols, RouteScheduleEventIxCols> RouteScheduleEvent() => new("route_schedule_event", new RouteScheduleEventCols("route_schedule_event"), new RouteScheduleEventIxCols("route_schedule_event"));
         public global::SpacetimeDB.Table<Sale, SaleCols, SaleIxCols> Sale() => new("sale", new SaleCols("sale"), new SaleIxCols("sale"));
+        public global::SpacetimeDB.Table<SaleRevision, SaleRevisionCols, SaleRevisionIxCols> SaleRevision() => new("sale_revision", new SaleRevisionCols("sale_revision"), new SaleRevisionIxCols("sale_revision"));
         public global::SpacetimeDB.Table<SeatConfiguration, SeatConfigurationCols, SeatConfigurationIxCols> SeatConfiguration() => new("seat_configuration", new SeatConfigurationCols("seat_configuration"), new SeatConfigurationIxCols("seat_configuration"));
         public global::SpacetimeDB.Table<Ticket, TicketCols, TicketIxCols> Ticket() => new("ticket", new TicketCols("ticket"), new TicketIxCols("ticket"));
         public global::SpacetimeDB.Table<TicketSaleEvent, TicketSaleEventCols, TicketSaleEventIxCols> TicketSaleEvent() => new("ticket_sale_event", new TicketSaleEventCols("ticket_sale_event"), new TicketSaleEventIxCols("ticket_sale_event"));
         public global::SpacetimeDB.Table<TotpSecret, TotpSecretCols, TotpSecretIxCols> TotpSecret() => new("totp_secret", new TotpSecretCols("totp_secret"), new TotpSecretIxCols("totp_secret"));
+        public global::SpacetimeDB.Table<TrustedApiIdentity, TrustedApiIdentityCols, TrustedApiIdentityIxCols> TrustedApiIdentity() => new("trusted_api_identity", new TrustedApiIdentityCols("trusted_api_identity"), new TrustedApiIdentityIxCols("trusted_api_identity"));
         public global::SpacetimeDB.Table<TwoFactorToken, TwoFactorTokenCols, TwoFactorTokenIxCols> TwoFactorToken() => new("two_factor_token", new TwoFactorTokenCols("two_factor_token"), new TwoFactorTokenIxCols("two_factor_token"));
         public global::SpacetimeDB.Table<UserProfile, UserProfileCols, UserProfileIxCols> UserProfile() => new("user_profile", new UserProfileCols("user_profile"), new UserProfileIxCols("user_profile"));
         public global::SpacetimeDB.Table<UserRole, UserRoleCols, UserRoleIxCols> UserRole() => new("user_role", new UserRoleCols("user_role"), new UserRoleIxCols("user_role"));
@@ -738,6 +762,7 @@ namespace SpacetimeDB.Types
                 Reducer.ClaimUserAccount args => Reducers.InvokeClaimUserAccount(eventContext, args),
                 Reducer.ClearFeatureFlagOverrides args => Reducers.InvokeClearFeatureFlagOverrides(eventContext, args),
                 Reducer.CreateBus args => Reducers.InvokeCreateBus(eventContext, args),
+                Reducer.CreateBusV2 args => Reducers.InvokeCreateBusV2(eventContext, args),
                 Reducer.CreateEmployee args => Reducers.InvokeCreateEmployee(eventContext, args),
                 Reducer.CreateJob args => Reducers.InvokeCreateJob(eventContext, args),
                 Reducer.CreateMagicLinkToken args => Reducers.InvokeCreateMagicLinkToken(eventContext, args),
@@ -752,6 +777,7 @@ namespace SpacetimeDB.Types
                 Reducer.CreateRoute args => Reducers.InvokeCreateRoute(eventContext, args),
                 Reducer.CreateRouteSchedule args => Reducers.InvokeCreateRouteSchedule(eventContext, args),
                 Reducer.CreateSale args => Reducers.InvokeCreateSale(eventContext, args),
+                Reducer.CreateSaleV2 args => Reducers.InvokeCreateSaleV2(eventContext, args),
                 Reducer.CreateTicket args => Reducers.InvokeCreateTicket(eventContext, args),
                 Reducer.CreateTwoFactorToken args => Reducers.InvokeCreateTwoFactorToken(eventContext, args),
                 Reducer.CreateUserSettings args => Reducers.InvokeCreateUserSettings(eventContext, args),
@@ -763,6 +789,7 @@ namespace SpacetimeDB.Types
                 Reducer.DeactivateWebAuthnCredential args => Reducers.InvokeDeactivateWebAuthnCredential(eventContext, args),
                 Reducer.DebugVerifyPassword args => Reducers.InvokeDebugVerifyPassword(eventContext, args),
                 Reducer.DeleteBus args => Reducers.InvokeDeleteBus(eventContext, args),
+                Reducer.DeleteBusV2 args => Reducers.InvokeDeleteBusV2(eventContext, args),
                 Reducer.DeleteEmployee args => Reducers.InvokeDeleteEmployee(eventContext, args),
                 Reducer.DeleteFeatureFlagOverride args => Reducers.InvokeDeleteFeatureFlagOverride(eventContext, args),
                 Reducer.DeleteJob args => Reducers.InvokeDeleteJob(eventContext, args),
@@ -778,6 +805,7 @@ namespace SpacetimeDB.Types
                 Reducer.DeleteRoute args => Reducers.InvokeDeleteRoute(eventContext, args),
                 Reducer.DeleteRouteSchedule args => Reducers.InvokeDeleteRouteSchedule(eventContext, args),
                 Reducer.DeleteSale args => Reducers.InvokeDeleteSale(eventContext, args),
+                Reducer.DeleteSaleV2 args => Reducers.InvokeDeleteSaleV2(eventContext, args),
                 Reducer.DeleteTicket args => Reducers.InvokeDeleteTicket(eventContext, args),
                 Reducer.DeleteTwoFactorToken args => Reducers.InvokeDeleteTwoFactorToken(eventContext, args),
                 Reducer.DeleteUser args => Reducers.InvokeDeleteUser(eventContext, args),
@@ -789,20 +817,31 @@ namespace SpacetimeDB.Types
                 Reducer.GenerateTotpSecret args => Reducers.InvokeGenerateTotpSecret(eventContext, args),
                 Reducer.GetBusMaintenanceHistory args => Reducers.InvokeGetBusMaintenanceHistory(eventContext, args),
                 Reducer.GrantPermissionToRole args => Reducers.InvokeGrantPermissionToRole(eventContext, args),
+                Reducer.LinkExternalAccount args => Reducers.InvokeLinkExternalAccount(eventContext, args),
+                Reducer.LinkOwnExternalAccount args => Reducers.InvokeLinkOwnExternalAccount(eventContext, args),
                 Reducer.LogAdminAction args => Reducers.InvokeLogAdminAction(eventContext, args),
+                Reducer.ProvisionTrustedApi args => Reducers.InvokeProvisionTrustedApi(eventContext, args),
                 Reducer.PruneOidcAuthorizations args => Reducers.InvokePruneOidcAuthorizations(eventContext, args),
                 Reducer.PruneOidcTokens args => Reducers.InvokePruneOidcTokens(eventContext, args),
                 Reducer.RegisterOpenIdClient args => Reducers.InvokeRegisterOpenIdClient(eventContext, args),
                 Reducer.RegisterUser args => Reducers.InvokeRegisterUser(eventContext, args),
                 Reducer.RegisterWebAuthnCredential args => Reducers.InvokeRegisterWebAuthnCredential(eventContext, args),
                 Reducer.RemoveRole args => Reducers.InvokeRemoveRole(eventContext, args),
+                Reducer.ReplaceOidcApplication args => Reducers.InvokeReplaceOidcApplication(eventContext, args),
+                Reducer.ReplaceOidcScope args => Reducers.InvokeReplaceOidcScope(eventContext, args),
+                Reducer.ReplaceOidcToken args => Reducers.InvokeReplaceOidcToken(eventContext, args),
                 Reducer.RevokeOpenIdClient args => Reducers.InvokeRevokeOpenIdClient(eventContext, args),
                 Reducer.RevokeOpenIdGrant args => Reducers.InvokeRevokeOpenIdGrant(eventContext, args),
                 Reducer.RevokePermissionFromRole args => Reducers.InvokeRevokePermissionFromRole(eventContext, args),
+                Reducer.RevokeTrustedApi args => Reducers.InvokeRevokeTrustedApi(eventContext, args),
                 Reducer.SayHello args => Reducers.InvokeSayHello(eventContext, args),
+                Reducer.SeedDemoData args => Reducers.InvokeSeedDemoData(eventContext, args),
+                Reducer.SetBusActiveV2 args => Reducers.InvokeSetBusActiveV2(eventContext, args),
                 Reducer.StoreTotpSecret args => Reducers.InvokeStoreTotpSecret(eventContext, args),
                 Reducer.StoreWebAuthnChallenge args => Reducers.InvokeStoreWebAuthnChallenge(eventContext, args),
+                Reducer.UnlinkExternalAccount args => Reducers.InvokeUnlinkExternalAccount(eventContext, args),
                 Reducer.UpdateBus args => Reducers.InvokeUpdateBus(eventContext, args),
+                Reducer.UpdateBusV2 args => Reducers.InvokeUpdateBusV2(eventContext, args),
                 Reducer.UpdateEmployee args => Reducers.InvokeUpdateEmployee(eventContext, args),
                 Reducer.UpdateFeatureFlag args => Reducers.InvokeUpdateFeatureFlag(eventContext, args),
                 Reducer.UpdateJob args => Reducers.InvokeUpdateJob(eventContext, args),
@@ -818,6 +857,7 @@ namespace SpacetimeDB.Types
                 Reducer.UpdateRoute args => Reducers.InvokeUpdateRoute(eventContext, args),
                 Reducer.UpdateRouteSchedule args => Reducers.InvokeUpdateRouteSchedule(eventContext, args),
                 Reducer.UpdateSale args => Reducers.InvokeUpdateSale(eventContext, args),
+                Reducer.UpdateSaleV2 args => Reducers.InvokeUpdateSaleV2(eventContext, args),
                 Reducer.UpdateTicket args => Reducers.InvokeUpdateTicket(eventContext, args),
                 Reducer.UpdateTwoFactorToken args => Reducers.InvokeUpdateTwoFactorToken(eventContext, args),
                 Reducer.UpdateUser args => Reducers.InvokeUpdateUser(eventContext, args),

@@ -15,6 +15,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         public LoginMethodSelectorWindow()
         {
             InitializeComponent();
+            this.FindControl<Button>("WindowsAccountButton")!.IsVisible =
+                Services.WindowsAccountClient.TrustedOrigin != null;
 #if DEBUG
             DevToolsHelper.AttachOnce();
 #endif
@@ -25,15 +27,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             AvaloniaXamlLoader.Load(this);
         }
 
-        private void TraditionalLogin_Click(object? sender, PointerPressedEventArgs e)
+        private void TraditionalLogin_Click(object? sender, RoutedEventArgs e)
         {
             SelectedMethod = LoginMethod.Traditional;
             Close(SelectedMethod);
         }
 
-        private void OAuthLogin_Click(object? sender, PointerPressedEventArgs e)
+        private void OAuthLogin_Click(object? sender, RoutedEventArgs e)
         {
             SelectedMethod = LoginMethod.OAuth;
+            Close(SelectedMethod);
+        }
+
+        private void WindowsAccount_Click(object? sender, RoutedEventArgs e)
+        {
+            SelectedMethod = LoginMethod.WindowsAccount;
             Close(SelectedMethod);
         }
 
@@ -46,6 +54,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
     public enum LoginMethod
     {
+        WindowsAccount,
         Traditional,
         OAuth
     }

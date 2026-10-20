@@ -232,12 +232,17 @@ public static partial class Module
 
      [SpacetimeDB.Reducer]
     public static void CreateBus(ReducerContext ctx, string model, string? registrationNumber, Identity? actingUser = null)
+        => CreateBusCore(ctx, model, registrationNumber, actingUser);
+
+    private static uint CreateBusCore(ReducerContext ctx, string model, string? registrationNumber, Identity? actingUser)
     {
+        if (model == null) throw new Exception("Bus model required.");
+        ValidateBusFields(model, registrationNumber);
         Log.Info($"[CreateBus] Starting with model: {model}, registration: {registrationNumber ?? "none"}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Authorization check - verify the effective user has the required permission
         if (!HasPermission(ctx, effectiveUser, "create_bus")) // CreateBus permission CHECK
@@ -252,12 +257,12 @@ public static partial class Module
         if (counter == null)
         {
             // If counter doesn't exist, create it with initial value 1
-            counter = ctx.Db.BusIdCounter.Insert(new BusIdCounter { Key = "busId", NextId = 1 });
+            counter = ctx.Db.BusIdCounter.Insert(new BusIdCounter { Key = "busId", NextId = checked(ctx.Db.Bus.Iter().Select(b => b.BusId).DefaultIfEmpty(0u).Max() + 1) });
         }
         else
         {
             // Increment the counter
-            counter.NextId++;
+            counter.NextId = checked(counter.NextId + 1);
             ctx.Db.BusIdCounter.Key.Update(counter);
         }
         busId = counter.NextId;  // Use the counter value
@@ -272,6 +277,7 @@ public static partial class Module
         };
         // Insert the new bus into the database
         ctx.Db.Bus.Insert(bus);
+        AdvanceBusRevision(ctx, busId);
 
         // Publish bus status event
         ctx.Db.BusStatusEvent.Insert(new BusStatusEvent
@@ -284,16 +290,18 @@ public static partial class Module
             Reason = "Bus created"
         });
         Log.Info($"[CreateBus] Successfully created bus ID: {busId} by user: {effectiveUser}");
+        return busId;
     }
 
     [SpacetimeDB.Reducer]
     public static void UpdateBus(ReducerContext ctx, uint busId, string? model, string? registrationNumber, Identity? actingUser = null)
     {
+        ValidateBusFields(model, registrationNumber);
         Log.Info($"[UpdateBus] Starting for bus ID: {busId}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "buses.edit")) // UpdateBus PERM CHECK
@@ -320,6 +328,7 @@ public static partial class Module
         }
 
         ctx.Db.Bus.BusId.Update(bus);
+        AdvanceBusRevision(ctx, busId);
         Log.Info($"Bus {busId} updated");
 
         // Publish bus status event
@@ -342,7 +351,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "buses.delete")) // DeleteBus PERM CHECK
         {
@@ -356,10 +365,17 @@ public static partial class Module
             throw new Exception("Bus Not found");
         }
 
+        // Preserve referenced operational/history rows. Deactivate retained vehicles instead of leaving dangling IDs.
+        if (ctx.Db.Route.Iter().Any(r => r.BusId == busId) || ctx.Db.Maintenance.Iter().Any(m => m.BusId == busId)
+            || ctx.Db.BusLocation.Iter().Any(l => l.BusId == busId) || ctx.Db.FuelRecord.Iter().Any(f => f.BusId == busId)
+            || ctx.Db.SeatConfiguration.Iter().Any(c => c.BusId == busId) || ctx.Db.Incident.Iter().Any(i => i.BusId == busId))
+            throw new Exception("Bus has dependent records. Deactivate it or resolve those records before deletion.");
+
         // Store status before deletion
         var previousStatus = bus.IsActive ? "Active" : "Inactive";
 
         ctx.Db.Bus.BusId.Delete(busId);
+        AdvanceBusRevision(ctx, busId);
         Log.Info($"Bus {busId} has been deleted.");
 
         // Publish bus status event
@@ -382,7 +398,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "buses.edit")) // ActivateBus PERM CHECK
@@ -407,6 +423,7 @@ public static partial class Module
         
         bus.IsActive = true;
         ctx.Db.Bus.BusId.Update(bus);
+        AdvanceBusRevision(ctx, busId);
         Log.Info($"Bus {busId} activated by {effectiveUser}");
 
         // Publish bus status event
@@ -429,7 +446,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "buses.edit")) // DeactivateBus PERM CHECK
@@ -465,6 +482,7 @@ public static partial class Module
         
         bus.IsActive = false;
         ctx.Db.Bus.BusId.Update(bus);
+        AdvanceBusRevision(ctx, busId);
         Log.Info($"Bus {busId} deactivated by {effectiveUser}");
 
         // Publish bus status event
@@ -487,7 +505,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // This is a query reducer that doesn't modify state but returns data
         // Check for the required permission
@@ -532,7 +550,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "maintenance.edit")) // UpdateMaintenance PERM CHECK
@@ -599,7 +617,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "maintenance.delete")) // DeleteMaintenance PERM CHECK
         {

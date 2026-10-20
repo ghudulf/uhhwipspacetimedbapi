@@ -259,6 +259,36 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 return LoginResult.Failed("Invalid username or password");
             }
 
+            return await CompletePrimaryAuthenticationAsync(user);
+        }
+
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during login orchestration for user: {Username}", username);
+            return LoginResult.Failed("An error occurred during login");
+        }
+    }
+
+    public async Task<LoginResult> LoginExternalAsync(string provider, string issuer, string subject)
+    {
+        // Only verified provider principals may supply these identifiers.
+        if (new[] { provider, issuer, subject }.Any(p => string.IsNullOrWhiteSpace(p) || p.Length > 512 || p.Contains('\n') || p.Contains('\r')))
+            return LoginResult.Failed("Invalid external identity");
+        var key = provider + "\n" + issuer + "\n" + subject;
+        var user = await _spacetimeService.ReadAsync(connection =>
+        {
+            var link = connection.Db.ExternalAccountLink.Key.Find(key);
+            return link == null ? null : connection.Db.UserProfile.UserId.Find(link.UserId);
+        });
+        if (user?.IsActive != true) return LoginResult.Failed("External account is not linked to an active application account");
+        _logger.LogInformation("External primary authentication accepted; provider {Provider}, identity {Fingerprint}",
+            provider, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(subject));
+        return await CompletePrimaryAuthenticationAsync(user);
+    }
+
+    private async Task<LoginResult> CompletePrimaryAuthenticationAsync(UserProfile user)
+    {
+        if (!user.IsActive) return LoginResult.Failed("Account is inactive");
             // Step 2: Get or create user settings
             var settings = await _settingsService.GetOrCreateUserSettingsAsync(user.UserId);
 
@@ -267,7 +297,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (requiresTwoFactor)
             {
-                _logger.LogInformation("2FA required for user: {Username}", username);
+                _logger.LogInformation("2FA required for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
 
                 // Step 4: Create temporary token for 2FA validation
                 var tempToken = await _twoFactorService.CreateTempTokenAsync(user.UserId, "login");
@@ -283,7 +313,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
                     if (!credentials.Any())
                     {
-                        _logger.LogWarning("No WebAuthn credentials found for user: {Username}", username);
+                        _logger.LogWarning("No WebAuthn credentials found for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
                         return LoginResult.Failed("No WebAuthn credentials found");
                     }
 
@@ -291,7 +321,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                     var (success, options, errorMessage) = await _webAuthnService.GetAssertionOptionsAsync(user.Login);
                     if (!success || options == null)
                     {
-                        _logger.LogWarning("Failed to create assertion options for user: {Username}", username);
+                        _logger.LogWarning("Failed to create assertion options for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
                         return LoginResult.Failed(errorMessage ?? "Failed to create assertion options");
                     }
 
@@ -304,14 +334,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             // Step 6: Generate JWT token and user DTO
             var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
 
-            _logger.LogInformation("Login successful for user: {Username}", username);
+            _logger.LogInformation("Login successful for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
             return LoginResult.Successful(jwtToken, userDto, claims);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during login orchestration for user: {Username}", username);
-            return LoginResult.Failed("An error occurred during login");
-        }
     }
 
     /// <inheritdoc />
@@ -338,7 +362,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 3: Mark temporary token as used
-            await _twoFactorService.MarkTokenAsUsedAsync(tempToken);
+            if (!await _twoFactorService.MarkTokenAsUsedAsync(tempToken))
+                throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 4: Get user profile by Identity
             var conn = _spacetimeService.GetConnection();
@@ -396,7 +421,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 4: Mark temporary token as used
-            await _twoFactorService.MarkTokenAsUsedAsync(tempToken);
+            if (!await _twoFactorService.MarkTokenAsUsedAsync(tempToken))
+                throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 5: Generate JWT token and user DTO
             var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(validatedUser);

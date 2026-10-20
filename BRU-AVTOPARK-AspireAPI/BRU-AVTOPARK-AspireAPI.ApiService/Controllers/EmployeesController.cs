@@ -68,7 +68,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var isAdmin = claims.ContainsKey("primary_role") && claims["primary_role"]?.ToString() == "admin";
 
             var eventsSource = (isAdmin || HasPermission("employees.view", claims))
-                ? _realtimeEventBus.SubscribeAsync("employees", cancellationToken)
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("employees", cancellationToken), "employees.view", cancellationToken)
                 : EmptyAsyncEnumerable();
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
@@ -102,6 +102,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request.Command is not supported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("employees", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch

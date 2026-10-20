@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:display="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
@@ -344,7 +345,7 @@
                          Foreground="{DynamicResource RtEmptyText}"
                          FontSize="14"
                          HorizontalAlignment="Center"
-                         IsVisible="{Binding Routes.Count, Converter={x:Static ObjectConverters.IsNull}}"/>
+                         IsVisible="{Binding Routes.Count, Converter={x:Static display:ZeroCountConverter.Instance}}"/>
             </Border>
 
             <ListBox ItemsSource="{Binding Routes}"

@@ -8,6 +8,13 @@ namespace TicketSalesApp.Services.Interfaces
 {
     public interface ISpacetimeDBService
     {
+        DatabaseConnectionState State { get; }
+        Task<TResult> ExecuteReducerAsync<TArgs, TResult>(TArgs args,
+            Func<DbConnection, TResult> committedResult, System.Threading.CancellationToken cancellationToken = default)
+            where TArgs : Reducer, IReducerArgs, new();
+        Task<TResult> ReadAsync<TResult>(Func<DbConnection, TResult> query,
+            System.Threading.CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Establishes a connection to the SpacetimeDB module
         /// </summary>

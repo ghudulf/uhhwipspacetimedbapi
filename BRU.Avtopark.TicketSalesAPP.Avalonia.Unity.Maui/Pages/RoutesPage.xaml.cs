@@ -1,63 +1,94 @@
+using System.ComponentModel;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 using Serilog;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui.Pages;
 
 public partial class RoutesPage : ContentPage
 {
-    private bool _avaloniaReady;
+    private RouteManagementViewModel? _viewModel;
+    private CancellationTokenSource? _appearance;
 
-    public RoutesPage()
-    {
-        InitializeComponent();
-    }
+    public RoutesPage() => InitializeComponent();
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        Log.Information("[RoutesPage] OnAppearing");
-
-        if (!_avaloniaReady)
-            _ = InitialiseAvaloniaViewAsync();
+        _appearance?.Cancel();
+        _appearance = new CancellationTokenSource();
+        _ = InitialiseAvaloniaViewAsync(_appearance.Token);
     }
 
-    private async Task InitialiseAvaloniaViewAsync()
+    protected override void OnDisappearing()
+    {
+        _appearance?.Cancel();
+        _appearance?.Dispose();
+        _appearance = null;
+        var previous = _viewModel;
+        if (previous != null)
+        {
+            previous.PropertyChanged -= StateChanged;
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(previous.Deactivate);
+        }
+        _viewModel = null;
+        base.OnDisappearing();
+    }
+
+    private async Task InitialiseAvaloniaViewAsync(CancellationToken cancellationToken)
     {
         try
         {
-            // Give the Avalonia view a tick to attach and load its ViewModel
-            await Task.Delay(150);
-
-            _avaloniaReady = true;
-
+            var ready = await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync<Task>(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var viewModel = RouteManagementControl.DataContext as RouteManagementViewModel
+                    ?? throw new InvalidOperationException("Route view model was not initialized.");
+                if (_viewModel != null) _viewModel.PropertyChanged -= StateChanged;
+                _viewModel = viewModel;
+                viewModel.PropertyChanged += StateChanged;
+                await viewModel.ActivateAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                UpdateOverlay(viewModel);
+            });
+            await ready;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Log.Warning("Route host initialization failed: {ExceptionType}", ex.GetType().Name);
+            if (cancellationToken.IsCancellationRequested) return;
             Dispatcher.Dispatch(() =>
             {
                 LoadingOverlay.IsVisible = false;
-                Log.Information("[RoutesPage] Avalonia view ready");
+                ErrorLabel.Text = "Не удалось загрузить маршруты. Проверьте соединение и повторите.";
+                ErrorOverlay.IsVisible = true;
             });
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[RoutesPage] Failed to initialise Avalonia view");
-            ShowError($"Не удалось загрузить маршруты: {ex.Message}");
         }
     }
 
-    private void ShowError(string message)
+    private void StateChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (sender is RouteManagementViewModel viewModel && args.PropertyName is nameof(RouteManagementViewModel.IsBusy)
+            or nameof(RouteManagementViewModel.HasError) or nameof(RouteManagementViewModel.ErrorMessage)) UpdateOverlay(viewModel);
+    }
+
+    private void UpdateOverlay(RouteManagementViewModel viewModel)
+    {
+        var busy = viewModel.IsBusy;
+        var error = viewModel.HasError;
+        var message = viewModel.ErrorMessage;
         Dispatcher.Dispatch(() =>
         {
-            LoadingOverlay.IsVisible = false;
+            if (_appearance?.IsCancellationRequested != false || !ReferenceEquals(_viewModel, viewModel)) return;
+            LoadingOverlay.IsVisible = busy;
+            ErrorOverlay.IsVisible = !busy && error;
             ErrorLabel.Text = message;
-            ErrorOverlay.IsVisible = true;
         });
     }
 
     private void OnRetryClicked(object? sender, EventArgs e)
     {
-        Log.Information("[RoutesPage] Retry clicked");
-        _avaloniaReady = false;
-        ErrorOverlay.IsVisible = false;
-        LoadingOverlay.IsVisible = true;
-        _ = InitialiseAvaloniaViewAsync();
+        if (_viewModel is not { } viewModel) return;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => viewModel.LoadDataCommand.Execute(null));
     }
 }

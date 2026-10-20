@@ -73,7 +73,9 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             sanitizedResource,
             sanitizedCorrelationId);
         
-        await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
+        using var publishTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        publishTimeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(_options.PublishTimeoutMs, 1, 30000)));
+        await _eventChannel.Writer.WriteAsync(domainEvent, publishTimeout.Token);
         EnqueueForHistory(domainEvent);
         
         // Use sanitized event name to avoid log forging in debug logs as well
@@ -108,7 +110,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         {
             SingleReader = true,
             SingleWriter = false,
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.Wait,
             AllowSynchronousContinuations = false
         });
 
@@ -249,7 +251,11 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
                 continue;
             }
 
-            subscriber.Channel.Writer.TryWrite(domainEvent);
+            if (!subscriber.Channel.Writer.TryWrite(domainEvent))
+                    {
+                        subscriber.Channel.Writer.TryComplete(new RealtimeResynchronizationRequiredException());
+                        _logger.LogWarning("Realtime subscriber overflow; authoritative resynchronization required for {Resource}", subscriber.Resource);
+                    }
         }
     }
 
@@ -375,3 +381,5 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         }
     }
 }
+public sealed class RealtimeResynchronizationRequiredException()
+    : Exception("Event buffer overflow; obtain a fresh snapshot before applying further events.");

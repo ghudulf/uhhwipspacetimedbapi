@@ -88,6 +88,8 @@ public interface IAuthOrchestrationService
     /// Coordinates AuthenticationService + TwoFactorService + SettingsService.
     /// </summary>
     Task<LoginResult> LoginAsync(string username, string password);
+    /// <summary>Applies local account and 2FA policy to a verified provider identity.</summary>
+    Task<LoginResult> LoginExternalAsync(string provider, string issuer, string subject);
 
     /// <summary>
     /// Validates a TOTP code and temporary token, then generates JWT for successful validation.

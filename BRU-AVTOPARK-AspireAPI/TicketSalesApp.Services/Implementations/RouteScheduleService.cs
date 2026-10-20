@@ -526,7 +526,7 @@ namespace TicketSalesApp.Services.Implementations
                                     cleanedNotesAfterTimeout,
                                     null
                                 );
-                                connection.FrameTick();
+                                // The hosted coordinator alone pumps frames.
                             }
                             catch (Exception cleanupEx)
                             {

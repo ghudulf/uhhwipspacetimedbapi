@@ -3,94 +3,85 @@ using Microsoft.Extensions.Options;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Services;
 
-/// <summary>
-/// Hosted service that registers a UPnP port mapping on startup and removes it on shutdown.
-/// Allows the API server to be reachable from the LAN without manual router configuration.
-/// Non-fatal: if the router doesn't support UPnP or the mapping fails, the server still starts normally.
-/// </summary>
-public sealed class UPnPService : IHostedService
+/// <summary>Renews and removes only the mapping created by this service instance.</summary>
+public sealed class UPnPService(ILogger<UPnPService> logger, IOptions<UPnPOptions> options) : IHostedService, IDisposable
 {
-    private readonly ILogger<UPnPService> _logger;
-    private readonly UPnPOptions _options;
-
+    private readonly UPnPOptions _options = options.Value;
+    private readonly CancellationTokenSource _lifetime = new();
     private NatDevice? _device;
-    private Mapping? _tcpMapping;
-
-    public UPnPService(ILogger<UPnPService> logger, IOptions<UPnPOptions> options)
-    {
-        _logger = logger;
-        _options = options.Value;
-    }
+    private Mapping? _ownedMapping;
+    private Task? _renewal;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled)
-        {
-            _logger.LogInformation("[UPnP] Disabled via configuration — skipping port mapping");
-            return;
-        }
-
+        if (!_options.Enabled) { logger.LogInformation("UPnP disabled by configuration"); return; }
+        if (_options.InternalPort is < 1 or > 65535 || _options.ExternalPort is < 1 or > 65535 || _options.LeaseDurationSeconds < 0)
+            throw new InvalidOperationException("Invalid UPnP port or lease configuration.");
         try
         {
-            _logger.LogInformation("[UPnP] Discovering NAT device (timeout: {Timeout}s)...", _options.DiscoveryTimeoutSeconds);
-
-            using var discoveryCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            discoveryCts.CancelAfter(TimeSpan.FromSeconds(_options.DiscoveryTimeoutSeconds));
-
-            _device = await NatDiscoverer.DiscoverDeviceAsync(PortMapper.Upnp, discoveryCts);
-
-            var externalIp = await _device.GetExternalIPAsync();
-            _logger.LogInformation("[UPnP] Found NAT device. External IP: {ExternalIp}", externalIp);
-
-            // TCP mapping for HTTP
-            _tcpMapping = new Mapping(
-                Protocol.Tcp,
-                _options.InternalPort,
-                _options.ExternalPort,
-                _options.MappingDescription);
-
-            await _device.CreatePortMapAsync(_tcpMapping);
-
-            _logger.LogInformation(
-                "[UPnP] Port mapping created: {ExternalIp}:{ExternalPort} → :{InternalPort}/TCP (desc: {Desc})",
-                externalIp, _options.ExternalPort, _options.InternalPort, _options.MappingDescription);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(_options.DiscoveryTimeoutSeconds, 1, 60)));
+            _device = await NatDiscoverer.DiscoverDeviceAsync(PortMapper.Upnp, timeout);
+            if ((await _device.GetAllMappingsAsync().WaitAsync(timeout.Token)).Any(m => m.Protocol == Protocol.Tcp && m.PublicPort == _options.ExternalPort))
+            {
+                logger.LogInformation("UPnP requested port already mapped; preserving existing mapping");
+                return;
+            }
+            var label = $"{_options.MappingDescription} [{Guid.NewGuid():N}]";
+            var mapping = new Mapping(Protocol.Tcp, _options.InternalPort, _options.ExternalPort, _options.LeaseDurationSeconds, label);
+            await _device.CreatePortMapAsync(mapping).WaitAsync(timeout.Token);
+            _ownedMapping = mapping; // Ownership starts only after successful creation.
+            logger.LogInformation("UPnP mapping created for TCP {Port}, lease {LeaseSeconds}s", mapping.PublicPort, _options.LeaseDurationSeconds);
+            if (_options.LeaseDurationSeconds > 0) _renewal = RenewAsync(_lifetime.Token);
         }
-        catch (NatDeviceNotFoundException)
-        {
-            _logger.LogWarning("[UPnP] No UPnP-capable NAT device found — running without port mapping");
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("[UPnP] Discovery timed out after {Timeout}s — running without port mapping",
-                _options.DiscoveryTimeoutSeconds);
-        }
-        catch (MappingException ex) when (ex.ErrorCode == 718)
-        {
-            // Error 718 = ConflictInMappingEntry — a mapping for this port already exists on the router
-            // (leftover from a previous session). Non-fatal, server starts normally.
-            _logger.LogDebug("[UPnP] Port mapping already exists on router (error 718) — server will still start normally");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[UPnP] Port mapping failed — server will still start normally");
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex) { logger.LogWarning(ex, "UPnP mapping unavailable; API startup continues"); }
     }
+
+    private async Task RenewAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(1, _options.LeaseDurationSeconds / 2d)));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                var mapping = _ownedMapping;
+                if (mapping == null || _device == null) return;
+                var current = await _device.GetSpecificMappingAsync(Protocol.Tcp, mapping.PublicPort).WaitAsync(timeout.Token);
+                if (!SameMapping(current, mapping))
+                {
+                    _ownedMapping = null;
+                    logger.LogWarning("UPnP mapping ownership changed; renewal stopped");
+                    return;
+                }
+                await _device.CreatePortMapAsync(mapping).WaitAsync(timeout.Token);
+                logger.LogDebug("UPnP lease renewed for TCP {Port}", mapping.PublicPort);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex) { logger.LogWarning(ex, "UPnP renewal failed; lease may expire"); }
+    }
+
+    private static bool SameMapping(Mapping? current, Mapping owned) => current != null &&
+        current.Description == owned.Description && current.PrivatePort == owned.PrivatePort && current.PublicPort == owned.PublicPort;
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_device == null || _tcpMapping == null)
-            return;
-
+        _lifetime.Cancel();
+        if (_renewal != null) await _renewal.WaitAsync(cancellationToken);
+        if (_device == null || _ownedMapping == null) return;
         try
         {
-            await _device.DeletePortMapAsync(_tcpMapping);
-            _logger.LogInformation("[UPnP] Port mapping removed: :{ExternalPort}/TCP", _options.ExternalPort);
+            var current = await _device.GetSpecificMappingAsync(Protocol.Tcp, _ownedMapping.PublicPort).WaitAsync(cancellationToken);
+            if (SameMapping(current, _ownedMapping)) await _device.DeletePortMapAsync(_ownedMapping).WaitAsync(cancellationToken);
+            _ownedMapping = null;
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[UPnP] Failed to remove port mapping on shutdown (router may clean it up automatically)");
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex) { logger.LogWarning(ex, "UPnP mapping cleanup failed; lease may expire"); }
     }
+    public void Dispose() { _lifetime.Cancel(); _lifetime.Dispose(); }
 }
 
 /// <summary>Configuration options for the UPnP port mapping service.</summary>

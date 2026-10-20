@@ -39,6 +39,8 @@ namespace SpacetimeDB.Types
         public bool? EmailConfirmed;
         [DataMember(Name = "phone_number_confirmed")]
         public bool? PhoneNumberConfirmed;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public UserProfile(
             SpacetimeDB.Identity UserId,
@@ -53,7 +55,8 @@ namespace SpacetimeDB.Types
             ulong? LastLoginAt,
             string? LegacyGuid,
             bool? EmailConfirmed,
-            bool? PhoneNumberConfirmed
+            bool? PhoneNumberConfirmed,
+            uint ApiAccessPartition
         )
         {
             this.UserId = UserId;
@@ -69,6 +72,7 @@ namespace SpacetimeDB.Types
             this.LegacyGuid = LegacyGuid;
             this.EmailConfirmed = EmailConfirmed;
             this.PhoneNumberConfirmed = PhoneNumberConfirmed;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public UserProfile()

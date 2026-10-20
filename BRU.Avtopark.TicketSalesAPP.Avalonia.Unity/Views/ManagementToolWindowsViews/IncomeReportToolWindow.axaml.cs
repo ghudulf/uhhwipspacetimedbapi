@@ -9,7 +9,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
         public IncomeReportToolWindow()
         {
             InitializeComponent();
-            DataContext = new IncomeReportViewModel();
+            var viewModel = new IncomeReportViewModel();
+            DataContext = viewModel;
+            AttachedToVisualTree += async (_, _) => await viewModel.ActivateAsync();
+            DetachedFromVisualTree += (_, _) => viewModel.Deactivate();
         }
 
         private void InitializeComponent()

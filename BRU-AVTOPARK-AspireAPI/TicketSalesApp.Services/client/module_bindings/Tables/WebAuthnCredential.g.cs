@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "web_authn_credential";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(WebAuthnCredential row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(WebAuthnCredentialHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(WebAuthnCredential row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal WebAuthnCredentialHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -47,6 +57,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<WebAuthnCredential, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<WebAuthnCredential, bool> IsActive { get; }
         public global::SpacetimeDB.Col<WebAuthnCredential, string> DeviceName { get; }
+        public global::SpacetimeDB.Col<WebAuthnCredential, uint> ApiAccessPartition { get; }
 
         public WebAuthnCredentialCols(string tableName)
         {
@@ -58,16 +69,19 @@ namespace SpacetimeDB.Types
             CreatedAt = new global::SpacetimeDB.Col<WebAuthnCredential, ulong>(tableName, "created_at");
             IsActive = new global::SpacetimeDB.Col<WebAuthnCredential, bool>(tableName, "is_active");
             DeviceName = new global::SpacetimeDB.Col<WebAuthnCredential, string>(tableName, "device_name");
+            ApiAccessPartition = new global::SpacetimeDB.Col<WebAuthnCredential, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class WebAuthnCredentialIxCols
     {
         public global::SpacetimeDB.IxCol<WebAuthnCredential, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<WebAuthnCredential, uint> ApiAccessPartition { get; }
 
         public WebAuthnCredentialIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<WebAuthnCredential, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<WebAuthnCredential, uint>(tableName, "api_access_partition");
         }
     }
 }

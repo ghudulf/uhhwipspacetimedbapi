@@ -175,6 +175,13 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
                 connectionId, SanitizeLogValue(messageType), SanitizeLogValue(requestId));
 
+            if (messageType is "auth:validate" or "auth:login" or "auth:refresh")
+            {
+                // Existing pollers capture the previous principal; they cannot survive a session transition.
+                foreach (var subscription in qrSubscriptions.Values) subscription.Cancel();
+                qrSubscriptions.Clear();
+            }
+
             switch (messageType?.ToLowerInvariant())
             {
                 case "auth:validate":
@@ -184,7 +191,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
                 case "auth:refresh":
                     await HandleRefreshAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder.Claims, sourceIp, cts.Token);
+                        connectionId, claimsHolder, sourceIp, cts.Token);
                     break;
 
                 case "auth:qr-status":
@@ -234,8 +241,8 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        var username = root.TryGetProperty("username", out var u) ? u.GetString() : null;
-        var password = root.TryGetProperty("password", out var p) ? p.GetString() : null;
+        var username = ReadOptionalString(root, "username");
+        var password = ReadOptionalString(root, "password");
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
@@ -313,7 +320,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        string? inlineToken = root.TryGetProperty("token", out var tok) ? tok.GetString() : null;
+        string? inlineToken = ReadOptionalString(root, "token");
 
         Dictionary<string, object>? claims = null;
 
@@ -352,11 +359,11 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? requestId,
         SemaphoreSlim sendLock,
         string connectionId,
-        Dictionary<string, object>? validatedClaims,
+        WsClaimsHolder claimsHolder,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        var refreshToken = root.TryGetProperty("refreshToken", out var rt) ? rt.GetString() : null;
+        var refreshToken = ReadOptionalString(root, "refreshToken");
 
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
@@ -372,6 +379,15 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             return;
         }
 
+        var validatedClaims = string.IsNullOrEmpty(result.Token) ? null
+            : await _tokenValidator.ValidateTokenDirectAsync(result.Token, cancellationToken);
+        if (validatedClaims == null)
+        {
+            claimsHolder.Claims = null;
+            await WsSendAsync(webSocket, new { type = "auth:refreshed", requestId, success = false, error = "Refreshed token validation failed" }, sendLock, cancellationToken);
+            return;
+        }
+        claimsHolder.Claims = validatedClaims;
         await PublishAuthEventAsync("auth.token.refreshed",
             validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,
             validatedClaims?.TryGetValue("unique_name", out var name) == true ? name?.ToString() : null,
@@ -403,7 +419,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? sourceIp,
         CancellationTokenSource connectionCts)
     {
-        var deviceId = root.TryGetProperty("deviceId", out var did) ? did.GetString() : null;
+        var deviceId = ReadOptionalString(root, "deviceId");
 
         if (string.IsNullOrWhiteSpace(deviceId))
         {
@@ -576,6 +592,13 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         var sanitized = new string(value.Where(c => !char.IsControl(c)).ToArray()).Trim();
         if (sanitized.Length == 0) return "(none)";
         return sanitized.Length > maxLength ? sanitized[..maxLength] + "…" : sanitized;
+    }
+
+    private static string? ReadOptionalString(JsonElement root, string property)
+    {
+        if (!root.TryGetProperty(property, out var value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.String) throw new JsonException($"'{property}' must be a string.");
+        return value.GetString();
     }
 
     private async Task WsSendAsync(WebSocket webSocket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)

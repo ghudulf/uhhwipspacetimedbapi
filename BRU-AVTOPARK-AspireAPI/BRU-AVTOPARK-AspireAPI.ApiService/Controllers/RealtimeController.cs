@@ -63,17 +63,17 @@ public sealed class RealtimeController : BaseController
     /// <param name="maxCount">Maximum number of events to return. Defaults to 100.</param>
     /// <returns>An OkObjectResult containing a collection of recent domain events, limited to <paramref name="maxCount"/> items.</returns>
     [HttpGet("events")]
-    public IActionResult GetRecentEvents([FromQuery] int maxCount = 100)
+    public async Task<IActionResult> GetRecentEvents([FromQuery] int maxCount = 100)
     {
         // Validate OAuth token for HTTP endpoint
-        var validatedClaims = ValidateOAuthTokenAsync().GetAwaiter().GetResult();
+        var validatedClaims = await ValidateOAuthTokenAsync();
         if (validatedClaims == null)
         {
             return Unauthorized(new { error = "Invalid or missing authentication token" });
         }
 
         // Enforce admin/permission check for diagnostic endpoints
-        if (!HasSystemOrAdminPermission(validatedClaims))
+        if (!await HasSystemOrAdminPermissionAsync())
         {
             return Forbid();
         }
@@ -97,7 +97,7 @@ public sealed class RealtimeController : BaseController
         }
 
         // Enforce admin/permission check for diagnostic endpoints
-        if (!HasSystemOrAdminPermission(validatedClaims))
+        if (!await HasSystemOrAdminPermissionAsync())
         {
             return Forbid();
         }
@@ -633,6 +633,12 @@ public sealed class RealtimeController : BaseController
     [HttpGet("stream")]
     public async Task StreamEvents()
     {
+        if (HttpContext.WebSockets.WebSocketRequestedProtocols.Contains(BRU.Avtopark.Contracts.ApiProtocol.Subprotocol))
+        {
+            await StreamV2Async();
+            return;
+        }
+
         if (!HttpContext.WebSockets.IsWebSocketRequest)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -774,6 +780,24 @@ public sealed class RealtimeController : BaseController
             
             sendLock.Dispose();
         }
+    }
+
+    private async Task StreamV2Async()
+    {
+        var environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        var localDevelopment = environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } remote && System.Net.IPAddress.IsLoopback(remote);
+        if (!Request.IsHttps && !localDevelopment) { Response.StatusCode = 400; return; }
+        if (Request.Headers.TryGetValue("Origin", out var origins))
+        {
+            var allowed = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("Realtime:AllowedOrigins").Get<string[]>() ?? [];
+            if (origins.Count != 1 || !allowed.Contains(origins[0], StringComparer.Ordinal)) { Response.StatusCode = 403; return; }
+        }
+        var admission = HttpContext.RequestServices.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ConnectionAdmission>();
+        using var lease = admission.TryEnter(HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        if (lease == null) { Response.StatusCode = 429; return; }
+        using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync(BRU.Avtopark.Contracts.ApiProtocol.Subprotocol);
+        await HttpContext.RequestServices.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ApiSocketSession>()
+            .RunAsync(socket, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown", HttpContext.RequestAborted);
     }
 
     private async Task HandleMessageAsync(
@@ -1213,7 +1237,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "Payload required for update operation", sendLock, cancellationToken);
                         return;
                     }
-                    result = await ExecuteUpdateAsync(service, resource, updateId.Value, updatePayloadEl, cancellationToken);
+                    result = await ExecuteUpdateAsync(service, resource, updateId.Value, updatePayloadEl, validatedClaims, cancellationToken);
                     success = result != null;
                     break;
 
@@ -1224,7 +1248,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "ID required for delete operation", sendLock, cancellationToken);
                         return;
                     }
-                    await ExecuteDeleteAsync(service, resource, deleteId.Value, cancellationToken);
+                    await ExecuteDeleteAsync(service, resource, deleteId.Value, validatedClaims, cancellationToken);
                     result = new { deleted = true, id = deleteId.Value };
                     break;
 
@@ -1391,17 +1415,9 @@ public sealed class RealtimeController : BaseController
         };
     }
 
-    private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, CancellationToken cancellationToken)
+    private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
-
-        // For delete+create pattern (ticket-sales), get original record's TicketId before update
-        uint? ticketId = null;
-        if (normalizedResource is "ticket-sales" or "ticketsales")
-        {
-            var originalSale = await ((ITicketSalesService)service).GetSaleByIdAsync(id);
-            ticketId = originalSale?.TicketId;
-        }
 
         bool success = normalizedResource switch
         {
@@ -1414,33 +1430,10 @@ public sealed class RealtimeController : BaseController
             "routes" => await UpdateRouteAsync((IRouteService)service, id, payload),
             "route-schedules" or "routeschedules" => await UpdateRouteScheduleAsync((IRouteScheduleService)service, id, payload),
             "tickets" => await UpdateTicketAsync((ITicketService)service, id, payload),
-            "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload),
+            "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload, validatedClaims),
             "users" => await UpdateUserAsync((IUserService)service, id, payload),
             _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
         };
-
-        if (!success)
-        {
-            return null;
-        }
-
-        // For ticket-sales delete+create pattern, find the new sale by TicketId if original ID no longer exists
-        if (normalizedResource is "ticket-sales" or "ticketsales" && ticketId.HasValue)
-        {
-            var result = await ExecuteReadAsync(service, resource, id);
-            if (result == null)
-            {
-                // Original ID doesn't exist (delete+create pattern), find newest sale for this ticket
-                var allSales = await ((ITicketSalesService)service).GetAllSalesAsync();
-                var newestSale = allSales
-                    .Where(s => s.TicketId == ticketId.Value && s.SaleId != id)
-                    .OrderByDescending(s => s.SaleDate)
-                    .FirstOrDefault();
-
-                return newestSale;
-            }
-            return result;
-        }
 
         if (!success)
         {
@@ -1451,7 +1444,7 @@ public sealed class RealtimeController : BaseController
         return finalResult; // null means NotFound, which is handled by caller
     }
 
-    private async Task ExecuteDeleteAsync(object service, string resource, uint id, CancellationToken cancellationToken)
+    private async Task ExecuteDeleteAsync(object service, string resource, uint id, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
@@ -1466,7 +1459,7 @@ public sealed class RealtimeController : BaseController
             "routes" => await ((IRouteService)service).DeleteRouteAsync(id),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).DeleteScheduleAsync(id),
             "tickets" => await ((ITicketService)service).DeleteTicketAsync(id),
-            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id),
+            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id, ExtractIdentityFromClaims(validatedClaims), cancellationToken: cancellationToken),
             "users" => await ((IUserService)service).DeleteUserAsync(id),
             _ => throw new NotSupportedException($"Delete not supported for resource: {resource}")
         };
@@ -1480,7 +1473,7 @@ public sealed class RealtimeController : BaseController
     private SpacetimeDB.Identity ExtractIdentityFromClaims(Dictionary<string, object>? validatedClaims)
     {
         if (validatedClaims == null)
-            return new SpacetimeDB.Identity();
+            throw new UnauthorizedAccessException("Validated application identity is required.");
 
         if (validatedClaims.TryGetValue("identity", out var identityObj) && identityObj is string identityStr && !string.IsNullOrEmpty(identityStr))
         {
@@ -1508,7 +1501,7 @@ public sealed class RealtimeController : BaseController
             }
         }
 
-        return new SpacetimeDB.Identity();
+        throw new UnauthorizedAccessException("Validated application identity is required.");
     }
 
     private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
@@ -1789,31 +1782,26 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateTicketAsync(id, routeId, ticketPrice, seatNumber, paymentMethod, isActive, updatedAt, updatedBy);
     }
 
+    private static string? SaleString(JsonElement payload, string name) =>
+        payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
     private async Task<object?> CreateSaleAsync(ITicketSalesService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
     {
-        var ticketId = payload.TryGetProperty("ticketId", out var ticketEl) ? ticketEl.GetUInt32() : 0u;
-        var paymentMethod = payload.TryGetProperty("paymentMethod", out var methodEl) ? methodEl.GetString() : null;
-        var paymentStatus = payload.TryGetProperty("paymentStatus", out var statusEl) ? statusEl.GetString() : null;
-        var paymentReference = payload.TryGetProperty("paymentReference", out var refEl) ? refEl.GetString() : null;
-        var notes = payload.TryGetProperty("notes", out var notesEl) ? notesEl.GetString() : null;
-        
-        if (ticketId == 0 || string.IsNullOrEmpty(paymentMethod) || string.IsNullOrEmpty(paymentStatus))
-            throw new ArgumentException("TicketId, paymentMethod, and paymentStatus are required");
-        
-        var saleId = await service.CreateSaleAsync(ticketId, paymentMethod, paymentStatus, paymentReference, notes);
-        return saleId.HasValue ? new { saleId = saleId.Value, ticketId, paymentMethod, paymentStatus } : null;
+        var ticketId = payload.GetProperty("ticketId").GetUInt32();
+        var id = await service.CreateSaleAsync(ticketId,
+            SaleString(payload, "buyerName") ?? SaleString(payload, "ticketSoldToUser") ?? "ФИЗ.ПРОДАЖА",
+            SaleString(payload, "buyerPhone") ?? SaleString(payload, "ticketSoldToUserPhone") ?? "",
+            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), ExtractIdentityFromClaims(validatedClaims),
+            SaleString(payload, "operationId"), HttpContext.RequestAborted);
+        return id.HasValue ? await service.GetSaleByIdAsync(id.Value) : null;
     }
 
-    private async Task<bool> UpdateSaleAsync(ITicketSalesService service, uint id, JsonElement payload)
-    {
-        var paymentMethod = payload.TryGetProperty("paymentMethod", out var methodEl) ? methodEl.GetString() : null;
-        var paymentStatus = payload.TryGetProperty("paymentStatus", out var statusEl) ? statusEl.GetString() : null;
-        var paymentReference = payload.TryGetProperty("paymentReference", out var refEl) ? refEl.GetString() : null;
-        var notes = payload.TryGetProperty("notes", out var notesEl) ? notesEl.GetString() : null;
-        
-        return await service.UpdateSaleAsync(id, paymentMethod, paymentStatus, paymentReference, notes);
-    }
-
+    private Task<bool> UpdateSaleAsync(ITicketSalesService service, uint id, JsonElement payload, Dictionary<string, object>? validatedClaims) =>
+        service.UpdateSaleAsync(id, SaleString(payload, "buyerName") ?? SaleString(payload, "ticketSoldToUser"),
+            SaleString(payload, "buyerPhone") ?? SaleString(payload, "ticketSoldToUserPhone"),
+            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), ExtractIdentityFromClaims(validatedClaims),
+            SaleString(payload, "operationId"), payload.TryGetProperty("expectedRevision", out var revision) ? revision.GetUInt64() : null,
+            HttpContext.RequestAborted);
 
     private async Task BroadcastEventsAsync(
         WebSocket webSocket,
@@ -2173,38 +2161,10 @@ public sealed class RealtimeController : BaseController
     /// <summary>
     /// Checks if the validated claims contain system.* permissions or admin role.
     /// </summary>
-    private bool HasSystemOrAdminPermission(Dictionary<string, object>? validatedClaims)
+    private async Task<bool> HasSystemOrAdminPermissionAsync()
     {
-        if (validatedClaims == null)
-            return false;
-
-        // Check for permissions claim
-        if (validatedClaims.TryGetValue("permissions", out var permissionsObj))
-        {
-            if (permissionsObj is JsonElement permissionsEl && permissionsEl.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var permission in permissionsEl.EnumerateArray())
-                {
-                    var permissionStr = permission.GetString();
-                    if (permissionStr?.StartsWith("system.", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        // Check for admin role
-        if (validatedClaims.TryGetValue("role", out var roleObj))
-        {
-            var roleStr = roleObj?.ToString();
-            if (string.Equals(roleStr, "admin", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        var access = await GetCurrentAccessAsync();
+        return access.IsAdministrator || access.Allows("system.view");
     }
 
     private class ResourceHandler

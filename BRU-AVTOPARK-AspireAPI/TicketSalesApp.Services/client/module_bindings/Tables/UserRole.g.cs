@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "user_role";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(UserRole row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(UserRoleHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(UserRole row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal UserRoleHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -44,6 +54,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<UserRole, uint> RoleId { get; }
         public global::SpacetimeDB.Col<UserRole, ulong> AssignedAt { get; }
         public global::SpacetimeDB.Col<UserRole, string> AssignedBy { get; }
+        public global::SpacetimeDB.Col<UserRole, uint> ApiAccessPartition { get; }
 
         public UserRoleCols(string tableName)
         {
@@ -52,16 +63,19 @@ namespace SpacetimeDB.Types
             RoleId = new global::SpacetimeDB.Col<UserRole, uint>(tableName, "role_id");
             AssignedAt = new global::SpacetimeDB.Col<UserRole, ulong>(tableName, "assigned_at");
             AssignedBy = new global::SpacetimeDB.Col<UserRole, string>(tableName, "assigned_by");
+            ApiAccessPartition = new global::SpacetimeDB.Col<UserRole, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class UserRoleIxCols
     {
         public global::SpacetimeDB.IxCol<UserRole, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<UserRole, uint> ApiAccessPartition { get; }
 
         public UserRoleIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<UserRole, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<UserRole, uint>(tableName, "api_access_partition");
         }
     }
 }

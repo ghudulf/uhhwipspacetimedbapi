@@ -1,3 +1,4 @@
+using TicketSalesApp.AdminServer.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
@@ -87,6 +88,9 @@ builder.Services.AddLogging(loggingBuilder =>
 
 // Add services to the container.
 builder.Services.AddProblemDetails();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ConnectionAdmission>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ApiSocketSession>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Application.ApplicationOperations>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -123,6 +127,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add SpacetimeDB services
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISpacetimeDBService, TicketSalesApp.Services.Implementations.SpacetimeDBService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Authorization.UserAccessService>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals
 builder.Services.AddHostedService<SpacetimeFrameTickService>();
@@ -274,42 +279,29 @@ builder.Services.AddHttpClient("TokenInfo", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
-// IMPORTANT: Clearing KnownNetworks/KnownProxies and setting ForwardLimit = 1 trusts only the immediate upstream proxy.
-// This is suitable for single-proxy setups (e.g., Nginx/Caddy directly in front of the app).
-// For production multi-proxy environments (e.g., CDN -> Load Balancer -> App):
-// - Set ForwardLimit = null (trust all proxies) or a specific count
-// - Add known proxy IP ranges to KnownProxies/KnownNetworks for security
+// Trust loopback defaults and explicitly configured proxies only.
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
                                Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
-    // Clear default networks/proxies and configure based on your infrastructure
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
-    // For development, trust all proxies (in production, configure specific KnownProxies/KnownNetworks)
-    options.ForwardLimit = 1; // Only trust the first proxy
+    foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+        options.KnownProxies.Add(System.Net.IPAddress.Parse(address));
+    options.ForwardLimit = 1;
 });
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
 
-// Ensure key is exactly 32 bytes (256 bits)
+// Existing AES encryption uses a 256-bit key. Never silently add entropy by zero padding.
 if (key.Length != 32)
 {
-    var newKey = new byte[32];
-    if (key.Length < 32)
+    if (key.Length > 32 && builder.Configuration.GetValue<bool>("JwtSettings:AllowLegacyKeyTruncation"))
     {
-        // If key is too short, pad with zeros
-        Array.Copy(key, newKey, key.Length);
+        Log.Warning("Explicit legacy JWT key truncation enabled; coordinate signing/encryption key migration before disabling it");
+        key = key[..32];
     }
-    else
-    {
-        // If key is too long, truncate
-        Array.Copy(key, newKey, 32);
-    }
-    key = newKey;
+    else throw new InvalidOperationException("JwtSettings:Secret must encode exactly 32 UTF-8 bytes. Legacy truncation requires an explicit compatibility setting.");
 }
 
 // Create symmetric security key with KeyId for OpenIddict compatibility
@@ -329,7 +321,7 @@ builder.Services.AddOpenIddict()
         options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
         // Authorization storage disabled - PKCE data stored in token payload
         // options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
-        options.SetDefaultTokenEntity<OpenIddict.Abstractions.OpenIddictTokenDescriptor>();
+        options.SetDefaultTokenEntity<TicketSalesApp.Services.Implementations.OpenIddictToken>();
         options.SetDefaultScopeEntity<OpenIddict.Abstractions.OpenIddictScopeDescriptor>();
         
         // Register stores
@@ -362,14 +354,29 @@ builder.Services.AddOpenIddict()
         }
         else
         {
-            options.AddEphemeralSigningKey();
+            var certificatePath = builder.Configuration["OpenIddict:SigningCertificatePath"]
+                ?? throw new InvalidOperationException("A persistent OpenIddict signing certificate is required outside Development.");
+            var certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
+                certificatePath, builder.Configuration["OpenIddict:SigningCertificatePassword"],
+                System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.EphemeralKeySet);
+            if (!certificate.HasPrivateKey || certificate.NotAfter.ToUniversalTime() <= DateTime.UtcNow)
+                throw new InvalidOperationException("OpenIddict signing certificate requires a valid private key and expiry.");
+            options.AddSigningCertificate(certificate);
+            Log.Information("Persistent OpenIddict signing certificate selected: {KeyId}, expires {ExpiresAt}", certificate.Thumbprint, certificate.NotAfter);
         }
 
         // Add encryption key
         options.AddEncryptionKey(symmetricKey);
 
         // Set a fixed issuer to work with both HTTP and HTTPS
-        options.SetIssuer(new Uri("http://localhost:5000/"));
+        var issuerText = builder.Configuration["OpenIddict:Issuer"]
+            ?? (builder.Environment.IsDevelopment() ? "http://localhost:5000/" : throw new InvalidOperationException("OpenIddict:Issuer is required."));
+        if (!Uri.TryCreate(issuerText, UriKind.Absolute, out var issuer) ||
+            issuer.Scheme is not ("http" or "https") || issuer.Host is "0.0.0.0" or "::" ||
+            !string.IsNullOrEmpty(issuer.UserInfo) || !string.IsNullOrEmpty(issuer.Query) || !string.IsNullOrEmpty(issuer.Fragment))
+            throw new InvalidOperationException("OpenIddict:Issuer must be a concrete HTTP(S) issuer URL.");
+        options.SetIssuer(issuer);
+        Log.Information("OpenIddict issuer {Issuer}; PKCE required, authorization storage disabled", issuer);
 
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
@@ -414,6 +421,8 @@ builder.Services.AddCors(options =>
             .WithExposedHeaders("Content-Disposition", "Authorization");
     });
 });
+
+builder.Services.AddWindowsAccountAuthentication(builder.Configuration);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -621,8 +630,7 @@ catch (Exception ex)
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
 
-// CRITICAL: CORS must run BEFORE authentication/authorization for preflight requests
-app.UseCors("AllowAll");
+
 
 try
 {
@@ -647,6 +655,9 @@ catch (Exception ex)
     Log.Fatal(ex, "FATAL ERROR: Failed to register routing middleware");
     throw;
 }
+
+// Routing selects endpoint CORS metadata; preflight still runs before authentication.
+app.UseCors("AllowAll");
 
 // CRITICAL: Serve static files from Experimental folder (CSS, JS)
 // This allows the browser to load /css/bru-design-system.css and /js/*.js files
@@ -697,8 +708,7 @@ foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.Is
 {
     webSocketOptions.AllowedOrigins.Add(origin);
 }
-// Allow any LAN IP — native Avalonia clients don't send Origin headers so this covers browser-based access
-webSocketOptions.AllowedOrigins.Add("*");
+// Native clients without an Origin header are supported by the middleware.
 
 app.UseWebSockets(webSocketOptions);
 
@@ -1329,61 +1339,10 @@ _ = Task.Run(async () =>
                 {
                     logger.LogInformation("Successfully registered default desktop client");
                     
-                    // CRITICAL: Process frame ticks to ensure SpacetimeDB cache is updated
-                    // The reducer writes to the database, but the local cache needs frame ticks to sync
-                    logger.LogInformation("[FrameTick] Processing frame ticks to sync SpacetimeDB cache...");
-                    for (int i = 0; i < 10; i++)
-                    {
-                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
-                        spacetimeService.ProcessFrameTick();
-                        await Task.Delay(100); // Small delay between ticks
-                    }
-                    logger.LogInformation("[FrameTick] Completed 10 frame ticks");
-                    
-                    // Fetch and display reducer logs from SpacetimeDB
-                    logger.LogInformation("Fetching SpacetimeDB reducer logs for RegisterOpenIdClient...");
-                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("RegisterOpenIdClient", numLines: 300);
-                    if (!reducerLogs.StartsWith("Error"))
-                    {
-                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
-                        logger.LogInformation(reducerLogs);
-                        logger.LogInformation("=== End of Reducer Logs ===");
-                    }
-                    
-                    // Verify the client is retrievable from cache
                     var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
-                    if (verifyExists)
-                    {
-                        logger.LogInformation("Verified default desktop client is retrievable from database");
-                    }
-                    else
-                    {
-                        logger.LogWarning("Default desktop client was registered but cannot be retrieved from cache yet - processing more frame ticks");
-                        
-                        // Try more aggressive syncing
-                        logger.LogInformation("[FrameTick] Processing additional 20 frame ticks...");
-                        for (int i = 0; i < 20; i++)
-                        {
-                            if (i % 5 == 0)
-                            {
-                                logger.LogDebug("[FrameTick] Processing tick {TickNumber}/20", i + 1);
-                            }
-                            spacetimeService.ProcessFrameTick();
-                            await Task.Delay(50);
-                        }
-                        logger.LogInformation("[FrameTick] Completed additional 20 frame ticks");
-                        
-                        // Final verification
-                        var (finalCheck, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
-                        if (finalCheck)
-                        {
-                            logger.LogInformation("Client now retrievable after additional frame ticks");
-                        }
-                        else
-                        {
-                            logger.LogError("Client still not retrievable after 30 frame ticks - SpacetimeDB cache sync issue");
-                        }
-                    }
+                    if (!verifyExists) throw new InvalidOperationException("Committed default client could not be read.");
+                    logger.LogInformation("Default desktop client persistence confirmed after committed store operation");
+
                 }
                 else
                 {
@@ -1422,25 +1381,8 @@ _ = Task.Run(async () =>
                 {
                     logger.LogInformation("Successfully updated default desktop client with correct scope permissions");
                     
-                    // Process frame ticks to sync the update
-                    logger.LogInformation("[FrameTick] Processing frame ticks to sync client update...");
-                    for (int i = 0; i < 10; i++)
-                    {
-                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
-                        spacetimeService.ProcessFrameTick();
-                        await Task.Delay(100);
-                    }
-                    logger.LogInformation("[FrameTick] Completed frame ticks for client update");
-                    
-                    // Fetch and display reducer logs from SpacetimeDB
-                    logger.LogInformation("Fetching SpacetimeDB reducer logs for UpdateOpenIdClient...");
-                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("UpdateOpenIdClient", numLines: 300);
-                    if (!reducerLogs.StartsWith("Error"))
-                    {
-                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
-                        logger.LogInformation(reducerLogs);
-                        logger.LogInformation("=== End of Reducer Logs ===");
-                    }
+                    logger.LogInformation("Default client update committed through the database coordinator");
+
                 }
                 else
                 {
@@ -1491,16 +1433,6 @@ _ = Task.Run(async () =>
                     logger.LogError(ex, "Error creating scope {ScopeName}: {Message}", scopeInfo.Name, ex.Message);
                 }
             }
-
-            // Process frame ticks to sync scope data
-            logger.LogInformation("[FrameTick] Processing frame ticks to sync scope data...");
-            for (int i = 0; i < 10; i++)
-            {
-                logger.LogDebug("[FrameTick] Processing scope sync tick {TickNumber}/10", i + 1);
-                spacetimeService.ProcessFrameTick();
-                await Task.Delay(100);
-            }
-            logger.LogInformation("[FrameTick] Completed scope sync frame ticks");
 
             // Verify scopes are retrievable
             logger.LogInformation("Verifying registered scopes...");

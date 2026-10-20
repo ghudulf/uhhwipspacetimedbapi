@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.WindowsAccountLinkWindow"
+        Title="Связать учётную запись Windows" Width="480" Height="340" MinWidth="400" MinHeight="280"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="24" RowDefinitions="Auto,*,Auto" RowSpacing="16">
+        <TextBlock Text="Связать учётную запись Windows" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <StackPanel Grid.Row="1" Spacing="12">
+            <TextBlock Text="Текущая учётная запись домена будет связана с учётной записью приложения, в которую вы вошли. После этого можно входить через Windows. Права приложения сохраняются."
+                       TextWrapping="Wrap" />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+            <Button x:Name="StatusButton" Content="Проверить связь" Click="CheckStatus_Click" />
+            <Button x:Name="LinkButton" Content="Связать" IsDefault="True" Click="Link_Click" />
+            <Button Content="Закрыть" IsCancel="True" Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

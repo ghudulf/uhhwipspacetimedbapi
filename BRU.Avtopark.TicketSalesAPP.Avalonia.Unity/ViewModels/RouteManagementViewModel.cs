@@ -1,3 +1,5 @@
+using System.Threading;
+using Avalonia.Threading;
 using System;
 using System.Collections.ObjectModel;
 using System.Net.Http;
@@ -80,7 +82,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class RouteManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
-        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
+        private bool _active;
+        private Task? _activation;
+        private CancellationTokenSource? _loadCancellation;
+        private long _generation;
+        private string? _sessionToken;
 
         // Store the full list for filtering
         private List<RouteDisplayModel> _allRoutes = new();
@@ -147,41 +153,77 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         // True when embedded inside a MAUI host — dialogs/windows are not available
-        public static bool IsMauiHost => HostEnvironment.IsMauiHost;
+        public bool IsMauiHost => HostEnvironment.IsMauiHost;
 
         // Inverse — used by AXAML to show/hide dialog-dependent buttons
-        public static bool IsDialogCapable => !IsMauiHost;
+        public bool IsDialogCapable => !IsMauiHost;
 
-        public RouteManagementViewModel()
+        public RouteManagementViewModel() => _httpClient = ApiClientService.Instance.CreateClient();
+
+        public Task ActivateAsync()
         {
-            _httpClient = ApiClientService.Instance.CreateClient();
+            if (_active) return _activation ?? Task.CompletedTask;
+            _active = true;
+            ApiClientService.Instance.OnAuthTokenChanged += OnSessionChanged;
+            _activation = InitializeAsync();
+            return _activation;
+        }
 
-            // Subscribe to auth token changes
-            ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
+        private async Task InitializeAsync()
+        {
+            var generation = _generation;
+            try
             {
-                Log.Information("Auth token changed in RouteManagementViewModel. Recreating HttpClient and reloading data.");
-                // Create a new client with the updated token
+                await ApiClientService.Instance.DiscoverApiBaseUrlAsync();
+                if (!_active || generation != _generation) return;
+                if (_sessionToken != ApiClientService.Instance.AuthToken) ClearSessionData();
+                _sessionToken = ApiClientService.Instance.AuthToken;
                 _httpClient.Dispose();
                 _httpClient = ApiClientService.Instance.CreateClient();
-                // Reload data with the new token
-                LoadData().ConfigureAwait(false);
-            };
+                await LoadData();
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Log.Warning("Route activation failed: {ExceptionType}", ex.GetType().Name);
+                if (_active && generation == _generation) { HasError = true; ErrorMessage = "Не удалось подключиться к серверу. Повторите загрузку."; }
+            }
+        }
 
-            // Only load data if token is already set, otherwise wait for OnAuthTokenChanged event
-            if (!string.IsNullOrEmpty(ApiClientService.Instance.AuthToken))
-            {
-                Log.Information("Token already set in RouteManagementViewModel constructor, loading data");
-                LoadData().ConfigureAwait(false);
-            }
-            else
-            {
-                Log.Warning("Token not set in RouteManagementViewModel constructor, waiting for OnAuthTokenChanged event");
-            }
+        public void Deactivate()
+        {
+            _active = false;
+            _generation++;
+            _loadCancellation?.Cancel();
+            IsBusy = false;
+            ApiClientService.Instance.OnAuthTokenChanged -= OnSessionChanged;
+        }
+
+        private void OnSessionChanged(object? sender, string? token) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active) return;
+            _sessionToken = token;
+            ClearSessionData();
+            _httpClient.Dispose();
+            _httpClient = ApiClientService.Instance.CreateClient();
+            _activation = LoadData();
+        });
+
+        private void ClearSessionData()
+        {
+            SelectedRoute = null;
+            _allRoutes.Clear(); Routes.Clear(); AvailableBuses.Clear(); AvailableDrivers.Clear();
         }
 
         [RelayCommand]
         private async Task LoadData()
         {
+            if (!_active) return;
+            _loadCancellation?.Cancel();
+            var cancellation = new CancellationTokenSource();
+            _loadCancellation = cancellation;
+            var generation = ++_generation;
+            Task<HttpResponseMessage>[] responses = Array.Empty<Task<HttpResponseMessage>>();
             Log.Information("Starting LoadData for RouteManagementViewModel");
             try
             {
@@ -191,13 +233,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 // --- Fetch all required data concurrently ---
                 Log.Debug("Initiating API calls for Routes, Buses, Drivers, Tickets");
-                Task<HttpResponseMessage> routesTask = _httpClient.GetAsync($"{_baseUrl}/Routes");
-                Task<HttpResponseMessage> busesTask = _httpClient.GetAsync($"{_baseUrl}/Buses");
-                Task<HttpResponseMessage> driversTask = _httpClient.GetAsync($"{_baseUrl}/Employees/drivers");
-                Task<HttpResponseMessage> ticketsTask = _httpClient.GetAsync($"{_baseUrl}/Tickets");
+                Task<HttpResponseMessage> routesTask = _httpClient.GetAsync("Routes", cancellation.Token);
+                Task<HttpResponseMessage> busesTask = _httpClient.GetAsync("Buses", cancellation.Token);
+                Task<HttpResponseMessage> driversTask = _httpClient.GetAsync("Employees/drivers", cancellation.Token);
+                Task<HttpResponseMessage> ticketsTask = _httpClient.GetAsync("Tickets", cancellation.Token);
 
                 // Await all tasks
-                await Task.WhenAll(routesTask, busesTask, driversTask, ticketsTask);
+                responses = new[] { routesTask, busesTask, driversTask, ticketsTask };
+                await Task.WhenAll(responses);
+                var bodies = await Task.WhenAll(responses.Select(async task => await (await task).Content.ReadAsStringAsync(cancellation.Token)));
+                cancellation.Token.ThrowIfCancellationRequested();
+                if (!_active || generation != _generation) return;
                 Log.Debug("All API calls completed for RouteManagementViewModel.");
 
                 // --- Process Responses with Manual Parsing and Logging ---
@@ -207,11 +253,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Dictionary<uint, string> busLookup = new Dictionary<uint, string>();
                 Dictionary<uint, string> driverLookup = new Dictionary<uint, string>();
 
-                var routesResponse = await routesTask;
+                using var routesResponse = await routesTask;
                 Log.Information("Processing Routes response. Status: {StatusCode}", routesResponse.StatusCode);
 
                 // Log the raw response content
-                var routesJsonString = await routesResponse.Content.ReadAsStringAsync();
+                var routesJsonString = bodies[0];
                 Log.Debug("Raw Routes response received: {RawResponse}", routesJsonString);
 
                 if (routesResponse.IsSuccessStatusCode)
@@ -281,18 +327,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
                 else
                 {
-                    var error = await routesResponse.Content.ReadAsStringAsync();
+                    var error = bodies[0];
                     Log.Error("Failed to load routes. Status: {StatusCode}, Error: {Error}", routesResponse.StatusCode, error);
                     throw new Exception($"Failed to load primary route data. Status: {routesResponse.StatusCode}");
                 }
 
                 // 2. Process Buses Response (for AvailableBuses ComboBox)
                 List<Bus> loadedBuses = new();
-                var busesResponse = await busesTask;
+                using var busesResponse = await busesTask;
                 Log.Information("Processing Buses response. Status: {StatusCode}", busesResponse.StatusCode);
                 if (busesResponse.IsSuccessStatusCode)
                 {
-                    var busJsonString = await busesResponse.Content.ReadAsStringAsync();
+                    var busJsonString = bodies[1];
                     Log.Debug("Raw Buses JSON received (for ComboBox): {RawJson}", busJsonString);
                     try
                     {
@@ -327,18 +373,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
                 else
                 {
-                    var error = await busesResponse.Content.ReadAsStringAsync();
+                    var error = bodies[1];
                     Log.Warning("Failed to load buses. Status: {StatusCode}, Error: {Error}. Bus selection dialogs will be empty.", busesResponse.StatusCode, error);
                     AvailableBuses = new ObservableCollection<Bus>(); // Ensure collection is empty
                 }
 
                 // 3. Process Drivers Response (for AvailableDrivers ComboBox)
                  List<Employee> loadedDrivers = new();
-                var driversResponse = await driversTask;
+                using var driversResponse = await driversTask;
                  Log.Information("Processing Drivers/Employees response. Status: {StatusCode}", driversResponse.StatusCode);
                 if (driversResponse.IsSuccessStatusCode)
                 {
-                    var driverJsonString = await driversResponse.Content.ReadAsStringAsync();
+                    var driverJsonString = bodies[2];
                     Log.Debug("Raw Drivers JSON received (for ComboBox): {RawJson}", driverJsonString);
                     try
                     {
@@ -375,7 +421,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
                 else
                 {
-                    var error = await driversResponse.Content.ReadAsStringAsync();
+                    var error = bodies[2];
                     Log.Error("Failed to load drivers. Status: {StatusCode}, Error: {Error}", driversResponse.StatusCode, error);
                     AvailableDrivers = new ObservableCollection<Employee>(); // Clear the collection on failure
                     ErrorMessage = $"Ошибка загрузки водителей: {driversResponse.ReasonPhrase}";
@@ -385,11 +431,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                  // 4. Process Tickets Response (for counts)
                 Dictionary<uint, int> ticketCounts = new Dictionary<uint, int>();
-                var ticketsResponse = await ticketsTask;
+                using var ticketsResponse = await ticketsTask;
                 Log.Information("Processing Tickets response. Status: {StatusCode}", ticketsResponse.StatusCode);
                 if (ticketsResponse.IsSuccessStatusCode)
                 {
-                    var ticketJsonString = await ticketsResponse.Content.ReadAsStringAsync();
+                    var ticketJsonString = bodies[3];
                     Log.Debug("Raw Tickets JSON received (for counts): {RawJson}", ticketJsonString);
                     try
                     {
@@ -418,7 +464,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
                 else
                 {
-                    var error = await ticketsResponse.Content.ReadAsStringAsync();
+                    var error = bodies[3];
                     Log.Warning("Failed to load tickets. Status: {StatusCode}, Error: {Error}. Ticket counts may be inaccurate.", ticketsResponse.StatusCode, error);
                     // Ticket counts will remain empty or incomplete
                 }
@@ -440,15 +486,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                  }
 
 
+                cancellation.Token.ThrowIfCancellationRequested();
+                if (!_active || generation != _generation) return;
+                var selectedId = SelectedRoute?.RouteId;
                 _allRoutes = parsedRoutes; // Store the filtered & parsed list
-                Routes = new ObservableCollection<RouteDisplayModel>(_allRoutes); // Update the displayed list
+                Routes = new ObservableCollection<RouteDisplayModel>(_allRoutes);
+                SelectedRoute = selectedId.HasValue ? Routes.FirstOrDefault(r => r.RouteId == selectedId) : null;
                 Log.Information("Finished processing all data. Displaying {Count} routes.", Routes.Count);
                  Log.Information("Available Buses for ComboBox: {Count}", AvailableBuses.Count);
                  Log.Information("Available Drivers for ComboBox: {Count}", AvailableDrivers.Count);
 
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
+                if (!_active || generation != _generation) return;
                 HasError = true;
                 ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
                 Log.Fatal(ex, "Fatal error loading data in RouteManagementViewModel");
@@ -460,7 +512,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                if (generation == _generation) IsBusy = false;
+                if (ReferenceEquals(_loadCancellation, cancellation)) _loadCancellation = null;
+                cancellation.Dispose();
+                foreach (var response in responses) if (response.IsCompletedSuccessfully) response.Result.Dispose();
                 Log.Information("LoadData finished for RouteManagementViewModel.");
             }
         }
@@ -634,7 +689,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         var json = JsonSerializer.Serialize(newRoutePayload);
                         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                    var response = await _httpClient.PostAsync($"{_baseUrl}/Routes", content);
+                    var response = await _httpClient.PostAsync($"Routes", content);
 
                          Log.Information("Add Route API Response Status: {StatusCode}", response.StatusCode);
 
@@ -867,7 +922,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         var json = JsonSerializer.Serialize(updatePayload);
                         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                        var response = await _httpClient.PutAsync($"{_baseUrl}/Routes/{routeToEdit.RouteId}", content);
+                        var response = await _httpClient.PutAsync($"Routes/{routeToEdit.RouteId}", content);
 
                         Log.Information("Update Route API Response Status: {StatusCode}", response.StatusCode);
 
@@ -977,7 +1032,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Sending request to delete route {RouteId}", routeToDelete.RouteId);
                 try
                 {
-                    var response = await _httpClient.DeleteAsync($"{_baseUrl}/Routes/{routeToDelete.RouteId}");
+                    var response = await _httpClient.DeleteAsync($"Routes/{routeToDelete.RouteId}");
 
                      Log.Information("Delete Route API Response Status: {StatusCode}", response.StatusCode);
 

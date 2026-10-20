@@ -75,7 +75,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("users", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("users", cancellationToken), "users.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -89,6 +89,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>The handler's response object: for "read_all" or "read" commands an object containing user data; for "create", "update", and "delete" commands an operation result object indicating success and related data.</returns>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("users", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch

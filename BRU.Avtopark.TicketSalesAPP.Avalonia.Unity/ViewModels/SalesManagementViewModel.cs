@@ -283,6 +283,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Processing Sales response. Status: {StatusCode}", salesResponse.StatusCode);
                 _allSales = new List<Sale>();
                 decimal runningTotalIncome = 0M;
+                int unknownAmountCount = 0;
 
                 if (salesResponse.IsSuccessStatusCode)
                 {
@@ -307,15 +308,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                                         continue;
                                     }
 
-                                    // Calculate income from ticket price
-                                    if (_allTicketsDict.TryGetValue(sale.TicketId, out var foundTicket))
-                                    {
-                                        runningTotalIncome += (decimal)foundTicket.TicketPrice;
-                                    }
+                                    var recorded = saleObj["recordedAmount"] ?? saleObj["RecordedAmount"];
+                                    if (recorded is JsonValue value && value.TryGetValue<decimal>(out var amount))
+                                        runningTotalIncome += amount;
                                     else
-                                    {
-                                        Log.Warning("Sale {SaleId} refers to TicketId {TicketId} which was not found in lookup.", sale.SaleId, sale.TicketId);
-                                    }
+                                        unknownAmountCount++;
 
                                     _allSales.Add(sale);
                                     Log.Verbose("Parsed Sale: Id={SaleId}, TicketId={TicketId}, Date={SaleDateUnix}",
@@ -346,6 +343,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                 Sales = new ObservableCollection<Sale>(_allSales.OrderByDescending(s => s.SaleDate));
                 TotalIncome = runningTotalIncome;
+                if (unknownAmountCount > 0)
+                {
+                    ErrorMessage = $"Сумма включает только известные продажи. Неизвестная сумма: {unknownAmountCount}.";
+                    HasError = true;
+                    Log.Warning("Sales totals incomplete: {UnknownAmountCount} historical amounts unavailable", unknownAmountCount);
+                }
                 Log.Information("Updated Sales collection. Count: {Count}. Total Income: {Income}", Sales.Count, TotalIncome);
 
                 var availableTicketsResponse = await availableTicketsTask;

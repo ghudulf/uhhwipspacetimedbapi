@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:display="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
@@ -68,7 +69,7 @@
                                       Binding="{ReflectionBinding SaleId}"
                                       Width="60"/>
                     <DataGridTextColumn Header="Дата"
-                                      Binding="{ReflectionBinding SaleDate, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                      Binding="{ReflectionBinding SaleDate, Converter={x:Static display:UnixMillisecondsConverter.Instance}}"
                                       Width="150"/>
                     <DataGridTextColumn Header="ID Билета" 
                                       Binding="{ReflectionBinding TicketId}"

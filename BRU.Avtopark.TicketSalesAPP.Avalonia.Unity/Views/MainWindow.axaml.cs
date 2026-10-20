@@ -263,10 +263,7 @@ public partial class MainWindow : Window
 
             // Strip /api/ suffix to get the server root (connect/tokeninfo and debug/tokentest
             // are registered as absolute routes at the root, NOT under /api/)
-            var serverRoot = baseUrl.TrimEnd('/');
-            if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
-                serverRoot = serverRoot[..^4];
-            serverRoot = serverRoot.TrimEnd('/') + "/";
+            var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri;
 
             Serilog.Log.Information("Token test: base URL = {BaseUrl}, server root = {Root}, token present = {HasToken}, token length = {Length}",
                 baseUrl, serverRoot, token != null, token?.Length ?? 0);

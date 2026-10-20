@@ -36,7 +36,9 @@ public partial class AuthWindow : Window
         private Button? _backButton;
         private Button? _cancelButton;
 
-    public AuthWindow()
+    public AuthWindow() : this(new AuthViewModel()) { }
+
+    public AuthWindow(AuthViewModel viewModel)
     {
         Log.Information("AuthWindow constructor started");
         InitializeComponent();
@@ -52,7 +54,7 @@ public partial class AuthWindow : Window
             Log.Information("Window registered with StepToContentConverter");
 
             // Initialize view model - Ensure DataContext is set correctly
-            _viewModel = new AuthViewModel();
+            _viewModel = viewModel;
             DataContext = _viewModel;
             Log.Information("AuthViewModel created and set as DataContext");
 
@@ -146,6 +148,12 @@ public partial class AuthWindow : Window
                 Log.Error("CRITICAL: ViewModel is null after initialization");
             }
 
+            Closed += (_, _) =>
+            {
+                _viewModel.LoginCompleted -= ViewModel_LoginCompleted;
+                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                _disposables.Dispose();
+            };
             Log.Information("AuthWindow constructor completed successfully");
         }
 

@@ -1,3 +1,6 @@
+using System.Threading;
+using Avalonia.Threading;
+using BRU.Avtopark.Contracts;
 using System;
 using System.Collections.ObjectModel;
 using System.Net.Http;
@@ -31,17 +34,23 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class BusDisplayModel : ObservableObject
     {
         [ObservableProperty]
-        private Bus _bus; // The original Bus object
+        private BusRow _bus; // The original Bus object
 
         [ObservableProperty]
-        private int _routeCount;
+        private int? _routeCount;
 
         [ObservableProperty]
-        private int _maintenanceCount;
+        private int? _maintenanceCount;
 
-        public BusDisplayModel(Bus bus)
+        public BusDisplayModel(BusRow bus)
         {
             _bus = bus;
+        }
+
+        partial void OnBusChanged(BusRow value)
+        {
+            foreach (var name in new[] { nameof(BusId), nameof(Model), nameof(BusType), nameof(Year), nameof(RegistrationNumber),
+                nameof(IsActive), nameof(Capacity), nameof(Vin), nameof(LicensePlate), nameof(CurrentStatus) }) OnPropertyChanged(name);
         }
 
         // Expose Bus properties for easier binding in DataGrid if needed
@@ -70,8 +79,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
     public partial class BusManagementViewModel : ReactiveObject
     {
-        private HttpClient _httpClient;
-        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
+
 
         // Store the original full list for filtering
         private List<BusDisplayModel> _allBuses = new();
@@ -87,7 +95,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public BusDisplayModel? SelectedBus // Changed type
         {
             get => _selectedBus;
-            set => this.RaiseAndSetIfChanged(ref _selectedBus, value);
+            set { this.RaiseAndSetIfChanged(ref _selectedBus, value); NotifyAvailability(); }
         }
 
         private string _searchText = string.Empty;
@@ -105,7 +113,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public bool IsBusy
         {
             get => _isBusy;
-            set => this.RaiseAndSetIfChanged(ref _isBusy, value);
+            set { this.RaiseAndSetIfChanged(ref _isBusy, value); NotifyPaging(); }
         }
 
         private string _errorMessage = string.Empty;
@@ -119,245 +127,136 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         public bool HasError
         {
             get => _hasError;
-            set => this.RaiseAndSetIfChanged(ref _hasError, value);
+            set { this.RaiseAndSetIfChanged(ref _hasError, value); NotifyAvailability(); }
         }
 
-        public BusManagementViewModel()
+        private readonly Func<BusQuery, CancellationToken, Task<BusPageResult>> _load;
+        private bool _active;
+        private Task? _activation;
+        private CancellationTokenSource? _cancellation;
+        private long _generation;
+        private string? _sessionToken;
+        private int _page = 1;
+        private int _totalCount;
+        private bool _canCreate, _canEdit, _canDelete;
+        public string PageInfo => $"Страница {_page} · Всего: {_totalCount}";
+        public bool CanGoPrevious => !IsBusy && _page > 1;
+        public bool CanGoNext => !IsBusy && _page * 100 < _totalCount;
+
+        public BusManagementViewModel() : this((query, ct) => ApplicationQueryClient.ReadAsync<BusQuery, BusPageResult>("buses.list", query, ct)) { }
+        public BusManagementViewModel(Func<BusQuery, CancellationToken, Task<BusPageResult>> load)
         {
-            _httpClient = ApiClientService.Instance.CreateClient();
+            _load = load;
 
-            // Subscribe to auth token changes
-            ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
-            {
-                Log.Information("Auth token changed in BusManagementViewModel. Recreating HttpClient and reloading data.");
-                // Create a new client with the updated token
-                _httpClient.Dispose();
-                _httpClient = ApiClientService.Instance.CreateClient();
-                // Reload data with the new token
-                LoadData().ConfigureAwait(false);
-            };
-
-            // Only load data if token is already set, otherwise wait for OnAuthTokenChanged event
-            if (!string.IsNullOrEmpty(ApiClientService.Instance.AuthToken))
-            {
-                Log.Information("Token already set in BusManagementViewModel constructor, loading data");
-                LoadData().ConfigureAwait(false);
-            }
-            else
-            {
-                Log.Warning("Token not set in BusManagementViewModel constructor, waiting for OnAuthTokenChanged event");
-            }
         }
+        public Task ActivateAsync()
+        {
+            if (_active) return _activation ?? Task.CompletedTask;
+            _active = true;
+            ApiClientService.Instance.OnAuthTokenChanged += OnSessionChanged;
+            if (_sessionToken != ApiClientService.Instance.AuthToken) ClearSessionData();
+            _sessionToken = ApiClientService.Instance.AuthToken;
+            return _activation = LoadData();
+        }
+        public void Deactivate()
+        {
+            _active = false;
+            _generation++;
+            _cancellation?.Cancel();
+            IsBusy = false;
+            ApiClientService.Instance.OnAuthTokenChanged -= OnSessionChanged;
+        }
+        private void OnSessionChanged(object? sender, string? token) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active) return;
+            _sessionToken = token;
+            ClearSessionData();
 
+
+            _activation = LoadData();
+        });
+        private void ClearSessionData()
+        {
+            SelectedBus = null;
+            _allBuses.Clear(); Buses.Clear();
+            _page = 1; _totalCount = 0;
+            _canCreate = _canEdit = _canDelete = false;
+            NotifyPaging();
+        }
+        private void NotifyPaging()
+        {
+            NotifyAvailability();
+            this.RaisePropertyChanged(nameof(PageInfo));
+            this.RaisePropertyChanged(nameof(CanGoPrevious));
+            this.RaisePropertyChanged(nameof(CanGoNext));
+        }
+        [RelayCommand]
+        private async Task PreviousPage() { if (!CanGoPrevious) return; _page--; await LoadData(); }
+        [RelayCommand]
+        private async Task NextPage() { if (!CanGoNext) return; _page++; await LoadData(); }
+
+        [RelayCommand]
         private async Task LoadData()
         {
-            Log.Information("Starting LoadData for BusManagementViewModel");
+            if (!_active) return;
+            _cancellation?.Cancel();
+            var cancellation = new CancellationTokenSource();
+            _cancellation = cancellation;
+            var generation = ++_generation;
+            IsBusy = true; HasError = false;
             try
             {
-                IsBusy = true;
-                HasError = false;
-                ErrorMessage = string.Empty;
-
-                 // --- Fetch all required data concurrently ---
-                 Log.Debug("Initiating API calls for Buses, Routes, Maintenance");
-                 Task<HttpResponseMessage> busesTask = _httpClient.GetAsync($"{_baseUrl}/Buses");
-                 Task<HttpResponseMessage> routesTask = _httpClient.GetAsync($"{_baseUrl}/Routes");
-                 Task<HttpResponseMessage> maintenanceTask = _httpClient.GetAsync($"{_baseUrl}/Maintenance");
-
-                // Await all tasks
-                await Task.WhenAll(busesTask, routesTask, maintenanceTask);
-                Log.Debug("All API calls completed for BusManagementViewModel.");
-
-                // --- Process Responses with Manual Parsing and Logging ---
-
-                // 1. Process Buses Response
-                List<Bus> loadedBuses = new();
-                var busesResponse = await busesTask;
-                 Log.Information("Processing Buses response. Status: {StatusCode}", busesResponse.StatusCode);
-                 
-                 // Log the raw response content
-                 var busJsonString = await busesResponse.Content.ReadAsStringAsync();
-                 Log.Verbose("Raw Buses response received: {RawResponse}", busJsonString);
-                 
-                 if (busesResponse.IsSuccessStatusCode)
-                 {
-                      Log.Debug("Raw Buses JSON received: {RawJson}", busJsonString);
-                      try
-                      {
-                           var busesArray = JsonReferenceHelper.ParseArrayWithReferences(busJsonString, "Buses");
-                           if (busesArray != null)
-                           {
-                                Log.Information("Parsing {Count} bus objects from JSON array.", busesArray.Count);
-                                foreach(var busNode in busesArray)
-                                {
-                                     if (busNode is JsonObject busObj)
-                                     {
-                                          var bus = busObj.ParseBus();
-                                          if (bus != null)
-                                          {
-                                               loadedBuses.Add(bus);
-                                          }
-                                     }
-                                     else { Log.Warning("Item in buses array was not a JSON object: {Node}", busNode?.ToJsonString()); }
-                                }
-                                 Log.Information("Successfully parsed and filtered {Count} valid buses.", loadedBuses.Count);
-                           }
-                           else 
-                           { 
-                                Log.Error("Failed to parse buses array from JSON. Raw JSON: {RawJson}", busJsonString); 
-                           }
-                      }
-                      catch (JsonException jsonEx)
-                      {
-                           Log.Error(jsonEx, "Failed to parse Buses JSON: {RawJson}", busJsonString);
-                           throw new Exception("Failed to parse bus data.", jsonEx);
-                      }
-                     catch (Exception ex)
-                     {
-                          Log.Error(ex, "Unexpected error during manual bus parsing.");
-                          throw; // Re-throw unexpected errors
-                     }
-                 }
-                 else
-                 {
-                     var error = await busesResponse.Content.ReadAsStringAsync();
-                     Log.Error("Failed to load buses. Status: {StatusCode}, Error: {Error}", busesResponse.StatusCode, error);
-                     throw new Exception($"Failed to load primary bus data. Status: {busesResponse.StatusCode}");
-                 }
-
-
-                // 2. Process Routes Response (for counts)
-                 Dictionary<uint, int> routeCounts = new Dictionary<uint, int>();
-                 var routesResponse = await routesTask;
-                 Log.Information("Processing Routes response (for counts). Status: {StatusCode}", routesResponse.StatusCode);
-                 if (routesResponse.IsSuccessStatusCode)
-                 {
-                      var routeJsonString = await routesResponse.Content.ReadAsStringAsync();
-                      Log.Debug("Raw Routes JSON received (for counts): {RawJson}", routeJsonString);
-                      try
-                      {
-                           var routesArray = JsonReferenceHelper.ParseArrayWithReferences(routeJsonString, "Routes");
-                           if (routesArray != null)
-                           {
-                                Log.Information("Parsing {Count} route objects from JSON array (for counts).", routesArray.Count);
-                                foreach(var routeNode in routesArray)
-                                {
-                                     if (routeNode is JsonObject routeObj)
-                                     {
-                                          uint busId = routeObj.GetValue<uint>("busId", 0);
-                                          bool routeIsActive = routeObj.GetValue<bool>("isActive", false);
-                                          if (busId > 0 && routeIsActive)
-                                          {
-                                               routeCounts[busId] = routeCounts.GetValueOrDefault(busId, 0) + 1;
-                                          }
-                                          else { Log.Verbose("Skipping route count for BusId {BusId}, IsActive={IsActive}", busId, routeIsActive); }
-                                     }
-                                      else { Log.Warning("Item in routes array was not a JSON object: {Node}", routeNode?.ToJsonString()); }
-                                }
-                                 Log.Information("Successfully calculated route counts for {Count} buses.", routeCounts.Count);
-                           }
-                           else { Log.Error("Failed to parse routes array from JSON. Raw JSON: {RawJson}", routeJsonString); }
-                      }
-                      catch (JsonException jsonEx)
-                      {
-                           Log.Error(jsonEx, "Failed to parse Routes JSON (for counts): {RawJson}", routeJsonString);
-                      }
-                     catch (Exception ex)
-                     {
-                          Log.Error(ex, "Unexpected error during manual route parsing (for counts).");
-                     }
-                 }
-                 else
-                 {
-                     var error = await routesResponse.Content.ReadAsStringAsync();
-                     Log.Warning("Failed to load routes (for counts). Status: {StatusCode}, Error: {Error}. Route counts may be inaccurate.", routesResponse.StatusCode, error);
-                 }
-
-                // 3. Process Maintenance Response (for counts)
-                Dictionary<uint, int> maintenanceCounts = new Dictionary<uint, int>();
-                var maintenanceResponse = await maintenanceTask;
-                Log.Information("Processing Maintenance response (for counts). Status: {StatusCode}", maintenanceResponse.StatusCode);
-                if (maintenanceResponse.IsSuccessStatusCode)
+                var result = await _load(new BusQuery(_page, 100, SearchText), cancellation.Token);
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    var maintenanceJsonString = await maintenanceResponse.Content.ReadAsStringAsync();
-                    Log.Debug("Raw Maintenance JSON received (for counts): {RawJson}", maintenanceJsonString);
-                    try
+                    if (!_active || generation != _generation || cancellation.IsCancellationRequested) return;
+                    var selected = SelectedBus?.BusId;
+                    var existing = Buses.ToDictionary(b => b.BusId);
+                    var updated = result.Items.Select(row =>
                     {
-                         var maintenanceArray = JsonReferenceHelper.ParseArrayWithReferences(maintenanceJsonString, "Maintenance");
-                         if (maintenanceArray != null)
-                         {
-                              Log.Information("Parsing {Count} maintenance objects from JSON array (for counts).", maintenanceArray.Count);
-                              foreach(var maintNode in maintenanceArray)
-                              {
-                                   if (maintNode is JsonObject maintObj)
-                                   {
-                                        uint busId = maintObj.GetValue<uint>("busId", 0);
-                                        if (busId > 0)
-                                        {
-                                             maintenanceCounts[busId] = maintenanceCounts.GetValueOrDefault(busId, 0) + 1;
-                                        }
-                                         else { Log.Verbose("Skipping maintenance count for BusId {BusId}", busId); }
-                                   }
-                                    else { Log.Warning("Item in maintenance array was not a JSON object: {Node}", maintNode?.ToJsonString()); }
-                              }
-                               Log.Information("Successfully calculated maintenance counts for {Count} buses.", maintenanceCounts.Count);
-                         }
-                         else { Log.Error("Failed to parse maintenance array from JSON. Raw JSON: {RawJson}", maintenanceJsonString); }
-                    }
-                    catch (JsonException jsonEx)
+                        if (!existing.TryGetValue(row.BusId, out var item)) item = new BusDisplayModel(row);
+                        item.Bus = row; item.RouteCount = row.ActiveRouteCount; item.MaintenanceCount = row.MaintenanceCount;
+                        return item;
+                    }).ToArray();
+                    for (var i = Buses.Count - 1; i >= 0; i--) if (!updated.Contains(Buses[i])) Buses.RemoveAt(i);
+                    for (var i = 0; i < updated.Length; i++)
                     {
-                         Log.Error(jsonEx, "Failed to parse Maintenance JSON (for counts): {RawJson}", maintenanceJsonString);
+                        var current = Buses.IndexOf(updated[i]);
+                        if (current < 0) Buses.Insert(i, updated[i]); else if (current != i) Buses.Move(current, i);
                     }
-                     catch (Exception ex)
-                     {
-                          Log.Error(ex, "Unexpected error during manual maintenance parsing (for counts).");
-                    }
-                }
-                else
-                {
-                    var error = await maintenanceResponse.Content.ReadAsStringAsync();
-                    Log.Warning("Failed to load maintenance records (for counts). Status: {StatusCode}, Error: {Error}. Maintenance counts may be inaccurate.", maintenanceResponse.StatusCode, error);
-                }
-
-                // 4. Create Display Models
-                Log.Debug("Creating BusDisplayModels from parsed data...");
-                var displayBuses = new List<BusDisplayModel>();
-                foreach (var bus in loadedBuses) // Iterate over the filtered list
-                {
-                    var displayModel = new BusDisplayModel(bus)
-                    {
-                        RouteCount = routeCounts.TryGetValue(bus.BusId, out var rc) ? rc : 0,
-                        MaintenanceCount = maintenanceCounts.TryGetValue(bus.BusId, out var mc) ? mc : 0
-                    };
-                    displayBuses.Add(displayModel);
-                    Log.Verbose("Created BusDisplayModel for BusId {BusId}: RouteCount={RouteCount}, MaintenanceCount={MaintenanceCount}",
-                        bus.BusId, displayModel.RouteCount, displayModel.MaintenanceCount);
-                }
-
-                _allBuses = displayBuses; // Store the full, filtered list
-                Buses = new ObservableCollection<BusDisplayModel>(_allBuses); // Update the displayed list
-                Log.Information("Finished processing data. Displaying {Count} buses.", Buses.Count);
-
+                    _allBuses = updated.ToList();
+                    SelectedBus = Buses.FirstOrDefault(b => b.BusId == selected);
+                    _page = result.Page; _totalCount = result.TotalCount;
+                    _canCreate = result.CanCreate; _canEdit = result.CanEdit; _canDelete = result.CanDelete;
+                    NotifyPaging();
+                });
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                HasError = true;
-                ErrorMessage = $"Критическая ошибка загрузки данных: {ex.Message}";
-                Log.Fatal(ex, "Fatal error loading data in BusManagementViewModel");
-                 // Clear collections on fatal error
-                 Buses = new ObservableCollection<BusDisplayModel>();
-                 _allBuses = new List<BusDisplayModel>();
+                Log.Warning("Bus query failed: {ErrorType}", ex.GetType().Name);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (!_active || generation != _generation) return;
+                    if (ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "forbidden" or "unauthenticated" or "session_expired" }) ClearSessionData();
+                    HasError = true; ErrorMessage = "Не удалось обновить автобусы. Показаны ранее загруженные данные. Повторите загрузку.";
+                });
             }
             finally
             {
-                IsBusy = false;
-                Log.Information("LoadData finished for BusManagementViewModel.");
+                await Dispatcher.UIThread.InvokeAsync(() => { if (generation == _generation) IsBusy = false; });
+                if (ReferenceEquals(_cancellation, cancellation)) _cancellation = null;
+                cancellation.Dispose();
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanCreate))]
         private async Task Add()
         {
+            if (!CanCreate) return;
+            var token = ApiClientService.Instance.AuthToken!;
+            var origin = ApiClientService.Instance.CurrentBaseUrl!;
+            var operationId = Guid.NewGuid().ToString("N");
              Log.Information("Add Bus command initiated.");
             try
             {
@@ -434,56 +333,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
-                    // Create payload matching API's CreateBusModel
-                    var newBusPayload = new
-                    {
-                        Model = modelBox.Text,
-                        RegistrationNumber = string.IsNullOrWhiteSpace(regNumBox.Text) ? null : regNumBox.Text, // Null if empty
-                        Capacity = (uint)(capacityBox.Value ?? 0),
-                        BusType = string.IsNullOrWhiteSpace(busTypeBox.Text) ? "Regular" : busTypeBox.Text, // Default if empty?
-                        Year = (uint)(yearBox.Value ?? 0),
-                        VIN = string.IsNullOrWhiteSpace(vinBox.Text) ? null : vinBox.Text,
-                        LicensePlate = string.IsNullOrWhiteSpace(plateBox.Text) ? null : plateBox.Text,
-                        CurrentStatus = statusBox.SelectedItem as string, // Or handle null selection
-                        IsActive = isActiveCheck.IsChecked ?? true
-                        // Add other fields if the API expects them
-                    };
-
-                    Log.Information("Sending request to add bus: {@BusPayload}", newBusPayload);
+                    var payload = new CreateBusCommand(modelBox.Text!, string.IsNullOrWhiteSpace(regNumBox.Text) ? null : regNumBox.Text,
+                        new BusDetails((uint?)capacityBox.Value, busTypeBox.Text, (uint?)yearBox.Value, vinBox.Text, plateBox.Text,
+                            statusBox.SelectedItem as string, isActiveCheck.IsChecked));
+                    addButton.IsEnabled = false;
                     try
                     {
-                         // Use default options or configure as needed
-                        var json = JsonSerializer.Serialize(newBusPayload);
-                        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                        var response = await _httpClient.PostAsync($"{_baseUrl}/Buses", content);
-
-                        Log.Information("Add Bus API Response Status: {StatusCode}", response.StatusCode);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Log.Information("Successfully added bus via API.");
-                            await LoadData();
-                            dialog.Close();
-                        }
-                        else
-                        {
-                            var error = await response.Content.ReadAsStringAsync();
-                            ErrorMessage = $"Не удалось добавить автобус: ({response.StatusCode}) {error}";
-                            Log.Error("Failed to add bus via API. Status: {StatusCode}, Error: {Error}",
-                                response.StatusCode, error);
-                             var box = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                             var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
-                             if (mainWindow != null) await box.ShowAsync();
-                        }
+                        await ApplicationMutationClient.ExecuteAsync("buses.create", payload, operationId, origin, token, CancellationToken.None);
+                        await LoadData();
+                        dialog.Close();
                     }
                     catch (Exception ex)
                     {
-                        ErrorMessage = $"Ошибка при добавлении автобуса: {ex.Message}";
-                        Log.Error(ex, "Exception occurred while adding bus.");
-                         var box = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                         var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
-                         if (mainWindow != null) await box.ShowAsync();
+                        await ShowMutationFailureAsync(ex);
+                        addButton.IsEnabled = CanRetryMutation(ex);
                     }
                 };
 
@@ -514,9 +377,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanEdit))]
         private async Task Edit()
         {
+            if (!CanEdit) return;
+            var token = ApiClientService.Instance.AuthToken!;
+            var origin = ApiClientService.Instance.CurrentBaseUrl!;
+            var operationId = Guid.NewGuid().ToString("N");
             if (SelectedBus == null)
             {
                 Log.Warning("Edit Bus command initiated but no bus selected.");
@@ -598,67 +465,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         return;
                     }
 
-                    // Create payload matching API's UpdateBusModel
-                    // **IMPORTANT**: Check BusesController UpdateBusModel for expected fields!
-                    var updatePayload = new
-                    {
-                        // Send only fields that changed or that the API expects
-                        Model = modelBox.Text, // Assuming Model can be updated
-                        RegistrationNumber = regNumBox.Text, // Nullable
-                         // Add other fields from Bus model if API supports updating them
-                         Capacity = (uint?)capacityBox.Value,
-                         BusType = busTypeBox.Text,
-                         Year = (uint?)yearBox.Value,
-                         VIN = vinBox.Text,
-                         LicensePlate = plateBox.Text,
-                         CurrentStatus = statusComboBox.SelectedItem as string,
-                         IsActive = isActiveCheck.IsChecked
-                    };
-
-                    Log.Information("Sending request to update bus {BusId}: {@UpdatePayload}", busToEdit.BusId, updatePayload);
-
+                    var payload = new UpdateBusCommand(busToEdit.BusId, busToEdit.Revision, modelBox.Text, regNumBox.Text,
+                        new BusDetails((uint?)capacityBox.Value, busTypeBox.Text, (uint?)yearBox.Value, vinBox.Text, plateBox.Text,
+                            statusComboBox.SelectedItem as string, isActiveCheck.IsChecked));
+                    saveButton.IsEnabled = false;
                     try
                     {
-                        // Use default options or configure as needed
-                        var json = JsonSerializer.Serialize(updatePayload);
-                        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                        var response = await _httpClient.PutAsync($"{_baseUrl}/Buses/{busToEdit.BusId}", content);
-
-                        Log.Information("Update Bus API Response Status: {StatusCode}", response.StatusCode);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Log.Information("Successfully updated bus {BusId} via API.", busToEdit.BusId);
-                            await LoadData();
-                            dialog.Close();
-                        }
-                        else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                        {
-                            ErrorMessage = "Не удалось найти автобус для обновления.";
-                            Log.Warning("Bus {BusId} not found for update via API.", busToEdit.BusId);
-                             var box = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Warning);
-                             var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
-                             if (mainWindow != null) await box.ShowAsync();
-                        }
-                        else
-                        {
-                            var error = await response.Content.ReadAsStringAsync();
-                            ErrorMessage = $"Не удалось обновить автобус: ({response.StatusCode}) {error}";
-                            Log.Error("Failed to update bus {BusId} via API. Status: {StatusCode}, Error: {Error}",
-                                busToEdit.BusId, response.StatusCode, error);
-                             var box = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                             var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
-                             if (mainWindow != null) await box.ShowAsync();
-                        }
+                        await ApplicationMutationClient.ExecuteAsync("buses.update", payload, operationId, origin, token, CancellationToken.None);
+                        await LoadData();
+                        dialog.Close();
                     }
                     catch (Exception ex)
                     {
-                        ErrorMessage = $"Ошибка при обновлении автобуса: {ex.Message}";
-                        Log.Error(ex, "Exception occurred while updating bus {BusId}.", busToEdit.BusId);
-                         var box = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                         var mainWindow = Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null;
-                         if (mainWindow != null) await box.ShowAsync();
+                        await ShowMutationFailureAsync(ex);
+                        saveButton.IsEnabled = CanRetryMutation(ex);
                     }
                 };
 
@@ -689,9 +509,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanDelete))]
         private async Task Delete()
         {
+            if (!CanDelete) return;
+            var token = ApiClientService.Instance.AuthToken!;
+            var origin = ApiClientService.Instance.CurrentBaseUrl!;
+            var operationId = Guid.NewGuid().ToString("N");
             if (SelectedBus == null)
             {
                 Log.Warning("Delete Bus command initiated but no bus selected.");
@@ -728,47 +552,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Log.Information("Sending request to delete bus {BusId}", busToDelete.BusId);
                 try
                 {
-                    var response = await _httpClient.DeleteAsync($"{_baseUrl}/Buses/{busToDelete.BusId}");
-
-                    Log.Information("Delete Bus API Response Status: {StatusCode}", response.StatusCode);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                         Log.Information("Successfully deleted bus {BusId} via API.", busToDelete.BusId);
-                        await LoadData();
-                    }
-                    else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    {
-                        ErrorMessage = "Не удалось найти автобус для удаления.";
-                        Log.Warning("Bus {BusId} not found for deletion via API.", busToDelete.BusId);
-                         var errorBox = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Warning);
-                         await errorBox.ShowAsync();
-                    }
-                     else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) // Example: Handle constraints (bus in use)
-                    {
-                         var error = await response.Content.ReadAsStringAsync();
-                         ErrorMessage = $"Не удалось удалить автобус: {error}"; // Show specific reason if API provides it
-                         Log.Warning("Failed to delete bus {BusId} due to constraint: {Error}", busToDelete.BusId, error);
-                         var errorBox = MessageBoxManager.GetMessageBoxStandard("Ошибка удаления", ErrorMessage, ButtonEnum.Ok, Icon.Warning);
-                         await errorBox.ShowAsync();
-                        }
-                        else
-                        {
-                            var error = await response.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Не удалось удалить автобус: ({response.StatusCode}) {error}";
-                        Log.Error("Failed to delete bus {BusId} via API. Status: {StatusCode}, Error: {Error}",
-                            busToDelete.BusId, response.StatusCode, error);
-                         var errorBox = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                         await errorBox.ShowAsync();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ErrorMessage = $"Ошибка при удалении автобуса: {ex.Message}";
-                    Log.Error(ex, "Exception occurred while deleting bus {BusId}.", busToDelete.BusId);
-                     var errorBox = MessageBoxManager.GetMessageBoxStandard("Ошибка", ErrorMessage, ButtonEnum.Ok, Icon.Error);
-                     await errorBox.ShowAsync();
+                    await ApplicationMutationClient.ExecuteAsync("buses.delete", new DeleteBusCommand(busToDelete.BusId, busToDelete.Bus.Revision),
+                        operationId, origin, token, CancellationToken.None);
+                    await LoadData();
                 }
+                catch (Exception ex) { await ShowMutationFailureAsync(ex); }
                 finally
                 {
                     IsBusy = false;
@@ -780,27 +568,35 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
 
+        public bool CanMutate => _active && !IsBusy && !HasError && !string.IsNullOrEmpty(_sessionToken)
+            && _sessionToken == ApiClientService.Instance.AuthToken;
+        public bool CanCreate => CanMutate && _canCreate;
+        public bool CanEdit => CanMutate && _canEdit && SelectedBus != null;
+        public bool CanDelete => CanMutate && _canDelete && SelectedBus != null;
+        private void NotifyAvailability()
+        {
+            this.RaisePropertyChanged(nameof(CanMutate));
+            this.RaisePropertyChanged(nameof(CanCreate));
+            this.RaisePropertyChanged(nameof(CanEdit));
+            this.RaisePropertyChanged(nameof(CanDelete));
+            AddCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged();
+        }
+        private static bool CanRetryMutation(Exception ex) => ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "validation_failed" or "forbidden" };
+        private async Task ShowMutationFailureAsync(Exception ex)
+        {
+            Log.Warning("Fleet mutation failed: {ErrorType}, {Code}", ex.GetType().Name,
+                ex is BRU.Avtopark.Client.ApplicationCommandException command ? command.Code : "transport_failure");
+            ErrorMessage = ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "conflict" }
+                ? "Изменение отклонено: данные изменились или есть связанные записи. Черновик сохранён в окне. Обновите список и сравните данные перед повтором."
+                : "Изменение не подтверждено. Черновик сохранён в окне. Проверьте результат через обновление списка перед повтором.";
+            HasError = true;
+            await MessageBoxManager.GetMessageBoxStandard("Изменение автобуса", ErrorMessage, ButtonEnum.Ok, Icon.Warning).ShowAsync();
+        }
+
         private void OnSearchTextChanged(string value)
         {
-            Log.Debug("Bus search text changed: {SearchText}", value);
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                Log.Verbose("Bus search text empty, showing all ({Count}) buses.", _allBuses.Count);
-                Buses = new ObservableCollection<BusDisplayModel>(_allBuses);
-            }
-            else
-            {
-                var lowerCaseValue = value.ToLowerInvariant();
-                 // Search on BusDisplayModel properties
-                var filtered = _allBuses.Where(bdm =>
-                     (bdm.Model?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) ||
-                     (bdm.RegistrationNumber?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) ||
-                     (bdm.Bus.BusType?.ToLowerInvariant().Contains(lowerCaseValue) ?? false) || // Search underlying Bus type
-                     (bdm.BusId.ToString().Contains(lowerCaseValue)) // Search ID
-            ).ToList();
-                 Log.Verbose("Filtering complete. Found {Count} buses matching '{SearchText}'.", filtered.Count, value);
-                Buses = new ObservableCollection<BusDisplayModel>(filtered);
-            }
+            _page = 1;
+            if (_active) _activation = LoadData();
         }
     }
-} 
+}

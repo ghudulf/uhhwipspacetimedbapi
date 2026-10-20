@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <PackageReference Include="Serilog" Version="4.2.1-dev-02337" />
+    <Compile Include="../../BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Services/TokenStorageService.cs" Link="TokenStorageService.cs" />
+    <Compile Include="../../BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Services/OAuthTokenResponse.cs" Link="OAuthTokenResponse.cs" />
+    <Compile Include="../../BRU-AVTOPARK-AspireAPI/TicketSalesApp.Services/Diagnostics/SafeDiagnostics.cs" Link="SafeDiagnostics.cs" />
+    <Compile Include="../../BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Serialization/CollectionPayload.cs" Link="CollectionPayload.cs" />
+      <Compile Include="../../BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Serialization/RecordedRevenue.cs" Link="RecordedRevenue.cs" />
+  </ItemGroup>
+<ItemGroup><ProjectReference Include="../../shared/BRU.Avtopark.Client/BRU.Avtopark.Client.csproj" /></ItemGroup>
+</Project>

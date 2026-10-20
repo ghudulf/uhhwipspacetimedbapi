@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=BRU Avtopark
+Comment=Fleet and ticket sales management
+Exec=bru-avtopark
+Icon=com.bru.avtopark.ticketsales
+Terminal=false
+Categories=Office;
+StartupNotify=true

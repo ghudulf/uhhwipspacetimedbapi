@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "user_settings";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(UserSettings row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(UserSettingsHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class UserSettingIdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(UserSettings row) => row.UserSettingId;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal UserSettingsHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 UserSettingId = new(this);
             }
 
@@ -49,6 +59,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<UserSettings, bool> IsWhatsAppNotificationsEnabled { get; }
         public global::SpacetimeDB.Col<UserSettings, bool> IsTelegramNotificationsEnabled { get; }
         public global::SpacetimeDB.Col<UserSettings, bool> IsDiscordNotificationsEnabled { get; }
+        public global::SpacetimeDB.Col<UserSettings, uint> ApiAccessPartition { get; }
 
         public UserSettingsCols(string tableName)
         {
@@ -62,16 +73,19 @@ namespace SpacetimeDB.Types
             IsWhatsAppNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_whats_app_notifications_enabled");
             IsTelegramNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_telegram_notifications_enabled");
             IsDiscordNotificationsEnabled = new global::SpacetimeDB.Col<UserSettings, bool>(tableName, "is_discord_notifications_enabled");
+            ApiAccessPartition = new global::SpacetimeDB.Col<UserSettings, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class UserSettingsIxCols
     {
         public global::SpacetimeDB.IxCol<UserSettings, uint> UserSettingId { get; }
+        public global::SpacetimeDB.IxCol<UserSettings, uint> ApiAccessPartition { get; }
 
         public UserSettingsIxCols(string tableName)
         {
             UserSettingId = new global::SpacetimeDB.IxCol<UserSettings, uint>(tableName, "user_setting_id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<UserSettings, uint>(tableName, "api_access_partition");
         }
     }
 }

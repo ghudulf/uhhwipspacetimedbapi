@@ -74,11 +74,11 @@ public partial class OAuthLoginPage : ContentPage
             var scopes = new[] { "openid", "profile", "email", "offline_access", "api" };
             var authUrl = _auth.OAuthService.GenerateAuthorizationUrl(scopes, out var state, out var codeVerifier);
 
-            Log.Information("[OAuthLoginPage] Auth URL generated, state={State}", state);
+            Log.Information("[OAuthLoginPage] Authorization request generated with state and PKCE");
 
             // Redirect URI must always be localhost — registered in OpenIddict on the server.
             // The discovered LAN IP is only for authorize/token endpoints.
-            var redirectUri = "http://localhost:5000/callback";
+            var redirectUri = _auth.OAuthService.RedirectUri;
 
             OAuthControl.AuthorizationUrl = authUrl;
             OAuthControl.RedirectUri      = redirectUri;

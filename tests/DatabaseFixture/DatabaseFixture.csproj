@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsSpacetimeDBModule>true</IsSpacetimeDBModule>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SpacetimeDB.Runtime" Version="2.1.0" />
+    <Compile Include="../../server/*.cs" Exclude="../../server/INITreducers.cs" Link="Module/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

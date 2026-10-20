@@ -25,11 +25,12 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateTicket(ReducerContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime = null, Identity? actingUser = null)
     {
+        if (!double.IsFinite(price) || price < 0) throw new Exception("Invalid ticket price.");
         Log.Info($"[CreateTicket] Starting for route: {routeId}, seat: {seatNumber}, price: {price}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         // Authorization check - verify the effective user has the required permission
         if (!HasPermission(ctx, effectiveUser, "create_ticket")) // CreateTicket PERM CHECK
@@ -110,21 +111,19 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateSale(ReducerContext ctx, uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null)
     {
-        Log.Info($"[CreateSale] Starting for ticket: {ticketId}, buyer: {buyerName}");
-        // Validate that the ticket exists
-        if (!ctx.Db.Ticket.Iter().Any(t => t.TicketId == ticketId))
-        {
-            Log.Error($"[CreateSale] Ticket not found: {ticketId}");
-            throw new Exception("Ticket not found.");
-        }
+        CreateSaleCore(ctx, ticketId, buyerName, buyerPhone, saleLocation, saleNotes, ctx.Sender);
+    }
 
-        // Get the ticket to extract route information
-        var ticket = ctx.Db.Ticket.TicketId.Find(ticketId);
-        if (ticket == null)
-        {
-            Log.Error($"[CreateSale] Ticket not found: {ticketId}");
-            throw new Exception("Ticket not found.");
-        }
+    private static uint CreateSaleCore(ReducerContext ctx, uint ticketId, string buyerName, string buyerPhone,
+        string? saleLocation, string? saleNotes, Identity actor)
+    {
+        if (!HasPermission(ctx, actor, "sales.create")) throw new Exception("Missing sales.create permission.");
+        ValidateSaleFields(buyerName, buyerPhone, saleLocation, saleNotes);
+        if (string.IsNullOrWhiteSpace(buyerName)) throw new Exception("Buyer name is required.");
+        var ticket = ctx.Db.Ticket.TicketId.Find(ticketId) ?? throw new Exception("Ticket not found.");
+        if (!ticket.IsActive) throw new Exception("Ticket is unavailable.");
+        if (!double.IsFinite(ticket.TicketPrice) || ticket.TicketPrice < 0) throw new Exception("Invalid ticket amount.");
+        if (ctx.Db.Sale.Iter().Any(s => s.TicketId == ticketId)) throw new Exception("Ticket already sold.");
 
         uint saleId = 0;
         var counter = ctx.Db.SaleIdCounter.Key.Find("saleId");
@@ -146,11 +145,15 @@ public static partial class Module
             SaleDate = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             TicketSoldToUser = buyerName,
             TicketSoldToUserPhone = buyerPhone,
-            SellerId = ctx.Sender,
+            SellerId = actor,
+            TotalAmount = ticket.TicketPrice,
+            PaymentMethod = ticket.PaymentMethod,
+            PaymentStatus = "Completed",
             SaleLocation = saleLocation,
             SaleNotes = saleNotes
         };
         ctx.Db.Sale.Insert(sale);
+        ctx.Db.SaleRevision.Insert(new SaleRevision { SaleId = saleId, Revision = 1, RecordedAmount = ticket.TicketPrice, AmountKnown = true });
 
         // Publish ticket sale event
         ctx.Db.TicketSaleEvent.Insert(new TicketSaleEvent
@@ -158,12 +161,13 @@ public static partial class Module
             SaleId = saleId,
             TicketId = ticketId,
             RouteId = ticket.RouteId,
-            BuyerId = ctx.Sender,
+            BuyerId = actor,
             Amount = ticket.TicketPrice,
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             PaymentMethod = ticket.PaymentMethod
         });
-        Log.Info($"[CreateSale] Successfully created sale ID: {saleId} for ticket: {ticketId}");
+        Log.Info($"[CreateSale] Committed sale {saleId}, ticket {ticketId}, seller {actor}");
+        return saleId;
     }
 
     [SpacetimeDB.Reducer]
@@ -173,7 +177,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         var ticket = ctx.Db.Ticket.Iter().FirstOrDefault(t => t.TicketId == ticketId);
         if (ticket == null)
@@ -218,11 +222,12 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateTicket(ReducerContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, Identity? actingUser = null)
     {
+        if (ticketPrice.HasValue && (!double.IsFinite(ticketPrice.Value) || ticketPrice < 0)) throw new Exception("Invalid ticket price.");
         Log.Info($"[UpdateTicket] Starting for ticket ID: {ticketId}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "tickets.edit")) // UpdateTicket PERM CHECK
         {
@@ -277,7 +282,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "tickets.delete")) // DeleteTicket PERM CHECK
         {
@@ -301,7 +306,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "sales.edit")) // UpdateSale PERM CHECK
         {
@@ -315,19 +320,9 @@ public static partial class Module
             throw new Exception("Sale not found.");
         }
 
-        // Store old values for event
-        var oldTicketId = sale.TicketId;
-
-        // Update only if new value is not null
-        if (ticketId.HasValue)
-        {
-            if (!ctx.Db.Ticket.Iter().Any(t => t.TicketId == ticketId))
-            {
-                Log.Error($"[UpdateSale] Ticket not found: {ticketId}");
-                throw new Exception("Ticket not found.");
-            }
-            sale.TicketId = ticketId.Value;
-        }
+        ValidateSaleFields(ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes);
+        if (ticketId.HasValue && ticketId.Value != sale.TicketId)
+            throw new Exception("A sale's original ticket cannot be changed.");
         if (ticketSoldToUser != null)
         {
             sale.TicketSoldToUser = ticketSoldToUser;
@@ -346,6 +341,9 @@ public static partial class Module
         }
 
         ctx.Db.Sale.SaleId.Update(sale);
+        var revision = ctx.Db.SaleRevision.SaleId.Find(saleId);
+        if (revision == null) ctx.Db.SaleRevision.Insert(new SaleRevision { SaleId = saleId, Revision = 1, RecordedAmount = sale.TotalAmount, AmountKnown = sale.TotalAmount > 0 });
+        else { revision.Revision = checked(revision.Revision + 1); ctx.Db.SaleRevision.SaleId.Update(revision); }
         Log.Info($"Sale {saleId} updated");
 
         // Get the ticket to extract route and price information
@@ -374,7 +372,7 @@ public static partial class Module
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
-        var effectiveUser = actingUser ?? ctx.Sender;
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         
         if (!HasPermission(ctx, effectiveUser, "sales.delete")) // DeleteSale PERM CHECK
         {

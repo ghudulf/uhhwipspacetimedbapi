@@ -55,7 +55,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
                     );
 
                     // Special logging for Auth controller
-                    if (actualControllerType == "AuthController")
+                    if (actualControllerType is "AuthController" or "AuthControllerRefactored")
                     {
                         _logger.LogInformation(
                             "🔀 AUTH ROUTING: {HttpMethod} {Path} → {ControllerType}.{ActionName}",

@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "open_id_connect";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(OpenIdConnect row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(OpenIdConnectHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class ClientIdUniqueIndex : UniqueIndexBase<string>
             {
                 protected override string GetKey(OpenIdConnect row) => row.ClientId;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal OpenIdConnectHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 ClientId = new(this);
             }
 
@@ -51,6 +61,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIdConnect, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<OpenIdConnect, string> CreatedBy { get; }
         public global::SpacetimeDB.Col<OpenIdConnect, bool> RequireConsent { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, uint> ApiAccessPartition { get; }
 
         public OpenIdConnectCols(string tableName)
         {
@@ -66,16 +77,19 @@ namespace SpacetimeDB.Types
             CreatedAt = new global::SpacetimeDB.Col<OpenIdConnect, ulong>(tableName, "created_at");
             CreatedBy = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "created_by");
             RequireConsent = new global::SpacetimeDB.Col<OpenIdConnect, bool>(tableName, "require_consent");
+            ApiAccessPartition = new global::SpacetimeDB.Col<OpenIdConnect, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class OpenIdConnectIxCols
     {
         public global::SpacetimeDB.IxCol<OpenIdConnect, string> ClientId { get; }
+        public global::SpacetimeDB.IxCol<OpenIdConnect, uint> ApiAccessPartition { get; }
 
         public OpenIdConnectIxCols(string tableName)
         {
             ClientId = new global::SpacetimeDB.IxCol<OpenIdConnect, string>(tableName, "client_id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<OpenIdConnect, uint>(tableName, "api_access_partition");
         }
     }
 }

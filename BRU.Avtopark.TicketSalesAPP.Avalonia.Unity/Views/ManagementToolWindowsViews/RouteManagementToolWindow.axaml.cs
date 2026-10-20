@@ -9,7 +9,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         public RouteManagementToolWindow()
         {
             InitializeComponent();
-            DataContext = new RouteManagementViewModel();
+            var viewModel = new RouteManagementViewModel();
+            DataContext = viewModel;
+            AttachedToVisualTree += async (_, _) => await viewModel.ActivateAsync();
+            DetachedFromVisualTree += (_, _) => viewModel.Deactivate();
         }
 
         private void InitializeComponent()

@@ -62,14 +62,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Information("ApiClientService.AuthToken: Setting new token");
                     if (value != null)
                     {
-                       Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...",
-                            value.Length, value.Length > 20 ? value.Substring(0, 20) : value);
+                       Serilog.Log.Debug("ApiClientService.AuthToken: Session credential replaced");
                     }
                     else
                     {
                         Serilog.Log.Information("ApiClientService.AuthToken: Token cleared (set to null)");
                     }
                     _authToken = value;
+                    _ = ResetRealtimeAsync();
                     OnAuthTokenChanged?.Invoke(this, value);
                 }
                 else
@@ -77,6 +77,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Debug("ApiClientService.AuthToken: Token value unchanged, skipping event");
                 }
             }
+        }
+
+        private static async Task ResetRealtimeAsync()
+        {
+            try { await ApplicationClientCoordinator.ResetAsync(); }
+            catch (Exception ex) { Serilog.Log.Warning("Realtime session cleanup failed: {ExceptionType}", ex.GetType().Name); }
         }
 
         public bool? IsAdmin
@@ -143,6 +149,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (_discoveredBaseUrl != null)
                     return _discoveredBaseUrl;
 
+                if (WindowsAccountClient.TrustedOrigin is { } configured)
+                {
+                    // Explicit configuration takes precedence over LAN discovery.
+                    _discoveredBaseUrl = new Uri(configured, "api/").AbsoluteUri;
+                    _wasDiscoveredSuccessfully = await PingApiAsync(configured.AbsoluteUri, cancellationToken);
+                    return _discoveredBaseUrl;
+                }
+
                 Serilog.Log.Information("ApiClientService: Starting API server discovery...");
 
                 // 1. Try localhost first (fastest path for the dev machine)
@@ -188,6 +202,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         /// </summary>
         public void ResetDiscovery()
         {
+            AuthToken = null; // A discovered server change starts a new application session.
             _discoveredBaseUrl = null;
             _wasDiscoveredSuccessfully = false;
             Serilog.Log.Information("ApiClientService: Discovery cache cleared");

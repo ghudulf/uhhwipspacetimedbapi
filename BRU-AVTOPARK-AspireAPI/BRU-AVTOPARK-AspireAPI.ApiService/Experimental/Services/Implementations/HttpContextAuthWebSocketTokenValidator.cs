@@ -15,7 +15,7 @@ namespace BRU_AVTOPARK.Services.Implementations;
 
 /// <summary>
 /// Validates bearer tokens for the WebSocket auth service using the current HTTP context.
-/// Routes JWE (5-segment) tokens to the local /connect/tokeninfo endpoint and validates
+/// Validates JWE (5-segment) tokens through the local OpenIddict pipeline and validates
 /// plain JWT (3-segment) tokens locally via symmetric signature verification.
 /// Mirrors the logic in BaseController.ValidateTokenDirectAsync without inheriting from it.
 /// </summary>
@@ -65,12 +65,12 @@ public sealed class HttpContextAuthWebSocketTokenValidator : IAuthWebSocketToken
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("ValidateTokenDirectAsync - Validation cancelled");
-            return null;
+            _logger.LogDebug("ValidateTokenDirectAsync - Validation cancelled");
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "ValidateTokenDirectAsync - Unexpected error");
+            _logger.LogError("ValidateTokenDirectAsync - Failure type {ErrorType}", ex.GetType().Name);
             return null;
         }
     }
@@ -79,80 +79,11 @@ public sealed class HttpContextAuthWebSocketTokenValidator : IAuthWebSocketToken
 
     private async Task<Dictionary<string, object>?> ValidateJweAsync(string token, CancellationToken cancellationToken)
     {
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null)
-        {
-            _logger.LogError("ValidateJweAsync - No HttpContext available");
-            return null;
-        }
-
-        var httpClient = _httpClientFactory.CreateClient("TokenInfo");
-
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TokenInfoTimeoutSeconds));
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        // Use server-controlled base URL from configuration to prevent SSRF via spoofed Host header
-        var configuredBase = _config["TokenInfo:BaseUrl"]
-            ?? _config["Kestrel:Endpoints:Http:Url"]
-            ?? "http://localhost:5000";
-        var baseUrl = configuredBase.TrimEnd('/');
-        var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
-
-        _logger.LogDebug("ValidateJweAsync - GET {Url}", tokeninfoUrl);
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
-        }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
-        {
-            _logger.LogWarning("ValidateJweAsync - tokeninfo call timed out");
-            return null;
-        }
-
-        using (response)
-        {
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
-                _logger.LogWarning("ValidateJweAsync - tokeninfo returned {Status}: {Body}", (int)response.StatusCode, errorBody);
-                return null;
-            }
-
-            var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
-
-            JsonElement tokenInfo;
-            try { tokenInfo = JsonSerializer.Deserialize<JsonElement>(content); }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "ValidateJweAsync - Failed to parse tokeninfo JSON");
-                return null;
-            }
-
-            if (!tokenInfo.TryGetProperty("claims", out var claimsElement))
-            {
-                _logger.LogWarning("ValidateJweAsync - Response has no 'claims' property");
-                return null;
-            }
-
-            var claims = ExtractClaims(claimsElement);
-
-            // Defence-in-depth expiry check
-            if (claims.TryGetValue("exp", out var expObj) && long.TryParse(expObj?.ToString(), out var expUnix))
-            {
-                if (DateTimeOffset.FromUnixTimeSeconds(expUnix) < DateTimeOffset.UtcNow)
-                {
-                    _logger.LogWarning("ValidateJweAsync - Token is expired");
-                    return null;
-                }
-            }
-
-            _logger.LogInformation("ValidateJweAsync - Extracted {Count} claims from JWE tokeninfo", claims.Count);
-            return claims;
-        }
+        var services = _httpContextAccessor.HttpContext?.RequestServices
+            ?? throw new InvalidOperationException("Request services unavailable.");
+        var claims = await BRU_AVTOPARK_AspireAPI.ApiService.Authentication.LocalTokenValidation.ValidateAsync(services, token, cancellationToken);
+        _logger.LogDebug("Encrypted socket token validated locally; claim count {Count}", claims.Count);
+        return claims;
     }
 
     // ── JWT: local signature validation ───────────────────────────────────────
@@ -222,7 +153,7 @@ public sealed class HttpContextAuthWebSocketTokenValidator : IAuthWebSocketToken
         }
         catch (SecurityTokenException ex)
         {
-            _logger.LogWarning("ValidateJwt - Token validation failed: {Msg}", ex.Message);
+            _logger.LogWarning("ValidateJwt - Rejected token; failure type {ErrorType}", ex.GetType().Name);
             return null;
         }
     }

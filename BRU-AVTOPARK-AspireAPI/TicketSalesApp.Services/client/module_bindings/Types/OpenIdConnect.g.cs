@@ -37,6 +37,8 @@ namespace SpacetimeDB.Types
         public string? CreatedBy;
         [DataMember(Name = "require_consent")]
         public bool RequireConsent;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public OpenIdConnect(
             string ClientId,
@@ -50,7 +52,8 @@ namespace SpacetimeDB.Types
             bool IsActive,
             ulong CreatedAt,
             string? CreatedBy,
-            bool RequireConsent
+            bool RequireConsent,
+            uint ApiAccessPartition
         )
         {
             this.ClientId = ClientId;
@@ -65,6 +68,7 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.CreatedBy = CreatedBy;
             this.RequireConsent = RequireConsent;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public OpenIdConnect()

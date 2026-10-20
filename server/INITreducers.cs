@@ -7,6 +7,7 @@ public static partial class Module
     [SpacetimeDB.Reducer(SpacetimeDB.ReducerKind.Init)]
     public static void Init(ReducerContext ctx)
     {
+        ctx.Db.DeploymentAuthority.Insert(new DeploymentAuthority { Id = 1, Owner = ctx.Sender });
         // Log the start of initialization
         Log.Info("Initializing the system...");
         // Change the order of initialization to avoid permission issues
@@ -25,46 +26,8 @@ public static partial class Module
         InitializeRoles(ctx);
         Log.Info("Roles initialization completed");
 
-        // 4. Initialize Jobs
-        Log.Info("Starting Jobs initialization...");
-        InitializeJobs(ctx);
-        Log.Info("Jobs initialization completed");
-
-        // 5. Initialize Employees
-        Log.Info("Starting Employees initialization...");
-        InitializeEmployees(ctx);
-        Log.Info("Employees initialization completed");
-
-        // 6. Initialize Buses
-        Log.Info("Starting Buses initialization...");
-        InitializeBuses(ctx);
-        Log.Info("Buses initialization completed");
-
-        // 7. Initialize Routes
-        Log.Info("Starting Routes initialization...");
-        InitializeRoutes(ctx);
-        Log.Info("Routes initialization completed");
-
-        // 8. Initialize Tickets
-        Log.Info("Starting Tickets initialization...");
-        InitializeTickets(ctx);
-        Log.Info("Tickets initialization completed");
-
-        // 9. Initialize Maintenance Records
-        Log.Info("Starting Maintenance Records initialization...");
-        InitializeMaintenance(ctx);
-        Log.Info("Maintenance Records initialization completed");
-
-        // 10. Initialize Route Schedules
-        Log.Info("Starting Route Schedules initialization...");
-        InitializeRouteSchedules(ctx);
-        Log.Info("Route Schedules initialization completed");
-
-        // 11. Initialize Sales
-        Log.Info("Starting Sales initialization...");
-        InitializeSales(ctx);
-        Log.Info("Sales initialization completed");
-
+        // Business demo fixtures are opt-in and must not make a fresh production deployment
+        // run years of schedule inserts inside its initialization transaction.
         // 12. Log permission counts and assignment status
         Log.Info("Checking permission assignments...");
         
@@ -119,6 +82,26 @@ public static partial class Module
         Log.Info("System initialized successfully");
     }
 
+    [SpacetimeDB.Reducer]
+    public static void SeedDemoData(ReducerContext ctx, uint stage)
+    {
+        RequireDeploymentOwner(ctx);
+        // Separate transactions bound demo initialization work. Never runs on upgrade.
+        switch (stage)
+        {
+            case 1: InitializeJobs(ctx); break;
+            case 2: InitializeEmployees(ctx); break;
+            case 3: InitializeBuses(ctx); break;
+            case 4: InitializeRoutes(ctx); break;
+            case 5: InitializeTickets(ctx); break;
+            case 6: InitializeMaintenance(ctx); break;
+            case 7: InitializeRouteSchedules(ctx); break;
+            case 8: InitializeSales(ctx); break;
+            default: throw new Exception("Demo stage must be between 1 and 8, in order.");
+        }
+        Log.Info($"Demo initialization stage committed: {stage}");
+    }
+
     private static void InitializeAdminUser(ReducerContext ctx)
     {
         Log.Info("Initializing admin user...");
@@ -138,11 +121,11 @@ public static partial class Module
                 Login = "admin",
                 Email = "admin@example.com",
                 PhoneNumber = "+375333000000",
-                PasswordHash = HashPassword("admin"),
+                PasswordHash = null,
                 IsActive = true,
-                CreatedAt = GetSafeUnixTimestamp(),
+                CreatedAt = GetSafeUnixTimestamp(ctx),
                 LastLoginAt = null,
-                LegacyGuid = Guid.NewGuid().ToString()
+                LegacyGuid = ctx.NewUuidV4().ToString()
             };
 
             ctx.Db.UserProfile.Insert(admin);
@@ -164,8 +147,8 @@ public static partial class Module
                     IsSystem = true,
                     Priority = 100,
                     IsActive = true,
-                    CreatedAt = GetSafeUnixTimestamp(),
-                    UpdatedAt = GetSafeUnixTimestamp(),
+                    CreatedAt = GetSafeUnixTimestamp(ctx),
+                    UpdatedAt = GetSafeUnixTimestamp(ctx),
                     CreatedBy = "System",
                     UpdatedBy = "System",
                     NormalizedName = "ADMINISTRATOR"
@@ -182,7 +165,7 @@ public static partial class Module
                     Id = userRoleId,
                     UserId = admin.UserId,
                     RoleId = adminRole.RoleId,
-                    AssignedAt = GetSafeUnixTimestamp(),
+                    AssignedAt = GetSafeUnixTimestamp(ctx),
                     AssignedBy = "System"
                 };
                 ctx.Db.UserRole.Insert(userRole);
@@ -207,11 +190,11 @@ public static partial class Module
                 Login = "guest",
                 Email = "guest@example.com",
                 PhoneNumber = "+375333000001",
-                PasswordHash = HashPassword("gX9#mP2$kL5"),
+                PasswordHash = null,
                 IsActive = false, // Not active until claimed
-                CreatedAt = GetSafeUnixTimestamp(),
+                CreatedAt = GetSafeUnixTimestamp(ctx),
                 LastLoginAt = null,
-                LegacyGuid = Guid.NewGuid().ToString()
+                LegacyGuid = ctx.NewUuidV4().ToString()
             };
 
             ctx.Db.UserProfile.Insert(guest);
@@ -233,8 +216,8 @@ public static partial class Module
                     IsSystem = true,
                     Priority = 1,
                     IsActive = true,
-                    CreatedAt = GetSafeUnixTimestamp(),
-                    UpdatedAt = GetSafeUnixTimestamp(),
+                    CreatedAt = GetSafeUnixTimestamp(ctx),
+                    UpdatedAt = GetSafeUnixTimestamp(ctx),
                     CreatedBy = "System",
                     UpdatedBy = "System",
                     NormalizedName = "USER"
@@ -251,7 +234,7 @@ public static partial class Module
                     Id = guestUserRoleId,
                     UserId = guest.UserId,
                     RoleId = userRoleObj.RoleId,
-                    AssignedAt = GetSafeUnixTimestamp(),
+                    AssignedAt = GetSafeUnixTimestamp(ctx),
                     AssignedBy = "System"
                 };
                 ctx.Db.UserRole.Insert(guestUserRole);
@@ -396,7 +379,7 @@ public static partial class Module
                 Description = "Assign roles to users",
                 Category = "Role Management",
                 IsActive = true,
-                CreatedAt = GetSafeUnixTimestamp()
+                CreatedAt = GetSafeUnixTimestamp(ctx)
             };
             ctx.Db.Permission.Insert(assignRolesPermission);
             Log.Info("assign_roles permission created successfully");
@@ -425,7 +408,7 @@ public static partial class Module
                     Description = "Grant permissions to roles",
                     Category = "Permission Management",
                     IsActive = true,
-                    CreatedAt = GetSafeUnixTimestamp()
+                    CreatedAt = GetSafeUnixTimestamp(ctx)
                 };
                 ctx.Db.Permission.Insert(grantPermission);
                 Log.Info("grant_permissions permission created successfully");
@@ -447,7 +430,7 @@ public static partial class Module
                     Id = rolePermId,
                     RoleId = adminRole.RoleId,
                     PermissionId = grantPermission.PermissionId,
-                    GrantedAt = GetSafeUnixTimestamp(),
+                    GrantedAt = GetSafeUnixTimestamp(ctx),
                     GrantedBy = "System"
                 };
                 ctx.Db.RolePermission.Insert(rolePermission);
@@ -470,7 +453,7 @@ public static partial class Module
                     Id = rolePermId,
                     RoleId = adminRole.RoleId,
                     PermissionId = assignRolesPermission.PermissionId,
-                    GrantedAt = GetSafeUnixTimestamp(),
+                    GrantedAt = GetSafeUnixTimestamp(ctx),
                     GrantedBy = "System"
                 };
                 ctx.Db.RolePermission.Insert(rolePermission);
@@ -495,7 +478,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = adminRole.RoleId,
                         PermissionId = permission.PermissionId,
-                        GrantedAt = GetSafeUnixTimestamp(),
+                        GrantedAt = GetSafeUnixTimestamp(ctx),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -561,7 +544,7 @@ public static partial class Module
                                 Id = rolePermId,
                                 RoleId = userRole.RoleId,
                                 PermissionId = permission.PermissionId,
-                                GrantedAt = GetSafeUnixTimestamp(),
+                                GrantedAt = GetSafeUnixTimestamp(ctx),
                                 GrantedBy = "System"
                             };
                             ctx.Db.RolePermission.Insert(rolePermission);
@@ -651,7 +634,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = adminRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = GetSafeUnixTimestamp(),
+                        GrantedAt = GetSafeUnixTimestamp(ctx),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -666,7 +649,7 @@ public static partial class Module
             // Assign view permissions to user role
             Log.Info("Assigning view permissions to User role");
             var viewPermissions = ctx.Db.Permission.Iter()
-                .Where(p => p.Name.EndsWith(".view"))
+                .Where(p => p.Name.EndsWith(".view", StringComparison.Ordinal))
                 .ToList();
             Log.Debug($"Found {viewPermissions.Count} view permissions to assign to User role");
 
@@ -684,7 +667,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = userRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = GetSafeUnixTimestamp(),
+                        GrantedAt = GetSafeUnixTimestamp(ctx),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -699,7 +682,7 @@ public static partial class Module
             // Assign manager permissions (view + create + edit)
             Log.Info("Assigning view, create, and edit permissions to Manager role");
             var managerPermissions = ctx.Db.Permission.Iter()
-                .Where(p => p.Name.EndsWith(".view") || p.Name.EndsWith(".create") || p.Name.EndsWith(".edit"))
+                .Where(p => p.Name.EndsWith(".view", StringComparison.Ordinal) || p.Name.EndsWith(".create", StringComparison.Ordinal) || p.Name.EndsWith(".edit", StringComparison.Ordinal))
                 .ToList();
             Log.Debug($"Found {managerPermissions.Count} permissions to assign to Manager role");
 
@@ -717,7 +700,7 @@ public static partial class Module
                         Id = rolePermId,
                         RoleId = managerRole.RoleId,
                         PermissionId = perm.PermissionId,
-                        GrantedAt = GetSafeUnixTimestamp(),
+                        GrantedAt = GetSafeUnixTimestamp(ctx),
                         GrantedBy = "System"
                     };
                     ctx.Db.RolePermission.Insert(rolePermission);
@@ -961,7 +944,7 @@ public static partial class Module
             DateTime? driverLicenseExpiryClean = driverLicenseExpiry;
 
             // Get the local timezone
-            TimeZoneInfo localZone = TimeZoneInfo.Local;
+            TimeZoneInfo localZone = TimeZoneInfo.Utc;
 
             // Convert to DateTimeOffset with proper timezone
             DateTimeOffset employedSinceOffset = new DateTimeOffset(employedSinceClean, localZone.GetUtcOffset(employedSinceClean));
@@ -1062,7 +1045,7 @@ public static partial class Module
 
         // Use safe timestamp generation
         DateTime cleanDateTime = new DateTime(2025, 4, 3);
-        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        TimeZoneInfo localZone = TimeZoneInfo.Utc;
         DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
         ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
         
@@ -1189,7 +1172,7 @@ public static partial class Module
             ("Могилев", "Круглое", "1 час")
         };
 
-        Random random = new Random();
+        Random random = ctx.Rng;
 
         for (int i = 0; i < routes.Length; i++)
         {
@@ -1499,7 +1482,7 @@ public static partial class Module
         ulong sixtyDaysAhead = now + (60 * daysInMs);
         Log.Debug($"Valid date range: from {DateTimeOffset.FromUnixTimeMilliseconds((long)thirtyDaysAgo)} to {DateTimeOffset.FromUnixTimeMilliseconds((long)sixtyDaysAhead)}");
 
-        Random random = new Random();
+        Random random = ctx.Rng;
         Log.Debug("Random number generator initialized");
 
         int routeCounter = 0;
@@ -1526,7 +1509,7 @@ public static partial class Module
                 possibleBusTypes = trolleybusTypes;
                 Log.Debug($"Route {route.RouteNumber} is trolleybus route, assigning trolleybus types");
                 // Проверяем, может ли это быть электробус (например, 16Э)
-                if (route.RouteNumber.EndsWith("Э"))
+                if (route.RouteNumber.EndsWith("Э", StringComparison.Ordinal))
                 {
                     possibleBusTypes = electrobusTypes;
                     Log.Debug($"Route {route.RouteNumber} ends with 'Э', reassigning to electrobus types");
@@ -1590,17 +1573,17 @@ public static partial class Module
             Log.Debug($"Creating morning schedule for route {route.RouteNumber}");
 
             // Calculate date range
-            DateTime startDate = new DateTime(2024, 1, 1); // Start from beginning of 2024
+            DateTime startDate = new DateTime(2025, 4, 3); // Start from beginning of 2024
             //will it stop dying on inserts now-fuck knows
-            DateTime endDate = new DateTime(2025, 12, 31); // WILL THIS MAKE THE CODE NOT KILL ITSELF?
-            TimeZoneInfo localZone = TimeZoneInfo.Local;
+            DateTime endDate = startDate.AddDays(6); // WILL THIS MAKE THE CODE NOT KILL ITSELF?
+            TimeZoneInfo localZone = TimeZoneInfo.Utc;
 
             for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
             {
                 // Create clean DateTime objects for this day
                 DateTime morningTime = date.Date.AddHours(6);  // 6:00 AM
                 DateTime afternoonTime = date.Date.AddHours(14); // 2:00 PM
-                DateTime eveningTime = currentDate.Date.AddHours(18);  // 6:00 PM
+                DateTime eveningTime = date.Date.AddHours(18);  // 6:00 PM
 
                 // Convert to DateTimeOffset with local timezone
                 DateTimeOffset morningOffset = new DateTimeOffset(morningTime, localZone.GetUtcOffset(morningTime));
@@ -2111,7 +2094,7 @@ public static partial class Module
         };
 
         // Generate random VIN pattern for Soviet-era buses
-        Random random = new Random();
+        Random random = ctx.Rng;
 
         foreach (var (model, year, busType, capacity, seatedCapacity, standingCapacity, fuelType, fuelConsumption) in busData)
         {
@@ -2182,7 +2165,7 @@ public static partial class Module
 
         // Use safe timestamp generation
         DateTime cleanDateTime = new DateTime(2025, 4, 3);
-        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        TimeZoneInfo localZone = TimeZoneInfo.Utc;
         DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
         ulong now = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
 
@@ -2349,7 +2332,7 @@ public static partial class Module
 
         DateTime cleanDateTime = new DateTime(2025, 4, 3);
         // Get the local timezone
-        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        TimeZoneInfo localZone = TimeZoneInfo.Utc;
         Log.Debug($"Local timezone: {localZone.DisplayName}");
         // Convert to DateTimeOffset with proper timezone
         DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
@@ -2463,7 +2446,7 @@ public static partial class Module
 
         DateTime cleanDateTime = new DateTime(2025, 4, 3);
         // Get the local timezone
-        TimeZoneInfo localZone = TimeZoneInfo.Local;
+        TimeZoneInfo localZone = TimeZoneInfo.Utc;
         Log.Debug($"Local timezone: {localZone.DisplayName}");
         // Convert to DateTimeOffset with proper timezone
         DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
@@ -2535,7 +2518,7 @@ public static partial class Module
                         PromotionCode = (i % 4 == 0) ? "DISCOUNT10" : null,
                         DiscountAmount = discountAmount,
                         TotalAmount = totalAmount,
-                        PaymentTransactionId = (paymentMethod != "Cash") ? $"PAY-{saleId}-{Guid.NewGuid().ToString().Substring(0, 8)}" : null,
+                        PaymentTransactionId = (paymentMethod != "Cash") ? $"PAY-{saleId}-{ctx.NewUuidV4().ToString().Substring(0, 8)}" : null,
                         ChangeAmount = changeAmount,
                         PaymentProvider = (paymentMethod == "Card") ? "Visa" : (paymentMethod == "Mobile Payment") ? "Apple Pay" : null,
                         PaymentReference = (paymentMethod != "Cash") ? $"REF-{saleId}" : null
@@ -2589,7 +2572,7 @@ public static partial class Module
                     PromotionCode = isSubscription ? "MONTHLY20" : null,
                     DiscountAmount = discountAmount,
                     TotalAmount = totalAmount,
-                    PaymentTransactionId = $"PAY-ONLINE-{saleId}-{Guid.NewGuid().ToString().Substring(0, 8)}",
+                    PaymentTransactionId = $"PAY-ONLINE-{saleId}-{ctx.NewUuidV4().ToString().Substring(0, 8)}",
                     ChangeAmount = 0.0, // No change for online payments
                     PaymentProvider = (paymentMethod == "Card") ? "Mastercard" : "Google Pay",
                     PaymentReference = $"REF-ONLINE-{saleId}"
@@ -2606,28 +2589,11 @@ public static partial class Module
     /// </summary>
     /// <param name="dateTime">The DateTime to convert (defaults to 2025-04-03 if not provided)</param>
     /// <returns>Unix timestamp in milliseconds as ulong</returns>
-    public static ulong GetSafeUnixTimestamp(DateTime? dateTime = null)
+    public static ulong GetSafeUnixTimestamp(ReducerContext ctx, DateTime? dateTime = null)
     {
-        Log.Debug("GetSafeUnixTimestamp: Starting conversion");
-        
-        // Use provided date or default to a safe future date
-        DateTime cleanDateTime = dateTime ?? new DateTime(2025, 4, 3);
-        Log.Debug($"GetSafeUnixTimestamp: Using clean DateTime: {cleanDateTime:yyyy-MM-dd HH:mm:ss}");
-        
-        // Get the local timezone
-        TimeZoneInfo localZone = TimeZoneInfo.Local;
-        Log.Debug($"GetSafeUnixTimestamp: Local timezone: {localZone.DisplayName}");
-        
-        // Convert to DateTimeOffset with proper timezone
-        DateTimeOffset dateTimeOffset = new DateTimeOffset(cleanDateTime, localZone.GetUtcOffset(cleanDateTime));
-        Log.Debug($"GetSafeUnixTimestamp: Converted to DateTimeOffset: {dateTimeOffset:yyyy-MM-dd HH:mm:ss zzz}");
-        
-        // Convert to Unix timestamp (milliseconds)
-        ulong unixTimestamp = (ulong)dateTimeOffset.ToUnixTimeMilliseconds();
-        Log.Debug($"GetSafeUnixTimestamp: Final Unix timestamp: {unixTimestamp}");
-        Log.Debug($"GetSafeUnixTimestamp: Verification - converting back: {DateTimeOffset.FromUnixTimeMilliseconds((long)unixTimestamp):yyyy-MM-dd HH:mm:ss zzz}");
-        
-        return unixTimestamp;
+        if (!dateTime.HasValue) return checked((ulong)(ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000));
+        // Seed dates are explicit UTC business fixtures, independent of the WASI host timezone.
+        return checked((ulong)new DateTimeOffset(DateTime.SpecifyKind(dateTime.Value, DateTimeKind.Utc)).ToUnixTimeMilliseconds());
     }
 
 

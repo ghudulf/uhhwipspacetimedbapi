@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
@@ -143,7 +143,7 @@ public partial class App : Application
             Log.Debug("Headless: splash screen closed");
 
             // Silently restore a cached token if one exists — no UI shown
-            var tokenStorage = new TokenStorageService();
+            var tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
             var existingTokens = await tokenStorage.GetTokensAsync();
 
             if (existingTokens != null && !string.IsNullOrEmpty(existingTokens.AccessToken)
@@ -206,6 +206,18 @@ public partial class App : Application
             return false;
         }
 
+        if (method.Value == LoginMethod.WindowsAccount)
+        {
+            using var lifetime = new System.Threading.CancellationTokenSource();
+            var vm = new AuthViewModel();
+            var window = new AuthWindow(vm);
+            var completed = new TaskCompletionSource<bool>();
+            window.Opened += async (_, _) => await vm.LoginWithWindowsAccountAsync(lifetime.Token);
+            window.Closed += (_, _) => { lifetime.Cancel(); completed.TrySetResult(vm.IsAuthenticated); };
+            window.Show();
+            return await completed.Task;
+        }
+
         if (method.Value == LoginMethod.OAuth)
         {
             Log.Information("Login selector: OAuth chosen");
@@ -224,7 +236,7 @@ public partial class App : Application
         else
         {
             Log.Information("Login selector: Traditional chosen");
-            var authWindow = new AuthWindow { DataContext = new AuthViewModel() };
+            var authWindow = new AuthWindow();
             var tcs = new TaskCompletionSource<bool>();
             authWindow.Closed += (_, _) =>
                 tcs.TrySetResult(authWindow.DataContext is AuthViewModel vm && vm.IsAuthenticated);
@@ -242,7 +254,7 @@ public partial class App : Application
         Window ownerWindow,
         IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var tokenStorage = new TokenStorageService();
+        var tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
         var authManager  = AuthenticationManager.Instance;
 
         // ── 1. Check if already fully authenticated (token valid in memory) ──

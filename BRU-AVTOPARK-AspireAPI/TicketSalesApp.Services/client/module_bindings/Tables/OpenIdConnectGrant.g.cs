@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "open_id_connect_grant";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(OpenIdConnectGrant row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(OpenIdConnectGrantHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class GrantIdUniqueIndex : UniqueIndexBase<string>
             {
                 protected override string GetKey(OpenIdConnectGrant row) => row.GrantId;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal OpenIdConnectGrantHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 GrantId = new(this);
             }
 
@@ -47,6 +57,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIdConnectGrant, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<OpenIdConnectGrant, ulong> ExpiresAt { get; }
         public global::SpacetimeDB.Col<OpenIdConnectGrant, bool> IsRevoked { get; }
+        public global::SpacetimeDB.Col<OpenIdConnectGrant, uint> ApiAccessPartition { get; }
 
         public OpenIdConnectGrantCols(string tableName)
         {
@@ -58,16 +69,19 @@ namespace SpacetimeDB.Types
             CreatedAt = new global::SpacetimeDB.Col<OpenIdConnectGrant, ulong>(tableName, "created_at");
             ExpiresAt = new global::SpacetimeDB.Col<OpenIdConnectGrant, ulong>(tableName, "expires_at");
             IsRevoked = new global::SpacetimeDB.Col<OpenIdConnectGrant, bool>(tableName, "is_revoked");
+            ApiAccessPartition = new global::SpacetimeDB.Col<OpenIdConnectGrant, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class OpenIdConnectGrantIxCols
     {
         public global::SpacetimeDB.IxCol<OpenIdConnectGrant, string> GrantId { get; }
+        public global::SpacetimeDB.IxCol<OpenIdConnectGrant, uint> ApiAccessPartition { get; }
 
         public OpenIdConnectGrantIxCols(string tableName)
         {
             GrantId = new global::SpacetimeDB.IxCol<OpenIdConnectGrant, string>(tableName, "grant_id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<OpenIdConnectGrant, uint>(tableName, "api_access_partition");
         }
     }
 }

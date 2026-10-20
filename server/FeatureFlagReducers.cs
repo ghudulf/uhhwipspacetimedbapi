@@ -19,7 +19,7 @@ public static partial class Module
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission
         if (!HasPermission(ctx, effectiveUser, "feature_flags.update"))
@@ -77,7 +77,7 @@ public static partial class Module
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission
         if (!HasPermission(ctx, effectiveUser, "feature_flags.clear"))
@@ -109,7 +109,7 @@ public static partial class Module
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission
         if (!HasPermission(ctx, effectiveUser, "feature_flags.delete"))

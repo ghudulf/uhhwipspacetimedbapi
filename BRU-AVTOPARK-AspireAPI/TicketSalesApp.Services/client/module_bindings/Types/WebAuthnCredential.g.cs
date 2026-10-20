@@ -29,6 +29,8 @@ namespace SpacetimeDB.Types
         public bool IsActive;
         [DataMember(Name = "device_name")]
         public string? DeviceName;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public WebAuthnCredential(
             uint Id,
@@ -38,7 +40,8 @@ namespace SpacetimeDB.Types
             uint Counter,
             ulong CreatedAt,
             bool IsActive,
-            string? DeviceName
+            string? DeviceName,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -49,6 +52,7 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.IsActive = IsActive;
             this.DeviceName = DeviceName;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public WebAuthnCredential()
