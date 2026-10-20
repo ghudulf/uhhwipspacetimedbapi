@@ -189,7 +189,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 await AttachAsync(attach.Token, ct);
                 return new AuthenticationReply(_state);
             case "auth.login":
-                if (runtimeFlags != null && !await runtimeFlags.GetFlagAsync("EnableLoginRefactoring")) throw new OperationException("endpoint_unavailable");
+                if (runtimeFlags != null && !await runtimeFlags.GetFlagAsync("LoginEndpointEnabled")) throw new OperationException("endpoint_unavailable");
                 if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
                 var login = command.Payload.Deserialize<LoginCommand>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
                 if (string.IsNullOrWhiteSpace(login.Username) || login.Username.Length > 200 || login.Password is not { Length: > 0 and <= 1024 }) throw new OperationException("validation_failed");
@@ -207,7 +207,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 await AttachAsync(authenticated.Token, ct);
                 return new AuthenticationReply(_state, authenticated.Token);
             case "auth.totp":
-                if (runtimeFlags != null && !await runtimeFlags.GetFlagAsync("EnableTotpValidateRefactoring")) throw new OperationException("endpoint_unavailable");
+                if (runtimeFlags != null && !await runtimeFlags.GetFlagAsync("TotpValidateEndpointEnabled")) throw new OperationException("endpoint_unavailable");
                 if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
                 var totp = command.Payload.Deserialize<TotpCommand>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
                 if (_challenge == null || DateTimeOffset.UtcNow >= AuthenticateBy) throw new OperationException("challenge_expired");

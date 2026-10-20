@@ -178,16 +178,18 @@
 
         function renderFlags(flags) {
             const categories = {
-                'Authentication': ['EnableLoginRefactoring', 'EnableRegisterRefactoring'],
-                'TOTP': ['EnableTotpSetupRefactoring', 'EnableTotpValidateRefactoring', 'EnableTotpEnableRefactoring', 'EnableTotpDisableRefactoring'],
-                'WebAuthn': ['EnableWebAuthnRegisterRefactoring', 'EnableWebAuthnValidateRefactoring', 'EnableWebAuthnCredentialsRefactoring', 'EnableWebAuthnRemoveRefactoring'],
-                'OAuth': ['EnableOAuthAuthorizeRefactoring', 'EnableOAuthTokenRefactoring', 'EnableOAuthUserInfoRefactoring', 'EnableOAuthClientRegisterRefactoring', 'EnableOAuthClientUpdateRefactoring', 'EnableOAuthClientDeleteRefactoring', 'EnableOAuthClientsListRefactoring', 'EnableOAuthScopesRefactoring'],
-                'Magic Link': ['EnableMagicLinkSendRefactoring', 'EnableMagicLinkValidateRefactoring'],
-                'QR Authentication': ['EnableQRGenerateRefactoring', 'EnableQRValidateRefactoring'],
-                'Profile': ['EnableProfileGetRefactoring', 'EnableProfileUpdateRefactoring'],
-                'User Management': ['EnableUserGetRefactoring', 'EnableUsersListRefactoring']
+                'Authentication': ['LoginEndpointEnabled', 'RegisterEndpointEnabled'],
+                'TOTP': ['TotpSetupEndpointEnabled', 'TotpValidateEndpointEnabled', 'TotpVerifyEndpointEnabled', 'TotpDisableEndpointEnabled'],
+                'WebAuthn': ['WebAuthnRegisterOptionsEndpointEnabled', 'WebAuthnValidateEndpointEnabled', 'WebAuthnCredentialsEndpointEnabled', 'WebAuthnCredentialDeleteEndpointEnabled'],
+                'OAuth': ['OAuthAuthorizeEndpointEnabled', 'OAuthTokenEndpointEnabled', 'OAuthUserInfoEndpointEnabled', 'OAuthClientRegisterEndpointEnabled', 'OAuthClientUpdateEndpointEnabled', 'OAuthClientDeleteEndpointEnabled', 'OAuthClientListEndpointEnabled', 'OAuthScopesEndpointEnabled'],
+                'Magic Link': ['MagicLinkSendEndpointEnabled', 'MagicLinkValidateEndpointEnabled'],
+                'QR Authentication': ['QRLoginGenerateEndpointEnabled', 'QRLoginValidateEndpointEnabled'],
+                'Profile': ['ProfileEndpointEnabled', 'ProfileUpdateEndpointEnabled']
             };
 
+            const categorized = new Set(Object.values(categories).flat());
+            categories['Other endpoints'] = Object.keys(flags)
+                .filter(name => name.endsWith('EndpointEnabled') && !categorized.has(name)).sort();
             let html = '';
             for (const [category, flagNames] of Object.entries(categories)) {
                 html += `<div class="flags-category">`;
@@ -270,10 +272,10 @@
 
         async function enableCategory(category) {
             const categoryFlags = {
-                'Login': ['EnableLoginRefactoring', 'EnableRegisterRefactoring'],
-                'Totp': ['EnableTotpSetupRefactoring', 'EnableTotpValidateRefactoring', 'EnableTotpEnableRefactoring', 'EnableTotpDisableRefactoring'],
-                'WebAuthn': ['EnableWebAuthnRegisterRefactoring', 'EnableWebAuthnValidateRefactoring', 'EnableWebAuthnCredentialsRefactoring', 'EnableWebAuthnRemoveRefactoring'],
-                'OAuth': ['EnableOAuthAuthorizeRefactoring', 'EnableOAuthTokenRefactoring', 'EnableOAuthUserInfoRefactoring', 'EnableOAuthClientRegisterRefactoring', 'EnableOAuthClientUpdateRefactoring', 'EnableOAuthClientDeleteRefactoring', 'EnableOAuthClientsListRefactoring', 'EnableOAuthScopesRefactoring']
+                'Login': ['LoginEndpointEnabled', 'RegisterEndpointEnabled'],
+                'Totp': ['TotpSetupEndpointEnabled', 'TotpValidateEndpointEnabled', 'TotpVerifyEndpointEnabled', 'TotpDisableEndpointEnabled'],
+                'WebAuthn': ['WebAuthnRegisterOptionsEndpointEnabled', 'WebAuthnValidateEndpointEnabled', 'WebAuthnCredentialsEndpointEnabled', 'WebAuthnCredentialDeleteEndpointEnabled'],
+                'OAuth': ['OAuthAuthorizeEndpointEnabled', 'OAuthTokenEndpointEnabled', 'OAuthUserInfoEndpointEnabled', 'OAuthClientRegisterEndpointEnabled', 'OAuthClientUpdateEndpointEnabled', 'OAuthClientDeleteEndpointEnabled', 'OAuthClientListEndpointEnabled', 'OAuthScopesEndpointEnabled']
             };
 
             const flags = categoryFlags[category];

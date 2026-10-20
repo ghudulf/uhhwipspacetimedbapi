@@ -15,10 +15,11 @@ using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 
 await RoutingDiagnosticsTests.RunAsync();
+await EndpointAvailabilityTests.RunAsync();
 
 var loginAvailable = true;
 var runtimeFlags = Stub.Create<TicketSalesApp.AdminServer.Experimental.Services.Interfaces.IFeatureFlagService>((method, args) =>
-    method.Name == "GetFlagAsync" && (string)args![0]! == nameof(FeatureFlagOptions.EnableLoginRefactoring)
+    method.Name == "GetFlagAsync" && (string)args![0]! == nameof(FeatureFlagOptions.LoginEndpointEnabled)
         ? Task.FromResult(loginAvailable) : throw new Exception("Unexpected endpoint flag"));
 var loginResult = LoginResult.RequiresTwoFactorAuth("synthetic-challenge", true, false);
 var orchestration = Stub.Create<IAuthOrchestrationService>((method, args) => method.Name == "LoginAsync"

@@ -85,6 +85,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         private async Task<bool> IsEndpointEnabledAsync(string flag, bool configured)
         {
+            flag = EndpointAvailability.CanonicalName(flag);
+            configured = EndpointAvailability.Resolve(_featureFlags.Value, flag, _ => null);
             if (_runtimeFlags == null) return configured;
             try { return await _runtimeFlags.GetFlagAsync(flag); }
             catch (Exception ex) when (ex is DatabaseUnavailableException or TimeoutException)
@@ -98,10 +100,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/login - Show login page (HTML) or return login info (JSON)
-        /// Enabled by: EnableLoginRefactoring feature flag
+        /// Enabled by: LoginEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLoginRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LoginEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -142,10 +144,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/login - Login with username/password
-        /// Enabled by: EnableLoginRefactoring feature flag
+        /// Enabled by: LoginEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLoginRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LoginEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -257,10 +259,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/register - Show registration page (HTML) or return registration info (JSON)
-        /// Enabled by: EnableRegisterRefactoring feature flag
+        /// Enabled by: RegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -301,10 +303,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/register - Register new user account
-        /// Enabled by: EnableRegisterRefactoring feature flag
+        /// Enabled by: RegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -395,10 +397,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/totp/setup - Setup TOTP for user
-        /// Enabled by: EnableTotpSetupRefactoring feature flag
+        /// Enabled by: TotpSetupEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpSetupRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpSetupEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -457,10 +459,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/verify - Verify TOTP code during setup
-        /// Enabled by: EnableTotpVerifyRefactoring feature flag
+        /// Enabled by: TotpVerifyEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpVerifyRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpVerifyEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -515,10 +517,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/disable - Disable TOTP for user
-        /// Enabled by: EnableTotpDisableRefactoring feature flag
+        /// Enabled by: TotpDisableEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpDisableRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpDisableEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -572,10 +574,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/validate - Validate TOTP code during login
-        /// Enabled by: EnableTotpValidateRefactoring feature flag
+        /// Enabled by: TotpValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -669,10 +671,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/register/options - Get WebAuthn registration options
-        /// Enabled by: EnableWebAuthnRegisterOptionsRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterOptionsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterOptionsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterOptionsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -726,10 +728,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/register/complete - Complete WebAuthn registration
-        /// Enabled by: EnableWebAuthnRegisterCompleteRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterCompleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterCompleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterCompleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -785,10 +787,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/login/options - Get WebAuthn login options
-        /// Enabled by: EnableWebAuthnLoginOptionsRefactoring feature flag
+        /// Enabled by: WebAuthnLoginOptionsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnLoginOptionsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnLoginOptionsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -830,10 +832,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/login/complete - Complete WebAuthn login
-        /// Enabled by: EnableWebAuthnLoginCompleteRefactoring feature flag
+        /// Enabled by: WebAuthnLoginCompleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnLoginCompleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnLoginCompleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -914,10 +916,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/validate - Validate WebAuthn assertion during 2FA
-        /// Enabled by: EnableWebAuthnValidateRefactoring feature flag
+        /// Enabled by: WebAuthnValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1007,10 +1009,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/webauthn/credentials - Get user's WebAuthn credentials
-        /// Enabled by: EnableWebAuthnCredentialsRefactoring feature flag
+        /// Enabled by: WebAuthnCredentialsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnCredentialsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnCredentialsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1067,10 +1069,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// DELETE /api/auth/webauthn/credentials/{id} - Remove WebAuthn credential
-        /// Enabled by: EnableWebAuthnCredentialDeleteRefactoring feature flag
+        /// Enabled by: WebAuthnCredentialDeleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnCredentialDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnCredentialDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1128,10 +1130,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/magic-link/send - Send magic link email
-        /// Enabled by: EnableMagicLinkSendRefactoring feature flag
+        /// Enabled by: MagicLinkSendEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkSendRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkSendEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1184,10 +1186,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/validate-magic-link - Validate magic link token
-        /// Enabled by: EnableMagicLinkValidateRefactoring feature flag
+        /// Enabled by: MagicLinkValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1277,10 +1279,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/magic-link - Show magic link login page
-        /// Enabled by: EnableMagicLinkPageRefactoring feature flag
+        /// Enabled by: MagicLinkPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1310,10 +1312,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/qr-login - Show QR login page
-        /// Enabled by: EnableQRLoginPageRefactoring feature flag
+        /// Enabled by: QRLoginPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1340,10 +1342,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/generate - Generate QR login token
-        /// Enabled by: EnableQRLoginGenerateRefactoring feature flag
+        /// Enabled by: QRLoginGenerateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginGenerateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginGenerateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1403,10 +1405,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/validate - Validate QR login token
-        /// Enabled by: EnableQRLoginValidateRefactoring feature flag
+        /// Enabled by: QRLoginValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1470,10 +1472,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/direct - Direct QR login (no 2FA)
-        /// Enabled by: EnableQRLoginDirectRefactoring feature flag
+        /// Enabled by: QRLoginDirectEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginDirectRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginDirectEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1530,10 +1532,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/qr-login/status - Check QR login status
-        /// Enabled by: EnableQRLoginStatusRefactoring feature flag
+        /// Enabled by: QRLoginStatusEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginStatusRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginStatusEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1588,10 +1590,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/cancel - Cancel QR login attempt
-        /// Enabled by: EnableQRLoginCancelRefactoring feature flag
+        /// Enabled by: QRLoginCancelEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginCancelRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginCancelEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1641,10 +1643,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/notify - Notify device of successful login
-        /// Enabled by: EnableQRLoginNotifyRefactoring feature flag
+        /// Enabled by: QRLoginNotifyEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginNotifyRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginNotifyEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1699,7 +1701,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET/POST ~/connect/authorize - OAuth authorization endpoint
-        /// Enabled by: EnableOAuthAuthorizeRefactoring feature flag
+        /// Enabled by: OAuthAuthorizeEndpointEnabled feature flag
         /// 
         /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
         /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
@@ -1711,7 +1713,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Reference: CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizeRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizeEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1864,7 +1866,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST ~/connect/token - OAuth token exchange endpoint
-        /// Enabled by: EnableOAuthTokenRefactoring feature flag
+        /// Enabled by: OAuthTokenEndpointEnabled feature flag
         ///
         /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
         /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
@@ -1885,7 +1887,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// }
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokenRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokenEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2083,10 +2085,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/connect/userinfo - OAuth user info endpoint
-        /// Enabled by: EnableOAuthUserInfoRefactoring feature flag
+        /// Enabled by: OAuthUserInfoEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthUserInfoRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthUserInfoEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2134,7 +2136,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/oauth/authorize - Backchannel OAuth authorize endpoint for headless/native clients.
-        /// Enabled by: EnableOAuthBackchannelAuthorizeRefactoring feature flag
+        /// Enabled by: OAuthBackchannelAuthorizeEndpointEnabled feature flag
         ///
         /// Allows non-browser clients (desktop apps, mobile apps, CLI tools) to complete the full
         /// OAuth 2.0 authorization code flow without browser redirects. The client authenticates
@@ -2149,7 +2151,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// /api/auth/totp/validate or /api/auth/webauthn/validate before retrying.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthBackchannelAuthorizeRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthBackchannelAuthorizeEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2337,12 +2339,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/connect/clients - Register new OAuth client.
-        /// Enabled by: EnableOAuthClientRegisterRefactoring feature flag.
+        /// Enabled by: OAuthClientRegisterEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ clientId, clientSecret, clientName }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2402,13 +2404,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/connect/clients - List all OAuth clients.
-        /// Enabled by: EnableOAuthClientListRefactoring OR EnableOAuthClientsPageRefactoring feature flags.
+        /// Enabled by: OAuthClientListEndpointEnabled OR OAuthClientsPageEndpointEnabled feature flags.
         ///
         /// Returns JSON array for API requests: <c>[{ clientId, clientName, redirectUris, scopes, createdAt }]</c>
         /// Returns HTML page for browser requests.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientListRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientListEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2469,13 +2471,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/connect/clients/{id} - Get OAuth client details.
-        /// Enabled by: EnableOAuthClientDetailsRefactoring OR EnableOAuthClientDetailsPageRefactoring feature flags.
+        /// Enabled by: OAuthClientDetailsEndpointEnabled OR OAuthClientDetailsPageEndpointEnabled feature flags.
         ///
         /// Returns JSON for API requests: <c>{ clientId, clientName, redirectUris, scopes }</c>
         /// Returns HTML page for browser requests.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDetailsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDetailsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2549,12 +2551,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/connect/clients/{id} - Update OAuth client.
-        /// Enabled by: EnableOAuthClientUpdateRefactoring feature flag.
+        /// Enabled by: OAuthClientUpdateEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ success, message }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2610,12 +2612,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// DELETE /api/auth/connect/clients/{id} - Delete OAuth client.
-        /// Enabled by: EnableOAuthClientDeleteRefactoring feature flag.
+        /// Enabled by: OAuthClientDeleteEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ success, message }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2653,10 +2655,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/connect/scopes - List available OAuth scopes
-        /// Enabled by: EnableOAuthScopesRefactoring feature flag
+        /// Enabled by: OAuthScopesEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthScopesRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthScopesEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2696,10 +2698,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/oauth/clients/{id}/regenerate-secret - Regenerate client secret
-        /// Enabled by: EnableOAuthClientRegenerateSecretRefactoring feature flag
+        /// Enabled by: OAuthClientRegenerateSecretEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegenerateSecretRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegenerateSecretEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2750,10 +2752,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/clients/new - New OAuth client form page
-        /// Enabled by: EnableOAuthClientNewPageRefactoring feature flag
+        /// Enabled by: OAuthClientNewPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientNewPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientNewPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2782,10 +2784,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/clients/{id}/edit - Edit OAuth client form page
-        /// Enabled by: EnableOAuthClientEditPageRefactoring feature flag
+        /// Enabled by: OAuthClientEditPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientEditPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientEditPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2841,10 +2843,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /connect/scopes - OAuth scopes list page
-        /// Enabled by: EnableOAuthScopesPageRefactoring feature flag
+        /// Enabled by: OAuthScopesPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthScopesPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthScopesPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2891,10 +2893,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/authorizations - OAuth authorizations list page
-        /// Enabled by: EnableOAuthAuthorizationsPageRefactoring feature flag
+        /// Enabled by: OAuthAuthorizationsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizationsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizationsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2924,10 +2926,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/tokens - OAuth tokens list page
-        /// Enabled by: EnableOAuthTokensPageRefactoring feature flag
+        /// Enabled by: OAuthTokensPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokensPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokensPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2957,10 +2959,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/dashboard - OAuth admin dashboard page
-        /// Enabled by: EnableOAuthDashboardPageRefactoring feature flag
+        /// Enabled by: OAuthDashboardPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthDashboardPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthDashboardPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2990,10 +2992,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/settings - OAuth settings page
-        /// Enabled by: EnableOAuthSettingsPageRefactoring feature flag
+        /// Enabled by: OAuthSettingsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthSettingsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthSettingsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3023,10 +3025,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/logs - OAuth audit logs page
-        /// Enabled by: EnableOAuthLogsPageRefactoring feature flag
+        /// Enabled by: OAuthLogsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthLogsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthLogsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3056,10 +3058,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/help - OAuth help/documentation page
-        /// Enabled by: EnableOAuthHelpPageRefactoring feature flag
+        /// Enabled by: OAuthHelpPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthHelpPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthHelpPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3089,10 +3091,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/test - OAuth test/playground page
-        /// Enabled by: EnableOAuthTestPageRefactoring feature flag
+        /// Enabled by: OAuthTestPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTestPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTestPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3122,10 +3124,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/callback - OAuth callback page
-        /// Enabled by: EnableOAuthCallbackPageRefactoring feature flag
+        /// Enabled by: OAuthCallbackPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthCallbackPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthCallbackPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3161,11 +3163,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/profile - Get user profile
-        /// Enabled by: EnableProfileRefactoring feature flag
+        /// Enabled by: ProfileEndpointEnabled feature flag
         /// Accepts token from Authorization header OR query string parameter
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableProfileRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ProfileEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3290,10 +3292,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/profile - Update user profile
-        /// Enabled by: EnableProfileUpdateRefactoring feature flag
+        /// Enabled by: ProfileUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableProfileUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ProfileUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3356,10 +3358,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/change-password - Change user password
-        /// Enabled by: EnableChangePasswordRefactoring feature flag
+        /// Enabled by: ChangePasswordEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableChangePasswordRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ChangePasswordEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3417,10 +3419,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/logout - Show logout confirmation page
-        /// Enabled by: EnableLogoutRefactoring feature flag
+        /// Enabled by: LogoutEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLogoutRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LogoutEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3451,10 +3453,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/logout - Logout user
-        /// Enabled by: EnableLogoutRefactoring feature flag
+        /// Enabled by: LogoutEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLogoutRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LogoutEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3504,10 +3506,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/refresh - Refresh JWT token
-        /// Enabled by: EnableRefreshTokenRefactoring feature flag
+        /// Enabled by: RefreshTokenEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRefreshTokenRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RefreshTokenEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3559,10 +3561,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/settings - Get user authentication settings
-        /// Enabled by: EnableSettingsRefactoring feature flag
+        /// Enabled by: SettingsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSettingsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SettingsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3618,10 +3620,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/settings - Update user authentication settings
-        /// Enabled by: EnableSettingsUpdateRefactoring feature flag
+        /// Enabled by: SettingsUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSettingsUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SettingsUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3684,10 +3686,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/status - Check authentication status
-        /// Enabled by: EnableStatusRefactoring feature flag
+        /// Enabled by: StatusEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableStatusRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>StatusEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3744,10 +3746,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/success - Show success page after authentication
-        /// Enabled by: EnableSuccessPageRefactoring feature flag
+        /// Enabled by: SuccessPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSuccessPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SuccessPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3779,10 +3781,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/error - Show error page
-        /// Enabled by: EnableErrorPageRefactoring feature flag
+        /// Enabled by: ErrorPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableErrorPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ErrorPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3815,10 +3817,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/claim-account - Show claim account page
-        /// Enabled by: EnableClaimAccountPageRefactoring feature flag
+        /// Enabled by: ClaimAccountPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableClaimAccountPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ClaimAccountPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3849,10 +3851,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/webauthn/register - Show WebAuthn registration page
-        /// Enabled by: EnableWebAuthnRegisterPageRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3902,10 +3904,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/debug/tokentest - Debug token test endpoint
-        /// Enabled by: EnableDebugTokenTestRefactoring feature flag
+        /// Enabled by: DebugTokenTestEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableDebugTokenTestRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>DebugTokenTestEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3986,10 +3988,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/connect/tokeninfo - Token validation endpoint used by BaseController for OAuth token validation
-        /// Enabled by: EnableOAuthTokenInfoRefactoring feature flag
+        /// Enabled by: OAuthTokenInfoEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokenInfoRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokenInfoEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4065,10 +4067,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// <summary>
         /// POST ~/connect/authorize/callback - OAuth authorization callback form handler
         /// Processes user login during OAuth authorization flow
-        /// Enabled by: EnableOAuthAuthorizeCallbackRefactoring feature flag
+        /// Enabled by: OAuthAuthorizeCallbackEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizeCallbackRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizeCallbackEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4232,10 +4234,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/register-client - Form-based client registration
-        /// Enabled by: EnableOAuthClientRegisterRefactoring feature flag
+        /// Enabled by: OAuthClientRegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4371,10 +4373,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/update-client/{clientId} - Form-based client update
-        /// Enabled by: EnableOAuthClientUpdateRefactoring feature flag
+        /// Enabled by: OAuthClientUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4510,10 +4512,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/clients/{clientId}/delete - Form-based client deletion
-        /// Enabled by: EnableOAuthClientDeleteRefactoring feature flag
+        /// Enabled by: OAuthClientDeleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4615,7 +4617,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/ws - Real-time authentication over WebSocket.
-        /// Enabled by: EnableWebSocketAuthRefactoring feature flag.
+        /// Enabled by: WebSocketAuthEndpointEnabled feature flag.
         ///
         /// Supported client→server message types:
         ///   auth:validate   – validate a bearer token and receive claims back
@@ -4641,7 +4643,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// until a valid token is confirmed.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebSocketAuthRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebSocketAuthEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4686,13 +4688,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/oauth/consent - JSON endpoint for headless OAuth consent
-        /// Enabled by: EnableOAuthConsentRefactoring feature flag
+        /// Enabled by: OAuthConsentEndpointEnabled feature flag
         ///
         /// Allows non-browser (headless) clients to programmatically complete the OAuth consent step.
         /// The browser HTML form POST flow via ~/connect/authorize remains unchanged.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthConsentRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthConsentEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>

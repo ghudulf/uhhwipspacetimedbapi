@@ -55,7 +55,7 @@ Original review: https://github.com/ghudulf/uhhwipspacetimedbapi/pull/23. This l
 | 90 | OAuthLoginPage.xaml.cs | MAUI OAuth page reads the callback from the OAuthService used to construct the request; desktop/MAUI creation shares the existing registration constant. |
 | 91 | WebSocketDebugViewModel.cs | Trailing API segment normalization fixed in client. |
 | 92 | OAuthLoginWindow.axaml.cs | Preserved configured authorization/callback URIs and removed scheme downgrades; callback configuration is shared. Actual OAuth provider roundtrip validation remains outstanding. |
-| 93 | design.md | Outstanding: inspect current code and validate before disposition. |
+| 93 | design.md | Added explicit EndpointEnabled availability flags; legacy refactoring selectors remain readable and do not disable endpoints by default. An opt-in compatibility mode preserves intentional old kill switches; documented migration/rollback and HTTP/v2 checks cover precedence. |
 | 95 | header-scroll.js | Page/style change deferred to preserve requested existing page code and appearance. |
 | 96 | HttpContextAuthWebSocketTokenValidator.cs | Validator propagates OperationCanceledException. |
 | 97 | HttpContextAuthWebSocketTokenValidator.cs | Request-host HTTP token validation replaced with in-process OpenIddict validation. |

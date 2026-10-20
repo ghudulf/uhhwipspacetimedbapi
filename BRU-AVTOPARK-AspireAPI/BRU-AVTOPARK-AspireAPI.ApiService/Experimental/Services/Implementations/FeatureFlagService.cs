@@ -14,22 +14,26 @@ public sealed class FeatureFlagService(IOptionsMonitor<FeatureFlagOptions> optio
 {
     // Only declared boolean configuration properties are eligible; no arbitrary property/service invocation.
     private static readonly IReadOnlyDictionary<string, PropertyInfo> Flags = typeof(FeatureFlagOptions)
-        .GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.PropertyType == typeof(bool))
+        .GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => (p.PropertyType == typeof(bool) || p.PropertyType == typeof(bool?)) && p.Name != nameof(FeatureFlagOptions.LegacyAvailabilityCompatibility))
         .ToDictionary(p => p.Name, StringComparer.Ordinal);
 
     public Task<Dictionary<string, bool>> GetAllFlagsAsync() => database.ReadAsync(c =>
     {
         var configuration = options.CurrentValue;
-        var result = Flags.ToDictionary(p => p.Key, p => (bool)p.Value.GetValue(configuration)!, StringComparer.Ordinal);
-        foreach (var row in c.Db.FeatureFlagOverride.Iter()) if (result.ContainsKey(row.FlagName)) result[row.FlagName] = row.Enabled;
-        return result;
+        var overrides = c.Db.FeatureFlagOverride.Iter().ToDictionary(row => row.FlagName, row => row.Enabled, StringComparer.Ordinal);
+        bool? Find(string name) => overrides.TryGetValue(name, out var value) ? value : null;
+        return Flags.ToDictionary(p => p.Key, p => EndpointAvailability.IsAvailabilityFlag(p.Key)
+            ? EndpointAvailability.Resolve(configuration, p.Key, Find)
+            : Find(p.Key) ?? (bool)p.Value.GetValue(configuration)!, StringComparer.Ordinal);
     });
 
     public async Task<bool> GetFlagAsync(string flagName)
     {
         if (string.IsNullOrEmpty(flagName) || !Flags.TryGetValue(flagName, out var property)) return false;
-        var configured = (bool)property.GetValue(options.CurrentValue)!;
-        var result = await database.ReadAsync(c => c.Db.FeatureFlagOverride.FlagName.Find(flagName)?.Enabled ?? configured);
+        var configuration = options.CurrentValue;
+        var result = await database.ReadAsync(c => EndpointAvailability.IsAvailabilityFlag(flagName)
+            ? EndpointAvailability.Resolve(configuration, flagName, name => c.Db.FeatureFlagOverride.FlagName.Find(name)?.Enabled)
+            : c.Db.FeatureFlagOverride.FlagName.Find(flagName)?.Enabled ?? (bool)property.GetValue(configuration)!);
         logger.LogDebug("Endpoint flag {FlagName}: {Enabled}", flagName, result);
         return result;
     }
