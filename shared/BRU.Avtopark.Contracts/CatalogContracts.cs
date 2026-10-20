@@ -13,8 +13,10 @@ public sealed record CreateMaintenanceCommand(uint BusId, ulong LastServiceDate,
 public sealed record UpdateMaintenanceCommand(uint Id, ulong? ExpectedRevision = null, uint? BusId = null, ulong? LastServiceDate = null, string? ServiceEngineer = null, string? FoundIssues = null, ulong? NextServiceDate = null, string? Roadworthiness = null, string? MaintenanceType = null, string? Mileage = null);
 public sealed record DeleteMaintenanceCommand(uint Id, ulong? ExpectedRevision);
 public sealed record SetRouteActiveCommand(uint Id, bool Active, ulong? ExpectedRevision = null);
-public sealed record RouteRow(uint RouteId, string StartPoint, string EndPoint, uint DriverId, uint BusId, string? TravelTime, bool IsActive, ulong Revision);
-public sealed record EmployeeRow(uint EmployeeId, string Name, string Surname, string? Patronym, uint JobId, DateTimeOffset EmployedSince, ulong Revision);
-public sealed record JobRow(uint JobId, string JobTitle, string? Internship, ulong Revision);
-public sealed record MaintenanceRow(uint MaintenanceId, uint BusId, DateTimeOffset LastServiceDate, DateTimeOffset NextServiceDate,
-    string ServiceEngineer, string FoundIssues, string Roadworthiness, string MaintenanceType, string? MileageThreshold, ulong Revision);
+public sealed record CatalogPageResult<T>(T[] Items, int Page, int PageSize, int TotalCount, bool CanCreate, bool CanEdit, bool CanDelete);
+public sealed record RouteRow(uint RouteId, string StartPoint, string EndPoint, uint DriverId, uint BusId, string? TravelTime, bool IsActive, ulong Revision, string? BusModel = null, string? RegistrationNumber = null, string? DriverName = null);
+public sealed record EmployeeRow(uint EmployeeId, string Name, string Surname, string? Patronym, uint JobId, DateTimeOffset? EmployedSince, ulong Revision, string? JobTitle = null);
+public sealed record JobRow(uint JobId, string JobTitle, string? Internship, ulong Revision, int? EmployeeCount = null, string? Department = null);
+public sealed record MaintenanceRow(uint MaintenanceId, uint BusId, DateTimeOffset? LastServiceDate, DateTimeOffset? NextServiceDate,
+    string? ServiceEngineer, string? FoundIssues, string? Roadworthiness, string? MaintenanceType, string? MileageThreshold, ulong Revision,
+    string? BusModel = null, string? RegistrationNumber = null, decimal? MaintenanceCost = null, decimal? PartsCost = null, decimal? LaborCost = null, string? MaintenanceStatus = null);

@@ -24,15 +24,17 @@ internal static class ApplicationQueryClient
     }
     public static async Task<TResponse> ReadAsync<TRequest, TResponse>(string operation, TRequest request, CancellationToken cancellationToken)
     {
-        if (operation is not ("reports.sales" or "buses.list")) throw new ArgumentException("Read operation is not registered.", nameof(operation));
+        if (operation is not ("reports.sales" or "buses.list" or "routes.list" or "employees.list" or "jobs.list" or "jobs.get" or "maintenance.list" or "mutations.receipt")) throw new ArgumentException("Read operation is not registered.", nameof(operation));
         var api = ApiClientService.Instance;
         var baseUrl = await api.DiscoverApiBaseUrlAsync(cancellationToken);
         var token = api.AuthToken ?? throw new ApplicationCommandException("unauthenticated");
         try
         {
             if (Environment.GetEnvironmentVariable("BRU_TRANSPORT") == "http") throw new OperationNotDispatchedException(operation);
-            return await ApplicationClientCoordinator.ExecuteAsync<TRequest, TResponse>(baseUrl, token, operation, request,
-                cancellationToken: cancellationToken) ?? throw new ApplicationCommandException("invalid_response");
+            var socketResult = await ApplicationClientCoordinator.ExecuteAsync<TRequest, TResponse>(baseUrl, token, operation, request,
+                cancellationToken: cancellationToken);
+            if (socketResult is null && operation != "mutations.receipt") throw new ApplicationCommandException("invalid_response");
+            return socketResult!;
         }
         catch (System.Net.WebSockets.WebSocketException) { /* Read retries are safe; no writes are admitted here. */ }
         catch (OperationNotDispatchedException) { }
@@ -40,10 +42,13 @@ internal static class ApplicationQueryClient
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         message.Content = JsonContent.Create(request, options: ApiProtocol.Json);
         using var response = await Http.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) throw new ApplicationCommandException("unauthenticated");
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden) throw new ApplicationCommandException("forbidden");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) throw new ApplicationCommandException("not_found");
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<TResponse>(ApiProtocol.Json, cancellationToken)
-            ?? throw new ApplicationCommandException("invalid_response");
+        var result = await response.Content.ReadFromJsonAsync<TResponse>(ApiProtocol.Json, cancellationToken);
+        if (result is null && operation != "mutations.receipt") throw new ApplicationCommandException("invalid_response");
         if (api.AuthToken != token || api.CurrentBaseUrl != baseUrl) throw new OperationCanceledException("Application session changed.");
-        return result;
+        return result!;
     }
 }

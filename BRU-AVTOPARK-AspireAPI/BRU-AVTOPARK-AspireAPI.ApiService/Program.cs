@@ -131,6 +131,9 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Authorization.UserAccessSe
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals
 builder.Services.AddHostedService<SpacetimeFrameTickService>();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>());
+builder.Services.AddHealthChecks().AddCheck<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartupHealthCheck>("database_provisioning", tags: new[] { "ready" });
 
 // Configure Fido2 for WebAuthn
 builder.Services.AddFido2(options =>
@@ -1242,7 +1245,7 @@ startupLogger.LogInformation("========== ENDPOINT MAPPING DIAGNOSTICS END ======
 
 // Initialize SpacetimeDB connection
 var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
-spacetimeService.Connect();
+// The hosted database coordinator owns the first connection and subsequent reconnects.
 
 // Start background task to register OAuth clients once subscription is ready
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -1296,6 +1299,10 @@ _ = Task.Run(async () =>
 
         logger.LogInformation("SpacetimeDB subscription applied successfully after {Elapsed:F1}s, proceeding with client registration", 
             (DateTime.UtcNow - startTime).TotalSeconds);
+
+        var databaseStartup = app.Services.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
+        while (!databaseStartup.IsReady)
+            await Task.Delay(500, app.Lifetime.ApplicationStopping);
 
         // Auto-register default OAuth clients
         using (var scope = app.Services.CreateScope())

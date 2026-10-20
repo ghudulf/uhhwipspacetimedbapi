@@ -20,10 +20,10 @@ public sealed partial class ApiSocketSession
         ["reports.sales"] = ["sales", "tickets", "routes", "schedules", "buses", "access"],
         ["reports.income"] = ["sales", "tickets", "access"],
         ["session.access"] = ["access"],
-        ["routes.list"] = ["routes", "access"],
-        ["employees.list"] = ["employees", "access"],
-        ["jobs.list"] = ["jobs", "access"],
-        ["maintenance.list"] = ["maintenance", "access"]
+        ["routes.list"] = ["routes", "buses", "employees", "access"],
+        ["employees.list"] = ["employees", "jobs", "access"],
+        ["jobs.list"] = ["jobs", "employees", "access"],
+        ["maintenance.list"] = ["maintenance", "buses", "access"]
     };
     private static void ValidateSubscriptionId(string id)
     {

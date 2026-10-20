@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Security.Cryptography;
 using System.Text;
@@ -29,55 +29,18 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<UserProfile?> AuthenticateAsync(string login, string password)
         {
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrEmpty(password)) return null;
             try
             {
-                _logger.LogInformation("Attempting to authenticate user: {Login}", login);
-
-                if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
-                {
-                    _logger.LogWarning("Authentication attempt with empty login or password");
-                    return null;
-                }
-
-                var conn = _spacetimeService.GetConnection();
-                _logger.LogDebug("Retrieved SpacetimeDB connection for authentication");
-
-                // Debug iteration through all profiles
-                _logger.LogDebug("Starting debug iteration of all user profiles");
-                var allProfiles = conn.Db.UserProfile.Iter();
-                foreach (var profile in allProfiles)
-                {
-                    _logger.LogDebug("Found profile - Login: {Login}, IsActive: {IsActive}, Identity: {Identity}",
-                        profile.Login,
-                        profile.IsActive,
-                        profile.UserId);
-                }
-
-                // Use both methods for comparison
-                var userProfileByFind = conn.Db.UserProfile.Login.Find(login);
-                var userProfileByIter = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
-
-                _logger.LogDebug("Find method result - Found: {Found}", userProfileByFind != null);
-                _logger.LogDebug("Iter method result - Found: {Found}", userProfileByIter != null);
-
-                // Use Find for actual authentication
-                var userProfile = userProfileByFind;
-                if (userProfile == null || !userProfile.IsActive)
-                {
-                    _logger.LogWarning("Authentication failed: User not found or inactive for login: {Login}", login);
-                    return null;
-                }
-
-                conn.Reducers.AuthenticateUser(login, password);
-
-                _logger.LogInformation("User {Login} authenticated successfully", login);
-                return userProfile;
+                var user = await _spacetimeService.ExecuteReducerAsync(new Reducer.AuthenticateUserChecked(login, password),
+                    connection => connection.Db.UserProfile.Login.Find(login));
+                _logger.LogInformation("Password authentication committed for account {UserId}", user?.UserId);
+                return user;
             }
-            catch (Exception ex)
+            catch (ReducerRejectedException)
             {
-                _logger.LogError(ex, "Error occurred while authenticating user: {Login}", login);
-                throw;
+                _logger.LogInformation("Password authentication rejected; credential values omitted");
+                return null;
             }
         }
 

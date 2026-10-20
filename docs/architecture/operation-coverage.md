@@ -189,3 +189,9 @@ See [protocol and client rollout](realtime-v2.md). `session.access`, paged `sale
 - V2 subscriptions: explicit query allowlist; pre-snapshot watermark; bounded committed-change journal; overflow/epoch recovery; idle permission rechecks; generation cleanup. API/shared-client tests cover a change during snapshot acquisition, anonymous denial, mutation-subscription rejection, overflow, reconnect and revocation. The bus screen consumes the shared stream and gates writes during resynchronization.
 - Remaining catalog view models still require shared transport and lifecycle migration. Generic protocol support is not evidence that a screen uses it.
 - GitHub security workflows are `disabled_inactivity`. Re-enable attempts were rejected with HTTP 403 by the repository integration. Branch security validation remains blocked until someone with Actions permission enables them.
+
+### Jobs client and initial provisioning checkpoint
+
+`jobs.get` provides an explicitly authorized current-row/revision read for conflict review. Jobs list/create/update/delete now use the shared native transport and lifecycle; existing styles and grid layout are retained with synchronization/paging feedback. Routes/employees/maintenance DTOs include permission-filtered related display data; their remaining native view-model migrations are still outstanding.
+
+Owner-only initial provisioning is a deployment operation, not an anonymous application socket operation. The API generates its own database connection identity and may use explicitly configured owner credentials to provision that identity and the initial admin password. Normal password authentication confirms the checked reducer's committed result.

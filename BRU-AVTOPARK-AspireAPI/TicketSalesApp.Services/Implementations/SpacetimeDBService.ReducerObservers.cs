@@ -14,6 +14,8 @@ public partial class SpacetimeDBService
         connection.Reducers.OnApproveQrSession += (ctx, sessionId) => OnReducerCompleted(ctx);
         connection.Reducers.OnAssignRole += (ctx, userId, roleId, actingUserId) => OnReducerCompleted(ctx);
         connection.Reducers.OnAuthenticateUser += (ctx, login, password) => OnReducerCompleted(ctx);
+        connection.Reducers.OnAuthenticateUserChecked += (ctx, login, password) => OnReducerCompleted(ctx);
+        connection.Reducers.OnBootstrapInstallation += (ctx, apiIdentity, adminLogin, adminPassword) => OnReducerCompleted(ctx);
         connection.Reducers.OnCancelTicket += (ctx, ticketId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnChangePassword += (ctx, userId, currentPassword, newPassword, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnClaimUserAccount += (ctx, login, password, newUserIdentity) => OnReducerCompleted(ctx);

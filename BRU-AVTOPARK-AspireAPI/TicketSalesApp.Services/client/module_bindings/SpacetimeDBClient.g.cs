@@ -760,6 +760,8 @@ namespace SpacetimeDB.Types
                 Reducer.ApproveQrSession args => Reducers.InvokeApproveQrSession(eventContext, args),
                 Reducer.AssignRole args => Reducers.InvokeAssignRole(eventContext, args),
                 Reducer.AuthenticateUser args => Reducers.InvokeAuthenticateUser(eventContext, args),
+                Reducer.AuthenticateUserChecked args => Reducers.InvokeAuthenticateUserChecked(eventContext, args),
+                Reducer.BootstrapInstallation args => Reducers.InvokeBootstrapInstallation(eventContext, args),
                 Reducer.CancelTicket args => Reducers.InvokeCancelTicket(eventContext, args),
                 Reducer.ChangePassword args => Reducers.InvokeChangePassword(eventContext, args),
                 Reducer.ClaimUserAccount args => Reducers.InvokeClaimUserAccount(eventContext, args),

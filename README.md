@@ -1102,3 +1102,7 @@ Eclipse Public License - v 2.0
 - **OpenIddict** - OAuth 2.0 framework inspiration
 
  
+
+### Initial administrator and API database identity
+
+Use [database bootstrap](docs/architecture/database-bootstrap.md) after publishing the module. The tool generates and persists the API identity through a first connection, provisions trust as the deployment owner, and sets the initial administrator password from a masked prompt. No manual password hashing or database-row editing is needed.

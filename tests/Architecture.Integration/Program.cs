@@ -38,6 +38,11 @@ try
     var owner = database.GetLocalIdentity()!.Value;
     await database.ExecuteReducerAsync(new Reducer.ProvisionTrustedApi(owner), _ => true);
     Pass("owner provisions trusted API identity");
+    if (args.Contains("--bootstrap-only", StringComparer.Ordinal))
+    {
+        await BootstrapTests.RunAsync(database, owner, ownerToken);
+        return;
+    }
     if (args.Contains("--diagnostics-only", StringComparer.Ordinal))
     {
         var sentinel = "synthetic-password-" + Guid.NewGuid().ToString("N");

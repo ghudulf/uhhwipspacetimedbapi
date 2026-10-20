@@ -46,11 +46,16 @@ internal static class CatalogTests
         var record = (await maintenance.CreateMaintenanceRecordAsync(bus.BusId, 1000, "Synthetic", "", 2000, "Ready", "Regular", owner))!;
         var operations = new ApplicationOperations(database, new TicketSalesService(database, NullLogger<TicketSalesService>.Instance), buses,
             NullLogger<ApplicationOperations>.Instance, routes: routes, employees: employees, maintenance: maintenance);
-        async Task<PageResult<T>> Page<T>(string resource, string search) => (PageResult<T>)(await operations.ExecuteAsync(resource + ".list", owner,
+        async Task<CatalogPageResult<T>> Page<T>(string resource, string search) => (CatalogPageResult<T>)(await operations.ExecuteAsync(resource + ".list", owner,
             JsonSerializer.SerializeToElement(new PageRequest(1, 100, search), ApiProtocol.Json), null, deadline.Token))!;
         Assert((await Page<JobRow>("jobs", job.JobTitle)).Items.Single().JobId == job.JobId, "typed job page lost filter/identity");
+        var jobPage = await Page<JobRow>("jobs", job.JobTitle);
+        Assert(jobPage.CanCreate && jobPage.CanEdit && jobPage.CanDelete && jobPage.Items.Single().EmployeeCount == 2, "job permissions/count projection incorrect");
+        var currentJob = (JobRow)(await operations.ExecuteAsync("jobs.get", owner,
+            JsonSerializer.SerializeToElement(new EntityRequest(job.JobId), ApiProtocol.Json), null, deadline.Token))!;
+        Assert(currentJob.JobId == job.JobId && currentJob.Revision == 1, "conflict reload did not return authoritative identity/revision");
         Assert((await Page<RouteRow>("routes", "Updated")).Items.Any(r => r.RouteId == route.RouteId && r.Revision == 3), "typed route page lost legacy revision");
-        Assert((await Page<EmployeeRow>("employees", "Synthetic Shared")).Items.Any(e => e.EmployeeId == employee.EmployeeId && e.EmployedSince.Year >= 2026), "typed employee timestamp/identity lost");
+        Assert((await Page<EmployeeRow>("employees", "Synthetic Shared")).Items.Any(e => e.EmployeeId == employee.EmployeeId && e.EmployedSince?.Year >= 2026), "typed employee timestamp/identity lost");
         Assert((await Page<MaintenanceRow>("maintenance", "Synthetic")).Items.Any(m => m.MaintenanceId == record.MaintenanceId && m.NextServiceDate == DateTimeOffset.FromUnixTimeMilliseconds(2000)), "typed maintenance timestamp/identity lost");
         await Reject(() => maintenance.UpdateMaintenanceAsync(record.MaintenanceId, nextServiceDate: 500, actingUser: owner));
         await Reject(() => maintenance.UpdateMaintenanceAsync(record.MaintenanceId, busId: uint.MaxValue, actingUser: owner));

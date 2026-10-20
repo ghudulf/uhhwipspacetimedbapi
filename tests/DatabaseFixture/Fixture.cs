@@ -63,4 +63,13 @@ public static partial class Module
         ctx.Db.Maintenance.MaintenanceId.Delete(id);
         if (present) ctx.Db.Maintenance.Insert(new Maintenance { MaintenanceId = id, BusId = 0, ScheduledByEmployeeId = employeeId });
     }
+    [SpacetimeDB.Reducer]
+    public static void PrepareBootstrapTest(ReducerContext ctx)
+    {
+        RequireDeploymentOwner(ctx);
+        var user = ctx.Db.UserProfile.UserId.Find(ctx.Sender)!;
+        if (user.Login != "synthetic-owner") throw new Exception("Synthetic fixture only.");
+        user.PasswordHash = null;
+        ctx.Db.UserProfile.UserId.Update(user);
+    }
 }

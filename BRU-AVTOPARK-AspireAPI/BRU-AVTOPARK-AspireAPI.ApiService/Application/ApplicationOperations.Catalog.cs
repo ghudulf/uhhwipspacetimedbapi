@@ -7,48 +7,66 @@ public sealed partial class ApplicationOperations
 {
     private void RegisterCatalog(ISpacetimeDBService database, IRouteService? routes, IEmployeeService? employees, IMaintenanceService? maintenance)
     {
-        Register<PageRequest>("routes.list", "routes.view", false, async (_, request, _, ct) =>
+        Register<PageRequest>("routes.list", "routes.view", false, async (actor, request, _, ct) =>
         {
             ValidatePage(request);
+            var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Route.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.StartPoint + " " + r.EndPoint).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(r => r.RouteId).ToArray();
-                return new PageResult<RouteRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(r => new RouteRow(r.RouteId, r.StartPoint, r.EndPoint, r.DriverId, r.BusId, r.TravelTime, r.IsActive, Version(c, "routes", r.RouteId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<RouteRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
+                    .Select(r => new RouteRow(r.RouteId, r.StartPoint, r.EndPoint, r.DriverId, r.BusId, r.TravelTime, r.IsActive, Version(c, "routes", r.RouteId), access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null, access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null, access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("routes.create"), access.Allows("routes.edit"), access.Allows("routes.delete"));
             }, ct);
         });
-        Register<PageRequest>("employees.list", "employees.view", false, async (_, request, _, ct) =>
+        Register<PageRequest>("employees.list", "employees.view", false, async (actor, request, _, ct) =>
         {
             ValidatePage(request);
+            var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Employee.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.Name + " " + r.Surname + " " + r.Patronym).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(r => r.EmployeeId).ToArray();
-                return new PageResult<EmployeeRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(r => new EmployeeRow(r.EmployeeId, r.Name, r.Surname, r.Patronym, r.JobId, Timestamp(r.EmployedSince), Version(c, "employees", r.EmployeeId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<EmployeeRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
+                    .Select(r => new EmployeeRow(r.EmployeeId, r.Name, r.Surname, r.Patronym, r.JobId, Timestamp(r.EmployedSince), Version(c, "employees", r.EmployeeId), access.Allows("jobs.view") ? c.Db.Job.JobId.Find(r.JobId)?.JobTitle : null)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("employees.create"), access.Allows("employees.edit"), access.Allows("employees.delete"));
             }, ct);
         });
-        Register<PageRequest>("jobs.list", "jobs.view", false, async (_, request, _, ct) =>
+        Register<PageRequest>("jobs.list", "jobs.view", false, async (actor, request, _, ct) =>
         {
             ValidatePage(request);
+            var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
-                var rows = c.Db.Job.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.JobTitle).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
+                var rows = c.Db.Job.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.JobTitle + " " + r.Internship + " " + r.Department).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(r => r.JobId).ToArray();
-                return new PageResult<JobRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(r => new JobRow(r.JobId, r.JobTitle, r.Internship, Version(c, "jobs", r.JobId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                var ids = rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).Select(r => r.JobId).ToHashSet();
+                var employeeCounts = access.Allows("employees.view") ? c.Db.Employee.Iter().Where(e => ids.Contains(e.JobId))
+                    .GroupBy(e => e.JobId).ToDictionary(g => g.Key, g => g.Count()) : null;
+                return new CatalogPageResult<JobRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
+                    .Select(r => new JobRow(r.JobId, r.JobTitle, r.Internship, Version(c, "jobs", r.JobId), employeeCounts?.GetValueOrDefault(r.JobId), r.Department)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("jobs.create"), access.Allows("jobs.edit"), access.Allows("jobs.delete"));
             }, ct);
         });
-        Register<PageRequest>("maintenance.list", "maintenance.view", false, async (_, request, _, ct) =>
+        Register<EntityRequest>("jobs.get", "jobs.view", false, async (actor, request, _, ct) =>
+        {
+            if (request.Id == 0) throw new OperationException("validation_failed");
+            var access = await _access.GetAsync(actor, ct);
+            return await database.ReadAsync(c =>
+            {
+                var job = c.Db.Job.JobId.Find(request.Id) ?? throw new OperationException("not_found");
+                return new JobRow(job.JobId, job.JobTitle, job.Internship, Version(c, "jobs", job.JobId),
+                    access.Allows("employees.view") ? c.Db.Employee.Iter().Count(e => e.JobId == job.JobId) : null, job.Department);
+            }, ct);
+        });
+        Register<PageRequest>("maintenance.list", "maintenance.view", false, async (actor, request, _, ct) =>
         {
             ValidatePage(request);
+            var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Maintenance.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.ServiceEngineer + " " + r.FoundIssues + " " + r.MaintenanceType).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(r => r.MaintenanceId).ToArray();
-                return new PageResult<MaintenanceRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(r => new MaintenanceRow(r.MaintenanceId, r.BusId, Timestamp(r.LastServiceDate), Timestamp(r.NextServiceDate), r.ServiceEngineer, r.FoundIssues, r.Roadworthiness, r.MaintenanceType, r.MileageThreshold, Version(c, "maintenance", r.MaintenanceId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<MaintenanceRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
+                    .Select(r => new MaintenanceRow(r.MaintenanceId, r.BusId, Timestamp(r.LastServiceDate), Timestamp(r.NextServiceDate), r.ServiceEngineer, r.FoundIssues, r.Roadworthiness, r.MaintenanceType, r.MileageThreshold, Version(c, "maintenance", r.MaintenanceId), access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null, access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null, Amount(r.MaintenanceCost), Amount(r.PartsCost), Amount(r.LaborCost), r.MaintenanceStatus)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("maintenance.create"), access.Allows("maintenance.edit"), access.Allows("maintenance.delete"));
             }, ct);
         });
         if (routes != null)
@@ -174,7 +192,13 @@ public sealed partial class ApplicationOperations
         });
     }
     private static ulong Version(DbConnection connection, string resource, uint id) => connection.Db.EntityRevision.Key.Find(resource + ":" + id)?.Revision ?? 0;
-    private static DateTimeOffset Timestamp(ulong milliseconds) => DateTimeOffset.FromUnixTimeMilliseconds(checked((long)milliseconds));
+    private static DateTimeOffset? Timestamp(ulong milliseconds) => milliseconds == 0 || milliseconds > 253402300799999 ? null : DateTimeOffset.FromUnixTimeMilliseconds((long)milliseconds);
+    private static decimal? Amount(double? amount)
+    {
+        if (!amount.HasValue || !double.IsFinite(amount.Value) || amount < 0) return null;
+        try { return (decimal)amount.Value; }
+        catch (OverflowException) { return null; }
+    }
     private static void ValidateCatalogText(string? value, int max, bool required, bool nonempty)
     {
         if (required && value == null || value != null && (value.Length > max || nonempty && string.IsNullOrWhiteSpace(value))) throw new OperationException("validation_failed");

@@ -19,6 +19,8 @@ namespace TicketSalesApp.Services.Implementations
         private readonly IConfiguration _configuration; // Configuration for the service
         private readonly ILogger<SpacetimeDBService> _logger; // Logger for the service
         private DbConnection? _connection; // Database connection object
+        private string? _connectionToken;
+        private string? _credentialFile;
         private Identity? _localIdentity; // Local identity for the connection
 
         private volatile bool _isConnecting = false; // Flag to track connection state
@@ -79,7 +81,8 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Connecting to SpacetimeDB at {Host} database {Database}", host, databaseName);
 
                 // Initialize authentication token storage
-                AuthToken.Init(".spacetime_csharp_avtopark");
+                _credentialFile = _configuration["SpacetimeDB:CredentialFile"] ?? DatabaseCredentialFile.DefaultPath(host, databaseName);
+                _connectionToken = _configuration["SpacetimeDB:Token"] ?? DatabaseCredentialFile.Read(_credentialFile, host, databaseName)?.Token;
                 _logger.LogDebug("Authentication token initialized");
 
                 // Build the database connection with necessary callbacks
@@ -88,7 +91,7 @@ namespace TicketSalesApp.Services.Implementations
                 _connection = DbConnection.Builder()
                         .WithUri(host) // Set the URI for the connection
                         .WithDatabaseName(databaseName) // Set the database name
-                        .WithToken(_configuration["SpacetimeDB:Token"] ?? AuthToken.Token) // Set the authentication token
+                        .WithToken(_connectionToken) // Set the authentication token
                         .WithConfirmedReads(true) // Enable confirmed reads for durability (default: true). Set to false for low-latency scenarios where eventual consistency is acceptable.
                         .OnConnect((conn, identity, token) => ForGeneration(generation, () => OnConnected(conn, identity, token))) // Set the on-connect callback
                         .OnConnectError(error => ForGeneration(generation, () => OnConnectError(error))) // Set the on-connect-error callback
@@ -183,7 +186,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
-                var currentToken = AuthToken.Token;
+                var currentToken = _connectionToken;
 
                 if (string.IsNullOrEmpty(currentToken))
                 {
@@ -248,7 +251,7 @@ namespace TicketSalesApp.Services.Implementations
                 var token = _configuration["SpacetimeDB:AdminToken"]
                            ?? Environment.GetEnvironmentVariable("SPACETIME_TOKEN")
                            ?? await GetWebSocketTokenAsync()
-                           ?? AuthToken.Token;
+                           ?? _connectionToken;
 
                 if (string.IsNullOrEmpty(token))
                 {
@@ -1440,7 +1443,13 @@ namespace TicketSalesApp.Services.Implementations
                 ObserveReducerCompletions(conn);
                 ObserveApplicationChanges(conn);
                 SetState(DatabaseConnectionState.Subscribing);
-                if (string.IsNullOrEmpty(_configuration["SpacetimeDB:Token"])) AuthToken.SaveToken(token);
+                if (string.IsNullOrEmpty(_configuration["SpacetimeDB:Token"]))
+                {
+                    DatabaseCredentialFile.Save(_credentialFile!, _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000",
+                        _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark", identity.ToString(), token);
+                    _logger.LogInformation("API identity persisted. If access is not provisioned, run tools/DatabaseBootstrap as the deployment owner using this CredentialFile: {CredentialFile}", _credentialFile);
+                }
+                _connectionToken = token;
 
                 // Subscribe to all regular tables (event tables are excluded)
                 conn.SubscriptionBuilder()
