@@ -189,16 +189,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 await ClearWebViewDataAsync(_webView);
             }
 
-            // For local development with self-signed certificates, we need to use HTTP instead of HTTPS
-            // or configure the WebView to accept self-signed certificates
+            // For local development: if the auth URL uses HTTPS but the discovered server
+            // is HTTP, convert to HTTP to avoid self-signed cert issues in WebView.
             var navigationUrl = _authorizationUrl;
-            
-            Log.Information("=== PREPARING TO NAVIGATE WEBVIEW ===");
-            Log.Information("Original authorization URL: {Url}", _authorizationUrl);
-            
-            // Check if this is localhost HTTPS and convert to HTTP for WebView compatibility
-            // IMPORTANT: Server listens on HTTP port 5000 and HTTPS port 5001
-            // WebView needs to use HTTP port 5000 to avoid SSL certificate issues
+            var discoveredRoot = BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ApiClientService.Instance.CurrentBaseUrl
+                                 ?? "http://localhost:5000/api/";
+            var isDiscoveredHttp = discoveredRoot.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                                   && !discoveredRoot.StartsWith("http://localhost", StringComparison.OrdinalIgnoreCase) == false
+                                   || discoveredRoot.StartsWith("http://");
+
             if (_authorizationUrl.StartsWith("https://localhost:5001", StringComparison.OrdinalIgnoreCase))
             {
                 navigationUrl = _authorizationUrl.Replace("https://localhost:5001", "http://localhost:5000");
@@ -207,7 +206,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             }
             else if (_authorizationUrl.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase))
             {
-                // Fallback for other HTTPS localhost URLs
                 navigationUrl = _authorizationUrl.Replace("https://localhost", "http://localhost");
                 Log.Warning("Converting HTTPS localhost to HTTP for WebView compatibility: {Url}", navigationUrl);
                 Log.Warning("Note: This is only for local development. Production should use HTTPS.");
@@ -1015,7 +1013,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             {
                 Text = "Авторизация открыта в браузере.\n\n" +
                        "После входа браузер попытается перейти на адрес callback, который не будет загружаться (это нормально).\n\n" +
-                       "Скопируйте ПОЛНЫЙ URL из адресной строки браузера (начинается с http://localhost:5000/callback) и вставьте его ниже:",
+                       "Скопируйте ПОЛНЫЙ URL из адресной строки браузера (начинается с " +
+                       $"{BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/').Replace("/api", "")}/callback) и вставьте его ниже:",
                 FontSize = 13,
                 TextAlignment = TextAlignment.Center,
                 TextWrapping = TextWrapping.Wrap,
@@ -1026,7 +1025,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
             var urlTextBox = new TextBox
             {
-                PlaceholderText = "http://localhost:5000/callback?code=...",
+                PlaceholderText = $"{BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/').Replace("/api", "")}/callback?code=...",
                 Width = 600,
                 Margin = new Thickness(20, 10, 20, 10),
                 HorizontalAlignment = HorizontalAlignment.Center,

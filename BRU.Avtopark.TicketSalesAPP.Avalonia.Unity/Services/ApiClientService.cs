@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 {
@@ -12,6 +16,22 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private bool? _isAdmin;
         private int? _userRole;
         private string? _roleName;
+
+        // Cached discovered base URL (null = not yet discovered)
+        private string? _discoveredBaseUrl;
+        // True only when a live host was confirmed via PingApiAsync (not the localhost fallback)
+        private bool _wasDiscoveredSuccessfully;
+        private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
+
+        // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
+        private static readonly HttpClient _probeClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
+
+        // IP range to scan: 192.168.0.100 – 192.168.0.249
+        private const int ScanRangeStart = 100;
+        private const int ScanRangeEnd = 249;
+        private const int ApiPort = 5000;
+        private const string PingPath = "api/discovery/ping";
+        private const int ProbeTimeoutMs = 500;
 
         public static ApiClientService Instance
         {
@@ -42,7 +62,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Information("ApiClientService.AuthToken: Setting new token");
                     if (value != null)
                     {
-                        Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...", 
+                       Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...",
                             value.Length, value.Length > 20 ? value.Substring(0, 20) : value);
                     }
                     else
@@ -76,7 +96,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 _userRole = value;
                 OnUserRoleChanged?.Invoke(this, value);
-                // Update role name when role changes
                 RoleName = GetRussianRoleName(value);
             }
         }
@@ -96,29 +115,196 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public event EventHandler<int?> OnUserRoleChanged;
         public event EventHandler<string?> OnRoleNameChanged;
 
+        /// <summary>
+        /// Returns the currently cached base URL, or null if discovery hasn't run yet.
+        /// </summary>
+        public string? CurrentBaseUrl => _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
+
+        /// <summary>
+        /// True when a live host was confirmed via the ping endpoint during discovery
+        /// (as opposed to the localhost fallback used when no server was found).
+        /// </summary>
+        public bool WasDiscoveredSuccessfully => _wasDiscoveredSuccessfully;
+
+        /// <summary>
+        /// Probes localhost first, then scans 192.168.0.100–249 in parallel.
+        /// Caches the first responding host and returns it.
+        /// </summary>
+        public async Task<string> DiscoverApiBaseUrlAsync(CancellationToken cancellationToken = default)
+        {
+            // Return cached result if already discovered
+            if (_discoveredBaseUrl != null)
+                return _discoveredBaseUrl;
+
+            await _discoveryLock.WaitAsync(cancellationToken);
+            try
+            {
+                // Double-check after acquiring lock
+                if (_discoveredBaseUrl != null)
+                    return _discoveredBaseUrl;
+
+                Serilog.Log.Information("ApiClientService: Starting API server discovery...");
+
+                // 1. Try localhost first (fastest path for the dev machine)
+                var localhostUrl = $"http://localhost:{ApiPort}/";
+                if (await PingApiAsync(localhostUrl, cancellationToken))
+                {
+                    Serilog.Log.Information("ApiClientService: API found at localhost");
+                    _discoveredBaseUrl = $"{localhostUrl}api/";
+                    _wasDiscoveredSuccessfully = true;
+                    return _discoveredBaseUrl;
+                }
+
+                // 2. Scan LAN range in parallel — subnet from config or auto-detected local /24
+                var subnet = GetDiscoverySubnet();
+                Serilog.Log.Information("ApiClientService: Scanning LAN range {Subnet}.{Start}-{End}...",
+                    subnet, ScanRangeStart, ScanRangeEnd);
+
+                var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
+                    .Select(i => $"http://{subnet}.{i}:{ApiPort}/");
+
+                var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
+                if (found != null)
+                {
+                    Serilog.Log.Information("ApiClientService: API found at {Url}", found);
+                    _discoveredBaseUrl = $"{found}api/";
+                    _wasDiscoveredSuccessfully = true;
+                    return _discoveredBaseUrl;
+                }
+
+                // 3. Fall back to localhost even if it didn't respond (offline/dev scenario)
+                Serilog.Log.Warning("ApiClientService: No API server found on LAN, falling back to localhost");
+                _discoveredBaseUrl = $"http://localhost:{ApiPort}/api/";
+                return _discoveredBaseUrl;
+            }
+            finally
+            {
+                _discoveryLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Resets the cached discovery result so the next call to DiscoverApiBaseUrlAsync re-scans.
+        /// </summary>
+        public void ResetDiscovery()
+        {
+            _discoveredBaseUrl = null;
+            _wasDiscoveredSuccessfully = false;
+            Serilog.Log.Information("ApiClientService: Discovery cache cleared");
+        }
+
+        /// <summary>
+        /// Returns the /24 subnet prefix to scan (e.g. "192.168.0").
+        /// Reads DiscoverySubnet from app config if available, otherwise auto-detects
+        /// the local machine's first non-loopback IPv4 /24.
+        /// </summary>
+        private static string GetDiscoverySubnet()
+        {
+            // Check environment variable override first
+            var envSubnet = Environment.GetEnvironmentVariable("BRU_DISCOVERY_SUBNET");
+            if (!string.IsNullOrWhiteSpace(envSubnet))
+                return envSubnet.TrimEnd('.');
+
+            // Auto-detect: find first non-loopback IPv4 address and use its /24
+            try
+            {
+                var host = System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName());
+                foreach (var addr in host.AddressList)
+                {
+                    if (addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                        continue;
+                    var bytes = addr.GetAddressBytes();
+                    if (bytes[0] == 127) continue; // skip loopback
+                    return $"{bytes[0]}.{bytes[1]}.{bytes[2]}";
+                }
+            }
+            catch { /* fall through to default */ }
+
+            return "192.168.0";
+        }
+
         public HttpClient CreateClient()
         {
+            var baseUrl = _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
             var client = new HttpClient
             {
-                BaseAddress = new Uri("http://localhost:5000/api/")
+                BaseAddress = new Uri(baseUrl)
             };
 
             if (!string.IsNullOrEmpty(_authToken))
             {
-                client.DefaultRequestHeaders.Authorization = 
+                client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", _authToken);
                 Serilog.Log.Debug("ApiClientService.CreateClient: Authorization header added with token (length: {Length})", _authToken.Length);
-                Serilog.Log.Debug("ApiClientService.CreateClient: Token preview: {TokenPreview}...", 
-                    _authToken.Length > 20 ? _authToken.Substring(0, 20) : _authToken);
             }
             else
             {
                 Serilog.Log.Warning("ApiClientService.CreateClient: No auth token available, Authorization header NOT added");
-                Serilog.Log.Warning("ApiClientService.CreateClient: _authToken is null or empty. Current value: {TokenValue}", 
+                Serilog.Log.Warning("ApiClientService.CreateClient: _authToken is null or empty. Current value: {TokenValue}",
                     _authToken ?? "(null)");
             }
 
             return client;
+        }
+
+        // ── Private helpers ──────────────────────────────────────────────────────
+
+        private static async Task<bool> PingApiAsync(string baseUrl, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(ProbeTimeoutMs);
+
+                var response = await _probeClient.GetAsync($"{baseUrl.TrimEnd('/')}/{PingPath}", cts.Token);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var body = await response.Content.ReadAsStringAsync(cts.Token);
+                using var doc = System.Text.Json.JsonDocument.Parse(body);
+                return doc.RootElement.TryGetProperty("status", out var status)
+                    && status.GetString() == "ok";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static async Task<string?> FindFirstRespondingHostAsync(
+            IEnumerable<string> candidates,
+            CancellationToken cancellationToken)
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            var tasks = candidates
+                .Select(url => Task.Run(async () =>
+                {
+                    var ok = await PingApiAsync(url, cts.Token);
+                    return ok ? url : null;
+                }, cts.Token))
+                .ToList();
+
+            while (tasks.Count > 0)
+            {
+                var completed = await Task.WhenAny(tasks);
+                tasks.Remove(completed);
+
+                try
+                {
+                    var result = await completed;
+                    if (result != null)
+                    {
+                        cts.Cancel(); // stop remaining probes
+                        return result;
+                    }
+                }
+                catch
+                {
+                    // probe failed, continue
+                }
+            }
+
+            return null;
         }
 
         private string? GetRussianRoleName(int? role)
@@ -140,4 +326,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             };
         }
     }
-} 
+}

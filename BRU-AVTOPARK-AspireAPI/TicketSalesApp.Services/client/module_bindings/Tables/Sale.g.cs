@@ -44,27 +44,27 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Sale, uint> TicketId { get; }
         public global::SpacetimeDB.Col<Sale, string> TicketSoldToUser { get; }
         public global::SpacetimeDB.Col<Sale, string> TicketSoldToUserPhone { get; }
-        public global::SpacetimeDB.NullableCol<Sale, SpacetimeDB.Identity> SellerId { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> SaleLocation { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> SaleNotes { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PaymentMethod { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PaymentStatus { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> TransactionId { get; }
-        public global::SpacetimeDB.NullableCol<Sale, double> TaxAmount { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> InvoiceNumber { get; }
-        public global::SpacetimeDB.NullableCol<Sale, bool> IsSubscription { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> SubscriptionType { get; }
-        public global::SpacetimeDB.NullableCol<Sale, ulong> SubscriptionStartDate { get; }
-        public global::SpacetimeDB.NullableCol<Sale, ulong> SubscriptionEndDate { get; }
-        public global::SpacetimeDB.NullableCol<Sale, bool> IsGift { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> GiftRecipient { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PromotionCode { get; }
-        public global::SpacetimeDB.NullableCol<Sale, double> DiscountAmount { get; }
+        public global::SpacetimeDB.Col<Sale, SpacetimeDB.Identity> SellerId { get; }
+        public global::SpacetimeDB.Col<Sale, string> SaleLocation { get; }
+        public global::SpacetimeDB.Col<Sale, string> SaleNotes { get; }
+        public global::SpacetimeDB.Col<Sale, string> PaymentMethod { get; }
+        public global::SpacetimeDB.Col<Sale, string> PaymentStatus { get; }
+        public global::SpacetimeDB.Col<Sale, string> TransactionId { get; }
+        public global::SpacetimeDB.Col<Sale, double> TaxAmount { get; }
+        public global::SpacetimeDB.Col<Sale, string> InvoiceNumber { get; }
+        public global::SpacetimeDB.Col<Sale, bool> IsSubscription { get; }
+        public global::SpacetimeDB.Col<Sale, string> SubscriptionType { get; }
+        public global::SpacetimeDB.Col<Sale, ulong> SubscriptionStartDate { get; }
+        public global::SpacetimeDB.Col<Sale, ulong> SubscriptionEndDate { get; }
+        public global::SpacetimeDB.Col<Sale, bool> IsGift { get; }
+        public global::SpacetimeDB.Col<Sale, string> GiftRecipient { get; }
+        public global::SpacetimeDB.Col<Sale, string> PromotionCode { get; }
+        public global::SpacetimeDB.Col<Sale, double> DiscountAmount { get; }
         public global::SpacetimeDB.Col<Sale, double> TotalAmount { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PaymentTransactionId { get; }
-        public global::SpacetimeDB.NullableCol<Sale, double> ChangeAmount { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PaymentProvider { get; }
-        public global::SpacetimeDB.NullableCol<Sale, string> PaymentReference { get; }
+        public global::SpacetimeDB.Col<Sale, string> PaymentTransactionId { get; }
+        public global::SpacetimeDB.Col<Sale, double> ChangeAmount { get; }
+        public global::SpacetimeDB.Col<Sale, string> PaymentProvider { get; }
+        public global::SpacetimeDB.Col<Sale, string> PaymentReference { get; }
 
         public SaleCols(string tableName)
         {
@@ -73,27 +73,27 @@ namespace SpacetimeDB.Types
             TicketId = new global::SpacetimeDB.Col<Sale, uint>(tableName, "ticket_id");
             TicketSoldToUser = new global::SpacetimeDB.Col<Sale, string>(tableName, "ticket_sold_to_user");
             TicketSoldToUserPhone = new global::SpacetimeDB.Col<Sale, string>(tableName, "ticket_sold_to_user_phone");
-            SellerId = new global::SpacetimeDB.NullableCol<Sale, SpacetimeDB.Identity>(tableName, "seller_id");
-            SaleLocation = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "sale_location");
-            SaleNotes = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "sale_notes");
-            PaymentMethod = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "payment_method");
-            PaymentStatus = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "payment_status");
-            TransactionId = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "transaction_id");
-            TaxAmount = new global::SpacetimeDB.NullableCol<Sale, double>(tableName, "tax_amount");
-            InvoiceNumber = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "invoice_number");
-            IsSubscription = new global::SpacetimeDB.NullableCol<Sale, bool>(tableName, "is_subscription");
-            SubscriptionType = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "subscription_type");
-            SubscriptionStartDate = new global::SpacetimeDB.NullableCol<Sale, ulong>(tableName, "subscription_start_date");
-            SubscriptionEndDate = new global::SpacetimeDB.NullableCol<Sale, ulong>(tableName, "subscription_end_date");
-            IsGift = new global::SpacetimeDB.NullableCol<Sale, bool>(tableName, "is_gift");
-            GiftRecipient = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "gift_recipient");
-            PromotionCode = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "promotion_code");
-            DiscountAmount = new global::SpacetimeDB.NullableCol<Sale, double>(tableName, "discount_amount");
+            SellerId = new global::SpacetimeDB.Col<Sale, SpacetimeDB.Identity>(tableName, "seller_id");
+            SaleLocation = new global::SpacetimeDB.Col<Sale, string>(tableName, "sale_location");
+            SaleNotes = new global::SpacetimeDB.Col<Sale, string>(tableName, "sale_notes");
+            PaymentMethod = new global::SpacetimeDB.Col<Sale, string>(tableName, "payment_method");
+            PaymentStatus = new global::SpacetimeDB.Col<Sale, string>(tableName, "payment_status");
+            TransactionId = new global::SpacetimeDB.Col<Sale, string>(tableName, "transaction_id");
+            TaxAmount = new global::SpacetimeDB.Col<Sale, double>(tableName, "tax_amount");
+            InvoiceNumber = new global::SpacetimeDB.Col<Sale, string>(tableName, "invoice_number");
+            IsSubscription = new global::SpacetimeDB.Col<Sale, bool>(tableName, "is_subscription");
+            SubscriptionType = new global::SpacetimeDB.Col<Sale, string>(tableName, "subscription_type");
+            SubscriptionStartDate = new global::SpacetimeDB.Col<Sale, ulong>(tableName, "subscription_start_date");
+            SubscriptionEndDate = new global::SpacetimeDB.Col<Sale, ulong>(tableName, "subscription_end_date");
+            IsGift = new global::SpacetimeDB.Col<Sale, bool>(tableName, "is_gift");
+            GiftRecipient = new global::SpacetimeDB.Col<Sale, string>(tableName, "gift_recipient");
+            PromotionCode = new global::SpacetimeDB.Col<Sale, string>(tableName, "promotion_code");
+            DiscountAmount = new global::SpacetimeDB.Col<Sale, double>(tableName, "discount_amount");
             TotalAmount = new global::SpacetimeDB.Col<Sale, double>(tableName, "total_amount");
-            PaymentTransactionId = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "payment_transaction_id");
-            ChangeAmount = new global::SpacetimeDB.NullableCol<Sale, double>(tableName, "change_amount");
-            PaymentProvider = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "payment_provider");
-            PaymentReference = new global::SpacetimeDB.NullableCol<Sale, string>(tableName, "payment_reference");
+            PaymentTransactionId = new global::SpacetimeDB.Col<Sale, string>(tableName, "payment_transaction_id");
+            ChangeAmount = new global::SpacetimeDB.Col<Sale, double>(tableName, "change_amount");
+            PaymentProvider = new global::SpacetimeDB.Col<Sale, string>(tableName, "payment_provider");
+            PaymentReference = new global::SpacetimeDB.Col<Sale, string>(tableName, "payment_reference");
         }
     }
 

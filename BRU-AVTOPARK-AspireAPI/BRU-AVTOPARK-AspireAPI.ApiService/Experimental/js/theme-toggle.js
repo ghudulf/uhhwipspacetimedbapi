@@ -17,8 +17,10 @@
     function updateThemeColor(isDark) {
         const themeColor = document.querySelector('meta[name="theme-color"]');
         if (themeColor) {
-            themeColor.setAttribute('content', isDark ? '#0f172a' : '#0066ff');
+            themeColor.setAttribute('content', isDark ? '#121212' : '#F0F0F0');
         }
+        // Also update html background so overscroll never flashes wrong color
+        document.documentElement.style.backgroundColor = isDark ? '#121212' : '#F0F0F0';
     }
     
     // Apply theme with smooth transition

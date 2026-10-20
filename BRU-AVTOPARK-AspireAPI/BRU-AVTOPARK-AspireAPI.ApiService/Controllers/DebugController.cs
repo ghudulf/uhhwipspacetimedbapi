@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Web;
 using TicketSalesApp.Services.Interfaces;
+using BRU_AVTOPARK.Services.Interfaces;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 {
@@ -20,15 +21,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly ISpacetimeDBService _spacetimeService;
         private readonly ILogger<DebugController> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly IRequestDetector _requestDetector;
 
         public DebugController(
             ISpacetimeDBService spacetimeService,
             ILogger<DebugController> logger,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IRequestDetector requestDetector)
         {
             _spacetimeService = spacetimeService;
             _logger = logger;
             _environment = environment;
+            _requestDetector = requestDetector;
         }
 
         [HttpGet("tables")]
@@ -42,7 +46,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return NotFound(); // Or Forbid()
             }
 
-            if (!IsBrowserRequest())
+            if (!_requestDetector.IsBrowserRequest())
             {
                 return BadRequest(new { Success = false, Message = "This endpoint is for browser access only." });
             }
@@ -690,15 +694,6 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 </div>";
 
             return string.Format(BaseHtmlTemplate, "Error - SpacetimeDB Debug", content, "");
-        }
-
-        // --- Helper to check if request is from a browser ---
-        private bool IsBrowserRequest()
-        {
-            var userAgent = Request.Headers["User-Agent"].ToString().ToLower();
-            return userAgent.Contains("mozilla") || userAgent.Contains("chrome") || 
-                   userAgent.Contains("safari") || userAgent.Contains("edge") || 
-                   userAgent.Contains("opera");
         }
 
         // --- Base HTML Template ---

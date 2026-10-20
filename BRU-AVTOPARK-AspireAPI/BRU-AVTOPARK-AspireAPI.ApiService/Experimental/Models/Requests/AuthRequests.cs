@@ -12,7 +12,7 @@ public record LoginRequest
     public required string Username { get; init; }
 
     [Required(ErrorMessage = "Password is required")]
-    [StringLength(256, MinimumLength = 6)]
+    [StringLength(256, MinimumLength = 1)]
     public required string Password { get; init; }
 
     /// <summary>When true, bypasses 2FA verification (e.g., during re-authentication flows).</summary>
@@ -93,6 +93,20 @@ public record ValidateTotpRequest
     [Required]
     [StringLength(6, MinimumLength = 6)]
     public required string Code { get; init; }
+}
+
+/// <summary>
+/// JSON body for the headless OAuth consent endpoint (POST /api/auth/oauth/consent).
+/// Allows non-browser clients to programmatically grant or deny an OAuth authorization request.
+/// </summary>
+public record OAuthConsentRequest
+{
+    /// <summary>The requestId returned by GET/POST ~/connect/authorize for unauthenticated headless clients.</summary>
+    [Required]
+    public required string RequestId { get; init; }
+
+    /// <summary>True to grant the authorization; false to deny it.</summary>
+    public bool Grant { get; init; }
 }
 
 /// <summary>
@@ -277,4 +291,46 @@ public record UpdateSettingsRequest
     public bool? TotpEnabled { get; init; }
     public bool? WebAuthnEnabled { get; init; }
     public bool? EmailNotifications { get; init; }
+}
+
+/// <summary>
+/// Backchannel OAuth authorize request for headless/native clients.
+/// Allows non-browser clients to complete the full OAuth authorization flow in a single step.
+/// Only allowed for confidential/native client types — not public browser clients.
+/// </summary>
+public record OAuthBackchannelAuthorizeRequest
+{
+    /// <summary>The OAuth client_id.</summary>
+    [Required]
+    public required string ClientId { get; init; }
+
+    /// <summary>The redirect_uri registered for the client.</summary>
+    [Required]
+    public required string RedirectUri { get; init; }
+
+    /// <summary>Space-separated list of requested scopes.</summary>
+    public string Scope { get; init; } = "openid";
+
+    /// <summary>Optional state value to be returned with the authorization code.</summary>
+    public string? State { get; init; }
+
+    /// <summary>PKCE code challenge (S256 recommended).</summary>
+    public string? CodeChallenge { get; init; }
+
+    /// <summary>PKCE code challenge method (e.g. "S256").</summary>
+    public string? CodeChallengeMethod { get; init; }
+
+    /// <summary>OpenID Connect nonce for replay protection.</summary>
+    public string? Nonce { get; init; }
+
+    // --- Credential options (one of the following must be provided) ---
+
+    /// <summary>Username for password-based authentication.</summary>
+    public string? Username { get; init; }
+
+    /// <summary>Password for password-based authentication.</summary>
+    public string? Password { get; init; }
+
+    /// <summary>Bearer token for already-authenticated clients (alternative to username/password).</summary>
+    public string? Token { get; init; }
 }

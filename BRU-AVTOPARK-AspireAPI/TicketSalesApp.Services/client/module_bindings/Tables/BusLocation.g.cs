@@ -44,16 +44,16 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<BusLocation, double> Latitude { get; }
         public global::SpacetimeDB.Col<BusLocation, double> Longitude { get; }
         public global::SpacetimeDB.Col<BusLocation, ulong> Timestamp { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, uint> RouteId { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, uint> ScheduleId { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, double> Speed { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, double> Heading { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, string> Status { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, uint> NextStopId { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, ulong> EstimatedArrivalTime { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, bool> IsDelayed { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, uint> DelayMinutes { get; }
-        public global::SpacetimeDB.NullableCol<BusLocation, string> DelayReason { get; }
+        public global::SpacetimeDB.Col<BusLocation, uint> RouteId { get; }
+        public global::SpacetimeDB.Col<BusLocation, uint> ScheduleId { get; }
+        public global::SpacetimeDB.Col<BusLocation, double> Speed { get; }
+        public global::SpacetimeDB.Col<BusLocation, double> Heading { get; }
+        public global::SpacetimeDB.Col<BusLocation, string> Status { get; }
+        public global::SpacetimeDB.Col<BusLocation, uint> NextStopId { get; }
+        public global::SpacetimeDB.Col<BusLocation, ulong> EstimatedArrivalTime { get; }
+        public global::SpacetimeDB.Col<BusLocation, bool> IsDelayed { get; }
+        public global::SpacetimeDB.Col<BusLocation, uint> DelayMinutes { get; }
+        public global::SpacetimeDB.Col<BusLocation, string> DelayReason { get; }
 
         public BusLocationCols(string tableName)
         {
@@ -62,16 +62,16 @@ namespace SpacetimeDB.Types
             Latitude = new global::SpacetimeDB.Col<BusLocation, double>(tableName, "latitude");
             Longitude = new global::SpacetimeDB.Col<BusLocation, double>(tableName, "longitude");
             Timestamp = new global::SpacetimeDB.Col<BusLocation, ulong>(tableName, "timestamp");
-            RouteId = new global::SpacetimeDB.NullableCol<BusLocation, uint>(tableName, "route_id");
-            ScheduleId = new global::SpacetimeDB.NullableCol<BusLocation, uint>(tableName, "schedule_id");
-            Speed = new global::SpacetimeDB.NullableCol<BusLocation, double>(tableName, "speed");
-            Heading = new global::SpacetimeDB.NullableCol<BusLocation, double>(tableName, "heading");
-            Status = new global::SpacetimeDB.NullableCol<BusLocation, string>(tableName, "status");
-            NextStopId = new global::SpacetimeDB.NullableCol<BusLocation, uint>(tableName, "next_stop_id");
-            EstimatedArrivalTime = new global::SpacetimeDB.NullableCol<BusLocation, ulong>(tableName, "estimated_arrival_time");
-            IsDelayed = new global::SpacetimeDB.NullableCol<BusLocation, bool>(tableName, "is_delayed");
-            DelayMinutes = new global::SpacetimeDB.NullableCol<BusLocation, uint>(tableName, "delay_minutes");
-            DelayReason = new global::SpacetimeDB.NullableCol<BusLocation, string>(tableName, "delay_reason");
+            RouteId = new global::SpacetimeDB.Col<BusLocation, uint>(tableName, "route_id");
+            ScheduleId = new global::SpacetimeDB.Col<BusLocation, uint>(tableName, "schedule_id");
+            Speed = new global::SpacetimeDB.Col<BusLocation, double>(tableName, "speed");
+            Heading = new global::SpacetimeDB.Col<BusLocation, double>(tableName, "heading");
+            Status = new global::SpacetimeDB.Col<BusLocation, string>(tableName, "status");
+            NextStopId = new global::SpacetimeDB.Col<BusLocation, uint>(tableName, "next_stop_id");
+            EstimatedArrivalTime = new global::SpacetimeDB.Col<BusLocation, ulong>(tableName, "estimated_arrival_time");
+            IsDelayed = new global::SpacetimeDB.Col<BusLocation, bool>(tableName, "is_delayed");
+            DelayMinutes = new global::SpacetimeDB.Col<BusLocation, uint>(tableName, "delay_minutes");
+            DelayReason = new global::SpacetimeDB.Col<BusLocation, string>(tableName, "delay_reason");
         }
     }
 

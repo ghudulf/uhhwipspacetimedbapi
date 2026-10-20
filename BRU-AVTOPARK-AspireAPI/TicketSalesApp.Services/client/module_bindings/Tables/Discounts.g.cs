@@ -45,12 +45,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Discounts, ulong> StartDate { get; }
         public global::SpacetimeDB.Col<Discounts, ulong> EndDate { get; }
         public global::SpacetimeDB.Col<Discounts, bool> IsActive { get; }
-        public global::SpacetimeDB.NullableCol<Discounts, string> Description { get; }
-        public global::SpacetimeDB.NullableCol<Discounts, string> RequiredDocuments { get; }
-        public global::SpacetimeDB.NullableCol<Discounts, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<Discounts, string> Description { get; }
+        public global::SpacetimeDB.Col<Discounts, string> RequiredDocuments { get; }
+        public global::SpacetimeDB.Col<Discounts, string> CreatedBy { get; }
         public global::SpacetimeDB.Col<Discounts, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Discounts, string> UpdatedBy { get; }
-        public global::SpacetimeDB.NullableCol<Discounts, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.Col<Discounts, string> UpdatedBy { get; }
+        public global::SpacetimeDB.Col<Discounts, ulong> UpdatedAt { get; }
 
         public DiscountsCols(string tableName)
         {
@@ -60,12 +60,12 @@ namespace SpacetimeDB.Types
             StartDate = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "start_date");
             EndDate = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "end_date");
             IsActive = new global::SpacetimeDB.Col<Discounts, bool>(tableName, "is_active");
-            Description = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "description");
-            RequiredDocuments = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "required_documents");
-            CreatedBy = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "created_by");
+            Description = new global::SpacetimeDB.Col<Discounts, string>(tableName, "description");
+            RequiredDocuments = new global::SpacetimeDB.Col<Discounts, string>(tableName, "required_documents");
+            CreatedBy = new global::SpacetimeDB.Col<Discounts, string>(tableName, "created_by");
             CreatedAt = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "created_at");
-            UpdatedBy = new global::SpacetimeDB.NullableCol<Discounts, string>(tableName, "updated_by");
-            UpdatedAt = new global::SpacetimeDB.NullableCol<Discounts, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.Col<Discounts, string>(tableName, "updated_by");
+            UpdatedAt = new global::SpacetimeDB.Col<Discounts, ulong>(tableName, "updated_at");
         }
     }
 

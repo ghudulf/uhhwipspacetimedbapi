@@ -54,15 +54,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
                         statusCode
                     );
 
-                    // Special logging for Auth controllers to highlight legacy vs refactored
-                    if (actualControllerType == "AuthController" || actualControllerType == "AuthControllerRefactored")
+                    // Special logging for Auth controller
+                    if (actualControllerType == "AuthController")
                     {
-                        var controllerLabel = actualControllerType == "AuthControllerRefactored" ? "REFACTORED ✨" : "LEGACY 🔧";
-                        _logger.LogWarning(
-                            "🔀 AUTH ROUTING: {HttpMethod} {Path} → {ControllerLabel} ({ControllerType}.{ActionName})",
+                        _logger.LogInformation(
+                            "🔀 AUTH ROUTING: {HttpMethod} {Path} → {ControllerType}.{ActionName}",
                             httpMethod,
                             path,
-                            controllerLabel,
                             actualControllerType,
                             actualActionName
                         );

@@ -41,45 +41,45 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<Job, uint> JobId { get; }
         public global::SpacetimeDB.Col<Job, string> JobTitle { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> Internship { get; }
-        public global::SpacetimeDB.NullableCol<Job, double> BaseSalary { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> Department { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> JobDescription { get; }
-        public global::SpacetimeDB.NullableCol<Job, uint> RequiredExperience { get; }
-        public global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>> RequiredSkills { get; }
-        public global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>> RequiredCertifications { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> EducationRequirements { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> WorkSchedule { get; }
-        public global::SpacetimeDB.NullableCol<Job, bool> IsFullTime { get; }
-        public global::SpacetimeDB.NullableCol<Job, bool> IsPartTime { get; }
-        public global::SpacetimeDB.NullableCol<Job, bool> IsShiftWork { get; }
-        public global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>> Benefits { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> ReportingTo { get; }
-        public global::SpacetimeDB.NullableCol<Job, uint> VacationDays { get; }
-        public global::SpacetimeDB.NullableCol<Job, uint> SickDays { get; }
-        public global::SpacetimeDB.NullableCol<Job, string> PerformanceMetrics { get; }
+        public global::SpacetimeDB.Col<Job, string> Internship { get; }
+        public global::SpacetimeDB.Col<Job, double> BaseSalary { get; }
+        public global::SpacetimeDB.Col<Job, string> Department { get; }
+        public global::SpacetimeDB.Col<Job, string> JobDescription { get; }
+        public global::SpacetimeDB.Col<Job, uint> RequiredExperience { get; }
+        public global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>> RequiredSkills { get; }
+        public global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>> RequiredCertifications { get; }
+        public global::SpacetimeDB.Col<Job, string> EducationRequirements { get; }
+        public global::SpacetimeDB.Col<Job, string> WorkSchedule { get; }
+        public global::SpacetimeDB.Col<Job, bool> IsFullTime { get; }
+        public global::SpacetimeDB.Col<Job, bool> IsPartTime { get; }
+        public global::SpacetimeDB.Col<Job, bool> IsShiftWork { get; }
+        public global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>> Benefits { get; }
+        public global::SpacetimeDB.Col<Job, string> ReportingTo { get; }
+        public global::SpacetimeDB.Col<Job, uint> VacationDays { get; }
+        public global::SpacetimeDB.Col<Job, uint> SickDays { get; }
+        public global::SpacetimeDB.Col<Job, string> PerformanceMetrics { get; }
 
         public JobCols(string tableName)
         {
             JobId = new global::SpacetimeDB.Col<Job, uint>(tableName, "job_id");
             JobTitle = new global::SpacetimeDB.Col<Job, string>(tableName, "job_title");
-            Internship = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "internship");
-            BaseSalary = new global::SpacetimeDB.NullableCol<Job, double>(tableName, "base_salary");
-            Department = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "department");
-            JobDescription = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "job_description");
-            RequiredExperience = new global::SpacetimeDB.NullableCol<Job, uint>(tableName, "required_experience");
-            RequiredSkills = new global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>>(tableName, "required_skills");
-            RequiredCertifications = new global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>>(tableName, "required_certifications");
-            EducationRequirements = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "education_requirements");
-            WorkSchedule = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "work_schedule");
-            IsFullTime = new global::SpacetimeDB.NullableCol<Job, bool>(tableName, "is_full_time");
-            IsPartTime = new global::SpacetimeDB.NullableCol<Job, bool>(tableName, "is_part_time");
-            IsShiftWork = new global::SpacetimeDB.NullableCol<Job, bool>(tableName, "is_shift_work");
-            Benefits = new global::SpacetimeDB.NullableCol<Job, System.Collections.Generic.List<string>>(tableName, "benefits");
-            ReportingTo = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "reporting_to");
-            VacationDays = new global::SpacetimeDB.NullableCol<Job, uint>(tableName, "vacation_days");
-            SickDays = new global::SpacetimeDB.NullableCol<Job, uint>(tableName, "sick_days");
-            PerformanceMetrics = new global::SpacetimeDB.NullableCol<Job, string>(tableName, "performance_metrics");
+            Internship = new global::SpacetimeDB.Col<Job, string>(tableName, "internship");
+            BaseSalary = new global::SpacetimeDB.Col<Job, double>(tableName, "base_salary");
+            Department = new global::SpacetimeDB.Col<Job, string>(tableName, "department");
+            JobDescription = new global::SpacetimeDB.Col<Job, string>(tableName, "job_description");
+            RequiredExperience = new global::SpacetimeDB.Col<Job, uint>(tableName, "required_experience");
+            RequiredSkills = new global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>>(tableName, "required_skills");
+            RequiredCertifications = new global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>>(tableName, "required_certifications");
+            EducationRequirements = new global::SpacetimeDB.Col<Job, string>(tableName, "education_requirements");
+            WorkSchedule = new global::SpacetimeDB.Col<Job, string>(tableName, "work_schedule");
+            IsFullTime = new global::SpacetimeDB.Col<Job, bool>(tableName, "is_full_time");
+            IsPartTime = new global::SpacetimeDB.Col<Job, bool>(tableName, "is_part_time");
+            IsShiftWork = new global::SpacetimeDB.Col<Job, bool>(tableName, "is_shift_work");
+            Benefits = new global::SpacetimeDB.Col<Job, System.Collections.Generic.List<string>>(tableName, "benefits");
+            ReportingTo = new global::SpacetimeDB.Col<Job, string>(tableName, "reporting_to");
+            VacationDays = new global::SpacetimeDB.Col<Job, uint>(tableName, "vacation_days");
+            SickDays = new global::SpacetimeDB.Col<Job, uint>(tableName, "sick_days");
+            PerformanceMetrics = new global::SpacetimeDB.Col<Job, string>(tableName, "performance_metrics");
         }
     }
 

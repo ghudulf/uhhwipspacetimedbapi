@@ -74,20 +74,20 @@
   - [x] 9.2 Verify no `IBinding`-typed variable declarations exist in the codebase (grep scan found none — all `new Binding(...)` calls in `AuthWindow.axaml.cs` are inline without `IBinding` type declarations); if any are found during compilation, replace with `BindingBase`
   - [x] 9.3 Verify `Views/AuthWindow.axaml.cs` compiles correctly — `new Binding(...)` calls remain valid as `ReflectionBinding` aliases when compiled bindings are off
 
-- [ ] 10. Update third-party Avalonia-dependent packages
-  - [ ] 10.1 Research and update `Semi.Avalonia` and `Semi.Avalonia.DataGrid` to Avalonia 12-compatible versions in the main `.csproj`
-  - [ ] 10.2 Research and update `FluentAvaloniaUI` to an Avalonia 12-compatible version
-  - [ ] 10.3 Research and update `Material.Icons.Avalonia` to an Avalonia 12-compatible version
-  - [ ] 10.4 Research and update `SukiUI` to an Avalonia 12-compatible version
-  - [ ] 10.5 Research and update `Avalonia.Labs.Controls` to an Avalonia 12-compatible version
-  - [ ] 10.6 Research and update `Classic.Avalonia.Theme` and `Classic.CommonControls.Avalonia` to Avalonia 12-compatible versions, or document incompatibility and propose removal/replacement
-  - [ ] 10.7 Research and update `ReDocking.Avalonia` to an Avalonia 12-compatible version, or document incompatibility
-  - [ ] 10.8 Research and update `Dock.Model.Mvvm` to an Avalonia 12-compatible version
-  - [ ] 10.9 Research and update `MessageBox.Avalonia` to an Avalonia 12-compatible version
-  - [ ] 10.10 Confirm migration to `Avalonia.Controls.WebView` and `NativeWebView` and remove `WebView.Avalonia` usage
-  - [ ] 10.11 Research and update `LiveChartsCore.SkiaSharpView.Avalonia` to a stable Avalonia 12-compatible version
-  - [ ] 10.12 Research and update `FluentAvalonia.ProgressRing` to an Avalonia 12-compatible version, or document incompatibility
-  - [ ] 10.13 For any package with no Avalonia 12-compatible release, document the package name, current version, incompatibility status, and chosen resolution strategy (pin-and-test, remove, or fork)
+- [x] 10. Update third-party Avalonia-dependent packages
+  - [x] 10.1 Research and update `Semi.Avalonia` and `Semi.Avalonia.DataGrid` to Avalonia 12-compatible versions in the main `.csproj`
+  - [x] 10.2 Research and update `FluentAvaloniaUI` to an Avalonia 12-compatible version
+  - [x] 10.3 Research and update `Material.Icons.Avalonia` to an Avalonia 12-compatible version
+  - [x] 10.4 Research and update `SukiUI` to an Avalonia 12-compatible version
+  - [x] 10.5 Research and update `Avalonia.Labs.Controls` to an Avalonia 12-compatible version
+  - [x] 10.6 Research and update `Classic.Avalonia.Theme` and `Classic.CommonControls.Avalonia` to Avalonia 12-compatible versions, or document incompatibility and propose removal/replacement
+  - [x] 10.7 Research and update `ReDocking.Avalonia` to an Avalonia 12-compatible version, or document incompatibility
+  - [x] 10.8 Research and update `Dock.Model.Mvvm` to an Avalonia 12-compatible version
+  - [x] 10.9 Research and update `MessageBox.Avalonia` to an Avalonia 12-compatible version
+  - [x] 10.10 Confirm migration to `Avalonia.Controls.WebView` and `NativeWebView` and remove `WebView.Avalonia` usage
+  - [x] 10.11 Research and update `LiveChartsCore.SkiaSharpView.Avalonia` to a stable Avalonia 12-compatible version
+  - [x] 10.12 Research and update `FluentAvalonia.ProgressRing` to an Avalonia 12-compatible version, or document incompatibility
+  - [x] 10.13 For any package with no Avalonia 12-compatible release, document the package name, current version, incompatibility status, and chosen resolution strategy (pin-and-test, remove, or fork)
 
 - [x] 11. Verify Desktop project AppBuilder chain
   - [x] 11.1 Confirm `Program.cs` in the Desktop project retains `UsePlatformDetect()` (valid in Avalonia 12)

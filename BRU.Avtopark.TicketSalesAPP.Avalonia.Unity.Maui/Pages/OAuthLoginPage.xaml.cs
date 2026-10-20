@@ -76,8 +76,12 @@ public partial class OAuthLoginPage : ContentPage
 
             Log.Information("[OAuthLoginPage] Auth URL generated, state={State}", state);
 
+            // Redirect URI must always be localhost — registered in OpenIddict on the server.
+            // The discovered LAN IP is only for authorize/token endpoints.
+            var redirectUri = "http://localhost:5000/callback";
+
             OAuthControl.AuthorizationUrl = authUrl;
-            OAuthControl.RedirectUri      = "http://localhost:5000/callback";
+            OAuthControl.RedirectUri      = redirectUri;
             OAuthControl.ExpectedState    = state;
             OAuthControl.CodeVerifier     = codeVerifier;
 

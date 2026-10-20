@@ -44,8 +44,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<TwoFactorToken, string> Token { get; }
         public global::SpacetimeDB.Col<TwoFactorToken, ulong> ExpiresAt { get; }
         public global::SpacetimeDB.Col<TwoFactorToken, bool> IsUsed { get; }
-        public global::SpacetimeDB.NullableCol<TwoFactorToken, string> DeviceInfo { get; }
-        public global::SpacetimeDB.NullableCol<TwoFactorToken, string> IpAddress { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, string> DeviceInfo { get; }
+        public global::SpacetimeDB.Col<TwoFactorToken, string> IpAddress { get; }
 
         public TwoFactorTokenCols(string tableName)
         {
@@ -54,8 +54,8 @@ namespace SpacetimeDB.Types
             Token = new global::SpacetimeDB.Col<TwoFactorToken, string>(tableName, "token");
             ExpiresAt = new global::SpacetimeDB.Col<TwoFactorToken, ulong>(tableName, "expires_at");
             IsUsed = new global::SpacetimeDB.Col<TwoFactorToken, bool>(tableName, "is_used");
-            DeviceInfo = new global::SpacetimeDB.NullableCol<TwoFactorToken, string>(tableName, "device_info");
-            IpAddress = new global::SpacetimeDB.NullableCol<TwoFactorToken, string>(tableName, "ip_address");
+            DeviceInfo = new global::SpacetimeDB.Col<TwoFactorToken, string>(tableName, "device_info");
+            IpAddress = new global::SpacetimeDB.Col<TwoFactorToken, string>(tableName, "ip_address");
         }
     }
 

@@ -9,8 +9,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 {
     public partial class SplashScreen : Window
     {
-        private const string AdminServerUrl = "http://localhost:5000";
-
         private TextBlock? _statusMessage;
         private Border? _errorPanel;
         private TextBlock? _errorMessage;
@@ -70,39 +68,56 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
         public async Task<bool> CheckServerAvailability()
         {
-            SetStatus("Проверка подключения...");
+            SetStatus("Поиск сервера в сети...");
             try
             {
+                // Auto-discover the API server (localhost first, then LAN scan).
+                // If discovery confirmed a live host via ping, trust it even if the
+                // health endpoints below all return 404.
+                var baseUrl = await Services.ApiClientService.Instance.DiscoverApiBaseUrlAsync();
+                bool serverFoundViaPing = Services.ApiClientService.Instance.WasDiscoveredSuccessfully;
+
+                // baseUrl ends with "api/" — strip to get server root
+                var serverRoot = baseUrl.EndsWith("api/")
+                    ? baseUrl[..^4]
+                    : baseUrl;
+
+                SetStatus("Проверка подключения...");
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
-                // Try health endpoint first, fall back to swagger
-                foreach (var path in new[] { "/health", "/healthz", "/swagger" })
+                // Try well-known health/status endpoints — continue on 404 or network error,
+                // don't bail out on the first non-2xx response.
+                foreach (var path in new[] { "health", "healthz", "api/discovery/ping", "swagger" })
                 {
                     try
                     {
-                        var response = await client.GetAsync($"{AdminServerUrl}{path}");
+                        var response = await client.GetAsync($"{serverRoot.TrimEnd('/')}/{path}");
                         if (response.IsSuccessStatusCode)
                         {
-                            SetStatus("Подключено");
+                            SetStatus($"Подключено ({serverRoot.Replace("http://", "").TrimEnd('/')})");
                             if (_errorPanel != null) _errorPanel.IsVisible = false;
                             return true;
                         }
-                        // Non-success but server responded — show status code
-                        SetStatus($"Ошибка подключения (HTTP {(int)response.StatusCode})");
-                        if (_errorPanel != null) _errorPanel.IsVisible = true;
-                        if (_errorMessage != null) _errorMessage.Text =
-                            $"Сервер вернул HTTP {(int)response.StatusCode}. Убедитесь, что TicketSalesApp.AdminServer запущен.";
-                        return false;
+                        // Non-2xx (e.g. 404) — try the next path, don't give up yet
                     }
-                    catch (TaskCanceledException)
-                    {
-                        // Timeout on this path — try next
-                    }
-                    catch (HttpRequestException)
-                    {
-                        // Connection refused on this path — try next
-                    }
+                    catch (TaskCanceledException) { }
+                    catch (HttpRequestException) { }
                 }
+
+                // None of the health endpoints responded with 2xx, but if discovery
+                // already confirmed the server is alive via the ping endpoint, trust it.
+                if (serverFoundViaPing)
+                {
+                    SetStatus($"Подключено ({serverRoot.Replace("http://", "").TrimEnd('/')})");
+                    if (_errorPanel != null) _errorPanel.IsVisible = false;
+                    return true;
+                }
+
+                SetStatus("Ошибка подключения");
+                if (_errorPanel != null) _errorPanel.IsVisible = true;
+                if (_errorMessage != null) _errorMessage.Text =
+                    "Сервер недоступен. Убедитесь, что TicketSalesApp.AdminServer запущен.";
+                return false;
             }
             catch (TaskCanceledException)
             {
@@ -128,12 +143,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                     $"Сервер недоступен: {ex.Message}";
                 return false;
             }
-
-            SetStatus("Ошибка подключения");
-            if (_errorPanel != null) _errorPanel.IsVisible = true;
-            if (_errorMessage != null) _errorMessage.Text =
-                "Сервер недоступен. Убедитесь, что TicketSalesApp.AdminServer запущен.";
-            return false;
         }
     }
 }

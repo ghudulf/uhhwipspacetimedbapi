@@ -44,8 +44,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<AdminActionLog, string> Action { get; }
         public global::SpacetimeDB.Col<AdminActionLog, string> Details { get; }
         public global::SpacetimeDB.Col<AdminActionLog, ulong> Timestamp { get; }
-        public global::SpacetimeDB.NullableCol<AdminActionLog, string> IpAddress { get; }
-        public global::SpacetimeDB.NullableCol<AdminActionLog, string> UserAgent { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, string> IpAddress { get; }
+        public global::SpacetimeDB.Col<AdminActionLog, string> UserAgent { get; }
 
         public AdminActionLogCols(string tableName)
         {
@@ -54,8 +54,8 @@ namespace SpacetimeDB.Types
             Action = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "action");
             Details = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "details");
             Timestamp = new global::SpacetimeDB.Col<AdminActionLog, ulong>(tableName, "timestamp");
-            IpAddress = new global::SpacetimeDB.NullableCol<AdminActionLog, string>(tableName, "ip_address");
-            UserAgent = new global::SpacetimeDB.NullableCol<AdminActionLog, string>(tableName, "user_agent");
+            IpAddress = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "ip_address");
+            UserAgent = new global::SpacetimeDB.Col<AdminActionLog, string>(tableName, "user_agent");
         }
     }
 

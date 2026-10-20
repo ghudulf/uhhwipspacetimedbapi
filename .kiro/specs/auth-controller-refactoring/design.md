@@ -1730,13 +1730,14 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 **Phase 6: Legacy Code Cleanup (After validation)** - Zero Risk
 - Delete legacy `AuthController.cs` file (8,293 lines removed)
 - Rename `AuthControllerRefactored.cs` to `AuthController.cs`
-- Remove `[RefactoredAction]` and `[LegacyAction]` attributes (no longer needed)
-- Remove `FeatureFlagActionConstraint.cs` and related routing infrastructure
+- Remove `[RefactoredAction]` attributes from renamed controller (no longer needed with single controller)
+- KEEP `FeatureFlagActionConstraint.cs` and routing infrastructure for future use (useful for any future dual-controller migrations or A/B testing)
 - KEEP feature flag infrastructure for operational flexibility
 - Repurpose feature flags for endpoint availability control (enable/disable endpoints)
 - Add feature flag checks to control endpoint availability (503 if disabled)
 - **AuthController**: Simplified to ~2,000-2,500 lines (from 8,293)
 - **Feature Flags**: Repurposed for operational control (not implementation selection)
+- **Routing Infrastructure**: Kept for future use
 - **Risk Level**: ZERO - new code already validated in production for weeks/months
 
 **Why Keep Feature Flags**:

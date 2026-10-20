@@ -256,6 +256,93 @@
 
                         <Separator Background="#3F3F46" Height="1"/>
 
+                        <!-- Auth WebSocket Test -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Auth WebSocket Test" Classes="header"/>
+                            <TextBlock Text="Tests /api/auth/ws — uses isolated token, never writes to storage"
+                                       Foreground="#999999" FontSize="11" Margin="0,0,0,4"/>
+
+                            <TextBlock Text="Test Token (paste or load):" Foreground="#CCCCCC" FontSize="12"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding AuthWsTestToken}"
+                                         PlaceholderText="Access token for auth WS test..."
+                                         PasswordChar="•"
+                                         Background="#3E3E42"
+                                         Foreground="White"
+                                         BorderBrush="#555555"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding LoadAuthWsTokenFromStorageCommand}"
+                                        Classes="secondary"
+                                        Margin="4,0,0,0"
+                                        Padding="8,4"
+                                        ToolTip.Tip="One-time snapshot from storage — does not link">
+                                    <TextBlock Text="📋 Load" FontSize="11"/>
+                                </Button>
+                            </Grid>
+
+                            <TextBlock Text="Refresh Token:" Foreground="#CCCCCC" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding AuthWsRefreshToken}"
+                                     PlaceholderText="Refresh token (for auth:refresh)..."
+                                     PasswordChar="•"
+                                     Background="#3E3E42"
+                                     Foreground="White"
+                                     BorderBrush="#555555"/>
+
+                            <Button Command="{Binding ConnectAuthWsCommand}"
+                                    Classes="primary"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,8,0,0">
+                                <TextBlock Text="{Binding IsAuthWsConnected, Converter={StaticResource BoolToConnectTextConverter}}"
+                                           FontWeight="SemiBold"/>
+                            </Button>
+
+                            <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
+                                <Button Grid.Column="0"
+                                        Command="{Binding SendAuthWsValidateCommand}"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,0,2,0">
+                                    <TextBlock Text="✔ Validate" FontSize="11"/>
+                                </Button>
+                                <Button Grid.Column="1"
+                                        Command="{Binding SendAuthWsRefreshCommand}"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="2,0,2,0">
+                                    <TextBlock Text="🔄 Refresh" FontSize="11"/>
+                                </Button>
+                                <Button Grid.Column="2"
+                                        Command="{Binding SendAuthWsPingCommand}"
+                                        Classes="secondary"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="2,0,0,0">
+                                    <TextBlock Text="🏓 Ping" FontSize="11"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- Login via username/password over WS -->
+                            <TextBlock Text="Login (username + password):" Foreground="#CCCCCC" FontSize="12" Margin="0,10,0,0"/>
+                            <TextBox Text="{Binding AuthWsUsername}"
+                                     PlaceholderText="Username..."
+                                     Background="#3E3E42"
+                                     Foreground="White"
+                                     BorderBrush="#555555"/>
+                            <TextBox Text="{Binding AuthWsPassword}"
+                                     PlaceholderText="Password..."
+                                     PasswordChar="•"
+                                     Background="#3E3E42"
+                                     Foreground="White"
+                                     BorderBrush="#555555"/>
+                            <Button Command="{Binding SendAuthWsLoginCommand}"
+                                    Classes="primary"
+                                    HorizontalAlignment="Stretch">
+                                <TextBlock Text="🔑 auth:login" FontSize="11" FontWeight="SemiBold"/>
+                            </Button>
+                        </StackPanel>
+
+                        <Separator Background="#3F3F46" Height="1"/>
+
                         <!-- Controller Test Results -->
                         <StackPanel Spacing="8">
                             <TextBlock Text="Controller Tests" Classes="header"/>

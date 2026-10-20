@@ -11,7 +11,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 public partial class CentralViewWindowViewModel : ObservableObject
 {
     [ObservableProperty] private object? _currentView;
-    [ObservableProperty] private bool _isNavPaneOpen = false;
+    [ObservableProperty] private bool _isNavPaneOpen = true;
     [ObservableProperty] private string _currentSectionTitle = "Автобусы";
     [ObservableProperty] private string _currentSectionSubtitle = "Парк транспортных средств";
     [ObservableProperty] private string _userInitials = string.Empty;
@@ -36,7 +36,6 @@ public partial class CentralViewWindowViewModel : ObservableObject
         CurrentView = view;
         CurrentSectionTitle = title;
         CurrentSectionSubtitle = subtitle;
-        IsNavPaneOpen = false;
     }
 
     [RelayCommand]

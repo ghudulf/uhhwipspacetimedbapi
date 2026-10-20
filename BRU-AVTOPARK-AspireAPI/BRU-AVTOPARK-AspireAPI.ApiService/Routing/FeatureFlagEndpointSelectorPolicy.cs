@@ -196,7 +196,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Routing
                 var flagValue = (bool?)flagProperty.GetValue(_featureFlags.Value) ?? false;
 
                 int selectedIndex = flagValue ? refactoredIndex : legacyIndex;
-                string selectedController = flagValue ? "AuthControllerRefactored" : "AuthController";
+                string selectedController = flagValue ? "AuthController" : "AuthController (legacy fallback)";
 
                 _logger.LogWarning(
                     "FeatureFlagEndpointSelectorPolicy: Flag {Flag} = {Value} -> SELECTING candidate[{Index}] ({Controller})",

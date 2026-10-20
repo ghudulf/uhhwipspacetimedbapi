@@ -46,29 +46,29 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ticket, string> PaymentMethod { get; }
         public global::SpacetimeDB.Col<Ticket, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Ticket, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, ulong> UpdatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> UpdatedBy { get; }
+        public global::SpacetimeDB.Col<Ticket, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.Col<Ticket, string> UpdatedBy { get; }
         public global::SpacetimeDB.Col<Ticket, ulong> PurchaseTime { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> TicketType { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> TicketStatus { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> ValidationMethod { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, ulong> ValidationTime { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> ValidationLocation { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, uint> ValidatedByEmployeeId { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, bool> IsReturn { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, uint> ReturnTicketId { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> DiscountType { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, double> DiscountAmount { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> DiscountReason { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> RefundStatus { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, double> RefundAmount { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, ulong> RefundTime { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> RefundReason { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, uint> DiscountId { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> SeatType { get; }
+        public global::SpacetimeDB.Col<Ticket, string> TicketType { get; }
+        public global::SpacetimeDB.Col<Ticket, string> TicketStatus { get; }
+        public global::SpacetimeDB.Col<Ticket, string> ValidationMethod { get; }
+        public global::SpacetimeDB.Col<Ticket, ulong> ValidationTime { get; }
+        public global::SpacetimeDB.Col<Ticket, string> ValidationLocation { get; }
+        public global::SpacetimeDB.Col<Ticket, uint> ValidatedByEmployeeId { get; }
+        public global::SpacetimeDB.Col<Ticket, bool> IsReturn { get; }
+        public global::SpacetimeDB.Col<Ticket, uint> ReturnTicketId { get; }
+        public global::SpacetimeDB.Col<Ticket, string> DiscountType { get; }
+        public global::SpacetimeDB.Col<Ticket, double> DiscountAmount { get; }
+        public global::SpacetimeDB.Col<Ticket, string> DiscountReason { get; }
+        public global::SpacetimeDB.Col<Ticket, string> RefundStatus { get; }
+        public global::SpacetimeDB.Col<Ticket, double> RefundAmount { get; }
+        public global::SpacetimeDB.Col<Ticket, ulong> RefundTime { get; }
+        public global::SpacetimeDB.Col<Ticket, string> RefundReason { get; }
+        public global::SpacetimeDB.Col<Ticket, uint> DiscountId { get; }
+        public global::SpacetimeDB.Col<Ticket, string> SeatType { get; }
         public global::SpacetimeDB.Col<Ticket, bool> IsReserved { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, string> ReservationStatus { get; }
-        public global::SpacetimeDB.NullableCol<Ticket, ulong> ReservationExpiry { get; }
+        public global::SpacetimeDB.Col<Ticket, string> ReservationStatus { get; }
+        public global::SpacetimeDB.Col<Ticket, ulong> ReservationExpiry { get; }
 
         public TicketCols(string tableName)
         {
@@ -79,29 +79,29 @@ namespace SpacetimeDB.Types
             PaymentMethod = new global::SpacetimeDB.Col<Ticket, string>(tableName, "payment_method");
             IsActive = new global::SpacetimeDB.Col<Ticket, bool>(tableName, "is_active");
             CreatedAt = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "created_at");
-            UpdatedAt = new global::SpacetimeDB.NullableCol<Ticket, ulong>(tableName, "updated_at");
-            UpdatedBy = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "updated_by");
+            UpdatedAt = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.Col<Ticket, string>(tableName, "updated_by");
             PurchaseTime = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "purchase_time");
-            TicketType = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "ticket_type");
-            TicketStatus = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "ticket_status");
-            ValidationMethod = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "validation_method");
-            ValidationTime = new global::SpacetimeDB.NullableCol<Ticket, ulong>(tableName, "validation_time");
-            ValidationLocation = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "validation_location");
-            ValidatedByEmployeeId = new global::SpacetimeDB.NullableCol<Ticket, uint>(tableName, "validated_by_employee_id");
-            IsReturn = new global::SpacetimeDB.NullableCol<Ticket, bool>(tableName, "is_return");
-            ReturnTicketId = new global::SpacetimeDB.NullableCol<Ticket, uint>(tableName, "return_ticket_id");
-            DiscountType = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "discount_type");
-            DiscountAmount = new global::SpacetimeDB.NullableCol<Ticket, double>(tableName, "discount_amount");
-            DiscountReason = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "discount_reason");
-            RefundStatus = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "refund_status");
-            RefundAmount = new global::SpacetimeDB.NullableCol<Ticket, double>(tableName, "refund_amount");
-            RefundTime = new global::SpacetimeDB.NullableCol<Ticket, ulong>(tableName, "refund_time");
-            RefundReason = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "refund_reason");
-            DiscountId = new global::SpacetimeDB.NullableCol<Ticket, uint>(tableName, "discount_id");
-            SeatType = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "seat_type");
+            TicketType = new global::SpacetimeDB.Col<Ticket, string>(tableName, "ticket_type");
+            TicketStatus = new global::SpacetimeDB.Col<Ticket, string>(tableName, "ticket_status");
+            ValidationMethod = new global::SpacetimeDB.Col<Ticket, string>(tableName, "validation_method");
+            ValidationTime = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "validation_time");
+            ValidationLocation = new global::SpacetimeDB.Col<Ticket, string>(tableName, "validation_location");
+            ValidatedByEmployeeId = new global::SpacetimeDB.Col<Ticket, uint>(tableName, "validated_by_employee_id");
+            IsReturn = new global::SpacetimeDB.Col<Ticket, bool>(tableName, "is_return");
+            ReturnTicketId = new global::SpacetimeDB.Col<Ticket, uint>(tableName, "return_ticket_id");
+            DiscountType = new global::SpacetimeDB.Col<Ticket, string>(tableName, "discount_type");
+            DiscountAmount = new global::SpacetimeDB.Col<Ticket, double>(tableName, "discount_amount");
+            DiscountReason = new global::SpacetimeDB.Col<Ticket, string>(tableName, "discount_reason");
+            RefundStatus = new global::SpacetimeDB.Col<Ticket, string>(tableName, "refund_status");
+            RefundAmount = new global::SpacetimeDB.Col<Ticket, double>(tableName, "refund_amount");
+            RefundTime = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "refund_time");
+            RefundReason = new global::SpacetimeDB.Col<Ticket, string>(tableName, "refund_reason");
+            DiscountId = new global::SpacetimeDB.Col<Ticket, uint>(tableName, "discount_id");
+            SeatType = new global::SpacetimeDB.Col<Ticket, string>(tableName, "seat_type");
             IsReserved = new global::SpacetimeDB.Col<Ticket, bool>(tableName, "is_reserved");
-            ReservationStatus = new global::SpacetimeDB.NullableCol<Ticket, string>(tableName, "reservation_status");
-            ReservationExpiry = new global::SpacetimeDB.NullableCol<Ticket, ulong>(tableName, "reservation_expiry");
+            ReservationStatus = new global::SpacetimeDB.Col<Ticket, string>(tableName, "reservation_status");
+            ReservationExpiry = new global::SpacetimeDB.Col<Ticket, ulong>(tableName, "reservation_expiry");
         }
     }
 

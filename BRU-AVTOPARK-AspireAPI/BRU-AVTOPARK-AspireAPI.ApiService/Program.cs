@@ -225,6 +225,10 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BR
 // Add input sanitization service for security
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationService, BRU_AVTOPARK.Services.Implementations.InputSanitizationService>();
 
+// WebSocket auth service (extracted from AuthControllerRefactored)
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthWebSocketService, BRU_AVTOPARK.Services.Implementations.AuthWebSocketService>();
+builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IAuthWebSocketTokenValidator, BRU_AVTOPARK.Services.Implementations.HttpContextAuthWebSocketTokenValidator>();
+
 // Configure FeatureFlagOptions from appsettings.json
 builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions>(
     builder.Configuration.GetSection(TicketSalesApp.AdminServer.Configuration.FeatureFlagOptions.FeatureFlags));
@@ -236,6 +240,11 @@ builder.Services.Configure<TicketSalesApp.AdminServer.Configuration.JwtSettings>
 
 // Add Routing Diagnostics Service for debugging controller discovery issues
 builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.RoutingDiagnosticsService>();
+
+// Configure UPnP port mapping
+builder.Services.Configure<BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPOptions>(
+    builder.Configuration.GetSection(BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPOptions.SectionName));
+builder.Services.AddHostedService<BRU_AVTOPARK_AspireAPI.ApiService.Services.UPnPService>();
 
 // Add memory cache for QR authentication
 builder.Services.AddMemoryCache();
@@ -423,7 +432,9 @@ builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    // SameAsRequest allows cookies over HTTP when accessed via LAN IP (http://192.168.x.x:5000)
+    // while still using Secure cookies when accessed over HTTPS in production.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -569,8 +580,7 @@ builder.Services.AddControllersWithViews(options =>
             })
             .ConfigureApplicationPartManager(manager =>
             {
-                // ENHANCED: Ensure both controllers are discovered
-                // This explicitly adds both AuthController and AuthControllerRefactored to the application parts
+                // Ensure AuthController is discovered
                 var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("ApplicationPartManager");
                 logger.LogInformation("Application parts count: {Count}", manager.ApplicationParts.Count);
                 
@@ -579,17 +589,17 @@ builder.Services.AddControllersWithViews(options =>
                     logger.LogInformation("  Part: {PartName} ({PartType})", part.Name, part.GetType().Name);
                 }
                 
-                // Force discovery of both controllers by ensuring the assembly is loaded
+                // Force discovery of AuthController by ensuring the assembly is loaded
                 var controllerAssembly = typeof(BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController).Assembly;
-                var refactoredControllerType = controllerAssembly.GetType("BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthControllerRefactored");
+                var controllerType = controllerAssembly.GetType("BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController");
                 
-                if (refactoredControllerType != null)
+                if (controllerType != null)
                 {
-                    logger.LogInformation("AuthControllerRefactored type found in assembly");
+                    logger.LogInformation("AuthController type found in assembly");
                 }
                 else
                 {
-                    logger.LogWarning("AuthControllerRefactored type NOT found in assembly!");
+                    logger.LogWarning("AuthController type NOT found in assembly!");
                 }
             });
 
@@ -682,10 +692,13 @@ var webSocketOptions = new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(15)
 };
 
+// Add configured origins; also always allow native desktop clients (no Origin header = allowed by default)
 foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.IsNullOrWhiteSpace(origin)))
 {
     webSocketOptions.AllowedOrigins.Add(origin);
 }
+// Allow any LAN IP — native Avalonia clients don't send Origin headers so this covers browser-based access
+webSocketOptions.AllowedOrigins.Add("*");
 
 app.UseWebSockets(webSocketOptions);
 
@@ -1157,6 +1170,10 @@ app.MapGet("/health", () =>
             </html>
         ", "text/html");
 }).AllowAnonymous();
+
+// Discovery ping endpoint - allows clients to auto-detect the API server on local networks
+app.MapGet("/api/discovery/ping", () => Results.Json(new { status = "ok", service = "BRU-AVTOPARK-API" }))
+    .AllowAnonymous();
 
 // Map controllers - let each endpoint specify its own authorization policy
 // ENHANCED: Add endpoint routing diagnostics and fallback mechanisms

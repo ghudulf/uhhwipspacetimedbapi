@@ -45,13 +45,13 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<FuelRecord, double> Amount { get; }
         public global::SpacetimeDB.Col<FuelRecord, double> Cost { get; }
         public global::SpacetimeDB.Col<FuelRecord, double> Odometer { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, string> FuelType { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, string> FuelStation { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, uint> EmployeeId { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, string> Notes { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, double> FuelEconomy { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, double> PreviousOdometer { get; }
-        public global::SpacetimeDB.NullableCol<FuelRecord, double> Distance { get; }
+        public global::SpacetimeDB.Col<FuelRecord, string> FuelType { get; }
+        public global::SpacetimeDB.Col<FuelRecord, string> FuelStation { get; }
+        public global::SpacetimeDB.Col<FuelRecord, uint> EmployeeId { get; }
+        public global::SpacetimeDB.Col<FuelRecord, string> Notes { get; }
+        public global::SpacetimeDB.Col<FuelRecord, double> FuelEconomy { get; }
+        public global::SpacetimeDB.Col<FuelRecord, double> PreviousOdometer { get; }
+        public global::SpacetimeDB.Col<FuelRecord, double> Distance { get; }
 
         public FuelRecordCols(string tableName)
         {
@@ -61,13 +61,13 @@ namespace SpacetimeDB.Types
             Amount = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "amount");
             Cost = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "cost");
             Odometer = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "odometer");
-            FuelType = new global::SpacetimeDB.NullableCol<FuelRecord, string>(tableName, "fuel_type");
-            FuelStation = new global::SpacetimeDB.NullableCol<FuelRecord, string>(tableName, "fuel_station");
-            EmployeeId = new global::SpacetimeDB.NullableCol<FuelRecord, uint>(tableName, "employee_id");
-            Notes = new global::SpacetimeDB.NullableCol<FuelRecord, string>(tableName, "notes");
-            FuelEconomy = new global::SpacetimeDB.NullableCol<FuelRecord, double>(tableName, "fuel_economy");
-            PreviousOdometer = new global::SpacetimeDB.NullableCol<FuelRecord, double>(tableName, "previous_odometer");
-            Distance = new global::SpacetimeDB.NullableCol<FuelRecord, double>(tableName, "distance");
+            FuelType = new global::SpacetimeDB.Col<FuelRecord, string>(tableName, "fuel_type");
+            FuelStation = new global::SpacetimeDB.Col<FuelRecord, string>(tableName, "fuel_station");
+            EmployeeId = new global::SpacetimeDB.Col<FuelRecord, uint>(tableName, "employee_id");
+            Notes = new global::SpacetimeDB.Col<FuelRecord, string>(tableName, "notes");
+            FuelEconomy = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "fuel_economy");
+            PreviousOdometer = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "previous_odometer");
+            Distance = new global::SpacetimeDB.Col<FuelRecord, double>(tableName, "distance");
         }
     }
 

@@ -42,72 +42,72 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Employee, uint> EmployeeId { get; }
         public global::SpacetimeDB.Col<Employee, string> Surname { get; }
         public global::SpacetimeDB.Col<Employee, string> Name { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> Patronym { get; }
+        public global::SpacetimeDB.Col<Employee, string> Patronym { get; }
         public global::SpacetimeDB.Col<Employee, ulong> EmployedSince { get; }
         public global::SpacetimeDB.Col<Employee, uint> JobId { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> BadgeNumber { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> ContactPhone { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> ContactEmail { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> DateOfBirth { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> PassportNumber { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> PassportIssuedBy { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> PassportIssuedDate { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> PhotoUrl { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> Address { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> EmergencyContact { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> LastTrainingDate { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> TrainingStatus { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> CurrentStatus { get; }
-        public global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>> Certifications { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> CertificationExpiry { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> MedicalCertificate { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> MedicalCertificateExpiry { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> DriverLicenseNumber { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> DriverLicenseCategory { get; }
-        public global::SpacetimeDB.NullableCol<Employee, ulong> DriverLicenseExpiry { get; }
-        public global::SpacetimeDB.NullableCol<Employee, uint> YearsOfExperience { get; }
-        public global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>> LanguagesSpoken { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> PreferredShiftType { get; }
-        public global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>> SkillsAndQualifications { get; }
-        public global::SpacetimeDB.NullableCol<Employee, string> PerformanceRating { get; }
-        public global::SpacetimeDB.NullableCol<Employee, uint> VacationDaysRemaining { get; }
-        public global::SpacetimeDB.NullableCol<Employee, uint> SickDaysUsed { get; }
+        public global::SpacetimeDB.Col<Employee, string> BadgeNumber { get; }
+        public global::SpacetimeDB.Col<Employee, string> ContactPhone { get; }
+        public global::SpacetimeDB.Col<Employee, string> ContactEmail { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> DateOfBirth { get; }
+        public global::SpacetimeDB.Col<Employee, string> PassportNumber { get; }
+        public global::SpacetimeDB.Col<Employee, string> PassportIssuedBy { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> PassportIssuedDate { get; }
+        public global::SpacetimeDB.Col<Employee, string> PhotoUrl { get; }
+        public global::SpacetimeDB.Col<Employee, string> Address { get; }
+        public global::SpacetimeDB.Col<Employee, string> EmergencyContact { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> LastTrainingDate { get; }
+        public global::SpacetimeDB.Col<Employee, string> TrainingStatus { get; }
+        public global::SpacetimeDB.Col<Employee, string> CurrentStatus { get; }
+        public global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>> Certifications { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> CertificationExpiry { get; }
+        public global::SpacetimeDB.Col<Employee, string> MedicalCertificate { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> MedicalCertificateExpiry { get; }
+        public global::SpacetimeDB.Col<Employee, string> DriverLicenseNumber { get; }
+        public global::SpacetimeDB.Col<Employee, string> DriverLicenseCategory { get; }
+        public global::SpacetimeDB.Col<Employee, ulong> DriverLicenseExpiry { get; }
+        public global::SpacetimeDB.Col<Employee, uint> YearsOfExperience { get; }
+        public global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>> LanguagesSpoken { get; }
+        public global::SpacetimeDB.Col<Employee, string> PreferredShiftType { get; }
+        public global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>> SkillsAndQualifications { get; }
+        public global::SpacetimeDB.Col<Employee, string> PerformanceRating { get; }
+        public global::SpacetimeDB.Col<Employee, uint> VacationDaysRemaining { get; }
+        public global::SpacetimeDB.Col<Employee, uint> SickDaysUsed { get; }
 
         public EmployeeCols(string tableName)
         {
             EmployeeId = new global::SpacetimeDB.Col<Employee, uint>(tableName, "employee_id");
             Surname = new global::SpacetimeDB.Col<Employee, string>(tableName, "surname");
             Name = new global::SpacetimeDB.Col<Employee, string>(tableName, "name");
-            Patronym = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "patronym");
+            Patronym = new global::SpacetimeDB.Col<Employee, string>(tableName, "patronym");
             EmployedSince = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "employed_since");
             JobId = new global::SpacetimeDB.Col<Employee, uint>(tableName, "job_id");
-            BadgeNumber = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "badge_number");
-            ContactPhone = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "contact_phone");
-            ContactEmail = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "contact_email");
-            DateOfBirth = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "date_of_birth");
-            PassportNumber = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "passport_number");
-            PassportIssuedBy = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "passport_issued_by");
-            PassportIssuedDate = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "passport_issued_date");
-            PhotoUrl = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "photo_url");
-            Address = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "address");
-            EmergencyContact = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "emergency_contact");
-            LastTrainingDate = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "last_training_date");
-            TrainingStatus = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "training_status");
-            CurrentStatus = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "current_status");
-            Certifications = new global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>>(tableName, "certifications");
-            CertificationExpiry = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "certification_expiry");
-            MedicalCertificate = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "medical_certificate");
-            MedicalCertificateExpiry = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "medical_certificate_expiry");
-            DriverLicenseNumber = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "driver_license_number");
-            DriverLicenseCategory = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "driver_license_category");
-            DriverLicenseExpiry = new global::SpacetimeDB.NullableCol<Employee, ulong>(tableName, "driver_license_expiry");
-            YearsOfExperience = new global::SpacetimeDB.NullableCol<Employee, uint>(tableName, "years_of_experience");
-            LanguagesSpoken = new global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>>(tableName, "languages_spoken");
-            PreferredShiftType = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "preferred_shift_type");
-            SkillsAndQualifications = new global::SpacetimeDB.NullableCol<Employee, System.Collections.Generic.List<string>>(tableName, "skills_and_qualifications");
-            PerformanceRating = new global::SpacetimeDB.NullableCol<Employee, string>(tableName, "performance_rating");
-            VacationDaysRemaining = new global::SpacetimeDB.NullableCol<Employee, uint>(tableName, "vacation_days_remaining");
-            SickDaysUsed = new global::SpacetimeDB.NullableCol<Employee, uint>(tableName, "sick_days_used");
+            BadgeNumber = new global::SpacetimeDB.Col<Employee, string>(tableName, "badge_number");
+            ContactPhone = new global::SpacetimeDB.Col<Employee, string>(tableName, "contact_phone");
+            ContactEmail = new global::SpacetimeDB.Col<Employee, string>(tableName, "contact_email");
+            DateOfBirth = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "date_of_birth");
+            PassportNumber = new global::SpacetimeDB.Col<Employee, string>(tableName, "passport_number");
+            PassportIssuedBy = new global::SpacetimeDB.Col<Employee, string>(tableName, "passport_issued_by");
+            PassportIssuedDate = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "passport_issued_date");
+            PhotoUrl = new global::SpacetimeDB.Col<Employee, string>(tableName, "photo_url");
+            Address = new global::SpacetimeDB.Col<Employee, string>(tableName, "address");
+            EmergencyContact = new global::SpacetimeDB.Col<Employee, string>(tableName, "emergency_contact");
+            LastTrainingDate = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "last_training_date");
+            TrainingStatus = new global::SpacetimeDB.Col<Employee, string>(tableName, "training_status");
+            CurrentStatus = new global::SpacetimeDB.Col<Employee, string>(tableName, "current_status");
+            Certifications = new global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>>(tableName, "certifications");
+            CertificationExpiry = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "certification_expiry");
+            MedicalCertificate = new global::SpacetimeDB.Col<Employee, string>(tableName, "medical_certificate");
+            MedicalCertificateExpiry = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "medical_certificate_expiry");
+            DriverLicenseNumber = new global::SpacetimeDB.Col<Employee, string>(tableName, "driver_license_number");
+            DriverLicenseCategory = new global::SpacetimeDB.Col<Employee, string>(tableName, "driver_license_category");
+            DriverLicenseExpiry = new global::SpacetimeDB.Col<Employee, ulong>(tableName, "driver_license_expiry");
+            YearsOfExperience = new global::SpacetimeDB.Col<Employee, uint>(tableName, "years_of_experience");
+            LanguagesSpoken = new global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>>(tableName, "languages_spoken");
+            PreferredShiftType = new global::SpacetimeDB.Col<Employee, string>(tableName, "preferred_shift_type");
+            SkillsAndQualifications = new global::SpacetimeDB.Col<Employee, System.Collections.Generic.List<string>>(tableName, "skills_and_qualifications");
+            PerformanceRating = new global::SpacetimeDB.Col<Employee, string>(tableName, "performance_rating");
+            VacationDaysRemaining = new global::SpacetimeDB.Col<Employee, uint>(tableName, "vacation_days_remaining");
+            SickDaysUsed = new global::SpacetimeDB.Col<Employee, uint>(tableName, "sick_days_used");
         }
     }
 

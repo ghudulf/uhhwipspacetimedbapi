@@ -48,9 +48,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Role, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Role, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<Role, ulong> UpdatedAt { get; }
-        public global::SpacetimeDB.NullableCol<Role, string> CreatedBy { get; }
-        public global::SpacetimeDB.NullableCol<Role, string> UpdatedBy { get; }
-        public global::SpacetimeDB.NullableCol<Role, string> NormalizedName { get; }
+        public global::SpacetimeDB.Col<Role, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<Role, string> UpdatedBy { get; }
+        public global::SpacetimeDB.Col<Role, string> NormalizedName { get; }
 
         public RoleCols(string tableName)
         {
@@ -63,9 +63,9 @@ namespace SpacetimeDB.Types
             IsActive = new global::SpacetimeDB.Col<Role, bool>(tableName, "is_active");
             CreatedAt = new global::SpacetimeDB.Col<Role, ulong>(tableName, "created_at");
             UpdatedAt = new global::SpacetimeDB.Col<Role, ulong>(tableName, "updated_at");
-            CreatedBy = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "created_by");
-            UpdatedBy = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "updated_by");
-            NormalizedName = new global::SpacetimeDB.NullableCol<Role, string>(tableName, "normalized_name");
+            CreatedBy = new global::SpacetimeDB.Col<Role, string>(tableName, "created_by");
+            UpdatedBy = new global::SpacetimeDB.Col<Role, string>(tableName, "updated_by");
+            NormalizedName = new global::SpacetimeDB.Col<Role, string>(tableName, "normalized_name");
         }
     }
 

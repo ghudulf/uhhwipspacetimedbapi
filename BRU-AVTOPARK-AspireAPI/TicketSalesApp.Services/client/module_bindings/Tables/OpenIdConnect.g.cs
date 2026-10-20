@@ -49,7 +49,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIdConnect, string> ClientType { get; }
         public global::SpacetimeDB.Col<OpenIdConnect, bool> IsActive { get; }
         public global::SpacetimeDB.Col<OpenIdConnect, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<OpenIdConnect, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<OpenIdConnect, string> CreatedBy { get; }
         public global::SpacetimeDB.Col<OpenIdConnect, bool> RequireConsent { get; }
 
         public OpenIdConnectCols(string tableName)
@@ -64,7 +64,7 @@ namespace SpacetimeDB.Types
             ClientType = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "client_type");
             IsActive = new global::SpacetimeDB.Col<OpenIdConnect, bool>(tableName, "is_active");
             CreatedAt = new global::SpacetimeDB.Col<OpenIdConnect, ulong>(tableName, "created_at");
-            CreatedBy = new global::SpacetimeDB.NullableCol<OpenIdConnect, string>(tableName, "created_by");
+            CreatedBy = new global::SpacetimeDB.Col<OpenIdConnect, string>(tableName, "created_by");
             RequireConsent = new global::SpacetimeDB.Col<OpenIdConnect, bool>(tableName, "require_consent");
         }
     }

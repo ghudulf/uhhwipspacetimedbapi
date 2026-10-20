@@ -1011,7 +1011,18 @@ public interface IProfileService
 /// </summary>
 public interface IRequestDetector
 {
+    /// <summary>
+    /// Determines if the current request (via IHttpContextAccessor) expects HTML.
+    /// Returns true for browser requests (text/html, application/xhtml+xml, */*, or missing Accept header).
+    /// Returns false for explicit API requests (application/json).
+    /// </summary>
     bool IsBrowserRequest();
+
+    /// <summary>
+    /// Determines if the given HttpContext request expects HTML.
+    /// Preferred overload when HttpContext is already available in the caller.
+    /// </summary>
+    bool IsBrowserRequest(HttpContext context);
 }
 
 // Note: UserProfile, Role, Permission, and WebAuthnCredentialDto are defined in BRU_AVTOPARK.Models.Responses

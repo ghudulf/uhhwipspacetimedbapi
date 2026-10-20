@@ -80,7 +80,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class RouteManagementViewModel : ReactiveObject
     {
         private HttpClient _httpClient;
-        private readonly string _baseUrl;
+        private string _baseUrl => ApiClientService.Instance.CurrentBaseUrl?.TrimEnd('/') ?? "http://localhost:5000/api";
 
         // Store the full list for filtering
         private List<RouteDisplayModel> _allRoutes = new();
@@ -146,10 +146,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             set => this.RaiseAndSetIfChanged(ref _hasError, value);
         }
 
+        // True when embedded inside a MAUI host — dialogs/windows are not available
+        public static bool IsMauiHost => HostEnvironment.IsMauiHost;
+
+        // Inverse — used by AXAML to show/hide dialog-dependent buttons
+        public static bool IsDialogCapable => !IsMauiHost;
+
         public RouteManagementViewModel()
         {
             _httpClient = ApiClientService.Instance.CreateClient();
-            _baseUrl = "http://localhost:5000/api";
 
             // Subscribe to auth token changes
             ApiClientService.Instance.OnAuthTokenChanged += (sender, token) =>
@@ -464,6 +469,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Add()
         {
+            if (IsMauiHost)
+            {
+                Log.Information("Add Route skipped: running under MAUI host, dialogs not supported.");
+                return;
+            }
             Log.Information("Add Route command initiated.");
             // Ensure helper data is loaded (optional check, LoadData should run first)
             if (!AvailableBuses.Any() || !AvailableDrivers.Any())
@@ -685,6 +695,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Edit()
         {
+             if (IsMauiHost)
+             {
+                 Log.Information("Edit Route skipped: running under MAUI host, dialogs not supported.");
+                 return;
+             }
              if (SelectedRoute == null)
              {
                   Log.Warning("Edit Route command initiated but no route selected.");
@@ -921,6 +936,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         [RelayCommand]
         private async Task Delete()
         {
+            if (IsMauiHost)
+            {
+                Log.Information("Delete Route skipped: running under MAUI host, dialogs not supported.");
+                return;
+            }
             if (SelectedRoute == null)
             {
                 Log.Warning("Delete Route command initiated but no route selected.");

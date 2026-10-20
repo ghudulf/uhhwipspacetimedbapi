@@ -269,11 +269,12 @@ public partial class AuthWindow : Window
             Log.Debug("ApplyClassicWindowStyle called");
             
             // Ensure window has the correct style
-#if DESKTOP
-            var oldDecorations = WindowDecorations;
-            WindowDecorations = WindowDecorations.BorderOnly;
-            Log.Debug("WindowDecorations changed from {Old} to {New}", oldDecorations, WindowDecorations);
-#endif
+            if (HostEnvironment.IsStandaloneDesktop)
+            {
+                var oldDecorations = WindowDecorations;
+                WindowDecorations = WindowDecorations.BorderOnly;
+                Log.Debug("WindowDecorations changed from {Old} to {New}", oldDecorations, WindowDecorations);
+            }
             
             // Find the main panels and ensure they have the correct styles
             var centralPanel = this.FindControl<ContentControl>("StepContentArea");
@@ -304,9 +305,8 @@ public partial class AuthWindow : Window
             if (isLeftButton)
             {
                 Log.Debug("Left button pressed - beginning window drag operation");
-#if DESKTOP
-                BeginMoveDrag(e);
-#endif
+                if (HostEnvironment.IsStandaloneDesktop)
+                    BeginMoveDrag(e);
             }
             else
             {

@@ -12,26 +12,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0066ff">
-    <title>Feature Flags - BRU AVTOPARK Admin</title>
+    <title>Endpoint Availability Control - BRU AVTOPARK Admin</title>
     <link rel="stylesheet" href="~/css/bru-design-system.css">
+    <style>html{background-color:#121212}html[data-theme="light"]{background-color:#F0F0F0}</style>
+    <script>(function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#121212':'#F0F0F0');})()</script>
 </head>
 <body>
-    <nav class="navbar" role="navigation">
-        <a href="/" class="logo">BRU AVTOPARK</a>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" type="button">
-            <span class="theme-icon-light" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-            </span>
-            <span class="theme-icon-dark" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-            </span>
-        </button>
-    </nav>
+    <header class="header-wrapper" role="navigation">
+        <a href="/" class="header-logo-panel" aria-label="BRU AVTOPARK Home">
+            <span class="logo-icon" aria-hidden="true"></span>
+            <span class="logo-text">BRU AVTOPARK</span>
+        </a>
+        <div class="header-controls-panel">
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" type="button">
+                <span class="theme-icon-light" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                </span>
+                <span class="theme-icon-dark" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </span>
+            </button>
+        </div>
+    </header>
     
     <div class="container" style="max-width: 1200px;">
         <div class="page-header">
@@ -41,9 +48,9 @@
                         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
                         <line x1="4" y1="22" x2="4" y2="15"/>
                     </svg>
-                    Feature Flags Management
+                    Endpoint Availability Control
                 </h1>
-                <p class="page-subtitle">Control gradual rollout of refactored authentication endpoints</p>
+                <p class="page-subtitle">Control which authentication endpoints are available. Disabling a flag returns 503 to all callers — there is no legacy fallback.</p>
             </div>
             <div class="bulk-actions">
                 <button class="bulk-action-btn bulk-action-secondary" onclick="enableCategory('Login')" type="button">
@@ -137,6 +144,7 @@
     </div>
     
     <script src="~/js/theme-toggle.js" defer></script>
+    <script src="~/js/header-scroll.js" defer></script>
     <script>
         let pendingAction = null;
         let allFlags = {};
@@ -194,9 +202,10 @@
                             <div class="flag-item">
                                 <div class="flag-info">
                                     <label for="${id}" class="flag-name">${flagName}</label>
+                                    <span class="flag-description">Endpoint enabled</span>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="${id}" ${checked} onchange="toggleFlag('${flagName}', this.checked)" aria-label="Toggle ${flagName}">
+                                    <input type="checkbox" id="${id}" ${checked} onchange="toggleFlag('${flagName}', this.checked)" aria-label="Endpoint enabled: ${flagName}">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -210,6 +219,19 @@
         }
 
         async function toggleFlag(flagName, enabled) {
+            if (!enabled) {
+                // Warn before disabling - no legacy fallback
+                const confirmed = await showConfirmDialog(
+                    'Disable Endpoint',
+                    `Disabling this flag will return 503 to all callers of this endpoint. There is no legacy fallback. Are you sure you want to disable ${flagName}?`
+                );
+                if (!confirmed) {
+                    // Revert the checkbox
+                    document.getElementById(`flag-${flagName}`).checked = true;
+                    return;
+                }
+            }
+
             try {
                 const response = await fetch(`/api/admin/feature-flags/${flagName}`, {
                     method: 'PUT',
@@ -225,7 +247,7 @@
                 }
 
                 allFlags[flagName] = enabled;
-                showAlert(`Feature flag ${flagName} ${enabled ? 'enabled' : 'disabled'} successfully`, 'success');
+                showAlert(`Endpoint ${flagName} ${enabled ? 'enabled' : 'disabled'} successfully`, 'success');
                 loadAuditLog();
             } catch (error) {
                 console.error('Error updating feature flag:', error);
@@ -233,6 +255,17 @@
                 // Revert toggle
                 loadFeatureFlags();
             }
+        }
+
+        function showConfirmDialog(title, body) {
+            return new Promise((resolve) => {
+                pendingAction = () => resolve(true);
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalBody').textContent = body;
+                document.getElementById('confirmModal').style.display = 'block';
+                // Override confirmAction to resolve the promise
+                window._confirmResolve = resolve;
+            });
         }
 
         async function enableCategory(category) {
@@ -276,8 +309,8 @@
 
         function confirmReset() {
             pendingAction = resetAllFlags;
-            document.getElementById('modalTitle').textContent = 'Reset All Feature Flags';
-            document.getElementById('modalBody').textContent = 'This will reset all feature flags to their default values from appsettings.json. All runtime overrides will be cleared. Are you sure?';
+            document.getElementById('modalTitle').textContent = 'Reset All to Defaults';
+            document.getElementById('modalBody').textContent = 'This will reset all endpoint availability flags to their default values (all enabled). All runtime overrides will be cleared. Are you sure?';
             document.getElementById('confirmModal').style.display = 'block';
         }
 
@@ -345,7 +378,7 @@
 
             auditLog.forEach(entry => {
                 const statusClass = entry.enabled ? 'status-enabled' : 'status-disabled';
-                const statusText = entry.enabled ? 'Enabled' : 'Disabled';
+                const statusText = entry.enabled ? 'Endpoint enabled' : 'Endpoint disabled';
                 const date = new Date(entry.updatedAt).toLocaleString();
                 
                 html += `
@@ -368,7 +401,10 @@
         }
 
         function confirmAction() {
-            if (pendingAction) {
+            if (window._confirmResolve) {
+                window._confirmResolve(true);
+                window._confirmResolve = null;
+            } else if (pendingAction) {
                 pendingAction();
             }
             closeModal();
@@ -376,6 +412,10 @@
 
         function closeModal() {
             document.getElementById('confirmModal').style.display = 'none';
+            if (window._confirmResolve) {
+                window._confirmResolve(false);
+                window._confirmResolve = null;
+            }
             pendingAction = null;
         }
 

@@ -44,8 +44,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<PassengerCount, uint> RouteId { get; }
         public global::SpacetimeDB.Col<PassengerCount, uint> StopId { get; }
         public global::SpacetimeDB.Col<PassengerCount, uint> PassengerCountNumber { get; }
-        public global::SpacetimeDB.NullableCol<PassengerCount, string> Notes { get; }
-        public global::SpacetimeDB.NullableCol<PassengerCount, uint> EmployeeId { get; }
+        public global::SpacetimeDB.Col<PassengerCount, string> Notes { get; }
+        public global::SpacetimeDB.Col<PassengerCount, uint> EmployeeId { get; }
 
         public PassengerCountCols(string tableName)
         {
@@ -54,8 +54,8 @@ namespace SpacetimeDB.Types
             RouteId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "route_id");
             StopId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "stop_id");
             PassengerCountNumber = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "passenger_count_number");
-            Notes = new global::SpacetimeDB.NullableCol<PassengerCount, string>(tableName, "notes");
-            EmployeeId = new global::SpacetimeDB.NullableCol<PassengerCount, uint>(tableName, "employee_id");
+            Notes = new global::SpacetimeDB.Col<PassengerCount, string>(tableName, "notes");
+            EmployeeId = new global::SpacetimeDB.Col<PassengerCount, uint>(tableName, "employee_id");
         }
     }
 

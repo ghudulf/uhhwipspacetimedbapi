@@ -18,7 +18,7 @@ namespace TicketSalesApp.AdminServer.Controllers
     /// Controllers use [AllowAnonymous] to bypass ASP.NET auth middleware,
     /// then manually check authentication using this base class.
     /// </summary>
-    public abstract class BaseController : ControllerBase
+    public abstract class BaseController : Controller
     {
         /// <summary>
         /// Cache key for storing validated OAuth claims in HttpContext.Items

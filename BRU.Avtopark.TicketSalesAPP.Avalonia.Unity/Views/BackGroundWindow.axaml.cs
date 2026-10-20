@@ -14,15 +14,23 @@ public partial class BackGroundWindow : Window
 #if DEBUG
         DevToolsHelper.AttachOnce();
 #endif
+        // In headless/tray-only mode this window must never be visible
+        if (App.HeadlessMode)
+        {
+            ShowInTaskbar = false;
+            WindowState = WindowState.Minimized;
+            WindowDecorations = WindowDecorations.None;
+            Opacity = 0;
+            IsVisible = false;
+            return;
+        }
+
         // Ensure fullscreen state properties are set
         this.WindowState = WindowState.FullScreen;
         this.WindowDecorations = WindowDecorations.None;
 
         // Explicitly set the theme variant based on the application's actual theme
-        // This helps if the window is shown before the theme is fully propagated.
         if (Application.Current != null)
-        {
             this.RequestedThemeVariant = Application.Current.ActualThemeVariant;
-        }
     }
 }

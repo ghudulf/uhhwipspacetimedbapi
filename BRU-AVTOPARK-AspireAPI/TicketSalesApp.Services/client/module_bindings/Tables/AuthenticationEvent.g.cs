@@ -30,16 +30,16 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<AuthenticationEvent, SpacetimeDB.Identity> UserId { get; }
         public global::SpacetimeDB.Col<AuthenticationEvent, string> EventType { get; }
         public global::SpacetimeDB.Col<AuthenticationEvent, ulong> Timestamp { get; }
-        public global::SpacetimeDB.NullableCol<AuthenticationEvent, string> Details { get; }
-        public global::SpacetimeDB.NullableCol<AuthenticationEvent, string> IpAddress { get; }
+        public global::SpacetimeDB.Col<AuthenticationEvent, string> Details { get; }
+        public global::SpacetimeDB.Col<AuthenticationEvent, string> IpAddress { get; }
 
         public AuthenticationEventCols(string tableName)
         {
             UserId = new global::SpacetimeDB.Col<AuthenticationEvent, SpacetimeDB.Identity>(tableName, "user_id");
             EventType = new global::SpacetimeDB.Col<AuthenticationEvent, string>(tableName, "event_type");
             Timestamp = new global::SpacetimeDB.Col<AuthenticationEvent, ulong>(tableName, "timestamp");
-            Details = new global::SpacetimeDB.NullableCol<AuthenticationEvent, string>(tableName, "details");
-            IpAddress = new global::SpacetimeDB.NullableCol<AuthenticationEvent, string>(tableName, "ip_address");
+            Details = new global::SpacetimeDB.Col<AuthenticationEvent, string>(tableName, "details");
+            IpAddress = new global::SpacetimeDB.Col<AuthenticationEvent, string>(tableName, "ip_address");
         }
     }
 

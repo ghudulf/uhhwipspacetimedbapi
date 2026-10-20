@@ -48,11 +48,11 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<SeatConfiguration, uint> SeatColumn { get; }
         public global::SpacetimeDB.Col<SeatConfiguration, bool> IsAccessible { get; }
         public global::SpacetimeDB.Col<SeatConfiguration, bool> IsEmergencyExit { get; }
-        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> Notes { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, string> Notes { get; }
         public global::SpacetimeDB.Col<SeatConfiguration, ulong> CreatedAt { get; }
-        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> CreatedBy { get; }
-        public global::SpacetimeDB.NullableCol<SeatConfiguration, ulong> UpdatedAt { get; }
-        public global::SpacetimeDB.NullableCol<SeatConfiguration, string> UpdatedBy { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, string> CreatedBy { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, ulong> UpdatedAt { get; }
+        public global::SpacetimeDB.Col<SeatConfiguration, string> UpdatedBy { get; }
 
         public SeatConfigurationCols(string tableName)
         {
@@ -65,11 +65,11 @@ namespace SpacetimeDB.Types
             SeatColumn = new global::SpacetimeDB.Col<SeatConfiguration, uint>(tableName, "seat_column");
             IsAccessible = new global::SpacetimeDB.Col<SeatConfiguration, bool>(tableName, "is_accessible");
             IsEmergencyExit = new global::SpacetimeDB.Col<SeatConfiguration, bool>(tableName, "is_emergency_exit");
-            Notes = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "notes");
+            Notes = new global::SpacetimeDB.Col<SeatConfiguration, string>(tableName, "notes");
             CreatedAt = new global::SpacetimeDB.Col<SeatConfiguration, ulong>(tableName, "created_at");
-            CreatedBy = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "created_by");
-            UpdatedAt = new global::SpacetimeDB.NullableCol<SeatConfiguration, ulong>(tableName, "updated_at");
-            UpdatedBy = new global::SpacetimeDB.NullableCol<SeatConfiguration, string>(tableName, "updated_by");
+            CreatedBy = new global::SpacetimeDB.Col<SeatConfiguration, string>(tableName, "created_by");
+            UpdatedAt = new global::SpacetimeDB.Col<SeatConfiguration, ulong>(tableName, "updated_at");
+            UpdatedBy = new global::SpacetimeDB.Col<SeatConfiguration, string>(tableName, "updated_by");
         }
     }
 
