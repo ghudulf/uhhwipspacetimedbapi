@@ -14,7 +14,8 @@ public sealed class ProviderFlowOptions
 public enum ProviderFlowState { Pending, Authenticated, Redeemed, Failed, Expired, Cancelled }
 public sealed record ProviderFlowStart(string FlowId, string FlowSecret, DateTimeOffset ExpiresAt, int PollIntervalMs);
 public sealed record ProviderIdentity(string Issuer, string Subject);
-public sealed record ProviderRedemption(string Purpose, Identity? Actor, ProviderIdentity? ExternalIdentity, string? CredentialId);
+public sealed record ProviderRedemption(string Purpose, Identity? Actor, ProviderIdentity? ExternalIdentity, string? CredentialId, Identity? AuthenticatedUser = null);
+public sealed record ProviderBrowserContext(string Purpose, Identity? Actor, string? Username, string? OptionsJson);
 public sealed record ProviderOidcProof(string FlowId, string Nonce, string Verifier, string RedirectUri);
 public sealed class ProviderFlowException(string code, int status = 400) : Exception(code)
 {
@@ -36,6 +37,10 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
         public ProviderOidcProof? OidcProof;
         public ProviderIdentity? ExternalIdentity;
         public string? CredentialId;
+        public Identity? AuthenticatedUser;
+        public byte[]? BrowserHash;
+        public string? Username, OptionsJson;
+        public int BrowserPhase, Attempts = 3;
         public readonly Queue<DateTimeOffset> Polls = new();
     }
     private const int Capacity = 2000;
@@ -50,7 +55,7 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
     {
         while (queue.TryPeek(out var oldest) && oldest <= time.GetUtcNow().AddMinutes(-1)) queue.Dequeue();
     }
-    private static void ClearProof(Flow flow) { flow.StateHash = null; flow.OidcProof = null; }
+    private static void ClearProof(Flow flow) { flow.StateHash = null; flow.OidcProof = null; flow.BrowserHash = null; flow.OptionsJson = null; flow.Username = null; }
     private void Sweep()
     {
         var now = time.GetUtcNow();
@@ -106,15 +111,17 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
             return proof;
         }
     }
-    public bool Authenticate(string id, string provider, ProviderIdentity? identity = null, string? credentialId = null)
+    public bool Authenticate(string id, string provider, ProviderIdentity? identity = null, string? credentialId = null, Identity? authenticatedUser = null)
     {
         lock (gate)
         {
             Sweep();
             if (!flows.TryGetValue(id, out var flow) || flow.Provider != provider || flow.State != ProviderFlowState.Pending) return false;
             if (provider == "entra" && (identity == null || flow.StateHash != null)) return false;
+            if (provider == "passkey" && (flow.BrowserPhase != 3 || credentialId == null || authenticatedUser == null)) return false;
             flow.ExternalIdentity = identity;
             flow.CredentialId = credentialId;
+            flow.AuthenticatedUser = authenticatedUser;
             flow.State = ProviderFlowState.Authenticated;
             ClearProof(flow);
             return true;
@@ -146,9 +153,10 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
             if (flow.State == ProviderFlowState.Authenticated)
             {
                 flow.State = ProviderFlowState.Redeemed;
-                redemption = new(flow.Purpose, flow.Actor, flow.ExternalIdentity, flow.CredentialId);
+                redemption = new(flow.Purpose, flow.Actor, flow.ExternalIdentity, flow.CredentialId, flow.AuthenticatedUser);
                 flow.ExternalIdentity = null;
                 flow.CredentialId = null;
+                flow.AuthenticatedUser = null;
                 return "completed";
             }
             return flow.State == ProviderFlowState.Redeemed ? "consumed" : flow.State.ToString().ToLowerInvariant();
@@ -157,5 +165,46 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
     public void Cancel(string id, string provider, string? secret)
     {
         lock (gate) { var flow = Get(id, provider, secret); if (Live(flow)) { flow.State = ProviderFlowState.Cancelled; ClearProof(flow); } }
+    }
+    public void BindBrowser(string id, string browserToken, string? username)
+    {
+        lock (gate)
+        {
+            Sweep();
+            if (!flows.TryGetValue(id, out var flow) || flow.Provider != "passkey" || flow.State != ProviderFlowState.Pending || flow.BrowserHash != null)
+                throw new ProviderFlowException("not_found", 404);
+            flow.BrowserHash = Hash(browserToken); flow.Username = username;
+        }
+    }
+    private Flow Browser(string id, string? token, int phase)
+    {
+        Sweep();
+        if (!flows.TryGetValue(id, out var flow) || flow.Provider != "passkey" || flow.State != ProviderFlowState.Pending)
+            throw new ProviderFlowException("not_found", 404);
+        if (flow.BrowserHash == null || !Matches(flow.BrowserHash, token) || flow.BrowserPhase != phase)
+        {
+            if (--flow.Attempts <= 0) { flow.State = ProviderFlowState.Failed; ClearProof(flow); }
+            throw new ProviderFlowException("not_found", 404);
+        }
+        return flow;
+    }
+    public void ValidateBrowser(string id, string? token) { lock (gate) { _ = Browser(id, token, 0); } }
+    public ProviderBrowserContext BeginBrowserOptions(string id, string? token)
+    {
+        lock (gate) { var flow = Browser(id, token, 0); flow.BrowserPhase = 1; return new(flow.Purpose, flow.Actor, flow.Username, null); }
+    }
+    public void SetBrowserOptions(string id, string json)
+    {
+        lock (gate)
+        {
+            Sweep();
+            if (json.Length > 32768 || !flows.TryGetValue(id, out var flow) || flow.State != ProviderFlowState.Pending || flow.BrowserPhase != 1)
+                throw new ProviderFlowException("not_found", 404);
+            flow.OptionsJson = json; flow.BrowserPhase = 2;
+        }
+    }
+    public ProviderBrowserContext BeginBrowserAssertion(string id, string? token)
+    {
+        lock (gate) { var flow = Browser(id, token, 2); flow.BrowserPhase = 3; return new(flow.Purpose, flow.Actor, flow.Username, flow.OptionsJson); }
     }
 }

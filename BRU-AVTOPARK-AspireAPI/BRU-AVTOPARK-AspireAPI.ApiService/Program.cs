@@ -149,6 +149,9 @@ builder.Services.AddHttpClient("entra", client => client.Timeout = TimeSpan.From
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
     .RemoveAllLoggers();
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationService>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptions>, BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptionsValidator>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Passkeys")).ValidateOnStart();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceStore, TicketSalesApp.Services.Implementations.QrLoginDeviceStore>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals
@@ -160,9 +163,9 @@ builder.Services.AddHealthChecks().AddCheck<BRU_AVTOPARK_AspireAPI.ApiService.Se
 // Configure Fido2 for WebAuthn
 builder.Services.AddFido2(options =>
 {
-    options.ServerDomain = "localhost";
+    options.ServerDomain = builder.Configuration["Fido2:ServerDomain"] ?? "localhost";
     options.ServerName = "TicketSalesApp Admin API";
-    options.Origins = new HashSet<string> { "https://localhost:5001" };
+    options.Origins = (builder.Configuration.GetSection("Fido2:Origins").Get<string[]>() ?? ["https://localhost:5001"]).ToHashSet(StringComparer.Ordinal);
     options.TimestampDriftTolerance = 300000;
 });
 
