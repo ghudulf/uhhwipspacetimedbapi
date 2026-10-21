@@ -28,7 +28,6 @@ public static class MauiProgram
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU.Avtopark.TicketSalesApp", "WebView2"));
         BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ClientLogging.Configure("maui");
 
-        Log.Information("[MAUI] Serilog initialized — log path: {Path}", logPath);
         Console.WriteLine("[MAUI] CreateMauiApp: start");
 
         try

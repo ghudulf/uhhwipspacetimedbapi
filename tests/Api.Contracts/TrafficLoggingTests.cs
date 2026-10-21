@@ -25,7 +25,7 @@ internal static class TrafficLoggingTests
             var context = new DefaultHttpContext { TraceIdentifier = "traffic-trace" };
             var raw = """{"name":"Alice","access_token":"sentinel"}""";
             context.Request.Method = "POST"; context.Request.Path = "/data"; context.Request.QueryString = new("?code=sentinel&search=Alice");
-            context.Request.ContentType = "application/json"; context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(raw));
+            context.Request.ContentType = "application/json"; context.Request.Body = new TrafficReplayStream([], new MemoryStream(Encoding.UTF8.GetBytes(raw)));
             context.Request.Headers.Authorization = "Bearer sentinel";
             using var response = new MemoryStream(); context.Response.Body = response;
             var middleware = new TrafficLoggingMiddleware(async ctx =>
@@ -33,6 +33,7 @@ internal static class TrafficLoggingTests
                 using var reader = new StreamReader(ctx.Request.Body, leaveOpen: true);
                 Check(await reader.ReadToEndAsync() == raw, "request body consumed");
                 ctx.Response.ContentType = "application/json"; ctx.Response.StatusCode = 400;
+                ctx.Response.Headers.SetCookie = "session=sentinel; HttpOnly";
                 await ctx.Response.WriteAsync(raw);
             }, logs.Logger<TrafficLoggingMiddleware>(), config);
             await middleware.InvokeAsync(context);
@@ -53,14 +54,25 @@ internal static class TrafficLoggingTests
             await new TrafficLoggingMiddleware(_ => Task.CompletedTask, logs.Logger<TrafficLoggingMiddleware>(), Config("full")).InvokeAsync(context);
             Check(logs.Messages.Count == 0, "health noise");
         }
+        foreach (var path in new[] { "/api/auth/passkey/browser", "/api/auth/entra/callback", "/socket" })
+        {
+            var logs = new Capture(); var context = new DefaultHttpContext(); context.Request.Path = path; context.Response.Body = new MemoryStream();
+            if (path == "/socket") context.Request.Headers.Upgrade = "websocket";
+            await new TrafficLoggingMiddleware(async ctx => { ctx.Response.ContentType = "text/html"; await ctx.Response.WriteAsync("sentinel"); }, logs.Logger<TrafficLoggingMiddleware>(), Config("full")).InvokeAsync(context);
+            Check(!string.Join('\n', logs.Messages).Contains("sentinel"), "full captured auth HTML / upgrade body");
+        }
         using (var output = new MemoryStream())
         using (var tee = new TrafficCaptureStream(output, 32))
         {
             await tee.WriteAsync(new byte[1024 * 1024]);
             Check(tee.BufferedBytes == 32 && tee.TotalBytes == 1024 * 1024 && output.Length == 1024 * 1024, "unbounded response capture");
             Check(TrafficDiagnostics.Body(Encoding.UTF8.GetBytes(new string('x', 32)), 100, "text/plain", new(MaxBodyBytes: 32)).Contains("…[truncated 68 bytes]"), "cap marker");
+            Check(TrafficDiagnostics.Body(Encoding.UTF8.GetBytes("a😀b"), 6, "text/plain", new(MaxBodyBytes: 3)) == "a…[truncated 5 bytes]", "body UTF8 cap");
         }
         Check(TrafficDiagnostics.ServerOptions(Config("full")).Level == TrafficLevel.Full, "server config binding");
+        var bound = TrafficDiagnostics.ServerOptions(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { ["Diagnostics:Traffic:Rows"] = "true", ["Diagnostics:Traffic:Websocket"] = "false", ["Diagnostics:Traffic:MaxRows"] = "7", ["Diagnostics:Traffic:MaxBodyBytes"] = "1234" }).Build());
+        Check(bound.Rows && !bound.Websocket && bound.MaxRows == 7 && bound.MaxBodyBytes == 1234 && bound.Level == TrafficLevel.Redacted, "server options binding");
         var formatter = new EscapedTextFormatter(true);
         using (var output = new StringWriter())
         {

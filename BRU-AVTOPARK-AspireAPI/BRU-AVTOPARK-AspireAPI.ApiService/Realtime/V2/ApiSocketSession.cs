@@ -108,7 +108,8 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
             try { if (socket.State is WebSocketState.Open or WebSocketState.CloseReceived) await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Session ended; reconnect and resynchronize", closeDeadline.Token); }
             catch (Exception ex) when (ex is WebSocketException or OperationCanceledException) { socket.Abort(); }
             OperationTelemetry.Connections.Add(-1);
-            logger.LogInformation("V2 connection closed; generation {Generation}", _generation);
+            logger.LogInformation("V2 connection closed; generation {Generation} Status={CloseStatus} Reason={Reason}", _generation, socket.CloseStatus,
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(socket.CloseStatusDescription));
         }
     }
 

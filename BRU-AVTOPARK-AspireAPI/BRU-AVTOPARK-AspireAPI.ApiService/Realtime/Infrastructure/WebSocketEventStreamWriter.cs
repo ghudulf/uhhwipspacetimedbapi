@@ -54,6 +54,7 @@ public static class WebSocketEventStreamWriter
         }
 
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync("bru.events.v1");
+        logger.LogDebug("V1 WebSocket opened TraceId={TraceId}", context.TraceIdentifier);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var sendLock = new SemaphoreSlim(1, 1);
 
@@ -151,6 +152,8 @@ public static class WebSocketEventStreamWriter
         }
         finally
         {
+            logger.LogDebug("V1 WebSocket closed TraceId={TraceId} Status={CloseStatus} Reason={Reason}", context.TraceIdentifier, webSocket.CloseStatus,
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(webSocket.CloseStatusDescription));
             linkedCts.Cancel();
 
             try

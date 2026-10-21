@@ -29,7 +29,7 @@ public sealed class TrafficLoggingMiddleware(RequestDelegate next, ILogger<Traff
         else if (!upgrade && request.ContentLength is { } length) requestBody = DebugPayload.Binary(length, options.Level);
         var requestHeaders = DebugPayload.Headers(request.Headers.Where(h => Selected(h.Key)).Select(h =>
             new KeyValuePair<string, IEnumerable<string>>(h.Key, h.Value.Select(v => v ?? ""))), options.Level);
-        var url = DebugPayload.Url(request.PathBase + request.Path + request.QueryString, options.Level);
+        var url = DebugPayload.Url(request.PathBase + request.Path + request.QueryString, options.Level, request.Path.StartsWithSegments("/api/auth"));
         logger.LogDebug("HTTP request {Method} {Url} TraceId={TraceId} Headers={Headers} Body={Body}", request.Method, url, context.TraceIdentifier, System.Text.Json.JsonSerializer.Serialize(requestHeaders), requestBody);
         var originalResponse = context.Response.Body;
         bool Capture() => !upgrade && !ExcludedBody(context, options);

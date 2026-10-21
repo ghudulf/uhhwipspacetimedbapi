@@ -28,8 +28,20 @@ internal static class DebugPayloadTests
         Check(DebugPayload.Fingerprint("same") == DebugPayload.Fingerprint("same") && DebugPayload.Fingerprint("same").Length == 8, "stable fingerprint");
         Check(!DebugPayload.Url("/api?%61ccess_token=sentinel").Contains("sentinel"), "encoded query key");
         Check(DebugPayload.Json("{\"code\":\"invalid_totp\"}", authentication: true, response: true).Contains("invalid_totp"), "auth error code retained");
+        Check(!DebugPayload.Json("{\"browserUrl\":\"https://host/api/auth/passkey/browser?f=id&b=sentinel\"}", authentication: true, response: true).Contains("sentinel"), "passkey URL proof in JSON");
+        Check(!DebugPayload.Url("/api/auth/passkey/browser?f=id&b=sentinel", authentication: true).Contains("sentinel"), "passkey URL proof");
         Check(!DebugPayload.Headers(new Dictionary<string, IEnumerable<string>> { ["Authorization"] = ["sentinel"] })["Authorization"].Contains("sentinel"), "malformed header credential");
         Check(TrafficOptions.ParseLevel(null) == TrafficLevel.Redacted && TrafficOptions.ParseLevel("FULL") == TrafficLevel.Full, "configuration defaults");
+        var oldLevel = Environment.GetEnvironmentVariable("BRU_DEBUG_TRAFFIC");
+        var oldCap = Environment.GetEnvironmentVariable("BRU_DEBUG_TRAFFIC_MAX_BYTES");
+        try
+        {
+            Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC", "full"); Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC_MAX_BYTES", "1234");
+            Check(BRU.Avtopark.Client.ClientTrafficOptions.Current.Level == TrafficLevel.Full && BRU.Avtopark.Client.ClientTrafficOptions.Current.MaxBodyBytes == 1234, "client env binding");
+            Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC", "typo");
+            try { _ = BRU.Avtopark.Client.ClientTrafficOptions.Current; throw new Exception("Invalid traffic config accepted"); } catch (ArgumentException) { }
+        }
+        finally { Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC", oldLevel); Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC_MAX_BYTES", oldCap); }
         Console.WriteLine("PASS DebugPayload credential-only masking, business data, numeric fidelity, duplicate/nested/array values, UTF8 cap, malformed/text/binary, levels, URLs and stable header fingerprints");
     }
     private static void Check(bool condition, string message) { if (!condition) throw new Exception("DebugPayload: " + message); }

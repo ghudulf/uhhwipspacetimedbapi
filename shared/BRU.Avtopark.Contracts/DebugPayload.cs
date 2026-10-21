@@ -72,7 +72,10 @@ public static class DebugPayload
                                 writer.WriteStringValue(Mask(length >= 0 ? length : checked((int)(reader.BytesConsumed - start))));
                             }
                             break;
-                        case JsonTokenType.String: writer.WriteStringValue(reader.GetString()); break;
+                        case JsonTokenType.String:
+                            var value = reader.GetString()!;
+                            writer.WriteStringValue(Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" ? Url(value, level, authentication) : value);
+                            break;
                         case JsonTokenType.Number: writer.WriteRawValue(reader.ValueSpan, skipInputValidation: true); break;
                         case JsonTokenType.True: writer.WriteBooleanValue(true); break;
                         case JsonTokenType.False: writer.WriteBooleanValue(false); break;
@@ -123,12 +126,12 @@ public static class DebugPayload
         return result;
     }
 
-    public static string Url(string raw, TrafficLevel level = TrafficLevel.Redacted)
+    public static string Url(string raw, TrafficLevel level = TrafficLevel.Redacted, bool authentication = false)
     {
         if (level == TrafficLevel.Off) return "";
         if (level == TrafficLevel.Full) return raw;
         return Regex.Replace(raw, "(?<prefix>[?&])(?<key>[^=&#]+)=(?<value>[^&#]*)",
-            match => new[] { "access_token", "token", "code", "state", "id_token", "refresh_token", "client_secret" }.Contains(Uri.UnescapeDataString(match.Groups["key"].Value), StringComparer.OrdinalIgnoreCase)
+            match => new[] { "access_token", "token", "code", "state", "id_token", "refresh_token", "client_secret" }.Contains(Uri.UnescapeDataString(match.Groups["key"].Value), StringComparer.OrdinalIgnoreCase) || authentication && Uri.UnescapeDataString(match.Groups["key"].Value) == "b"
                 ? match.Groups["prefix"].Value + match.Groups["key"].Value + "=" + Mask(match.Groups["value"].Length) : match.Value,
             RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
     }

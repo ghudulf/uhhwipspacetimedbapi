@@ -17,7 +17,8 @@ public sealed class TrafficLoggingHandler : DelegatingHandler
         if (settings.Level == TrafficLevel.Off) return await base.SendAsync(request, cancellationToken);
         var started = Stopwatch.GetTimestamp();
         var correlation = request.Headers.TryGetValues("Trace-Id", out var values) ? values.FirstOrDefault() : Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
-        var url = DebugPayload.Url(request.RequestUri?.ToString() ?? "", settings.Level);
+        request.Headers.TryAddWithoutValidation("X-BRU-Client-Trace", correlation);
+        var url = DebugPayload.Url(request.RequestUri?.ToString() ?? "", settings.Level, request.RequestUri?.AbsolutePath.Contains("/auth/", StringComparison.OrdinalIgnoreCase) == true);
         var body = await PreviewAsync(request.Content, replacement => request.Content = replacement, settings, request.RequestUri, cancellationToken);
         var headers = HeaderJson(request.Headers.Concat(request.Content?.Headers.AsEnumerable() ?? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>()), settings);
         Log.Debug("HTTP client request {Method} {Url} TraceId={TraceId} Headers={Headers} Body={Body}", request.Method, url, correlation, headers, body);
@@ -28,7 +29,8 @@ public sealed class TrafficLoggingHandler : DelegatingHandler
             body = await PreviewAsync(response.Content, replacement => response.Content = replacement, settings, request.RequestUri, cancellationToken, response: true);
             headers = HeaderJson(response.Headers.Concat(response.Content.Headers), settings);
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-            Log.Debug("HTTP client response {Method} {Url} Status={StatusCode} TraceId={TraceId} ElapsedMs={ElapsedMs} Headers={Headers} Body={Body}", request.Method, url, (int)response.StatusCode, correlation, elapsed, headers, body);
+            var trace = response.Headers.TryGetValues("Trace-Id", out var responseTrace) ? responseTrace.FirstOrDefault() : correlation;
+            Log.Debug("HTTP client response {Method} {Url} Status={StatusCode} TraceId={TraceId} ClientTraceId={ClientTraceId} ElapsedMs={ElapsedMs} Headers={Headers} Body={Body}", request.Method, url, (int)response.StatusCode, trace, correlation, elapsed, headers, body);
             Logged?.Invoke($"HTTP client response {request.Method} {url} Status={(int)response.StatusCode} TraceId={correlation} ElapsedMs={elapsed} Headers={headers} Body={body}");
             return response;
         }

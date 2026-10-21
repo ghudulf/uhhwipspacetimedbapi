@@ -50,6 +50,8 @@ removed:
 Credential hashes are protected too, including token reducers' `PresentedHash`
 and `NewHash`. Auth-specific previews additionally protect generic `code`,
 `credential`, `qrPng`, `qrPayload`; business `code` fields are not globally removed.
+Authentication URLs also mask the passkey `b` browser-proof query parameter,
+including browser URLs embedded inside JSON; response error codes remain visible.
 `SafeDiagnostics.JsonShape` remains available for intentionally stricter paths.
 
 Malformed JSON/forms/text retain bounded text with recognizable credential

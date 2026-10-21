@@ -73,7 +73,10 @@ internal static class SharedClientTests
             var origin = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             await using var client = new RealtimeApplicationClient();
+            var frames = new System.Collections.Concurrent.ConcurrentQueue<(string Direction, string Frame)>();
+            client.FrameLogged += (direction, frame) => frames.Enqueue((direction, frame));
             await client.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+            Assert(frames.Any(frame => frame.Direction == "SENDING") && frames.Any(frame => frame.Direction == "RECEIVED RAW") && !frames.Any(frame => frame.Frame.Contains("synthetic-client-token-proof", StringComparison.Ordinal)), "shared client frame callbacks or token masking");
             var counted = client.CountedRequestsSent;
             await client.CallAsync<EmptyRequest, System.Text.Json.JsonElement>("ping", new(), null, deadline.Token);
             await client.CallAsync<EmptyRequest, Capabilities>("capabilities", new(), null, deadline.Token);

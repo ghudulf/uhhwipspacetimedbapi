@@ -57,8 +57,8 @@ Log.Logger = new LoggerConfiguration()
                  .MinimumLevel.Override("System", LogEventLevel.Information)
                  // Hosting request-start logs include callback query strings (OIDC codes/state).
                  .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
-                .WriteTo.Console(trafficFormatter)
-                .WriteTo.Debug(trafficFormatter)
+                .WriteTo.Console(new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter())
+                .WriteTo.Debug(new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter())
                 .WriteTo.File(new TicketSalesApp.Services.Diagnostics.TrafficJsonFormatter(trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full), "logs/app-.jsonl",
                     rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14)
                 .WriteTo.Logger(lc => lc

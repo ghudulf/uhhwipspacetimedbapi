@@ -21,7 +21,7 @@ public static class ClientLogging
             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
             .MinimumLevel.Override("System", LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
-            .WriteTo.Console(formatter).WriteTo.Debug(formatter)
+            .WriteTo.Console(new EscapedTextFormatter()).WriteTo.Debug(new EscapedTextFormatter())
             .WriteTo.File(formatter, Path.Combine(LogDirectory, prefix + "-.log"), rollingInterval: RollingInterval.Day,
                 fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14)
             .WriteTo.File(new TrafficJsonFormatter(unsafeTraffic), Path.Combine(LogDirectory, prefix + "-.jsonl"), rollingInterval: RollingInterval.Day,
