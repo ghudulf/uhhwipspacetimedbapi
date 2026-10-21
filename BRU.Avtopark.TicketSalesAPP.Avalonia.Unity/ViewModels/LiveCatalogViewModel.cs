@@ -34,10 +34,11 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
     private Task? _loading, _watching;
     private CancellationTokenSource? _loadCancellation, _watchCancellation;
     private CancellationTokenSource? _activityCancellation;
+    private CancellationToken _activityToken = new(true);
     private CancellationToken _activationToken;
     private bool _disposed;
     public const int PageSize = 100;
-    protected CancellationToken ActivityToken => _activityCancellation?.Token ?? new CancellationToken(true);
+    protected CancellationToken ActivityToken => _activityToken;
     public ObservableCollection<TItem> Items { get; } = new();
     public TItem? SelectedItem
     {
@@ -89,6 +90,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
         _activationToken = cancellationToken;
         _activityCancellation?.Dispose();
         _activityCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _activityToken = _activityCancellation.Token;
         _active = true;
         var api = ApiClientService.Instance;
         if (_token != api.AuthToken || _origin != api.CurrentBaseUrl) Clear();
@@ -100,6 +102,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
     {
         _active = false; _generation++;
         _activityCancellation?.Cancel();
+        _activityCancellation?.Dispose(); _activityCancellation = null;
         _loadCancellation?.Cancel(); _watchCancellation?.Cancel();
         IsBusy = false; IsSynchronized = false;
         ApiClientService.Instance.OnAuthTokenChanged -= SessionChanged;
@@ -114,6 +117,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
             Clear(); _token = ApiClientService.Instance.AuthToken; _origin = ApiClientService.Instance.CurrentBaseUrl;
             _activityCancellation?.Dispose();
             _activityCancellation = CancellationTokenSource.CreateLinkedTokenSource(_activationToken);
+            _activityToken = _activityCancellation.Token;
             _loading = LoadData();
         });
     }
@@ -226,7 +230,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
         if (_disposed) return;
         _disposed = true;
         Deactivate();
-        // Retain the cancelled source until in-flight consumers have observed cancellation.
+        // Consumers retain a cancelled token, not a linked source/parent registration.
         GC.SuppressFinalize(this);
     }
     private void NotifyEligibility()
