@@ -275,32 +275,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             try
             {
                 var json = await WindowsAccountClient.LoginAsync(cancellationToken);
-                var result = JsonSerializer.Deserialize<LoginResponse>(json, _jsonOptions)
-                    ?? throw new InvalidOperationException("Пустой ответ сервера.");
-                cancellationToken.ThrowIfCancellationRequested();
-                if (result.RequiresTwoFactor)
-                {
-                    RequiresTwoFactor = true;
-                    TwoFactorType = result.TwoFactorType;
-                    _tempToken = result.TempToken;
-                    CurrentStep = 3;
-                    StepTitle = "Двухфакторная аутентификация";
-                    StatusMessage = "Подтвердите вход вторым фактором.";
-                    IsLoading = false;
-                    await HandleTwoFactorAuthentication(TwoFactorType);
-                }
-                else if (!string.IsNullOrWhiteSpace(result.Token))
-                {
-                    ApiClientService.Instance.AuthToken = result.Token;
-                    IsAuthenticated = true;
-                    UserInfo = "Вход с учётной записью домена";
-                    CurrentStep = 4;
-                    StepTitle = "Вход успешно выполнен";
-                    StatusMessage = "Права доступа будут проверены на сервере.";
-                    ProgressValue = 100;
-                    NextButtonText = "Завершить";
-                }
-                else ErrorMessage = "Сервер не подтвердил вход.";
+                await ApplyExternalLoginAsync(json, cancellationToken, "Вход с учётной записью домена");
             }
             catch (OperationCanceledException) { StatusMessage = "Вход отменён."; }
             catch (InvalidOperationException ex) { ErrorMessage = ex.Message; }
@@ -310,6 +285,37 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 ErrorMessage = "Не удалось подключиться к серверу Windows-входа.";
             }
             finally { IsLoading = false; UpdateButtonStates(); }
+        }
+
+        // Shared successful-response path. Windows retains its existing request, status, exception handling and completion behaviour.
+        public async Task ApplyExternalLoginAsync(string json, System.Threading.CancellationToken cancellationToken = default, string description = "Вход по QR")
+        {
+            var result = JsonSerializer.Deserialize<LoginResponse>(json, _jsonOptions)
+                ?? throw new InvalidOperationException("Пустой ответ сервера.");
+            cancellationToken.ThrowIfCancellationRequested();
+            if (result.RequiresTwoFactor)
+            {
+                RequiresTwoFactor = true;
+                TwoFactorType = result.TwoFactorType;
+                _tempToken = result.TempToken;
+                CurrentStep = 3;
+                StepTitle = "Двухфакторная аутентификация";
+                StatusMessage = "Подтвердите вход вторым фактором.";
+                IsLoading = false;
+                await HandleTwoFactorAuthentication(TwoFactorType);
+            }
+            else if (!string.IsNullOrWhiteSpace(result.Token))
+            {
+                ApiClientService.Instance.AuthToken = result.Token;
+                IsAuthenticated = true;
+                UserInfo = description;
+                CurrentStep = 4;
+                StepTitle = "Вход успешно выполнен";
+                StatusMessage = "Права доступа будут проверены на сервере.";
+                ProgressValue = 100;
+                NextButtonText = "Завершить";
+            }
+            else ErrorMessage = "Сервер не подтвердил вход.";
         }
 
         // --- Commands using CommunityToolkit.Mvvm ---
@@ -736,7 +742,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private async Task HandleTwoFactorAuthentication(string twoFactorType)
         {
             // Called after API confirms 2FA is needed and CurrentStep is set to 3
-            Log.Information("Handling 2FA process: Type={Type}, User={Username}", twoFactorType, Username);
+            Log.Information("Starting second-factor step");
             IsLoading = false; // Allow interaction with 2FA step
 
             try
@@ -744,20 +750,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 switch (twoFactorType.ToLowerInvariant())
                 {
                     case "totp":
-                        Log.Debug("Handling TOTP authentication for user {Username}", Username);
+                        Log.Debug("Starting TOTP step");
                         // The UI for TOTP input should be part of Step 3 content
                         // The "Next/Confirm" button for Step 3 will trigger the validation
                          StatusMessage = "Введите код из приложения аутентификации.";
                         // We need a way to get the code entered by the user. Let's add a property.
                         break;
                     case "webauthn":
-                        Log.Debug("Handling WebAuthn authentication for user {Username}", Username);
+                        Log.Debug("Starting WebAuthn step");
                         // Trigger WebAuthn flow (needs platform-specific interop or library)
                         StatusMessage = "Используйте ваш ключ безопасности WebAuthn.";
                         await HandleWebAuthnAuthenticationInternal(); // Call stub/implementation
                         break;
                     default:
-                        Log.Warning("Unsupported 2FA type: {Type} for user {Username}", twoFactorType, Username);
+                        Log.Warning("Unsupported second-factor type");
                         ErrorMessage = "Неподдерживаемый тип двухфакторной аутентификации.";
                         await GoToPreviousStepAsync(true); // Go back if 2FA type is wrong
                         break;
@@ -765,7 +771,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
             catch (Exception ex)
             {
-                 Log.Error(ex, "Error initiating 2FA handler for type {Type}, user {Username}", twoFactorType, Username);
+                  Log.Warning("Second-factor setup failed ({ErrorType})", ex.GetType().Name);
                  ErrorMessage = "Ошибка инициализации двухфакторной аутентификации.";
                  await GoToPreviousStepAsync(true); // Go back on error
             }

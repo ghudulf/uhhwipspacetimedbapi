@@ -5,9 +5,9 @@
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
         x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.LoginMethodSelectorWindow"
         Title="БРУ Автопарк - Выбор метода входа"
-        Width="500" Height="400"
+        Width="500" Height="640"
         MinWidth="500" MinHeight="400"
-        MaxWidth="500" MaxHeight="400"
+        MaxWidth="500" MaxHeight="640"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/avalonia-logo.ico"
         CanResize="False"
@@ -133,6 +133,7 @@
         <Border Grid.Row="1" 
                 Background="{DynamicResource SystemBackground}"
                 Padding="20">
+            <ScrollViewer AutomationProperties.Name="Способы входа">
             <StackPanel Spacing="20" 
                         VerticalAlignment="Center">
                 
@@ -285,6 +286,13 @@
 
                 </StackPanel>
 
+                <Button Content="Вход по QR с телефона" Click="QrCode_Click" HorizontalAlignment="Stretch"
+                        Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" Padding="20,15"
+                        AutomationProperties.Name="Показать QR-код и подтвердить вход с телефона" />
+                <Button Content="QR-вход на этом устройстве" Click="QrDevice_Click" HorizontalAlignment="Stretch"
+                        Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2" Padding="20,15"
+                        AutomationProperties.Name="Войти без пароля с зарегистрированным ключом устройства" />
+
                 <!-- Footer Info -->
                 <Border Background="{DynamicResource CardBackground}"
                         BorderBrush="{DynamicResource BorderBrush}"
@@ -304,6 +312,7 @@
                 </Border>
 
             </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </Window>

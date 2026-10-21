@@ -6,6 +6,8 @@ This branch is in implementation. **It is not a completed delivery of the expand
 
 QR login adds the `QrLoginDevice` table and trusted-API-only `RegisterQrLoginDevice`, `RevokeQrLoginDevice`, and `TouchQrLoginDevice` reducers. This is additive: publish the module before the API, regenerate bindings and completion observers, and preserve existing rows. See [QR protocol, configuration and rollout](qr-login.md). Broker sessions are process-local and do not survive restarts.
 
+The QR client rollout adds display/approval/self-scan windows and shares the existing Windows-login response application/second-factor wizard. Deploy the QR-capable API before these clients. Windows device keys use DPAPI; unsupported platforms retain keys only in process memory until a verified host keystore is registered. Do not advertise durable mobile enrollment or native camera support from generic desktop/MAUI compilation alone. Client and platform caveats are detailed in [QR clients](qr-login.md#clients).
+
 - The hosted frame coordinator processes callbacks during connection/subscription establishment and resets readiness after disconnection or subscription failure.
 - The typed queue holds at most 256 operations and dispatches at most 32 per frame. Each operation has a deadline, cancellation and completion. SDK 2.1.0 retains the original reducer object in its pending-call map and applies changes before its callback; reference identity distinguishes concurrent identical arguments.
 - A cancellation before submission prevents dispatch. Cancellation/timeout after submission raises `CommitOutcomeUnknownException`; it is not an instruction to retry a mutation.

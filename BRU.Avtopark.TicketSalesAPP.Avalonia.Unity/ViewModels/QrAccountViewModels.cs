@@ -11,17 +11,20 @@ using ReactiveUI;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
-public partial class QrApproveViewModel(IQrLoginApi api, IDeviceKeyStore store, string bearer, string username) : QrViewModel
+public partial class QrApproveViewModel(IQrLoginApi api, IDeviceKeyStore store, string bearer, string username, Func<CancellationToken, Task<string>>? resolveAccount = null) : QrViewModel
 {
     private readonly QrApproverFlow flow = new(api);
     private QrApprovalRequest? request;
     private string scannedText = "", code = "", details = "";
     private int attempts;
+    private string countdown = "";
+    private CancellationTokenSource? countdownLifetime;
     public string ScannedText { get => scannedText; set => this.RaiseAndSetIfChanged(ref scannedText, value); }
     public string VerificationCode { get => code; set => this.RaiseAndSetIfChanged(ref code, value); }
     public string Details { get => details; private set => this.RaiseAndSetIfChanged(ref details, value); }
     public int AttemptsRemaining { get => attempts; private set => this.RaiseAndSetIfChanged(ref attempts, value); }
     public bool HasRequest => request != null;
+    public string Countdown { get => countdown; private set => this.RaiseAndSetIfChanged(ref countdown, value); }
     [RelayCommand]
     public async Task ScanAsync()
     {
@@ -39,6 +42,9 @@ public partial class QrApproveViewModel(IQrLoginApi api, IDeviceKeyStore store, 
             var result = await flow.ParseAndPeekAsync(ScannedText, api.ApiBase, Lifetime.Token);
             if (Lifetime.IsCancellationRequested) return;
             request = result;
+            countdownLifetime?.Cancel();
+            countdownLifetime = CancellationTokenSource.CreateLinkedTokenSource(Lifetime.Token);
+            _ = CountAsync(result, countdownLifetime.Token);
             AttemptsRemaining = result.Details.CodeAttemptsRemaining;
             Details = $"Устройство: {result.Details.DeviceName}\nПлатформа: {result.Details.Platform}\nАдрес: {result.Details.RequestedFrom}\nСервер: {result.Details.Origin}\nДо: {result.Details.ExpiresAt.LocalDateTime:g}" +
                 (result.Details.BoundUsername == null ? "" : $"\nТолько для пользователя {result.Details.BoundUsername}");
@@ -49,6 +55,20 @@ public partial class QrApproveViewModel(IQrLoginApi api, IDeviceKeyStore store, 
         catch (Exception ex) { Failure(ex); }
         finally { IsBusy = false; }
     }
+    private async Task CountAsync(QrApprovalRequest current, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested && ReferenceEquals(request, current))
+            {
+                var seconds = Math.Max(0, (int)Math.Ceiling((current.Details.ExpiresAt - DateTimeOffset.UtcNow).TotalSeconds));
+                Countdown = $"Осталось секунд: {seconds}";
+                if (seconds == 0) { request = null; this.RaisePropertyChanged(nameof(HasRequest)); Status = "Срок действия QR-кода истёк"; break; }
+                await Task.Delay(1000, ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
     [RelayCommand]
     public async Task ApproveAsync()
     {
@@ -58,7 +78,9 @@ public partial class QrApproveViewModel(IQrLoginApi api, IDeviceKeyStore store, 
         try
         {
             var bound = request.Details.BoundUsername;
-            if (bound != null && !string.Equals(bound, username, StringComparison.OrdinalIgnoreCase)) enrollment = await store.LoadAsync(api.ApiBase, bound, Lifetime.Token);
+            // Account lookup is deferred until AFTER ParseAndPeek validated the QR origin.
+            var currentAccount = bound != null && resolveAccount != null ? await resolveAccount(Lifetime.Token) : username;
+            if (bound != null && !string.Equals(bound, currentAccount, StringComparison.OrdinalIgnoreCase)) enrollment = await store.LoadAsync(api.ApiBase, bound, Lifetime.Token);
             if (Lifetime.IsCancellationRequested) return;
             if (enrollment != null) await flow.ApproveWithDeviceKeyAsync(request, enrollment, VerificationCode, Lifetime.Token);
             else await flow.ApproveWithSessionAsync(request, bearer, VerificationCode, Lifetime.Token);

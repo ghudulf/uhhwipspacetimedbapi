@@ -45,6 +45,18 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             Close(SelectedMethod);
         }
 
+        private void QrCode_Click(object? sender, RoutedEventArgs e)
+        {
+            SelectedMethod = LoginMethod.QrCode;
+            Close(SelectedMethod);
+        }
+
+        private void QrDevice_Click(object? sender, RoutedEventArgs e)
+        {
+            SelectedMethod = LoginMethod.QrDevice;
+            Close(SelectedMethod);
+        }
+
         private void CloseButton_Click(object? sender, RoutedEventArgs e)
         {
             SelectedMethod = null;
@@ -56,6 +68,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
     {
         WindowsAccount,
         Traditional,
-        OAuth
+        OAuth,
+        QrCode,
+        QrDevice
     }
 }

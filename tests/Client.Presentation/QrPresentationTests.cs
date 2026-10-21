@@ -19,6 +19,8 @@ internal static class QrPresentationTests
             await DisplayAndTerminalStatesAsync();
             await DeviceAndApproverAsync();
             await ViewModelsAndRollbackAsync();
+            await ExternalLoginParityAsync();
+            await SessionWindowCancellationAsync();
             foreach (var secret in new[] { "654321", "synthetic-bearer", "synthetic-temp", "private-user", FakeApi.Approval, FakeApi.PollSecret, "bruqr://", "signature-sentinel" })
                 Check(!string.Join('\n', sink.Messages).Contains(secret, StringComparison.Ordinal), "sensitive logging");
         }
@@ -146,6 +148,42 @@ internal static class QrPresentationTests
         await using (var deviceVm = new QrDeviceLoginViewModel(missingApi, store) { Username = "private-user" })
         { await deviceVm.StartAsync(); Check(missingApi.Calls == 0 && deviceVm.Status.Contains("не зарегистрировано"), "unenrolled view model zero network"); }
         Console.WriteLine("PASS QR ViewModels: local image/status/2FA completion, approval routing/attempts, session cancellation, enrollment rollback and local revocation");
+    }
+    private static async Task ExternalLoginParityAsync()
+    {
+        var previousToken = ApiClientService.Instance.AuthToken;
+        try
+        {
+            foreach (var description in new[] { "Вход с учётной записью домена", "Вход по QR" })
+            {
+                var vm = new AuthViewModel();
+                await vm.ApplyExternalLoginAsync("{\"token\":\"synthetic-bearer\"}", description: description);
+                Check(vm.IsAuthenticated && vm.CurrentStep == 4 && vm.UserInfo == description && vm.StatusMessage == "Права доступа будут проверены на сервере." && vm.NextButtonText == "Завершить" && vm.ProgressValue == 100, "Windows/QR direct-login state parity");
+                var factor = new AuthViewModel();
+                await factor.ApplyExternalLoginAsync("{\"requiresTwoFactor\":true,\"twoFactorType\":\"totp\",\"tempToken\":\"synthetic-temp\"}");
+                Check(factor.RequiresTwoFactor && factor.TwoFactorType == "totp" && factor.CurrentStep == 3 && !factor.IsAuthenticated && !factor.IsLoading, "external TOTP state passthrough");
+                Check((string?)typeof(AuthViewModel).GetField("_tempToken", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(factor) == "synthetic-temp", "temp-token preservation");
+            }
+            var cancelled = new AuthViewModel();
+            try { await cancelled.ApplyExternalLoginAsync("{\"token\":\"must-not-apply\"}", new CancellationToken(true)); throw new Exception("cancelled external login accepted"); }
+            catch (OperationCanceledException) { Check(!cancelled.IsAuthenticated && ApiClientService.Instance.AuthToken != "must-not-apply", "cancelled result applied"); }
+        }
+        finally { ApiClientService.Instance.AuthToken = previousToken; }
+        Console.WriteLine("PASS external-login shared handler preserves Windows/QR direct result, full wizard fields, TOTP/temp token and cancellation behaviour");
+    }
+    private static async Task SessionWindowCancellationAsync()
+    {
+        var token = ApiClientService.Instance.AuthToken;
+        var window = new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.QrApproveWindow();
+        try
+        {
+            window.Show();
+            ApiClientService.Instance.AuthToken = "synthetic-session-change";
+            await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, global::Avalonia.Threading.DispatcherPriority.Background);
+            Check(!window.IsVisible && window.DataContext is QrApproveViewModel { Status: "Сеанс изменён. Окно закрыто." }, "window retained stale authenticated session");
+        }
+        finally { window.Close(); ApiClientService.Instance.AuthToken = token; }
+        Console.WriteLine("PASS QR authenticated window cancels/closes through the actual OnAuthTokenChanged event");
     }
     private static async Task<List<QrFlowEvent>> Collect(IAsyncEnumerable<QrFlowEvent> events) { var list = new List<QrFlowEvent>(); await foreach (var e in events) list.Add(e); return list; }
     private static void Check(bool value, string message) { if (!value) throw new Exception("QR presentation: " + message); }

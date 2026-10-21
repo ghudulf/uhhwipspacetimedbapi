@@ -218,6 +218,39 @@ public partial class App : Application
             return await completed.Task;
         }
 
+        if (method.Value is LoginMethod.QrCode or LoginMethod.QrDevice)
+        {
+            try
+            {
+                Window qr = method.Value == LoginMethod.QrCode ? new QrLoginWindow() : new QrDeviceLoginWindow();
+                var qrClosed = new TaskCompletionSource();
+                qr.Closed += (_, _) => qrClosed.TrySetResult();
+                if (owner != null) qr.Show(owner); else qr.Show();
+                await qrClosed.Task;
+                var json = qr is QrLoginWindow display ? display.LoginJson : ((QrDeviceLoginWindow)qr).LoginJson;
+                if (json == null) return false;
+                using var lifetime = new System.Threading.CancellationTokenSource();
+                var vm = new AuthViewModel();
+                var window = new AuthWindow(vm);
+                var completed = new TaskCompletionSource<bool>();
+                window.Opened += async (_, _) =>
+                {
+                    try { await vm.ApplyExternalLoginAsync(json, lifetime.Token); }
+                    catch (OperationCanceledException) { }
+                    catch { vm.ErrorMessage = "Не удалось обработать результат QR-входа."; }
+                    finally { vm.RecalculateButtonStates(); }
+                };
+                window.Closed += (_, _) => { lifetime.Cancel(); completed.TrySetResult(vm.IsAuthenticated); };
+                window.Show();
+                return await completed.Task;
+            }
+            catch
+            {
+                Log.Warning("QR login UI failed");
+                return false;
+            }
+        }
+
         if (method.Value == LoginMethod.OAuth)
         {
             Log.Information("Login selector: OAuth chosen");

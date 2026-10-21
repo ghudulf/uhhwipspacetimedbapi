@@ -4,6 +4,8 @@ Current adapters normalize caller GUID mutation IDs and echo effective HTTP keys
 
 Baseline: PR #23 head `e35e483d6a14a1c855ee5aefcc65a69e8bfcdeb4`. This inventory is a work ledger; a listed endpoint is not a claim of v2 support. Existing HTTP, resource sockets and auth sockets stay available.
 
+QR client adapters cover all new QR routes through `IQrLoginApi`; desktop display, approval and enrolled-device self-scan share the origin-guarded flows. Local QR rendering, protected-or-memory enrollment, rollback and wizard/second-factor handoff have headless tests. Camera/keystore plug-ins and real mobile visual validation remain separate; see [QR clients](qr-login.md#clients).
+
 | Controller | Baseline line | HTTP attribute | Coverage |
 |---|---:|---|---|
 | AdminController | 37 | `[HttpGet("feature-flags-ui")]` | Pending parity verification |

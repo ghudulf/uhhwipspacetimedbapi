@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.QrDevicesWindow"
+        Title="QR-вход на этом устройстве" AutomationProperties.Name="Управление устройствами QR-входа"
+        Width="560" Height="600" MinWidth="350" MinHeight="400" WindowStartupLocation="CenterOwner">
+    <ScrollViewer AutomationProperties.Name="Содержимое управления устройствами QR-входа">
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="QR-вход на этом устройстве" FontSize="22" AutomationProperties.Name="Заголовок управления QR-устройствами" />
+            <TextBlock Text="После включения можно входить по имени пользователя и ключу устройства без пароля. На платформах без защищённого хранилища ключ действует до перезапуска приложения." TextWrapping="Wrap" AutomationProperties.Name="Политика хранения ключа QR-входа" />
+            <TextBox Text="{Binding DeviceName}" Watermark="Имя устройства" MaxLength="64" AutomationProperties.Name="Имя регистрируемого устройства" />
+            <Button Content="Включить QR-вход на этом устройстве" Command="{Binding EnrollCommand}" IsDefault="True" AutomationProperties.Name="Зарегистрировать ключ QR-входа этого устройства" />
+            <Button Content="Обновить список" Command="{Binding RefreshCommand}" AutomationProperties.Name="Обновить список зарегистрированных QR-устройств" />
+            <ListBox x:Name="DeviceList" ItemsSource="{Binding Devices}" AutomationProperties.Name="Зарегистрированные устройства QR-входа">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding DeviceName}" AutomationProperties.Name="Имя зарегистрированного устройства" />
+                            <TextBlock Text="{Binding Platform}" AutomationProperties.Name="Платформа зарегистрированного устройства" />
+                            <TextBlock Text="{Binding CreatedAt, StringFormat='Создано (Unix мс): {0}'}" AutomationProperties.Name="Время регистрации устройства" />
+                            <TextBlock Text="{Binding LastUsedAt, StringFormat='Последний вход (Unix мс): {0}'}" AutomationProperties.Name="Время последнего использования устройства" />
+                            <Button Content="Отозвать" Click="Revoke_Click" AutomationProperties.Name="Отозвать это зарегистрированное устройство" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.Name="Состояние управления QR-устройствами" AutomationProperties.LiveSetting="Polite" />
+            <Button Content="Закрыть" Click="Close_Click" IsCancel="True" AutomationProperties.Name="Закрыть управление QR-устройствами" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>

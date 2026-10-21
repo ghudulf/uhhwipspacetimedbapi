@@ -35,6 +35,24 @@ public partial class CentralViewWindowViewModel : ObservableObject
     }
 
     public bool CanLinkWindowsAccount => IsConnected && _access?.IsActive == true && WindowsAccountClient.TrustedOrigin != null;
+    public bool CanUseQr => IsConnected && _access?.IsActive == true;
+
+    [RelayCommand(CanExecute = nameof(CanUseQr))]
+    private void ApproveQrLogin() => OpenQrWindow(() => new QrApproveWindow());
+
+    [RelayCommand(CanExecute = nameof(CanUseQr))]
+    private void ManageQrDevices() => OpenQrWindow(() => new QrDevicesWindow());
+
+    private static void OpenQrWindow(Func<global::Avalonia.Controls.Window> create)
+    {
+        try
+        {
+            var window = create();
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner }) window.Show(owner);
+            else window.Show();
+        }
+        catch { Serilog.Log.Warning("QR window unavailable"); }
+    }
 
     [RelayCommand(CanExecute = nameof(CanLinkWindowsAccount))]
     private void LinkWindowsAccount()
@@ -116,6 +134,9 @@ public partial class CentralViewWindowViewModel : ObservableObject
         IsConnected = connected;
         OnPropertyChanged(nameof(CanLinkWindowsAccount));
         LinkWindowsAccountCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanUseQr));
+        ApproveQrLoginCommand.NotifyCanExecuteChanged();
+        ManageQrDevicesCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanShowBusManagement));
         ShowBusManagementCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanShowRouteManagement));
