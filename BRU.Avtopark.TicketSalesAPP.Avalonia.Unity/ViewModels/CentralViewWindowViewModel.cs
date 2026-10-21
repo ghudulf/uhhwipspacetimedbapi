@@ -37,6 +37,10 @@ public partial class CentralViewWindowViewModel : ObservableObject
     public bool CanLinkWindowsAccount => IsConnected && _access?.IsActive == true && WindowsAccountClient.TrustedOrigin != null;
     public bool CanUseQr => IsConnected && _access?.IsActive == true;
     private bool entraEnabled;
+    private bool passkeysEnabled;
+    public bool CanManagePasskeys => IsConnected && _access?.IsActive == true && passkeysEnabled;
+    [RelayCommand(CanExecute = nameof(CanManagePasskeys))]
+    private void ManagePasskeys() => OpenQrWindow(() => new PasskeyCredentialsWindow());
     public bool CanLinkEntraAccount => IsConnected && _access?.IsActive == true && entraEnabled;
     [RelayCommand(CanExecute = nameof(CanLinkEntraAccount))]
     private void LinkEntraAccount() => OpenQrWindow(() => new EntraAccountLinkWindow());
@@ -125,6 +129,7 @@ public partial class CentralViewWindowViewModel : ObservableObject
                         if (generation == Interlocked.Read(ref _sessionGeneration) && token == api.AuthToken && origin == api.CurrentBaseUrl)
                         {
                             entraEnabled = providers?.Entra == true;
+                            passkeysEnabled = providers?.Passkeys == true;
                             ApplyAccess(access, access?.IsActive == true);
                         }
                     });
@@ -147,6 +152,8 @@ public partial class CentralViewWindowViewModel : ObservableObject
         _access = access;
         IsConnected = connected;
         OnPropertyChanged(nameof(CanLinkEntraAccount));
+        OnPropertyChanged(nameof(CanManagePasskeys));
+        ManagePasskeysCommand.NotifyCanExecuteChanged();
         LinkEntraAccountCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanLinkWindowsAccount));
         LinkWindowsAccountCommand.NotifyCanExecuteChanged();

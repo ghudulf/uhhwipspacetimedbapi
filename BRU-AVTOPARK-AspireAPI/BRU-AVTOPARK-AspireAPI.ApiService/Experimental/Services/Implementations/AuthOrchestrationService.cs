@@ -770,7 +770,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnCredentialsResult> GetWebAuthnCredentialsAsync(Identity userId)
     {
-        _logger.LogInformation("WebAuthn credentials retrieval orchestration started for user ID: {UserId}", userId);
+        _logger.LogInformation("WebAuthn credentials requested; actor {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(userId.ToString()));
 
         try
         {
@@ -784,12 +784,12 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
             }).ToList();
 
-            _logger.LogInformation("Retrieved {Count} WebAuthn credentials for user ID: {UserId}", credentialDtos.Count, userId);
+            _logger.LogInformation("Retrieved {Count} own WebAuthn credentials", credentialDtos.Count);
             return WebAuthnCredentialsResult.Successful(credentialDtos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during WebAuthn credentials retrieval orchestration for user ID: {UserId}", userId);
+            _logger.LogWarning("WebAuthn credential retrieval failed; failure type {FailureType}", ex.GetType().Name);
             return WebAuthnCredentialsResult.Failed("An error occurred while retrieving WebAuthn credentials");
         }
     }
@@ -797,7 +797,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnRemoveResult> RemoveWebAuthnCredentialAsync(Identity userId, string credentialId)
     {
-        _logger.LogInformation("WebAuthn credential removal orchestration started for user ID: {UserId}", userId);
+        _logger.LogInformation("WebAuthn removal requested; actor {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(userId.ToString()));
 
         try
         {
@@ -806,7 +806,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (!success)
             {
-                _logger.LogWarning("WebAuthn credential removal failed for user ID: {UserId} - {ErrorMessage}", userId, errorMessage);
+                _logger.LogWarning("Own WebAuthn credential removal rejected");
                 return WebAuthnRemoveResult.Failed(errorMessage ?? "Failed to remove WebAuthn credential");
             }
 
@@ -814,12 +814,12 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             // Note: WebAuthnService.RemoveCredentialAsync already handles disabling WebAuthn
             // if this was the last credential, so we don't need to call SettingsService here
 
-            _logger.LogInformation("WebAuthn credential removed successfully for user ID: {UserId}", userId);
+            _logger.LogInformation("Own WebAuthn credential removal committed");
             return WebAuthnRemoveResult.Successful();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during WebAuthn credential removal orchestration for user ID: {UserId}", userId);
+            _logger.LogWarning("WebAuthn credential removal failed; failure type {FailureType}", ex.GetType().Name);
             return WebAuthnRemoveResult.Failed("An error occurred while removing WebAuthn credential");
         }
     }

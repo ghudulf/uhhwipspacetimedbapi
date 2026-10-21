@@ -1017,6 +1017,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("webauthn/credentials")]
+        [Microsoft.AspNetCore.Cors.DisableCors]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [Authorize]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<List<object>>), StatusCodes.Status200OK)]
@@ -1026,9 +1028,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnCredentialsRefactoring), _featureFlags.Value.EnableWebAuthnCredentialsRefactoring))
             {
-                var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
-                _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
-                    "GET /api/auth/webauthn/credentials", userIdentity, DateTime.UtcNow);
+                _logger.LogWarning("WebAuthn credentials endpoint disabled");
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/webauthn/credentials" });
             }
             _logger.LogInformation("Refactored WebAuthn Credentials endpoint called");
@@ -1077,6 +1077,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpDelete("webauthn/credentials/{id}")]
+        [Microsoft.AspNetCore.Cors.DisableCors]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [Authorize]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -1087,12 +1089,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         {
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnCredentialDeleteRefactoring), _featureFlags.Value.EnableWebAuthnCredentialDeleteRefactoring))
             {
-                var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
-                _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
-                    "DELETE /api/auth/webauthn/credentials/{id}", userIdentity, DateTime.UtcNow);
+                _logger.LogWarning("WebAuthn credential deletion endpoint disabled");
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "DELETE /api/auth/webauthn/credentials/{id}" });
             }
-            _logger.LogInformation("Refactored WebAuthn Credential Delete endpoint called for credential: {CredentialId}", id);
+            _logger.LogInformation("WebAuthn credential removal requested; credential {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(id));
 
             var userId = User.FindFirst("identity")?.Value;
 

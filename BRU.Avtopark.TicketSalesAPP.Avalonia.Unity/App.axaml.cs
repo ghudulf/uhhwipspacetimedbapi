@@ -239,7 +239,8 @@ public partial class App : Application
                 var completed = new TaskCompletionSource<bool>();
                 window.Opened += async (_, _) =>
                 {
-                    try { await vm.ApplyExternalLoginAsync(json, lifetime.Token); }
+                    try { await vm.ApplyExternalLoginAsync(json, lifetime.Token, method.Value switch
+                        { LoginMethod.Entra => "Вход с учётной записью Microsoft", LoginMethod.Passkey => "Вход с ключом доступа через браузер", _ => "Вход по QR" }); }
                     catch (OperationCanceledException) { }
                     catch { vm.ErrorMessage = "Не удалось обработать результат внешнего входа."; }
                     finally { vm.RecalculateButtonStates(); }

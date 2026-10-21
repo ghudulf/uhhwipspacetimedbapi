@@ -1,6 +1,8 @@
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using TicketSalesApp.Services.Implementations;
+using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class WebAuthnStorageTests
 {
@@ -26,7 +28,10 @@ internal static class WebAuthnStorageTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.RemoveOwnWebAuthnCredential(row.Id, actor), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeactivateWebAuthnCredential(row.Id, actor), _ => true));
         Check(await db.ReadAsync(c => c.Db.WebAuthnCredential.Id.Find(row.Id) is { IsActive: true, Counter: 2 }), "cross-account removal changed credential");
-        await db.ExecuteReducerAsync(new Reducer.RemoveOwnWebAuthnCredential(row.Id, other), _ => true);
+        var service = new WebAuthnService(db, null!, NullLogger<WebAuthnService>.Instance);
+        Check((await service.GetUserCredentialsAsync(other)).Any(item => item.Id == row.Id) && !(await service.GetUserCredentialsAsync(actor)).Any(item => item.Id == row.Id), "own credential list isolation");
+        Check(!(await service.RemoveCredentialAsync(actor, Convert.ToBase64String(id.ToArray()))).success, "service removed another account's key");
+        Check((await service.RemoveCredentialAsync(other, Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(id.ToArray()))).success, "service URL-safe own removal failed");
         Check(await db.ReadAsync(c => c.Db.WebAuthnCredential.Id.Find(row.Id)?.IsActive == false), "own removal not committed");
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateWebAuthnCounter(id, 3), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.RemoveOwnWebAuthnCredential(row.Id, other), _ => true));

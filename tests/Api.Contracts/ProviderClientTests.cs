@@ -79,7 +79,17 @@ internal static class ProviderClientTests
             try { await new ProviderLoginClient(badHttp, "https://api.test").CapabilitiesAsync(); throw new Exception("accepted invalid response"); }
             catch (ProviderLoginException ex) { Check(!ex.Message.Contains("secret", StringComparison.Ordinal), "unsafe error text"); }
         }
-        Console.WriteLine("PASS Provider client/flow fakes: URL safety launches nothing, same-origin exact passkey query, 2FA/link/register passthrough, cadence clamp, retries/expiry/cancel-once, size/redirect/error caps and bearer/deployment-prefix boundaries");
+        using var managementHttp = new HttpClient(new Handler(request =>
+        {
+            Check(request.Headers.Authorization?.Parameter == "own-bearer", "management full bearer");
+            if (request.Method == HttpMethod.Get) return Task.FromResult(Response("{\"success\":true,\"message\":\"ok\",\"data\":{\"credentials\":[{\"id\":\"////\",\"createdAt\":\"2026-01-01T00:00:00Z\"}]}}"));
+            Check(request.RequestUri!.AbsolutePath == "/base/api/auth/webauthn/credentials/____", "URL-safe credential removal route");
+            return Task.FromResult(Response("{\"success\":true}"));
+        }));
+        var management = new ProviderLoginClient(managementHttp, "https://api.test/base");
+        Check((await management.ListCredentialsAsync("own-bearer")).Single().Id == "////", "legacy credential envelope compatibility");
+        await management.RemoveCredentialAsync("own-bearer", "////");
+        Console.WriteLine("PASS Provider client/flow fakes: URL safety launches nothing, same-origin exact passkey query, 2FA/link/register passthrough, cadence clamp, retries/expiry/cancel-once, size/redirect/error caps, bearer/deployment-prefix boundaries and own-passkey list/delete envelopes with URL-safe IDs");
     }
     private static HttpResponseMessage Response(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
     private static async Task<List<ProviderFlowEvent>> Collect(IAsyncEnumerable<ProviderFlowEvent> stream) { var list = new List<ProviderFlowEvent>(); await foreach (var item in stream) list.Add(item); return list; }

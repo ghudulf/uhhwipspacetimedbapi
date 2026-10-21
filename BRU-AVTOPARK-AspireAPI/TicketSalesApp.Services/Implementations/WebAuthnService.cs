@@ -135,7 +135,8 @@ public sealed class WebAuthnService(ISpacetimeDBService database, IFido2 fido2, 
     {
         try
         {
-            var id = Convert.FromBase64String(credentialId);
+            // URL-safe IDs avoid encoded '/' route ambiguity; retain standard Base64 compatibility.
+            var id = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.DecodeBytes(credentialId);
             var credential = await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().FirstOrDefault(item => item.UserId == userId && item.IsActive && item.CredentialId.SequenceEqual(id)))
                 ?? throw new InvalidOperationException("Own credential required.");
             await database.ExecuteReducerAsync(new Reducer.RemoveOwnWebAuthnCredential(credential.Id, userId), _ => true);

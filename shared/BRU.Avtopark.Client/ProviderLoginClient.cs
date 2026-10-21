@@ -15,6 +15,12 @@ public sealed record ProviderCapabilities(bool Entra, bool Passkeys, bool Window
 public sealed record ProviderStart(string FlowId, string FlowSecret, DateTimeOffset ExpiresAt, int PollIntervalMs, string? AuthorizationUrl = null, string? BrowserUrl = null);
 public sealed record ProviderPoll(string State, JsonElement? Login = null, bool? Linked = null, bool? Registered = null, string? Code = null);
 public sealed record ProviderLinkStatus(string State);
+public sealed record PasskeyCredentialInfo(string Id, DateTime CreatedAt);
+public interface IPasskeyManagementApi
+{
+    Task<PasskeyCredentialInfo[]> ListCredentialsAsync(string bearer, CancellationToken cancellationToken = default);
+    Task RemoveCredentialAsync(string bearer, string credentialId, CancellationToken cancellationToken = default);
+}
 public interface IProviderLoginApi
 {
     string ApiBase { get; }
@@ -27,7 +33,7 @@ public interface IProviderLoginApi
 }
 
 /// <summary>Injected clients must disable automatic redirects. Never owns the supplied HttpClient.</summary>
-public sealed class ProviderLoginClient : IProviderLoginApi
+public sealed class ProviderLoginClient : IProviderLoginApi, IPasskeyManagementApi
 {
     private readonly HttpClient http;
     private readonly Uri root;
@@ -92,4 +98,26 @@ public sealed class ProviderLoginClient : IProviderLoginApi
     public Task CancelAsync(string provider, string id, string secret, CancellationToken cancellationToken = default) => SendAsync<bool>(HttpMethod.Post, Flow(provider, id, "cancel"), new { flowSecret = secret }, null, cancellationToken);
     public Task<ProviderLinkStatus> EntraLinkStatusAsync(string bearer, CancellationToken cancellationToken = default) => SendAsync<ProviderLinkStatus>(HttpMethod.Post, "entra/link/status", new { }, bearer, cancellationToken);
     public Task UnlinkEntraAsync(string bearer, CancellationToken cancellationToken = default) => SendAsync<bool>(HttpMethod.Post, "entra/unlink", new { }, bearer, cancellationToken);
+    public async Task<PasskeyCredentialInfo[]> ListCredentialsAsync(string bearer, CancellationToken cancellationToken = default)
+    {
+        // Legacy management envelope contains message/success/data; retain that server contract.
+        var envelope = await SendAsync<JsonElement>(HttpMethod.Get, "webauthn/credentials", null, bearer, cancellationToken);
+        try
+        {
+            if (!envelope.GetProperty("success").GetBoolean()) throw new ProviderLoginException("management_failed");
+            return envelope.GetProperty("data").GetProperty("credentials").Deserialize<PasskeyCredentialInfo[]>(ApiProtocol.Json) ?? [];
+        }
+        catch (ProviderLoginException) { throw; }
+        catch { throw new ProviderLoginException("invalid_response"); }
+    }
+    public Task RemoveCredentialAsync(string bearer, string credentialId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(credentialId);
+            if (bytes.Length is < 1 or > 1024) throw new FormatException();
+            return SendAsync<bool>(HttpMethod.Delete, "webauthn/credentials/" + QrLoginProtocol.Base64Url(bytes), null, bearer, cancellationToken);
+        }
+        catch { throw new ProviderLoginException("invalid_request"); }
+    }
 }

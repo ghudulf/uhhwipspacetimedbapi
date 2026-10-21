@@ -39,7 +39,7 @@ public partial class ProviderLoginViewModel : ObservableObject, IAsyncDisposable
                 {
                     ProviderFlowState.Starting => "Открытие системного браузера…",
                     ProviderFlowState.Waiting => "Завершите вход в системном браузере и вернитесь в приложение.",
-                    ProviderFlowState.Completed => purpose == "link" ? "Учётная запись Microsoft связана." : "Вход подтверждён.",
+                    ProviderFlowState.Completed => purpose == "register" ? "Ключ доступа зарегистрирован." : purpose == "link" ? "Учётная запись Microsoft связана." : "Вход подтверждён.",
                     ProviderFlowState.Cancelled => "Вход отменён.", ProviderFlowState.Expired => "Время ожидания истекло. Закройте окно и повторите вход.",
                     _ => item.Code switch
                     {
