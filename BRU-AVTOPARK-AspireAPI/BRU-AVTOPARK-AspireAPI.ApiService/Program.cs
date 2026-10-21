@@ -136,6 +136,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginOptions>()
     .Bind(builder.Configuration.GetSection("Authentication:QrLogin"));
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginBroker>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Providers"));
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowBroker>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceStore, TicketSalesApp.Services.Implementations.QrLoginDeviceStore>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals

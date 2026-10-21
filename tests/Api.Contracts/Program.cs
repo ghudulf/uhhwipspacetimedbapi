@@ -78,6 +78,7 @@ await FleetOperationTests.RunAsync();
 await AdminOperationTests.RunAsync();
 await ReviewRegressionTests.RunAsync();
 await QrLoginTests.RunAsync();
+await ProviderFlowBrokerTests.RunAsync();
 
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 
