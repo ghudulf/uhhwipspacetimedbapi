@@ -83,6 +83,7 @@ try
         return;
     }
 
+    await CommittedServiceTests.SecurityAsync(database, owner);
     await CredentialMigrationTests.RunAsync(database, owner, ownerToken);
     await AdminOperationTests.RunAsync(database, owner, ownerToken);
     await WebAuthnStorageTests.RunAsync(database, owner);
@@ -265,6 +266,7 @@ try
         await QrDeviceTests.OutsiderAsync(stranger, owner);
         await WebAuthnStorageTests.OutsiderAsync(stranger, owner);
         await RefreshTokenTests.OutsiderAsync(stranger, owner);
+        await CommittedServiceTests.SecurityOutsiderAsync(stranger, owner);
         Assert(await stranger.ReadAsync(c => c.Db.UserProfile.Iter().Count()) == 0, "untrusted caller read password profiles");
         Assert(await stranger.ReadAsync(c => c.Db.OpenIddictSpacetimeToken.Iter().Count()) == 0, "untrusted caller read tokens");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));

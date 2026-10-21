@@ -42,11 +42,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Sending magic link to email: {Email}", email);
 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by email
-                var user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Email == email && u.IsActive);
+                var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Email == email && u.IsActive));
                 
                 if (user == null)
                 {
@@ -55,7 +53,7 @@ namespace TicketSalesApp.Services.Implementations
                     return (true, null);
                 }
 
-                if (!user.EmailConfirmed.Value)
+                if (user.EmailConfirmed != true)
                 {
                     // Don't reveal that the email is not confirmed
                     _logger.LogWarning("Email not confirmed for magic link: {Email}", email);
@@ -72,13 +70,13 @@ namespace TicketSalesApp.Services.Implementations
                 
                 // Store the token in SpacetimeDB
                 var expiryTime = DateTime.UtcNow.AddMinutes(MAGIC_LINK_EXPIRY_MINUTES);
-                conn.Reducers.CreateMagicLinkToken(
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateMagicLinkToken(
                     user.UserId,
                     token,
                     (ulong)new DateTimeOffset(expiryTime).ToUnixTimeMilliseconds(),
                     userAgent ?? "Unknown",
                     ipAddress ?? "Unknown"
-                );
+                ), _ => true);
                 
                 // Generate magic link URL
                 var appUrl = _configuration["AppUrl"];
@@ -115,13 +113,11 @@ namespace TicketSalesApp.Services.Implementations
                     return (false, null, "Token is required");
                 }
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find the token
-                var magicLinkToken = conn.Db.MagicLinkToken.Iter()
+                var magicLinkToken = await _spacetimeService.ReadAsync(c => c.Db.MagicLinkToken.Iter()
                     .FirstOrDefault(t => t.Token == token && 
                                         t.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() && 
-                                        !t.IsUsed);
+                                        !t.IsUsed));
                 
                 if (magicLinkToken == null)
                 {
@@ -130,8 +126,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get the user
-                var user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.UserId.Equals(magicLinkToken.UserId));
+                var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(magicLinkToken.UserId));
                 
                 if (user == null)
                 {
@@ -164,8 +159,7 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Marking magic link as used; credentials omitted");
 
-                var conn = _spacetimeService.GetConnection();
-                conn.Reducers.UseMagicLinkToken(token);
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.UseMagicLinkToken(token), _ => true);
                 
                 return true;
             }
