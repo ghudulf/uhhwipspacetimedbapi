@@ -170,8 +170,7 @@ namespace TicketSalesApp.Services.Implementations
                 else
                 {
                     salt = new byte[SaltSize];
-                    Random r = new Random((int)DateTime.Now.Ticks); // NOT cryptographically secure!But its the only fucking way webassembly wont bitch and fail compile
-                    r.NextBytes(salt);
+                    RandomNumberGenerator.Fill(salt);
                     Log.Debug("Using random salt for password hashing");
                 }
 

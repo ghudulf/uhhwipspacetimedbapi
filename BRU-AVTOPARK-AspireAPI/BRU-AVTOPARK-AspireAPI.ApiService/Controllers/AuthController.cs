@@ -4127,9 +4127,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/register-client")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
         {
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring), _featureFlags.Value.EnableOAuthClientRegisterRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
@@ -4213,7 +4215,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to register client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to register client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4225,8 +4227,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<OAuthClientDto>
@@ -4266,9 +4267,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/update-client/{clientId}")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
         {
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring), _featureFlags.Value.EnableOAuthClientUpdateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
@@ -4352,7 +4355,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to update client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to update client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4364,8 +4367,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<OAuthClientDto>
@@ -4405,9 +4407,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/clients/{clientId}/delete")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token)
         {
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring), _featureFlags.Value.EnableOAuthClientDeleteRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
@@ -4458,7 +4462,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to delete client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to delete client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4470,8 +4474,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<object>
