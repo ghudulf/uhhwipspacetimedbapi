@@ -144,8 +144,7 @@ namespace TicketSalesApp.Services.Implementations
                 var expectedCode = (string)sessionData.ValidationCode;
                 if (validationCode != expectedCode)
                 {
-                    _logger.LogWarning("Invalid validation code. Expected: {Expected}, Got: {Actual}", 
-                        expectedCode, validationCode);
+                    _logger.LogWarning("Invalid QR verification; proof values omitted");
                     return (false, null);
                 }
 
@@ -306,8 +305,7 @@ namespace TicketSalesApp.Services.Implementations
                 var tokenDeviceType = DecryptData(fields["CorrespAcc"]);
                 if (tokenDeviceType != deviceType)
                 {
-                    _logger.LogWarning("Device type mismatch. Expected: {Expected}, Got: {Actual}", 
-                        deviceType, tokenDeviceType);
+                    _logger.LogWarning("Device type mismatch; submitted proof fields omitted");
                     return (false, null, string.Empty);
                 }
 

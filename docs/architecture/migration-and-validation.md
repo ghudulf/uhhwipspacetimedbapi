@@ -252,10 +252,12 @@ reducer dispatches and task blocking, with the sole startup owner-bootstrap
 dispatch exception explained above. Non-task MVC/verification/tuple result
 properties are explicitly distinguished
 from blocking task waits. Negative fixtures prove new raw access and task blocking
-are rejected. A separate diagnostics guard is planned to check credential-bearing log
-templates/arguments; outcome words and fingerprints are not credential values.
-The final inventory must replace Pending with verified dispositions; until then
-this table records remaining work, not completed migration.
+are rejected. `LogHygieneTests` checks credential-bearing log templates/arguments,
+including disguised value placeholders; negative fixtures include mixed safe
+fingerprint plus unsafe secret arguments. Fingerprints, derived counts, stable
+storage IDs and protocol outcome categories are not credential values. Fatal
+severity is confined to process startup. Raw QR verification values, bearer
+prefixes, claim values and debug property/bearer payload dumps were removed.
 
 The serialized database boundary now detaches generated row results using the
 pinned SDK's BSATN row serializer, including row lists/arrays and tuple results,
@@ -267,3 +269,10 @@ does not alter a subsequent read until the update reducer commits.
 `ServiceLifecycleTests` checks cancellable startup shutdown and observed failure,
 DI-disposed schedule cancellation and repeated event-bus stop/sync/async disposal
 with active subscription completion under a two-second deadline.
+
+`RequestTraceMiddleware` scopes all application request logs with the existing
+`HttpContext.TraceIdentifier` and returns it in `Trace-Id` on every HTTP response,
+including errors and early validation/routing failures. This preserves existing
+body shapes and statuses; application error bodies and ProblemDetails also carry
+`traceId`. It runs before routing/validation/exception handling. RequestTraceTests
+checks correlation and response compatibility.

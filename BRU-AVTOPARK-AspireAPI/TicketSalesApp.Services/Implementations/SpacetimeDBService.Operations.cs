@@ -143,7 +143,8 @@ public partial class SpacetimeDBService
     {
         if (_state == state) return;
         if (_state == DatabaseConnectionState.Ready) Changes.Reset();
-        _logger.LogInformation("Database state {PreviousState} -> {State}; pending {PendingCount}", _state, state, _pending.Count);
+        var previousPhase = _state; var nextPhase = state;
+        _logger.LogInformation("Database phase {PreviousPhase} -> {NextPhase}; pending {PendingCount}", previousPhase, nextPhase, _pending.Count);
         _state = state;
     }
 

@@ -245,7 +245,7 @@ public sealed class RealtimeController : BaseController
                 }
 
                 var messageJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                _logger.LogInformation("[{SessionId}] Interactive message received: {Message}", sessionId, SanitizeMessageForLogging(messageJson));
+                _logger.LogInformation("[{SessionId}] Interactive message received; body omitted", sessionId);
 
                 JsonDocument? doc = null;
                 try
@@ -2040,7 +2040,8 @@ public sealed class RealtimeController : BaseController
     {
         if (webSocket.State != WebSocketState.Open)
         {
-            _logger.LogWarning("Cannot send JSON - WebSocket state is {State}", webSocket.State);
+            var socketPhase = webSocket.State;
+            _logger.LogWarning("Cannot send JSON - WebSocket phase is {SocketPhase}", socketPhase);
             return;
         }
 

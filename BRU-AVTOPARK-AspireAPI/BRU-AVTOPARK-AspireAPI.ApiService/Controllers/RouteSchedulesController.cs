@@ -128,8 +128,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
-                    _logger.LogDebug(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
-                        SanitizePayloadForLogging(request.Payload.Value));
+                    _logger.LogDebug("Failed to parse pagination parameters; using defaults; input omitted; {ErrorType}", ex.GetType().Name);
                 }
             }
             
@@ -379,7 +378,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.created (Resource: route-schedules, EventName: route-schedule.created, Payload: {Payload})", JsonSerializer.Serialize(result));
+                    _logger.LogError("Failed to publish route-schedule.created; event data omitted; {ErrorType}", ex.GetType().Name);
                 }
             }
 

@@ -721,7 +721,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                                 User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
                     if (string.IsNullOrEmpty(userLogin))
                     {
-                        Log.Warning("No suitable username/login claim found in token. Claims: {@Claims}", User.Claims.Select(c => new { c.Type, c.Value }));
+                Log.Warning("No suitable username/login claim found; claim values omitted");
                         return Unauthorized(new { message = "Invalid token: no suitable username/login claim found" });
                     }
                 }

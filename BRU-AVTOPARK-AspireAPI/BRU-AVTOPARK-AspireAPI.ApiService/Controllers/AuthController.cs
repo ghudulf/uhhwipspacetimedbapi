@@ -3819,8 +3819,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Ok(new { error = "No Bearer token found", hint = "Send Authorization: Bearer <token>" });
 
                 var token = authHeader.Substring("Bearer ".Length).Trim();
-                _logger.LogInformation("TokenTest - Token length: {Length}, starts with: {Start}",
-                    token.Length, token.Substring(0, Math.Min(20, token.Length)));
+                _logger.LogInformation("TokenTest - Bearer fingerprint: {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(token));
 
                 // Detect JWE (5 parts) vs JWT (3 parts)
                 var parts = token.Split('.');
@@ -3934,7 +3933,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
                 
                 _logger.LogInformation("TokenInfo - Returning {ClaimCount} claims from token", claimsDict.Count);
-                _logger.LogDebug("TokenInfo - Claims: {Claims}", string.Join(", ", claimsDict.Keys));
+                _logger.LogDebug("TokenInfo - Claim values omitted");
                 
                 return Ok(new
                 {

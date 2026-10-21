@@ -94,7 +94,8 @@ builder.Services.AddLogging(loggingBuilder =>
 });
 
 // Add services to the container.
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ConnectionAdmission>();
 builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ApiSocketSession>();
 builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Application.ApplicationOperations>();
@@ -654,6 +655,8 @@ catch (Exception ex)
 }
 
 // CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
+app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.RequestTraceMiddleware>();
+app.UseExceptionHandler();
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
 
@@ -713,9 +716,6 @@ app.UseControllerLogging();
 // Add input validation middleware for security (before authentication)
 // This provides defense-in-depth protection against injection attacks
 app.UseMiddleware<BRU_AVTOPARK.Middleware.InputValidationMiddleware>();
-
-// Configure the HTTP request pipeline.
-app.UseExceptionHandler();
 
 // Add authentication and authorization in the correct order
 app.UseAuthentication();

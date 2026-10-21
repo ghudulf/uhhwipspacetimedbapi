@@ -43,7 +43,8 @@ public sealed class WindowsAuthenticationController(IConfiguration configuration
         var key = "windows\n" + configuration["Authentication:Windows:Realm"] + "\n" + proof!.Subject;
         var state = await database.ReadAsync(c => c.Db.ExternalAccountLink.Key.Find(key) is { } link
             ? (link.UserId == proof.Actor ? "linked" : "linked_elsewhere") : "unlinked", cancellationToken);
-        logger.LogInformation("Windows link status checked; state {State}, trace {TraceId}", state, HttpContext.TraceIdentifier);
+        var linkOutcome = state;
+        logger.LogInformation("Windows link status checked; outcome {LinkOutcome}, trace {TraceId}", linkOutcome, HttpContext.TraceIdentifier);
         return Ok(new { state });
     }
 

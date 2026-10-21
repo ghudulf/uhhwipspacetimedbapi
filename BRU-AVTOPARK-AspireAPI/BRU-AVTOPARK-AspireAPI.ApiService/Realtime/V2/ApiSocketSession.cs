@@ -161,7 +161,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                         _ => "internal_error"
                     };
                     // No exception messages or payloads: providers can include secrets in their exceptions.
-                    logger.LogWarning("Command failed: {Code}; exception type {ExceptionType}", code, ex.GetType().Name);
+            logger.LogWarning("Command failed: {Outcome}; exception type {ExceptionType}", code, ex.GetType().Name);
                     result = Result(command.RequestId, false, null, code);
                 }
                 finally { RemovePending(command.RequestId, pending); }
@@ -169,7 +169,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 var tags = new TagList { { "operation", operationName }, { "outcome", result.Code ?? "success" } };
                 OperationTelemetry.Completed.Add(1, tags);
                 OperationTelemetry.Duration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds, tags);
-                logger.LogInformation("Command outcome {Code} in {ElapsedMs} ms", result.Code ?? "success", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        logger.LogInformation("Command outcome {Outcome} in {ElapsedMs} ms", result.Code ?? "success", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
                 await output.WriteAsync(result, stop.Token);
             }
         }

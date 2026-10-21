@@ -288,7 +288,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             _logger.LogInformation("  Id (Internal): {Id}", token.Id);
                             _logger.LogInformation("  ApplicationClientId: {AppId}", token.ApplicationClientId ?? "null");
                             _logger.LogInformation("  AuthorizationId: {AuthId}", token.AuthorizationId.HasValue ? token.AuthorizationId.Value.ToString() : "null");
-                            _logger.LogInformation("  Subject: {Subject}", token.Subject ?? "null");
+                            _logger.LogInformation("  Subject omitted");
                             _logger.LogInformation("  Type: {Type}", token.Type ?? "null");
                             _logger.LogInformation("  Status: {Status}", token.Status ?? "null");
                             _logger.LogInformation("  CreationDate: {CreationDate}", token.CreationDate.HasValue ? token.CreationDate.Value.ToString() : "null");
