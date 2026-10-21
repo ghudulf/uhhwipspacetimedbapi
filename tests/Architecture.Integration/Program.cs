@@ -95,6 +95,17 @@ try
     await Reject<ReducerRejectedException>(() => database.ExecuteReducerAsync(new Reducer.LinkOwnExternalAccount("windows", "synthetic-realm", externalSubject, owner), _ => true));
     Assert(await database.ReadAsync(c => c.Db.ExternalAccountLink.Key.Find("windows\nsynthetic-realm\n" + externalSubject)?.UserId == owner), "self-link not committed");
     Pass("trusted API self-link preserves application identity and rejects duplicate mapping");
+    const string entraIssuer = "https://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/v2.0";
+    var otherUser = await database.ReadAsync(c => c.Db.UserProfile.Iter().First(user => user.UserId != owner && user.IsActive).UserId);
+    await database.ExecuteReducerAsync(new Reducer.LinkOwnExternalAccount("entra", entraIssuer, "own-entra", owner), _ => true);
+    await database.ExecuteReducerAsync(new Reducer.LinkOwnExternalAccount("entra", entraIssuer, "other-entra", otherUser), _ => true);
+    Assert(await database.ReadAsync(c => c.Db.ExternalAccountLink.Key.Find("entra\n" + entraIssuer + "\nown-entra")?.UserId == owner), "Entra self-link not committed");
+    await database.ExecuteReducerAsync(new Reducer.UnlinkOwnExternalAccount("entra", owner), _ => true);
+    Assert(await database.ReadAsync(c => c.Db.ExternalAccountLink.Key.Find("entra\n" + entraIssuer + "\nown-entra") == null &&
+        c.Db.ExternalAccountLink.Key.Find("entra\n" + entraIssuer + "\nother-entra")?.UserId == otherUser &&
+        c.Db.ExternalAccountLink.Key.Find("windows\nsynthetic-realm\n" + externalSubject)?.UserId == owner), "own unlink touched another account/provider or failed to commit");
+    await Reject<ReducerRejectedException>(() => database.ExecuteReducerAsync(new Reducer.UnlinkOwnExternalAccount("entra", owner), _ => true));
+    Pass("Entra trusted self-link and committed own-only unlink preserve other account/provider links; absent link rejected");
 
 
     var factors = new TwoFactorService(database, NullLogger<TwoFactorService>.Instance);
@@ -249,6 +260,7 @@ try
         Assert(await stranger.ReadAsync(c => c.Db.OpenIddictSpacetimeToken.Iter().Count()) == 0, "untrusted caller read tokens");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkOwnExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));
+        await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.UnlinkOwnExternalAccount("entra", owner), _ => true));
         Assert(!await stranger.ReadAsync(c => c.Db.ExternalAccountLink.Iter().Any()), "outsider can read external links");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.ProvisionTrustedApi(stranger.GetLocalIdentity()!.Value), _ => true));
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.EnsureDefaultPermissions(), _ => true));

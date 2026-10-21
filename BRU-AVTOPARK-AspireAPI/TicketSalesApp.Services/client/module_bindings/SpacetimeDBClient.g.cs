@@ -884,6 +884,7 @@ namespace SpacetimeDB.Types
                 Reducer.StoreWebAuthnChallenge args => Reducers.InvokeStoreWebAuthnChallenge(eventContext, args),
                 Reducer.TouchQrLoginDevice args => Reducers.InvokeTouchQrLoginDevice(eventContext, args),
                 Reducer.UnlinkExternalAccount args => Reducers.InvokeUnlinkExternalAccount(eventContext, args),
+                Reducer.UnlinkOwnExternalAccount args => Reducers.InvokeUnlinkOwnExternalAccount(eventContext, args),
                 Reducer.UpdateBus args => Reducers.InvokeUpdateBus(eventContext, args),
                 Reducer.UpdateBusV2 args => Reducers.InvokeUpdateBusV2(eventContext, args),
                 Reducer.UpdateEmployee args => Reducers.InvokeUpdateEmployee(eventContext, args),

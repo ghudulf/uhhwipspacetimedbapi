@@ -54,6 +54,20 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
+    public static void UnlinkOwnExternalAccount(ReducerContext ctx, string provider, Identity actingUser)
+    {
+        RequireTrustedApi(ctx);
+        var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        if (ctx.Db.UserProfile.UserId.Find(effectiveUser)?.IsActive != true) throw new Exception("Active account required.");
+        if (string.IsNullOrWhiteSpace(provider) || provider.Length > 512 || provider.Contains('\n') || provider.Contains('\r'))
+            throw new Exception("Invalid provider.");
+        var keys = ctx.Db.ExternalAccountLink.Iter().Where(link => link.Provider == provider && link.UserId == effectiveUser).Select(link => link.Key).ToArray();
+        if (keys.Length == 0) throw new Exception("External account link not found.");
+        foreach (var key in keys) ctx.Db.ExternalAccountLink.Key.Delete(key);
+        Log.Info("External own-account unlink committed.");
+    }
+
+    [SpacetimeDB.Reducer]
     public static void UnlinkExternalAccount(ReducerContext ctx, string provider, string issuer, string subject)
     {
         RequireDeploymentOwner(ctx);
