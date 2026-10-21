@@ -439,13 +439,14 @@ builder.Services.AddOpenIddict()
         });
     });
 // Configure CORS
-var allowedCorsOrigins = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CorsOrigins(builder.Configuration, builder.Environment.IsDevelopment());
+var plaintextPolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.Mode(builder.Configuration);
+var allowedCorsOrigins = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CorsOrigins(builder.Configuration, plaintextPolicy);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ConfiguredOrigins", builder =>
     {
         builder
-            .WithOrigins(allowedCorsOrigins)
+            .SetIsOriginAllowed(origin => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.IsCorsOriginAllowed(origin, allowedCorsOrigins, plaintextPolicy))
             .AllowAnyMethod()
             .AllowAnyHeader()
             .WithExposedHeaders("Content-Disposition", "Authorization");
@@ -471,7 +472,7 @@ builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CookiePolicy(builder.Environment.IsDevelopment());
+    options.Cookie.SecurePolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CookiePolicy(plaintextPolicy);
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -659,7 +660,7 @@ app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.RequestTraceMiddl
 app.UseExceptionHandler();
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
-app.Use((context, next) => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.EnforceHttps(context, next, app.Environment.IsDevelopment()));
+app.Use((context, next) => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.EnforceHttps(context, next, plaintextPolicy));
 if (!app.Environment.IsDevelopment()) app.UseHsts();
 
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Serilog.Formatting.Json;
+using BRU.Avtopark.Contracts;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Security;
 
@@ -10,10 +11,21 @@ public static class HttpSecurityPolicy
     // a log event cannot manufacture a second physical record in any configured API sink.
     public static JsonFormatter LogFormatter() => new(renderMessage: true);
 
-    public static CookieSecurePolicy CookiePolicy(bool development) =>
-        development ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    public static PlaintextPolicy Mode(IConfiguration configuration)
+    {
+        var value = configuration["Network:PlaintextPolicy"];
+        if (!NetworkPolicy.IsValidMode(value)) throw new InvalidOperationException("Network:PlaintextPolicy must be never, loopback, lan or any.");
+        return NetworkPolicy.ParseMode(value);
+    }
 
-    public static string[] CorsOrigins(IConfiguration configuration, bool development)
+    public static bool IsTransportAllowed(HttpContext context, IConfiguration? configuration = null) =>
+        context.Request.IsHttps || context.Connection.RemoteIpAddress is { } address && NetworkPolicy.IsPlaintextAllowed(address,
+            configuration != null ? Mode(configuration) : context.RequestServices?.GetService<IConfiguration>() is { } configured ? Mode(configured) : PlaintextPolicy.Lan);
+
+    public static CookieSecurePolicy CookiePolicy(PlaintextPolicy mode) =>
+        mode == PlaintextPolicy.Never ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
+
+    public static string[] CorsOrigins(IConfiguration configuration, PlaintextPolicy mode)
     {
         var values = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
         return values.Select(value =>
@@ -21,26 +33,24 @@ public static class HttpSecurityPolicy
             if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
                 uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
                 uri.AbsolutePath != "/" || uri.Host.Contains('*') ||
-                !(uri.Scheme == "https" || development && uri.Scheme == "http" && uri.IsLoopback))
-                throw new InvalidOperationException("Cors:AllowedOrigins must contain explicit HTTPS origins (HTTP loopback only in Development).");
+                !(uri.Scheme == "https" || uri.Scheme == "http" && NetworkPolicy.IsPlaintextAllowed(uri, mode)))
+                throw new InvalidOperationException("Cors:AllowedOrigins must contain explicit HTTP(S) origins permitted by Network:PlaintextPolicy.");
             return uri.GetLeftPart(UriPartial.Authority);
         }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    // Orchestrator probes and genuinely local, unproxied clients (a loopback peer that carries no forwarding headers)
-    // cannot be a remote plaintext client, so they stay reachable; every other plaintext request is refused.
-    private static bool IsLocalProbe(HttpContext context)
+    public static bool IsCorsOriginAllowed(string origin, string[] configured, PlaintextPolicy mode)
     {
-        var path = context.Request.Path;
-        if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) || path.Equals("/alive", StringComparison.OrdinalIgnoreCase)) return true;
-        return context.Connection.RemoteIpAddress is { } address && System.Net.IPAddress.IsLoopback(address)
-            && !context.Request.Headers.ContainsKey("X-Forwarded-For") && !context.Request.Headers.ContainsKey("X-Forwarded-Proto")
-            && !context.Request.Headers.ContainsKey("Forwarded");
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") ||
+            uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0 || uri.AbsolutePath != "/" || uri.Host.Contains('*')) return false;
+        return configured.Contains(uri.GetLeftPart(UriPartial.Authority), StringComparer.OrdinalIgnoreCase) || NetworkPolicy.IsPlaintextAllowed(uri, mode);
     }
 
-    public static async Task EnforceHttps(HttpContext context, RequestDelegate next, bool development)
+    // Called after trusted forwarded-header processing: peer address and Request.IsHttps are authoritative here.
+    public static async Task EnforceHttps(HttpContext context, RequestDelegate next, PlaintextPolicy mode)
     {
-        if (!development && !context.Request.IsHttps && !IsLocalProbe(context))
+        var probe = context.Request.Path.Equals("/health", StringComparison.OrdinalIgnoreCase) || context.Request.Path.Equals("/alive", StringComparison.OrdinalIgnoreCase);
+        if (!context.Request.IsHttps && !probe && !(context.Connection.RemoteIpAddress is { } address && NetworkPolicy.IsPlaintextAllowed(address, mode)))
         {
             context.Response.StatusCode = StatusCodes.Status426UpgradeRequired;
             context.Response.Headers.CacheControl = "no-store";

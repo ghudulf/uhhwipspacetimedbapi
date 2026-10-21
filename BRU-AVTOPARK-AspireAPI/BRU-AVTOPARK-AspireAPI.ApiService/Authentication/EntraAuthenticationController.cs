@@ -41,7 +41,8 @@ public sealed class EntraAuthenticationController(IOptions<EntraOptions> options
     {
         Response.Headers.CacheControl = "no-store";
         if (!options.Value.Enabled) return NotFound();
-        if (!Request.IsHttps && !(environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip)))
+        _ = environment; // Retained constructor compatibility; transport policy is environment-independent.
+        if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext))
             return BadRequest(new { code = "https_required" });
         return null;
     }

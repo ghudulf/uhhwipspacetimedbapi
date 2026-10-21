@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Serilog.Events;
 using Serilog.Parsing;
 using System.Text.Json;
+using BRU.Avtopark.Contracts;
 
 internal static class SecurityScanRegressionTests
 {
@@ -42,39 +43,46 @@ internal static class SecurityScanRegressionTests
 
     private static async Task HttpAndLogBoundariesAsync()
     {
-        Check(HttpSecurityPolicy.CookiePolicy(false) == CookieSecurePolicy.Always, "production cookie can be sent without TLS");
-        var context = new DefaultHttpContext();
-        var called = 0;
-        Task Next(HttpContext _) { called++; return Task.CompletedTask; }
-        await HttpSecurityPolicy.EnforceHttps(context, Next, false);
-        Check(called == 0 && context.Response.StatusCode == 426 && context.Response.Headers.CacheControl == "no-store", "production HTTP reached endpoint");
-        context.Request.Scheme = "https";
-        await HttpSecurityPolicy.EnforceHttps(context, Next, false);
-        Check(called == 1, "HTTPS endpoint was blocked");
-        var plain = new DefaultHttpContext();
-        plain.Request.Path = "/health";
-        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
-        Check(called == 2, "orchestrator health probe was blocked");
-        plain = new DefaultHttpContext();
-        plain.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
-        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
-        Check(called == 3, "direct local plaintext client was blocked");
-        plain = new DefaultHttpContext();
-        plain.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
-        plain.Request.Headers["X-Forwarded-For"] = "203.0.113.9";
-        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
-        Check(called == 3 && plain.Response.StatusCode == 426, "proxied plaintext request was allowed");
+        foreach (var mode in Enum.GetValues<PlaintextPolicy>())
+        {
+            Check(HttpSecurityPolicy.CookiePolicy(mode) == (mode == PlaintextPolicy.Never ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest), "cookie policy " + mode);
+            foreach (var peer in new[] { "127.0.0.1", "192.168.1.20", "203.0.113.9" })
+            {
+                var context = new DefaultHttpContext();
+                context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(peer);
+                var called = false;
+                Task Next(HttpContext _) { called = true; return Task.CompletedTask; }
+                await HttpSecurityPolicy.EnforceHttps(context, Next, mode);
+                var allowed = NetworkPolicy.IsPlaintextAllowed(context.Connection.RemoteIpAddress, mode);
+                Check(called == allowed && (allowed || context.Response.StatusCode == 426 && context.Response.Headers.CacheControl == "no-store"), "HTTP peer policy " + mode + peer);
+                context.Request.Scheme = "https"; // ForwardedHeaders sets this for trusted X-Forwarded-Proto: https.
+                await HttpSecurityPolicy.EnforceHttps(context, Next, mode);
+                Check(called, "forwarded HTTPS blocked");
+                foreach (var path in new[] { "/health", "/alive" })
+                {
+                    called = false; context.Request.Scheme = "http"; context.Request.Path = path;
+                    await HttpSecurityPolicy.EnforceHttps(context, Next, mode);
+                    Check(called, "health exemption blocked");
+                }
+            }
+            foreach (var origin in new[] { "http://localhost:5000", "http://192.168.1.20:5000", "http://203.0.113.9", "https://192.168.1.20" })
+                Check(HttpSecurityPolicy.IsCorsOriginAllowed(origin, [], mode) == NetworkPolicy.IsPlaintextAllowed(new Uri(origin), mode), "CORS mode " + mode + origin);
+            Check(HttpSecurityPolicy.IsCorsOriginAllowed("https://portal.example.invalid", ["https://portal.example.invalid"], mode), "configured CORS rejected");
+            Check(!HttpSecurityPolicy.IsCorsOriginAllowed("http://user:secret@localhost", [], mode), "credential CORS accepted");
+        }
 
         IConfiguration Configuration(string? origin = null) => new ConfigurationBuilder().AddInMemoryCollection(
             origin == null ? [] : new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = origin }).Build();
-        Check(HttpSecurityPolicy.CorsOrigins(Configuration(), false).Length == 0, "unconfigured CORS allows arbitrary sites");
-        Check(HttpSecurityPolicy.CorsOrigins(Configuration("https://portal.example.invalid/"), false).SequenceEqual(["https://portal.example.invalid"]), "explicit HTTPS CORS origin rejected");
+        Check(HttpSecurityPolicy.CorsOrigins(Configuration(), PlaintextPolicy.Lan).Length == 0, "configured CORS should be empty");
+        Check(HttpSecurityPolicy.CorsOrigins(Configuration("https://portal.example.invalid/"), PlaintextPolicy.Never).SequenceEqual(["https://portal.example.invalid"]), "explicit HTTPS CORS origin rejected");
         foreach (var origin in new[] { "*", "https://*.example.invalid", "http://portal.example.invalid", "https://name:password@example.invalid", "https://portal.example.invalid/path" })
         {
-            try { HttpSecurityPolicy.CorsOrigins(Configuration(origin), false); throw new Exception("Unsafe CORS origin accepted"); }
+            try { HttpSecurityPolicy.CorsOrigins(Configuration(origin), PlaintextPolicy.Lan); throw new Exception("Unsafe CORS origin accepted"); }
             catch (InvalidOperationException) { }
         }
-        Check(HttpSecurityPolicy.CorsOrigins(Configuration("http://localhost:5000"), true).Length == 1, "loopback Development CORS rejected");
+        Check(HttpSecurityPolicy.CorsOrigins(Configuration("http://localhost:5000"), PlaintextPolicy.Loopback).Length == 1, "loopback CORS rejected");
+        try { HttpSecurityPolicy.Mode(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Network:PlaintextPolicy"] = "typo" }).Build()); throw new Exception("Invalid policy accepted at startup"); }
+        catch (InvalidOperationException) { }
 
         const string injected = "private-user@example.invalid\r\nFORGED RECORD\u001b[31m";
         var log = new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Warning, new InvalidOperationException(injected),
@@ -95,7 +103,7 @@ internal static class SecurityScanRegressionTests
         try { await mail.SendEmailAsync(injected, injected, "body"); throw new Exception("Invalid recipient unexpectedly delivered"); }
         catch (Exception ex) when (ex is FormatException or ArgumentException) { }
         Check(!string.Join('\n', delivery.Messages).Contains("private-user", StringComparison.Ordinal), "email delivery diagnostics leaked recipient/subject");
-        Console.WriteLine("PASS security HTTP/log boundaries: production HTTPS/Secure cookies, explicit CORS allowlist, single-record escaped JSON logs and private email/subject omission");
+        Console.WriteLine("PASS security HTTP/log boundaries: four-mode peer/cookie/CORS policy, health exemptions, forwarded HTTPS, escaped JSON logs and private email/subject omission");
     }
 
     private sealed class Capture<T> : ILogger<T>

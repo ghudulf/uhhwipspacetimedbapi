@@ -48,7 +48,8 @@ public sealed class QrLoginController(QrLoginBroker broker, IQrLoginDeviceStore 
         try
         {
             if (!await flags.GetFlagAsync(flag)) return Error(503, "endpoint_unavailable");
-            if (!Request.IsHttps && !(environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip))) return Error(400, "https_required");
+            _ = environment; // Retained constructor compatibility; transport policy is environment-independent.
+            if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext)) return Error(400, "https_required");
             return null;
         }
         catch { return Error(503, "qr_login_unavailable"); }

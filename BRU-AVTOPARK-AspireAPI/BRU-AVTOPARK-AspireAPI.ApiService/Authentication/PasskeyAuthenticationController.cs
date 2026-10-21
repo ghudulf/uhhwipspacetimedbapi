@@ -44,7 +44,8 @@ public sealed class PasskeyAuthenticationController(IOptions<PasskeyOptions> opt
         Response.Headers["Referrer-Policy"] = "no-referrer";
         Response.Headers.XContentTypeOptions = "nosniff";
         if (!options.Value.Enabled) return NotFound();
-        if (!Request.IsHttps && !(environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } address && IPAddress.IsLoopback(address)))
+        _ = environment; // API transport policy does not change WebAuthn secure-context requirements.
+        if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext))
             return BadRequest(new { code = "https_required" });
         return null;
     }

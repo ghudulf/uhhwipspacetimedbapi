@@ -47,8 +47,9 @@ public sealed class NativeRefreshTokens(ISpacetimeDBService database, IHttpConte
         get
         {
             var context = contexts.HttpContext;
+            _ = environment; // Retained constructor compatibility; transport policy is environment-independent.
             return context != null && context.Request.Headers["X-BRU-Native-Login"] == "1" && !context.Request.Headers.ContainsKey("Origin") &&
-                (context.Request.IsHttps || environment.IsDevelopment() && context.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip));
+                Security.HttpSecurityPolicy.IsTransportAllowed(context, configuration);
         }
     }
     private string Address => contexts.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "unknown";

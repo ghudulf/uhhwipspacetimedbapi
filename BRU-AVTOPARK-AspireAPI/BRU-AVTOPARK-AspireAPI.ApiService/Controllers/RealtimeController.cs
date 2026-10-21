@@ -787,9 +787,7 @@ public sealed class RealtimeController : BaseController
 
     private async Task StreamV2Async()
     {
-        var environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
-        var localDevelopment = environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } remote && System.Net.IPAddress.IsLoopback(remote);
-        if (!Request.IsHttps && !localDevelopment) { Response.StatusCode = 400; return; }
+        if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext)) { Response.StatusCode = 400; return; }
         if (Request.Headers.TryGetValue("Origin", out var origins))
         {
             var allowed = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetSection("Realtime:AllowedOrigins").Get<string[]>() ?? [];
