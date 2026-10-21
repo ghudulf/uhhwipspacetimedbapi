@@ -1524,7 +1524,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<MagicLinkSendResult> SendMagicLinkAsync(string email, string? userAgent, string? ipAddress)
     {
-        _logger.LogInformation("Magic link send orchestration started for email: {Email}", email);
+        _logger.LogInformation("Magic link send orchestration started; recipient omitted");
 
         try
         {
@@ -1533,16 +1533,16 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (!success)
             {
-                _logger.LogWarning("Magic link send failed for email: {Email} - {ErrorMessage}", email, errorMessage);
+                _logger.LogWarning("Magic link send failed; recipient and provider error omitted");
                 return MagicLinkSendResult.Failed(errorMessage ?? "Failed to send magic link");
             }
 
-            _logger.LogInformation("Magic link sent successfully to email: {Email}", email);
+            _logger.LogInformation("Magic link sent successfully; recipient omitted");
             return MagicLinkSendResult.Successful(email);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during magic link send orchestration for email: {Email}", email);
+            _logger.LogError("Magic link send orchestration failed: {ErrorType}; recipient omitted", ex.GetType().Name);
             return MagicLinkSendResult.Failed("An error occurred while sending magic link");
         }
     }

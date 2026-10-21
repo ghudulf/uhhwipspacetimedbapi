@@ -623,7 +623,7 @@ public sealed class RealtimeController : BaseController
         // Simple expression evaluator (for demo purposes)
         expression = expression.Replace(" ", "");
         
-        var dataTable = new System.Data.DataTable();
+        using var dataTable = new System.Data.DataTable();
         var result = dataTable.Compute(expression, "");
         return Convert.ToDouble(result);
     }

@@ -51,8 +51,8 @@ Log.Logger = new LoggerConfiguration()
                  .MinimumLevel.Debug()
                  // Hosting request-start logs include callback query strings (OIDC codes/state).
                  .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
-                .WriteTo.Console()
-                .WriteTo.Debug()
+                .WriteTo.Console(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter())
+                .WriteTo.Debug(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter())
                 .WriteTo.Logger(lc => lc
                     .Filter.ByExcluding(logEvent =>
                     {
@@ -71,7 +71,7 @@ Log.Logger = new LoggerConfiguration()
                                (message.StartsWith("{") && message.Contains("\"target\":\"UpdateOpenIdClient\"")) ||
                                (message.StartsWith("{") && message.Contains("\"target\":\"RegisterOpenIdClient\""));
                     })
-                    .WriteTo.File("logs/app-.log",
+                    .WriteTo.File(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter(), "logs/app-.log",
                         rollingInterval: RollingInterval.Day,
                         restrictedToMinimumLevel: LogEventLevel.Information))
                 .CreateLogger();
@@ -84,8 +84,7 @@ builder.AddServiceDefaults();
 builder.Services.AddLogging(loggingBuilder =>
 {
     loggingBuilder.ClearProviders();
-    loggingBuilder.AddConsole();
-    loggingBuilder.AddDebug();
+    loggingBuilder.AddJsonConsole();
     loggingBuilder.SetMinimumLevel(LogLevel.Debug);
     loggingBuilder.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
     
@@ -440,12 +439,13 @@ builder.Services.AddOpenIddict()
         });
     });
 // Configure CORS
+var allowedCorsOrigins = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CorsOrigins(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("ConfiguredOrigins", builder =>
     {
         builder
-            .AllowAnyOrigin()
+            .WithOrigins(allowedCorsOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .WithExposedHeaders("Content-Disposition", "Authorization");
@@ -471,9 +471,7 @@ builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
-    // SameAsRequest allows cookies over HTTP when accessed via LAN IP (http://192.168.x.x:5000)
-    // while still using Secure cookies when accessed over HTTPS in production.
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CookiePolicy(builder.Environment.IsDevelopment());
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -661,6 +659,8 @@ app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.RequestTraceMiddl
 app.UseExceptionHandler();
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
+app.Use((context, next) => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.EnforceHttps(context, next, app.Environment.IsDevelopment()));
+if (!app.Environment.IsDevelopment()) app.UseHsts();
 
 
 
@@ -689,7 +689,7 @@ catch (Exception ex)
 }
 
 // Routing selects endpoint CORS metadata; preflight still runs before authentication.
-app.UseCors("AllowAll");
+app.UseCors("ConfiguredOrigins");
 
 // CRITICAL: Serve static files from Experimental folder (CSS, JS)
 // This allows the browser to load /css/bru-design-system.css and /js/*.js files

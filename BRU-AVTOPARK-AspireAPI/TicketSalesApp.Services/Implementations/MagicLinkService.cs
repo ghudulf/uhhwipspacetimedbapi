@@ -40,7 +40,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Sending magic link to email: {Email}", email);
+                _logger.LogInformation("Sending magic link; recipient omitted");
 
                 // Find user by email
                 var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
@@ -49,14 +49,14 @@ namespace TicketSalesApp.Services.Implementations
                 if (user == null)
                 {
                     // Don't reveal that the user doesn't exist
-                    _logger.LogWarning("User not found for magic link: {Email}", email);
+                    _logger.LogWarning("Magic link account unavailable; recipient omitted");
                     return (true, null);
                 }
 
                 if (user.EmailConfirmed != true)
                 {
                     // Don't reveal that the email is not confirmed
-                    _logger.LogWarning("Email not confirmed for magic link: {Email}", email);
+                    _logger.LogWarning("Magic link email not confirmed; recipient omitted");
                     return (true, null);
                 }
 
@@ -89,12 +89,12 @@ namespace TicketSalesApp.Services.Implementations
                     $"Click the link below to log in:<br><a href='{magicLinkUrl}'>{magicLinkUrl}</a><br>This link will expire in {MAGIC_LINK_EXPIRY_MINUTES} minutes."
                 );
                 
-                _logger.LogInformation("Magic link sent to: {Email}", email);
+                _logger.LogInformation("Magic link sent; recipient omitted");
                 return (true, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending magic link to email: {Email}", email);
+                _logger.LogError("Magic link delivery failed: {ErrorType}; recipient omitted", ex.GetType().Name);
                 return (false, "An error occurred while sending the magic link");
             }
         }
