@@ -158,12 +158,19 @@ try
     await Reject<OpenIddict.Abstractions.OpenIddictExceptions.ConcurrencyException>(async () => await coldStore.UpdateAsync(stale, default));
     Pass("concurrent redemption rejects stale revision");
 
+    int ObserverCount() => ((System.Collections.ICollection)typeof(SpacetimeDBService)
+        .GetField("_connectionUnsubscriptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(database)!).Count;
+    var observerCount = await database.ReadAsync(_ => ObserverCount());
+    Assert(observerCount > 0, "connection observers were not registered");
     database.Disconnect();
+    Assert(ObserverCount() == 0, "disconnect retained SDK event handlers");
     Assert(!database.IsSubscriptionReady(), "disconnect retained readiness");
     database.Connect();
     await Ready(database);
+    Assert(await database.ReadAsync(_ => ObserverCount()) == observerCount, "reconnect duplicated SDK observer ownership");
     Assert((await coldStore.FindByIdAsync(stableId, default))?.Status == "redeemed", "reconnect lost durable token");
     Pass("disconnect invalidates readiness and reconnect reloads persisted token");
+    Pass("disconnect detaches every connection-owned reducer/table observer; reconnect registers exactly one set");
 
     var apps = new ApplicationStore(database, NullLogger<ApplicationStore>.Instance);
     var client = new OpenIddictApplication

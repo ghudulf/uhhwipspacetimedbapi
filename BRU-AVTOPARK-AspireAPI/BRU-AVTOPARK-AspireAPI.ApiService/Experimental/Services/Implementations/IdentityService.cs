@@ -20,15 +20,17 @@ public class IdentityService : IIdentityService
     private readonly ISpacetimeDBService _spacetimeService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<IdentityService> _logger;
+    private readonly IHttpClientFactory _clients;
 
     public IdentityService(
         ISpacetimeDBService spacetimeService,
         IConfiguration configuration,
-        ILogger<IdentityService> logger)
+        ILogger<IdentityService> logger, IHttpClientFactory clients)
     {
         _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _clients = clients ?? throw new ArgumentNullException(nameof(clients));
     }
 
     /// <inheritdoc />
@@ -36,28 +38,17 @@ public class IdentityService : IIdentityService
     {
         try
         {
-            _logger.LogDebug("Creating new HttpClient instance with SSL disabled");
-
-            // Create handler that explicitly disables SSL certificate validation
-            var handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true,
-                SslProtocols = System.Security.Authentication.SslProtocols.None,
-                CheckCertificateRevocationList = false
-            };
-
-            // Create client with the custom handler
-            using var client = new HttpClient(handler);
+            using var client = _clients.CreateClient("DatabaseIdentity");
 
             // Generate JWT token for registration to authenticate with SpacetimeDB
             var registrationJwt = await GenerateJwtForRegistrationAsync();
             _logger.LogDebug("Generated JWT for SpacetimeDB identity request");
 
             // Create request message with JWT authentication
-            var request = new HttpRequestMessage
+            using var request = new HttpRequestMessage
             {
                 Method = HttpMethod.Post,
-                RequestUri = new Uri("http://localhost:3000/v1/identity"),
+                RequestUri = new Uri(new Uri(_configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"), "/v1/identity"),
                 Headers = { { "Authorization", $"Bearer {registrationJwt}" } }
             };
 
@@ -65,19 +56,18 @@ public class IdentityService : IIdentityService
             request.Version = new System.Version(1, 1);
 
             _logger.LogInformation("Sending POST request to generate identity with HTTP/1.1 and JWT authentication");
-            var response = await client.SendAsync(request);
+            using var response = await client.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to generate identity, response status code: {StatusCode}", response.StatusCode);
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Error message from response: {ErrorMessage}", errorMessage);
+                _logger.LogError("Identity response failed; response body omitted");
                 return null;
             }
 
             _logger.LogInformation("Successfully received response for identity generation");
             var jsonResponse = await response.Content.ReadAsStringAsync();
-            _logger.LogDebug("Raw JSON response: {JsonResponse}", jsonResponse);
+            _logger.LogDebug("Identity response received; response body omitted");
 
             try
             {

@@ -230,6 +230,8 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Queued reads/committed Core-backed writes; create uses existing v2 receipt, removes notes tagging and async-void callbacks; disposal cancels service lifetime |
 | Services/SettingsService.cs | 6 raw accesses; 5 dispatches; fallback disables 2FA on errors | Queued reads/committed writes; errors no longer fabricate 2FA-disabled defaults |
 | Services/SpacetimeDBService.cs | 1 public raw accessor declaration | Removed public accessor; serialized SDK owner only |
+| Services/SpacetimeDBService.Changes.cs and .ReducerObservers.cs | Anonymous connection-owned observers with no explicit detach | Generator emits paired unsubscribe actions; disconnect releases all and reconnect installs exactly one set |
+| Services/SpacetimeDBService.cs HTTP helpers | Per-call clients and undisposed responses | Process-lifetime handler pool, per-request authorization/deadline and disposed requests/responses |
 | Services/TicketSalesService.cs | 9 raw accesses | Queued reads; report joins and aggregation run within one serialized read callback |
 | Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Queued reads/committed Core-backed writes; obsolete payment-field update returns false instead of unsubmitted success |
 | Services/TotpService.cs | 6 raw accesses; 5 dispatches | Queued reads/committed writes; challenge consumption uses atomic replay-checking reducer; HMAC disposed |
@@ -239,6 +241,7 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | API/Controllers/DebugController.cs | 1 raw access | Queued cancellable bounded-page rendering; property/bearer payload values omitted from logs |
 | API/Experimental/Services/Implementations/AuthOrchestrationService.cs | 9 raw accesses; 2 dispatches | Queued reads; committed claim/settings; async role/token calls; no polling |
 | API/Experimental/Services/Implementations/IdentityService.cs | 2 raw accesses | Async queued identity/profile reads |
+| API/Experimental/Services/Implementations/IdentityService.cs HTTP identity request | Per-call custom handler disabled certificate verification and logged raw identity JSON | Factory-pooled verified-TLS client; disposed request/response; raw response/error body logging removed |
 | API/Experimental/Services/Implementations/ProfileService.cs | 1 raw access | Queued projected profile read |
 | API/Experimental/Services/Implementations/TokenService.cs | 2 raw accesses | Async queued active-profile/role/permission snapshot for signing |
 | API/Controllers/BaseController.cs | 8 sync-over-async wrappers | Removed; all controller callers await authentication/access/identity checks |
@@ -276,3 +279,8 @@ including errors and early validation/routing failures. This preserves existing
 body shapes and statuses; application error bodies and ProblemDetails also carry
 `traceId`. It runs before routing/validation/exception handling. RequestTraceTests
 checks correlation and response compatibility.
+
+Observer ownership is checked against the real SDK: the private unsubscribe list
+is nonempty while connected, empty after disconnect and restored to exactly the
+same count after reconnect. Regenerate both observer files with
+`python3 tools/generate-reducer-observers.py` after binding changes.

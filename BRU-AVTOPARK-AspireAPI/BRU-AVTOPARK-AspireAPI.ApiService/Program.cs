@@ -260,6 +260,8 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IProfileService, BRU
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IRequestDetector, BRU_AVTOPARK.Services.Implementations.RequestDetector>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IOidcHelperService, BRU_AVTOPARK.Services.Implementations.OidcHelperService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BRU_AVTOPARK.Services.Implementations.IdentityService>();
+builder.Services.AddHttpClient("DatabaseIdentity", client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 
 // Add input sanitization service for security
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationService, BRU_AVTOPARK.Services.Implementations.InputSanitizationService>();

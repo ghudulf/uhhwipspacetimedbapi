@@ -14,6 +14,7 @@ public partial class SpacetimeDBService
     private const int OperationsPerFrame = 32;
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(15);
     private readonly object _frameGate = new();
+    private readonly List<Action> _connectionUnsubscriptions = new();
     private readonly Channel<QueuedWork> _operations = Channel.CreateBounded<QueuedWork>(new BoundedChannelOptions(QueueCapacity)
     {
         SingleReader = false, FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false

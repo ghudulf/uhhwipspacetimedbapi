@@ -123,11 +123,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogDebug("Fetching database identity from: {Url}", identityUrl);
 
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-                var response = await httpClient.GetAsync(identityUrl);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Get, identityUrl, "Bearer", token, 10);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -142,7 +138,7 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogDebug("Identity endpoint failed with {Status}, trying describe endpoint", response.StatusCode);
                 
                 var describeUrl = $"{baseUrl}/v1/database/{databaseNameOrIdentity}";
-                var describeResponse = await httpClient.GetAsync(describeUrl);
+                using var describeResponse = await SendDatabaseHttpAsync(HttpMethod.Get, describeUrl, "Bearer", token, 10);
                 
                 if (describeResponse.IsSuccessStatusCode)
                 {
@@ -186,13 +182,9 @@ namespace TicketSalesApp.Services.Implementations
 
                 _logger.LogDebug("Requesting WebSocket token from: {Url}", url);
 
-                using var httpClient = new HttpClient();
                 // Use Basic authorization with the current Spacetime token
                 var authValue = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"token:{currentToken}"));
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {authValue}");
-                httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-                var response = await httpClient.PostAsync(url, null);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Post, url, "Basic", authValue, 10);
                 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -262,11 +254,7 @@ namespace TicketSalesApp.Services.Implementations
                     
                     _logger.LogDebug("Attempting to fetch logs using database identity: {Identity}", databaseIdentity);
                     
-                    using var httpClient1 = new HttpClient();
-                    httpClient1.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                    httpClient1.Timeout = TimeSpan.FromSeconds(30);
-                    
-                    var response1 = await httpClient1.GetAsync(identityUrl);
+                    using var response1 = await SendDatabaseHttpAsync(HttpMethod.Get, identityUrl, "Bearer", token, 30);
                     
                     if (response1.IsSuccessStatusCode)
                     {
@@ -291,11 +279,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogDebug("Fetching logs using database name: {Name}", databaseName);
 
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-                var response = await httpClient.GetAsync(nameUrl);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Get, nameUrl, "Bearer", token, 30);
                 
                 if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
@@ -307,7 +291,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to fetch logs. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, errorContent);
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(errorContent));
                     _logger.LogInformation("Reducer logs not available via HTTP API. Check SpacetimeDB server console for reducer logs.");
                     return $"Warning: Failed to fetch logs: {response.StatusCode} - {errorContent}";
                 }
@@ -407,6 +391,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 ++_connectionGeneration; // Ignore callbacks from the retired connection.
                 var connection = _connection;
+                foreach (var unsubscribe in _connectionUnsubscriptions) unsubscribe();
+                _connectionUnsubscriptions.Clear();
                 _connection = null;
                 _localIdentity = null;
                 _isConnecting = false;
@@ -1526,18 +1512,23 @@ namespace TicketSalesApp.Services.Implementations
 
             // Register AuthenticationEvent callback
             conn.Db.AuthenticationEvent.OnInsert += OnAuthenticationEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.AuthenticationEvent.OnInsert -= OnAuthenticationEvent);
 
             // Register TicketSaleEvent callback
             conn.Db.TicketSaleEvent.OnInsert += OnTicketSaleEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.TicketSaleEvent.OnInsert -= OnTicketSaleEvent);
 
             // Register BusStatusEvent callback
             conn.Db.BusStatusEvent.OnInsert += OnBusStatusEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.BusStatusEvent.OnInsert -= OnBusStatusEvent);
 
             // Register RouteScheduleEvent callback
             conn.Db.RouteScheduleEvent.OnInsert += OnRouteScheduleEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.RouteScheduleEvent.OnInsert -= OnRouteScheduleEvent);
 
             // Register MaintenanceEvent callback
             conn.Db.MaintenanceEvent.OnInsert += OnMaintenanceEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.MaintenanceEvent.OnInsert -= OnMaintenanceEvent);
 
             _logger.LogInformation("Event table callbacks registered successfully");
         }
