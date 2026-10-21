@@ -18,6 +18,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
     private readonly Func<TRow, string, CancellationToken, Task<MutationResult>> _delete;
     private readonly Func<TItem, TRow> _row;
     private readonly Func<TRow, uint> _key;
+    private readonly Func<TRow, ulong> _revision;
     private readonly HashSet<uint> _uncertainDeletes = new();
     private bool _editing;
     public IAsyncRelayCommand AddCommand { get; }
@@ -25,14 +26,14 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
     public IAsyncRelayCommand DeleteCommand { get; }
 
     protected EditableCatalogViewModel(string operation, Func<TRow, uint> key, Func<TItem, uint> itemKey,
-        Func<TRow, TItem> create, Action<TItem, TRow> update, Func<TItem, TRow> row,
+        Func<TRow, TItem> create, Action<TItem, TRow> update, Func<TItem, TRow> row, Func<TRow, ulong> revision,
         Func<TRow, string, CancellationToken, Task<MutationResult>> delete,
         Func<PageRequest, CancellationToken, Task<CatalogPageResult<TRow>>>? read,
         Func<PageRequest, CancellationToken, IAsyncEnumerable<QueryUpdate<CatalogPageResult<TRow>>>>? watch,
         Func<TRow?, Func<bool>, CancellationToken, Task<bool>>? edit, Func<TRow, CancellationToken, Task<bool>>? confirmDelete)
         : base(operation, key, itemKey, create, update, read, watch)
     {
-        _key = key; _row = row; _delete = delete; _edit = edit; _confirmDelete = confirmDelete;
+        _key = key; _row = row; _revision = revision; _delete = delete; _edit = edit; _confirmDelete = confirmDelete;
         AddCommand = new AsyncRelayCommand(() => EditAsync(default, true), () => CanCreate && !_editing && _edit != null);
         EditCommand = new AsyncRelayCommand(() => EditAsync(SelectedItem == null ? default : _row(SelectedItem), false), () => CanEdit && !_editing && _edit != null);
         DeleteCommand = new AsyncRelayCommand(DeleteAsync, () => CanDelete && !_editing && _confirmDelete != null && !_uncertainDeletes.Contains(_key(_row(SelectedItem!))));
@@ -87,7 +88,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
             ErrorMessage = code == "commit_outcome_unknown"
                 ? "Результат удаления неизвестен. Обновите список; повторная отправка заблокирована."
                 : "Удаление отклонено. Обновите данные и проверьте связанные записи и права доступа.";
-            Log.Information("{Screen} delete {OperationId}: {Code}", GetType().Name, operationId, code);
+            Log.Information("{Screen} delete {OperationId}: {Code}, entity {EntityId}, revision {Revision}", GetType().Name, operationId, code, _key(row), _revision(row));
         }
         finally { _editing = false; EligibilityChanged(); }
     }

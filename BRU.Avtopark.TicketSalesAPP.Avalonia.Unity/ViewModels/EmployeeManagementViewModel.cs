@@ -38,7 +38,7 @@ public sealed class EmployeeManagementViewModel : EditableCatalogViewModel<Emplo
         Func<EmployeeRow?, Func<bool>, CancellationToken, Task<bool>>? edit = null,
         Func<EmployeeRow, CancellationToken, Task<bool>>? confirmDelete = null,
         Func<EmployeeRow, string, CancellationToken, Task<MutationResult>>? delete = null)
-        : base("employees.list", row => row.EmployeeId, item => item.EmployeeId, row => new(row), (item, row) => item.Update(row), item => item.Row,
+        : base("employees.list", row => row.EmployeeId, item => item.EmployeeId, row => new(row), (item, row) => item.Update(row), item => item.Row, row => row.Revision,
             delete ?? DeleteAsync, read, watch, edit, confirmDelete) { }
     protected override void SelectionChanged() => this.RaisePropertyChanged(nameof(SelectedEmployee));
     private static Task<MutationResult> DeleteAsync(EmployeeRow row, string operationId, CancellationToken ct)

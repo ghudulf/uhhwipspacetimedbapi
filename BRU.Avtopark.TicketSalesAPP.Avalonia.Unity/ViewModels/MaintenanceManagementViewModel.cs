@@ -50,7 +50,7 @@ public sealed class MaintenanceManagementViewModel : EditableCatalogViewModel<Ma
         Func<MaintenanceRow?, Func<bool>, CancellationToken, Task<bool>>? edit = null,
         Func<MaintenanceRow, CancellationToken, Task<bool>>? confirmDelete = null,
         Func<MaintenanceRow, string, CancellationToken, Task<MutationResult>>? delete = null)
-        : base("maintenance.list", row => row.MaintenanceId, item => item.MaintenanceId, row => new(row), (item, row) => item.Update(row), item => item.Row,
+        : base("maintenance.list", row => row.MaintenanceId, item => item.MaintenanceId, row => new(row), (item, row) => item.Update(row), item => item.Row, row => row.Revision,
             delete ?? DeleteAsync, read, watch, edit, confirmDelete) { }
     protected override void SelectionChanged() => this.RaisePropertyChanged(nameof(SelectedRecord));
     private static Task<MutationResult> DeleteAsync(MaintenanceRow row, string operationId, CancellationToken ct)

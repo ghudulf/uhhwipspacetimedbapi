@@ -129,6 +129,9 @@ internal static class EmployeeMaintenancePresentationTests
             await deletion.ActivateAsync(); deletion.SelectedItem = deletion.Items[0];
             await deletion.DeleteCommand.ExecuteAsync(null);
             Assert(deleteCount == 1 && !deletion.DeleteCommand.CanExecute(null) && deletion.Items.Count == 1, "uncertain delete not blocked/retained");
+            Assert(sink.Events.Any(e => e.Properties.TryGetValue("OperationId", out var operation) && operation.ToString().Contains(deleteIds[0]) &&
+                e.Properties.TryGetValue("Code", out var code) && code.ToString().Contains("commit_outcome_unknown") &&
+                e.Properties.TryGetValue("Revision", out var revision) && revision.ToString() == "1"), "failed delete did not log operation ID, code and entity revision");
             await deletion.LoadDataCommand.ExecuteAsync(null);
             Assert(deletion.DeleteCommand.CanExecute(null), "fresh snapshot did not reconcile existing deleted row");
             await deletion.DeleteCommand.ExecuteAsync(null);
