@@ -51,6 +51,19 @@ internal static class SecurityScanRegressionTests
         context.Request.Scheme = "https";
         await HttpSecurityPolicy.EnforceHttps(context, Next, false);
         Check(called == 1, "HTTPS endpoint was blocked");
+        var plain = new DefaultHttpContext();
+        plain.Request.Path = "/health";
+        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
+        Check(called == 2, "orchestrator health probe was blocked");
+        plain = new DefaultHttpContext();
+        plain.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
+        Check(called == 3, "direct local plaintext client was blocked");
+        plain = new DefaultHttpContext();
+        plain.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+        plain.Request.Headers["X-Forwarded-For"] = "203.0.113.9";
+        await HttpSecurityPolicy.EnforceHttps(plain, Next, false);
+        Check(called == 3 && plain.Response.StatusCode == 426, "proxied plaintext request was allowed");
 
         IConfiguration Configuration(string? origin = null) => new ConfigurationBuilder().AddInMemoryCollection(
             origin == null ? [] : new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = origin }).Build();

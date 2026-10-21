@@ -27,9 +27,20 @@ public static class HttpSecurityPolicy
         }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    // Orchestrator probes and genuinely local, unproxied clients (a loopback peer that carries no forwarding headers)
+    // cannot be a remote plaintext client, so they stay reachable; every other plaintext request is refused.
+    private static bool IsLocalProbe(HttpContext context)
+    {
+        var path = context.Request.Path;
+        if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) || path.Equals("/alive", StringComparison.OrdinalIgnoreCase)) return true;
+        return context.Connection.RemoteIpAddress is { } address && System.Net.IPAddress.IsLoopback(address)
+            && !context.Request.Headers.ContainsKey("X-Forwarded-For") && !context.Request.Headers.ContainsKey("X-Forwarded-Proto")
+            && !context.Request.Headers.ContainsKey("Forwarded");
+    }
+
     public static async Task EnforceHttps(HttpContext context, RequestDelegate next, bool development)
     {
-        if (!development && !context.Request.IsHttps)
+        if (!development && !context.Request.IsHttps && !IsLocalProbe(context))
         {
             context.Response.StatusCode = StatusCodes.Status426UpgradeRequired;
             context.Response.Headers.CacheControl = "no-store";

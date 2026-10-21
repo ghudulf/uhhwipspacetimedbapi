@@ -132,7 +132,7 @@ endpoint, and accept configured HTTPS. No source query or rule was suppressed.
   frontends, as exact HTTPS origins; same-origin pages/native clients need no CORS
   grant. Wildcards and remote HTTP fail startup validation. HTTP loopback origins
   are accepted only in Development.
-- Outside Development, non-HTTPS requests return **426** without executing endpoints.
+- Outside Development, non-HTTPS requests return **426** without executing endpoints. Exempt: `/health` and `/alive` probes, and direct loopback peers that carry no `X-Forwarded-For`/`X-Forwarded-Proto`/`Forwarded` header (a local client cannot be a remote plaintext client). Configure trusted forwarded headers so TLS-terminating proxies are recognised as HTTPS.
   TLS termination must supply forwarding headers from explicitly configured
   `ReverseProxy:KnownProxies`; do not trust arbitrary forwarded headers or expose a
   plaintext backend to untrusted clients. Health checks must use the trusted TLS
