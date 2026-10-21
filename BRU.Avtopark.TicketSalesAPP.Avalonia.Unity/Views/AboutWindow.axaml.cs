@@ -42,6 +42,7 @@ public partial class AboutWindow : Window
         runtimeVersion.Text = $".NET Runtime: {RuntimeInformation.FrameworkDescription}";
         osVersion.Text = $"ОС: {RuntimeInformation.OSDescription}";
         avaloniaVersion.Text = $"Avalonia UI: {typeof(Application).Assembly.GetName().Version}";
+        this.FindControl<TextBlock>("LogDirectory")!.Text = "Логи: " + Services.ClientLogging.LogDirectory;
     }
 
     private void InitializeTechnologyList()
@@ -70,6 +71,7 @@ public partial class AboutWindow : Window
         info.AppendLine($"Платформа: {RuntimeInformation.OSArchitecture}");
         info.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
         info.AppendLine($"Avalonia UI: {typeof(Application).Assembly.GetName().Version}");
+        info.AppendLine("Логи: " + Services.ClientLogging.LogDirectory);
 
         var dialog = new ModalDialog
         {

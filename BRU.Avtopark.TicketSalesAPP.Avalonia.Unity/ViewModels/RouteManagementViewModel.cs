@@ -517,6 +517,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 cancellation.Dispose();
                 foreach (var response in responses) if (response.IsCompletedSuccessfully) response.Result.Dispose();
                 Log.Information("LoadData finished for RouteManagementViewModel.");
+                Services.DataGridDiagnostics.DumpCollections(this);
             }
         }
 

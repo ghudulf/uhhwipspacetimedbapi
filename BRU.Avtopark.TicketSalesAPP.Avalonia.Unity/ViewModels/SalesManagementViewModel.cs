@@ -342,6 +342,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 }
 
                 Sales = new ObservableCollection<Sale>(_allSales.OrderByDescending(s => s.SaleDate));
+                Services.DataGridDiagnostics.DumpRows(nameof(SalesManagementViewModel), Sales);
                 TotalIncome = runningTotalIncome;
                 if (unknownAmountCount > 0)
                 {

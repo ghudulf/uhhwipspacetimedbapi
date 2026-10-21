@@ -7,6 +7,7 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).SetupWithoutStarting();
 AccessibilityPolicyTests.Run();
+DataGridDiagnosticsTests.Run();
 SynchronizationContext.SetSynchronizationContext(new AvaloniaSynchronizationContext());
 using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 Exception? failure = null;

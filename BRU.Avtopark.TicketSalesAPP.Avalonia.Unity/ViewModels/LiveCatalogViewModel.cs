@@ -199,6 +199,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
         _page = page.Page; _total = page.TotalCount;
         _createAllowed = page.CanCreate; _editAllowed = page.CanEdit; _deleteAllowed = page.CanDelete;
         SnapshotApplied(page);
+        DataGridDiagnostics.DumpRows(GetType().Name, Items, page.Page, page.TotalCount);
         this.RaisePropertyChanged(nameof(PageInfo)); NotifyEligibility();
     }
     protected virtual void SnapshotApplied(CatalogPageResult<TRow> page) { }

@@ -19,17 +19,7 @@ class Program
             Directory.CreateDirectory(logs);
             // MSIX and Flatpak installation directories are read-only.
             Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(userData, "WebView2"));
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.Debug()
-                .WriteTo.File(Path.Combine(logs, "app-.log"),
-                    rollingInterval: RollingInterval.Day,
-                    restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File(Path.Combine(logs, "debug-.log"),
-                    rollingInterval: RollingInterval.Day,
-                    restrictedToMinimumLevel: LogEventLevel.Verbose)
-                .CreateLogger();
+            BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ClientLogging.Configure();
 
             // --tray or --headless: start without any visible window, tray icon only
             bool headless = Array.Exists(args, a =>

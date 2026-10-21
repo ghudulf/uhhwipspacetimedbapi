@@ -342,6 +342,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 IsBusy = false;
                 Log.Information("LoadData finished for EmployeeManagementViewModel.");
+                Services.DataGridDiagnostics.DumpCollections(this);
             }
         }
 

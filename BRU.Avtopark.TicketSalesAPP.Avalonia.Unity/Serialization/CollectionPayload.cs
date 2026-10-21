@@ -52,8 +52,14 @@ public static class CollectionPayload
             }
             return node?.DeepClone();
         }
-        return Resolve(root, new HashSet<string>(StringComparer.Ordinal), 0) as JsonArray
+        var result = Resolve(root, new HashSet<string>(StringComparer.Ordinal), 0) as JsonArray
             ?? throw new JsonException("Expected a collection response");
+        var options = BRU.Avtopark.Client.ClientTrafficOptions.Current;
+        if (options.Level != BRU.Avtopark.Contracts.TrafficLevel.Off)
+            Serilog.Log.Debug("CollectionPayload RawNode={RawNode} ParsedCollection={ParsedCollection} RowCount={RowCount}",
+                BRU.Avtopark.Contracts.DebugPayload.Json(root?.ToJsonString(), options.Level, options.MaxBodyBytes),
+                BRU.Avtopark.Contracts.DebugPayload.Json(result.ToJsonString(), options.Level, options.MaxBodyBytes), result.Count);
+        return result;
     }
 
     public static ulong UnixMilliseconds(JsonNode? value)

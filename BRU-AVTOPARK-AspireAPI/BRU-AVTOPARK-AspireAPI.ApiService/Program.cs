@@ -59,7 +59,7 @@ Log.Logger = new LoggerConfiguration()
                  .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
                 .WriteTo.Console(trafficFormatter)
                 .WriteTo.Debug(trafficFormatter)
-                .WriteTo.File(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter(), "logs/app-.jsonl",
+                .WriteTo.File(new TicketSalesApp.Services.Diagnostics.TrafficJsonFormatter(trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full), "logs/app-.jsonl",
                     rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14)
                 .WriteTo.Logger(lc => lc
                     .Filter.ByExcluding(logEvent =>

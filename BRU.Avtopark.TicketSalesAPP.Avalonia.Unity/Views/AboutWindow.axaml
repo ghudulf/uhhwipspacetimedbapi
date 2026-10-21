@@ -83,6 +83,7 @@
                     <TextBlock Name="RuntimeVersion" Classes="info"/>
                     <TextBlock Name="OsVersion" Classes="info"/>
                     <TextBlock Name="AvaloniaVersion" Classes="info"/>
+                    <TextBlock Name="LogDirectory" Classes="info" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Right Column -->

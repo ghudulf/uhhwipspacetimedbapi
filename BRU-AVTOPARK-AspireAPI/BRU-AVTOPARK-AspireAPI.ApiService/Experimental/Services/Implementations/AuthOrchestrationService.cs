@@ -281,8 +281,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             return link == null ? null : connection.Db.UserProfile.UserId.Find(link.UserId);
         });
         if (user?.IsActive != true) return LoginResult.Failed("External account is not linked to an active application account");
-        _logger.LogInformation("External primary authentication accepted; provider {Provider}, identity {Fingerprint}",
-            provider, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(subject));
+        _logger.LogDebug("External primary authentication accepted; provider {Provider}, Subject={Subject} User={Username} UserId={UserId}",
+            provider, subject, user.Login, user.UserId);
         return await CompletePrimaryAuthenticationAsync(user);
     }
 
@@ -305,7 +305,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (requiresTwoFactor)
             {
-                _logger.LogInformation("2FA required for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
+                _logger.LogDebug("2FA required User={Username} UserId={UserId}", user.Login, user.UserId);
 
                 // Step 4: Create temporary token for 2FA validation
                 var tempToken = await _twoFactorService.CreateTempTokenAsync(user.UserId, "login");
@@ -318,7 +318,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
                     if (!credentials.Any())
                     {
-                        _logger.LogWarning("No WebAuthn credentials found for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
+                        _logger.LogDebug("No WebAuthn credentials found User={Username} UserId={UserId}", user.Login, user.UserId);
                         return LoginResult.Failed("No WebAuthn credentials found");
                     }
 
@@ -326,7 +326,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                     var (success, options, errorMessage) = await _webAuthnService.GetAssertionOptionsAsync(user.Login);
                     if (!success || options == null)
                     {
-                        _logger.LogWarning("Failed to create assertion options for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
+                        _logger.LogDebug("Failed to create assertion options User={Username} UserId={UserId}", user.Login, user.UserId);
                         return LoginResult.Failed(errorMessage ?? "Failed to create assertion options");
                     }
 
@@ -337,7 +337,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 6: Generate JWT token and user DTO
-            _logger.LogInformation("Login successful for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
+            _logger.LogDebug("Login successful User={Username} UserId={UserId}", user.Login, user.UserId);
             return await FinalizeLoginAsync(user);
     }
 
@@ -717,7 +717,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnCredentialsResult> GetWebAuthnCredentialsAsync(Identity userId)
     {
-        _logger.LogInformation("WebAuthn credentials requested; actor {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(userId.ToString()));
+        _logger.LogDebug("WebAuthn credentials requested UserId={UserId}", userId);
 
         try
         {
@@ -744,7 +744,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnRemoveResult> RemoveWebAuthnCredentialAsync(Identity userId, string credentialId)
     {
-        _logger.LogInformation("WebAuthn removal requested; actor {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(userId.ToString()));
+        _logger.LogDebug("WebAuthn removal requested UserId={UserId}", userId);
 
         try
         {

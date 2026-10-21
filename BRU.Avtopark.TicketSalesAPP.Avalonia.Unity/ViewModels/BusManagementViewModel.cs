@@ -273,6 +273,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     _allBuses = updated.ToList();
                     SelectedBus = Buses.FirstOrDefault(b => b.BusId == selected);
                     _page = result.Page; _totalCount = result.TotalCount;
+                    DataGridDiagnostics.DumpRows(nameof(BusManagementViewModel), Buses, _page, _totalCount);
                     _canCreate = result.CanCreate; _canEdit = result.CanEdit; _canDelete = result.CanDelete;
                     NotifyPaging();
         }

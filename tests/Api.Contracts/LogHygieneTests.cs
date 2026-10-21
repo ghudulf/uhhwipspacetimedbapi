@@ -3,7 +3,8 @@ using System.Text.RegularExpressions;
 internal static class LogHygieneTests
 {
     private static readonly Regex Calls = new(@"\b(?:\w*[Ll]ogger|_?log|Log)\.(?:Log(?:Trace|Debug|Information|Warning|Error|Critical)|Verbose|Debug|Information|Info|Warning|Error|Fatal)\s*\(", RegexOptions.Compiled);
-    private static readonly Regex Secret = new(@"password|secret|token|refresh|code|otp|jwt|nonce|state|signature|assertion|credential|auth(?:orization)?header", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex Secret = new(@"password|secret|token|code|otp|jwt|nonce|signature|assertion|credential|auth(?:orization)?header", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex Protected = new(@"(?:[\w.]*\.)?(?:DebugPayload\.(?:Json|Headers|Url|Binary|Fingerprint|Mask)|TrafficDiagnostics\.(?:Json|AuthJson|Serialize|Body|ReducerArguments)|SafeDiagnostics\.(?:Fingerprint|JsonShape))\(", RegexOptions.Compiled);
     private static readonly HashSet<string> SafePlaceholders = new(StringComparer.OrdinalIgnoreCase)
     { "TokenId", "TokenType", "StatusCode", "ErrorCode", "ErrorType", "ExceptionType", "CredentialFile", "_credentialFile", "HasPayload" };
 
@@ -37,12 +38,12 @@ internal static class LogHygieneTests
             foreach (Match placeholder in Regex.Matches(call, @"\{[@$]?(\w+)(?:[^}]*)\}"))
             {
                 var name = placeholder.Groups[1].Value;
-                if (Secret.IsMatch(name) && !SafePlaceholders.Contains(name) && !name.Contains("Fingerprint", StringComparison.OrdinalIgnoreCase))
+                if (Secret.IsMatch(name) && !SafePlaceholders.Contains(name) && !name.Contains("Fingerprint", StringComparison.OrdinalIgnoreCase) && !Protected.IsMatch(call))
                     yield return $"{line}: credential-bearing log placeholder {name}";
             }
             var arguments = Regex.Replace(call, "\"(?:\\\\.|[^\"\\\\])*\"", "\"\"");
             // Explicit safe derived diagnostics, not a blanket sanitizer exemption.
-            foreach (Match fingerprint in Regex.Matches(arguments, @"(?:TicketSalesApp\.Services\.Diagnostics\.)?SafeDiagnostics\.Fingerprint\(").Cast<Match>().Reverse())
+            foreach (Match fingerprint in Protected.Matches(arguments).Cast<Match>().Reverse())
             {
                 var end = fingerprint.Index + fingerprint.Length; var depth = 1;
                 while (end < arguments.Length && depth > 0)
@@ -74,6 +75,9 @@ internal static class LogHygieneTests
             if (!Findings("/new-controller.cs", sample).Any()) throw new Exception("Log policy accepted negative fixture: " + sample);
         if (Findings("/new-controller.cs", "logger.LogWarning(\"Verification rejected; credential {CredentialFingerprint}\", SafeDiagnostics.Fingerprint(proof));").Any())
             throw new Exception("Log policy rejected a fingerprint/outcome");
-        Console.WriteLine("PASS log hygiene policy: secret-bearing templates/arguments rejected, fingerprints/derived counts/outcomes allowed, fatal severity restricted to process startup; negative fixtures rejected");
+        foreach (var sample in new[] { "Log.Debug(\"JSON {Body}\", DebugPayload.Json(raw));", "Log.Debug(\"Token {Token}\", DebugPayload.Json(token));", "Log.Debug(\"User {Username} Email {Email} State {State}\", username, email, phase);", "Log.Debug(\"JSON {Body}\", TrafficDiagnostics.AuthJson(raw));" })
+            if (Findings("/new-controller.cs", sample).Any()) throw new Exception("Log policy rejected redactor/business data fixture: " + sample);
+        if (!Findings("/new-controller.cs", "Log.Debug(\"JSON {Body} proof {Value}\", DebugPayload.Json(raw), accessToken);").Any()) throw new Exception("Redactor hid a separate raw credential argument");
+        Console.WriteLine("PASS log hygiene policy: credentials require DebugPayload/TrafficDiagnostics protection; business identifiers allowed; mixed protected/raw credential fixtures rejected");
     }
 }

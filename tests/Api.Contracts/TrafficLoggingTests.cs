@@ -73,6 +73,15 @@ internal static class TrafficLoggingTests
         await HostedAsync();
         await ClientAsync();
         await OperationsAndReducersAsync();
+        using (var output = new StringWriter())
+        {
+            var jsonFormatter = new TrafficJsonFormatter(true);
+            var evt = new LogEvent(DateTimeOffset.UtcNow, LogEventLevel.Debug, null, new MessageTemplateParser().Parse("Business {Name}"), [new("Name", new ScalarValue("Alice\r\nLine"))]);
+            jsonFormatter.Format(evt, output); jsonFormatter.Format(evt, output);
+            var lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Check(lines.Length == 3, "JSONL unsafe warning count");
+            foreach (var line in lines) { using var document = System.Text.Json.JsonDocument.Parse(line); Check(document.RootElement.TryGetProperty("MessageTemplate", out _), "invalid JSONL record"); }
+        }
         Console.WriteLine("PASS traffic middleware: bodies/trace/headers/credentials, off/full/redacted, health/stream/HTML skips, byte-identical delivery, capped tee, config, readable escaped formatter and real hosted HTTP capture");
     }
     private static IConfiguration Config(string level) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
