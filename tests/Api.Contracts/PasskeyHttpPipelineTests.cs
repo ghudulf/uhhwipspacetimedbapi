@@ -23,7 +23,10 @@ internal static class PasskeyHttpPipelineTests
     {
         var options = new PasskeyOptions { Enabled = true, PublicOrigin = PasskeyTests.Origin };
         var store = new PasskeyTests.Store();
-        var builder = WebApplication.CreateBuilder(); builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");
+        var logs = new Capture();
+        var builder = WebApplication.CreateBuilder(); builder.Logging.ClearProviders(); builder.Logging.AddProvider(logs);
+        builder.Logging.SetMinimumLevel(LogLevel.Debug); builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddSingleton<IOptions<PasskeyOptions>>(Options.Create(options));
         builder.Services.AddSingleton<IOptions<EntraOptions>>(Options.Create(new EntraOptions()));
         builder.Services.AddSingleton<IOptions<ProviderFlowOptions>>(Options.Create(new ProviderFlowOptions()));
@@ -65,9 +68,23 @@ internal static class PasskeyHttpPipelineTests
             }
             using var disabledPage = await http.GetAsync("/api/auth/passkey/browser?f=id&b=secret");
             PasskeyTests.Check(disabledPage.StatusCode == HttpStatusCode.NotFound, "disabled browser");
+            foreach (var secret in new[] { flow.FlowSecret, query["b"].ToString(), Convert.ToBase64String(store.Handle), PasskeyTests.Actor.ToString() })
+                PasskeyTests.Check(!string.Join('\n', logs.Messages).Contains(secret, StringComparison.Ordinal), "browser secret in Debug-level HTTP capture sink");
         }
         finally { await app.StopAsync(); }
         Console.WriteLine("PASS passkey real HTTP pipeline: enabled capability, no-store, CSP script nonce and frame/origin headers, no inline handlers/embedded secrets, history scrub, strict JSON, CORS and disabled malformed/browser routes");
     }
     private static StringContent Json(string body) => new(body, Encoding.UTF8, "application/json");
+    private sealed class Capture : ILoggerProvider
+    {
+        public readonly System.Collections.Concurrent.ConcurrentQueue<string> Messages = new();
+        public ILogger CreateLogger(string categoryName) => new Sink(this);
+        public void Dispose() { }
+        private sealed class Sink(Capture capture) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel level) => true;
+            public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => capture.Messages.Enqueue(formatter(state, exception));
+        }
+    }
 }
