@@ -19,6 +19,10 @@ internal static class CommittedServiceTests
         var registered = await db.ReadAsync(c => c.Db.UserProfile.Login.Find(name)!);
         Check(registered.UserId != owner && await authentication.GetUserRoleAsync(registered.UserId) == 1,
             "registration reused sender identity or role read failed");
+        var noSettingsTotp = new TotpService(db, new ConfigurationBuilder().Build(), UrlEncoder.Default, NullLogger<TotpService>.Instance);
+        Check(!(await noSettingsTotp.EnableTotpAsync(registered.UserId, Code(), "JBSWY3DPEHPK3PXP")).success &&
+            !(await noSettingsTotp.DisableTotpAsync(registered.UserId)).success,
+            "TOTP reducer rejection for an existing user without settings was reported as success");
         await db.ExecuteReducerAsync(new Reducer.DeleteUser(registered.UserId, owner), _ => true);
         var permission = await data.AddAsync(new Permission { Name = name, Description = "before", Category = "Test" })
             ?? throw new Exception("DataService add returned before commit");
