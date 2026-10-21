@@ -104,6 +104,7 @@ Dispatcher.UIThread.Post(async () =>
         Assert(watchToken.IsCancellationRequested && !liveBuses.CanEdit, "deactivation did not cancel live subscription");
         Console.WriteLine("PASS live fleet synchronization gating, stale-row retention, stable selection and subscription disposal");
         await CatalogPresentationTests.RunAsync(stop.Token);
+        await EmployeeMaintenancePresentationTests.EmployeesAsync(stop.Token);
         await QrPresentationTests.RunAsync();
         await ProviderPresentationTests.RunAsync();
         await PasskeyPresentationTests.RunAsync();
