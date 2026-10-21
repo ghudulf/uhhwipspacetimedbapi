@@ -71,6 +71,22 @@ internal static class CatalogPresentationTests
         await retryable.LoadDataCommand.ExecuteAsync(null);
         Assert(uncertain.Count == 0 && retryable.DeleteCommand.CanExecute(null), "fresh read retained uncertain delete block for existing row");
         retryable.Deactivate();
+        using var lifetime = new CancellationTokenSource();
+        var waiting = new TaskCompletionSource<CatalogPageResult<JobRow>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken pending = default;
+        var cancelled = new JobManagementViewModel((request, ct) =>
+        {
+            Assert(request.PageSize == 100, "catalog fixed page size drifted");
+            pending = ct; return waiting.Task;
+        });
+        var loading = cancelled.ActivateAsync(lifetime.Token);
+        lifetime.Cancel();
+        Assert(pending.IsCancellationRequested && !cancelled.CanMutate, "activation cancellation did not reach query/gating");
+        waiting.SetResult(Page(row)); await loading;
+        Assert(cancelled.Jobs.Count == 0, "cancelled activation accepted late rows");
+        cancelled.Dispose();
+        try { await cancelled.ActivateAsync(); throw new Exception("disposed catalog reactivated"); }
+        catch (ObjectDisposedException) { }
         var policy = typeof(BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation.JobEditorService)
             .GetMethod("BlocksRetry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
         Assert(!(bool)policy.Invoke(null, [null, "conflict"])! && (bool)policy.Invoke(null, [row, "conflict"])!, "create conflicts became uncorrectable or stale edits became retryable");

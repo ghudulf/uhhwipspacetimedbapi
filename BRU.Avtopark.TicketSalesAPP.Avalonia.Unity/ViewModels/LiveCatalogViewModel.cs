@@ -15,7 +15,7 @@ using Serilog;
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
 
 /// <summary>Shared activation, paging, stable rows and synchronization state for catalog screens.</summary>
-public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where TItem : class
+public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDisposable where TItem : class
 {
     private readonly string _operation;
     private readonly bool _discover;
@@ -33,6 +33,11 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
     private TItem? _selected;
     private Task? _loading, _watching;
     private CancellationTokenSource? _loadCancellation, _watchCancellation;
+    private CancellationTokenSource? _activityCancellation;
+    private CancellationToken _activationToken;
+    private bool _disposed;
+    public const int PageSize = 100;
+    protected CancellationToken ActivityToken => _activityCancellation?.Token ?? new CancellationToken(true);
     public ObservableCollection<TItem> Items { get; } = new();
     public TItem? SelectedItem
     {
@@ -53,8 +58,8 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
     public string SynchronizationMessage => IsSynchronized ? "" : "Синхронизация… Изменения временно недоступны.";
     public string PageInfo => $"Страница {_page} · Всего: {_total}";
     public bool CanGoPrevious => !IsBusy && _page > 1;
-    public bool CanGoNext => !IsBusy && (long)_page * 100 < _total;
-    public bool CanMutate => _active && IsSynchronized && !IsBusy && !HasError && SessionMatches();
+    public bool CanGoNext => !IsBusy && (long)_page * PageSize < _total;
+    public bool CanMutate => _active && !ActivityToken.IsCancellationRequested && IsSynchronized && !IsBusy && !HasError && SessionMatches();
     public bool CanCreate => CanMutate && _createAllowed;
     public bool CanEdit => CanMutate && _editAllowed && SelectedItem != null;
     public bool CanDelete => CanMutate && _deleteAllowed && SelectedItem != null;
@@ -76,9 +81,14 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
         PreviousPageCommand = new AsyncRelayCommand(async () => { _page--; await LoadData(); }, () => CanGoPrevious);
         NextPageCommand = new AsyncRelayCommand(async () => { _page++; await LoadData(); }, () => CanGoNext);
     }
-    public Task ActivateAsync()
+    public Task ActivateAsync(CancellationToken cancellationToken = default)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
         if (_active) return _loading ?? Task.CompletedTask;
+        _activationToken = cancellationToken;
+        _activityCancellation?.Dispose();
+        _activityCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _active = true;
         var api = ApiClientService.Instance;
         if (_token != api.AuthToken || _origin != api.CurrentBaseUrl) Clear();
@@ -89,16 +99,24 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
     public void Deactivate()
     {
         _active = false; _generation++;
+        _activityCancellation?.Cancel();
         _loadCancellation?.Cancel(); _watchCancellation?.Cancel();
         IsBusy = false; IsSynchronized = false;
         ApiClientService.Instance.OnAuthTokenChanged -= SessionChanged;
     }
-    private void SessionChanged(object? sender, string? token) => Dispatcher.UIThread.Post(() =>
+    private void SessionChanged(object? sender, string? token)
     {
-        if (!_active) return;
-        Clear(); _token = ApiClientService.Instance.AuthToken; _origin = ApiClientService.Instance.CurrentBaseUrl;
-        _loading = LoadData();
-    });
+        // Cancel network/editor work immediately, even when the notification is off-dispatcher.
+        _activityCancellation?.Cancel();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active || _disposed) return;
+            Clear(); _token = ApiClientService.Instance.AuthToken; _origin = ApiClientService.Instance.CurrentBaseUrl;
+            _activityCancellation?.Dispose();
+            _activityCancellation = CancellationTokenSource.CreateLinkedTokenSource(_activationToken);
+            _loading = LoadData();
+        });
+    }
     private bool SessionMatches() => !string.IsNullOrEmpty(_token) && _token == ApiClientService.Instance.AuthToken
         && _origin == ApiClientService.Instance.CurrentBaseUrl;
     protected void Clear()
@@ -109,9 +127,9 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
     }
     protected async Task LoadData()
     {
-        if (!_active) return;
+        if (!_active || ActivityToken.IsCancellationRequested) return;
         _loadCancellation?.Cancel(); _watchCancellation?.Cancel();
-        var cancellation = new CancellationTokenSource(); _loadCancellation = cancellation;
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ActivityToken); _loadCancellation = cancellation;
         var generation = ++_generation;
         IsSynchronized = false; IsBusy = true; HasError = false; ErrorMessage = "";
         try
@@ -123,7 +141,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
                 if (_origin != null && _origin != origin) Clear();
                 _origin = origin;
             }
-            var request = new PageRequest(_page, 100, SearchText);
+            var request = new PageRequest(_page, PageSize, SearchText);
             var page = await _read(request, cancellation.Token);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -134,7 +152,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
                 Apply(page); IsSynchronized = _watch == null;
                 if (_watch != null)
                 {
-                    _watchCancellation = new CancellationTokenSource();
+                    _watchCancellation = CancellationTokenSource.CreateLinkedTokenSource(ActivityToken);
                     _watching = WatchAsync(request, generation, _watchCancellation);
                 }
             });
@@ -203,6 +221,14 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
         this.RaisePropertyChanged(nameof(PageInfo)); NotifyEligibility();
     }
     protected virtual void SnapshotApplied(CatalogPageResult<TRow> page) { }
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Deactivate();
+        // Retain the cancelled source until in-flight consumers have observed cancellation.
+        GC.SuppressFinalize(this);
+    }
     private void NotifyEligibility()
     {
         foreach (var property in new[] { nameof(CanMutate), nameof(CanCreate), nameof(CanEdit), nameof(CanDelete), nameof(CanGoPrevious), nameof(CanGoNext) }) this.RaisePropertyChanged(property);
