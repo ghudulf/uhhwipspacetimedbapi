@@ -291,3 +291,15 @@ DI-provided context accessor. Explicit cancellation tokens remain supported;
 startup OpenIddict calls propagate the host stopping token through the managers
 and stores. Tests verify pre-dispatch request-abort cancellation and all three
 startup application-manager paths.
+
+Handoff-10 final validation passed Api.Contracts (198-route drift ledger plus
+database/log policy, cancellation, disposal and actual exception-pipeline trace
+tests), Client.Presentation, Client.Infrastructure and Architecture.Integration
+on a newly published isolated fixture, followed by catalog/fleet/bootstrap/
+diagnostics modes. API/desktop/generic-MAUI nonincremental builds and production
+WASI publish passed with zero errors; `git diff --check` passed. Comparing
+deduplicated path/code/message warning signatures against handoff 9 found 179
+current versus 185 baseline, **zero new signatures** (six removed).
+Real platform UI/keystore/Negotiate deployment and distributed production load
+remain outside this synthetic/headless/Linux checkpoint. No production module
+schema change is required by this cleanup; only synthetic fixture helpers changed.
