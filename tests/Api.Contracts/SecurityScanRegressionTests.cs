@@ -71,6 +71,24 @@ internal static class SecurityScanRegressionTests
             Check(HttpSecurityPolicy.IsCorsOriginAllowed("https://portal.example.invalid", ["https://portal.example.invalid"], mode), "configured CORS rejected");
             Check(!HttpSecurityPolicy.IsCorsOriginAllowed("http://user:secret@localhost", [], mode), "credential CORS accepted");
         }
+        // Exercise actual trusted forwarding, rather than trusting headers in the transport policy.
+        foreach (var forwardedScheme in new[] { "https", "http" })
+        {
+            var proxied = new DefaultHttpContext();
+            proxied.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+            proxied.Request.Scheme = "http";
+            proxied.Request.Headers["X-Forwarded-For"] = "203.0.113.9";
+            proxied.Request.Headers["X-Forwarded-Proto"] = forwardedScheme;
+            var reached = false;
+            var forwarding = new Microsoft.AspNetCore.HttpOverrides.ForwardedHeadersMiddleware(
+                context => HttpSecurityPolicy.EnforceHttps(context, _ => { reached = true; return Task.CompletedTask; }, PlaintextPolicy.Lan),
+                Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
+                Microsoft.Extensions.Options.Options.Create(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+                { ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto }));
+            await forwarding.Invoke(proxied);
+            Check(proxied.Connection.RemoteIpAddress!.Equals(System.Net.IPAddress.Parse("203.0.113.9")), "trusted proxy did not establish peer");
+            Check(reached == (forwardedScheme == "https"), "post-forwarding peer/scheme policy mismatch");
+        }
 
         IConfiguration Configuration(string? origin = null) => new ConfigurationBuilder().AddInMemoryCollection(
             origin == null ? [] : new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = origin }).Build();

@@ -18,6 +18,10 @@ internal static class NetworkPolicyTests
         }
         foreach (var host in new[] { "3232235777", "0300.0250.1.1", "0xc0a80101" })
             Check(NetworkPolicy.IsPlaintextAllowed(new Uri("http://" + host), PlaintextPolicy.Lan), host, PlaintextPolicy.Lan);
+        foreach (var host in new[] { "3405803781", "0313.0.0161.5", "0xcb007105", "evil.com#192.168.0.1", "192.168.1.1.evil.com" })
+            Check(!NetworkPolicy.IsPlaintextAllowed(new Uri("http://" + host), PlaintextPolicy.Lan), host, PlaintextPolicy.Lan);
+        foreach (var host in new[] { "[::1]", "[fe80::1]", "[fd00::1]", "[::ffff:192.168.0.1]" })
+            Check(NetworkPolicy.IsPlaintextAllowed(new Uri("http://" + host), PlaintextPolicy.Lan), host, PlaintextPolicy.Lan);
         Check(NetworkPolicy.ParseMode(null) == PlaintextPolicy.Lan && NetworkPolicy.ParseMode("LAN") == PlaintextPolicy.Lan, "default", PlaintextPolicy.Lan);
         Check(NetworkPolicy.ParseMode("typo") == PlaintextPolicy.Never && !NetworkPolicy.IsValidMode("typo"), "invalid fails closed", PlaintextPolicy.Never);
         Console.WriteLine("PASS NetworkPolicy four-mode matrix, address boundaries, mapped IPs, DNS-free names, canonical IP spellings and hostile inputs");
