@@ -19,7 +19,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
 {
     private static readonly OperationCapability[] SessionOperations =
     [new("capabilities", false, null), new("ping", false, null), new("auth.attach", false, null),
-     new("subscriptions.open", false, null), new("subscriptions.close", false, null), new("auth.login", false, null), new("auth.totp", false, null), new("auth.logout", false, null), new("cancel", false, null)];
+     new("subscriptions.open", false, null), new("subscriptions.close", false, null), new("auth.login", false, null), new("auth.totp", false, null), new("auth.refresh", false, null), new("auth.logout", false, null), new("cancel", false, null)];
     private volatile string? _token;
     private string? _challenge;
     private string _state = "anonymous";
@@ -145,7 +145,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 {
                     pending.Token.ThrowIfCancellationRequested();
                     if (queued.Generation != Interlocked.Read(ref _generation)) throw new OperationException("session_changed");
-                    var data = await ExecuteAsync(command, address, pending.Token);
+                    var data = await ExecuteAsync(command, address, output, pending.Token);
                     result = Result(command.RequestId, true, data);
                 }
                 catch (Exception ex)
@@ -178,13 +178,30 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
         finally { stop.Cancel(); }
     }
 
-    private async Task<object?> ExecuteAsync(CommandEnvelope command, string address, CancellationToken ct)
+    private async Task<object?> ExecuteAsync(CommandEnvelope command, string address, ChannelWriter<ResultEnvelope> output, CancellationToken ct)
     {
         switch (command.Operation)
         {
             case "capabilities": return Capabilities();
             case "ping": return new { state = _state, utc = DateTimeOffset.UtcNow };
             case "auth.logout": ResetSession(); return new AuthenticationReply(_state);
+            case "auth.refresh":
+                if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
+                var refresh = command.Payload.Deserialize<RefreshCommand>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
+                if (refresh.RefreshToken is not { Length: > 0 and <= 24 * 1024 }) throw new OperationException("validation_failed");
+                var refreshed = await authentication.RefreshTokenAsync(refresh.RefreshToken);
+                ct.ThrowIfCancellationRequested();
+                if (!refreshed.Success || refreshed.Token == null) { ResetSession("expired"); throw new OperationException("session_expired"); }
+                // Attach validates the freshly issued token and active account before replacing the socket session.
+                try { await AttachAsync(refreshed.Token, ct); }
+                catch { ResetSession("expired"); throw; }
+                foreach (var subscription in _subscriptions.Values)
+                {
+                    var watermark = ToContract(subscription.Watermark);
+                    await output.WriteAsync(Result(null, true, new SubscriptionInvalidation(subscription.Id, watermark, watermark, "session_changed"), type: "invalidation"), ct);
+                }
+                _subscriptions.Clear();
+                return new AuthenticationReply(_state, refreshed.Token, RefreshToken: refreshed.RefreshToken, ExpiresAt: refreshed.ExpiresAt);
             case "auth.attach":
                 if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
                 var attach = command.Payload.Deserialize<AttachRequest>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
