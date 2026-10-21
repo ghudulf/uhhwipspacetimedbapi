@@ -1,6 +1,7 @@
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 PackagingPolicyTests.Run();
+NetworkPolicyTests.Run();
 await QrClientTests.RunAsync();
 
 var directory = Path.Combine(Path.GetTempPath(), "bru-client-test-" + Guid.NewGuid().ToString("N"));
