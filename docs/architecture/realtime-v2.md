@@ -2,7 +2,7 @@
 
 `GET /api/realtime/stream` accepts `bru.api.v2`. The existing `bru.events.v1` endpoint remains available. V2 requires HTTPS; a loopback peer in Development can use HTTP. Browser origins must exactly match `Realtime:AllowedOrigins`; native clients send no Origin. Configure forwarded headers for trusted proxies before relying on remote-address limits.
 
-This is a partial operation rollout. Capability negotiation is authoritative: operations absent from it are not implemented in v2. All-operation parity, receipts for the remaining resources, provider ceremony binding and broad screen migration remain outstanding. Snapshot subscriptions are available for the explicitly listed queries below.
+Capability negotiation is authoritative: operations absent from it are not implemented in v2. Administrative operation parity now includes tickets, route schedules, users, roles and permissions, with receipts and revisions. Provider ceremony binding and broad screen migration remain separate work. The [endpoint ledger](operation-coverage.md) distinguishes shared adapters from retained legacy reads and protocol-only endpoints; it is not a blanket all-endpoint parity claim.
 
 ## Messages
 
@@ -34,10 +34,23 @@ Connections are limited to 128 per process and four per source address. Authenti
 | `sales.create`, `sales.update`, `sales.delete` | Matching create/edit/delete permission and transactional reducer checks |
 | `mutations.receipt` | Active account; only that actor's receipt |
 | `reports.income`, `reports.sales` | `sales.view`; recorded amounts and explicit historical gaps |
+| `routes.list`, `employees.list`, `jobs.list`, `maintenance.list`, `jobs.get` | Corresponding `.view`; paged catalog projections and explicit job lookup |
+| `routes.create/update/delete/set-active`, `employees.create/update/delete`, `jobs.create/update/delete`, `maintenance.create/update/delete` | Corresponding create/edit/delete permissions and committed receipts |
+| `tickets.list` | `tickets.view`; paged/searchable route, seat, price, payment, purchase time, active state and revision |
+| `tickets.create`, `tickets.update`, `tickets.delete` | `tickets.create/edit/delete`; finite price 0..1e12, route/seat checks and transactional sale-reference protection |
+| `schedules.list` | `schedules.view`; paged route/bus/driver labels, times, active state and revision |
+| `schedules.create`, `schedules.update`, `schedules.delete`, `schedules.set-active` | `schedules.create/edit/delete`; set-active uses edit and retains route/recent-sale activation rules |
+| `users.list`, `users.get` | `users.view`; credential-free profile and role-name projection; numeric legacy user ID |
+| `users.create`, `users.update`, `users.delete`, `users.set-active` | `users.create/edit/delete`; private credential provisioning on create, profile-only update, transactional self/last-active-Administrator guards |
+| `users.assign-role`, `users.remove-role` | `assign_roles`; assigning Administrator requires an Administrator; last active Administrator cannot be removed |
+| `roles.list` | `roles.view`; permission names/IDs, assigned-user count and revision |
+| `roles.create`, `roles.update`, `roles.delete` | `roles.create/edit/delete`; assigned/system roles protected; optional permission sets commit atomically with metadata and separately require grant authority |
+| `roles.grant-permission`, `roles.revoke-permission` | `grant_permissions`; nonadministrators cannot grant unheld permissions; Administrator permission revocation refused |
+| `permissions.list`, `permissions.create`, `permissions.update`, `permissions.delete` | `permissions.view/create/edit/delete`; assigned definitions cannot be deleted; all writes return receipts |
 
 Session attach revalidates token proof; every protected command revalidates its token and current database permissions. Query subscriptions reauthorize on delivery and expire their snapshot lease when committed data changes. Password/TOTP orchestration shares the existing authentication service. Windows/Entra/WebAuthn browser and platform ceremonies must not be replaced with client-supplied usernames or biometric data.
 
-Sale, fleet, route, employee, job and maintenance mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
+Sale, fleet, catalog and administrative mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
 
 The shared HTTP adapter is `POST /api/operations/{operation}` with the same payload and bearer authorization. Mutations use `Idempotency-Key`; GUID text in D/N/B/P format is normalized to N. HTTP adapters generate a key if omitted and always echo the effective key in `Operation-Id` for receipt reconciliation. V1 realtime mutations require a stable GUID `operationId`, falling back to a valid GUID `requestId`, normalized to N; neither may be silently replaced with a fresh ID. Existing HTTP sale/fleet mutations and resource socket mutations preserve their original response formats. Existing `/api/session/access` also invokes the shared handler.
 
@@ -57,7 +70,7 @@ Server operation logs include connection ID, request ID, generation, outcome and
 
 ## Query subscriptions and resynchronization
 
-`subscriptions.open` accepts `{subscriptionId, operation, payload}`. Use a GUID in N format for the subscription ID. Supported queries: `session.access`, `buses.list`, `sales.list`, `reports.sales`, `reports.income`, `routes.list`, `employees.list`, `jobs.list`, `maintenance.list`. Mutations, token lookup and authentication operations cannot be subscribed. A socket may hold 16 snapshot leases.
+`subscriptions.open` accepts `{subscriptionId, operation, payload}`. Use a GUID in N format for the subscription ID. Supported queries: `session.access`, `buses.list`, `sales.list`, `reports.sales`, `reports.income`, `routes.list`, `employees.list`, `jobs.list`, `maintenance.list`, `tickets.list`, `schedules.list`, `users.list`, `users.get`, `roles.list`, `permissions.list`. `users.get` takes its normal `{id}` payload. Mutations, token lookup and authentication operations cannot be subscribed. A socket may hold 16 snapshot leases. Role/user-role/role-permission/permission changes invalidate `access` as well as their affected resource projections; entity-revision changes also invalidate their resource.
 
 The correlated response contains `subscriptionId`, `operation`, `data` and `watermark: {epoch, sequence}`. The server captures the watermark **before** acquiring the snapshot. Committed table callbacks append resource-only invalidations to a bounded journal; changes during snapshot acquisition remain visible after that watermark. There are no credentials, row payloads or uncommitted mutation notifications in this journal.
 
@@ -73,6 +86,48 @@ The shared client's `WatchAsync` buffers an invalidation arriving before the sna
 
 Existing HTTP/resource-socket catalog mutations share the same committed services and preserve their response shapes. Creation returns the exact receipt entity, including concurrent employees with identical names. Legacy direct creation of routes/employees/jobs now checks the sender's permission; it no longer accepts unauthenticated writes. Trusted API delegation remains required for v2 actors. Route/job/employee deletion protects existing references, and maintenance date/reference validation occurs in the transaction.
 
-### Jobs client adoption
+### Administrative contracts and compatibility
+
+Administrative writes use the existing `CatalogMutationExecutor`, `CommitCatalogMutation`,
+`EntityRevision` and actor-scoped `MutationReceipt`, not a parallel receipt mechanism.
+Both legacy and v2 writers advance revisions; deletes retain tombstones. Optional
+`expectedRevision` rejects stale edits. HTTP supports the model field or `If-Match`;
+v1 resource commands support the payload field and generic v1 deletes accept a root
+`expectedRevision`. All administrative operations are also available through
+`POST /api/operations/{operation}`. Payloads and credentials are never telemetry tags.
+Ticket/schedule resource sockets allow mutation-only accounts without opening a view
+event feed; commands still reauthorize individually, and mutation-only responses do
+not fetch or return an unauthorized collection snapshot.
+
+`users.create` exists because the legacy admin form creates accounts. Its input-only
+`initialCredential` goes through `RegisterUserCore` and private credential storage;
+the receipt stores only a one-way mutation digest and the committed numeric ID.
+User responses never contain credential-shaped members. There is no stored display
+name column, so none was invented. Profile-only `users.update` accepts email/phone;
+login/credential/role changes in the old update model are explicitly rejected, not
+silently applied or echoed. Use the account-security password ceremony and explicit
+role operations. Activation-only old model payloads map to `.set-active`; mixed
+profile/activation requests and previously ignored `lastLoginAt`/`validUntil` edits
+are rejected before persistence. Submit distinct operations with distinct IDs.
+
+Role create/update forms may retain `permissionIds`: their entire metadata/grant set
+commits in one reducer transaction, and each grant/revoke enforces `grant_permissions`
+and anti-escalation checks. No sequence of independently committed adapter writes is
+used. Schedule creation preserves bus types atomically. Seat numbers must be positive,
+unoccupied for an active ticket, and within seated/total capacity when the linked bus
+has a known capacity; legacy rows with unknown capacity do not invent a seat table.
+Generic v1 schedules retain numeric Unix-millisecond inputs and row-shaped create
+responses; HTTP/resource sockets retain their date models. Omitted generic arrival
+time keeps the existing departure-plus-one-hour default. Route endpoint labels and
+empty optional stop metadata retain their legacy defaults. Generic v1 tickets keep
+their optional zero price and explicit purchase time, and return the existing
+five-field create payload; absent purchase time is assigned once by the reducer in
+milliseconds and reconciled from the committed row, not a fresh timestamp on retry.
+
+The secret-member reflection test targets administrative command/row contracts.
+Authentication/QR protocol contracts intentionally retain token/secret input fields;
+they are not administrative response projections. No native screens changed here.
+
+### Jobs client adoption (existing client)
 
 The jobs screen now uses shared paged queries and v2 snapshot subscriptions, awaited activation and cancellable deactivation. Updates preserve row identity and selection; mutation commands follow current permissions and synchronization state. Related employee counts are calculated server-side and stay unavailable when employee visibility is absent. `jobs.get` is an explicit authorized read for conflict review. The editor retains drafts on rejection, retrieves the current row/revision, and replaces a draft only on explicit action. A desktop or embedded-view dialog host keeps presentation out of the view model. Uncertain writes are not automatically retried; receipt lookup uses the selected read transport, including HTTP rollback mode.

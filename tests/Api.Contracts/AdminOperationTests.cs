@@ -29,7 +29,9 @@ internal static class AdminOperationTests
     public static async Task RunAsync()
     {
         var actor = Identity.FromHexString(new string('3', 64));
-        var allowed = true; var submissions = 0;
+        var allowed = true; var submissions = 0; var lookupReads = 0;
+        string[]? limitedPermissions = null;
+        object? lastReducer = null;
         var journal = new DatabaseChangeJournal();
         var operationsByReducer = new Dictionary<Type, string>
         {
@@ -50,6 +52,7 @@ internal static class AdminOperationTests
             {
                 submissions++;
                 var reducer = args![0]!; var type = reducer.GetType();
+                lastReducer = reducer;
                 Assert((Identity)type.GetField("ActingUser")!.GetValue(reducer)! == actor, "administrative transport lost actor");
                 var id = (string)type.GetField("OperationId")!.GetValue(reducer)!;
                 var receipt = new MutationReceipt { Operation = operationsByReducer[type], EntityId = 7, Revision = 2, CommittedAt = 1000, Key = actor + ":" + id };
@@ -58,16 +61,18 @@ internal static class AdminOperationTests
             if (method.Name == "ReadAsync")
             {
                 var type = method.GetGenericArguments()[0];
-                if (type == typeof(UserAccessSnapshot)) return Task.FromResult(new UserAccessSnapshot(true, false, [], allowed ? permissions : []));
-                if (type == typeof(Ticket)) return Task.FromResult<Ticket?>(new Ticket { TicketId = 7, RouteId = 1, PaymentMethod = "Cash" });
+                if (type == typeof(UserAccessSnapshot)) return Task.FromResult(new UserAccessSnapshot(true, false, [], allowed ? limitedPermissions ?? permissions : []));
+                if (type == typeof(Ticket)) return Task.FromResult<Ticket?>(new Ticket { TicketId = 7, RouteId = 1, PaymentMethod = "Cash", PurchaseTime = 777 });
+                if (type == typeof(RouteSchedule)) return Task.FromResult<RouteSchedule?>(new RouteSchedule { ScheduleId = 7, RouteId = 1, DepartureTime = 1000, ArrivalTime = 2000 });
                 if (type == typeof(UserProfile)) return Task.FromResult<UserProfile?>(user);
                 if (type == typeof(Role)) return Task.FromResult<Role?>(new Role { RoleId = 7, Name = "synthetic", Description = "" });
                 if (type == typeof(Permission)) return Task.FromResult<Permission?>(new Permission { PermissionId = 7, Name = "synthetic", Description = "", Category = "" });
                 if (type == typeof(UserRow)) return Task.FromResult(new UserRow(7, actor.ToString(), "synthetic", null, null, true, null, null, [], 0));
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PageResult<>))
                     return Completed(type, Activator.CreateInstance(type, Array.CreateInstance(type.GetGenericArguments()[0], 0), 1, 50, 0));
-                if (type == typeof(AdminLookupSnapshot)) return Task.FromResult(new AdminLookupSnapshot(new Dictionary<uint, TicketLookup>(), new Dictionary<uint, RouteLookup>(),
-                    new Dictionary<uint, RoleLookup>(), new Dictionary<uint, PermissionLookup>(), [], [], []));
+                if (type == typeof(AdminLookupSnapshot))
+                { lookupReads++; return Task.FromResult(new AdminLookupSnapshot(new Dictionary<uint, TicketLookup>(), new Dictionary<uint, RouteLookup>(),
+                    new Dictionary<uint, RoleLookup>(), new Dictionary<uint, PermissionLookup>(), [], [], [])); }
             }
             throw new Exception("Unexpected administrative dependency invocation: " + method.Name);
         });
@@ -93,7 +98,7 @@ internal static class AdminOperationTests
         var invalid = new (string, object)[]
         {
             ("tickets.create", new CreateTicketCommand(0, 10, 1, "Cash")), ("tickets.create", new CreateTicketCommand(1, -1, 1, "Cash")), ("tickets.create", new CreateTicketCommand(1, 1e12 + 1, 1, "Cash")), ("tickets.update", new UpdateTicketCommand(1)),
-            ("schedules.create", new CreateScheduleCommand(1, 2000, 1, 10, ArrivalTime: 1000)), ("schedules.create", new CreateScheduleCommand(1, 1000, 1, 10, RouteStops: ["A"], StopDistances: [])), ("schedules.update", new UpdateScheduleCommand(1)),
+            ("schedules.create", new CreateScheduleCommand(1, 2000, 1, 10, ArrivalTime: 1000)), ("schedules.create", new CreateScheduleCommand(1, 1000, 1, 10, RouteStops: ["A"], StopDistances: [1, 2])), ("schedules.update", new UpdateScheduleCommand(1)),
             ("users.create", new CreateUserCommand("", "synthetic")), ("users.create", new CreateUserCommand("synthetic", "short")), ("users.update", new UpdateUserCommand(7)), ("users.assign-role", new AssignUserRoleCommand(7, 0)),
             ("roles.create", new CreateRoleCommand(" ")), ("roles.update", new UpdateRoleCommand(7)), ("roles.grant-permission", new GrantRolePermissionCommand(7, 0)), ("roles.create", new CreateRoleCommand("synthetic", PermissionIds: [1, 1])),
             ("permissions.create", new CreatePermissionCommand(" ")), ("permissions.update", new UpdatePermissionCommand(7)), ("permissions.delete", new DeletePermissionCommand(0))
@@ -166,6 +171,27 @@ internal static class AdminOperationTests
             await (Task<object>)wsMethod.Invoke(adapter, [new BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest("update", operation, 7, JsonSerializer.SerializeToElement(model))])!;
         }
         Console.WriteLine("PASS users/roles/permissions/schedules HTTP and v1 mutations call shared handlers, preserve envelopes and never invoke legacy mutation services");
+        limitedPermissions = ["tickets.edit"];
+        var readsBefore = lookupReads;
+        var mutationOnly = await (Task<object>)realtime.Invoke(controller, [request])!;
+        Assert(lookupReads == readsBefore && !JsonSerializer.Serialize(mutationOnly).Contains("snapshot", StringComparison.OrdinalIgnoreCase), "mutation-only ticket v1 command fetched an unauthorized snapshot");
+        limitedPermissions = null;
+        Console.WriteLine("PASS mutation-only ticket v1 command commits without reading or returning an unauthorized snapshot");
+        var generic = new BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController(events,
+            NullLogger<BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController>.Instance, services) { ControllerContext = controller.ControllerContext };
+        var genericCreate = generic.GetType().GetMethod("ExecuteCreateAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var numericSchedule = JsonSerializer.SerializeToElement(new { routeId = 1, departureTime = 1000UL, arrivalTime = 2000UL, price = 10, availableSeats = 10, routeStops = new[] { "A", "B" } });
+        var createdSchedule = await (Task<object?>)genericCreate.Invoke(generic, [new object(), "route-schedules", numericSchedule, null, actor, Guid.NewGuid().ToString("N"), CancellationToken.None])!;
+        Assert(createdSchedule is RouteSchedule { ScheduleId: 7 } && lastReducer is Reducer.CreateScheduleV2 { DepartureTime: 1000, ArrivalTime: 2000 }, "generic v1 schedule lost numeric times or its row-shaped create response");
+        var genericUpdate = generic.GetType().GetMethod("ExecuteUpdateAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        await (Task<object?>)genericUpdate.Invoke(generic, [schedules, "route-schedules", 7u, numericSchedule, null, actor, Guid.NewGuid().ToString("N"), CancellationToken.None])!;
+        Assert(lastReducer is Reducer.UpdateScheduleV2 { DepartureTime: 1000, ArrivalTime: 2000 }, "generic v1 schedule update changed numeric-time payload semantics");
+        var oldTicket = JsonSerializer.SerializeToElement(new { routeId = 1, seatNumber = 2, paymentMethod = "Cash", purchaseTime = 777UL });
+        var createdTicket = await (Task<object?>)genericCreate.Invoke(generic, [new object(), "tickets", oldTicket, null, actor, Guid.NewGuid().ToString("N"), CancellationToken.None])!;
+        var ticketShape = JsonSerializer.SerializeToElement(createdTicket);
+        Assert(lastReducer is Reducer.CreateTicketV2 { Price: 0, PurchaseTime: 777 } && ticketShape.GetProperty("purchaseTime").GetUInt64() == 777,
+            "generic v1 ticket lost supplied purchase time or its optional zero-price default");
+        Console.WriteLine("PASS generic v1 schedule numeric timestamps/row responses and ticket purchaseTime/optional-price payload compatibility");
 
         var tokenValidator = Stub.Create<IAuthWebSocketTokenValidator>((_, _) => Task.FromResult<Dictionary<string, object>?>(new() { ["identity"] = actor.ToString() }));
         var builder = WebApplication.CreateBuilder(); builder.Logging.ClearProviders(); builder.WebHost.UseUrls("http://127.0.0.1:0");

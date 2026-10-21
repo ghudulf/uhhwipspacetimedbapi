@@ -242,7 +242,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true", ["createdUserId"] = created.UserId.ToString() }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for user.created");
                 }
@@ -305,7 +305,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true", ["updatedUserId"] = id.ToString() }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for user.updated");
                 }
@@ -382,7 +382,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true", ["deletedUserId"] = id.ToString() }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for user.deleted");
                 }

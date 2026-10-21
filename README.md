@@ -1109,3 +1109,7 @@ Use [database bootstrap](docs/architecture/database-bootstrap.md) after publishi
 # Secret storage and rotation
 
 See [secret configuration, committed-key inventory and rotation](docs/architecture/secrets.md).
+Administrative v2 operations now cover tickets, route schedules, users, roles and
+permissions, including receipts, revisions and query subscriptions. See the
+[operation table](docs/architecture/realtime-v2.md#implemented-operations) and
+[truthful endpoint coverage ledger](docs/architecture/operation-coverage.md).

@@ -71,14 +71,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !await HasPermissionAsync("tickets.view"))
-            {
-                Response.StatusCode = StatusCodes.Status403Forbidden;
-                return;
-            }
+            var events = await HasPermissionAsync("tickets.view")
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("tickets", cancellationToken), "tickets.view", cancellationToken)
+                : AdminEmptyEventsAsync();
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("tickets", cancellationToken), "tickets.view", cancellationToken),
+                events,
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -206,24 +204,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateTicketModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
-                ?? User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
-
-            // If claims lookup returns null, fall back to validated-token path from BaseController
-            if (string.IsNullOrWhiteSpace(userLogin))
-            {
-                // Use BaseController's GetUserNameAsync for fallback
-                userLogin = await GetUserNameAsync();
-                if (string.IsNullOrWhiteSpace(userLogin))
-                {
-                    throw new UnauthorizedAccessException("User identity could not be determined");
-                }
-            }
-
-            var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin)
-                ?? throw new UnauthorizedAccessException("Unable to resolve user identity");
-
             var success = await AdminBooleanAsync("tickets.create", new CreateTicketCommand(model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "create", success };
 
             // Get projected snapshot matching REST endpoint shape
             var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
@@ -276,6 +258,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await AdminBooleanAsync("tickets.update", new UpdateTicketCommand(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive, model.ExpectedRevision ?? AdminExpectedRevision(request)), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "update", success, entity = (object?)null };
 
             var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
             var ticket = conn.Tickets.GetValueOrDefault(id);
@@ -344,6 +327,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await AdminBooleanAsync("tickets.delete", new DeleteTicketCommand(id, AdminExpectedRevision(request)), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "delete", success, deletedId = id };
 
             // Get projected snapshot matching REST endpoint shape
             var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
@@ -432,7 +416,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetTicket(uint id)
         {
-            _logger.LogInformation("GET /api/Tickets/{TicketId} - Fetching ticket with ID: {TicketId}", id);
+            _logger.LogInformation("GET /api/Tickets/{TicketId} - Fetching ticket", id);
             try
             {
                 var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
@@ -586,7 +570,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("route/{routeId}")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetTicketsByRoute(uint routeId)
         {
-            _logger.LogInformation("GET /api/Tickets/route/{RouteId} - Fetching tickets for route ID: {RouteId}", routeId);
+            _logger.LogInformation("GET /api/Tickets/route/{RouteId} - Fetching tickets for route", routeId);
 
             try
             {

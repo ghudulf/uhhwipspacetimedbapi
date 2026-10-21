@@ -9,6 +9,8 @@ namespace TicketSalesApp.AdminServer.Controllers;
 
 public abstract partial class BaseController
 {
+    protected static async IAsyncEnumerable<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts.ApiDomainEvent> AdminEmptyEventsAsync()
+    { await Task.CompletedTask; yield break; }
     protected async Task<MutationResult> AdminMutationAsync(string operation, object command, RealtimeCrudRequest? request = null)
     {
         var actor = await RequireApplicationActorAsync();
@@ -58,10 +60,13 @@ public abstract partial class BaseController
         var receipt = await AdminMutationAsync(canonical + "." + command, input, request);
         return new { operation = command, success = true, entityId = receipt.EntityId, revision = receipt.Revision };
     }
-    protected async Task<Ticket?> AdminCreateTicketEntityAsync(CreateTicketModel model, RealtimeCrudRequest? request = null)
+    protected async Task<object> AdminCreateTicketPayloadAsync(JsonElement payload, RealtimeCrudRequest request)
     {
-        var result = await AdminMutationAsync("tickets.create", new CreateTicketCommand(model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod), request);
-        return await AdminDatabase.ReadAsync(c => c.Db.Ticket.TicketId.Find(result.EntityId), HttpContext.RequestAborted);
+        var command = AdminPayload<CreateTicketCommand>(payload);
+        var result = await AdminMutationAsync("tickets.create", command, request);
+        var ticket = await AdminDatabase.ReadAsync(c => c.Db.Ticket.TicketId.Find(result.EntityId), HttpContext.RequestAborted);
+        return new { routeId = command.RouteId, seatNumber = command.SeatNumber, ticketPrice = command.TicketPrice, paymentMethod = command.PaymentMethod,
+            purchaseTime = ticket?.PurchaseTime ?? command.PurchaseTime ?? (ulong)result.CommittedAt.ToUnixTimeMilliseconds() };
     }
     protected Task<bool> AdminUpdateTicketAsync(uint id, UpdateTicketModel model, RealtimeCrudRequest? request = null) =>
         AdminBooleanAsync("tickets.update", new UpdateTicketCommand(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive, model.ExpectedRevision ?? AdminExpectedRevision(request)), request);
@@ -103,6 +108,23 @@ public abstract partial class BaseController
         var receipt = await AdminMutationAsync("schedules.create", new CreateScheduleCommand(model.RouteId, AdminTime(model.DepartureTime)!.Value, model.Price, model.AvailableSeats,
             model.DaysOfWeek, model.StartPoint, model.EndPoint, model.RouteStops, AdminTime(model.ArrivalTime), model.StopDurationMinutes, model.IsRecurring, model.EstimatedStopTimes, model.StopDistances, model.Notes, model.BusTypes), request);
         return receipt.EntityId;
+    }
+    // Generic v1 has always used numeric Unix milliseconds, not the resource HTTP DateTime model.
+    protected async Task<RouteSchedule?> AdminCreateSchedulePayloadAsync(JsonElement payload, RealtimeCrudRequest request)
+    {
+        var command = AdminPayload<CreateScheduleCommand>(payload);
+        if (!command.ArrivalTime.HasValue)
+        {
+            if (command.DepartureTime > 253402300799999 - 3600000) throw new OperationException("validation_failed");
+            command = command with { ArrivalTime = command.DepartureTime + 3600000 };
+        }
+        var receipt = await AdminMutationAsync("schedules.create", command, request);
+        return await AdminDatabase.ReadAsync(c => c.Db.RouteSchedule.ScheduleId.Find(receipt.EntityId), HttpContext.RequestAborted);
+    }
+    protected Task<bool> AdminUpdateSchedulePayloadAsync(uint id, JsonElement payload, RealtimeCrudRequest request)
+    {
+        var command = AdminPayload<UpdateScheduleCommand>(payload) with { Id = id };
+        return AdminBooleanAsync("schedules.update", command, request);
     }
     protected Task<bool> AdminUpdateScheduleAsync(uint id, UpdateRouteScheduleModel model, RealtimeCrudRequest? request = null)
     {

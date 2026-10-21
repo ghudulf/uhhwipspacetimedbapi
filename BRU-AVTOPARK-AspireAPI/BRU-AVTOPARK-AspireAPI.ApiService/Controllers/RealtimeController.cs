@@ -1091,7 +1091,7 @@ public sealed class RealtimeController : BaseController
             // CRITICAL: Map CRUD command to permission action (same pattern as individual controllers)
             if (IsAdministrativeCommand(resource, command))
             {
-                var request = new BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest(command, requestId,
+                var request = new BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest(command ?? throw new ArgumentException("Command is required."), requestId,
                     root.TryGetProperty("id", out var entity) ? entity.GetUInt32() : null,
                     root.TryGetProperty("payload", out var payload) ? payload : null)
                 { OperationId = root.TryGetProperty("operationId", out var operation) ? operation.GetString() : null };
@@ -1430,8 +1430,8 @@ public sealed class RealtimeController : BaseController
             "permissions" => await AdminCreatePermissionAsync(AdminPayload<CreatePermissionModel>(payload), AdminRequest("create", operationId, null, payload)),
             "roles" => await AdminCreateRoleAsync(AdminPayload<CreateRoleModel>(payload), AdminRequest("create", operationId, null, payload)),
             "routes" => await CreateRouteAsync((IRouteService)service, payload, actor, operationId),
-            "route-schedules" or "routeschedules" => await AdminCreateScheduleAsync(AdminPayload<CreateRouteScheduleModel>(payload), AdminRequest("create", operationId, null, payload)),
-            "tickets" => await AdminCreateTicketEntityAsync(AdminPayload<CreateTicketModel>(payload), AdminRequest("create", operationId, null, payload)),
+            "route-schedules" or "routeschedules" => await AdminCreateSchedulePayloadAsync(payload, AdminRequest("create", operationId, null, payload)),
+            "tickets" => await AdminCreateTicketPayloadAsync(payload, AdminRequest("create", operationId, null, payload)),
             "ticket-sales" or "ticketsales" => await CreateSaleAsync((ITicketSalesService)service, payload, actor, operationId),
             "users" => TicketSalesApp.AdminServer.Mappers.UserMapper.MapToSafeUserDto((await AdminCreateUserAsync(AdminPayload<CreateUserModel>(payload), AdminRequest("create", operationId, null, payload)))!),
             _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
@@ -1451,7 +1451,7 @@ public sealed class RealtimeController : BaseController
             "permissions" => await AdminUpdatePermissionAsync(id, AdminPayload<UpdatePermissionModel>(payload), AdminRequest("update", operationId, id, payload)),
             "roles" => await AdminUpdateRoleAsync(id, AdminPayload<UpdateRoleModel>(payload), AdminRequest("update", operationId, id, payload)),
             "routes" => await UpdateRouteAsync((IRouteService)service, id, payload, actor, operationId),
-            "route-schedules" or "routeschedules" => await AdminUpdateScheduleAsync(id, AdminPayload<UpdateRouteScheduleModel>(payload), AdminRequest("update", operationId, id, payload)),
+            "route-schedules" or "routeschedules" => await AdminUpdateSchedulePayloadAsync(id, payload, AdminRequest("update", operationId, id, payload)),
             "tickets" => await AdminUpdateTicketAsync(id, AdminPayload<UpdateTicketModel>(payload), AdminRequest("update", operationId, id, payload)),
             "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload, actor, operationId),
             "users" => await AdminUpdateUserAsync(id, AdminPayload<UpdateUserModel>(payload), AdminRequest("update", operationId, id, payload)),
@@ -1463,6 +1463,9 @@ public sealed class RealtimeController : BaseController
             return null;
         }
 
+        var adminResource = normalizedResource is "route-schedules" or "routeschedules" ? "schedules" : normalizedResource;
+        if (adminResource is "tickets" or "schedules" or "users" or "roles" or "permissions" && !await HasPermissionAsync(adminResource + ".view"))
+            return new { id, updated = true };
         var finalResult = await ExecuteReadAsync(service, resource, id);
         if (finalResult is SpacetimeDB.Types.UserProfile user) return TicketSalesApp.AdminServer.Mappers.UserMapper.MapToSafeUserDto(user);
         return finalResult; // null means NotFound, which is handled by caller

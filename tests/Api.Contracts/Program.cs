@@ -14,6 +14,8 @@ using TicketSalesApp.AdminServer.Configuration;
 using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 
+if (args.Contains("--write-operation-ledger")) { OperationCoverageTests.WriteLedger(); return; }
+OperationCoverageTests.Run();
 await RoutingDiagnosticsTests.RunAsync();
 SecretConfigurationTests.Run();
 await CredentialExportTests.RunAsync();

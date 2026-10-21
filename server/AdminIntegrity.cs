@@ -56,7 +56,7 @@ public static partial class Module
             throw new Exception("Invalid schedule days.");
         if (distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true)
             throw new Exception("Invalid stop distances.");
-        if (stops != null && (times != null && times.Length != stops.Length || distances != null && distances.Length != stops.Length))
+        if (stops != null && (times is { Length: > 0 } && times.Length != stops.Length || distances is { Length: > 0 } && distances.Length != stops.Length))
             throw new Exception("Schedule stop metadata lengths differ.");
     }
 }

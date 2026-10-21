@@ -164,6 +164,6 @@ public sealed partial class ApplicationOperations
         AdminPrice(price); AdminText(start, 200); AdminText(end, 200); AdminText(notes, 4000); AdminArray(stops); AdminArray(days); AdminArray(times);
         if (departure > 253402300799999 || arrival > 253402300799999 || departure.HasValue && arrival.HasValue && arrival != 0 && arrival < departure || days?.Length > 7 ||
             distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true ||
-            stops != null && (times != null && times.Length != stops.Length || distances != null && distances.Length != stops.Length)) throw new OperationException("validation_failed");
+            stops != null && (times is { Length: > 0 } && times.Length != stops.Length || distances is { Length: > 0 } && distances.Length != stops.Length)) throw new OperationException("validation_failed");
     }
 }

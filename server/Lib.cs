@@ -1518,7 +1518,8 @@ public static partial class Module
         if (!HasPermission(ctx, actor, "schedules.create")) throw new Exception("Missing schedules.create permission.");
         ValidateScheduleFields(departureTime, arrivalTime ?? 0, price, startPoint, endPoint, routeStops, daysOfWeek, estimatedStopTimes, stopDistances, notes);
         // Validate that the route exists
-        if (!ctx.Db.Route.Iter().Any(r => r.RouteId == routeId))
+        var scheduleRoute = ctx.Db.Route.RouteId.Find(routeId);
+        if (scheduleRoute == null)
         {
             throw new Exception("Route not found.");
         }
@@ -1549,17 +1550,17 @@ public static partial class Module
             Price = price,                           // Set the price
             AvailableSeats = availableSeats,         // Set the available seats
             DaysOfWeek = daysOfWeek,                 // Set the days of week
-            StartPoint = startPoint,                 // Set the start point
-            EndPoint = endPoint,                     // Set the end point
+            StartPoint = startPoint ?? scheduleRoute.StartPoint,
+            EndPoint = endPoint ?? scheduleRoute.EndPoint,
             RouteStops = routeStops,                 // Set the route stops
             StopDurationMinutes = stopDurationMinutes, // Set the stop duration
             IsRecurring = isRecurring ?? false,      // Set recurring status (default to false if not provided)
-            EstimatedStopTimes = estimatedStopTimes, // Set estimated stop times
-            StopDistances = stopDistances,           // Set stop distances
+            EstimatedStopTimes = estimatedStopTimes ?? Array.Empty<string>(),
+            StopDistances = stopDistances ?? Array.Empty<double>(),
             Notes = notes,                           // Set notes
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set creation time
             UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set update time
-            UpdatedBy = ctx.Sender.ToString(),       // Set updater
+            UpdatedBy = actor.ToString(),            // Record the effective delegated actor.
             IsActive = true,                         // Set as active by default
             ValidFrom = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000   // Set valid from date
         };

@@ -193,7 +193,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.created (Resource: permissions, EventName: permission.created, PermissionId: {PermissionId})", created.PermissionId);
                 }
@@ -263,7 +263,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.updated (Resource: permissions, EventName: permission.updated, PermissionId: {PermissionId})", id);
                 }
@@ -340,7 +340,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.deleted (Resource: permissions, EventName: permission.deleted, PermissionId: {PermissionId})", id);
                 }
@@ -661,4 +661,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public string? Category { get; set; }
         public bool? IsActive { get; set; }
     }
-} 
+}

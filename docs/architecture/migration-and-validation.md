@@ -98,3 +98,36 @@ Actual synthetic database tests cover both paths, password rejection, no overwri
 # Secret storage
 
 See [secrets and credential migration](secrets.md) for required rotation of historical keys, mounted configuration and startup policy.
+# Administrative operation parity — additive module rollout
+
+Publish the module **before** deploying the matching API/bindings. This rollout
+adds 21 reducers: ticket create/update/delete; schedule create/update/delete/active;
+user create/profile update/delete/active/assign-role/remove-role; role
+create/update/delete/grant-permission/revoke-permission; permission
+create/update/delete (all `*V2`). It reuses the existing `EntityRevision` and
+`MutationReceipt` tables. Existing rows start at revision zero. Public legacy
+reducer names and signatures remain available, share their core paths, and
+advance revisions; deleted entities retain revision tombstones.
+
+No data rewrite is required for this additive operation rollout. The independent
+[private credential migration and compromised-secret rotation](secrets.md) still
+apply. New account creation uses that private credential helper. New reducer
+guards also apply to legacy writers: no self-deactivation/deletion or removal of
+the last active Administrator; no deletion of assigned/system roles or sold
+tickets; no Administrator permission revocation or nonadministrator privilege
+escalation through grants/assignment/permission renaming.
+
+Verify each resource with a fresh isolated fixture, including concurrent same-ID
+replay, mismatched replay, legacy/v2 revision conflicts, reference failures and
+permission denial. The integration harness also checks actual public projections
+and access/resource invalidation journals. Api.Contracts checks capabilities,
+validation before persistence, HTTP/v1 adapters, framed v2 dispatch, six new
+subscription leases and the complete reflected endpoint coverage ledger.
+
+The [coverage ledger](operation-coverage.md) has explicit dispositions for all
+185 current controller/method/verb/route combinations. Its drift test rejects
+missing/stale rows, empty dispositions and unregistered operation references.
+Protocol-only auth/QR/provider/upgrade/diagnostic endpoints are not claimed as
+CRUD parity; legacy read projections remain labelled. See
+[administrative compatibility notes](realtime-v2.md#administrative-contracts-and-compatibility)
+for profile-only user updates, activation payloads and atomic permission sets.

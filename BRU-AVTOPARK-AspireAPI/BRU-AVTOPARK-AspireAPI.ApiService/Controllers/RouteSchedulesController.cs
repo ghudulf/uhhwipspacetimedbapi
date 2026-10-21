@@ -64,14 +64,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !await HasPermissionAsync("schedules.view"))
-            {
-                Response.StatusCode = StatusCodes.Status403Forbidden;
-                return;
-            }
+            var events = await HasPermissionAsync("schedules.view")
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken), "schedules.view", cancellationToken)
+                : AdminEmptyEventsAsync();
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken), "schedules.view", cancellationToken),
+                events,
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -379,7 +377,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true", ["scheduleId"] = scheduleId.ToString() ?? "null" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for route-schedule.created (Resource: route-schedules, EventName: route-schedule.created, Payload: {Payload})", JsonSerializer.Serialize(result));
                 }
@@ -406,7 +404,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await AdminUpdateScheduleAsync(id, m, request);
-            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+            var schedule = await HasPermissionAsync("schedules.view") ? await _routeScheduleService.GetScheduleByIdAsync(id) : null;
 
             // Project entity using the shared helper to ensure consistent shape and UtcDateTime usage
             object? projectedEntity = schedule != null ? ProjectScheduleForList(schedule) : null;
@@ -431,7 +429,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for route-schedule.updated (Resource: route-schedules, EventName: route-schedule.updated, ScheduleId: {ScheduleId})", id);
                 }
@@ -477,7 +475,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex) when (!IsApplicationFailure(ex))
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for route-schedule.deleted (Resource: route-schedules, EventName: route-schedule.deleted, DeletedId: {DeletedId})", id);
                 }
@@ -873,7 +871,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     LastPage = totalPages
                 };
 
-                Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
+                Response.Headers["X-Pagination"] = JsonSerializer.Serialize(metadata);
 
                 _logger.LogInformation("=== ROUTE SCHEDULES SEARCH REQUEST END ===");
                 _logger.LogInformation("FINAL RESULT: Found {Count} matching schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 

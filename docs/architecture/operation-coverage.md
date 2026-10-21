@@ -1,211 +1,286 @@
 # Application operation coverage
 
-Current adapters normalize caller GUID mutation IDs and echo effective HTTP keys in `Operation-Id`; v1 realtime mutations require stable operation/request IDs. V2 ping/capabilities are excluded from counted-request retention, and native transports rotate between operations at 9,000 counted requests. The additive module upgrade includes owner-only `EnsureDefaultPermissions` and trusted-API-only, credential-reverifying `RecordAuthenticationFailure`; see the migration ledger before deploying API/module bindings together.
+## Checkpoint — administrative operation parity
 
-Baseline: PR #23 head `e35e483d6a14a1c855ee5aefcc65a69e8bfcdeb4`. This inventory is a work ledger; a listed endpoint is not a claim of v2 support. Existing HTTP, resource sockets and auth sockets stay available.
+This is a disposition ledger, not a blanket parity claim. Every reflected API
+controller method with an HTTP attribute is listed with its verb and combined
+controller/action route template. `legacy:` means that endpoint retains its
+existing service/projection path; an equivalent v2 query does not make it a
+shared-handler adapter. `HTTP-only:` identifies protocol, ceremony, page,
+upgrade or diagnostic boundaries rather than inventing a CRUD equivalent.
 
-QR client adapters cover all new QR routes through `IQrLoginApi`; desktop display, approval and enrolled-device self-scan share the origin-guarded flows. Local QR rendering, protected-or-memory enrollment, rollback and wizard/second-factor handoff have headless tests. Camera/keystore plug-ins and real mobile visual validation remain separate; see [QR clients](qr-login.md#clients).
+Tickets, schedules, users, roles and permissions mutations now use the shared
+ApplicationOperations boundary through HTTP and resource/generic v1 socket
+adapters. IDs are normalized GUIDs; HTTP echoes `Operation-Id`; v1 requires a
+stable operation/request ID. Revisions and actor-scoped receipts are enforced
+by the module transaction. Legacy read response envelopes remain unchanged.
 
-| Controller | Baseline line | HTTP attribute | Coverage |
-|---|---:|---|---|
-| AdminController | 37 | `[HttpGet("feature-flags-ui")]` | Pending parity verification |
-| AdminController | 54 | `[HttpGet("feature-flags")]` | Pending parity verification |
-| AdminController | 95 | `[HttpPut("feature-flags/{flagName}")]` | Pending parity verification |
-| AdminController | 171 | `[HttpPost("feature-flags/bulk")]` | Pending parity verification |
-| AdminController | 255 | `[HttpPost("feature-flags/reset")]` | Pending parity verification |
-| AdminController | 306 | `[HttpGet("feature-flags/audit-log")]` | Pending parity verification |
-| AuthController | 93 | `[HttpGet("login")]` | Pending parity verification |
-| AuthController | 137 | `[HttpPost("login")]` | Pending parity verification |
-| AuthController | 252 | `[HttpGet("register")]` | Pending parity verification |
-| AuthController | 296 | `[HttpPost("register")]` | Pending parity verification |
-| AuthController | 390 | `[HttpGet("totp/setup")]` | Pending parity verification |
-| AuthController | 452 | `[HttpPost("totp/verify")]` | Pending parity verification |
-| AuthController | 510 | `[HttpPost("totp/disable")]` | Pending parity verification |
-| AuthController | 567 | `[HttpPost("totp/validate")]` | Pending parity verification |
-| AuthController | 664 | `[HttpPost("webauthn/register/options")]` | Pending parity verification |
-| AuthController | 721 | `[HttpPost("webauthn/register/complete")]` | Pending parity verification |
-| AuthController | 780 | `[HttpPost("webauthn/login/options")]` | Pending parity verification |
-| AuthController | 825 | `[HttpPost("webauthn/login/complete")]` | Pending parity verification |
-| AuthController | 909 | `[HttpPost("webauthn/validate")]` | Pending parity verification |
-| AuthController | 1002 | `[HttpGet("webauthn/credentials")]` | Pending parity verification |
-| AuthController | 1062 | `[HttpDelete("webauthn/credentials/{id}")]` | Pending parity verification |
-| AuthController | 1123 | `[HttpPost("magic-link/send")]` | Pending parity verification |
-| AuthController | 1179 | `[HttpPost("validate-magic-link")]` | Pending parity verification |
-| AuthController | 1272 | `[HttpGet("magic-link")]` | Pending parity verification |
-| AuthController | legacy | `[HttpGet("qr-login")]` | Legacy page unchanged; new protocol: [QR login](qr-login.md) |
-| AuthController | legacy | `[HttpPost("qr-login/generate")]` | Legacy encrypted bearer QR unchanged |
-| AuthController | legacy | `[HttpPost("qr-login/validate")]` | Legacy encrypted bearer QR unchanged |
-| AuthController | legacy | `[HttpPost("qr-login/direct")]` | 410 moved to `/api/auth/qr/sessions`; feature-disabled remains 503 |
-| AuthController | legacy | `[HttpGet("qr-login/status")]` | 410 moved to `/api/auth/qr/sessions/{id}/status`; feature-disabled remains 503 |
-| AuthController | legacy | `[HttpPost("qr-login/cancel")]` | 410 moved to `/api/auth/qr/sessions/{id}/cancel`; feature-disabled remains 503 |
-| AuthController | legacy | `[HttpPost("qr-login/notify")]` | 410 moved to `/api/auth/qr/sessions/{id}/approve`; feature-disabled remains 503 |
-| QrLoginController | new | `POST /api/auth/qr/sessions` | Anonymous challenge and PNG; bound-account decoys |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/status` | Secret-bound, exactly-once login redemption |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/cancel` | Secret-bound cancellation |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/peek` | Secret-bound confirmation metadata |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/approve` | Full bearer, active account, verification code |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/deny` | Secret-bound denial |
-| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/complete` | Enrolled P-256 proof; primary-factor policy |
-| QrLoginController | new | `POST /api/auth/qr/devices` | Full bearer, canonical P-256 enrollment |
-| QrLoginController | new | `GET /api/auth/qr/devices` | Full bearer, own active devices only |
-| QrLoginController | new | `DELETE /api/auth/qr/devices/{deviceId}` | Full bearer, own-device revocation |
-| AuthController | 1703 | `[HttpGet("~/connect/authorize")]` | Pending parity verification |
-| AuthController | 1704 | `[HttpPost("~/connect/authorize")]` | Pending parity verification |
-| AuthController | 1877 | `[HttpPost("~/connect/token")]` | Pending parity verification |
-| AuthController | 2078 | `[HttpGet("~/connect/userinfo")]` | Pending parity verification |
-| AuthController | 2141 | `[HttpPost("oauth/authorize")]` | Pending parity verification |
-| AuthController | 2334 | `[HttpPost("connect/clients")]` | Pending parity verification |
-| AuthController | 2400 | `[HttpGet("connect/clients")]` | Pending parity verification |
-| AuthController | 2467 | `[HttpGet("connect/clients/{id}")]` | Pending parity verification |
-| AuthController | 2546 | `[HttpPut("connect/clients/{id}")]` | Pending parity verification |
-| AuthController | 2607 | `[HttpDelete("connect/clients/{id}")]` | Pending parity verification |
-| AuthController | 2648 | `[HttpGet("connect/scopes")]` | Pending parity verification |
-| AuthController | 2690 | `[HttpPost("connect/clients/{id}/regenerate-secret")]` | Pending parity verification |
-| AuthController | 2744 | `[HttpGet("connect/clients/new")]` | Pending parity verification |
-| AuthController | 2776 | `[HttpGet("connect/clients/{id}/edit")]` | Pending parity verification |
-| AuthController | 2835 | `[HttpGet("connect/scopes")]` | Pending parity verification |
-| AuthController | 2887 | `[HttpGet("oauth/authorizations")]` | Pending parity verification |
-| AuthController | 2920 | `[HttpGet("connect/tokens")]` | Pending parity verification |
-| AuthController | 2953 | `[HttpGet("oauth/dashboard")]` | Pending parity verification |
-| AuthController | 2986 | `[HttpGet("connect/settings")]` | Pending parity verification |
-| AuthController | 3019 | `[HttpGet("connect/logs")]` | Pending parity verification |
-| AuthController | 3052 | `[HttpGet("connect/help")]` | Pending parity verification |
-| AuthController | 3085 | `[HttpGet("connect/test")]` | Pending parity verification |
-| AuthController | 3118 | `[HttpGet("connect/callback")]` | Pending parity verification |
-| AuthController | 3158 | `[HttpGet("profile")]` | Pending parity verification |
-| AuthController | 3286 | `[HttpPut("profile")]` | Pending parity verification |
-| AuthController | 3352 | `[HttpPost("change-password")]` | Pending parity verification |
-| AuthController | 3413 | `[HttpGet("logout")]` | Pending parity verification |
-| AuthController | 3447 | `[HttpPost("logout")]` | Pending parity verification |
-| AuthController | 3500 | `[HttpPost("refresh")]` | Pending parity verification |
-| AuthController | 3555 | `[HttpGet("settings")]` | Pending parity verification |
-| AuthController | 3614 | `[HttpPut("settings")]` | Pending parity verification |
-| AuthController | 3680 | `[HttpGet("status")]` | Pending parity verification |
-| AuthController | 3740 | `[HttpGet("success")]` | Pending parity verification |
-| AuthController | 3775 | `[HttpGet("error")]` | Pending parity verification |
-| AuthController | 3811 | `[HttpGet("claim-account")]` | Pending parity verification |
-| AuthController | 3845 | `[HttpGet("webauthn/register")]` | Pending parity verification |
-| AuthController | 3898 | `[HttpGet("~/debug/tokentest")]` | Pending parity verification |
-| AuthController | 3982 | `[HttpGet("~/connect/tokeninfo")]` | Pending parity verification |
-| AuthController | 4061 | `[HttpPost("~/connect/authorize/callback")]` | Pending parity verification |
-| AuthController | 4228 | `[HttpPost("connect/register-client")]` | Pending parity verification |
-| AuthController | 4367 | `[HttpPost("connect/update-client/{clientId}")]` | Pending parity verification |
-| AuthController | 4506 | `[HttpPost("connect/clients/{clientId}/delete")]` | Pending parity verification |
-| AuthController | 4634 | `[HttpGet("ws")]` | Pending parity verification |
-| AuthController | 4685 | `[HttpPost("oauth/consent")]` | Pending parity verification |
-| BusesController | 58 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| BusesController | 386 | `[HttpGet]` | Pending parity verification |
-| BusesController | 424 | `[HttpGet("{id}")]` | Pending parity verification |
-| BusesController | 470 | `[HttpPost]` | Pending parity verification |
-| BusesController | 538 | `[HttpPut("{id}")]` | Pending parity verification |
-| BusesController | 596 | `[HttpDelete("{id}")]` | Pending parity verification |
-| BusesController | 659 | `[HttpGet("search")]` | Pending parity verification |
-| BusesController | 713 | `[HttpPost("{id}/activate")]` | Pending parity verification |
-| BusesController | 783 | `[HttpPost("{id}/deactivate")]` | Pending parity verification |
-| DebugController | 38 | `[HttpGet("tables")]` | Pending parity verification |
-| EmployeesController | 56 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| EmployeesController | 406 | `[HttpGet]` | Pending parity verification |
-| EmployeesController | 457 | `[HttpGet("{id}")]` | Pending parity verification |
-| EmployeesController | 511 | `[HttpPost]` | Pending parity verification |
-| EmployeesController | 578 | `[HttpPut("{id}")]` | Pending parity verification |
-| EmployeesController | 657 | `[HttpDelete("{id}")]` | Pending parity verification |
-| EmployeesController | 717 | `[HttpGet("by-job/{jobId}")]` | Pending parity verification |
-| EmployeesController | 764 | `[HttpGet("drivers")]` | Pending parity verification |
-| JobsController | 52 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| JobsController | 311 | `[HttpGet]` | Pending parity verification |
-| JobsController | 370 | `[HttpGet("{id}")]` | Pending parity verification |
-| JobsController | 413 | `[HttpPost]` | Pending parity verification |
-| JobsController | 461 | `[HttpPut("{id}")]` | Pending parity verification |
-| JobsController | 499 | `[HttpDelete("{id}")]` | Pending parity verification |
-| JobsController | 534 | `[HttpGet("search")]` | Pending parity verification |
-| MaintenanceController | 59 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| MaintenanceController | 361 | `[HttpGet]` | Pending parity verification |
-| MaintenanceController | 397 | `[HttpGet("{id}")]` | Pending parity verification |
-| MaintenanceController | 431 | `[HttpPost]` | Pending parity verification |
-| MaintenanceController | 472 | `[HttpPut("{id}")]` | Pending parity verification |
-| MaintenanceController | 503 | `[HttpDelete("{id}")]` | Pending parity verification |
-| MaintenanceController | 525 | `[HttpGet("search")]` | Pending parity verification |
-| MaintenanceController | 589 | `[HttpGet("due-maintenance")]` | Pending parity verification |
-| PermissionsController | 56 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| PermissionsController | 352 | `[HttpGet]` | Pending parity verification |
-| PermissionsController | 385 | `[HttpGet("{id}")]` | Pending parity verification |
-| PermissionsController | 423 | `[HttpPost]` | Pending parity verification |
-| PermissionsController | 475 | `[HttpPut("{id}")]` | Pending parity verification |
-| PermissionsController | 536 | `[HttpDelete("{id}")]` | Pending parity verification |
-| PermissionsController | 598 | `[HttpGet("categories")]` | Pending parity verification |
-| PermissionsController | 621 | `[HttpGet("category/{category}")]` | Pending parity verification |
-| RealtimeController | 65 | `[HttpGet("events")]` | Pending parity verification |
-| RealtimeController | 89 | `[HttpPost("broadcast-test")]` | Pending parity verification |
-| RealtimeController | 132 | `[HttpGet("interactive")]` | Pending parity verification |
-| RealtimeController | 633 | `[HttpGet("stream")]` | Pending parity verification |
-| RolesController | 60 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| RolesController | 324 | `[HttpGet]` | Pending parity verification |
-| RolesController | 359 | `[HttpGet("{id}")]` | Pending parity verification |
-| RolesController | 400 | `[HttpGet("{id}/permissions")]` | Pending parity verification |
-| RolesController | 433 | `[HttpPost]` | Pending parity verification |
-| RolesController | 487 | `[HttpPut("{id}")]` | Pending parity verification |
-| RolesController | 555 | `[HttpDelete("{id}")]` | Pending parity verification |
-| RouteSchedulesController | 55 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| RouteSchedulesController | 486 | `[HttpGet]` | Pending parity verification |
-| RouteSchedulesController | 548 | `[HttpGet("{id}")]` | Pending parity verification |
-| RouteSchedulesController | 592 | `[HttpGet("search")]` | Pending parity verification |
-| RouteSchedulesController | 883 | `[HttpPost]` | Pending parity verification |
-| RouteSchedulesController | 939 | `[HttpPut("{id}")]` | Pending parity verification |
-| RouteSchedulesController | 987 | `[HttpDelete("{id}")]` | Pending parity verification |
-| RoutesController | 55 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| RoutesController | 179 | `[HttpGet]` | Pending parity verification |
-| RoutesController | 208 | `[HttpGet("{id}")]` | Pending parity verification |
-| RoutesController | 242 | `[HttpPost]` | Pending parity verification |
-| RoutesController | 282 | `[HttpPut("{id}")]` | Pending parity verification |
-| RoutesController | 312 | `[HttpDelete("{id}")]` | Pending parity verification |
-| RoutesController | 334 | `[HttpGet("search")]` | Pending parity verification |
-| TicketSalesController | 69 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| TicketSalesController | 284 | `[HttpGet]` | Pending parity verification |
-| TicketSalesController | 336 | `[HttpGet("{id}")]` | Pending parity verification |
-| TicketSalesController | 402 | `[HttpPost]` | Pending parity verification |
-| TicketSalesController | 546 | `[HttpPut("{id}")]` | Pending parity verification |
-| TicketSalesController | 594 | `[HttpDelete("{id}")]` | Pending parity verification |
-| TicketSalesController | 642 | `[HttpGet("statistics/income")]` | Pending parity verification |
-| TicketSalesController | 660 | `[HttpGet("statistics/top-transports")]` | Pending parity verification |
-| TicketSalesController | 678 | `[HttpGet("search")]` | Pending parity verification |
-| TicketsController | 62 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| TicketsController | 385 | `[HttpGet]` | Pending parity verification |
-| TicketsController | 429 | `[HttpGet("{id}")]` | Pending parity verification |
-| TicketsController | 479 | `[HttpPost]` | Pending parity verification |
-| TicketsController | 587 | `[HttpPut("{id}")]` | Pending parity verification |
-| TicketsController | 687 | `[HttpDelete("{id}")]` | Pending parity verification |
-| TicketsController | 758 | `[HttpGet("search")]` | Pending parity verification |
-| TicketsController | 840 | `[HttpGet("route/{routeId}")]` | Pending parity verification |
-| TicketsController | 895 | `[HttpGet("available")]` | Pending parity verification |
-| UsersController | 58 | `[HttpGet("realtime/ws")]` | Pending parity verification |
-| UsersController | 399 | `[HttpGet]` | Pending parity verification |
-| UsersController | 417 | `[HttpGet("{id}")]` | Pending parity verification |
-| UsersController | 468 | `[HttpPost]` | Pending parity verification |
-| UsersController | 509 | `[HttpPut("{id}")]` | Pending parity verification |
-| UsersController | 560 | `[HttpDelete("{id}")]` | Pending parity verification |
-| UsersController | 606 | `[HttpGet("{id}/roles")]` | Pending parity verification |
-| UsersController | 642 | `[HttpGet("{id}/permissions")]` | Pending parity verification |
-| UsersController | 676 | `[HttpPost("{id}/roles")]` | Pending parity verification |
-| UsersController | 698 | `[HttpDelete("{id}/roles/{roleId}")]` | Pending parity verification |
-| UsersController | 720 | `[HttpGet("current")]` | Pending parity verification |
+QR display, approval, device enrollment and self-scan routes below retain their
+existing one-time protocol and tested client adapters. They are deliberately
+not recast as administrative CRUD operations. See [QR login](qr-login.md).
 
-## V2 rollout checkpoint
+The Api.Contracts drift test compares the complete endpoint set and checks
+every named v2 operation against runtime descriptors. After intentionally
+changing routes, regenerate with `dotnet run --project tests/Api.Contracts --
+--write-operation-ledger`, review each disposition, and commit the ledger.
 
-See [protocol and client rollout](realtime-v2.md). `session.access`, paged `sales.list`, sale create/update/delete, actor-scoped receipt lookup, monthly income and date-range sales report projections are registered. Existing session-access and sale-mutation adapters share these application handlers. Password login, TOTP, token attach, socket logout, cancellation and capability/heartbeat operations are available. Their boundary tests pass; remaining rows above still require full parity verification. Avalonia access polling and both reporting screens use the shared transport. Other screen callers, provider ceremonies and unlisted mutation handlers remain outstanding. Query subscriptions are described in the protocol document.
+| Controller | Method | HTTP | Route | Disposition |
+|---|---|---|---|---|
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `List` | GET | `/api/auth/qr/devices` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Enroll` | POST | `/api/auth/qr/devices` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Revoke` | DELETE | `/api/auth/qr/devices/{deviceId}` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Create` | POST | `/api/auth/qr/sessions` | HTTP-only: QR ceremony; anonymous QR challenge/PNG and bound-account decoys |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Approve` | POST | `/api/auth/qr/sessions/{id}/approve` | HTTP-only: QR ceremony; full bearer, active account and verification code |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Cancel` | POST | `/api/auth/qr/sessions/{id}/cancel` | HTTP-only: QR ceremony; secret-bound one-time QR confirmation/cancellation/denial |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Complete` | POST | `/api/auth/qr/sessions/{id}/complete` | HTTP-only: QR ceremony; enrolled P-256 proof and primary-factor policy |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Deny` | POST | `/api/auth/qr/sessions/{id}/deny` | HTTP-only: QR ceremony; secret-bound one-time QR confirmation/cancellation/denial |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Peek` | POST | `/api/auth/qr/sessions/{id}/peek` | HTTP-only: QR ceremony; secret-bound one-time QR confirmation/cancellation/denial |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Status` | POST | `/api/auth/qr/sessions/{id}/status` | HTTP-only: QR ceremony; secret-bound exactly-once redemption |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `ChangePassword` | POST | `/api/Auth/change-password` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `ClaimAccountPage` | GET | `/api/Auth/claim-account` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthCallbackPage` | GET | `/api/Auth/connect/callback` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientList` | GET | `/api/Auth/connect/clients` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientRegister` | POST | `/api/Auth/connect/clients` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientNewPage` | GET | `/api/Auth/connect/clients/new` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `DeleteClientSubmit` | POST | `/api/Auth/connect/clients/{clientId}/delete` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientDelete` | DELETE | `/api/Auth/connect/clients/{id}` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientDetails` | GET | `/api/Auth/connect/clients/{id}` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientUpdate` | PUT | `/api/Auth/connect/clients/{id}` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientEditPage` | GET | `/api/Auth/connect/clients/{id}/edit` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthClientRegenerateSecret` | POST | `/api/Auth/connect/clients/{id}/regenerate-secret` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthHelpPage` | GET | `/api/Auth/connect/help` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthLogsPage` | GET | `/api/Auth/connect/logs` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `RegisterClientSubmit` | POST | `/api/Auth/connect/register-client` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthScopes` | GET | `/api/Auth/connect/scopes` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthSettingsPage` | GET | `/api/Auth/connect/settings` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthTestPage` | GET | `/api/Auth/connect/test` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthTokensPage` | GET | `/api/Auth/connect/tokens` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `UpdateClientSubmit` | POST | `/api/Auth/connect/update-client/{clientId}` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `ErrorPage` | GET | `/api/Auth/error` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `LoginPage` | GET | `/api/Auth/login` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Login` | POST | `/api/Auth/login` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `LogoutPage` | GET | `/api/Auth/logout` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Logout` | POST | `/api/Auth/logout` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `MagicLinkPage` | GET | `/api/Auth/magic-link` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `MagicLinkSend` | POST | `/api/Auth/magic-link/send` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthAuthorizationsPage` | GET | `/api/Auth/oauth/authorizations` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthBackchannelAuthorize` | POST | `/api/Auth/oauth/authorize` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthConsent` | POST | `/api/Auth/oauth/consent` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthDashboardPage` | GET | `/api/Auth/oauth/dashboard` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Profile` | GET | `/api/Auth/profile` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `ProfileUpdate` | PUT | `/api/Auth/profile` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginPage` | GET | `/api/Auth/qr-login` | HTTP-only: legacy QR HTML page; one-time QR clients use the dedicated ceremony routes |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginCancel` | POST | `/api/Auth/qr-login/cancel` | legacy: retired bearer-QR entry returns 410 with one-time QR replacement; feature-disabled remains 503 |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginDirect` | POST | `/api/Auth/qr-login/direct` | legacy: retired bearer-QR entry returns 410 with one-time QR replacement; feature-disabled remains 503 |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginGenerate` | POST | `/api/Auth/qr-login/generate` | legacy: encrypted bearer-QR compatibility endpoint; separate from the one-time QR protocol |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginNotify` | POST | `/api/Auth/qr-login/notify` | legacy: retired bearer-QR entry returns 410 with one-time QR replacement; feature-disabled remains 503 |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginStatus` | GET | `/api/Auth/qr-login/status` | legacy: retired bearer-QR entry returns 410 with one-time QR replacement; feature-disabled remains 503 |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `QRLoginValidate` | POST | `/api/Auth/qr-login/validate` | legacy: encrypted bearer-QR compatibility endpoint; separate from the one-time QR protocol |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `RefreshToken` | POST | `/api/Auth/refresh` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `RegisterPage` | GET | `/api/Auth/register` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Register` | POST | `/api/Auth/register` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Settings` | GET | `/api/Auth/settings` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `SettingsUpdate` | PUT | `/api/Auth/settings` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Status` | GET | `/api/Auth/status` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `SuccessPage` | GET | `/api/Auth/success` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TotpDisable` | POST | `/api/Auth/totp/disable` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TotpSetup` | GET | `/api/Auth/totp/setup` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TotpValidate` | POST | `/api/Auth/totp/validate` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TotpVerify` | POST | `/api/Auth/totp/verify` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `MagicLinkValidate` | POST | `/api/Auth/validate-magic-link` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnCredentials` | GET | `/api/Auth/webauthn/credentials` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnCredentialDelete` | DELETE | `/api/Auth/webauthn/credentials/{id}` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnLoginComplete` | POST | `/api/Auth/webauthn/login/complete` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnLoginOptions` | POST | `/api/Auth/webauthn/login/options` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnRegisterPage` | GET | `/api/Auth/webauthn/register` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnRegisterComplete` | POST | `/api/Auth/webauthn/register/complete` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnRegisterOptions` | POST | `/api/Auth/webauthn/register/options` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `WebAuthnValidate` | POST | `/api/Auth/webauthn/validate` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `AuthWebSocket` | GET | `/api/Auth/ws` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Authorize` | GET | `/connect/authorize` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Authorize` | POST | `/connect/authorize` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `AuthorizeCallback` | POST | `/connect/authorize/callback` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `Exchange` | POST | `/connect/token` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TokenInfo` | GET | `/connect/tokeninfo` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `OAuthUserInfo` | GET | `/connect/userinfo` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.AuthController` | `TokenTest` | GET | `/debug/tokentest` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.DebugController` | `DebugTablesPage` | GET | `/api/Debug/tables` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController` | `BroadcastTest` | POST | `/api/Realtime/broadcast-test` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController` | `GetRecentEvents` | GET | `/api/Realtime/events` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController` | `InteractiveWebSocket` | GET | `/api/Realtime/interactive` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Controllers.RealtimeController` | `StreamEvents` | GET | `/api/Realtime/stream` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `GetFeatureFlags` | GET | `/api/admin/feature-flags` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `FeatureFlagsUI` | GET | `/api/admin/feature-flags-ui` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `GetFeatureFlagAuditLog` | GET | `/api/admin/feature-flags/audit-log` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `BulkUpdateFeatureFlags` | POST | `/api/admin/feature-flags/bulk` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `ResetFeatureFlags` | POST | `/api/admin/feature-flags/reset` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.AdminController` | `UpdateFeatureFlag` | PUT | `/api/admin/feature-flags/{flagName}` | HTTP-only: operator feature configuration, HTML or audit diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.ApplicationOperationsController` | `Execute` | POST | `/api/operations/{operation}` | HTTP-only: generic shared-operation dispatch transport; registered descriptors are listed below |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `GetBuses` | GET | `/api/Buses` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `CreateBus` | POST | `/api/Buses` | adapter→buses.create |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `StreamRealtimeBusEvents` | GET | `/api/Buses/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `SearchBuses` | GET | `/api/Buses/search` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `DeleteBus` | DELETE | `/api/Buses/{id}` | adapter→buses.delete |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `GetBus` | GET | `/api/Buses/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `UpdateBus` | PUT | `/api/Buses/{id}` | adapter→buses.update |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `ActivateBus` | POST | `/api/Buses/{id}/activate` | adapter→buses.set-active |
+| `TicketSalesApp.AdminServer.Controllers.BusesController` | `DeactivateBus` | POST | `/api/Buses/{id}/deactivate` | adapter→buses.set-active |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployees` | GET | `/api/Employees` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `CreateEmployee` | POST | `/api/Employees` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployeesByJob` | GET | `/api/Employees/by-job/{jobId}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetDrivers` | GET | `/api/Employees/drivers` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `StreamRealtimeEvents` | GET | `/api/Employees/realtime/ws` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `DeleteEmployee` | DELETE | `/api/Employees/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployee` | GET | `/api/Employees/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `UpdateEmployee` | PUT | `/api/Employees/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `GetJobs` | GET | `/api/Jobs` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `CreateJob` | POST | `/api/Jobs` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `StreamRealtimeEvents` | GET | `/api/Jobs/realtime/ws` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `SearchJobs` | GET | `/api/Jobs/search` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `DeleteJob` | DELETE | `/api/Jobs/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `GetJob` | GET | `/api/Jobs/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.JobsController` | `UpdateJob` | PUT | `/api/Jobs/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `GetMaintenanceRecords` | GET | `/api/Maintenance` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `CreateMaintenanceRecord` | POST | `/api/Maintenance` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `GetDueMaintenanceRecords` | GET | `/api/Maintenance/due-maintenance` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `StreamRealtimeEvents` | GET | `/api/Maintenance/realtime/ws` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `SearchMaintenanceRecords` | GET | `/api/Maintenance/search` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `DeleteMaintenanceRecord` | DELETE | `/api/Maintenance/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `GetMaintenanceRecord` | GET | `/api/Maintenance/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.MaintenanceController` | `UpdateMaintenanceRecord` | PUT | `/api/Maintenance/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `GetPermissions` | GET | `/api/Permissions` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `CreatePermission` | POST | `/api/Permissions` | adapter→permissions.create |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `GetCategories` | GET | `/api/Permissions/categories` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `GetPermissionsByCategory` | GET | `/api/Permissions/category/{category}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `StreamRealtimeEvents` | GET | `/api/Permissions/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `DeletePermission` | DELETE | `/api/Permissions/{id}` | adapter→permissions.delete |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `GetPermission` | GET | `/api/Permissions/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.PermissionsController` | `UpdatePermission` | PUT | `/api/Permissions/{id}` | adapter→permissions.update |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `GetRoles` | GET | `/api/Roles` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `CreateRole` | POST | `/api/Roles` | adapter→roles.create |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `StreamRealtimeEvents` | GET | `/api/Roles/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `DeleteRole` | DELETE | `/api/Roles/{id}` | adapter→roles.delete |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `GetRole` | GET | `/api/Roles/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `UpdateRole` | PUT | `/api/Roles/{id}` | adapter→roles.update |
+| `TicketSalesApp.AdminServer.Controllers.RolesController` | `GetRolePermissions` | GET | `/api/Roles/{id}/permissions` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `GetRouteSchedules` | GET | `/api/RouteSchedules` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `CreateRouteSchedule` | POST | `/api/RouteSchedules` | adapter→schedules.create |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `StreamRealtimeEvents` | GET | `/api/RouteSchedules/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `SearchRouteSchedules` | GET | `/api/RouteSchedules/search` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `DeleteRouteSchedule` | DELETE | `/api/RouteSchedules/{id}` | adapter→schedules.delete |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `GetRouteSchedule` | GET | `/api/RouteSchedules/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.RouteSchedulesController` | `UpdateRouteSchedule` | PUT | `/api/RouteSchedules/{id}` | adapter→schedules.update; active-only payload adapter→schedules.set-active |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `GetRoutes` | GET | `/api/Routes` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `CreateRoute` | POST | `/api/Routes` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `StreamRealtimeEvents` | GET | `/api/Routes/realtime/ws` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `SearchRoutes` | GET | `/api/Routes/search` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `DeleteRoute` | DELETE | `/api/Routes/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `GetRoute` | GET | `/api/Routes/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.RoutesController` | `UpdateRoute` | PUT | `/api/Routes/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.SessionController` | `Access` | GET | `/api/session/access` | adapter→session.access |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `GetTicketSales` | GET | `/api/TicketSales` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `CreateTicketSale` | POST | `/api/TicketSales` | adapter→sales.create |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `StreamRealtimeEvents` | GET | `/api/TicketSales/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `SearchSales` | GET | `/api/TicketSales/search` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `GetTotalIncome` | GET | `/api/TicketSales/statistics/income` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `GetIncomeSummary` | GET | `/api/TicketSales/statistics/income-summary` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `GetTopTransports` | GET | `/api/TicketSales/statistics/top-transports` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `DeleteTicketSale` | DELETE | `/api/TicketSales/{id}` | adapter→sales.delete |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `GetTicketSale` | GET | `/api/TicketSales/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketSalesController` | `UpdateTicketSale` | PUT | `/api/TicketSales/{id}` | adapter→sales.update |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `GetTickets` | GET | `/api/Tickets` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `CreateTicket` | POST | `/api/Tickets` | adapter→tickets.create |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `GetAvailableTickets` | GET | `/api/Tickets/available` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `StreamRealtimeEvents` | GET | `/api/Tickets/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `GetTicketsByRoute` | GET | `/api/Tickets/route/{routeId}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `SearchTickets` | GET | `/api/Tickets/search` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `DeleteTicket` | DELETE | `/api/Tickets/{id}` | adapter→tickets.delete |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `GetTicket` | GET | `/api/Tickets/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.TicketsController` | `UpdateTicket` | PUT | `/api/Tickets/{id}` | adapter→tickets.update |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `GetUsers` | GET | `/api/Users` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `CreateUser` | POST | `/api/Users` | adapter→users.create |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `GetCurrentUser` | GET | `/api/Users/current` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `StreamRealtimeEvents` | GET | `/api/Users/realtime/ws` | HTTP-only: authenticated v1 WebSocket upgrade; commands delegate to shared handlers |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `DeleteUser` | DELETE | `/api/Users/{id}` | adapter→users.delete |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `GetUser` | GET | `/api/Users/{id}` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `UpdateUser` | PUT | `/api/Users/{id}` | adapter→users.update; active-only payload adapter→users.set-active |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `GetUserPermissions` | GET | `/api/Users/{id}/permissions` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `GetUserRoles` | GET | `/api/Users/{id}/roles` | legacy: service-backed HTTP read/projection retained; new paged v2 query is a separate contract |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `AssignRoleToUser` | POST | `/api/Users/{id}/roles` | adapter→users.assign-role |
+| `TicketSalesApp.AdminServer.Controllers.UsersController` | `RemoveRoleFromUser` | DELETE | `/api/Users/{id}/roles/{roleId}` | adapter→users.remove-role |
+| `TicketSalesApp.AdminServer.Controllers.WindowsAuthenticationController` | `Login` | POST | `/api/auth/windows` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `TicketSalesApp.AdminServer.Controllers.WindowsAuthenticationController` | `Link` | POST | `/api/auth/windows/link` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `TicketSalesApp.AdminServer.Controllers.WindowsAuthenticationController` | `LinkStatus` | POST | `/api/auth/windows/link/status` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
 
-## Fleet checkpoint
+## Registered shared v2 operations
 
-`buses.list`, `buses.create`, `buses.update`, `buses.delete`, and `buses.set-active` now have explicit shared contracts/handlers. Existing HTTP/resource-socket mutation adapters use those handlers, including effective actor, optional HTTP idempotency key, and optional update revision. The paged bus screen uses the shared transport for reads and mutations, including all previously ignored edit fields. Legacy unpaged reads remain compatible service adapters; v2 bus subscriptions now use committed query invalidations with snapshot watermarks and gap recovery. Fleet HTTP/WebSocket mutation parity, validation/permission rejection, actual reducer receipts/replay/revisions/reference protection and headless row/selection/lifecycle checks are covered. Other inventory rows retain their pending status.
+These descriptors are shared by the generic HTTP operation transport and v2 socket.
+Resource-specific HTTP reads marked legacy above are not falsely claimed as adapters.
 
-## Catalog and subscription checkpoint
+| Operation | Permission | Mutation |
+|---|---|---|
+| v2 buses.create | `buses.create` | true |
+| v2 buses.delete | `buses.delete` | true |
+| v2 buses.list | `buses.view` | false |
+| v2 buses.set-active | `buses.edit` | true |
+| v2 buses.update | `buses.edit` | true |
+| v2 employees.create | `employees.create` | true |
+| v2 employees.delete | `employees.delete` | true |
+| v2 employees.list | `employees.view` | false |
+| v2 employees.update | `employees.edit` | true |
+| v2 jobs.create | `jobs.create` | true |
+| v2 jobs.delete | `jobs.delete` | true |
+| v2 jobs.get | `jobs.view` | false |
+| v2 jobs.list | `jobs.view` | false |
+| v2 jobs.update | `jobs.edit` | true |
+| v2 maintenance.create | `maintenance.create` | true |
+| v2 maintenance.delete | `maintenance.delete` | true |
+| v2 maintenance.list | `maintenance.view` | false |
+| v2 maintenance.update | `maintenance.edit` | true |
+| v2 mutations.receipt | `authenticated` | false |
+| v2 permissions.create | `permissions.create` | true |
+| v2 permissions.delete | `permissions.delete` | true |
+| v2 permissions.list | `permissions.view` | false |
+| v2 permissions.update | `permissions.edit` | true |
+| v2 reports.income | `sales.view` | false |
+| v2 reports.sales | `sales.view` | false |
+| v2 roles.create | `roles.create` | true |
+| v2 roles.delete | `roles.delete` | true |
+| v2 roles.grant-permission | `grant_permissions` | true |
+| v2 roles.list | `roles.view` | false |
+| v2 roles.revoke-permission | `grant_permissions` | true |
+| v2 roles.update | `roles.edit` | true |
+| v2 routes.create | `routes.create` | true |
+| v2 routes.delete | `routes.delete` | true |
+| v2 routes.list | `routes.view` | false |
+| v2 routes.set-active | `routes.edit` | true |
+| v2 routes.update | `routes.edit` | true |
+| v2 sales.create | `sales.create` | true |
+| v2 sales.delete | `sales.delete` | true |
+| v2 sales.list | `sales.view` | false |
+| v2 sales.update | `sales.edit` | true |
+| v2 schedules.create | `schedules.create` | true |
+| v2 schedules.delete | `schedules.delete` | true |
+| v2 schedules.list | `schedules.view` | false |
+| v2 schedules.set-active | `schedules.edit` | true |
+| v2 schedules.update | `schedules.edit` | true |
+| v2 session.access | `authenticated` | false |
+| v2 tickets.create | `tickets.create` | true |
+| v2 tickets.delete | `tickets.delete` | true |
+| v2 tickets.list | `tickets.view` | false |
+| v2 tickets.update | `tickets.edit` | true |
+| v2 users.assign-role | `assign_roles` | true |
+| v2 users.create | `users.create` | true |
+| v2 users.delete | `users.delete` | true |
+| v2 users.get | `users.view` | false |
+| v2 users.list | `users.view` | false |
+| v2 users.remove-role | `assign_roles` | true |
+| v2 users.set-active | `users.edit` | true |
+| v2 users.update | `users.edit` | true |
 
-- Routes, employees, jobs and maintenance: typed paged v2 queries; create/update/delete receipts and revisions; route activation; shared committed services for existing HTTP/resource sockets. HTTP/v2 mutation parity covers the registered handlers and actor/operation-ID propagation. Existing resource-specific search/read projections still require full parity mapping before their inventory rows can be marked complete.
-- V2 subscriptions: explicit query allowlist; pre-snapshot watermark; bounded committed-change journal; overflow/epoch recovery; idle permission rechecks; generation cleanup. API/shared-client tests cover a change during snapshot acquisition, anonymous denial, mutation-subscription rejection, overflow, reconnect and revocation. The bus screen consumes the shared stream and gates writes during resynchronization.
-- Remaining catalog view models still require shared transport and lifecycle migration. Generic protocol support is not evidence that a screen uses it.
-- GitHub security workflows are `disabled_inactivity`. Re-enable attempts were rejected with HTTP 403 by the repository integration. Branch security validation remains blocked until someone with Actions permission enables them.
+## Remaining boundaries
 
-### Jobs client and initial provisioning checkpoint
-
-`jobs.get` provides an explicitly authorized current-row/revision read for conflict review. Jobs list/create/update/delete now use the shared native transport and lifecycle; existing styles and grid layout are retained with synchronization/paging feedback. Routes/employees/maintenance DTOs include permission-filtered related display data; their remaining native view-model migrations are still outstanding.
-
-Owner-only initial provisioning is a deployment operation, not an anonymous application socket operation. The API generates its own database connection identity and may use explicitly configured owner credentials to provision that identity and the initial admin password. Normal password authentication confirms the checked reducer's committed result.
+Provider ceremonies, OAuth/OIDC and account-security endpoints remain protocol-specific.
+Legacy controller reads and older fleet/catalog service adapters remain explicit in this ledger;
+there is no unresolved parity-verification placeholder. Native screens are a later handoff.
+See [realtime v2](realtime-v2.md) and [migration and validation](migration-and-validation.md).
