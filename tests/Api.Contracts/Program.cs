@@ -81,6 +81,7 @@ await QrLoginTests.RunAsync();
 await ProviderFlowBrokerTests.RunAsync();
 await EntraAuthenticationTests.RunAsync();
 await SessionRefreshTests.RunAsync();
+await ProviderClientTests.RunAsync();
 
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 
