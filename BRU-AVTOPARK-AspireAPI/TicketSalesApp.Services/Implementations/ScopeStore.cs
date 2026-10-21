@@ -56,7 +56,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             var identity = await IdentityAsync(descriptor, cancellationToken);
             if (identity == null) return;
-            await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteOidcScope(identity.DatabaseId), _ => true, cancellationToken);
+            try { await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteOidcScope(identity.DatabaseId), _ => true, cancellationToken); }
+            catch (ReducerRejectedException) { throw new OpenIddictExceptions.ConcurrencyException("Scope deletion rejected."); }
             _identities.Remove(descriptor);
             _logger.LogInformation("OIDC scope deletion committed {ScopeId}", identity.Id);
         }
@@ -260,10 +261,15 @@ namespace TicketSalesApp.Services.Implementations
         {
             var identity = await IdentityAsync(descriptor, cancellationToken)
                 ?? throw new OpenIddictExceptions.ConcurrencyException("Scope no longer exists.");
-            var revision = await _spacetimeService.ExecuteReducerAsync(new Reducer.ReplaceOidcScope(identity.DatabaseId, identity.Revision, descriptor.Name!,
+            ulong revision;
+            try
+            {
+                revision = await _spacetimeService.ExecuteReducerAsync(new Reducer.ReplaceOidcScope(identity.DatabaseId, identity.Revision, descriptor.Name!,
                 descriptor.Description, SerializeCultures(descriptor.Descriptions), descriptor.DisplayName,
                 SerializeCultures(descriptor.DisplayNames), JsonSerializer.Serialize(descriptor.Properties),
                 JsonSerializer.Serialize(descriptor.Resources)), c => c.Db.OidcScopeRevision.ScopeId.Find(identity.DatabaseId)!.Revision, cancellationToken);
+            }
+            catch (ReducerRejectedException) { throw new OpenIddictExceptions.ConcurrencyException("Scope update rejected."); }
             _identities.AddOrUpdate(descriptor, identity with { Name = descriptor.Name!, Revision = revision });
             _logger.LogInformation("OIDC scope update committed {ScopeId}", identity.Id);
         }

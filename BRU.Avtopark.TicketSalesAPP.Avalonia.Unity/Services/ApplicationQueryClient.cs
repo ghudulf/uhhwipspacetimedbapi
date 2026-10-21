@@ -38,6 +38,7 @@ internal static class ApplicationQueryClient
         }
         catch (System.Net.WebSockets.WebSocketException) { /* Read retries are safe; no writes are admitted here. */ }
         catch (OperationNotDispatchedException) { }
+        catch (ApplicationCommandException ex) when (ex.Code == "connection_lost") { }
         using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(baseUrl), "operations/" + operation));
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         message.Content = JsonContent.Create(request, options: ApiProtocol.Json);

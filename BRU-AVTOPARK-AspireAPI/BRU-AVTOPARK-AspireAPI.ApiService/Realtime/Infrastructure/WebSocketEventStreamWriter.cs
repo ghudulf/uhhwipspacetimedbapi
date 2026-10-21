@@ -61,29 +61,25 @@ public static class WebSocketEventStreamWriter
         {
             try
             {
-            await foreach (var evt in events.WithCancellation(linkedCts.Token))
-            {
-                if (webSocket.State != WebSocketState.Open)
+                await foreach (var evt in events.WithCancellation(linkedCts.Token))
                 {
-                    break;
-                }
+                    if (webSocket.State != WebSocketState.Open) break;
 
-                await SendJsonAsync(webSocket, new
-                {
-                    type = "event",
-                    eventName = evt.EventName,
-                    resource = evt.Resource,
-                    data = evt
-                }, sendLock, logger, linkedCts.Token);
-            }
+                    await SendJsonAsync(webSocket, new
+                    {
+                        type = "event",
+                        eventName = evt.EventName,
+                        resource = evt.Resource,
+                        data = evt
+                    }, sendLock, logger, linkedCts.Token);
+                }
             }
             catch (OperationCanceledException) when (linkedCts.IsCancellationRequested) { }
             catch (Exception ex)
             {
                 logger.LogWarning("Realtime event delivery stopped: {ErrorType}", ex.GetType().Name);
+                linkedCts.Cancel();
             }
-            finally { linkedCts.Cancel(); }
-
         }, linkedCts.Token);
 
         try
@@ -132,6 +128,8 @@ public static class WebSocketEventStreamWriter
                     {
                         UnauthorizedAccessException => "Unauthorized",
                         InvalidOperationException => "Invalid operation",
+                        ArgumentException { ParamName: "operationId/requestId" } => "A stable GUID operationId/requestId is required.",
+                        ArgumentException { ParamName: "SaleDate" } => "Sale date cannot be changed",
                         ArgumentException => "Bad request",
                         JsonException => "Bad request",
                         _ => "Internal server error"
@@ -142,6 +140,7 @@ public static class WebSocketEventStreamWriter
                         type = "result",
                         requestId = request.RequestId,
                         ok = false,
+                        code = ex is ArgumentException { ParamName: "operationId/requestId" or "SaleDate" } ? "validation_failed" : null,
                         error = clientErrorMessage
                     };
                 }
@@ -245,7 +244,7 @@ public static class WebSocketEventStreamWriter
         }
 
         var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
-        logger.LogDebug("[WebSocketEventStreamWriter] <<<< RECEIVED RAW: {Json}", json);
+        logger.LogDebug("[WebSocketEventStreamWriter] Received {ByteCount} bytes", messageBuffer.Length);
 
         // Wrap JSON deserialization in try-catch to handle invalid JSON
         try
@@ -295,7 +294,7 @@ public static class WebSocketEventStreamWriter
     private static async Task SendJsonAsync(WebSocket socket, object payload, SemaphoreSlim sendLock, ILogger logger, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        logger.LogDebug("[WebSocketEventStreamWriter] >>>> SENDING: {Json}", json);
+        logger.LogDebug("[WebSocketEventStreamWriter] Sending response");
         
         var bytes = Encoding.UTF8.GetBytes(json);
 

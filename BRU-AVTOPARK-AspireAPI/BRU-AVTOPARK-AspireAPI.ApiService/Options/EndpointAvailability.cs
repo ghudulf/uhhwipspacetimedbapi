@@ -144,6 +144,10 @@ public static class EndpointAvailability
     private static readonly IReadOnlyDictionary<string, string> LegacyNames = Settings.ToDictionary(p => p.Value.LegacyName, p => p.Key, StringComparer.Ordinal);
     public static string CanonicalName(string legacyName) => LegacyNames.GetValueOrDefault(legacyName) ?? legacyName;
     public static bool IsAvailabilityFlag(string name) => Settings.ContainsKey(name);
+    public static string[] FlagsForCategory(string category) => Settings.Keys
+        .Where(name => category == "Login" ? name is nameof(FeatureFlagOptions.LoginEndpointEnabled) or nameof(FeatureFlagOptions.RegisterEndpointEnabled)
+            : name.StartsWith(category, StringComparison.Ordinal))
+        .Order(StringComparer.Ordinal).ToArray();
     public static bool Resolve(FeatureFlagOptions options, string name, Func<string, bool?> committedOverride)
     {
         if (!Settings.TryGetValue(name, out var setting)) return false;

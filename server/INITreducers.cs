@@ -19,6 +19,7 @@ public static partial class Module
         // 2. Initialize Permissions
         Log.Info("Starting Permissions initialization...");
         InitializePermissions(ctx);
+        EnsureDefaultPermissions(ctx);
         Log.Info("Permissions initialization completed");
 
         // 3. Initialize Roles
@@ -176,9 +177,9 @@ public static partial class Module
                 Log.Info("Administrator role already exists");
             }
 
-            // Create a placeholder for guest user - will be claimed later
-            Log.Info("Creating guest user placeholder");
-            // We'll use a special placeholder identity derived from the module's identity
+            // Non-authenticatable demo seller; never activated through account claiming.
+            Log.Info("Creating inactive demo seller record");
+            // A reserved identity preserves the historical demo-sales relationship.
             var placeholderIdentity = new Identity();
             userId = GetNextId(ctx, "userId");
             Log.Debug($"Generated userId for guest: {userId}");
@@ -191,14 +192,14 @@ public static partial class Module
                 Email = "guest@example.com",
                 PhoneNumber = "+375333000001",
                 PasswordHash = null,
-                IsActive = false, // Not active until claimed
+                IsActive = false,
                 CreatedAt = GetSafeUnixTimestamp(ctx),
                 LastLoginAt = null,
                 LegacyGuid = ctx.NewUuidV4().ToString()
             };
 
             ctx.Db.UserProfile.Insert(guest);
-            Log.Info("Guest user placeholder created successfully");
+            Log.Info("Inactive demo seller created successfully; no credentials");
 
             // Create user role directly here
             if (!ctx.Db.Role.Iter().Any(r => r.Name == "User"))
@@ -238,7 +239,7 @@ public static partial class Module
                     AssignedBy = "System"
                 };
                 ctx.Db.UserRole.Insert(guestUserRole);
-                Log.Info("User role created and assigned to guest user placeholder");
+                Log.Info("User role created and assigned to inactive demo seller");
             }
             else
             {

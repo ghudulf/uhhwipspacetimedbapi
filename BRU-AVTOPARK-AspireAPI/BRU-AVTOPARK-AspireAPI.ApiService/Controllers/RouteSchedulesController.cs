@@ -61,6 +61,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("schedules.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken), "schedules.view", cancellationToken),
@@ -1186,4 +1191,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public double[]? StopDistances { get; set; }
         public string? Notes { get; set; }
     }
-} 
+}

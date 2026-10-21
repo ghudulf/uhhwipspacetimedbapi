@@ -41,10 +41,15 @@ public static class SalesReportProjection
             routes = routes.Take(199).Append(new RouteRevenue(null, "Другие маршруты", new RevenueSummary(
                 remainder.Sum(r => r.Amounts.KnownTotal), remainder.Sum(r => r.Amounts.SaleCount), remainder.Sum(r => r.Amounts.UnknownAmountCount)))).ToArray();
         }
-        return new(zone.Id, DateTimeOffset.UtcNow, Summarize(dated.Select(s => s.Sale)),
-            dated.GroupBy(s => s.Date).OrderBy(g => g.Key).Select(g => new DailyRevenue(g.Key, Summarize(g.Select(s => s.Sale)))).ToArray(),
-            dated.GroupBy(s => (s.Date.Year, s.Date.Month)).OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
-                .Select(g => new MonthlyRevenue(g.Key.Year, g.Key.Month, Summarize(g.Select(s => s.Sale)))).ToArray(), routes);
+        var days = dated.GroupBy(s => s.Date).ToDictionary(g => g.Key, g => Summarize(g.Select(s => s.Sale)));
+        var months = dated.GroupBy(s => (s.Date.Year, s.Date.Month)).ToDictionary(g => g.Key, g => Summarize(g.Select(s => s.Sale)));
+        var daily = Enumerable.Range(0, request.EndDate.DayNumber - request.StartDate.DayNumber + 1)
+            .Select(offset => request.StartDate.AddDays(offset))
+            .Select(date => new DailyRevenue(date, days.GetValueOrDefault(date) ?? new(0, 0, 0))).ToArray();
+        var monthly = new List<MonthlyRevenue>();
+        for (var date = new DateOnly(request.StartDate.Year, request.StartDate.Month, 1); date <= request.EndDate; date = date.AddMonths(1))
+            monthly.Add(new(date.Year, date.Month, months.GetValueOrDefault((date.Year, date.Month)) ?? new(0, 0, 0)));
+        return new(zone.Id, DateTimeOffset.UtcNow, Summarize(dated.Select(s => s.Sale)), daily, monthly.ToArray(), routes);
     }
     private static RevenueSummary Summarize(IEnumerable<SaleFact> sales)
     {

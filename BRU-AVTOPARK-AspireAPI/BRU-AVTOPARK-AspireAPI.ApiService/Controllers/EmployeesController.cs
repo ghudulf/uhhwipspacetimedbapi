@@ -68,8 +68,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Allow connection for mutation-only users; permission checks enforced per-command
-            // Use pre-validated claims instead of re-calling IsAdminAsync()/HasPermissionAsync()
-            var isAdmin = claims.ContainsKey("primary_role") && claims["primary_role"]?.ToString() == "admin";
+            var isAdmin = await IsAdminAsync();
 
             var eventsSource = (isAdmin || HasPermission("employees.view", claims))
                 ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("employees", cancellationToken), "employees.view", cancellationToken)
@@ -172,7 +171,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var newEmployee = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var success = newEmployee != null;
 
             if (success)
@@ -253,7 +252,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
 
             if (success)
             {
@@ -341,7 +340,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var employeeBeforeDelete = await _employeeService.GetEmployeeByIdAsync(id);
             var success = await _employeeService.DeleteEmployeeAsync(id,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
 
             if (success)
             {

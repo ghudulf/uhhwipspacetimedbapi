@@ -18,7 +18,7 @@ public static partial class Module
             if (admin == null || !admin.IsActive)
                 throw new Exception("An active existing administrator account is required.");
             var administrator = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "Administrator" && r.IsActive);
-            if (administrator == null || !ctx.Db.UserRole.Iter().Any(r => r.UserId == admin.UserId && r.RoleId == administrator.RoleId))
+            if (administrator == null || !ctx.Db.UserRole.UserId.Filter(admin.UserId).Any(r => r.RoleId == administrator.RoleId))
                 throw new Exception("Account must already hold the active Administrator role.");
             if (!string.IsNullOrEmpty(admin.PasswordHash))
                 throw new Exception("Administrator already has a password. Use trust-only provisioning; change passwords through account management.");
@@ -38,5 +38,27 @@ public static partial class Module
         if (user == null || !user.IsActive || string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(password, user.PasswordHash))
             throw new Exception("Invalid credentials.");
         AuthenticateUser(ctx, login, password);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RecordAuthenticationFailure(ReducerContext ctx, string login, string password)
+    {
+        RequireTrustedApi(ctx);
+        var user = ctx.Db.UserProfile.Login.Find(login);
+        if (user != null && user.IsActive && !string.IsNullOrEmpty(user.PasswordHash) && VerifyPassword(password, user.PasswordHash))
+            throw new Exception("Valid credentials cannot record an authentication failure.");
+        InsertAuthenticationFailure(ctx, user);
+    }
+
+    private static void InsertAuthenticationFailure(ReducerContext ctx, UserProfile? user)
+    {
+        ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
+        {
+            UserId = user is { IsActive: true } ? user.UserId : new Identity(),
+            EventType = "Failed",
+            Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
+            Details = user == null ? "User not found" : !user.IsActive ? "User is inactive" : "Invalid password",
+            IpAddress = null
+        });
     }
 }

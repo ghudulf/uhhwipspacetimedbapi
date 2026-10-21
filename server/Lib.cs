@@ -363,7 +363,6 @@ public static partial class Module
     }
     private static byte[] HMACSHA256(byte[] key, byte[] message)
     {
-
         // Simplified HMAC (NOT cryptographically secure as a standalone HMAC).
         // This is acceptable ONLY within the context of PBKDF2.
 
@@ -389,8 +388,6 @@ public static partial class Module
     // SHA-256 implementation compatible with WebAssembly
     public static string ComputeSha256(string input)
     {
-
-
         // Convert the input string to bytes using UTF-8 encoding.
 
         byte[] inputBytes = Encoding.UTF8.GetBytes(input);
@@ -452,7 +449,6 @@ public static partial class Module
 
         for (int i = 0; i < message.Length; i += 64)
         {
-
             // a. Create message schedule w[0..63]
             uint[] w = new uint[64];
 
@@ -1169,36 +1165,21 @@ public static partial class Module
         {
             Log.Info($"Authentication failed for user {login}");
             // Publish failed authentication event
-            ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
-            {
-                UserId = new Identity(),
-                EventType = "Failed",
-                Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-                Details = user == null ? "User not found" : "User is inactive",
-                IpAddress = null
-            });
+            InsertAuthenticationFailure(ctx, user);
             return;
         }
 
         // Verify password using the VerifyPassword method
-        if (!VerifyPassword(password, user.PasswordHash))
+        if (string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(password, user.PasswordHash))
         {
             Log.Info($"Authentication failed for user {login}: invalid password");
             // Publish failed authentication event
-            ctx.Db.AuthenticationEvent.Insert(new AuthenticationEvent
-            {
-                UserId = user.UserId,
-                EventType = "Failed",
-                Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-                Details = "Invalid password",
-                IpAddress = null
-            });
+            InsertAuthenticationFailure(ctx, user);
             return;
         }
 
         // Get user's roles (for JWT claims)
-        var roles = ctx.Db.UserRole.Iter()
-            .Where(ur => ur.UserId == user.UserId)
+        var roles = ctx.Db.UserRole.UserId.Filter(user.UserId)
             .Join(ctx.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r)
             .Where(r => r.IsActive)
             .Select(r => r.Name)
@@ -1788,6 +1769,7 @@ public static partial class Module
         }
         
         // Verify password using the VerifyPassword method
+        if (string.IsNullOrEmpty(user.PasswordHash)) throw new Exception("Credential-less demo accounts cannot be claimed.");
         if (!VerifyPassword(password, user.PasswordHash))
         {
             Log.Error($"Invalid password for account claim: {login}");
@@ -2640,9 +2622,6 @@ public static partial class Module
             Log.Error($"Error analyzing hash structure: {ex.GetType().Name}");
         }
 	}
-
-    
-
 
 
 }

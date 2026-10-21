@@ -38,6 +38,15 @@ try
     var owner = database.GetLocalIdentity()!.Value;
     await database.ExecuteReducerAsync(new Reducer.ProvisionTrustedApi(owner), _ => true);
     Pass("owner provisions trusted API identity");
+    await database.ExecuteReducerAsync(new Reducer.EnsureDefaultPermissions(), _ => true);
+    var grants = await database.ReadAsync(c => (c.Db.Permission.Iter().Count(), c.Db.RolePermission.Iter().Count()));
+    await database.ExecuteReducerAsync(new Reducer.EnsureDefaultPermissions(), _ => true);
+    Assert(await database.ReadAsync(c => (c.Db.Permission.Iter().Count(), c.Db.RolePermission.Iter().Count())) == grants,
+        "default permission repair duplicated permissions or grants");
+    var repairedAccess = await new TicketSalesApp.Services.Authorization.UserAccessService(database).GetAsync(owner);
+    Assert(new[] { "jobs.view", "jobs.create", "jobs.edit", "jobs.delete", "schedules.view", "permissions.view" }.All(repairedAccess.Allows),
+        "default administrator grants missing");
+    Pass("owner-only default permission migration is idempotent and supplies indexed administrator grants");
     if (args.Contains("--bootstrap-only", StringComparer.Ordinal))
     {
         await BootstrapTests.RunAsync(database, owner, ownerToken);
@@ -170,7 +179,7 @@ try
     await scopes.UpdateAsync(scope, default);
     Assert(await scopes.GetIdAsync(scope, default) == scopeId, "renaming changed scope ID");
     Assert((await coldScopes.FindByIdAsync(scopeId!, default))!.Description == null, "scope null was not persisted");
-    await Reject<ReducerRejectedException>(async () => await coldScopes.UpdateAsync(persistedScope, default));
+    await Reject<OpenIddict.Abstractions.OpenIddictExceptions.ConcurrencyException>(async () => await coldScopes.UpdateAsync(persistedScope, default));
     await scopes.DeleteAsync(scope, default);
     Assert(await coldScopes.FindByIdAsync(scopeId!, default) == null, "deleted scope remained visible");
     Pass("application revocation/logout matching and scope committed properties/resources, cold reads, duplicate rejection");
@@ -238,6 +247,7 @@ try
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkOwnExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));
         Assert(!await stranger.ReadAsync(c => c.Db.ExternalAccountLink.Iter().Any()), "outsider can read external links");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.ProvisionTrustedApi(stranger.GetLocalIdentity()!.Value), _ => true));
+        await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.EnsureDefaultPermissions(), _ => true));
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.UpdateSale(saleId, null, "Forged actor", null, null, null, owner), _ => true));
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.DeleteOidcToken(token.DatabaseId!.Value), _ => true));
         Pass("RLS blocks secret reads, untrusted provisioning/delegation/token mutations rejected");

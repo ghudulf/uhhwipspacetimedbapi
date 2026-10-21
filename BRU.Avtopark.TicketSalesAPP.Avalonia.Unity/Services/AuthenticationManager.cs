@@ -607,7 +607,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 else
                 {
                     var body = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, body);
+                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(body));
                 }
             }
             catch (Exception ex)

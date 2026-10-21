@@ -66,6 +66,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("roles", cancellationToken), "roles.view", cancellationToken),
@@ -631,4 +636,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public uint? Priority { get; set; }
         public List<uint>? PermissionIds { get; set; }
     }
-} 
+}

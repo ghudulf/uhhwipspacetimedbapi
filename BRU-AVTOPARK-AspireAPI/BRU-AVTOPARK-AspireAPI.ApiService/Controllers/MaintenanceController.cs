@@ -71,6 +71,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("maintenance.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("maintenance", cancellationToken), "maintenance.view", cancellationToken),
@@ -193,7 +198,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
             var maintenanceType = string.IsNullOrWhiteSpace(model.MaintenanceType) ? "Regular" : model.MaintenanceType;
             var record = await _maintenanceService.CreateMaintenanceRecordAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, maintenanceType,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var createdId = record != null;
             var result = new { operation = "create", success = createdId, record };
 
@@ -250,7 +255,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
 
             // Project entity to match REST endpoint shape
@@ -327,7 +332,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!await HasPermissionAsync("maintenance.delete")) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _maintenanceService.DeleteMaintenanceAsync(id,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "delete", success, deletedId = id, record = (object?)null };
 
             if (success)
@@ -645,4 +650,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public DateTime? NextServiceDate { get; set; }
         public string? Roadworthiness { get; set; }
     }
-} 
+}

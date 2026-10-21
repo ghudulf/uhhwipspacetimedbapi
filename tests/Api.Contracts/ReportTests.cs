@@ -21,6 +21,10 @@ internal static class ReportTests
         Assert(bounded.Routes.Length == 200 && bounded.Routes.Sum(r => r.Amounts.KnownTotal) == 500 && bounded.Routes.Sum(r => r.Amounts.SaleCount) == 250, "bounded route remainder lost amounts");
         var unknown = SalesReportProjection.Build([new(DateTimeOffset.Parse("2026-03-08T12:00:00Z"), null, "Missing route", null)], new(new(2026, 3, 8), new(2026, 3, 8)), zone);
         Assert(unknown.Total.AverageKnownAmount == null && !unknown.Total.IsComplete, "unknown historical amounts presented as zero average");
+        var quiet = SalesReportProjection.Build([], new(new(2026, 1, 31), new(2026, 3, 1)), zone);
+        Assert(quiet.Days.Length == 30 && quiet.Days.Select(d => d.Date).SequenceEqual(Enumerable.Range(0, 30).Select(i => new DateOnly(2026, 1, 31).AddDays(i)))
+            && quiet.Days.All(d => d.Amounts == new RevenueSummary(0, 0, 0)), "quiet dates missing or out of order");
+        Assert(quiet.Months.Select(m => m.Month).SequenceEqual(new[] { 1, 2, 3 }) && quiet.Months.All(m => m.Amounts.SaleCount == 0), "quiet months missing");
         Console.WriteLine("PASS report DST/inclusive business dates, missing relationships, unknown/free amounts and bounded projection totals");
     }
     private static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }

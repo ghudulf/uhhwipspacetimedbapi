@@ -25,7 +25,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateTicket(ReducerContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime = null, Identity? actingUser = null)
     {
-        if (!double.IsFinite(price) || price < 0) throw new Exception("Invalid ticket price.");
+        if (!double.IsFinite(price) || price < 0 || price > 1e12) throw new Exception("Invalid ticket price.");
         Log.Info($"[CreateTicket] Starting for route: {routeId}, seat: {seatNumber}, price: {price}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity

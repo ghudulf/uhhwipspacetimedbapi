@@ -180,8 +180,8 @@
             const categories = {
                 'Authentication': ['LoginEndpointEnabled', 'RegisterEndpointEnabled'],
                 'TOTP': ['TotpSetupEndpointEnabled', 'TotpValidateEndpointEnabled', 'TotpVerifyEndpointEnabled', 'TotpDisableEndpointEnabled'],
-                'WebAuthn': ['WebAuthnRegisterOptionsEndpointEnabled', 'WebAuthnValidateEndpointEnabled', 'WebAuthnCredentialsEndpointEnabled', 'WebAuthnCredentialDeleteEndpointEnabled'],
-                'OAuth': ['OAuthAuthorizeEndpointEnabled', 'OAuthTokenEndpointEnabled', 'OAuthUserInfoEndpointEnabled', 'OAuthClientRegisterEndpointEnabled', 'OAuthClientUpdateEndpointEnabled', 'OAuthClientDeleteEndpointEnabled', 'OAuthClientListEndpointEnabled', 'OAuthScopesEndpointEnabled'],
+                'WebAuthn': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TicketSalesApp.AdminServer.Configuration.EndpointAvailability.FlagsForCategory("WebAuthn"))),
+                'OAuth': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TicketSalesApp.AdminServer.Configuration.EndpointAvailability.FlagsForCategory("OAuth"))),
                 'Magic Link': ['MagicLinkSendEndpointEnabled', 'MagicLinkValidateEndpointEnabled'],
                 'QR Authentication': ['QRLoginGenerateEndpointEnabled', 'QRLoginValidateEndpointEnabled'],
                 'Profile': ['ProfileEndpointEnabled', 'ProfileUpdateEndpointEnabled']
@@ -274,8 +274,8 @@
             const categoryFlags = {
                 'Login': ['LoginEndpointEnabled', 'RegisterEndpointEnabled'],
                 'Totp': ['TotpSetupEndpointEnabled', 'TotpValidateEndpointEnabled', 'TotpVerifyEndpointEnabled', 'TotpDisableEndpointEnabled'],
-                'WebAuthn': ['WebAuthnRegisterOptionsEndpointEnabled', 'WebAuthnValidateEndpointEnabled', 'WebAuthnCredentialsEndpointEnabled', 'WebAuthnCredentialDeleteEndpointEnabled'],
-                'OAuth': ['OAuthAuthorizeEndpointEnabled', 'OAuthTokenEndpointEnabled', 'OAuthUserInfoEndpointEnabled', 'OAuthClientRegisterEndpointEnabled', 'OAuthClientUpdateEndpointEnabled', 'OAuthClientDeleteEndpointEnabled', 'OAuthClientListEndpointEnabled', 'OAuthScopesEndpointEnabled']
+                'WebAuthn': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TicketSalesApp.AdminServer.Configuration.EndpointAvailability.FlagsForCategory("WebAuthn"))),
+                'OAuth': @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TicketSalesApp.AdminServer.Configuration.EndpointAvailability.FlagsForCategory("OAuth")))
             };
 
             const flags = categoryFlags[category];

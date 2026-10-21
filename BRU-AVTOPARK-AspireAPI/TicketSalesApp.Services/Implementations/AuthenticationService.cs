@@ -40,6 +40,12 @@ namespace TicketSalesApp.Services.Implementations
             catch (ReducerRejectedException)
             {
                 _logger.LogInformation("Password authentication rejected; credential values omitted");
+                try
+                {
+                    using var deadline = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.RecordAuthenticationFailure(login, password), _ => true, deadline.Token);
+                }
+                catch (Exception ex) { _logger.LogWarning("Failed authentication audit unavailable: {ErrorType}; credentials omitted", ex.GetType().Name); }
                 return null;
             }
         }
@@ -69,7 +75,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null, actingUser, newUserIdentity);
+                conn.Reducers.RegisterUser(login, password, email, phoneNumber, null, RegistrationRoleName(role), actingUser, newUserIdentity);
 
                 // Check repeatedly for a short time if the user was created
                 int attempts = 0;
@@ -98,6 +104,13 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
+        public static string RegistrationRoleName(int role) => role switch
+        {
+            0 => "User", 1 => "Administrator", 2 => "Manager", 3 => "Dispatcher",
+            4 => "Cashier", 5 => "Driver", 6 => "Conductor",
+            _ => throw new ArgumentOutOfRangeException(nameof(role))
+        };
+
         public Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken)
         {
             // Legacy interface has no bound QR session/challenge proof. The production QR
@@ -113,8 +126,7 @@ namespace TicketSalesApp.Services.Implementations
                 var conn = _spacetimeService.GetConnection();
 
                 // Find user roles
-                var userRoles = conn.Db.UserRole.Iter()
-                    .Where(ur => ur.UserId.Equals(userId))
+                var userRoles = conn.Db.UserRole.UserId.Filter(userId)
                     .ToList();
 
                 if (userRoles.Count == 0)

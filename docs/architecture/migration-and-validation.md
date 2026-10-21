@@ -82,6 +82,12 @@ The query-change journal is process memory, contains resource names only and is 
 
 ## Initial credentials and API-owned startup checkpoint
 
+After publishing the additive permission/index/reducer upgrade, the deployment owner must call `EnsureDefaultPermissions`. It idempotently creates missing default grants (including jobs, schedules and permission administration) for the Administrator role without removing custom grants or rewriting business rows. Fresh initialization performs the same repair. UserRole.UserId and RolePermission.RoleId authorization lookups now use indexed equality filters.
+
+`AuthenticateUserChecked` continues to reject invalid credentials. The API then best-effort calls trusted-API-only `RecordAuthenticationFailure` with a five-second bound; that reducer independently re-verifies the credentials and commits a Failed authentication event only for an actual failure. Valid credentials cannot forge a failure. The inactive credential-less guest is only a demo seller and cannot be claimed.
+
+HTTP mutation adapters echo their normalized effective receipt key in `Operation-Id`; v1 realtime mutations require stable GUID operation/request IDs. V2 ping/capabilities do not consume the 10,000 counted-request allowance; native sessions rotate between operations at 9,000 counted requests. See [realtime v2](realtime-v2.md).
+
 The module adds `BootstrapInstallation` (owner-only, initial-password and trust changes atomic) and `AuthenticateUserChecked` (rejected credentials fail the reducer). No user IDs or existing password hashes are rewritten. The API supports its own first connection followed by explicitly enabled owner-authorized provisioning and reports pending trust via readiness. The deployment owner token is used only by a temporary connection; the API's persisted token belongs to its separate generated identity. [Bootstrap instructions](database-bootstrap.md) describe masked/manual and API-startup paths, secret-file permissions, existing-password handling and legacy token cutover.
 
 Actual synthetic database tests cover both paths, password rejection, no overwrite, scope isolation, restart identity reuse and revocation. A fresh production-module CLI smoke confirms that initialization plus initial admin-password provisioning works without manually hashing/inserting credentials. Native Windows ACL and production secret-mount configuration still require deployment-host verification.

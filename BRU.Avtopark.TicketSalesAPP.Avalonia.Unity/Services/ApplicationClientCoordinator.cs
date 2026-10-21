@@ -18,7 +18,6 @@ public static class ApplicationClientCoordinator
     {
         var client = await GetClientAsync(baseUrl, token, cancellationToken);
         var result = await client.CallAsync<TRequest, TResponse>(operation, payload, operationId, cancellationToken);
-        // Session ownership is checked again after await; never apply a prior account's result.
         if (!ReferenceEquals(client, _client) || !OwnsSession(baseUrl, token))
             throw new OperationCanceledException("Application session changed.");
         return result;
@@ -30,25 +29,36 @@ public static class ApplicationClientCoordinator
         await Gate.WaitAsync(cancellationToken);
         try
         {
-            if (!OwnsSession(baseUrl, token)) throw new OperationCanceledException("Application session changed.");
-            if (_client?.IsConnected != true || _origin != baseUrl || _token != token)
-            {
-                if (_client != null) await _client.DisposeAsync();
-                _client = null;
-                var candidate = new RealtimeApplicationClient();
-                candidate.Diagnostic += diagnostic => Serilog.Log.Information(
-                    "Client operation {Operation}, request {RequestId}, transport websocket, generation {Generation}: {Outcome} in {ElapsedMs} ms",
-                    diagnostic.Operation, diagnostic.RequestId, diagnostic.Generation, diagnostic.Outcome, diagnostic.ElapsedMs);
-                try { await candidate.ConnectAsync(new Uri(baseUrl), token, cancellationToken); }
-                catch { await candidate.DisposeAsync(); throw; }
-                _client = candidate;
-                _origin = baseUrl;
-                _token = token;
-                Serilog.Log.Information("Shared realtime session established; protocol bru.api.v2");
-            }
-            return _client;
+            return await GetClientCoreAsync(baseUrl, token, cancellationToken);
         }
         finally { Gate.Release(); }
+    }
+
+    private static async Task<RealtimeApplicationClient> GetClientCoreAsync(string baseUrl, string token, CancellationToken cancellationToken)
+    {
+        if (!OwnsSession(baseUrl, token)) throw new OperationCanceledException("Application session changed.");
+        if (_client?.IsConnected != true || _origin != baseUrl || _token != token
+            || _client.CountedRequestsSent >= 9000 && _client.TryBeginRotation())
+        {
+            if (_client != null) await _client.DisposeAsync();
+            _client = null;
+            var candidate = new RealtimeApplicationClient();
+            candidate.Diagnostic += diagnostic => Serilog.Log.Information(
+                "Client operation {Operation}, request {RequestId}, transport websocket, generation {Generation}: {Outcome} in {ElapsedMs} ms",
+                diagnostic.Operation, diagnostic.RequestId, diagnostic.Generation, diagnostic.Outcome, diagnostic.ElapsedMs);
+            try { await candidate.ConnectAsync(new Uri(baseUrl), token, cancellationToken); }
+            catch (System.Net.WebSockets.WebSocketException)
+            {
+                await candidate.DisposeAsync();
+                throw new OperationNotDispatchedException("connect");
+            }
+            catch { await candidate.DisposeAsync(); throw; }
+            _client = candidate;
+            _origin = baseUrl;
+            _token = token;
+            Serilog.Log.Information("Shared realtime session established; protocol bru.api.v2");
+        }
+        return _client;
     }
 
     public static async System.Collections.Generic.IAsyncEnumerable<QueryUpdate<TResponse>> WatchAsync<TRequest, TResponse>(
@@ -94,7 +104,7 @@ public static class ApplicationClientCoordinator
     private static bool Recoverable(Exception exception, CancellationToken ct) => !ct.IsCancellationRequested && exception is
         (System.Net.WebSockets.WebSocketException or OperationNotDispatchedException or OperationCanceledException or
         ApplicationCommandException
-        { Code: "connection_lost" or "database_unavailable" or "resync_required" or "busy" });
+        { Code: "connection_lost" or "database_unavailable" or "resync_required" or "busy" or "cancelled" });
 
     private static bool OwnsSession(string baseUrl, string token) =>
         ApiClientService.Instance.AuthToken == token && ApiClientService.Instance.CurrentBaseUrl == baseUrl;

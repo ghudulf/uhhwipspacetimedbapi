@@ -35,10 +35,20 @@ namespace SpacetimeDB.Types
 
             public readonly IdUniqueIndex Id;
 
+            public sealed class RoleIdIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(RolePermission row) => row.RoleId;
+
+                public RoleIdIndex(RolePermissionHandle table) : base(table) { }
+            }
+
+            public readonly RoleIdIndex RoleId;
+
             internal RolePermissionHandle(DbConnection conn) : base(conn)
             {
                 ApiAccessPartition = new(this);
                 Id = new(this);
+                RoleId = new(this);
             }
 
             protected override object GetPrimaryKey(RolePermission row) => row.Id;
@@ -70,11 +80,13 @@ namespace SpacetimeDB.Types
     public sealed class RolePermissionIxCols
     {
         public global::SpacetimeDB.IxCol<RolePermission, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<RolePermission, uint> RoleId { get; }
         public global::SpacetimeDB.IxCol<RolePermission, uint> ApiAccessPartition { get; }
 
         public RolePermissionIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<RolePermission, uint>(tableName, "id");
+            RoleId = new global::SpacetimeDB.IxCol<RolePermission, uint>(tableName, "role_id");
             ApiAccessPartition = new global::SpacetimeDB.IxCol<RolePermission, uint>(tableName, "api_access_partition");
         }
     }

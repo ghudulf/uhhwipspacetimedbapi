@@ -114,6 +114,8 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<bool> CreateTicketAsync(uint routeId, uint seatNumber, double ticketPrice, string paymentMethod, ulong purchaseTime,Identity loggedinuser)
         {
+            if (!double.IsFinite(ticketPrice) || ticketPrice < 0 || ticketPrice > 1e12)
+                throw new ArgumentException("Ticket price must be finite and between 0 and 1e12.", nameof(ticketPrice));
             try
             {
                 _logger.LogInformation("Creating ticket for route {RouteId}", routeId); // Removed passengerId
@@ -515,4 +517,4 @@ namespace TicketSalesApp.Services.Implementations
             }
         }   
     }
-} 
+}

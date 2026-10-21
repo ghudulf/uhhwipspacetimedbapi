@@ -44,6 +44,8 @@ public sealed partial class ApplicationOperations
         Register<UpdateBusCommand>("buses.update", "buses.edit", true, async (actor, request, id, ct) =>
         {
             if (request.Id == 0) throw new OperationException("validation_failed");
+            if (request.Model == null && request.RegistrationNumber == null && (request.Details == null || request.Details == new BusDetails()))
+                throw new OperationException("validation_failed");
             ValidateBus(request.Model, request.RegistrationNumber);
             await buses.UpdateBusAsync(request.Id, request.Model, request.RegistrationNumber, actor, id, request.ExpectedRevision, ct, Details(request.Details));
             return await CommittedReceipt(database, actor, id!, ct);

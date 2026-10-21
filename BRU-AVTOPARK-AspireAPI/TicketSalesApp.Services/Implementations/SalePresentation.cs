@@ -10,13 +10,24 @@ public sealed record SaleDetails(uint SaleId, DateTime SaleDate, uint TicketId, 
 
 public static class SalePresentation
 {
+    public static bool MatchesTicketPrice(SaleDetails sale, decimal? minimum, decimal? maximum) => sale.Ticket is { } ticket
+        && (!minimum.HasValue || ticket.TicketPrice >= (double)minimum.Value)
+        && (!maximum.HasValue || ticket.TicketPrice <= (double)maximum.Value);
+
     public static decimal? Amount(DbConnection connection, Sale sale)
     {
         var revision = connection.Db.SaleRevision.SaleId.Find(sale.SaleId);
-        if (revision != null) return revision.AmountKnown ? checked((decimal)revision.RecordedAmount) : null;
+        if (revision != null) return revision.AmountKnown ? RecordedAmount(revision.RecordedAmount) : null;
         // Legacy rows with an explicitly recorded positive amount are usable. Zero was also the
         // historical default, so it cannot be distinguished from a free sale without evidence.
-        return double.IsFinite(sale.TotalAmount) && sale.TotalAmount > 0 ? checked((decimal)sale.TotalAmount) : null;
+        return sale.TotalAmount > 0 ? RecordedAmount(sale.TotalAmount) : null;
+    }
+
+    public static decimal? RecordedAmount(double amount)
+    {
+        if (!double.IsFinite(amount)) return null;
+        try { return checked((decimal)amount); }
+        catch (OverflowException) { return null; }
     }
 
     public static SaleDetails Map(DbConnection connection, Sale sale)

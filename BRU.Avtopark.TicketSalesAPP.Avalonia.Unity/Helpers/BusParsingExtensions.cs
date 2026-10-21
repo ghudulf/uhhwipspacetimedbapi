@@ -551,7 +551,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     return null;
                 }
 
-                ulong saleDate = saleObj.GetValue<ulong>("saleDate", 0);
+                ulong saleDate = 0;
+                try { saleDate = Serialization.CollectionPayload.UnixMilliseconds(saleObj["saleDate"] ?? saleObj["SaleDate"]); }
+                catch (System.Text.Json.JsonException) { /* Missing or invalid dates are displayed as unknown. */ }
                 uint ticketId = saleObj.GetValue<uint>("ticketId", 0);
                 string ticketSoldToUser = saleObj.GetStringValue("ticketSoldToUser") ?? string.Empty;
                 string ticketSoldToUserPhone = saleObj.GetStringValue("ticketSoldToUserPhone") ?? string.Empty;

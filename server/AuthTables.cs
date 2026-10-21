@@ -95,6 +95,7 @@ public static partial class Module
         [PrimaryKey, AutoInc]
         public uint Id;                  // Single primary key
 
+        [SpacetimeDB.Index.BTree]
         public Identity UserId;          // References UserProfile.UserId
         public uint RoleId;              // References Role.RoleId
 
@@ -111,6 +112,7 @@ public static partial class Module
         [PrimaryKey, AutoInc]
         public uint Id;                  // Single primary key
 
+        [SpacetimeDB.Index.BTree]
         public uint RoleId;              // References Role.RoleId
         public uint PermissionId;        // References Permission.PermissionId
 

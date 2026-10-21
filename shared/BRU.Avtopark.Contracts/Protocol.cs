@@ -34,7 +34,7 @@ public sealed record LoginCommand(string Username, string Password);
 public sealed record TotpCommand(string Code);
 public sealed record CancelCommand(string RequestId);
 public sealed record AuthenticationReply(string State, string? Token = null, bool TotpEnabled = false, bool WebAuthnEnabled = false);
-public sealed record CreateSaleCommand(uint TicketId, string BuyerName, string BuyerPhone, string? Location = null, string? Notes = null);
+public sealed record CreateSaleCommand(uint TicketId, string? BuyerName, string? BuyerPhone, string? Location = null, string? Notes = null);
 public sealed record UpdateSaleCommand(uint Id, ulong? ExpectedRevision, string? BuyerName = null, string? BuyerPhone = null, string? Location = null, string? Notes = null);
 public sealed record DeleteSaleCommand(uint Id, ulong? ExpectedRevision = null);
 public sealed record ReceiptRequest(string OperationId);

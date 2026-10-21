@@ -52,7 +52,7 @@ public sealed partial class ApplicationOperations
         {
             if (request.TicketId == 0) throw new OperationException("validation_failed");
             ValidateSale(request.BuyerName, request.BuyerPhone, request.Location, request.Notes);
-            if (string.IsNullOrWhiteSpace(request.BuyerName)) throw new OperationException("validation_failed");
+            if (string.IsNullOrWhiteSpace(request.BuyerName) || request.BuyerPhone == null) throw new OperationException("validation_failed");
             await sales.CreateSaleAsync(request.TicketId, request.BuyerName, request.BuyerPhone, request.Location, request.Notes, actor, id, ct);
             return await CommittedReceipt(database, actor, id!, ct);
         });
@@ -121,7 +121,8 @@ public sealed partial class ApplicationOperations
     }
     private static void ValidateSale(string? name, string? phone, string? location, string? notes)
     {
-        if (name?.Length > 200 || phone?.Length > 50 || location?.Length > 200 || notes?.Length > 2000)
+        if (name != null && string.IsNullOrWhiteSpace(name) || phone is { Length: > 0 } && string.IsNullOrWhiteSpace(phone)
+            || name?.Length > 200 || phone?.Length > 50 || location?.Length > 200 || notes?.Length > 2000)
             throw new OperationException("validation_failed");
     }
     private static void ValidateOperationId(string? id)

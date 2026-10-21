@@ -25,13 +25,17 @@ public sealed class ApplicationOperationsController(ApplicationOperations operat
         try { actor = Identity.FromHexString(identity); } catch (Exception ex) when (ex is ArgumentException or FormatException) { return Unauthorized(); }
         try
         {
-            var result = await operations.ExecuteAsync(operation, actor, payload, Request.Headers["Idempotency-Key"].FirstOrDefault(), cancellationToken);
+            var supplied = Request.Headers["Idempotency-Key"].FirstOrDefault();
+            if (supplied != null && !Guid.TryParse(supplied, out _)) throw new OperationException("validation_failed");
+            var operationId = supplied == null ? Guid.NewGuid().ToString("N") : Guid.Parse(supplied).ToString("N");
+            Response.Headers["Operation-Id"] = operationId;
+            var result = await operations.ExecuteAsync(operation, actor, payload, operationId, cancellationToken);
             return new JsonResult(result, ApiProtocol.Json);
         }
-        catch (Exception ex) when (ex is OperationException or ReducerRejectedException or CommitOutcomeUnknownException or DatabaseUnavailableException)
+        catch (Exception ex) when (ex is OperationException or ReducerRejectedException or CommitOutcomeUnknownException or DatabaseUnavailableException or TimeoutException)
         {
-            var code = ex switch { OperationException op => op.Code, ReducerRejectedException => "conflict", CommitOutcomeUnknownException => "commit_outcome_unknown", _ => "database_unavailable" };
-            var status = code switch { "forbidden" => 403, "unsupported_operation" => 404, "conflict" => 409, "commit_outcome_unknown" or "database_unavailable" => 503, _ => 400 };
+            var code = ex switch { OperationException op => op.Code, ReducerRejectedException => "conflict", CommitOutcomeUnknownException => "commit_outcome_unknown", TimeoutException => "timeout", _ => "database_unavailable" };
+            var status = code switch { "forbidden" => 403, "not_found" or "unsupported_operation" => 404, "conflict" => 409, "timeout" => 504, "commit_outcome_unknown" or "database_unavailable" => 503, _ => 400 };
             return StatusCode(status, new { code, traceId = HttpContext.TraceIdentifier });
         }
     }

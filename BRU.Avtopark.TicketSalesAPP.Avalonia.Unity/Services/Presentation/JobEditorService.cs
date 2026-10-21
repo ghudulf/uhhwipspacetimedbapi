@@ -58,7 +58,7 @@ public sealed class JobEditorService(ControlDialogHost host)
                 if (closed.IsCancellationRequested) return;
                 var code = exception is ApplicationCommandException failure ? failure.Code : "commit_outcome_unknown";
                 Serilog.Log.Warning("Job editor operation {OperationId}: {Code}", operationId, code);
-                blocked = code is not ("validation_failed" or "forbidden");
+                blocked = BlocksRetry(original, code);
                 reconcile.IsVisible = code == "commit_outcome_unknown";
                 reload.IsVisible = original != null && code == "conflict";
                 error.Text = code == "conflict" ? "Данные изменились или изменение отклонено. Черновик сохранён; можно загрузить актуальные данные."
@@ -113,4 +113,6 @@ public sealed class JobEditorService(ControlDialogHost host)
         try { await host.ShowAsync(original == null ? "Добавить должность" : "Редактировать должность", content, closed.Token, () => !inFlight); return committed; }
         finally { ended = true; closed.Cancel(); api.OnAuthTokenChanged -= SessionChanged; }
     }
+    private static bool BlocksRetry(JobRow? original, string code) =>
+        code is not ("validation_failed" or "forbidden") && !(original == null && code == "conflict");
 }

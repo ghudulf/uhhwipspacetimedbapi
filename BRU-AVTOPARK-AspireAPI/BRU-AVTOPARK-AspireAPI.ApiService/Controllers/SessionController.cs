@@ -19,6 +19,11 @@ public sealed class SessionController(BRU_AVTOPARK_AspireAPI.ApiService.Applicat
                 System.Text.Json.JsonSerializer.SerializeToElement(new BRU.Avtopark.Contracts.EmptyRequest()), null, HttpContext.RequestAborted);
             return new JsonResult(access, BRU.Avtopark.Contracts.ApiProtocol.Json);
         }
-        catch (BRU_AVTOPARK_AspireAPI.ApiService.Application.OperationException ex) when (ex.Code == "forbidden") { return StatusCode(403); }
+        catch (BRU_AVTOPARK_AspireAPI.ApiService.Application.OperationException ex)
+        {
+            return StatusCode(ex.Code switch { "forbidden" => 403, "not_found" or "unsupported_operation" => 404, "database_unavailable" => 503, "timeout" => 504, _ => 400 }, new { code = ex.Code });
+        }
+        catch (TicketSalesApp.Services.Interfaces.DatabaseUnavailableException) { return StatusCode(503, new { code = "database_unavailable" }); }
+        catch (TimeoutException) { return StatusCode(504, new { code = "timeout" }); }
     }
 }

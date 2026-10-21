@@ -85,3 +85,13 @@ foreach (var selected in new[] { "https://other.invalid/api/", "http://example.i
     catch (ArgumentException) { }
 }
 Console.WriteLine("PASS native Windows endpoints preserve proxy prefixes and enforce explicit trusted origin");
+
+var oversized = new System.Text.Json.Nodes.JsonArray();
+for (var i = 0; i < 100_001; i++) oversized.Add(i);
+try { BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Serialization.CollectionPayload.ReadArray(oversized); throw new Exception("oversized indexing accepted"); }
+catch (System.Text.Json.JsonException) { }
+System.Text.Json.Nodes.JsonNode deep = new System.Text.Json.Nodes.JsonArray();
+for (var i = 0; i < 66; i++) deep = new System.Text.Json.Nodes.JsonArray(deep);
+try { BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Serialization.CollectionPayload.ReadArray(deep); throw new Exception("deep indexing accepted"); }
+catch (System.Text.Json.JsonException) { }
+Console.WriteLine("PASS collection indexing enforces node and depth budgets before reference expansion");

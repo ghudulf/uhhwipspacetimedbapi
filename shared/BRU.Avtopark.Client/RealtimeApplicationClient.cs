@@ -31,6 +31,22 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
     private long _generation;
     private int _disposed;
     private int _connected;
+    private long _countedRequests;
+    public long CountedRequestsSent => Interlocked.Read(ref _countedRequests);
+    public int OutstandingRequests => _pending.Count;
+    public bool TryBeginRotation()
+    {
+        var reserved = 0;
+        while (reserved < ApiProtocol.MaxOutstanding && _slots.Wait(0)) reserved++;
+        if (reserved != ApiProtocol.MaxOutstanding)
+        {
+            if (reserved > 0) _slots.Release(reserved);
+            return false;
+        }
+        // Hold all slots until disposal: callers that raced the connected check cannot dispatch.
+        Volatile.Write(ref _connected, 0);
+        return true;
+    }
     private HashSet<string> _operations = new(StringComparer.Ordinal);
     private HashSet<string> _mutations = new(StringComparer.Ordinal);
     public bool IsConnected => Volatile.Read(ref _connected) == 1 && !_lifetime.IsCancellationRequested && _socket.State == WebSocketState.Open;
@@ -65,7 +81,11 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
         catch { _lifetime.Cancel(); _socket.Abort(); throw; }
     }
 
-    public async Task<TResponse?> CallAsync<TRequest, TResponse>(string operation, TRequest payload, string? operationId, CancellationToken cancellationToken)
+    public Task<TResponse?> CallAsync<TRequest, TResponse>(string operation, TRequest payload, string? operationId, CancellationToken cancellationToken) =>
+        CallCoreAsync<TRequest, TResponse>(operation, payload, operationId, cancellationToken, null);
+
+    private async Task<TResponse?> CallCoreAsync<TRequest, TResponse>(string operation, TRequest payload, string? operationId,
+        CancellationToken cancellationToken, Action? onDispatch)
     {
         if (!IsConnected || !_operations.Contains(operation)) throw new OperationNotDispatchedException(operation);
         if (!await _slots.WaitAsync(0, cancellationToken)) throw new OperationNotDispatchedException(operation);
@@ -78,6 +98,7 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
         var outcome = "not_dispatched";
         try
         {
+            if (!IsConnected) throw new OperationNotDispatchedException(operation);
             if (mutation && !Guid.TryParseExact(operationId, "N", out _)) throw new ArgumentException("A stable mutation operation ID is required.", nameof(operationId));
             var command = new CommandEnvelope(requestId, operation, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), operationId);
             var bytes = JsonSerializer.SerializeToUtf8Bytes(command, ApiProtocol.Json);
@@ -89,7 +110,10 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             try
             {
                 deadline.Token.ThrowIfCancellationRequested();
+                if (!IsConnected) throw new OperationNotDispatchedException(operation);
                 dispatched = true; // A partially written frame is also uncertain.
+                onDispatch?.Invoke();
+                if (operation is not ("ping" or "capabilities")) Interlocked.Increment(ref _countedRequests);
                 await _socket.SendAsync(bytes, WebSocketMessageType.Text, true, deadline.Token);
                 frameCompleted = true;
             }
@@ -99,7 +123,7 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             if (!result.Success) throw new ApplicationCommandException(result.Code ?? "internal_error", result.TraceId);
             return result.Data is { } data ? data.Deserialize<TResponse>(ApiProtocol.Json) : default;
         }
-        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
+        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or ObjectDisposedException)
         {
             if (dispatched)
             {
@@ -138,6 +162,7 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             try
             {
                 var command = new CommandEnvelope(Guid.NewGuid().ToString("N"), "cancel", JsonSerializer.SerializeToElement(new CancelCommand(requestId), ApiProtocol.Json));
+                Interlocked.Increment(ref _countedRequests);
                 await _socket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(command, ApiProtocol.Json), WebSocketMessageType.Text, true, deadline.Token);
             }
             finally { _send.Release(); }

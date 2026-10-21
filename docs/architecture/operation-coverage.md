@@ -1,5 +1,7 @@
 # Application operation coverage
 
+Current adapters normalize caller GUID mutation IDs and echo effective HTTP keys in `Operation-Id`; v1 realtime mutations require stable operation/request IDs. V2 ping/capabilities are excluded from counted-request retention, and native transports rotate between operations at 9,000 counted requests. The additive module upgrade includes owner-only `EnsureDefaultPermissions` and trusted-API-only, credential-reverifying `RecordAuthenticationFailure`; see the migration ledger before deploying API/module bindings together.
+
 Baseline: PR #23 head `e35e483d6a14a1c855ee5aefcc65a69e8bfcdeb4`. This inventory is a work ledger; a listed endpoint is not a claim of v2 support. Existing HTTP, resource sockets and auth sockets stay available.
 
 | Controller | Baseline line | HTTP attribute | Coverage |

@@ -71,6 +71,7 @@ await RealtimeTests.RunAsync();
 ReportTests.Run();
 await SharedClientTests.RunAsync();
 await FleetOperationTests.RunAsync();
+await ReviewRegressionTests.RunAsync();
 
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 

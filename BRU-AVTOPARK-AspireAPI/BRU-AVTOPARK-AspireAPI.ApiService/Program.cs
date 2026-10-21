@@ -1350,7 +1350,6 @@ _ = Task.Run(async () =>
                     var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
                     if (!verifyExists) throw new InvalidOperationException("Committed default client could not be read.");
                     logger.LogInformation("Default desktop client persistence confirmed after committed store operation");
-
                 }
                 else
                 {
@@ -1390,7 +1389,6 @@ _ = Task.Run(async () =>
                     logger.LogInformation("Successfully updated default desktop client with correct scope permissions");
                     
                     logger.LogInformation("Default client update committed through the database coordinator");
-
                 }
                 else
                 {

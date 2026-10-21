@@ -61,6 +61,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("jobs.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("jobs", cancellationToken), "jobs.view", cancellationToken),
@@ -165,7 +170,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "create", success };
 
             if (success)
@@ -219,7 +224,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
             var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var entity = await _employeeService.GetJobByIdAsync(id);
             var result = new { operation = "update", success, entity };
 
@@ -271,7 +276,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!await HasPermissionAsync("jobs.delete")) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _employeeService.DeleteJobAsync(id,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "delete", success, deletedId = id };
 
             if (success)

@@ -1,5 +1,9 @@
 # Database bootstrap without manual password hashes
 
+For an existing installation upgraded to the additive permission/index/reducer module, call owner-only `EnsureDefaultPermissions` once after publication. It is safe to repeat: missing default permissions and Administrator grants are inserted without removing custom grants or changing account/business IDs. Fresh initialization already performs this step. Use the deployment-owner connection, not an API or application-administrator credential.
+
+Password failures remain rejected by `AuthenticateUserChecked`; the trusted API separately commits a best-effort `RecordAuthenticationFailure` audit after independently re-verifying the failed credentials. Valid credentials cannot be used to forge failures. No credential values belong in operational logs. The inactive `guest` record is only a demo seller, has no credential and cannot be claimed.
+
 Publish the module first. Then run the bootstrap tool with the **database deployment owner's** credential. It creates the API identity through a real first connection, saves that identity's token, and asks the owner connection to provision it. The running API never needs the owner's token.
 
 ```bash

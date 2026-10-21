@@ -79,6 +79,11 @@ using Microsoft.AspNetCore.Authorization;
                     return;
                 }
 
+                if (!await IsAdminAsync() && !await HasPermissionAsync("sales.view"))
+                {
+                    Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
                 await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                     HttpContext,
                     AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("ticket-sales", cancellationToken), "sales.view", cancellationToken),
@@ -136,7 +141,7 @@ using Microsoft.AspNetCore.Authorization;
                 var model = request.Payload?.Deserialize<CreateTicketSaleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? throw new InvalidOperationException("payload is required for create");
 
-                var created = await ExecuteCreateSale(model, request.OperationId ?? request.RequestId);
+                var created = await ExecuteCreateSale(model, ApplicationOperationId(request));
                 var result = new { operation = "create", success = created is not null, entity = created };
 
                 if (created is not null)
@@ -207,10 +212,12 @@ using Microsoft.AspNetCore.Authorization;
                 var model = request.Payload?.Deserialize<UpdateTicketSaleModel>(new JsonSerializerOptions(JsonSerializerDefaults.Web))
                     ?? throw new ArgumentException("payload is required");
                 var existing = await _ticketSalesService.GetSaleByIdAsync(id) ?? throw new KeyNotFoundException("Sale not found");
+                if (model.SaleDate.HasValue) throw new ArgumentException("Sale date cannot be changed", "SaleDate");
                 if (model.TicketId.HasValue && model.TicketId != existing.TicketId) throw new ArgumentException("Original ticket cannot be changed");
                 await ExecuteSaleOperationAsync("sales.update", await ResolveActorAsync(),
                     new UpdateSaleCommand(id, request.ExpectedRevision ?? model.ExpectedRevision, model.TicketSoldToUser, model.TicketSoldToUserPhone),
-                    request.OperationId ?? request.RequestId, cancellationToken);
+                    ApplicationOperationId(request), cancellationToken);
+                await PublishSaleMutationAsync("update", id);
                 return new { operation = "update", success = true, entity = await _spacetimeService.ReadAsync(c => BuildSaleById(c, id), cancellationToken) };
             }
 
@@ -218,8 +225,22 @@ using Microsoft.AspNetCore.Authorization;
             {
                 var id = request.Id ?? throw new ArgumentException("id is required");
                 await ExecuteSaleOperationAsync("sales.delete", await ResolveActorAsync(), new DeleteSaleCommand(id, request.ExpectedRevision),
-                    request.OperationId ?? request.RequestId, cancellationToken);
+                    ApplicationOperationId(request), cancellationToken);
+                await PublishSaleMutationAsync("delete", id);
                 return new { operation = "delete", success = true, id };
+            }
+
+            private async Task PublishSaleMutationAsync(string operation, uint id)
+            {
+                try
+                {
+                    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent($"ticket-sale.{(operation == "update" ? "updated" : "deleted")}",
+                        "ticket-sales", operation == "update" ? "PUT" : "DELETE", 200, DateTimeOffset.UtcNow,
+                        HttpContext.TraceIdentifier, await GetUserIdAsync(), await GetUserNameAsync(), null, GetClientIp(),
+                        new Dictionary<string, string> { ["operation"] = operation, ["saleId"] = id.ToString() }), deadline.Token);
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to publish committed sale mutation"); }
             }
 
             /// <summary>
@@ -244,7 +265,7 @@ using Microsoft.AspNetCore.Authorization;
                 var actor = await ResolveActorAsync();
                 var receipt = await ExecuteSaleOperationAsync("sales.create", actor,
                     new CreateSaleCommand((uint)model.TicketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? "", "POS"),
-                    operationId ?? Request.Headers["Idempotency-Key"].FirstOrDefault(), HttpContext.RequestAborted);
+                    operationId ?? ApplicationOperationId(), HttpContext.RequestAborted);
                 return await _spacetimeService.ReadAsync(c => c.Db.Sale.SaleId.Find(receipt.EntityId) is { } row
                     ? SalePresentation.Map(c, row) : null, HttpContext.RequestAborted);
             }
@@ -253,7 +274,7 @@ using Microsoft.AspNetCore.Authorization;
             {
                 var operations = HttpContext.RequestServices.GetRequiredService<ApplicationOperations>();
                 return (MutationResult)(await operations.ExecuteAsync(name, actor, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json),
-                    operationId ?? Guid.NewGuid().ToString("N"), ct))!;
+                    operationId ?? ApplicationOperationId(), ct))!;
             }
 
             /// <summary>
@@ -305,6 +326,7 @@ using Microsoft.AspNetCore.Authorization;
             {
                 if (id <= 0 || id > uint.MaxValue) return BadRequest(new { message = "Invalid sale ID" });
                 if (!await HasPermissionAsync("sales.edit")) return Forbid();
+                if (model.SaleDate.HasValue) return BadRequest(new { code = "validation_failed", message = "Sale date cannot be changed" });
                 var sale = await _ticketSalesService.GetSaleByIdAsync((uint)id);
                 if (sale == null) return NotFound();
                 if (model.TicketId.HasValue && model.TicketId != sale.TicketId)
@@ -313,7 +335,7 @@ using Microsoft.AspNetCore.Authorization;
                 {
                     await ExecuteSaleOperationAsync("sales.update", await ResolveActorAsync(),
                         new UpdateSaleCommand((uint)id, model.ExpectedRevision, model.TicketSoldToUser, model.TicketSoldToUserPhone),
-                        Request.Headers["Idempotency-Key"].FirstOrDefault(), HttpContext.RequestAborted);
+                        ApplicationOperationId(), HttpContext.RequestAborted);
                     return NoContent();
                 }
                 catch (OperationException ex) { return StatusCode(ex.Code == "forbidden" ? 403 : 400, new { code = ex.Code }); }
@@ -330,7 +352,7 @@ using Microsoft.AspNetCore.Authorization;
                 try
                 {
                     await ExecuteSaleOperationAsync("sales.delete", await ResolveActorAsync(), new DeleteSaleCommand((uint)id),
-                        Request.Headers["Idempotency-Key"].FirstOrDefault(), HttpContext.RequestAborted);
+                        ApplicationOperationId(), HttpContext.RequestAborted);
                     return NoContent();
                 }
                 catch (OperationException ex) { return StatusCode(ex.Code == "forbidden" ? 403 : 400, new { code = ex.Code }); }
@@ -405,7 +427,7 @@ using Microsoft.AspNetCore.Authorization;
                     .OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).Select(s => SalePresentation.Map(c, s))
                     .Where(s => (!start.HasValue || s.SaleDate >= start) && (!end.HasValue || s.SaleDate <= end))
                     .Where(s => string.IsNullOrEmpty(soldToUser) || s.TicketSoldToUser.Contains(soldToUser, StringComparison.OrdinalIgnoreCase))
-                    .Where(s => (!minPrice.HasValue || s.RecordedAmount >= minPrice) && (!maxPrice.HasValue || s.RecordedAmount <= maxPrice))
+                    .Where(s => SalePresentation.MatchesTicketPrice(s, minPrice, maxPrice))
                     .ToArray(), HttpContext.RequestAborted);
                 return Ok(rows);
             }
@@ -427,4 +449,4 @@ using Microsoft.AspNetCore.Authorization;
             public string? TicketSoldToUser { get; set; } = "ФИЗ.ПРОДАЖА";
             public string? TicketSoldToUserPhone { get; set; }
         }
-    } 
+    }

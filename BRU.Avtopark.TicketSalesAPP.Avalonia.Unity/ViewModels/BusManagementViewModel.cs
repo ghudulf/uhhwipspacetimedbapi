@@ -79,8 +79,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
     public partial class BusManagementViewModel : ReactiveObject
     {
-
-
         // Store the original full list for filtering
         private List<BusDisplayModel> _allBuses = new();
 
@@ -649,13 +647,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private static bool CanRetryMutation(Exception ex) => ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "validation_failed" or "forbidden" };
         private async Task ShowMutationFailureAsync(Exception ex)
         {
+            ApplyMutationFailure(ex);
+            await MessageBoxManager.GetMessageBoxStandard("Изменение автобуса", ErrorMessage, ButtonEnum.Ok, Icon.Warning).ShowAsync();
+        }
+        private void ApplyMutationFailure(Exception ex)
+        {
             Log.Warning("Fleet mutation failed: {ErrorType}, {Code}", ex.GetType().Name,
                 ex is BRU.Avtopark.Client.ApplicationCommandException command ? command.Code : "transport_failure");
             ErrorMessage = ex is BRU.Avtopark.Client.ApplicationCommandException { Code: "conflict" }
                 ? "Изменение отклонено: данные изменились или есть связанные записи. Черновик сохранён в окне. Обновите список и сравните данные перед повтором."
                 : "Изменение не подтверждено. Черновик сохранён в окне. Проверьте результат через обновление списка перед повтором.";
-            HasError = true;
-            await MessageBoxManager.GetMessageBoxStandard("Изменение автобуса", ErrorMessage, ButtonEnum.Ok, Icon.Warning).ShowAsync();
+            HasError = ex is not BRU.Avtopark.Client.ApplicationCommandException { Code: "validation_failed" };
         }
 
         private void OnSearchTextChanged(string value)

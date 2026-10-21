@@ -60,8 +60,8 @@ public partial class CentralViewWindowViewModel : ObservableObject
     public bool CanShowMaintenanceManagement => CanAccess("maintenance.view");
     public bool CanShowTicketManagement => CanAccess("tickets.view");
     public bool CanShowSalesManagement => CanAccess("sales.view");
-    public bool CanShowSalesStatistics => CanAccess("reports.view");
-    public bool CanShowIncomeReport => CanAccess("reports.view");
+    public bool CanShowSalesStatistics => CanAccess("sales.view");
+    public bool CanShowIncomeReport => CanAccess("sales.view");
     public bool CanShowEmployeeManagement => CanAccess("employees.view");
     public bool CanShowJobManagement => CanAccess("jobs.view");
     public bool CanShowUserManagement => CanAccess("users.view");
@@ -166,8 +166,8 @@ public partial class CentralViewWindowViewModel : ObservableObject
             nameof(MaintenanceManagementToolWindow) => "maintenance.view",
             nameof(TicketManagementToolWindow) => "tickets.view",
             nameof(SalesManagementToolWindow) => "sales.view",
-            nameof(SalesStatisticsToolWindow) => "reports.view",
-            nameof(IncomeReportToolWindow) => "reports.view",
+            nameof(SalesStatisticsToolWindow) => "sales.view",
+            nameof(IncomeReportToolWindow) => "sales.view",
             nameof(EmployeeManagementToolWindow) => "employees.view",
             nameof(JobManagementToolWindow) => "jobs.view",
             nameof(UserManagementToolWindow) => "users.view",

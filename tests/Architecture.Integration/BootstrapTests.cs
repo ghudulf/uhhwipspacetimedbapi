@@ -52,7 +52,21 @@ internal static class BootstrapTests
             await UntilAsync(async () => await api.ReadAsync(c => c.Db.UserProfile.Login.Find("synthetic-owner") != null), deadline.Token);
             var authentication = new AuthenticationService(api, new RoleService(api, NullLogger<RoleService>.Instance), NullLogger<AuthenticationService>.Instance);
             Assert((await authentication.AuthenticateAsync("synthetic-owner", password))?.UserId == ownerIdentity, "initial password cannot log in");
+            var failures = 0;
+            void ObserveFailure(EventContext _, AuthenticationEvent evt)
+            {
+                if (evt.EventType == "Failed") Interlocked.Increment(ref failures);
+            }
+            await api.ReadAsync(c => { c.Db.AuthenticationEvent.OnInsert += ObserveFailure; return true; });
             Assert(await authentication.AuthenticateAsync("synthetic-owner", "incorrect-password") == null, "incorrect password returned authenticated profile");
+            await Until(() => Volatile.Read(ref failures) > 0, deadline.Token);
+            var observedFailures = Volatile.Read(ref failures);
+            await Reject(() => api.ExecuteReducerAsync(new Reducer.RecordAuthenticationFailure("synthetic-owner", password), _ => true));
+            Assert(Volatile.Read(ref failures) == observedFailures, "valid credentials forged a failure event");
+            await api.ReadAsync(c => { c.Db.AuthenticationEvent.OnInsert -= ObserveFailure; return true; });
+            Assert((await authentication.AuthenticateAsync("synthetic-owner", password))?.UserId == ownerIdentity,
+                "correct password stopped working after a failed attempt");
+            Console.WriteLine("PASS checked authentication rejects bad passwords while committing independently reverified failure audits; valid credentials cannot forge failures");
             Assert(await authentication.AuthenticateDirectQRAsync("synthetic-owner", "unbound-proof") == null, "unbound QR proof returned authenticated profile");
             await Reject(() => owner.ExecuteReducerAsync(new Reducer.BootstrapInstallation(apiIdentity.Value, "synthetic-owner", "replacement-password-value"), _ => true));
             Assert(await owner.ReadAsync(c => c.Db.UserProfile.UserId.Find(ownerIdentity)!.PasswordHash) == provisioned.PasswordHash, "bootstrap overwrote existing password");

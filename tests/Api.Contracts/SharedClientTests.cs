@@ -74,6 +74,10 @@ internal static class SharedClientTests
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             await using var client = new RealtimeApplicationClient();
             await client.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+            var counted = client.CountedRequestsSent;
+            await client.CallAsync<EmptyRequest, System.Text.Json.JsonElement>("ping", new(), null, deadline.Token);
+            await client.CallAsync<EmptyRequest, Capabilities>("capabilities", new(), null, deadline.Token);
+            Assert(client.CountedRequestsSent == counted, "heartbeat/capabilities consumed counted request budget");
             try
             {
                 await client.CallAsync<SubscriptionRequest, SubscriptionSnapshot>("subscriptions.open", new(Guid.NewGuid().ToString("N"), "sales.create", System.Text.Json.JsonSerializer.SerializeToElement(new EmptyRequest())), null, deadline.Token);
@@ -114,12 +118,35 @@ internal static class SharedClientTests
             try { await client.CallAsync<EmptyRequest, AccessSnapshot>("not.registered", new(), null, deadline.Token); throw new Exception("unsupported operation dispatched"); }
             catch (OperationNotDispatchedException) { }
             slowRead = true;
+            using var acquisitionGate = new SemaphoreSlim(1, 1);
+            async Task<AccessSnapshot?> CoordinatorStyleReadAsync(CancellationToken ct)
+            {
+                await acquisitionGate.WaitAsync(ct);
+                RealtimeApplicationClient acquired;
+                try { acquired = client; }
+                finally { acquisitionGate.Release(); }
+                return await acquired.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, ct);
+            }
             using (var cancel = new CancellationTokenSource())
             {
-                var reading = client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, cancel.Token);
+                var beforeReads = client.CountedRequestsSent;
+                var reading = CoordinatorStyleReadAsync(cancel.Token);
                 await readEntered.Task.WaitAsync(deadline.Token);
+                Assert(!client.TryBeginRotation() && client.IsConnected, "rotation interrupted an in-flight operation");
+                var secondRead = CoordinatorStyleReadAsync(cancel.Token);
+                while (client.CountedRequestsSent < beforeReads + 2) await Task.Delay(1, deadline.Token);
+                Assert(!reading.IsCompleted && client.OutstandingRequests >= 2, "slow read serialized a second coordinator-style call before dispatch");
+                var occupied = new[] { secondRead }.Concat(Enumerable.Range(0, ApiProtocol.MaxOutstanding - 2)
+                    .Select(_ => client.CallAsync<EmptyRequest, AccessSnapshot>("session.access", new(), null, cancel.Token))).ToArray();
+                var close = (Task)typeof(RealtimeApplicationClient).GetMethod("CloseSubscriptionAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .Invoke(client, [Guid.NewGuid().ToString("N")])!;
+                await Task.Delay(25, deadline.Token);
+                Assert(client.IsConnected, "pre-dispatch subscription-close slot exhaustion aborted shared requests");
                 cancel.Cancel();
                 try { await reading; throw new Exception("Cancelled client read completed"); } catch (OperationCanceledException) { }
+                foreach (var pending in occupied)
+                    try { await pending; } catch (OperationCanceledException) { } catch (ApplicationCommandException ex) when (ex.Code == "cancelled") { }
+                await close.WaitAsync(deadline.Token);
             }
             slowRead = false;
             Assert(client.IsConnected, "read cancellation destroyed the shared transport");
@@ -131,13 +158,44 @@ internal static class SharedClientTests
             valid = false;
             await ExpectCode(client, "session_expired", deadline.Token);
             await ExpectCode(client, "unauthenticated", deadline.Token);
+            var acquiredOldClient = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var resumeOldCall = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            async Task<MutationResult?> CallRacingRotationAsync()
+            {
+                var acquired = client;
+                acquiredOldClient.SetResult();
+                await resumeOldCall.Task;
+                return await acquired.CallAsync<CreateSaleCommand, MutationResult>("sales.create", new(1, "synthetic", ""), Guid.NewGuid().ToString("N"), deadline.Token);
+            }
+            var racingRotation = CallRacingRotationAsync();
+            await acquiredOldClient.Task.WaitAsync(deadline.Token);
+            Assert(client.TryBeginRotation() && !client.IsConnected, "quiescent connection could not rotate between operations");
+            var beforeRotationCall = client.CountedRequestsSent;
+            resumeOldCall.SetResult();
+            try { await racingRotation; throw new Exception("old-client mutation dispatched during rotation"); }
+            catch (OperationNotDispatchedException) { }
             await client.DisposeAsync();
+            try { await client.CallAsync<CreateSaleCommand, MutationResult>("sales.create", new(1, "synthetic", ""), Guid.NewGuid().ToString("N"), deadline.Token); throw new Exception("disposed-client mutation dispatched"); }
+            catch (OperationNotDispatchedException) { }
+            Assert(client.CountedRequestsSent == beforeRotationCall, "rotation-racing mutation consumed a dispatched request");
+            Console.WriteLine("PASS coordinator-style calls dispatch concurrently; rotation/disposal races remain provably pre-dispatch");
             valid = true;
+            await using (var disposing = new RealtimeApplicationClient())
+            {
+                await disposing.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
+                var slots = (SemaphoreSlim)typeof(RealtimeApplicationClient).GetField("_slots", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(disposing)!;
+                slots.Dispose();
+                var closeDuringDisposal = (Task)typeof(RealtimeApplicationClient).GetMethod("CloseSubscriptionAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .Invoke(disposing, [Guid.NewGuid().ToString("N")])!;
+                await closeDuringDisposal.WaitAsync(deadline.Token);
+                Assert(closeDuringDisposal.IsCompletedSuccessfully && disposing.IsConnected, "undispatched disposed-slot close faulted or aborted the shared socket");
+            }
+            Console.WriteLine("PASS background subscription close observes disposal exceptions without aborting an undispatched lease release");
             await using var interrupted = new RealtimeApplicationClient();
             await interrupted.ConnectAsync(new Uri(origin + "/api/"), "synthetic-client-token-proof", deadline.Token);
             try
             {
-                await interrupted.CallAsync<CreateSaleCommand, MutationResult>("sales.create", new(1, "synthetic", ""), Guid.NewGuid().ToString("N"), deadline.Token);
+                await interrupted.CallAsync<CreateSaleCommand, MutationResult>("sales.create", new(1, "synthetic", "123"), Guid.NewGuid().ToString("N"), deadline.Token);
                 throw new Exception("Disconnected mutation reported success");
             }
             catch (ApplicationCommandException ex) when (ex.Code == "commit_outcome_unknown") { }

@@ -102,6 +102,27 @@ Dispatcher.UIThread.Post(async () =>
         Assert(watchToken.IsCancellationRequested && !liveBuses.CanEdit, "deactivation did not cancel live subscription");
         Console.WriteLine("PASS live fleet synchronization gating, stale-row retention, stable selection and subscription disposal");
         await CatalogPresentationTests.RunAsync(stop.Token);
+        var navigation = new CentralViewWindowViewModel();
+        var applyAccess = typeof(CentralViewWindowViewModel).GetMethod("ApplyAccess", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        applyAccess.Invoke(navigation, [new SessionAccess(true, false, [], ["sales.view"]), true]);
+        Assert(navigation.CanShowIncomeReport && navigation.CanShowSalesStatistics, "report screens do not honor sales.view");
+        applyAccess.Invoke(navigation, [new SessionAccess(true, false, [], ["reports.view"]), true]);
+        Assert(!navigation.CanShowIncomeReport && !navigation.CanShowSalesStatistics, "reports.view incorrectly grants reports.sales");
+        var failureState = typeof(BusManagementViewModel).GetMethod("ApplyMutationFailure", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        await buses.ActivateAsync();
+        failureState.Invoke(buses, [new BRU.Avtopark.Client.ApplicationCommandException("validation_failed")]);
+        Assert(!buses.HasError && buses.CanMutate, "validation failure blocked corrected fleet retry");
+        failureState.Invoke(buses, [new BRU.Avtopark.Client.ApplicationCommandException("commit_outcome_unknown")]);
+        Assert(buses.HasError && !buses.CanMutate, "uncertain fleet result did not block unsafe retry");
+        buses.Deactivate();
+        var recoverable = typeof(ApplicationClientCoordinator).GetMethod("Recoverable", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        Assert((bool)recoverable.Invoke(null, [new BRU.Avtopark.Client.ApplicationCommandException("cancelled"), CancellationToken.None])!, "server cancellation terminated subscription recovery");
+        Assert(!(bool)recoverable.Invoke(null, [new BRU.Avtopark.Client.ApplicationCommandException("cancelled"), new CancellationToken(true)])!, "caller cancellation was retried");
+        var saleJson = System.Text.Json.Nodes.JsonNode.Parse("""{"saleId":1,"saleDate":"2026-10-20T12:00:00Z","ticketId":1}""")!.AsObject();
+        var parsedSale = BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers.BusParsingExtensions.ParseSale(saleJson);
+        Assert(parsedSale?.SaleDate == (ulong)DateTimeOffset.Parse("2026-10-20T12:00:00Z").ToUnixTimeMilliseconds(), "ISO sale date became zero");
+        Assert((string)BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters.UnixMillisecondsConverter.Instance.Convert(0UL, typeof(string), null, System.Globalization.CultureInfo.InvariantCulture) == "—", "missing date rendered as 1970");
+        Console.WriteLine("PASS report permission guards, correctable fleet validation, unknown-result blocking, subscription cancellation recovery and ISO/missing sale dates");
         finished = true;
     }
     catch (Exception ex) { failure = ex; }

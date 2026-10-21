@@ -60,6 +60,20 @@ internal static class CatalogPresentationTests
         await activation;
         Assert(query.Jobs[0].JobTitle == "New query", "late job query overwrote current search");
         query.Deactivate();
+        var uncertainField = typeof(JobManagementViewModel).GetField("_uncertainDeletes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var retryable = new JobManagementViewModel((_, _) => Task.FromResult(new CatalogPageResult<JobRow>([row], 1, 100, 1, true, true, true)),
+            confirmDelete: _ => Task.FromResult(false));
+        await retryable.ActivateAsync();
+        retryable.SelectedJob = retryable.Jobs[0];
+        var uncertain = (HashSet<uint>)uncertainField.GetValue(retryable)!;
+        uncertain.Add(row.JobId);
+        Assert(!retryable.DeleteCommand.CanExecute(null), "uncertain delete was not blocked");
+        await retryable.LoadDataCommand.ExecuteAsync(null);
+        Assert(uncertain.Count == 0 && retryable.DeleteCommand.CanExecute(null), "fresh read retained uncertain delete block for existing row");
+        retryable.Deactivate();
+        var policy = typeof(BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation.JobEditorService)
+            .GetMethod("BlocksRetry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        Assert(!(bool)policy.Invoke(null, [null, "conflict"])! && (bool)policy.Invoke(null, [row, "conflict"])!, "create conflicts became uncorrectable or stale edits became retryable");
         Console.WriteLine("PASS catalog activation, permission gating, stable live selection, nullable counts, revocation, stale state, superseded search and disposal");
     }
     private static async Task Until(Func<bool> test, CancellationToken ct) { while (!test()) await Task.Delay(1, ct); }

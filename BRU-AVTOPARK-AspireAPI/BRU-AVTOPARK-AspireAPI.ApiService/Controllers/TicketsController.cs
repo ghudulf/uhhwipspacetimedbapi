@@ -68,6 +68,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("tickets.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("tickets", cancellationToken), "tickets.view", cancellationToken),
@@ -480,6 +485,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Ticket>> CreateTicket([FromBody] CreateTicketModel model)
         {
+            if (!double.IsFinite(model.TicketPrice) || model.TicketPrice < 0 || model.TicketPrice > 1e12)
+                return BadRequest(new { code = "validation_failed", message = "Ticket price must be between 0 and 1e12." });
             _logger.LogInformation("POST /api/Tickets - Create ticket request received with data: {@TicketModel}", model);
             
             if (!IsAdmin())
@@ -960,4 +967,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public string? PaymentMethod { get; set; }
         public bool? IsActive { get; set; }
     }
-} 
+}

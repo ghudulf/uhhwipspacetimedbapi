@@ -175,23 +175,16 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             _logger.LogDebug("[AuthWS:{ConnId}] Received: {Type} (requestId={ReqId})",
                 connectionId, SanitizeLogValue(messageType), SanitizeLogValue(requestId));
 
-            if (messageType is "auth:validate" or "auth:login" or "auth:refresh")
-            {
-                // Existing pollers capture the previous principal; they cannot survive a session transition.
-                foreach (var subscription in qrSubscriptions.Values) subscription.Cancel();
-                qrSubscriptions.Clear();
-            }
-
             switch (messageType?.ToLowerInvariant())
             {
                 case "auth:validate":
                     await HandleValidateAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
                 case "auth:refresh":
                     await HandleRefreshAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
                 case "auth:qr-status":
@@ -206,7 +199,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
                 case "auth:login":
                     await HandleLoginAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
                 case "auth:ping":
@@ -231,6 +224,12 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
     // ── auth:login ────────────────────────────────────────────────────────────
 
+    private static void CancelQrSubscriptions(ConcurrentDictionary<string, CancellationTokenSource> subscriptions)
+    {
+        foreach (var subscription in subscriptions.Values) subscription.Cancel();
+        subscriptions.Clear();
+    }
+
     private async Task HandleLoginAsync(
         WebSocket webSocket,
         JsonElement root,
@@ -238,6 +237,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         SemaphoreSlim sendLock,
         string connectionId,
         WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
@@ -281,7 +281,10 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
         // Upgrade the connection's auth state with the new claims
         if (result.Claims != null)
+        {
+            CancelQrSubscriptions(qrSubscriptions);
             claimsHolder.Claims = result.Claims;
+        }
 
         await PublishAuthEventAsync("auth.login.websocket",
             result.User?.Id.ToString(),
@@ -317,6 +320,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         SemaphoreSlim sendLock,
         string connectionId,
         WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
@@ -338,6 +342,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
         if (!string.IsNullOrWhiteSpace(inlineToken))
         {
+            CancelQrSubscriptions(qrSubscriptions);
             claimsHolder.Claims = claims;
             _logger.LogInformation("[AuthWS:{ConnId}] Connection upgraded to authenticated via auth:validate", connectionId);
         }
@@ -360,6 +365,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         SemaphoreSlim sendLock,
         string connectionId,
         WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
@@ -383,10 +389,10 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             : await _tokenValidator.ValidateTokenDirectAsync(result.Token, cancellationToken);
         if (validatedClaims == null)
         {
-            claimsHolder.Claims = null;
             await WsSendAsync(webSocket, new { type = "auth:refreshed", requestId, success = false, error = "Refreshed token validation failed" }, sendLock, cancellationToken);
             return;
         }
+        CancelQrSubscriptions(qrSubscriptions);
         claimsHolder.Claims = validatedClaims;
         await PublishAuthEventAsync("auth.token.refreshed",
             validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,

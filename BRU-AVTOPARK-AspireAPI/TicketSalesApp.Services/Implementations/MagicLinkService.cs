@@ -108,7 +108,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Validating magic link token: {Token}", token);
+                _logger.LogInformation("Validating magic link; credentials omitted");
 
                 if (string.IsNullOrEmpty(token))
                 {
@@ -125,7 +125,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 if (magicLinkToken == null)
                 {
-                    _logger.LogWarning("Invalid or expired magic link token: {Token}", token);
+                    _logger.LogWarning("Invalid or expired magic link");
                     return (false, null, "Invalid or expired token");
                 }
                 
@@ -135,13 +135,13 @@ namespace TicketSalesApp.Services.Implementations
                 
                 if (user == null)
                 {
-                    _logger.LogWarning("User not found for magic link token: {Token}", token);
+                    _logger.LogWarning("User not found for magic link");
                     return (false, null, "User not found");
                 }
                 
                 if (!user.IsActive)
                 {
-                    _logger.LogWarning("Account is disabled for magic link token: {Token}", token);
+                    _logger.LogWarning("Account is disabled for magic link");
                     return (false, null, "Account is disabled");
                 }
 
@@ -150,7 +150,7 @@ namespace TicketSalesApp.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating magic link token: {Token}", token);
+                _logger.LogError("Error validating magic link: {ErrorType}", ex.GetType().Name);
                 return (false, null, "An error occurred while validating the magic link");
             }
         }
@@ -162,7 +162,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Marking magic link token as used: {Token}", token);
+                _logger.LogInformation("Marking magic link as used; credentials omitted");
 
                 var conn = _spacetimeService.GetConnection();
                 conn.Reducers.UseMagicLinkToken(token);
@@ -171,11 +171,10 @@ namespace TicketSalesApp.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking magic link token as used: {Token}", token);
+                _logger.LogError("Error marking magic link as used: {ErrorType}", ex.GetType().Name);
                 return false;
             }
         }
 
     }
 }
-

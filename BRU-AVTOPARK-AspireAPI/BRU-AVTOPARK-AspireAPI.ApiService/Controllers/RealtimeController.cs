@@ -1134,6 +1134,14 @@ public sealed class RealtimeController : BaseController
                 connectionId, service.GetType().Name, requestId);
 
             object? result = null;
+            Identity? actor = null;
+            string? operationId = null;
+            if (command is ("create" or "update" or "delete") && RequiresStableOperation(resource))
+            {
+                actor = await RequireApplicationActorAsync();
+                operationId = ApplicationOperationId(new BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest(command,
+                    requestId, null, null) { OperationId = root.TryGetProperty("operationId", out var operation) ? operation.GetString() : null });
+            }
             var success = true;
             int? totalCount = null;
             int? page = null;
@@ -1221,7 +1229,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "Payload required for create operation", sendLock, cancellationToken);
                         return;
                     }
-                    result = await ExecuteCreateAsync(service, resource, createPayloadEl, validatedClaims, cancellationToken);
+                    result = await ExecuteCreateAsync(service, resource, createPayloadEl, validatedClaims, actor.GetValueOrDefault(), operationId!, cancellationToken);
                     success = result != null;
                     break;
 
@@ -1237,7 +1245,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "Payload required for update operation", sendLock, cancellationToken);
                         return;
                     }
-                    result = await ExecuteUpdateAsync(service, resource, updateId.Value, updatePayloadEl, validatedClaims, cancellationToken);
+                    result = await ExecuteUpdateAsync(service, resource, updateId.Value, updatePayloadEl, validatedClaims, actor.GetValueOrDefault(), operationId!, cancellationToken);
                     success = result != null;
                     break;
 
@@ -1248,7 +1256,7 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "ID required for delete operation", sendLock, cancellationToken);
                         return;
                     }
-                    await ExecuteDeleteAsync(service, resource, deleteId.Value, validatedClaims, cancellationToken);
+                    await ExecuteDeleteAsync(service, resource, deleteId.Value, validatedClaims, actor.GetValueOrDefault(), operationId!, cancellationToken);
                     result = new { deleted = true, id = deleteId.Value };
                     break;
 
@@ -1394,43 +1402,46 @@ public sealed class RealtimeController : BaseController
         };
     }
 
-    private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
+    private static bool RequiresStableOperation(string resource) => resource.ToLowerInvariant().Replace("_", "-") is
+        "buses" or "employees" or "jobs" or "maintenance" or "routes" or "ticket-sales" or "ticketsales";
+
+    private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
         return normalizedResource switch
         {
-            "buses" => await CreateBusAsync((IBusService)service, payload, validatedClaims),
-            "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload, validatedClaims),
-            "jobs" => await CreateJobAsync((IEmployeeService)service, payload, validatedClaims),
-            "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload, validatedClaims),
+            "buses" => await CreateBusAsync((IBusService)service, payload, actor, operationId),
+            "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload, actor, operationId),
+            "jobs" => await CreateJobAsync((IEmployeeService)service, payload, actor, operationId),
+            "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload, actor, operationId),
             "permissions" => await CreatePermissionAsync((IPermissionService)service, payload, validatedClaims),
             "roles" => await CreateRoleAsync((IRoleService)service, payload, validatedClaims),
-            "routes" => await CreateRouteAsync((IRouteService)service, payload, validatedClaims),
+            "routes" => await CreateRouteAsync((IRouteService)service, payload, actor, operationId),
             "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload, validatedClaims),
             "tickets" => await CreateTicketAsync((ITicketService)service, payload, validatedClaims),
-            "ticket-sales" or "ticketsales" => await CreateSaleAsync((ITicketSalesService)service, payload, validatedClaims),
+            "ticket-sales" or "ticketsales" => await CreateSaleAsync((ITicketSalesService)service, payload, actor, operationId),
             "users" => await CreateUserAsync((IUserService)service, payload, validatedClaims),
             _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
         };
     }
 
-    private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
+    private async Task<object?> ExecuteUpdateAsync(object service, string resource, uint id, JsonElement payload, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
 
         bool success = normalizedResource switch
         {
-            "buses" => await UpdateBusAsync((IBusService)service, id, payload),
-            "employees" => await UpdateEmployeeAsync((IEmployeeService)service, id, payload),
-            "jobs" => await UpdateJobAsync((IEmployeeService)service, id, payload),
-            "maintenance" => await UpdateMaintenanceAsync((IMaintenanceService)service, id, payload),
+            "buses" => await UpdateBusAsync((IBusService)service, id, payload, actor, operationId),
+            "employees" => await UpdateEmployeeAsync((IEmployeeService)service, id, payload, actor, operationId),
+            "jobs" => await UpdateJobAsync((IEmployeeService)service, id, payload, actor, operationId),
+            "maintenance" => await UpdateMaintenanceAsync((IMaintenanceService)service, id, payload, actor, operationId),
             "permissions" => await UpdatePermissionAsync((IPermissionService)service, id, payload),
             "roles" => await UpdateRoleAsync((IRoleService)service, id, payload),
-            "routes" => await UpdateRouteAsync((IRouteService)service, id, payload),
+            "routes" => await UpdateRouteAsync((IRouteService)service, id, payload, actor, operationId),
             "route-schedules" or "routeschedules" => await UpdateRouteScheduleAsync((IRouteScheduleService)service, id, payload),
             "tickets" => await UpdateTicketAsync((ITicketService)service, id, payload),
-            "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload, validatedClaims),
+            "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload, actor, operationId),
             "users" => await UpdateUserAsync((IUserService)service, id, payload),
             _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
         };
@@ -1444,22 +1455,22 @@ public sealed class RealtimeController : BaseController
         return finalResult; // null means NotFound, which is handled by caller
     }
 
-    private async Task ExecuteDeleteAsync(object service, string resource, uint id, Dictionary<string, object>? validatedClaims, CancellationToken cancellationToken)
+    private async Task ExecuteDeleteAsync(object service, string resource, uint id, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
         bool success = normalizedResource switch
         {
-            "buses" => await ((IBusService)service).DeleteBusAsync(id),
-            "employees" => await ((IEmployeeService)service).DeleteEmployeeAsync(id),
-            "jobs" => await ((IEmployeeService)service).DeleteJobAsync(id),
-            "maintenance" => await ((IMaintenanceService)service).DeleteMaintenanceAsync(id),
+            "buses" => await ((IBusService)service).DeleteBusAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
+            "employees" => await ((IEmployeeService)service).DeleteEmployeeAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
+            "jobs" => await ((IEmployeeService)service).DeleteJobAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
+            "maintenance" => await ((IMaintenanceService)service).DeleteMaintenanceAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
             "permissions" => await ((IPermissionService)service).DeletePermissionAsync(id),
             "roles" => await ((IRoleService)service).DeleteRoleAsync(id),
-            "routes" => await ((IRouteService)service).DeleteRouteAsync(id),
+            "routes" => await ((IRouteService)service).DeleteRouteAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
             "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).DeleteScheduleAsync(id),
             "tickets" => await ((ITicketService)service).DeleteTicketAsync(id),
-            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id, ExtractIdentityFromClaims(validatedClaims), cancellationToken: cancellationToken),
+            "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id, actor, operationId, cancellationToken: cancellationToken),
             "users" => await ((IUserService)service).DeleteUserAsync(id),
             _ => throw new NotSupportedException($"Delete not supported for resource: {resource}")
         };
@@ -1504,7 +1515,7 @@ public sealed class RealtimeController : BaseController
         throw new UnauthorizedAccessException("Validated application identity is required.");
     }
 
-    private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<Bus?> CreateBusAsync(IBusService service, JsonElement payload, Identity actor, string operationId)
     {
         var model = payload.TryGetProperty("model", out var modelEl) ? modelEl.GetString() : null;
         var registrationNumber = payload.TryGetProperty("registrationNumber", out var regEl) ? regEl.GetString() : null;
@@ -1512,15 +1523,15 @@ public sealed class RealtimeController : BaseController
         if (string.IsNullOrEmpty(model))
             throw new ArgumentException("Model is required");
             
-        return await service.CreateBusAsync(model, registrationNumber);
+        return await service.CreateBusAsync(model, registrationNumber, actor, operationId, HttpContext.RequestAborted);
     }
 
-    private async Task<bool> UpdateBusAsync(IBusService service, uint id, JsonElement payload)
+    private async Task<bool> UpdateBusAsync(IBusService service, uint id, JsonElement payload, Identity actor, string operationId)
     {
         var model = payload.TryGetProperty("model", out var modelEl) ? modelEl.GetString() : null;
         var registrationNumber = payload.TryGetProperty("registrationNumber", out var regEl) ? regEl.GetString() : null;
         
-        return await service.UpdateBusAsync(id, model, registrationNumber);
+        return await service.UpdateBusAsync(id, model, registrationNumber, actor, operationId, cancellationToken: HttpContext.RequestAborted);
     }
 
     private async Task<UserProfile?> CreateUserAsync(IUserService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
@@ -1601,7 +1612,7 @@ public sealed class RealtimeController : BaseController
         );
     }
 
-    private async Task<Employee?> CreateEmployeeAsync(IEmployeeService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<Employee?> CreateEmployeeAsync(IEmployeeService service, JsonElement payload, Identity actor, string operationId)
     {
         var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
         var surname = payload.TryGetProperty("surname", out var surnameEl) ? surnameEl.GetString() : null;
@@ -1611,20 +1622,20 @@ public sealed class RealtimeController : BaseController
         if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(surname))
             throw new ArgumentException("Name and surname are required");
             
-        return await service.CreateEmployeeAsync(name, surname, patronym ?? "", jobId);
+        return await service.CreateEmployeeAsync(name, surname, patronym ?? "", jobId, actor, operationId, HttpContext.RequestAborted);
     }
 
-    private async Task<bool> UpdateEmployeeAsync(IEmployeeService service, uint id, JsonElement payload)
+    private async Task<bool> UpdateEmployeeAsync(IEmployeeService service, uint id, JsonElement payload, Identity actor, string operationId)
     {
         var name = payload.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
         var surname = payload.TryGetProperty("surname", out var surnameEl) ? surnameEl.GetString() : null;
         var patronym = payload.TryGetProperty("patronym", out var patronymEl) ? patronymEl.GetString() : null;
         var jobId = payload.TryGetProperty("jobId", out var jobEl) ? (uint?)jobEl.GetUInt32() : null;
         
-        return await service.UpdateEmployeeAsync(id, name, surname, patronym, jobId);
+        return await service.UpdateEmployeeAsync(id, name, surname, patronym, jobId, actor, operationId, cancellationToken: HttpContext.RequestAborted);
     }
 
-    private async Task<object?> CreateJobAsync(IEmployeeService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<object?> CreateJobAsync(IEmployeeService service, JsonElement payload, Identity actor, string operationId)
     {
         var jobTitle = payload.TryGetProperty("jobTitle", out var titleEl) ? titleEl.GetString() : null;
         var internship = payload.TryGetProperty("internship", out var internEl) ? internEl.GetString() : null;
@@ -1632,19 +1643,19 @@ public sealed class RealtimeController : BaseController
         if (string.IsNullOrEmpty(jobTitle))
             throw new ArgumentException("Job title is required");
             
-        var success = await service.CreateJobAsync(jobTitle, internship ?? "");
+        var success = await service.CreateJobAsync(jobTitle, internship ?? "", actor, operationId, HttpContext.RequestAborted);
         return success ? new { jobTitle, internship } : null;
     }
 
-    private async Task<bool> UpdateJobAsync(IEmployeeService service, uint id, JsonElement payload)
+    private async Task<bool> UpdateJobAsync(IEmployeeService service, uint id, JsonElement payload, Identity actor, string operationId)
     {
         var jobTitle = payload.TryGetProperty("jobTitle", out var titleEl) ? titleEl.GetString() : null;
         var internship = payload.TryGetProperty("internship", out var internEl) ? internEl.GetString() : null;
         
-        return await service.UpdateJobAsync(id, jobTitle, internship);
+        return await service.UpdateJobAsync(id, jobTitle, internship, actor, operationId, cancellationToken: HttpContext.RequestAborted);
     }
 
-    private async Task<object?> CreateMaintenanceAsync(IMaintenanceService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<object?> CreateMaintenanceAsync(IMaintenanceService service, JsonElement payload, Identity actor, string operationId)
     {
         var busId = payload.TryGetProperty("busId", out var busEl) ? busEl.GetUInt32() : 0u;
         var lastServiceDate = payload.TryGetProperty("lastServiceDate", out var lastEl) ? lastEl.GetUInt64() : 0ul;
@@ -1657,11 +1668,11 @@ public sealed class RealtimeController : BaseController
         if (busId == 0 || string.IsNullOrEmpty(serviceEngineer) || string.IsNullOrEmpty(foundIssues))
             throw new ArgumentException("BusId, serviceEngineer, and foundIssues are required");
             
-        var success = await service.CreateMaintenanceAsync(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness ?? "", maintenanceType ?? "");
+        var success = await service.CreateMaintenanceAsync(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness ?? "", maintenanceType ?? "", actor, operationId, HttpContext.RequestAborted);
         return success ? new { busId, lastServiceDate, serviceEngineer, foundIssues } : null;
     }
 
-    private async Task<bool> UpdateMaintenanceAsync(IMaintenanceService service, uint id, JsonElement payload)
+    private async Task<bool> UpdateMaintenanceAsync(IMaintenanceService service, uint id, JsonElement payload, Identity actor, string operationId)
     {
         var busId = payload.TryGetProperty("busId", out var busEl) ? (uint?)busEl.GetUInt32() : null;
         var lastServiceDate = payload.TryGetProperty("lastServiceDate", out var lastEl) ? (ulong?)lastEl.GetUInt64() : null;
@@ -1672,7 +1683,7 @@ public sealed class RealtimeController : BaseController
         var maintenanceType = payload.TryGetProperty("maintenanceType", out var typeEl) ? typeEl.GetString() : null;
         var mileage = payload.TryGetProperty("mileage", out var mileageEl) ? mileageEl.GetString() : null;
         
-        return await service.UpdateMaintenanceAsync(id, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage);
+        return await service.UpdateMaintenanceAsync(id, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage, actor, operationId, cancellationToken: HttpContext.RequestAborted);
     }
 
     private async Task<Permission?> CreatePermissionAsync(IPermissionService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
@@ -1725,7 +1736,7 @@ public sealed class RealtimeController : BaseController
         return await service.UpdateRoleAsync(id, name, description, priority, permissionIds);
     }
 
-    private async Task<object?> CreateRouteAsync(IRouteService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<object?> CreateRouteAsync(IRouteService service, JsonElement payload, Identity actor, string operationId)
     {
         var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
         var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
@@ -1737,11 +1748,11 @@ public sealed class RealtimeController : BaseController
         if (string.IsNullOrEmpty(startPoint) || string.IsNullOrEmpty(endPoint))
             throw new ArgumentException("StartPoint and endPoint are required");
             
-        var success = await service.CreateRouteAsync(startPoint, endPoint, driverId, busId, travelTime ?? "", isActive);
+        var success = await service.CreateRouteAsync(startPoint, endPoint, driverId, busId, travelTime ?? "", isActive, actor, operationId, HttpContext.RequestAborted);
         return success ? new { startPoint, endPoint, driverId, busId, travelTime, isActive } : null;
     }
 
-    private async Task<bool> UpdateRouteAsync(IRouteService service, uint id, JsonElement payload)
+    private async Task<bool> UpdateRouteAsync(IRouteService service, uint id, JsonElement payload, Identity actor, string operationId)
     {
         var startPoint = payload.TryGetProperty("startPoint", out var startEl) ? startEl.GetString() : null;
         var endPoint = payload.TryGetProperty("endPoint", out var endEl) ? endEl.GetString() : null;
@@ -1750,7 +1761,7 @@ public sealed class RealtimeController : BaseController
         var travelTime = payload.TryGetProperty("travelTime", out var timeEl) ? timeEl.GetString() : null;
         var isActive = payload.TryGetProperty("isActive", out var activeEl) ? (bool?)activeEl.GetBoolean() : null;
         
-        return await service.UpdateRouteAsync(id, startPoint, endPoint, driverId, busId, travelTime, isActive);
+        return await service.UpdateRouteAsync(id, startPoint, endPoint, driverId, busId, travelTime, isActive, actor, operationId, cancellationToken: HttpContext.RequestAborted);
     }
 
     private async Task<object?> CreateTicketAsync(ITicketService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
@@ -1785,23 +1796,27 @@ public sealed class RealtimeController : BaseController
     private static string? SaleString(JsonElement payload, string name) =>
         payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
-    private async Task<object?> CreateSaleAsync(ITicketSalesService service, JsonElement payload, Dictionary<string, object>? validatedClaims)
+    private async Task<object?> CreateSaleAsync(ITicketSalesService service, JsonElement payload, Identity actor, string operationId)
     {
         var ticketId = payload.GetProperty("ticketId").GetUInt32();
         var id = await service.CreateSaleAsync(ticketId,
             SaleString(payload, "buyerName") ?? SaleString(payload, "ticketSoldToUser") ?? "ФИЗ.ПРОДАЖА",
             SaleString(payload, "buyerPhone") ?? SaleString(payload, "ticketSoldToUserPhone") ?? "",
-            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), ExtractIdentityFromClaims(validatedClaims),
-            SaleString(payload, "operationId"), HttpContext.RequestAborted);
+            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), actor,
+            operationId, HttpContext.RequestAborted);
         return id.HasValue ? await service.GetSaleByIdAsync(id.Value) : null;
     }
 
-    private Task<bool> UpdateSaleAsync(ITicketSalesService service, uint id, JsonElement payload, Dictionary<string, object>? validatedClaims) =>
-        service.UpdateSaleAsync(id, SaleString(payload, "buyerName") ?? SaleString(payload, "ticketSoldToUser"),
+    private Task<bool> UpdateSaleAsync(ITicketSalesService service, uint id, JsonElement payload, Identity actor, string operationId)
+    {
+        if (payload.TryGetProperty("saleDate", out var saleDate) && saleDate.ValueKind != JsonValueKind.Null)
+            throw new ArgumentException("Sale date cannot be changed");
+        return service.UpdateSaleAsync(id, SaleString(payload, "buyerName") ?? SaleString(payload, "ticketSoldToUser"),
             SaleString(payload, "buyerPhone") ?? SaleString(payload, "ticketSoldToUserPhone"),
-            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), ExtractIdentityFromClaims(validatedClaims),
-            SaleString(payload, "operationId"), payload.TryGetProperty("expectedRevision", out var revision) ? revision.GetUInt64() : null,
+            SaleString(payload, "saleLocation"), SaleString(payload, "saleNotes"), actor,
+            operationId, payload.TryGetProperty("expectedRevision", out var revision) ? revision.GetUInt64() : null,
             HttpContext.RequestAborted);
+    }
 
     private async Task BroadcastEventsAsync(
         WebSocket webSocket,

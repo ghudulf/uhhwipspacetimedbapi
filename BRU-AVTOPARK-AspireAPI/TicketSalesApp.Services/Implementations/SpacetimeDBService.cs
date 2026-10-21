@@ -211,7 +211,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to get WebSocket token. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, errorContent);
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(errorContent));
                     return null;
                 }
 

@@ -31,7 +31,7 @@ internal static class RealtimeTests
             return finishLogin.Task;
         });
         var session = new ApiSocketSession(operations, Stub.Create<IAuthWebSocketTokenValidator>(), authentication, database,
-            admission, NullLogger<ApiSocketSession>.Instance);
+            new ConnectionAdmission(), NullLogger<ApiSocketSession>.Instance);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -44,6 +44,13 @@ internal static class RealtimeTests
         var running = session.RunAsync(server, "protocol-test", deadline.Token);
         var welcome = await Receive(client, deadline.Token);
         Assert(welcome.Type == "welcome" && welcome.Data?.Deserialize<Capabilities>(ApiProtocol.Json)?.Operations.Any(o => o.Name == "sales.create") == true, "capabilities missing");
+        var heartbeatId = Guid.NewGuid().ToString("N");
+        foreach (var operation in new[] { "ping", "ping", "capabilities" })
+        {
+            await client.SendAsync(JsonSerializer.SerializeToUtf8Bytes(new CommandEnvelope(heartbeatId, operation,
+                JsonSerializer.SerializeToElement(new EmptyRequest(), ApiProtocol.Json)), ApiProtocol.Json), WebSocketMessageType.Text, true, deadline.Token);
+            Assert((await Receive(client, deadline.Token)).Success, "heartbeat/capabilities retained duplicate request IDs");
+        }
 
         await Send(client, "subscriptions.open", new SubscriptionRequest(Guid.NewGuid().ToString("N"), "session.access", JsonSerializer.SerializeToElement(new EmptyRequest())), deadline.Token);
         Assert((await Receive(client, deadline.Token)).Code == "unauthenticated", "anonymous subscription accepted");

@@ -17,10 +17,10 @@ public sealed class UserAccessService(ISpacetimeDBService database)
         database.ReadAsync(connection =>
         {
             if (connection.Db.UserProfile.UserId.Find(actor)?.IsActive != true) return UserAccessSnapshot.Denied;
-            var roleIds = connection.Db.UserRole.Iter().Where(r => r.UserId == actor).Select(r => r.RoleId).ToHashSet();
+            var roleIds = connection.Db.UserRole.UserId.Filter(actor).Select(r => r.RoleId).ToHashSet();
             var roles = connection.Db.Role.Iter().Where(r => r.IsActive && roleIds.Contains(r.RoleId)).ToArray();
             roleIds = roles.Select(r => r.RoleId).ToHashSet();
-            var permissionIds = connection.Db.RolePermission.Iter().Where(p => roleIds.Contains(p.RoleId)).Select(p => p.PermissionId).ToHashSet();
+            var permissionIds = roleIds.SelectMany(id => connection.Db.RolePermission.RoleId.Filter(id)).Select(p => p.PermissionId).ToHashSet();
             var permissions = connection.Db.Permission.Iter().Where(p => p.IsActive && permissionIds.Contains(p.PermissionId))
                 .Select(p => UserAccessSnapshot.CanonicalPermission(p.Name)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             return new UserAccessSnapshot(true, roles.Any(r => r.Name == "Administrator"),

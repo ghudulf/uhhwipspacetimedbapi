@@ -45,23 +45,27 @@ public sealed class UPnPService(ILogger<UPnPService> logger, IOptions<UPnPOption
         {
             while (await timer.WaitForNextTickAsync(cancellationToken))
             {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromSeconds(10));
-                var mapping = _ownedMapping;
-                if (mapping == null || _device == null) return;
-                var current = await _device.GetSpecificMappingAsync(Protocol.Tcp, mapping.PublicPort).WaitAsync(timeout.Token);
-                if (!SameMapping(current, mapping))
+                try
                 {
-                    _ownedMapping = null;
-                    logger.LogWarning("UPnP mapping ownership changed; renewal stopped");
-                    return;
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                    var mapping = _ownedMapping;
+                    if (mapping == null || _device == null) return;
+                    var current = await _device.GetSpecificMappingAsync(Protocol.Tcp, mapping.PublicPort).WaitAsync(timeout.Token);
+                    if (!SameMapping(current, mapping))
+                    {
+                        _ownedMapping = null;
+                        logger.LogWarning("UPnP mapping ownership changed; renewal stopped");
+                        return;
+                    }
+                    await _device.CreatePortMapAsync(mapping).WaitAsync(timeout.Token);
+                    logger.LogDebug("UPnP lease renewed for TCP {Port}", mapping.PublicPort);
                 }
-                await _device.CreatePortMapAsync(mapping).WaitAsync(timeout.Token);
-                logger.LogDebug("UPnP lease renewed for TCP {Port}", mapping.PublicPort);
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception ex) { logger.LogWarning(ex, "UPnP renewal failed; retrying on next tick"); }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex) { logger.LogWarning(ex, "UPnP renewal failed; lease may expire"); }
     }
 
     private static bool SameMapping(Mapping? current, Mapping owned) => current != null &&

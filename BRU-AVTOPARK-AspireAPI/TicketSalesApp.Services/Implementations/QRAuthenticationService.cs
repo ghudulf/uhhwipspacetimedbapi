@@ -74,7 +74,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogDebug("Validating QR token: {Token}", token);
+                _logger.LogDebug("Validating QR token; credentials omitted");
 
                 // Split the token into its parts
                 var parts = token.Split('|', StringSplitOptions.RemoveEmptyEntries);
@@ -244,7 +244,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogDebug("Validating direct login QR token: {Token}", token);
+                _logger.LogDebug("Validating direct login QR token; credentials omitted");
 
                 var parts = token.Split('|', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 6)

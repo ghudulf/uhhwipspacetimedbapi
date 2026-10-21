@@ -537,16 +537,15 @@ public static partial class Module
         Log.Debug($"Checking permission '{permissionName}' for user {userId}");
         
         // Get all roles for the user
-        var roleIds = ctx.Db.UserRole.Iter()
-                           .Where(ur => ur.UserId == userId && ctx.Db.Role.RoleId.Find(ur.RoleId)?.IsActive == true)  // Find all role assignments for this user
+        var roleIds = ctx.Db.UserRole.UserId.Filter(userId)
+                           .Where(ur => ctx.Db.Role.RoleId.Find(ur.RoleId)?.IsActive == true)
                            .Select(ur => ur.RoleId)           // Get the role IDs
                            .ToList();                         // Convert to list
         
         Log.Debug($"User has {roleIds.Count} roles: {string.Join(", ", roleIds)}");
         
         // Check if any of the user's roles have the specified permission
-        var permissionIds = ctx.Db.RolePermission.Iter()
-                                .Where(rp => roleIds.Contains(rp.RoleId))  // Find permissions for user's roles
+        var permissionIds = roleIds.SelectMany(id => ctx.Db.RolePermission.RoleId.Filter(id))
                                 .Select(rp => rp.PermissionId)             // Get the permission IDs
                                 .ToList();                                 // Convert to list
         

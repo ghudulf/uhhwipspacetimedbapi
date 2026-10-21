@@ -255,8 +255,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             else
             {
                 Serilog.Log.Warning("ApiClientService.CreateClient: No auth token available, Authorization header NOT added");
-                Serilog.Log.Warning("ApiClientService.CreateClient: _authToken is null or empty. Current value: {TokenValue}",
-                    _authToken ?? "(null)");
             }
 
             return client;

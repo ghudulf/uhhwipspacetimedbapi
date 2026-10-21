@@ -302,7 +302,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 Year = m.Year, Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m.Month),
                 TicketsSold = m.Amounts.SaleCount, TotalIncome = m.Amounts.KnownTotal, AverageTicketPrice = m.Amounts.AverageKnownAmount
             }).ToList();
-            _allRouteIncomes = report.Routes.Select(r => new RouteIncome
+            _allRouteIncomes = report.Routes.OrderByDescending(r => r.Amounts.KnownTotal).Select(r => new RouteIncome
             {
                 RouteName = r.RouteName, TicketsSold = r.Amounts.SaleCount, TotalIncome = r.Amounts.KnownTotal,
                 AverageTicketPrice = r.Amounts.AverageKnownAmount
@@ -402,4 +402,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
     }
-} 
+}

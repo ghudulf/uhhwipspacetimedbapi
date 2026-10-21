@@ -57,13 +57,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Check if we have an Authorization header
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            var token = ResolveAccessToken();
+            if (string.IsNullOrEmpty(token))
             {
                 return false;
             }
 
-            var token = authHeader.Substring("Bearer ".Length);
             
             // Validate token format and structure
             if (string.IsNullOrWhiteSpace(token) || token.Length < 20)
@@ -150,10 +149,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
                 // A socket can outlive its handshake principal and per-request claim cache.
-                var header = Request.Headers.Authorization.ToString();
-                if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                var token = ResolveAccessToken();
+                if (string.IsNullOrEmpty(token))
                     return TicketSalesApp.Services.Authorization.UserAccessSnapshot.Denied;
-                var claims = await ValidateTokenDirectAsync(header[7..], HttpContext.RequestAborted);
+                var claims = await ValidateTokenDirectAsync(token, HttpContext.RequestAborted);
                 identity = claims != null && claims.TryGetValue("identity", out var claim) ? claim?.ToString() : null;
             }
             else identity = await GetSpacetimeIdentityAsync();
@@ -169,13 +168,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             var action = command.Trim().ToLowerInvariant() switch
             {
-                "read" or "read_all" => "view",
+                "read" or "read_all" or "next_page" or "prev_page" or "first_page" or "last_page" or "goto_page" => "view",
                 "create" => "create",
                 "update" => "edit",
                 "delete" => "delete",
                 _ => throw new InvalidOperationException("Unsupported command")
             };
-            if (!await HasPermissionAsync(resource + "." + action)) throw new UnauthorizedAccessException("Permission required");
+            var access = await GetCurrentAccessAsync();
+            if (!access.IsAdministrator && !access.Allows(resource + "." + action)) throw new UnauthorizedAccessException("Permission required");
         }
 
         protected async IAsyncEnumerable<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts.ApiDomainEvent> AuthorizedEventsAsync(
@@ -184,7 +184,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             await foreach (var domainEvent in events.WithCancellation(cancellationToken))
             {
-                if (!await HasPermissionAsync(permission)) throw new UnauthorizedAccessException("Subscription permission revoked or session expired");
+                var access = await GetCurrentAccessAsync();
+                if (!access.IsAdministrator && !access.Allows(permission)) throw new UnauthorizedAccessException("Subscription permission revoked or session expired");
                 yield return domainEvent;
             }
         }
@@ -223,8 +224,28 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (string.IsNullOrWhiteSpace(identity)) throw new UnauthorizedAccessException("Authenticated actor required.");
             return SpacetimeDB.Identity.FromHexString(identity);
         }
-        protected string ApplicationOperationId() => (!HttpContext.WebSockets.IsWebSocketRequest
-            ? Request.Headers["Idempotency-Key"].FirstOrDefault() : null) ?? Guid.NewGuid().ToString("N");
+        protected string ApplicationOperationId()
+        {
+            var supplied = Request.Headers["Idempotency-Key"].FirstOrDefault();
+            var id = string.IsNullOrEmpty(supplied) ? Guid.NewGuid() : Guid.TryParse(supplied, out var parsed)
+                ? parsed : throw new BRU_AVTOPARK_AspireAPI.ApiService.Application.OperationException("validation_failed");
+            var effective = id.ToString("N");
+            Response.Headers["Operation-Id"] = effective;
+            return effective;
+        }
+
+        protected static string ApplicationOperationId(BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest request)
+        {
+            if (Guid.TryParse(request.OperationId, out var id) || Guid.TryParse(request.RequestId, out id)) return id.ToString("N");
+            throw new ArgumentException("A stable GUID operationId/requestId is required.", "operationId/requestId");
+        }
+
+        protected string? ResolveAccessToken()
+        {
+            var header = Request.Headers.Authorization.ToString();
+            if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return header[7..];
+            return HttpContext.WebSockets.IsWebSocketRequest ? Request.Query["access_token"].FirstOrDefault() : null;
+        }
 
         protected string? GetUserId()
         {
@@ -289,6 +310,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
+                if (HttpContext.WebSockets.IsWebSocketRequest)
+                {
+                    var token = ResolveAccessToken();
+                    var current = string.IsNullOrEmpty(token) ? null : await ValidateTokenDirectAsync(token, HttpContext.RequestAborted);
+                    return current != null && current.TryGetValue("identity", out var actor) ? actor?.ToString() : null;
+                }
                 // Try ASP.NET Core authentication first (OpenIddict)
                 if (User?.Identity?.IsAuthenticated == true)
                 {
@@ -352,22 +379,12 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return null;
                 }
                 
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                var token = ResolveAccessToken();
+                if (string.IsNullOrEmpty(token))
                 {
-                    // Fallback to query parameter for SignalR/WebSocket connections
-                    var accessToken = Request.Query["access_token"].ToString();
-                    if (string.IsNullOrEmpty(accessToken))
-                    {
-                        Log.Debug("ValidateOAuthTokenAsync - No Bearer token found in header or query parameter");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-                    
-                    Log.Debug("ValidateOAuthTokenAsync - Using access_token from query parameter");
-                    authHeader = $"Bearer {accessToken}";
+                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                    return null;
                 }
-                var token = authHeader.Substring("Bearer ".Length);
 
                 IMemoryCache? memoryCache = null;
                 string? tokenCacheKey = null;
@@ -1003,4 +1020,4 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
     }
-} 
+}

@@ -261,7 +261,6 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             return await CompletePrimaryAuthenticationAsync(user);
         }
-
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login orchestration for user: {Username}", username);
@@ -622,8 +621,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 .ToList();
 
             // Get user roles
-            var userRoles = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var userRoles = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .ToList();
 
             // Get role details
@@ -638,8 +636,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Get role permissions
-            var rolePermissions = conn.Db.RolePermission.Iter()
-                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
+            var rolePermissions = roles.SelectMany(role => conn.Db.RolePermission.RoleId.Filter(role.RoleId))
                 .ToList();
 
             // Get permission details
@@ -1113,8 +1110,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 4: Add role claims
-            var roles = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var roles = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .Join(conn.Db.Role.Iter(), 
                       ur => ur.RoleId, 
                       r => r.RoleId, 
@@ -1129,16 +1125,14 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             _logger.LogInformation("Added {RoleCount} roles to token for user {Username}", roles.Count, user.Login);
 
             // Step 5: Add permission claims for authorization
-            var userRoleIds = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var userRoleIds = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .Select(ur => ur.RoleId)
                 .ToList();
             
             _logger.LogInformation("User {UserId} has {RoleCount} roles: {RoleIds}", 
                 user.UserId, userRoleIds.Count, string.Join(", ", userRoleIds));
             
-            var permissions = conn.Db.RolePermission.Iter()
-                .Where(rp => userRoleIds.Contains(rp.RoleId))
+            var permissions = userRoleIds.SelectMany(roleId => conn.Db.RolePermission.RoleId.Filter(roleId))
                 .Join(conn.Db.Permission.Iter(),
                       rp => rp.PermissionId,
                       p => p.PermissionId,
@@ -1157,8 +1151,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             _logger.LogInformation("Added {PermissionCount} permissions to token for user {Username}", permissions.Count, user.Login);
             
             // Step 6: Add primary role for admin checks
-            var primaryRole = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var primaryRole = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .OrderBy(ur => ur.RoleId)
                 .FirstOrDefault();
             
@@ -2019,4 +2012,3 @@ public class ProfileRenderData
     public required List<Role> Roles { get; init; }
     public required List<Permission> Permissions { get; init; }
 }
-

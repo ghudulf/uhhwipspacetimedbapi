@@ -49,14 +49,44 @@ public sealed partial class RealtimeApplicationClient
             _subscriptions.TryRemove(id, out _);
             if (IsConnected)
             {
-                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                try { await CallAsync<SubscriptionClose, JsonElement>("subscriptions.close", new(id), null, deadline.Token); }
-                catch (Exception ex) when (ex is ApplicationCommandException or OperationNotDispatchedException or OperationCanceledException or System.Net.WebSockets.WebSocketException)
+                _ = CloseSubscriptionAsync(id);
+            }
+        }
+    }
+
+    private async Task CloseSubscriptionAsync(string id)
+    {
+        var dispatched = false;
+        try
+        {
+            // Slot exhaustion is pre-dispatch and must never invalidate unrelated mutations.
+            for (var attempt = 0; attempt < 100 && IsConnected; attempt++)
+            {
+                dispatched = false;
+                try
                 {
-                    // If lease release cannot be confirmed, close the session to reclaim server resources.
-                    // Other active queries reconnect with fresh snapshots through the coordinator.
-                    _lifetime.Cancel(); _socket.Abort();
+                    await CallCoreAsync<SubscriptionClose, JsonElement>("subscriptions.close", new(id), null, _lifetime.Token,
+                        () => dispatched = true);
+                    return;
                 }
+                catch (OperationNotDispatchedException) { await Task.Delay(100, _lifetime.Token); }
+                catch (ApplicationCommandException ex) when (ex.Code is "busy" or "cancelled")
+                {
+                    dispatched = false; // Definitive rejection, not an indeterminate lease release.
+                    await Task.Delay(100, _lifetime.Token);
+                }
+                catch (ApplicationCommandException ex) when (ex.Code is not ("connection_lost" or "commit_outcome_unknown")) { return; }
+            }
+        }
+        catch (Exception)
+        {
+            // Background lease cleanup must never fault unobserved, including disposal races.
+            if (dispatched)
+            {
+                try { _lifetime.Cancel(); }
+                catch (Exception) { }
+                try { _socket.Abort(); }
+                catch (Exception) { }
             }
         }
     }

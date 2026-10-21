@@ -589,7 +589,6 @@ public partial class AuthWindow : Window
 
             // DEBUGGING: Add handler for when the user presses Enter in the password field
             passwordTextBox.KeyDown += (s, e) => {
-                Log.Debug("KeyDown event in password field: Key={Key}", e.Key);
                 if (e.Key == Key.Enter && _viewModel != null && _viewModel.CanGoForward)
                 {
                     Log.Information("Enter key pressed in password field, executing GoToNextStepCommand");

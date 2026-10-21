@@ -2,6 +2,7 @@
 <component type="desktop-application">
   <id>com.bru.avtopark.ticketsales</id>
   <metadata_license>CC0-1.0</metadata_license>
+  <project_license>EPL-2.0</project_license>
   <name>BRU Avtopark</name>
   <summary>Fleet and ticket sales management</summary>
   <description><p>Manage buses, routes, schedules and ticket sales using a configured BRU Avtopark server.</p></description>

@@ -1,6 +1,6 @@
 # Endpoint availability and legacy refactoring flags
 
-`FeatureFlags:*EndpointEnabled` controls HTTP and v2 application endpoint availability. For example, `LoginEndpointEnabled=false` deliberately disables password login; `TotpValidateEndpointEnabled=false` disables TOTP validation. Omitted availability settings default to enabled. Runtime canonical overrides use the existing authorized, committed feature-flag service.
+`FeatureFlags:*EndpointEnabled` controls HTTP endpoint availability. The v2 authentication operations `auth.login` and `auth.totp` also honor `LoginEndpointEnabled` and `TotpValidateEndpointEnabled`, respectively. Omitted availability settings default to enabled. Runtime canonical overrides use the existing authorized, committed feature-flag service.
 
 The older `Enable*Refactoring` keys are retained in configuration and the flag-management API, but no longer disable endpoints by default. Historically false selected the legacy implementation; it did not mean “turn off login.” The legacy controller was already removed before this work. Both selector values now use the shared implementation. The existing admin page displays actual availability keys without changing its styles/layout. Its previously misspelled/nonexistent selector names have been corrected.
 

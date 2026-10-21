@@ -186,7 +186,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, SafeDiagnostics.JsonShape(errorContent));
                     
                     // If refresh token is invalid or expired, clear stored tokens
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || 

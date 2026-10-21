@@ -60,8 +60,11 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 if (!Guid.TryParseExact(command.RequestId, "N", out _) || command.Operation is not { Length: > 0 and <= 80 })
                     throw new OperationException("invalid_envelope");
                 // Bound deduplication memory for this connection; clients reconnect after this many requests.
-                if (seen.Count >= 10000) break;
-                if (!seen.Add(command.RequestId)) throw new OperationException("duplicate_request_id");
+                if (command.Operation is not ("ping" or "capabilities"))
+                {
+                    if (seen.Count >= 10000) break;
+                    if (!seen.Add(command.RequestId)) throw new OperationException("duplicate_request_id");
+                }
                 if (command.Operation == "cancel")
                 {
                     var target = command.Payload.Deserialize<CancelCommand>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");

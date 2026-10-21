@@ -65,6 +65,11 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("routes.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
                 AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("routes", cancellationToken), "routes.view", cancellationToken),
@@ -123,7 +128,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for create");
 
             var success = await _routeService.CreateRouteAsync(model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, true,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "create", success, snapshot };
         }
@@ -150,7 +155,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 ?? throw new InvalidOperationException("payload is required for update");
 
             var success = await _routeService.UpdateRouteAsync(id, model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, null,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var entity = await _routeService.GetRouteByIdAsync(id);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "update", success, entity, snapshot };
@@ -175,7 +180,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var success = await _routeService.DeleteRouteAsync(id,
-                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "delete", success, deletedId = id, snapshot };
         }

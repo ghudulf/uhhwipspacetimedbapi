@@ -141,7 +141,8 @@ public sealed class ApiMutationEventFilter : IAsyncActionFilter
 
         try
         {
-            await _eventBus.PublishAsync(domainEvent, context.HttpContext.RequestAborted);
+            using var publishDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await _eventBus.PublishAsync(domainEvent, publishDeadline.Token);
         }
         catch (Exception ex)
         {

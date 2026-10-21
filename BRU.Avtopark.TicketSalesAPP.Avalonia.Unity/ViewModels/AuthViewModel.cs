@@ -857,7 +857,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 else
                 {
                     ErrorMessage = "Неверный код TOTP.";
-                    Log.Error("TOTP validation failed: User={Username}, Code={Code}, StatusCode={StatusCode}, Response={Response}", Username, TotpCode, response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                    Log.Error("TOTP validation failed: User={Username}, StatusCode={StatusCode}, Response={Response}", Username, response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
                 }
             }
             catch (Exception ex)
@@ -1011,4 +1011,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             catch (Exception ex) { Log.Warning("Token diagnostics unavailable: {ErrorType}", ex.GetType().Name); }
         }
     }
-} 
+}

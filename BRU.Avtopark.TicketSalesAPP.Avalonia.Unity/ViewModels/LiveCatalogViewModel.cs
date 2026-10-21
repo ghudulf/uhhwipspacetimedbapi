@@ -198,8 +198,10 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject where T
         SelectedItem = Items.FirstOrDefault(item => _itemKey(item) == selectedKey);
         _page = page.Page; _total = page.TotalCount;
         _createAllowed = page.CanCreate; _editAllowed = page.CanEdit; _deleteAllowed = page.CanDelete;
+        SnapshotApplied(page);
         this.RaisePropertyChanged(nameof(PageInfo)); NotifyEligibility();
     }
+    protected virtual void SnapshotApplied(CatalogPageResult<TRow> page) { }
     private void NotifyEligibility()
     {
         foreach (var property in new[] { nameof(CanMutate), nameof(CanCreate), nameof(CanEdit), nameof(CanDelete), nameof(CanGoPrevious), nameof(CanGoNext) }) this.RaisePropertyChanged(property);

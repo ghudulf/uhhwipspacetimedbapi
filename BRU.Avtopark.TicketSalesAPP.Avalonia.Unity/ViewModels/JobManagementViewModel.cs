@@ -50,6 +50,7 @@ public sealed class JobManagementViewModel : LiveCatalogViewModel<JobRow, JobDis
         DeleteCommand = new AsyncRelayCommand(DeleteAsync, () => CanDelete && !_editing && _confirmDelete != null && !_uncertainDeletes.Contains(SelectedJob!.JobId));
     }
     protected override void SelectionChanged() => this.RaisePropertyChanged(nameof(SelectedJob));
+    protected override void SnapshotApplied(CatalogPageResult<JobRow> page) => _uncertainDeletes.Clear();
     protected override void EligibilityChanged()
     {
         AddCommand?.NotifyCanExecuteChanged(); EditCommand?.NotifyCanExecuteChanged(); DeleteCommand?.NotifyCanExecuteChanged();

@@ -11,16 +11,19 @@ public static class CollectionPayload
     public static JsonArray ReadArray(JsonNode? root)
     {
         var ids = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
-        void Index(JsonNode? node)
+        var remainingIndexNodes = 100_000;
+        void Index(JsonNode? node, int depth)
         {
+            if (--remainingIndexNodes < 0) throw new JsonException("Collection indexing limit exceeded");
+            if (depth > 64) throw new JsonException("Collection nesting limit exceeded");
             if (node is JsonObject obj)
             {
                 if (obj["$id"] is JsonValue id && !ids.TryAdd(id.GetValue<string>(), obj)) throw new JsonException("Duplicate reference ID");
-                foreach (var item in obj) Index(item.Value);
+                foreach (var item in obj) Index(item.Value, depth + 1);
             }
-            else if (node is JsonArray array) foreach (var item in array) Index(item);
+            else if (node is JsonArray array) foreach (var item in array) Index(item, depth + 1);
         }
-        Index(root);
+        Index(root, 0);
         var remainingNodes = 100_000;
         JsonNode? Resolve(JsonNode? node, HashSet<string> path, int depth)
         {

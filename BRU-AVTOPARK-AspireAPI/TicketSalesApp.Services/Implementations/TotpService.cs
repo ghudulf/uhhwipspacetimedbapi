@@ -207,7 +207,7 @@
             {
                 try
                 {
-                    _logger.LogInformation("Validating TOTP code with token: {Token}", tempToken);
+                    _logger.LogInformation("Validating TOTP challenge; credentials omitted");
 
                     var conn = _spacetimeService.GetConnection();
                     
@@ -217,7 +217,7 @@
                     
                     if (twoFactorToken == null)
                     {
-                        _logger.LogWarning("Invalid or expired two-factor token: {Token}", tempToken);
+                        _logger.LogWarning("Invalid or expired two-factor challenge");
                         return (false, "Invalid or expired token");
                     }
 
@@ -227,7 +227,7 @@
                     
                     if (user == null)
                     {
-                        _logger.LogWarning("User not found for two-factor token: {Token}", tempToken);
+                        _logger.LogWarning("User not found for two-factor challenge");
                         return (false, "User not found");
                     }
 
@@ -256,7 +256,7 @@
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error validating TOTP code with token: {Token}", tempToken);
+                    _logger.LogError("Error validating TOTP challenge: {ErrorType}", ex.GetType().Name);
                     return (false, "An error occurred while validating TOTP code");
                 }
             }
@@ -404,5 +404,4 @@
             }
         }
     }
-
 

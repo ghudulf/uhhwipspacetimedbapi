@@ -31,20 +31,20 @@ namespace TicketSalesApp.AdminServer.Controllers
             return SpacetimeDB.Identity.FromHexString(identity);
         }
 
-        private async Task<MutationResult> ExecuteBusOperationAsync<T>(string name, T payload)
+        private async Task<MutationResult> ExecuteBusOperationAsync<T>(string name, T payload, RealtimeCrudRequest? request = null)
         {
-            var operationId = (!HttpContext.WebSockets.IsWebSocketRequest ? Request.Headers["Idempotency-Key"].FirstOrDefault() : null) ?? Guid.NewGuid().ToString("N");
+            var operationId = request == null ? ApplicationOperationId() : ApplicationOperationId(request);
             return (MutationResult)(await HttpContext.RequestServices.GetRequiredService<ApplicationOperations>().ExecuteAsync(name,
                 await RequireActorAsync(), JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), operationId, HttpContext.RequestAborted))!;
         }
-        private async Task<Bus?> CreateBusOperationAsync(CreateBusModel model)
+        private async Task<Bus?> CreateBusOperationAsync(CreateBusModel model, RealtimeCrudRequest? request = null)
         {
-            var receipt = await ExecuteBusOperationAsync("buses.create", new CreateBusCommand(model.Model, model.RegistrationNumber, model.ToDetails()));
+            var receipt = await ExecuteBusOperationAsync("buses.create", new CreateBusCommand(model.Model, model.RegistrationNumber, model.ToDetails()), request);
             return await _busService.GetBusByIdAsync(receipt.EntityId);
         }
-        private async Task<bool> CommitBusOperationAsync<T>(string name, T payload)
+        private async Task<bool> CommitBusOperationAsync<T>(string name, T payload, RealtimeCrudRequest? request = null)
         {
-            await ExecuteBusOperationAsync(name, payload);
+            await ExecuteBusOperationAsync(name, payload, request);
             return true;
         }
 
@@ -190,7 +190,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var bus = await CreateBusOperationAsync(model);
+            var bus = await CreateBusOperationAsync(model, request);
             var mappedEntity = bus != null ? BusMapper.ToDto(bus) : null;
             var result = new { operation = "create", success = bus is not null, entity = mappedEntity };
 
@@ -266,7 +266,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await CommitBusOperationAsync("buses.update", new UpdateBusCommand(id, model.ExpectedRevision, model.Model, model.RegistrationNumber, model.ToDetails()));
+            var success = await CommitBusOperationAsync("buses.update", new UpdateBusCommand(id, request.ExpectedRevision ?? model.ExpectedRevision, model.Model, model.RegistrationNumber, model.ToDetails()), request);
             object? entity = null;
             object? mappedEntity = null;
             
@@ -352,7 +352,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await CommitBusOperationAsync("buses.delete", new DeleteBusCommand(id));
+            var success = await CommitBusOperationAsync("buses.delete", new DeleteBusCommand(id, request.ExpectedRevision), request);
             var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
@@ -902,4 +902,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public string? Model { get; set; }
         public string? RegistrationNumber { get; set; }
     }
-} 
+}

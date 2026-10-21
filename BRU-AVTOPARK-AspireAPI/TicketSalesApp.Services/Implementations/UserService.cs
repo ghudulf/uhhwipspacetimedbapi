@@ -209,8 +209,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get user roles
-                var userRoles = conn.Db.UserRole.Iter()
-                    .Where(ur => ur.UserId.Equals(userProfile.UserId))
+                var userRoles = conn.Db.UserRole.UserId.Filter(userProfile.UserId)
                     .ToList();
                 
                 if (userRoles.Count == 0)
@@ -259,8 +258,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get user roles
-                var userRoles = conn.Db.UserRole.Iter()
-                    .Where(ur => ur.UserId.Equals(userProfile.UserId))
+                var userRoles = conn.Db.UserRole.UserId.Filter(userProfile.UserId)
                     .Select(ur => ur.RoleId)
                     .ToList();
                 
@@ -271,8 +269,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get role permissions
-                var rolePermissions = conn.Db.RolePermission.Iter()
-                    .Where(rp => userRoles.Contains(rp.RoleId))
+                var rolePermissions = userRoles.SelectMany(roleId => conn.Db.RolePermission.RoleId.Filter(roleId))
                     .Select(rp => rp.PermissionId)
                     .Distinct()
                     .ToList();
@@ -369,4 +366,4 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
     }
-} 
+}
