@@ -153,9 +153,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         // Constructor
-        public AuthViewModel()
+        public AuthViewModel() : this(ApiClientService.Instance.CreateClient()) { }
+        public AuthViewModel(HttpClient client)
         {
-             _httpClient = ApiClientService.Instance.CreateClient(); // Use injected or singleton service
+             _httpClient = client;
+             if (!_httpClient.DefaultRequestHeaders.Contains("X-BRU-Native-Login")) _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-BRU-Native-Login", "1");
+             if (!_httpClient.DefaultRequestHeaders.Contains("X-BRU-Device")) _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-BRU-Device", "native");
              
             _jsonOptions = new JsonSerializerOptions
             {
@@ -306,7 +309,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
             else if (!string.IsNullOrWhiteSpace(result.Token))
             {
-                ApiClientService.Instance.AuthToken = result.Token;
+                await NativeSessionRefresher.StoreLoginAsync(result.Token, result.RefreshToken);
                 IsAuthenticated = true;
                 UserInfo = description;
                 CurrentStep = 4;
@@ -358,7 +361,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     try
                     {
                         result = JsonSerializer.Deserialize<ApiResponse<LoginResponse>>(responseContent, _jsonOptions);
-                        Log.Debug("Deserialized response: {@Result}", result);
+                        Log.Debug("Login response deserialized; credential values omitted");
                     }
                     catch (JsonException jsonEx)
                     {
@@ -465,7 +468,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                             TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(JsonSerializer.Serialize(result.Data.Claims)));
 
                         // Store both token and role information in ApiClientService
-                        ApiClientService.Instance.AuthToken = result.Data.Token;
+                        await NativeSessionRefresher.StoreLoginAsync(result.Data.Token, result.Data.RefreshToken);
                         ApiClientService.Instance.IsAdmin = isAdmin;
                         ApiClientService.Instance.UserRole = userRole;
 
@@ -821,7 +824,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                      ValidateTotpResponse? result = null;
                      try
                      {
-                         result = JsonSerializer.Deserialize<ValidateTotpResponse>(responseContent, _jsonOptions);
+                          using var document = JsonDocument.Parse(responseContent);
+                          var payload = document.RootElement.TryGetProperty("data", out var wrapped) ? wrapped : document.RootElement;
+                          result = payload.Deserialize<ValidateTotpResponse>(_jsonOptions);
                      }
                       catch (JsonException jsonEx)
                      {
@@ -838,7 +843,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                             // LOGGING: Log JWT token claims after TOTP validation
                             LogJwtTokenClaims(result.Token, "JWT Token after TOTP Validation");
                             
-                            ApiClientService.Instance.AuthToken = result.Token;
+                             await NativeSessionRefresher.StoreLoginAsync(result.Token, result.RefreshToken);
                             IsAuthenticated = true;
                         UserInfo = $"Пользователь: {Username}"; // Update user info if needed
 
@@ -930,6 +935,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private class LoginResponse
         {
+            public string? RefreshToken { get; set; }
             public string? Token { get; set; }
             public bool RequiresTwoFactor { get; set; }
             public string TwoFactorType { get; set; } = string.Empty;
@@ -942,6 +948,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private class ValidateTotpResponse
         {
+            public string? RefreshToken { get; set; }
             public string Token { get; set; } = string.Empty;
             public UserDto? User { get; set; }
         }

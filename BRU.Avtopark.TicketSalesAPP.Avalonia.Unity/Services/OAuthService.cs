@@ -234,6 +234,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 return null;
             }
 
+            // Native opaque proofs belong to /api/auth/refresh, never the OpenIddict token endpoint.
+            // Automatic native rotation is owned by the application coordinator after session_expired.
+            if (tokens.SessionKind == "native") return tokens.ExpiresAt > DateTime.UtcNow ? tokens.AccessToken : null;
+
             // Check if access token is still valid (with 5 minute buffer)
             if (tokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5))
             {

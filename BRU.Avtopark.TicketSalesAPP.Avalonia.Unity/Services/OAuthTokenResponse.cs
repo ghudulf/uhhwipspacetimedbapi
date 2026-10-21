@@ -22,4 +22,5 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
         public string? Scope { get; set; }
 
         public DateTime ExpiresAt { get; set; }
+        public string SessionKind { get; set; } = "oauth";
     }

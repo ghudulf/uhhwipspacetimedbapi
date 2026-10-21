@@ -37,8 +37,23 @@ public sealed class TokenStorageService
     {
         ArgumentNullException.ThrowIfNull(tokens);
         await Gate.WaitAsync();
+        try { await SaveCoreAsync(tokens); }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<bool> ReplaceIfAccessMatchesAsync(string expectedAccess, OAuthTokenResponse tokens)
+    {
+        await Gate.WaitAsync();
         try
         {
+            if (_memoryOrigin != _origin || _memorySession == null || JsonSerializer.Deserialize<OAuthTokenResponse>(_memorySession)?.AccessToken != expectedAccess) return false;
+            await SaveCoreAsync(tokens); return true;
+        }
+        finally { Gate.Release(); }
+    }
+
+    private async Task SaveCoreAsync(OAuthTokenResponse tokens)
+    {
             if (tokens.ExpiresAt == default) tokens.ExpiresAt = DateTime.UtcNow.AddSeconds(tokens.ExpiresIn);
             ReplaceMemory(JsonSerializer.SerializeToUtf8Bytes(tokens));
             DeleteLegacyFiles();
@@ -62,8 +77,6 @@ public sealed class TokenStorageService
                 Log.Warning("Secure session persistence unavailable; using memory only ({Failure})", ex.GetType().Name);
             }
             finally { DeleteFile(temporaryPath); }
-        }
-        finally { Gate.Release(); }
     }
 
     public async Task<OAuthTokenResponse?> GetTokensAsync()
@@ -106,6 +119,16 @@ public sealed class TokenStorageService
             if (File.Exists(_path)) File.Delete(_path);
             DeleteLegacyFiles();
             Log.Information("Stored session cleared");
+        }
+        finally { Gate.Release(); }
+    }
+    public async Task ClearIfAccessMatchesAsync(string expectedAccess)
+    {
+        await Gate.WaitAsync();
+        try
+        {
+            if (_memoryOrigin != _origin || _memorySession == null || JsonSerializer.Deserialize<OAuthTokenResponse>(_memorySession)?.AccessToken != expectedAccess) return;
+            ReplaceMemory(null); if (File.Exists(_path)) File.Delete(_path); DeleteLegacyFiles();
         }
         finally { Gate.Release(); }
     }

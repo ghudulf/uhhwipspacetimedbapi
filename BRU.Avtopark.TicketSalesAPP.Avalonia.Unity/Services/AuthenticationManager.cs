@@ -338,6 +338,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
             Log.Information("LOGOUT: WebView session clear flag set");
             
             // Clear OAuth tokens from storage
+            await NativeSessionRefresher.RevokeStoredFamilyAsync();
             await _oauthService.LogoutAsync();
             Log.Information("LOGOUT: Cleared OAuth tokens from storage");
             

@@ -16,6 +16,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 public partial class App : Application
 {
     private Window? _mainWindow;
+    private static int _expiredLoginOpen;
 
     /// <summary>
     /// When true the app starts without any visible window — only the tray icon.
@@ -26,6 +27,23 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        ApplicationClientCoordinator.ConfigureSessionRefresher(new NativeSessionRefresher());
+        ApplicationClientCoordinator.SessionExpired += OnSessionExpired;
+    }
+    private static void OnSessionExpired()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _expiredLoginOpen, 1) != 0) return;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                ApiClientService.Instance.AuthToken = null;
+                var owner = (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                await RunLoginSelectorAsync(owner);
+            }
+            catch { Log.Warning("Expired session login UI unavailable"); }
+            finally { System.Threading.Interlocked.Exchange(ref _expiredLoginOpen, 0); }
+        });
     }
 
     public override void RegisterServices()

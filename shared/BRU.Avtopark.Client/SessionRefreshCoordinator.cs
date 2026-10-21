@@ -17,6 +17,8 @@ public sealed class SessionRefreshCoordinator(ISessionRefresher refresher, TimeP
     public event Action? SessionExpired;
     public bool IsReplacement(string apiBase, string oldToken, string? current)
     { lock (gate) return origin == apiBase && expired == oldToken && replacement != null && replacement == current; }
+    public bool CanReconcile(string apiBase, string token)
+    { lock (gate) return origin == apiBase && expired == token && flight != null && (!flight.IsCompleted || replacement != null); }
     public Task<string?> RefreshAsync(string apiBase, string token, CancellationToken cancellationToken = default)
     {
         Task<string?> current;
@@ -91,6 +93,8 @@ public sealed class SessionRefreshCoordinator(ISessionRefresher refresher, TimeP
             string? nextToken;
             lock (gate) nextToken = origin == apiBase && expired == token ? replacement : null;
             if (failure.Code == "session_expired" && nextToken == null && refreshesWithoutSnapshot++ == 0)
+                nextToken = await RefreshAsync(apiBase, token, cancellationToken).ConfigureAwait(false);
+            if (failure.Code == "session_changed" && nextToken == null && CanReconcile(apiBase, token))
                 nextToken = await RefreshAsync(apiBase, token, cancellationToken).ConfigureAwait(false);
             if (nextToken == null) { if (failure.Code == "session_expired") SignalExpired(); throw failure; }
             token = nextToken;

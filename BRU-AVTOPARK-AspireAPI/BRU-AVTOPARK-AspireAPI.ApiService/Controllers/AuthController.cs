@@ -3346,7 +3346,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("logout")]
-        [Authorize]
+        [AllowAnonymous]
         [Microsoft.AspNetCore.Cors.DisableCors, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Logout([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] NativeLogoutRequest? request = null)
         {
@@ -3362,7 +3362,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             var userId = User.FindFirst("identity")?.Value;
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(request?.RefreshToken))
             {
                 return Unauthorized(new ApiResponse<object>
                 {
@@ -3371,7 +3371,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
+            var identity = string.IsNullOrEmpty(userId) ? default : new SpacetimeDB.Identity(Convert.FromHexString(userId));
             var result = await _authOrchestrationService.LogoutAsync(identity, request?.RefreshToken);
 
             if (!result.Success)

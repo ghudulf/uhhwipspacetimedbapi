@@ -12,15 +12,44 @@ public static class ApplicationClientCoordinator
     private static RealtimeApplicationClient? _client;
     private static string? _origin;
     private static string? _token;
+    private static SessionRefreshCoordinator? _refresh;
+    public static event Action? SessionExpired;
+    private static readonly System.Collections.Generic.HashSet<string> Reads = new(StringComparer.Ordinal)
+    { "session.access", "buses.list", "sales.list", "reports.sales", "reports.income", "routes.list", "routes.get", "employees.list", "employees.get",
+      "jobs.list", "jobs.get", "maintenance.list", "maintenance.get", "tickets.list", "tickets.get", "schedules.list", "schedules.get", "users.list", "users.get", "roles.list", "roles.get", "permissions.list", "permissions.get" };
+    public static void ConfigureSessionRefresher(ISessionRefresher? refresher)
+    {
+        if (refresher == null) { _refresh = null; return; }
+        var coordinator = new SessionRefreshCoordinator(refresher, TimeProvider.System);
+        coordinator.SessionExpired += () => { if (ReferenceEquals(_refresh, coordinator)) SessionExpired?.Invoke(); };
+        _refresh = coordinator;
+    }
+    private static async Task<string> CurrentTokenAsync(string baseUrl, string token, CancellationToken ct)
+    {
+        if (OwnsSession(baseUrl, token)) return token;
+        var refresh = _refresh;
+        if (refresh?.CanReconcile(baseUrl, token) == true)
+        {
+            var replacement = await refresh.RefreshAsync(baseUrl, token, ct);
+            if (replacement != null && OwnsSession(baseUrl, replacement)) return replacement;
+        }
+        throw new OperationCanceledException("Application session changed.");
+    }
 
     public static async Task<TResponse?> ExecuteAsync<TRequest, TResponse>(string baseUrl, string token, string operation, TRequest payload,
         string? operationId = null, CancellationToken cancellationToken = default)
     {
-        var client = await GetClientAsync(baseUrl, token, cancellationToken);
-        var result = await client.CallAsync<TRequest, TResponse>(operation, payload, operationId, cancellationToken);
-        if (!ReferenceEquals(client, _client) || !OwnsSession(baseUrl, token))
-            throw new OperationCanceledException("Application session changed.");
-        return result;
+        async Task<TResponse?> Execute(string current, CancellationToken ct)
+        {
+            current = await CurrentTokenAsync(baseUrl, current, ct);
+            var client = await GetClientAsync(baseUrl, current, ct);
+            var result = await client.CallAsync<TRequest, TResponse>(operation, payload, operationId, ct);
+            if (!ReferenceEquals(client, _client) || !OwnsSession(baseUrl, current)) throw new OperationCanceledException("Application session changed.");
+            return result;
+        }
+        var refresh = _refresh;
+        return refresh == null ? await Execute(token, cancellationToken) :
+            await refresh.ExecuteAsync(baseUrl, token, !Reads.Contains(operation), Execute, cancellationToken);
     }
 
     private static async Task<RealtimeApplicationClient> GetClientAsync(string baseUrl, string token, CancellationToken cancellationToken)
@@ -65,11 +94,20 @@ public static class ApplicationClientCoordinator
         string baseUrl, string token, string operation, TRequest payload,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var refresh = _refresh;
+        var stream = refresh == null ? WatchCoreAsync<TRequest, TResponse>(baseUrl, token, operation, payload, cancellationToken) :
+            refresh.WatchAsync(baseUrl, token, (current, ct) => WatchCoreAsync<TRequest, TResponse>(baseUrl, current, operation, payload, ct), cancellationToken);
+        await foreach (var update in stream.WithCancellation(cancellationToken)) yield return update;
+    }
+    private static async System.Collections.Generic.IAsyncEnumerable<QueryUpdate<TResponse>> WatchCoreAsync<TRequest, TResponse>(
+        string baseUrl, string token, string operation, TRequest payload,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
         var attempt = 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!OwnsSession(baseUrl, token)) throw new OperationCanceledException("Application session changed.");
+            token = await CurrentTokenAsync(baseUrl, token, cancellationToken);
             System.Collections.Generic.IAsyncEnumerator<QueryUpdate<TResponse>>? iterator = null;
             Exception? failure = null;
             try
@@ -88,7 +126,11 @@ public static class ApplicationClientCoordinator
                         try { next = await iterator.MoveNextAsync(); }
                         catch (Exception ex) when (Recoverable(ex, cancellationToken)) { failure = ex; break; }
                         if (!next) break;
-                        if (!OwnsSession(baseUrl, token)) throw new OperationCanceledException("Application session changed.");
+                        if (!OwnsSession(baseUrl, token))
+                        {
+                            if (_refresh?.CanReconcile(baseUrl, token) == true) throw new ApplicationCommandException("session_changed");
+                            throw new OperationCanceledException("Application session changed.");
+                        }
                         if (iterator.Current.IsSynchronized) attempt = 0;
                         yield return iterator.Current;
                     }
