@@ -26,11 +26,11 @@ internal static class DatabaseAccessPolicyTests
             yield return "uncommitted reducer dispatch: " + call.Value;
         }
         if (Regex.IsMatch(code, @"\.GetAwaiter\s*\(\s*\)\s*\.GetResult\s*\(")) yield return "sync-over-async GetResult";
-        foreach (Match call in Regex.Matches(code, @"\b(\w+)\.Wait\s*\(\s*\)"))
+        foreach (Match call in Regex.Matches(code, @"\b(\w+)\.Wait\s*\("))
         {
             yield return "blocking Wait: " + call.Value;
         }
-        foreach (Match read in Regex.Matches(code, @"\b(\w+)\.Result\b(?!\s*=)"))
+        foreach (Match read in Regex.Matches(code, @"\b(\w+)\.Result\b(?!\s*=(?!=))"))
         {
             // Non-task properties: cryptographic result, completed tuple projection and MVC
             // action result. These are not permission to block on any Task.Result.
@@ -39,13 +39,15 @@ internal static class DatabaseAccessPolicyTests
                 path.EndsWith("/ApiMutationEventFilter.cs", StringComparison.Ordinal) && read.Groups[1].Value == "executedContext") continue;
             yield return "blocking Result: " + read.Value;
         }
+        if (Regex.IsMatch(code, @"_\s*=\s*Task\.Run\s*\(")) yield return "unobserved Task.Run";
+        if (Regex.IsMatch(code, @"\basync\s+void\b")) yield return "unobserved async-void callback";
     }
 
     public static void Run()
     {
         var violations = Sources().SelectMany(path => Violations(path.Replace('\\', '/'), File.ReadAllText(path)).Select(message => Path.GetRelativePath(Root(), path) + ": " + message)).ToArray();
         if (violations.Length != 0) throw new Exception("Database access policy: " + string.Join("\n", violations));
-        foreach (var sample in new[] { "db.GetConnection();", "var url = \"https://example.test\"; db.GetConnection();", "conn.Reducers.DeleteUser(id);", "task.GetAwaiter().GetResult();", "task.Wait();", "var x = task.Result;" })
+        foreach (var sample in new[] { "db.GetConnection();", "var url = \"https://example.test\"; db.GetConnection();", "conn.Reducers.DeleteUser(id);", "task.GetAwaiter().GetResult();", "task.Wait();", "task.Wait(1000);", "var x = task.Result;", "if (task.Result == 1) return;", "_ = Task.Run(Work);", "async void Callback() {}" })
             if (!Violations("/new-service.cs", sample).Any()) throw new Exception("Policy negative fixture accepted: " + sample);
         Console.WriteLine("PASS database access policy: no raw request connections/reducer dispatches/task blocking; one observed owner-bootstrap exception and explicit non-task property exclusions; negative fixtures rejected");
     }

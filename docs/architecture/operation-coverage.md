@@ -15,6 +15,14 @@ adapters. IDs are normalized GUIDs; HTTP echoes `Operation-Id`; v1 requires a
 stable operation/request ID. Revisions and actor-scoped receipts are enforced
 by the module transaction. Legacy read response envelopes remain unchanged.
 
+Remaining legacy service paths now await committed reducer completion and read
+through the bounded serialized database boundary. A submitted call is no longer
+reported as success before rejection can be observed. Existing bool/null contracts
+and controller error mappings remain; no new receipt model or automatic mutation
+retry was introduced. Role metadata/permission-set updates use the existing atomic
+composite reducers; schedule creation reads its exact ID from the existing receipt.
+Request/error correlation is returned in `Trace-Id` without rewriting body shapes.
+
 QR display, approval, device enrollment and self-scan routes below retain their
 existing one-time protocol and tested client adapters. They are deliberately
 not recast as administrative CRUD operations. See [QR login](qr-login.md).

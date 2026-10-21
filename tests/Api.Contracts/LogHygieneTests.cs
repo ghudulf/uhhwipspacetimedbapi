@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 internal static class LogHygieneTests
 {
-    private static readonly Regex Calls = new(@"\b(?:_?logger|Log)\.(?:Log(?:Trace|Debug|Information|Warning|Error|Critical)|Verbose|Debug|Information|Info|Warning|Error|Fatal)\s*\(", RegexOptions.Compiled);
+    private static readonly Regex Calls = new(@"\b(?:\w*[Ll]ogger|_?log|Log)\.(?:Log(?:Trace|Debug|Information|Warning|Error|Critical)|Verbose|Debug|Information|Info|Warning|Error|Fatal)\s*\(", RegexOptions.Compiled);
     private static readonly Regex Secret = new(@"password|secret|token|refresh|code|otp|jwt|nonce|state|signature|assertion|credential|auth(?:orization)?header", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly HashSet<string> SafePlaceholders = new(StringComparer.OrdinalIgnoreCase)
     { "TokenId", "TokenType", "StatusCode", "ErrorCode", "ErrorType", "ExceptionType", "CredentialFile", "_credentialFile", "HasPayload" };
@@ -70,7 +70,7 @@ internal static class LogHygieneTests
     {
         var findings = DatabaseAccessPolicyTests.Sources().SelectMany(path => Findings(path.Replace('\\', '/'), File.ReadAllText(path)).Select(finding => Path.GetRelativePath(DatabaseAccessPolicyTests.Root(), path) + ": " + finding)).ToArray();
         if (findings.Length != 0) throw new Exception("Log hygiene policy:\n" + string.Join("\n", findings));
-        foreach (var sample in new[] { "_logger.LogInformation(\"Password {Password}\", password);", "Log.Debug(\"proof {Value}\", request.RefreshToken);", "logger.LogInformation(\"OTP {Code}\", verificationCode);", "logger.LogInformation(\"proof {Fingerprint} {Value}\", SafeDiagnostics.Fingerprint(proof), password);", "Log.Fatal(\"Request failed\");" })
+        foreach (var sample in new[] { "_logger.LogInformation(\"Password {Password}\", password);", "customLogger.LogError(\"proof {Value}\", accessToken);", "Log.Debug(\"proof {Value}\", request.RefreshToken);", "logger.LogInformation(\"OTP {Code}\", verificationCode);", "logger.LogInformation(\"proof {Fingerprint} {Value}\", SafeDiagnostics.Fingerprint(proof), password);", "Log.Fatal(\"Request failed\");" })
             if (!Findings("/new-controller.cs", sample).Any()) throw new Exception("Log policy accepted negative fixture: " + sample);
         if (Findings("/new-controller.cs", "logger.LogWarning(\"Verification rejected; credential {CredentialFingerprint}\", SafeDiagnostics.Fingerprint(proof));").Any())
             throw new Exception("Log policy rejected a fingerprint/outcome");
