@@ -20,7 +20,7 @@
     <ApplicationId>com.bru.avtopark.ticketsales</ApplicationId>
 
     <!-- Versions -->
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
     <!-- DESKTOP constant for platform guards in shared Unity library -->
