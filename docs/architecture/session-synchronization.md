@@ -61,7 +61,8 @@ unimplemented ceremony; this rollout does not claim to complete that endpoint.
 ## Explicit native opt-in, not a browser credential
 
 Issuance and refresh require `X-BRU-Native-Login: 1`, **absence of the Origin
-header**, and HTTPS (Development permits a loopback remote address over HTTP).
+header**, and transport permitted by the shared [network policy](network-policy.md)
+(default `lan` allows LAN HTTP; `never` requires HTTPS even on loopback).
 This header is an opt-in, not proof of client identity. An Origin-bearing request
 never receives a native refresh proof, even with the opt-in header. Password,
 Windows, QR, Entra and passkey results share finalization; a required second factor

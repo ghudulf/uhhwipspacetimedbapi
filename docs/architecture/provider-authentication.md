@@ -106,6 +106,11 @@ no-store and without browser CORS. QR reflects its generation/status flags.
 Unknown/unavailable capabilities keep the new provider selectors hidden.
 Windows also requires an explicitly trusted native origin as before.
 
+API calls and native refresh follow the shared [network policy](network-policy.md)
+(`lan` by default), so LAN HTTP can carry these requests. This does **not** relax
+Microsoft's HTTPS authority/authorization URL and non-localhost redirect rules,
+or WebAuthn's browser secure-context requirement.
+
 Shared `ProviderFlow` launches only HTTPS Entra URLs on explicitly allowed
 authority hosts (`login.microsoftonline.com` by default), with no user-info or
 fragment. Future passkey browser URLs must match the API origin, deployment
@@ -126,8 +131,8 @@ name; status/countdown have polite announcements.
 
 MAUI hosts can replace `ProviderClientContext.Browser` with a verified platform
 `IBrowserLauncher`. No native browser/authenticator integration is claimed from
-the generic build. The desktop launcher rejects HTTP unless explicitly created
-with development-loopback permission. The shipped desktop view model uses the
+the generic build. The desktop launcher applies `BRU_PLAINTEXT_POLICY`; provider
+URL allow-list and passkey same-origin checks still run first. The shipped desktop view model uses the
 default Microsoft authority host; custom host allow-list plumbing is not yet
 exposed in desktop configuration (the shared flow accepts an injected list).
 
@@ -144,7 +149,9 @@ values; the historical localhost Fido2 defaults do not satisfy the startup check
 | `Fido2:Origins` | Nonempty origin array containing the exact public API scheme/host/port |
 
 Origins must have no user-info, query, fragment or application path. All configured
-origins must be HTTPS; HTTP loopback is permitted **only in Development**. Missing
+origins must be HTTPS or HTTP loopback, regardless of server environment. Browsers
+only expose WebAuthn in secure contexts: `http://192.168.x.x` does NOT work;
+`http://localhost` does. Neither `lan` nor `any` overrides this. Missing
 or inconsistent enabled configuration fails startup with a clear, non-secret
 message. Configure trusted proxy forwarding and the request path base for a
 deployment prefix. The browser URL uses the configured public origin plus that

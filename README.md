@@ -2,6 +2,11 @@
 
 A comprehensive multi-tenant SaaS application for managing bus fleet operations, ticket sales, employee management, and maintenance scheduling. Built with SpacetimeDB 2.0, .NET 9, and Avalonia UI.
 
+Local development and LAN HTTP/WS are enabled by the shared **`lan` plaintext policy**.
+Set API `Network__PlaintextPolicy` and client `BRU_PLAINTEXT_POLICY` to `never`,
+`loopback`, `lan` (default), or `any`. See [network policy](docs/architecture/network-policy.md)
+for address/name scope, discovery ports, security risks and HTTPS-only platform exceptions.
+
 ## 🏗️ Architecture Overview
 
 ### Technology Stack

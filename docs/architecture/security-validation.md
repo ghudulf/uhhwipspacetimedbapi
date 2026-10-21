@@ -66,8 +66,8 @@ the production LAN HTTP literal and missing-link protection were removed.
 | Rule / comparable after count | Triage |
 | --- | --- |
 | DS610000: 1 → 0 | Fixed Web layout's external `_blank` link with `rel="noopener noreferrer"`. |
-| DS137138: 17 → 19 | Real remote-HTTP credential exposure fixed: shared API roots reject remote HTTP; legacy `CreateClient` applies the same boundary before attaching bearer credentials and disables redirects; LAN discovery probes HTTPS. Added loopback/HTTPS preservation and remote-HTTP rejection regressions. Remaining matches are protocol documentation, loopback development/registered OAuth callback, explicitly rejected URL test vectors and unshipped reference material. |
-| DS162092: 113 → 112 | Loopback development defaults, synthetic tests and discovery/status strings; not a hardcoded remote credential. HTTPS is now enforced for remote API roots. |
+| DS137138: 17 → 19 | Historical scan checkpoint. The original remote-HTTP rule is now replaced by the explicit shared network policy (default `lan`); clients validate before attaching credentials and disable redirects. Discovery probes policy-approved HTTP first, then TLS. LAN plaintext exposure is documented in network-policy.md. |
+| DS162092: 113 → 112 | Historical scan checkpoint: development defaults, synthetic tests and discovery/status strings. Current API-root acceptance is governed by the shared network policy, not a blanket remote-HTTPS rule. |
 | DS176209: 91 | TODO/incomplete-functionality markers, mostly third-party/reference code. Quality inventory, not proof of a vulnerability; does not certify unfinished sample features as production-ready. |
 | DS172411: 28 | JavaScript timer callbacks use functions, not user-controlled code strings; includes vendored Bootstrap and unshipped examples. No eval/string-code sink was found at these alerts. |
 | DS172412: 12 | Words such as unsafe in rejection/test descriptions; not C# unsafe blocks or pointer operations. |
@@ -120,23 +120,27 @@ only: this is not the workflows' Actions/JavaScript CodeQL matrix certification.
 | cs/linq/missed-select: 14; cs/linq/missed-where: 6; cs/string-concatenation-in-loop: 1; cs/inefficient-containskey: 64 | Performance/style inventory; not injection or untrusted-code execution. |
 | cs/useless-gethashcode-call: 11; cs/useless-tostring-call: 5 | Generated BSATN / redundant conversion quality debt. |
 
-Adjacent boundary review fixed production cookies (`Secure=Always`), enforced HTTPS
-before API endpoints outside Development, and replaced wildcard CORS with an
-explicit origin list (empty by default). Tests reject wildcard, credential-bearing,
-path-bearing and plaintext remote CORS origins, reject production HTTP before the
-endpoint, and accept configured HTTPS. No source query or rule was suppressed.
+The earlier HTTPS-only hardening is superseded by the shared
+[network policy](network-policy.md), default `lan`. Tests now assert all four
+policy modes for peers, cookies, CORS and controller/client boundaries. Wildcard,
+credential-bearing and path-bearing CORS origins remain invalid. No source query
+or rule was suppressed; approved LAN plaintext is an explicit security tradeoff.
 
 ### Deployment implications
 
-- Configure `Cors:AllowedOrigins` / `Cors__AllowedOrigins__0` only for actual browser
-  frontends, as exact HTTPS origins; same-origin pages/native clients need no CORS
-  grant. Wildcards and remote HTTP fail startup validation. HTTP loopback origins
-  are accepted only in Development.
-- Outside Development, non-HTTPS requests return **426** without executing endpoints. Exempt: `/health` and `/alive` probes, and direct loopback peers that carry no `X-Forwarded-For`/`X-Forwarded-Proto`/`Forwarded` header (a local client cannot be a remote plaintext client). Configure trusted forwarded headers so TLS-terminating proxies are recognised as HTTPS.
-  TLS termination must supply forwarding headers from explicitly configured
-  `ReverseProxy:KnownProxies`; do not trust arbitrary forwarded headers or expose a
-  plaintext backend to untrusted clients. Health checks must use the trusted TLS
-  boundary too. Cookies are always Secure in these deployments.
+- Configure exact `Cors:AllowedOrigins` / `Cors__AllowedOrigins__0` for browser
+  frontends. Policy-scoped origins are also permitted through `SetIsOriginAllowed`;
+  `never` adds no automatic origins. Wildcards remain invalid, and plaintext
+  configured origins must satisfy policy. Ceremony-specific CORS disabling and
+  WebSocket origin allow-lists are unchanged.
+- Non-HTTPS requests return **426** only when the post-forwarding peer address is
+  outside `Network:PlaintextPolicy`. `/health` and `/alive` remain exempt in every
+  mode. Trusted `X-Forwarded-Proto: https` counts as HTTPS; configure
+  `ReverseProxy:KnownProxies` and never trust arbitrary forwarding headers.
+  Cookies use `SameAsRequest`, except `never` uses `Always` (Secure). This is
+  independent of Development/Production. Plaintext LAN traffic exposes bearer and
+  refresh tokens to on-path observers; use `never`/`loopback` or a trusted VPN on
+  untrusted networks.
 - API log files/console/debug records are now JSON, including escaped exception
   text. Update log consumers accordingly; this does not permit logging credentials.
 - These local checks do not establish real proxy/certificate/domain/browser security.

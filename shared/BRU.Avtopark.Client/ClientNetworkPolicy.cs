@@ -15,6 +15,10 @@ public static class ClientNetworkPolicy
         }
     }
 
-    public static bool IsHttpAllowed(Uri uri) => uri.IsAbsoluteUri && uri.UserInfo.Length == 0 &&
-        (uri.Scheme == "https" || uri.Scheme == "http" && NetworkPolicy.IsPlaintextAllowed(uri, Mode));
+    public static bool IsHttpAllowed(Uri uri)
+    {
+        var mode = Mode; // Validate configuration even when this endpoint already uses TLS.
+        return uri.IsAbsoluteUri && uri.UserInfo.Length == 0 &&
+            (uri.Scheme == "https" || uri.Scheme == "http" && NetworkPolicy.IsPlaintextAllowed(uri, mode));
+    }
 }

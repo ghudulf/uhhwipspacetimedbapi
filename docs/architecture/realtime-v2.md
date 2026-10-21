@@ -1,6 +1,6 @@
 # Realtime v2 rollout and debugging
 
-`GET /api/realtime/stream` accepts `bru.api.v2`. The existing `bru.events.v1` endpoint remains available. V2 requires HTTPS; a loopback peer in Development can use HTTP. Browser origins must exactly match `Realtime:AllowedOrigins`; native clients send no Origin. Configure forwarded headers for trusted proxies before relying on remote-address limits.
+`GET /api/realtime/stream` accepts `bru.api.v2`. The existing `bru.events.v1` endpoint remains available. V1/V2 transport follows the shared [network policy](network-policy.md): default `lan` permits LAN HTTP/WS; `never` requires HTTPS/WSS even on loopback. Browser origins must exactly match `Realtime:AllowedOrigins`; native clients send no Origin. Configure forwarded headers for trusted proxies before relying on remote-address limits.
 
 Capability negotiation is authoritative: operations absent from it are not implemented in v2. Administrative operation parity now includes tickets, route schedules, users, roles and permissions, with receipts and revisions. Provider ceremony binding and broad screen migration remain separate work. The [endpoint ledger](operation-coverage.md) distinguishes shared adapters from retained legacy reads and protocol-only endpoints; it is not a blanket all-endpoint parity claim.
 

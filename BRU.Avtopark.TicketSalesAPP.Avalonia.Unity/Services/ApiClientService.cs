@@ -37,6 +37,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             get
             {
+                _ = BRU.Avtopark.Client.ClientNetworkPolicy.Mode; // Fail invalid client configuration at startup.
                 if (_instance == null)
                 {
                     lock (_lock)
@@ -124,7 +125,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         /// <summary>
         /// Returns the currently cached base URL, or null if discovery hasn't run yet.
         /// </summary>
-        public string? CurrentBaseUrl => _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
+        public string? CurrentBaseUrl => _discoveredBaseUrl ?? DefaultBaseUrl;
+        private static string DefaultBaseUrl => BRU.Avtopark.Client.ClientNetworkPolicy.Mode == BRU.Avtopark.Contracts.PlaintextPolicy.Never
+            ? "https://localhost:5001/api/" : $"http://localhost:{ApiPort}/api/";
 
         /// <summary>
         /// True when a live host was confirmed via the ping endpoint during discovery
@@ -239,7 +242,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         public HttpClient CreateClient()
         {
-            var baseUrl = _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
+            var baseUrl = _discoveredBaseUrl ?? DefaultBaseUrl;
             _ = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl);
             var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {

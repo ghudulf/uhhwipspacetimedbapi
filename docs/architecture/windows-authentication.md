@@ -2,6 +2,9 @@
 
 This provider is disabled by default. The existing JWT, cookie and OpenIddict schemes remain in place. It adds `POST /api/auth/windows` using the explicit ASP.NET Core Negotiate scheme. The endpoint requires HTTPS and the native-client header, disables browser CORS, and consumes the authenticated platform principal, never a username supplied in the request body.
 
+This trusted-HTTPS-origin requirement is a protocol/platform constraint, not
+relaxed by the shared [network policy](network-policy.md), even under `lan` or `any`.
+
 ## Server provisioning
 
 Set `Authentication:Windows:Enabled=true` and `Authentication:Windows:Realm` to a stable, explicit trusted-domain identifier. For administrator bootstrap, provision an external account link using the deployment owner's identity with `LinkExternalAccount("windows", realm, subject, existingUserIdentity)`. On Windows use the SID returned by the validated Windows identity. Linux uses the validated Kerberos principal when no SID is available. Do not assume these subject formats are interchangeable. Linking never creates an application user or changes their roles. Reassignment requires explicit `UnlinkExternalAccount` first. Links are restricted to trusted API subscriptions and the module owner.
