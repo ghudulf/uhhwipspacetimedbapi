@@ -28,8 +28,8 @@ public static class ClientEndpoints
 
     public static Uri WebSocketEndpoint(Uri apiBase, string endpoint)
     {
-        if (apiBase.Scheme != "https" && !(apiBase.Scheme == "http" && apiBase.IsLoopback))
-            throw new ArgumentException("Configure an HTTPS server for realtime access. Plain HTTP is limited to loopback development.");
+        if (!ClientNetworkPolicy.IsHttpAllowed(apiBase))
+            throw new ArgumentException("Server transport is not allowed by BRU_PLAINTEXT_POLICY; use HTTPS or configure the plaintext policy.");
         var relative = endpoint.TrimStart('/');
         if (relative.Contains('\\') || relative.Contains('?') || relative.Contains('#') || !Uri.TryCreate(relative, UriKind.Relative, out _))
             throw new ArgumentException("Expected a relative endpoint path without query or fragment.", nameof(endpoint));
@@ -42,8 +42,8 @@ public static class ClientEndpoints
         var uri = new Uri(apiBase, UriKind.Absolute);
         if (uri.Scheme is not ("http" or "https") || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0)
             throw new ArgumentException("Expected an HTTP(S) API base without credentials, query or fragment.", nameof(apiBase));
-        if (uri.Scheme != "https" && !uri.IsLoopback)
-            throw new ArgumentException("Configure HTTPS for remote API access. Plain HTTP is limited to loopback development.", nameof(apiBase));
+        if (!ClientNetworkPolicy.IsHttpAllowed(uri))
+            throw new ArgumentException("Server transport is not allowed by BRU_PLAINTEXT_POLICY; use HTTPS or configure the plaintext policy.", nameof(apiBase));
         var path = uri.AbsolutePath.TrimEnd('/');
         if (path.EndsWith("/api", StringComparison.OrdinalIgnoreCase)) path = path[..^4];
         return new UriBuilder(uri) { Path = path + "/" }.Uri;

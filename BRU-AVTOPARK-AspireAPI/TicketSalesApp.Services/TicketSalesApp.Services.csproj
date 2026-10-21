@@ -33,4 +33,5 @@
  
 
 <ItemGroup><Compile Include="../../server/PermissionNames.cs" Link="Authorization/PermissionNames.cs" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../../shared/BRU.Avtopark.Contracts/BRU.Avtopark.Contracts.csproj" /></ItemGroup>
 </Project>

@@ -52,7 +52,10 @@ try
     string Required(string key) => options.GetValueOrDefault(key) ?? throw new BootstrapException("Required option: " + key);
     var host = DatabaseCredentialFile.NormalizeHost(Required("--host"));
     var uri = new Uri(host);
-    if (uri.Scheme != "https" && !uri.IsLoopback) throw new BootstrapException("Remote provisioning requires HTTPS. HTTP is permitted only on loopback.");
+    var plaintextSetting = Environment.GetEnvironmentVariable("BRU_PLAINTEXT_POLICY");
+    if (!BRU.Avtopark.Contracts.NetworkPolicy.IsValidMode(plaintextSetting)) throw new BootstrapException("BRU_PLAINTEXT_POLICY must be never, loopback, lan or any.");
+    if (uri.Scheme != "https" && !BRU.Avtopark.Contracts.NetworkPolicy.IsPlaintextAllowed(uri, BRU.Avtopark.Contracts.NetworkPolicy.ParseMode(plaintextSetting)))
+        throw new BootstrapException("Provisioning transport is blocked by BRU_PLAINTEXT_POLICY; use HTTPS.");
     var name = Required("--database");
     var ownerToken = ReadSecret(Required("--owner-token-file"));
     if (ownerToken.StartsWith('{'))

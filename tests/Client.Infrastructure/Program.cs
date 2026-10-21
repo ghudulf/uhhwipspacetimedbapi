@@ -2,6 +2,7 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 PackagingPolicyTests.Run();
 NetworkPolicyTests.Run();
+await ClientNetworkPolicyTests.RunAsync();
 await QrClientTests.RunAsync();
 
 var directory = Path.Combine(Path.GetTempPath(), "bru-client-test-" + Guid.NewGuid().ToString("N"));
@@ -75,9 +76,8 @@ Assert(BRU.Avtopark.Client.ClientEndpoints.ServerRoot("http://127.0.0.1:5000/api
 Console.WriteLine("PASS remote HTTP API bases rejected before credentials; HTTPS/proxy paths and loopback development retained");
 
 Assert(BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(new Uri("https://example.invalid/proxy/api/"), "/api/auth/ws").AbsoluteUri == "wss://example.invalid/proxy/api/auth/ws", "WebSocket normalization changed HTTPS/prefix");
-try { BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(new Uri("http://192.168.1.1/api/"), "/api/auth/ws"); throw new Exception("Unencrypted LAN authentication allowed"); }
-catch (ArgumentException) { }
-Console.WriteLine("PASS realtime endpoints preserve secure origins and reject unencrypted LAN credential exchange");
+Assert(BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(new Uri("http://192.168.1.1/api/"), "/api/auth/ws").Scheme == "ws", "LAN plaintext websocket rejected");
+Console.WriteLine("PASS realtime endpoints preserve secure origins and allow policy-approved LAN HTTP");
 
 var callback = "https://example.invalid/callback";
 Assert(BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(callback + "?code=synthetic&state=synthetic", callback), "valid callback rejected");

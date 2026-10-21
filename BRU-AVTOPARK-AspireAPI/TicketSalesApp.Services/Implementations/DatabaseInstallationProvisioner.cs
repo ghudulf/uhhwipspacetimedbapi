@@ -2,6 +2,7 @@ using System.Text.Json;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Interfaces;
+using BRU.Avtopark.Contracts;
 
 namespace TicketSalesApp.Services.Implementations;
 
@@ -23,10 +24,10 @@ public static class DatabaseInstallationProvisioner
         return document.RootElement.GetProperty("token").GetString() ?? throw new IOException("Owner credential is missing.");
     }
     public static async Task ProvisionAsync(string host, string database, string ownerToken, Identity apiIdentity,
-        string? login, string? password, CancellationToken cancellationToken)
+        string? login, string? password, CancellationToken cancellationToken, PlaintextPolicy plaintextPolicy = PlaintextPolicy.Lan)
     {
         var endpoint = new Uri(DatabaseCredentialFile.NormalizeHost(host));
-        if (endpoint.Scheme != "https" && !endpoint.IsLoopback) throw new IOException("Remote database provisioning requires HTTPS.");
+        if (endpoint.Scheme != "https" && !NetworkPolicy.IsPlaintextAllowed(endpoint, plaintextPolicy)) throw new IOException("Database provisioning transport is blocked by the plaintext policy; use HTTPS.");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(30));
         var connected = new TaskCompletionSource<Identity>(TaskCreationOptions.RunContinuationsAsynchronously);

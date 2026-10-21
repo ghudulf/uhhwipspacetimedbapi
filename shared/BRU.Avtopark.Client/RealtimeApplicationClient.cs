@@ -57,14 +57,14 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
     {
         if (_receive != null) throw new InvalidOperationException("Create a new transport when reconnecting.");
         if (!apiBase.IsAbsoluteUri || apiBase.UserInfo.Length != 0 || apiBase.Query.Length != 0 || apiBase.Fragment.Length != 0 ||
-            (apiBase.Scheme != "https" && !(apiBase.Scheme == "http" && apiBase.IsLoopback)))
-            throw new ArgumentException("Realtime requires HTTPS (HTTP is allowed only for loopback development).", nameof(apiBase));
+            !ClientNetworkPolicy.IsHttpAllowed(apiBase))
+            throw new ArgumentException("Realtime transport is not allowed by BRU_PLAINTEXT_POLICY; use HTTPS or configure the plaintext policy.", nameof(apiBase));
         var endpoint = ClientEndpoints.WebSocketEndpoint(apiBase, "api/realtime/stream");
         _socket.Options.AddSubProtocol(ApiProtocol.Subprotocol);
         _socket.Options.SetRequestHeader("X-BRU-Native-Login", "1");
         _socket.Options.SetRequestHeader("X-BRU-Device", "native");
         _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
-        // Authentication travels inside the encrypted session; no token in URLs, logs or proxy headers.
+        // Authentication travels inside the policy-approved session; no token in URLs, logs or proxy headers.
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         deadline.CancelAfter(TimeSpan.FromSeconds(15));
         try

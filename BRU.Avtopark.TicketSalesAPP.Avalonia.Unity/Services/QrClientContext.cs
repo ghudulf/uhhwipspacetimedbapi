@@ -15,7 +15,7 @@ public static class QrClientContext
     // Resolve the current account from the existing authenticated JSON profile endpoint, not a user-entered enrollment label.
     public static async Task<string> AccountAsync(string apiBase, string bearer, CancellationToken cancellationToken)
     {
-        _ = new QrLoginClient(Http, apiBase); // Apply the same HTTPS/loopback validation before bearer use.
+        _ = new QrLoginClient(Http, apiBase); // Apply the shared transport policy before bearer use.
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(ClientEndpoints.ServerRoot(apiBase), "api/auth/profile"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

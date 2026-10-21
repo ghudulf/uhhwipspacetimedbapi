@@ -212,7 +212,7 @@ public partial class WebSocketDebugViewModel : ObservableObject, IDisposable, IA
     private static (bool success, Uri? wsUri, string? errorMessage) BuildWebSocketUri(Uri serverUri, string path)
     {
         try { return (true, BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(serverUri, path), null); }
-        catch (ArgumentException) { return (false, null, "Use a configured HTTPS server; HTTP is limited to loopback development."); }
+        catch (ArgumentException) { return (false, null, "Server transport is blocked by BRU_PLAINTEXT_POLICY. Use HTTPS or explicitly configure the plaintext policy."); }
     }
 
     [RelayCommand]

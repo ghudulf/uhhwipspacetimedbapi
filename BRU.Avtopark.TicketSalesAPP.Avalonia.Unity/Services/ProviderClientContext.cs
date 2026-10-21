@@ -20,8 +20,9 @@ public sealed class SystemBrowserLauncher(bool allowDevelopmentLoopback = false)
     public Task OpenAsync(Uri url, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _ = allowDevelopmentLoopback; // Compatibility only: the shared policy now controls HTTP browser launches.
         if (!url.IsAbsoluteUri || url.UserInfo.Length != 0 || url.Fragment.Length != 0 ||
-            (url.Scheme != "https" && !(allowDevelopmentLoopback && url.Scheme == "http" && url.IsLoopback))) throw new ProviderLoginException("unsafe_url");
+            !ClientNetworkPolicy.IsHttpAllowed(url)) throw new ProviderLoginException("unsafe_url");
         try
         {
             using var process = Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });

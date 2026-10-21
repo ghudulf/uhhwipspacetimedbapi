@@ -24,14 +24,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
 
         // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
-        private static readonly HttpClient _probeClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
+        private static readonly HttpClient _probeClient = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
 
         // IP range to scan: 192.168.0.100 – 192.168.0.249
         private const int ScanRangeStart = 100;
         private const int ScanRangeEnd = 249;
         private const int ApiPort = 5000;
-        // Remote servers must be reached over TLS: the API's HTTPS endpoint (appsettings Kestrel:EndPoints:Https), never the plain-HTTP dev port.
-        private const int RemoteHttpsPort = 5001;
         private const string PingPath = "api/discovery/ping";
         private const int ProbeTimeoutMs = 500;
 
@@ -162,7 +160,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 Serilog.Log.Information("ApiClientService: Starting API server discovery...");
 
                 // 1. Try localhost first (fastest path for the dev machine)
-                var localhostUrl = $"http://localhost:{ApiPort}/";
+                var mode = BRU.Avtopark.Client.ClientNetworkPolicy.Mode;
+                var localhostUrl = mode == BRU.Avtopark.Contracts.PlaintextPolicy.Never ? "https://localhost:5001/" : $"http://localhost:{ApiPort}/";
                 if (await PingApiAsync(localhostUrl, cancellationToken))
                 {
                     Serilog.Log.Information("ApiClientService: API found at localhost");
@@ -176,10 +175,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 Serilog.Log.Information("ApiClientService: Scanning LAN range {Subnet}.{Start}-{End}...",
                     subnet, ScanRangeStart, ScanRangeEnd);
 
-                var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
-                    .Select(i => $"https://{subnet}.{i}:{RemoteHttpsPort}/");
-
-                var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
+                var found = await FindFirstRespondingHostAsync(BRU.Avtopark.Client.DiscoveryEndpoints.Candidates(subnet, tls: false, mode), cancellationToken)
+                    ?? await FindFirstRespondingHostAsync(BRU.Avtopark.Client.DiscoveryEndpoints.Candidates(subnet, tls: true, mode), cancellationToken);
                 if (found != null)
                 {
                     Serilog.Log.Information("ApiClientService: API found at {Url}", found);
@@ -190,7 +187,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
                 // 3. Fall back to localhost even if it didn't respond (offline/dev scenario)
                 Serilog.Log.Warning("ApiClientService: No API server found on LAN, falling back to localhost");
-                _discoveredBaseUrl = $"http://localhost:{ApiPort}/api/";
+                _discoveredBaseUrl = $"{localhostUrl}api/";
                 return _discoveredBaseUrl;
             }
             finally
@@ -267,6 +264,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         private static async Task<bool> PingApiAsync(string baseUrl, CancellationToken cancellationToken)
         {
+            if (!BRU.Avtopark.Client.ClientNetworkPolicy.IsHttpAllowed(new Uri(baseUrl))) return false;
             try
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

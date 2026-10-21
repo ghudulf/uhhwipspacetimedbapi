@@ -28,7 +28,7 @@ public sealed class NativeSessionRefresher : ISessionRefresher
     }
     public async Task<string?> RefreshAsync(string apiBase, string expiredAccessToken, CancellationToken cancellationToken = default)
     {
-        _ = new ProviderLoginClient(http, apiBase); // HTTPS/loopback, no user-info/query/fragment before any credential is sent.
+        _ = new ProviderLoginClient(http, apiBase); // Shared policy, no user-info/query/fragment before credentials are sent.
         var api = ApiClientService.Instance;
         var storage = new TokenStorageService(apiBase);
         var stored = await storage.GetTokensAsync();

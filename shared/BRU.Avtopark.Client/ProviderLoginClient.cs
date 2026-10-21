@@ -44,7 +44,6 @@ public sealed class ProviderLoginClient : IProviderLoginApi, IPasskeyManagementA
         try
         {
             root = ClientEndpoints.ServerRoot(apiBase);
-            if (root.Scheme != "https" && !(root.Scheme == "http" && root.IsLoopback)) throw new ArgumentException();
         }
         catch { throw new ProviderLoginException("invalid_server"); }
     }

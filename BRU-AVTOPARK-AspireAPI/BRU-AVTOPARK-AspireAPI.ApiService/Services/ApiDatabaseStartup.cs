@@ -38,7 +38,7 @@ public sealed class ApiDatabaseStartup(ISpacetimeDBService database, IConfigurat
                             var password = string.IsNullOrWhiteSpace(passwordFile) ? null : DatabaseInstallationProvisioner.ReadPrivateSecret(passwordFile);
                             await DatabaseInstallationProvisioner.ProvisionAsync(configuration["SpacetimeDB:Host"] ?? "http://localhost:3000",
                                 configuration["SpacetimeDB:DatabaseName"] ?? "avtopark", DatabaseInstallationProvisioner.ReadOwnerToken(ownerFile), identity,
-                                password == null ? null : configuration["SpacetimeDB:Bootstrap:AdminLogin"] ?? "admin", password, stoppingToken);
+                                password == null ? null : configuration["SpacetimeDB:Bootstrap:AdminLogin"] ?? "admin", password, stoppingToken, Security.HttpSecurityPolicy.Mode(configuration));
                             logger.LogInformation("Owner-authorized API startup provisioning committed for API identity {ApiIdentity}. Remove bootstrap secrets/configuration after initial setup.", identity);
                             // Recheck the API's own subscribed trust row before claiming readiness.
                             SetStatus("awaiting_trust");

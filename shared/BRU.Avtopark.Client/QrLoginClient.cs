@@ -41,7 +41,6 @@ public sealed class QrLoginClient : IQrLoginApi
         try
         {
             root = ClientEndpoints.ServerRoot(apiBase);
-            if (root.Scheme != "https" && !(root.Scheme == "http" && root.IsLoopback)) throw new ArgumentException();
             ApiBase = root.AbsoluteUri;
         }
         catch { throw new QrLoginException("invalid_server"); }
