@@ -90,6 +90,23 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
+    public static void PrepareAdminOperationsTest(ReducerContext ctx)
+    {
+        RequireDeploymentOwner(ctx);
+        const uint routeId = 3000000000;
+        if (ctx.Db.Route.RouteId.Find(routeId) == null)
+            ctx.Db.Route.Insert(new Route { RouteId = routeId, RouteNumber = "synthetic-admin", StartPoint = "Synthetic admin start", EndPoint = "Synthetic admin end", IsActive = true });
+        if (ctx.Db.RoleIdCounter.Key.Find("roleId") == null)
+            ctx.Db.RoleIdCounter.Insert(new RoleIdCounter { Key = "roleId", NextId = ctx.Db.Role.Iter().Select(r => r.RoleId).DefaultIfEmpty(1u).Max() });
+        if (ctx.Db.UserIdCounter.Key.Find("userId") == null)
+            ctx.Db.UserIdCounter.Insert(new UserIdCounter { Key = "userId", NextId = 100 });
+        if (ctx.Db.UserRoleIdCounter.Key.Find("userRoleId") == null)
+            ctx.Db.UserRoleIdCounter.Insert(new UserRoleIdCounter { Key = "userRoleId", NextId = ctx.Db.UserRole.Iter().Select(r => r.Id).DefaultIfEmpty(0u).Max() });
+        if (ctx.Db.TicketIdCounter.Key.Find("ticketId") == null)
+            ctx.Db.TicketIdCounter.Insert(new TicketIdCounter { Key = "ticketId", NextId = ctx.Db.Ticket.Iter().Select(t => t.TicketId).DefaultIfEmpty(0u).Max() });
+    }
+
+    [SpacetimeDB.Reducer]
     public static void PrepareCredentialMigrationTest(ReducerContext ctx, string identityHex, string login, string password, bool privateCredential, bool conflictingLegacy, bool active)
     {
         RequireDeploymentOwner(ctx);

@@ -19,10 +19,10 @@ public static partial class Module
         return row.Revision;
     }
     private static void CommitCatalogMutation(ReducerContext ctx, string operationId, Identity actingUser, string resource,
-        string action, uint? entityId, ulong? expectedRevision, string hash, Func<Identity, uint> apply)
+        string action, uint? entityId, ulong? expectedRevision, string hash, Func<Identity, uint> apply, string? permissionOverride = null)
     {
         var actor = ResolveEffectiveUser(ctx, actingUser);
-        var permission = resource + "." + (action is "update" or "set-active" ? "edit" : action);
+        var permission = permissionOverride ?? resource + "." + (action is "update" or "set-active" ? "edit" : action);
         if (!HasPermission(ctx, actor, permission)) throw new Exception("Missing " + permission + " permission.");
         var operation = resource + "." + action;
         var key = ReceiptKey(actor, operationId);

@@ -27,6 +27,7 @@ public static partial class Module
         {
             user.PasswordHash = null;
             ctx.Db.UserProfile.UserId.Update(user);
+            AdvanceUserRevision(ctx, userId);
         }
     }
 
@@ -48,6 +49,7 @@ public static partial class Module
             {
                 user.PasswordHash = null;
                 ctx.Db.UserProfile.UserId.Update(user);
+                AdvanceUserRevision(ctx, user.UserId);
             }
             cleared++;
         }

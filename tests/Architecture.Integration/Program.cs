@@ -79,6 +79,7 @@ try
     }
 
     await CredentialMigrationTests.RunAsync(database, owner, ownerToken);
+    await AdminOperationTests.RunAsync(database, owner, ownerToken);
     await QrDeviceTests.RunAsync(database, owner, ownerToken);
     var accessService = new TicketSalesApp.Services.Authorization.UserAccessService(database);
     var access = await accessService.GetAsync(owner);

@@ -1029,7 +1029,12 @@ public static partial class Module
     /// </remarks>
     [SpacetimeDB.Reducer]
     public static void RegisterUser(ReducerContext ctx, string login, string password, string email, string phoneNumber, uint? roleId = null, string? roleName = null, Identity? actingUser = null, string? newUserIdentity = null)
+        => RegisterUserCore(ctx, login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity);
+
+    private static uint RegisterUserCore(ReducerContext ctx, string login, string password, string email, string phoneNumber, uint? roleId, string? roleName, Identity? actingUser, string? newUserIdentity)
     {
+        ValidateText(login, 200, true); ValidateText(email, 320); ValidateText(phoneNumber, 50);
+        if (string.IsNullOrEmpty(password) || password.Length < 6 || password.Length > 1024) throw new Exception("Invalid initial credential length.");
         RequireTrustedApi(ctx);
         // Check if a user with the same login already exists
         if (ctx.Db.UserProfile.Iter().Any(u => u.Login == login))
@@ -1151,6 +1156,8 @@ public static partial class Module
             Details = $"User {login} registered successfully",
             IpAddress = null
         });
+        AdvanceEntityRevision(ctx, "users", user.LegacyUserId);
+        return user.LegacyUserId;
     }
 
     
@@ -1189,6 +1196,7 @@ public static partial class Module
         // Update LastLoginAt
         user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ctx.Db.UserProfile.UserId.Update(user);
+        AdvanceUserRevision(ctx, user.UserId);
 
         // Log the successful authentication
         Log.Info($"User {user.Login} authenticated successfully with roles: {string.Join(", ", roles)}");
@@ -1287,6 +1295,7 @@ public static partial class Module
             // Set the last login time to current time
             user.LastLoginAt = currentTime;
             ctx.Db.UserProfile.UserId.Update(user);  // Update the user record
+            AdvanceUserRevision(ctx, user.UserId);
         }
 
         // Log successful validation
@@ -1333,6 +1342,7 @@ public static partial class Module
             // Set the last login time to current time
             user.LastLoginAt = currentTime;
             ctx.Db.UserProfile.UserId.Update(user);  // Update the user record
+            AdvanceUserRevision(ctx, user.UserId);
         }
 
         // Log successful session use
@@ -1498,7 +1508,15 @@ public static partial class Module
         string[]? estimatedStopTimes = null,
         double[]? stopDistances = null,
         string? notes = null)
+        => CreateRouteScheduleCore(ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, null);
+
+    private static uint CreateRouteScheduleCore(ReducerContext ctx, uint routeId, ulong departureTime, double price, uint availableSeats,
+        string[]? daysOfWeek, string? startPoint, string? endPoint, string[]? routeStops, ulong? arrivalTime, uint? stopDurationMinutes,
+        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, Identity? actingUser)
     {
+        var actor = ResolveEffectiveUser(ctx, actingUser);
+        if (!HasPermission(ctx, actor, "schedules.create")) throw new Exception("Missing schedules.create permission.");
+        ValidateScheduleFields(departureTime, arrivalTime ?? 0, price, startPoint, endPoint, routeStops, daysOfWeek, estimatedStopTimes, stopDistances, notes);
         // Validate that the route exists
         if (!ctx.Db.Route.Iter().Any(r => r.RouteId == routeId))
         {
@@ -1555,8 +1573,10 @@ public static partial class Module
             RouteId = routeId,
             EventType = "Created",
             Timestamp = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
-            ChangedBy = ctx.Sender
+            ChangedBy = actor
         });
+        AdvanceEntityRevision(ctx, "schedules", scheduleId);
+        return scheduleId;
     }
 
     [SpacetimeDB.Reducer]
@@ -1808,6 +1828,7 @@ public static partial class Module
         }
 
         Log.Info($"User {login} successfully claimed by identity {userIdentity}");
+        AdvanceUserRevision(ctx, userIdentity);
     }
 
     
@@ -1819,11 +1840,17 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateUser(ReducerContext ctx, Identity userId, string? login, string? passwordHash,
         int? role, string? phoneNumber, string? email, bool? isActive, Identity? actingUser = null)
+        => UpdateUserCore(ctx, userId, login, passwordHash, role, phoneNumber, email, isActive, actingUser);
+
+    private static void UpdateUserCore(ReducerContext ctx, Identity userId, string? login, string? passwordHash,
+        int? role, string? phoneNumber, string? email, bool? isActive, Identity? actingUser)
     {
+        ValidateText(login, 200, true); ValidateText(email, 320); ValidateText(phoneNumber, 50);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
         var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        if (isActive == false) EnsureUserMayBeRemoved(ctx, userId, effectiveUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "users.edit")) // UpdateUser PERM CHECK
@@ -1866,6 +1893,7 @@ public static partial class Module
         user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ctx.Db.UserProfile.UserId.Update(user);
         Log.Info($"User {userId} updated");
+        AdvanceUserRevision(ctx, userId);
 
         // Handle role updates, Use the assignRole and removeRole for this, first check if it has the role,
         // then assign or remove, depending on the new role.
@@ -1892,6 +1920,9 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void ActivateUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
+        => ActivateUserCore(ctx, userId, actingUser);
+
+    private static void ActivateUserCore(ReducerContext ctx, Identity userId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -1920,15 +1951,20 @@ public static partial class Module
         user.IsActive = true;
         ctx.Db.UserProfile.UserId.Update(user);
         Log.Info($"User {userId} activated by {effectiveUser}");
+        AdvanceUserRevision(ctx, userId);
     }
     
     [SpacetimeDB.Reducer]
     public static void DeactivateUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
+        => DeactivateUserCore(ctx, userId, actingUser);
+
+    private static void DeactivateUserCore(ReducerContext ctx, Identity userId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
         var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        EnsureUserMayBeRemoved(ctx, userId, effectiveUser);
         
         // Check for the required permission
         if (!HasPermission(ctx, effectiveUser, "users.edit")) // DeactivateUser PERM CHECK
@@ -1971,6 +2007,7 @@ public static partial class Module
         user.IsActive = false;
         ctx.Db.UserProfile.UserId.Update(user);
         Log.Info($"User {userId} deactivated by {effectiveUser}");
+        AdvanceUserRevision(ctx, userId);
     }
     
     [SpacetimeDB.Reducer]
@@ -2017,15 +2054,20 @@ public static partial class Module
         ctx.Db.UserProfile.UserId.Update(user);
         
         Log.Info($"Password changed for user {userId}");
+        AdvanceUserRevision(ctx, userId);
     }
 
     [SpacetimeDB.Reducer]
     public static void DeleteUser(ReducerContext ctx, Identity userId, Identity? actingUser = null)
+        => DeleteUserCore(ctx, userId, actingUser);
+
+    private static void DeleteUserCore(ReducerContext ctx, Identity userId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
         var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
+        EnsureUserMayBeRemoved(ctx, userId, effectiveUser);
         
         if (!HasPermission(ctx, effectiveUser, "users.delete")) // DeleteUser PERM CHECK
         {
@@ -2064,6 +2106,7 @@ public static partial class Module
         }
 
         // Delete the user.
+        AdvanceUserRevision(ctx, userId);
         ctx.Db.UserProfile.UserId.Delete(userId);
         ctx.Db.UserCredential.UserId.Delete(userId);
         Log.Info($"User {userId} has been deleted, with all associated roles removed.");
@@ -2247,6 +2290,12 @@ public static partial class Module
         double? price, uint? availableSeats, string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes,
         bool? isRecurring, string[]? estimatedStopTimes,
         double[]? stopDistances, string? notes, Identity? actingUser = null)
+        => UpdateRouteScheduleCore(ctx, scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actingUser);
+
+    private static void UpdateRouteScheduleCore(ReducerContext ctx, uint scheduleId, uint? routeId, string? startPoint,
+        string? endPoint, string[]? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats,
+        string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes, bool? isRecurring, string[]? estimatedStopTimes,
+        double[]? stopDistances, string? notes, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -2290,11 +2339,13 @@ public static partial class Module
         if (stopDistances != null) schedule.StopDistances = stopDistances;
         if (!string.IsNullOrEmpty(notes)) schedule.Notes = notes;
 
+        ValidateScheduleFields(schedule.DepartureTime, schedule.ArrivalTime, schedule.Price, schedule.StartPoint, schedule.EndPoint, schedule.RouteStops, schedule.DaysOfWeek, schedule.EstimatedStopTimes, schedule.StopDistances, schedule.Notes);
         // Update the "updated" fields
         schedule.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         schedule.UpdatedBy = effectiveUser.ToString(); // Use the effective user identity
 
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
+        AdvanceEntityRevision(ctx, "schedules", scheduleId);
         Log.Info($"Route schedule {scheduleId} updated");
 
         // Publish route schedule event
@@ -2310,6 +2361,9 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void DeleteRouteSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
+        => DeleteRouteScheduleCore(ctx, scheduleId, actingUser);
+
+    private static void DeleteRouteScheduleCore(ReducerContext ctx, uint scheduleId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -2331,6 +2385,7 @@ public static partial class Module
         var routeId = schedule.RouteId;
 
         ctx.Db.RouteSchedule.ScheduleId.Delete(scheduleId);
+        AdvanceEntityRevision(ctx, "schedules", scheduleId);
         Log.Info($"Route schedule {scheduleId} has been deleted.");
 
         // Publish route schedule event
@@ -2346,6 +2401,9 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void ActivateSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
+        => ActivateScheduleCore(ctx, scheduleId, actingUser);
+
+    private static void ActivateScheduleCore(ReducerContext ctx, uint scheduleId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -2383,10 +2441,14 @@ public static partial class Module
         schedule.UpdatedBy = effectiveUser.ToString();
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
         Log.Info($"Schedule {scheduleId} activated by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "schedules", scheduleId);
     }
     
     [SpacetimeDB.Reducer]
     public static void DeactivateSchedule(ReducerContext ctx, uint scheduleId, Identity? actingUser = null)
+        => DeactivateScheduleCore(ctx, scheduleId, actingUser);
+
+    private static void DeactivateScheduleCore(ReducerContext ctx, uint scheduleId, Identity? actingUser)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -2440,6 +2502,7 @@ public static partial class Module
         schedule.UpdatedBy = effectiveUser.ToString();
         ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
         Log.Info($"Schedule {scheduleId} deactivated by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "schedules", scheduleId);
     }
 
     [SpacetimeDB.Reducer]

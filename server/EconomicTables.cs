@@ -24,7 +24,11 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void CreateTicket(ReducerContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime = null, Identity? actingUser = null)
+        => CreateTicketCore(ctx, routeId, price, seatNumber, paymentMethod, purchaseTime, actingUser);
+
+    private static uint CreateTicketCore(ReducerContext ctx, uint routeId, double price, uint seatNumber, string paymentMethod, ulong? purchaseTime, Identity? actingUser)
     {
+        ValidateTicketFields(price, seatNumber, paymentMethod, purchaseTime);
         if (!double.IsFinite(price) || price < 0 || price > 1e12) throw new Exception("Invalid ticket price.");
         Log.Info($"[CreateTicket] Starting for route: {routeId}, seat: {seatNumber}, price: {price}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
@@ -106,6 +110,8 @@ public static partial class Module
         // Insert the new ticket into the database
         ctx.Db.Ticket.Insert(ticket);
         Log.Info($"[CreateTicket] Successfully created ticket ID: {ticketId} for route: {routeId} by user: {effectiveUser}");
+        AdvanceEntityRevision(ctx, "tickets", ticketId);
+        return ticketId;
     }
 
     [SpacetimeDB.Reducer]
@@ -204,6 +210,7 @@ public static partial class Module
         ctx.Db.Ticket.TicketId.Update(ticket);
 
         Log.Info($"Ticket {ticketId} cancelled by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "tickets", ticketId);
 
         // Publish ticket sale cancellation event
         ctx.Db.TicketSaleEvent.Insert(new TicketSaleEvent
@@ -221,7 +228,11 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void UpdateTicket(ReducerContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, Identity? actingUser = null)
+        => UpdateTicketCore(ctx, ticketId, routeId, seatNumber, ticketPrice, paymentMethod, isActive, actingUser);
+
+    private static void UpdateTicketCore(ReducerContext ctx, uint ticketId, uint? routeId, uint? seatNumber, double? ticketPrice, string? paymentMethod, bool? isActive, Identity? actingUser)
     {
+        ValidateTicketFields(ticketPrice, seatNumber, paymentMethod, null);
         if (ticketPrice.HasValue && (!double.IsFinite(ticketPrice.Value) || ticketPrice < 0)) throw new Exception("Invalid ticket price.");
         Log.Info($"[UpdateTicket] Starting for ticket ID: {ticketId}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
@@ -267,17 +278,24 @@ public static partial class Module
             ticket.IsActive = isActive.Value;
         }
 
+        if (ticket.IsActive && ctx.Db.Ticket.Iter().Any(t => t.TicketId != ticketId && t.RouteId == ticket.RouteId && t.SeatNumber == ticket.SeatNumber && t.IsActive))
+            throw new Exception("Seat is already taken.");
         ticket.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ticket.UpdatedBy = effectiveUser.ToString();
 
         ctx.Db.Ticket.TicketId.Update(ticket);
+        AdvanceEntityRevision(ctx, "tickets", ticketId);
         Log.Info($"Ticket {ticketId} updated");
         Log.Info($"[UpdateTicket] Successfully updated ticket ID: {ticketId} by user: {effectiveUser}");
     }
 
     [SpacetimeDB.Reducer]
     public static void DeleteTicket(ReducerContext ctx, uint ticketId, Identity? actingUser = null)
+        => DeleteTicketCore(ctx, ticketId, actingUser);
+
+    private static void DeleteTicketCore(ReducerContext ctx, uint ticketId, Identity? actingUser)
     {
+        if (ctx.Db.Sale.Iter().Any(s => s.TicketId == ticketId)) throw new Exception("Ticket is referenced by an existing sale.");
         Log.Info($"[DeleteTicket] Starting for ticket ID: {ticketId}");
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -295,6 +313,7 @@ public static partial class Module
             throw new Exception("Ticket not found.");
         }
         ctx.Db.Ticket.TicketId.Delete(ticketId);
+        AdvanceEntityRevision(ctx, "tickets", ticketId);
         Log.Info($"Ticket {ticketId} has been deleted.");
         Log.Info($"[DeleteTicket] Successfully deleted ticket ID: {ticketId} by user: {effectiveUser}");
     }
