@@ -36,6 +36,10 @@ public partial class CentralViewWindowViewModel : ObservableObject
 
     public bool CanLinkWindowsAccount => IsConnected && _access?.IsActive == true && WindowsAccountClient.TrustedOrigin != null;
     public bool CanUseQr => IsConnected && _access?.IsActive == true;
+    private bool entraEnabled;
+    public bool CanLinkEntraAccount => IsConnected && _access?.IsActive == true && entraEnabled;
+    [RelayCommand(CanExecute = nameof(CanLinkEntraAccount))]
+    private void LinkEntraAccount() => OpenQrWindow(() => new EntraAccountLinkWindow());
 
     [RelayCommand(CanExecute = nameof(CanUseQr))]
     private void ApproveQrLogin() => OpenQrWindow(() => new QrApproveWindow());
@@ -109,10 +113,20 @@ public partial class CentralViewWindowViewModel : ObservableObject
                 {
                     var access = string.IsNullOrEmpty(token) || origin == null ? null
                         : await SessionAccessClient.GetAsync(origin, token, cancellationToken);
+                    BRU.Avtopark.Client.ProviderCapabilities? providers = null;
+                    if (access?.IsActive == true)
+                    {
+                        try { providers = await ProviderClientContext.CreateApi().CapabilitiesAsync(cancellationToken); }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                        catch { } // Older/offline capability endpoints must not disable existing account navigation.
+                    }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         if (generation == Interlocked.Read(ref _sessionGeneration) && token == api.AuthToken && origin == api.CurrentBaseUrl)
+                        {
+                            entraEnabled = providers?.Entra == true;
                             ApplyAccess(access, access?.IsActive == true);
+                        }
                     });
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
@@ -132,6 +146,8 @@ public partial class CentralViewWindowViewModel : ObservableObject
     {
         _access = access;
         IsConnected = connected;
+        OnPropertyChanged(nameof(CanLinkEntraAccount));
+        LinkEntraAccountCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanLinkWindowsAccount));
         LinkWindowsAccountCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanUseQr));

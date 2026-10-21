@@ -163,6 +163,10 @@
                 <Button x:Name="WindowsAccountButton" Content="Учётная запись Windows / Kerberos"
                         AutomationProperties.Name="Войти с учётной записью домена" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" Click="WindowsAccount_Click" />
+                <Button x:Name="EntraButton" Content="Учётная запись Microsoft" IsVisible="False"
+                        AutomationProperties.Name="Войти с учётной записью Microsoft" HorizontalAlignment="Stretch" Click="Entra_Click" />
+                <Button x:Name="PasskeyButton" Content="Ключ доступа / Windows Hello через браузер" IsVisible="False"
+                        AutomationProperties.Name="Войти с ключом доступа через браузер" HorizontalAlignment="Stretch" Click="Passkey_Click" />
                 <!-- Login Method Cards -->
                 <StackPanel Spacing="12">
                     

@@ -218,16 +218,20 @@ public partial class App : Application
             return await completed.Task;
         }
 
-        if (method.Value is LoginMethod.QrCode or LoginMethod.QrDevice)
+        if (method.Value is LoginMethod.QrCode or LoginMethod.QrDevice or LoginMethod.Entra or LoginMethod.Passkey)
         {
             try
             {
-                Window qr = method.Value == LoginMethod.QrCode ? new QrLoginWindow() : new QrDeviceLoginWindow();
+                Window qr = method.Value switch
+                {
+                    LoginMethod.QrCode => new QrLoginWindow(), LoginMethod.QrDevice => new QrDeviceLoginWindow(),
+                    LoginMethod.Entra => new ProviderLoginWindow("entra"), _ => new ProviderLoginWindow("passkey")
+                };
                 var qrClosed = new TaskCompletionSource();
                 qr.Closed += (_, _) => qrClosed.TrySetResult();
                 if (owner != null) qr.Show(owner); else qr.Show();
                 await qrClosed.Task;
-                var json = qr is QrLoginWindow display ? display.LoginJson : ((QrDeviceLoginWindow)qr).LoginJson;
+                var json = qr switch { QrLoginWindow display => display.LoginJson, QrDeviceLoginWindow device => device.LoginJson, ProviderLoginWindow provider => provider.LoginJson, _ => null };
                 if (json == null) return false;
                 using var lifetime = new System.Threading.CancellationTokenSource();
                 var vm = new AuthViewModel();
@@ -237,7 +241,7 @@ public partial class App : Application
                 {
                     try { await vm.ApplyExternalLoginAsync(json, lifetime.Token); }
                     catch (OperationCanceledException) { }
-                    catch { vm.ErrorMessage = "Не удалось обработать результат QR-входа."; }
+                    catch { vm.ErrorMessage = "Не удалось обработать результат внешнего входа."; }
                     finally { vm.RecalculateButtonStates(); }
                 };
                 window.Closed += (_, _) => { lifetime.Cancel(); completed.TrySetResult(vm.IsAuthenticated); };
@@ -246,7 +250,7 @@ public partial class App : Application
             }
             catch
             {
-                Log.Warning("QR login UI failed");
+                Log.Warning("External login UI failed");
                 return false;
             }
         }

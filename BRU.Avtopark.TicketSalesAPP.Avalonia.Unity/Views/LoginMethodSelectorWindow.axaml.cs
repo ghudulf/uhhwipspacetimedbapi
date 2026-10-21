@@ -4,6 +4,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using System;
+using System.Threading;
+using BRU.Avtopark.Client;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
@@ -17,6 +19,17 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             InitializeComponent();
             this.FindControl<Button>("WindowsAccountButton")!.IsVisible =
                 Services.WindowsAccountClient.TrustedOrigin != null;
+            var lifetime = new CancellationTokenSource();
+            Closed += (_, _) => lifetime.Cancel();
+            Opened += async (_, _) =>
+            {
+                try
+                {
+                    var capabilities = await Services.ProviderClientContext.CreateApi().CapabilitiesAsync(lifetime.Token);
+                    if (!lifetime.IsCancellationRequested) ApplyCapabilities(capabilities);
+                }
+                catch { } // Unknown/unavailable providers stay hidden.
+            };
 #if DEBUG
             DevToolsHelper.AttachOnce();
 #endif
@@ -45,6 +58,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             Close(SelectedMethod);
         }
 
+        public void ApplyCapabilities(ProviderCapabilities capabilities)
+        {
+            this.FindControl<Button>("EntraButton")!.IsVisible = capabilities.Entra;
+            this.FindControl<Button>("PasskeyButton")!.IsVisible = capabilities.Passkeys;
+            this.FindControl<Button>("WindowsAccountButton")!.IsVisible = capabilities.Windows && Services.WindowsAccountClient.TrustedOrigin != null;
+        }
+        private void Entra_Click(object? sender, RoutedEventArgs e) { SelectedMethod = LoginMethod.Entra; Close(SelectedMethod); }
+        private void Passkey_Click(object? sender, RoutedEventArgs e) { SelectedMethod = LoginMethod.Passkey; Close(SelectedMethod); }
+
         private void QrCode_Click(object? sender, RoutedEventArgs e)
         {
             SelectedMethod = LoginMethod.QrCode;
@@ -70,6 +92,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         Traditional,
         OAuth,
         QrCode,
-        QrDevice
+        QrDevice,
+        Entra,
+        Passkey
     }
 }

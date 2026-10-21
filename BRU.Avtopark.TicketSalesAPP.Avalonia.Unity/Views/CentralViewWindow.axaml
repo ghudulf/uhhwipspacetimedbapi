@@ -598,6 +598,10 @@
                                     IsVisible="{Binding CanUseQr}" AutomationProperties.Name="Подтвердить вход по QR">
                                 <TextBlock Text="Подтвердить вход по QR" TextWrapping="Wrap" Margin="12" AutomationProperties.Name="Открыть подтверждение входа по QR" />
                             </Button>
+                            <Button Classes="NavItem" Command="{Binding LinkEntraAccountCommand}"
+                                    IsVisible="{Binding CanLinkEntraAccount}" AutomationProperties.Name="Связать учётную запись Microsoft">
+                                <TextBlock Text="Связать учётную запись Microsoft" TextWrapping="Wrap" Margin="12" />
+                            </Button>
                             <Button Classes="NavItem" Command="{Binding ManageQrDevicesCommand}"
                                     IsVisible="{Binding CanUseQr}" AutomationProperties.Name="QR-вход на этом устройстве">
                                 <TextBlock Text="QR-вход на этом устройстве" TextWrapping="Wrap" Margin="12" AutomationProperties.Name="Открыть управление ключами QR-входа" />
