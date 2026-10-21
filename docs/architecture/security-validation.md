@@ -83,10 +83,14 @@ and these dispositions; do not call this a zero-alert scan.
 ## CodeQL checkpoint
 
 CodeQL CLI **2.27.3**, `codeql/csharp-queries` **1.10.2**, suite
-`csharp-security-and-quality`. The old database was not reused: comparing its
-source archive against the checkout found six changed source/project files,
-including Services files. Fresh before/after databases built ApiService and its
-Services/Contracts dependencies with compiler tracing:
+`csharp-security-and-quality`. Fresh before/after databases built ApiService and
+its Services/Contracts dependencies with compiler tracing. The initial byte-level
+archive comparison reported six differences: four Services files differ only
+because CodeQL strips their UTF-8 BOM, while two host project metadata files had
+changed. A fresh reference run was used rather than assuming database freshness.
+After the application fixes, the second database was rebuilt; a BOM-normalized
+comparison confirms all **539** archived source/project files match the final
+checkout. BOM normalization does not ignore code or line-ending changes.
 
 ```sh
 codeql database create /external/new-db --language=csharp --source-root="$PWD" \
