@@ -37,8 +37,9 @@ internal static class EntraAuthenticationTests
             Check(validator.Validate(null, new() { Enabled = true, TenantId = Tenant, ClientId = ClientId, RedirectUri = redirect }).Failed, "unsafe redirect accepted");
         Check(validator.Validate(null, new() { Enabled = true, TenantId = Tenant, ClientId = ClientId, Authority = "http://idp.test" }).Failed, "HTTP authority accepted");
         using var idp = new FakeIdp();
-        foreach (var variant in new[] { "happy", "signature", "aud", "issuer", "tenant", "nonce", "expired", "future", "oid", "tid", "none", "exchange", "redirect", "oversized", "error" })
+        foreach (var variant in new[] { "happy", "rotation", "unknown_kid", "signature", "aud", "issuer", "tenant", "nonce", "expired", "future", "oid", "tid", "none", "exchange", "redirect", "oversized", "error" })
         {
+            idp.Variant = "happy"; idp.PublishRotatedKey = false;
             var broker = Broker(); var service = Service(broker, idp);
             var flow = await service.StartAsync("login", null, "ip", "https://api.test/api/auth/entra/callback", default);
             var query = QueryHelpers.ParseQuery(new Uri(flow.AuthorizationUrl).Query);
@@ -47,10 +48,11 @@ internal static class EntraAuthenticationTests
             Check(!await service.CallbackAsync("synthetic-code", "unknown", null, default), "unknown state accepted");
             var state = query["state"].ToString();
             var result = await service.CallbackAsync("synthetic-code", state, variant == "error" ? "untrusted-text" : null, default);
-            Check(result == (variant == "happy"), "token verification matrix: " + variant);
+            var success = variant is "happy" or "rotation";
+            Check(result == success, "token verification matrix: " + variant);
             Check(!await service.CallbackAsync("synthetic-code", state, null, default), "state replay accepted");
             var status = broker.Complete(flow.FlowId, "entra", flow.FlowSecret, out var proof);
-            Check(status == (variant == "happy" ? "completed" : "failed"), "terminal status: " + variant);
+            Check(status == (success ? "completed" : "failed"), "terminal status: " + variant);
             if (proof != null) Check(proof.ExternalIdentity == new ProviderIdentity(Issuer, Subject), "email/sub substituted for oid identity");
         }
         var clock = new Clock(); var expiredBroker = Broker(clock); var expiredService = Service(expiredBroker, idp);
@@ -147,6 +149,8 @@ internal static class EntraAuthenticationTests
     internal sealed class FakeIdp : HttpMessageHandler
     {
         private readonly RSA key = RSA.Create(2048);
+        private readonly RSA rotatedKey = RSA.Create(2048);
+        public bool PublishRotatedKey;
         public string Nonce = "", Challenge = "", Variant = "happy";
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -155,8 +159,8 @@ internal static class EntraAuthenticationTests
                 return Response(JsonSerializer.Serialize(new { issuer = Issuer, authorization_endpoint = Issuer + "/authorize", token_endpoint = Issuer + "/token", jwks_uri = Issuer + "/keys" }));
             if (request.RequestUri.AbsolutePath.EndsWith("/keys", StringComparison.Ordinal))
             {
-                var parameters = key.ExportParameters(false);
-                return Response(JsonSerializer.Serialize(new { keys = new[] { new { kty = "RSA", use = "sig", kid = "test", alg = "RS256", n = Base64UrlEncoder.Encode(parameters.Modulus), e = Base64UrlEncoder.Encode(parameters.Exponent) } } }));
+                var parameters = (PublishRotatedKey ? rotatedKey : key).ExportParameters(false);
+                return Response(JsonSerializer.Serialize(new { keys = new[] { new { kty = "RSA", use = "sig", kid = PublishRotatedKey ? "rotated" : "test", alg = "RS256", n = Base64UrlEncoder.Encode(parameters.Modulus), e = Base64UrlEncoder.Encode(parameters.Exponent) } } }));
             }
             Check(request.RequestUri.AbsolutePath.EndsWith("/token", StringComparison.Ordinal), "unexpected endpoint");
             var form = QueryHelpers.ParseQuery(await request.Content!.ReadAsStringAsync(cancellationToken));
@@ -169,13 +173,14 @@ internal static class EntraAuthenticationTests
             if (Variant != "oid") claims.Add(new("oid", Subject));
             if (Variant != "tid") claims.Add(new("tid", Variant == "tenant" ? ClientId : Tenant));
             using var other = RSA.Create(2048);
-            var securityKey = new RsaSecurityKey(Variant == "signature" ? other : key) { KeyId = "test" };
+            if (Variant == "rotation") PublishRotatedKey = true;
+            var securityKey = new RsaSecurityKey(Variant is "rotation" or "unknown_kid" ? rotatedKey : Variant == "signature" ? other : key) { KeyId = Variant is "rotation" or "unknown_kid" ? "rotated" : "test" };
             var token = new JwtSecurityToken(Variant == "issuer" ? "https://evil.test" : Issuer, Variant == "aud" ? "wrong" : ClientId, claims,
                 DateTime.UtcNow.AddMinutes(Variant == "expired" ? -30 : Variant == "future" ? 10 : -1), DateTime.UtcNow.AddMinutes(Variant == "expired" ? -10 : 30),
                 Variant == "none" ? null : new SigningCredentials(securityKey, SecurityAlgorithms.RsaSha256));
             return Response(JsonSerializer.Serialize(new { id_token = new JwtSecurityTokenHandler().WriteToken(token) }));
         }
         private static HttpResponseMessage Response(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-        protected override void Dispose(bool disposing) { if (disposing) key.Dispose(); base.Dispose(disposing); }
+        protected override void Dispose(bool disposing) { if (disposing) { key.Dispose(); rotatedKey.Dispose(); } base.Dispose(disposing); }
     }
 }

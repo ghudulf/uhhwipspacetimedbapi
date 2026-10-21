@@ -52,13 +52,16 @@ public sealed class EntraAuthenticationService
     private readonly ProviderFlowBroker broker;
     private readonly HttpClient client;
     private readonly ConfigurationManager<OpenIdConnectConfiguration> discovery;
+    private readonly IDocumentRetriever documents;
+    private readonly string metadataAddress;
     public EntraAuthenticationService(IOptions<EntraOptions> options, ProviderFlowBroker broker, IHttpClientFactory clients)
     {
         this.options = options.Value;
         this.broker = broker;
         client = clients.CreateClient("entra");
-        discovery = new(this.options.AuthorityUrl.TrimEnd('/') + "/.well-known/openid-configuration",
-            new OpenIdConnectConfigurationRetriever(), new BoundedDocumentRetriever(client, new Uri(this.options.AuthorityUrl)));
+        documents = new BoundedDocumentRetriever(client, new Uri(this.options.AuthorityUrl));
+        metadataAddress = this.options.AuthorityUrl.TrimEnd('/') + "/.well-known/openid-configuration";
+        discovery = new(metadataAddress, new OpenIdConnectConfigurationRetriever(), documents);
     }
     public async Task<EntraStartResponse> StartAsync(string purpose, SpacetimeDB.Identity? actor, string address, string redirectUri, CancellationToken cancellationToken)
     {
@@ -102,7 +105,10 @@ public sealed class EntraAuthenticationService
             catch (SecurityTokenSignatureKeyNotFoundException)
             {
                 discovery.RequestRefresh();
-                identity = Validate(token, proof.Nonce, await discovery.GetConfigurationAsync(cancellationToken));
+                // ConfigurationManager can return its last-known-good configuration while refreshing in
+                // the background. One bounded foreground retrieval allows a genuine signing-key rotation
+                // to succeed immediately without accepting a token against stale or unverified keys.
+                identity = Validate(token, proof.Nonce, await OpenIdConnectConfigurationRetriever.GetAsync(metadataAddress, documents, cancellationToken));
             }
             return broker.Authenticate(proof.FlowId, "entra", identity);
         }
@@ -118,7 +124,7 @@ public sealed class EntraAuthenticationService
         var principal = handler.ValidateToken(token, new TokenValidationParameters
         {
             RequireSignedTokens = true, RequireExpirationTime = true, ValidateIssuerSigningKey = true,
-            IssuerSigningKeys = metadata.SigningKeys, ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+            IssuerSigningKeys = metadata.SigningKeys, TryAllIssuerSigningKeys = false, ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             ValidateAudience = true, ValidAudience = options.ClientId, ValidateIssuer = true,
             IssuerValidator = (issuer, securityToken, _) =>
             {
