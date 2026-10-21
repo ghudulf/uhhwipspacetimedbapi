@@ -25,6 +25,7 @@ internal static class AccessibilityPolicyTests
         var violations = files.SelectMany(p => Inspect(XDocument.Load(p, LoadOptions.SetLineInfo))
             .Select(v => Path.GetRelativePath(root, p) + ":" + v)).ToArray();
         if (violations.Length != 0) throw new Exception("Accessibility policy violations (" + violations.Length + "):\n" + string.Join('\n', violations));
+        AssertJobsPager(root, "Employee");
         var invalid = XDocument.Parse("""
             <StackPanel><Button/><TextBox/><Image/><TextBlock Name="ErrorText"/><TextBlock Text="{Binding SynchronizationMessage}"/>
             <Button Content="OK"/><Button Content="Отмена"/><Button Content="Named" IsTabStop="False"/></StackPanel>
@@ -72,6 +73,16 @@ internal static class AccessibilityPolicyTests
             if (tag == "Setter" && Attribute(element, "Property") == "IsTabStop" && Attribute(element, "Value")?.Equals("False", StringComparison.OrdinalIgnoreCase) == true)
                 yield return Violation("blanket IsTabStop=False style requires review; mark decoration locally");
         }
+    }
+    internal static void AssertJobsPager(string root, string screen)
+    {
+        var directory = Path.Combine(root, "BRU.Avtopark.TicketSalesAPP.Avalonia.Unity", "Views", "ManagementToolWindowsViews");
+        XElement Pager(string name) => XDocument.Load(Path.Combine(directory, name + "ManagementToolWindow.axaml")).Descendants()
+            .Single(e => e.Name.LocalName == "StackPanel" && e.Descendants().Any(c => Attribute(c, "Command") == "{Binding PreviousPageCommand}"));
+        var expected = Pager("Job"); var actual = Pager(screen);
+        expected.Attribute("Grid.Row")!.Remove(); actual.Attribute("Grid.Row")!.Remove();
+        if (!XNode.DeepEquals(expected, actual)) throw new Exception(screen + " pager differs from accessible Jobs controls/styles/names.");
+        if (Inspect(new XDocument(actual)).Any()) throw new Exception(screen + " pager violates accessibility policy.");
     }
     private static bool StaticText(string? value) => !string.IsNullOrWhiteSpace(value) && !value.TrimStart().StartsWith('{');
     private static bool Present(XElement e, string name) => !string.IsNullOrWhiteSpace(Attribute(e, name)) || e.Elements().Any(c => c.Name.LocalName == name && (c.HasElements || !string.IsNullOrWhiteSpace(c.Value)));
