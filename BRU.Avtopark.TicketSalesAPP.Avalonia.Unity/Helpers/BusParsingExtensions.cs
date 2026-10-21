@@ -813,7 +813,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 ulong createdAt = userObj.GetValue<ulong>("CreatedAt", 0);
 
                 // Optional fields - match server's PascalCase naming
-                string? passwordHash = userObj.GetStringValue("PasswordHash");
                 string? email = userObj.GetStringValue("Email");
                 string? phoneNumber = userObj.GetStringValue("PhoneNumber");
                 ulong? lastLoginAt = userObj.GetNullableValue<ulong>("LastLoginAt");
@@ -831,7 +830,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     LegacyUserId = legacyUserId,
                     Xuid = xuid,
                     Login = login,
-                    PasswordHash = passwordHash,
                     Email = email,
                     PhoneNumber = phoneNumber,
                     IsActive = isActive,

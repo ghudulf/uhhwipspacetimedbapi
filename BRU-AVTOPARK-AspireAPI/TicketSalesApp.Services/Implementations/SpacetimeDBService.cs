@@ -243,11 +243,7 @@ namespace TicketSalesApp.Services.Implementations
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
                 var databaseName = _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark";
                 
-                // Try multiple token sources in order of preference:
-                // 1. Configuration AdminToken (highest priority - owner token)
-                // 2. Environment variable SPACETIME_TOKEN
-                // 3. WebSocket token (short-lived token from current connection)
-                // 4. AuthToken (client connection token - may not have log permissions)
+                // Only the effective, policy-validated optional owner token can fetch logs.
                 var token = _configuration["SpacetimeDB:AdminToken"];
 
                 if (string.IsNullOrEmpty(token))
@@ -344,15 +340,9 @@ namespace TicketSalesApp.Services.Implementations
         private string GetForbiddenMessage(string databaseName)
         {
             _logger.LogInformation("To enable log fetching:");
-            _logger.LogInformation("  Option 1: Add admin token to appsettings.json:");
-            _logger.LogInformation("    \"SpacetimeDB\": {{");
-            _logger.LogInformation("      \"AdminToken\": \"<your-token-from-spacetime-login-show>\"");
-            _logger.LogInformation("    }}");
-            _logger.LogInformation("  Option 2: Set SPACETIME_TOKEN environment variable");
-            _logger.LogInformation("  Option 3: Use CLI: spacetime logs {DatabaseName}", databaseName);
+            _logger.LogInformation("Configure SpacetimeDB:AdminToken through an owner-only secret file or SpacetimeDB__AdminToken environment variable. See docs/architecture/secrets.md.");
             return $"Warning: Current identity does not have permission to view module logs.\n" +
-                   $"To enable log fetching, add AdminToken to appsettings.json or set SPACETIME_TOKEN env var.\n" +
-                   $"Run 'spacetime login show --token' to get your token.\n\n" +
+                   $"To enable log fetching, configure a private SpacetimeDB__AdminToken secret file or environment variable.\n\n" +
                    $"Alternatively, use the SpacetimeDB CLI:\n" +
                    $"  spacetime logs {databaseName}";
         }

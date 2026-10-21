@@ -831,6 +831,7 @@ namespace SpacetimeDB.Types
                 Reducer.EnableTotp args => Reducers.InvokeEnableTotp(eventContext, args),
                 Reducer.EnableWebAuthn args => Reducers.InvokeEnableWebAuthn(eventContext, args),
                 Reducer.EnsureDefaultPermissions args => Reducers.InvokeEnsureDefaultPermissions(eventContext, args),
+                Reducer.MigratePasswordCredentials args => Reducers.InvokeMigratePasswordCredentials(eventContext, args),
                 Reducer.GenerateTotpSecret args => Reducers.InvokeGenerateTotpSecret(eventContext, args),
                 Reducer.GetBusMaintenanceHistory args => Reducers.InvokeGetBusMaintenanceHistory(eventContext, args),
                 Reducer.GrantPermissionToRole args => Reducers.InvokeGrantPermissionToRole(eventContext, args),

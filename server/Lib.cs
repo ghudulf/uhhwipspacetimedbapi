@@ -1087,7 +1087,7 @@ public static partial class Module
             UserId = userIdentity, // Use either the provided identity or the sender's identity
             LegacyUserId = userId,
             Login = login,
-            PasswordHash = hashedPassword,
+            PasswordHash = null,
             Email = email,
             PhoneNumber = phoneNumber,
             IsActive = true,
@@ -1097,6 +1097,7 @@ public static partial class Module
             EmailConfirmed = true // email is optional so this is just gonna be defaulted to true
         };
         ctx.Db.UserProfile.Insert(user);
+        SetPasswordHash(ctx, user.UserId, hashedPassword);
         Log.Info($"User {login} registered successfully with Identity {user.UserId}");
         //NO FUCKING NEED TO CREATE USER SETTINGS - THATS A USER CAllABLE REDUCER THAT SPACETIMEDB WONT PERMIT CALLING FROM HERE IF YOU WANT TO DO IT - MAKE A SEPARATE METHOD
         Log.Info($"User {login} registered successfully");
@@ -1170,7 +1171,7 @@ public static partial class Module
         }
 
         // Verify password using the VerifyPassword method
-        if (string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(password, user.PasswordHash))
+        if (string.IsNullOrEmpty(GetPasswordHash(ctx, user.UserId)) || !VerifyPassword(password, GetPasswordHash(ctx, user.UserId)))
         {
             Log.Info($"Authentication failed for user {login}: invalid password");
             // Publish failed authentication event
@@ -1769,8 +1770,9 @@ public static partial class Module
         }
         
         // Verify password using the VerifyPassword method
-        if (string.IsNullOrEmpty(user.PasswordHash)) throw new Exception("Credential-less demo accounts cannot be claimed.");
-        if (!VerifyPassword(password, user.PasswordHash))
+        var credentialHash = GetPasswordHash(ctx, user.UserId);
+        if (string.IsNullOrEmpty(credentialHash)) throw new Exception("Credential-less demo accounts cannot be claimed.");
+        if (!VerifyPassword(password, credentialHash))
         {
             Log.Error($"Invalid password for account claim: {login}");
             return;
@@ -1785,15 +1787,20 @@ public static partial class Module
         // Update the user with the caller's identity
         // Since Login is a unique constraint but not a primary key, we need to delete and re-insert
         var oldLogin = user.Login;
+        var oldUserId = user.UserId;
         ctx.Db.UserProfile.Login.Delete(oldLogin);
         
         user.UserId = userIdentity;
+        user.PasswordHash = null;
         user.IsActive = true;
         user.LastLoginAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
         ctx.Db.UserProfile.Insert(user);
 
+        ctx.Db.UserCredential.UserId.Delete(oldUserId);
+        SetPasswordHash(ctx, userIdentity, credentialHash);
+
         // Update user roles to reference the new identity
-        var userRoles = ctx.Db.UserRole.Iter().Where(ur => ur.UserId == user.UserId).ToList();
+        var userRoles = ctx.Db.UserRole.Iter().Where(ur => ur.UserId == oldUserId).ToList();
         foreach (var role in userRoles)
         {
             role.UserId = userIdentity;
@@ -1840,7 +1847,8 @@ public static partial class Module
         }
         if (passwordHash != null)
         {
-           user.PasswordHash = HashPassword(ctx, passwordHash);
+           SetPasswordHash(ctx, user.UserId, HashPassword(ctx, passwordHash));
+           user.PasswordHash = null;
         }
         if (email != null)
         {
@@ -1991,7 +1999,7 @@ public static partial class Module
         // If it's the user changing their own password, verify the current password
         if (isSelf && !isAdmin)
         {
-            if (string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(currentPassword, user.PasswordHash))
+            if (string.IsNullOrEmpty(GetPasswordHash(ctx, user.UserId)) || !VerifyPassword(currentPassword, GetPasswordHash(ctx, user.UserId)))
             {
                 throw new Exception("Current password is incorrect.");
             }
@@ -2004,7 +2012,8 @@ public static partial class Module
         }
         
         // Update the password
-        user.PasswordHash = HashPassword(ctx, newPassword);
+        SetPasswordHash(ctx, user.UserId, HashPassword(ctx, newPassword));
+        user.PasswordHash = null;
         ctx.Db.UserProfile.UserId.Update(user);
         
         Log.Info($"Password changed for user {userId}");
@@ -2056,6 +2065,7 @@ public static partial class Module
 
         // Delete the user.
         ctx.Db.UserProfile.UserId.Delete(userId);
+        ctx.Db.UserCredential.UserId.Delete(userId);
         Log.Info($"User {userId} has been deleted, with all associated roles removed.");
     }
 

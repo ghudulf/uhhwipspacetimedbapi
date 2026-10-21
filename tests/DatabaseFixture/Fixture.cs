@@ -85,6 +85,40 @@ public static partial class Module
         var user = ctx.Db.UserProfile.UserId.Find(ctx.Sender)!;
         if (user.Login != "synthetic-owner") throw new Exception("Synthetic fixture only.");
         user.PasswordHash = null;
+        ctx.Db.UserCredential.UserId.Delete(user.UserId);
         ctx.Db.UserProfile.UserId.Update(user);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void PrepareCredentialMigrationTest(ReducerContext ctx, string identityHex, string login, string password, bool privateCredential, bool conflictingLegacy, bool active)
+    {
+        RequireDeploymentOwner(ctx);
+        if (!login.StartsWith("synthetic-credential-")) throw new Exception("Synthetic fixture only.");
+        if (ctx.Db.UserIdCounter.Key.Find("userId") == null)
+            ctx.Db.UserIdCounter.Insert(new UserIdCounter { Key = "userId", NextId = 100 });
+        var identity = Identity.FromHexString(identityHex);
+        ctx.Db.UserCredential.UserId.Delete(identity);
+        ctx.Db.UserProfile.UserId.Delete(identity);
+        var user = new UserProfile { UserId = identity, Login = login, IsActive = active,
+            LegacyUserId = GetNextId(ctx, "userId"), PasswordHash = privateCredential ? null : HashPassword(ctx, password) };
+        ctx.Db.UserProfile.Insert(user);
+        if (privateCredential) SetPasswordHash(ctx, identity, HashPassword(ctx, password));
+        if (conflictingLegacy)
+        {
+            user.PasswordHash = HashPassword(ctx, password + "-stale");
+            ctx.Db.UserProfile.UserId.Update(user);
+        }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void AssertCredentialTestState(ReducerContext ctx, string identityHex, bool hasCredential, bool legacyEmpty, string password)
+    {
+        RequireDeploymentOwner(ctx);
+        var identity = Identity.FromHexString(identityHex);
+        var credential = ctx.Db.UserCredential.UserId.Find(identity);
+        var profile = ctx.Db.UserProfile.UserId.Find(identity);
+        if ((credential != null) != hasCredential || (string.IsNullOrEmpty(profile?.PasswordHash)) != legacyEmpty ||
+            (!string.IsNullOrEmpty(password) && (credential == null || !VerifyPassword(password, credential.PasswordHash))))
+            throw new Exception("Credential fixture state assertion failed; values omitted.");
     }
 }

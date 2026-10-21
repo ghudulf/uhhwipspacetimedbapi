@@ -82,6 +82,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnEnableTotp += (ctx, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnEnableWebAuthn += (ctx, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnEnsureDefaultPermissions += (ctx) => OnReducerCompleted(ctx);
+        connection.Reducers.OnMigratePasswordCredentials += (ctx) => OnReducerCompleted(ctx);
         connection.Reducers.OnGenerateTotpSecret += (ctx, userId, secret) => OnReducerCompleted(ctx);
         connection.Reducers.OnGetBusMaintenanceHistory += (ctx, busId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnGrantPermissionToRole += (ctx, roleId, permissionId, actingUserId) => OnReducerCompleted(ctx);

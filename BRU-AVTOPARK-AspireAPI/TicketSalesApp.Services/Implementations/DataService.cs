@@ -140,37 +140,12 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
+                if (typeof(T) == typeof(UserProfile))
+                    throw new InvalidOperationException("User imports require an explicit password through the normal RegisterUser account-registration path. Profile data is not a credential.");
                 var conn = _spacetimeService.GetConnection();
                 
                 // Handle different entity types
-                if (typeof(T) == typeof(UserProfile))
-                {
-                    var user = entity as UserProfile;
-                    if (user == null)
-                        throw new ArgumentException("Invalid entity type");
-                    
-                    // Call the RegisterUser reducer
-                    conn.Reducers.RegisterUser(
-                        user.Login,
-                        user.PasswordHash ?? "defaultPassword", // Password will be hashed by the reducer
-                        user.Email ?? string.Empty,
-                        user.PhoneNumber ?? string.Empty,
-                        null, // roleId
-                        null,  // roleName
-                        null,
-                        null
-                    );
-                    
-                    // Find the newly created user
-                    var userProfile = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.Login == user.Login);
-                    
-                    if (userProfile == null)
-                        throw new Exception("Failed to create user");
-                    
-                    return userProfile as T;
-                }
-                else if (typeof(T) == typeof(Role))
+                if (typeof(T) == typeof(Role))
                 {
                     var role = entity as Role;
                     if (role == null)
@@ -243,7 +218,7 @@ namespace TicketSalesApp.Services.Implementations
                     conn.Reducers.UpdateUser(
                         user.UserId,
                         user.Login,
-                        user.PasswordHash,
+                        null, // Profile imports never reset credentials.
                         null, // role
                         user.PhoneNumber,
                         user.Email,

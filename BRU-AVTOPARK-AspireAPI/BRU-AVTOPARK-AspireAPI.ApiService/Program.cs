@@ -304,9 +304,10 @@ builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = System.Security.Cryptography.HKDF.DeriveKey(System.Security.Cryptography.HashAlgorithmName.SHA256,
-    Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured")),
-    32, info: Encoding.UTF8.GetBytes("bru-openiddict/1"));
+var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
+var encryptionKey = new SymmetricSecurityKey(System.Security.Cryptography.HKDF.DeriveKey(
+    System.Security.Cryptography.HashAlgorithmName.SHA256, key, 32,
+    info: Encoding.UTF8.GetBytes("bru-openiddict/1"))) { KeyId = "openiddict-encryption-v1" };
 
 // Existing AES encryption uses a 256-bit key. Never silently add entropy by zero padding.
 
@@ -372,7 +373,7 @@ builder.Services.AddOpenIddict()
         }
 
         // Add encryption key
-        options.AddEncryptionKey(symmetricKey);
+        options.AddEncryptionKey(encryptionKey);
 
         // Set a fixed issuer to work with both HTTP and HTTPS
         var issuerText = builder.Configuration["OpenIddict:Issuer"]
@@ -398,7 +399,7 @@ builder.Services.AddOpenIddict()
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
 
-        options.AddEncryptionKey(symmetricKey); // << Important
+        options.AddEncryptionKey(encryptionKey);
 
         // Configure the token validation parameters to accept our custom JWT tokens
         options.Configure(validationOptions =>

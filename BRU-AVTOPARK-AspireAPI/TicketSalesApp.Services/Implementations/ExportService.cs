@@ -11,6 +11,9 @@ namespace TicketSalesApp.Services.Implementations
 {
     public class ExportService : IExportService
     {
+        private sealed record UserExport(string UserId, uint LegacyUserId, string Login, string? Email, string? PhoneNumber, bool IsActive);
+        private static IEnumerable<UserExport> PublicUsers<T>(IEnumerable<T> data) => data.Cast<SpacetimeDB.Types.UserProfile>()
+            .Select(user => new UserExport(user.UserId.ToString(), user.LegacyUserId, user.Login, user.Email, user.PhoneNumber, user.IsActive));
         private readonly ILogger<ExportService> _logger;
 
         public ExportService(ILogger<ExportService> logger)
@@ -20,6 +23,7 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<byte[]> ExportToExcelAsync<T>(IEnumerable<T> data, string sheetName)
         {
+            if (typeof(T) == typeof(SpacetimeDB.Types.UserProfile)) return await ExportToExcelAsync(PublicUsers(data), sheetName);
             try
             {
                 var sb = new StringBuilder();
@@ -56,6 +60,7 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<byte[]> ExportToPdfAsync<T>(IEnumerable<T> data, string title)
         {
+            if (typeof(T) == typeof(SpacetimeDB.Types.UserProfile)) return await ExportToPdfAsync(PublicUsers(data), title);
             try
             {
                 var sb = new StringBuilder();
@@ -117,6 +122,7 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<byte[]> ExportToCsvAsync<T>(IEnumerable<T> data)
         {
+            if (typeof(T) == typeof(SpacetimeDB.Types.UserProfile)) return await ExportToCsvAsync(PublicUsers(data));
             try
             {
                 var sb = new StringBuilder();
@@ -153,6 +159,7 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<string> ExportToJsonAsync<T>(IEnumerable<T> data)
         {
+            if (typeof(T) == typeof(SpacetimeDB.Types.UserProfile)) return await ExportToJsonAsync(PublicUsers(data));
             try
             {
                 return JsonSerializer.Serialize(data, new JsonSerializerOptions

@@ -20,10 +20,9 @@ public static partial class Module
             var administrator = ctx.Db.Role.Iter().FirstOrDefault(r => r.Name == "Administrator" && r.IsActive);
             if (administrator == null || !ctx.Db.UserRole.UserId.Filter(admin.UserId).Any(r => r.RoleId == administrator.RoleId))
                 throw new Exception("Account must already hold the active Administrator role.");
-            if (!string.IsNullOrEmpty(admin.PasswordHash))
+            if (!string.IsNullOrEmpty(GetPasswordHash(ctx, admin.UserId)))
                 throw new Exception("Administrator already has a password. Use trust-only provisioning; change passwords through account management.");
-            admin.PasswordHash = HashPassword(ctx, adminPassword);
-            ctx.Db.UserProfile.UserId.Update(admin);
+            SetPasswordHash(ctx, admin.UserId, HashPassword(ctx, adminPassword));
             Log.Info($"Initial administrator credential provisioned by deployment owner for account {admin.UserId}; credential omitted.");
         }
         // Same transaction: a rejected password must not partially grant API trust.
@@ -35,7 +34,7 @@ public static partial class Module
     {
         RequireTrustedApi(ctx);
         var user = ctx.Db.UserProfile.Login.Find(login);
-        if (user == null || !user.IsActive || string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(password, user.PasswordHash))
+        if (user == null || !user.IsActive || string.IsNullOrEmpty(GetPasswordHash(ctx, user.UserId)) || !VerifyPassword(password, GetPasswordHash(ctx, user.UserId)))
             throw new Exception("Invalid credentials.");
         AuthenticateUser(ctx, login, password);
     }
@@ -45,7 +44,7 @@ public static partial class Module
     {
         RequireTrustedApi(ctx);
         var user = ctx.Db.UserProfile.Login.Find(login);
-        if (user != null && user.IsActive && !string.IsNullOrEmpty(user.PasswordHash) && VerifyPassword(password, user.PasswordHash))
+        if (user != null && user.IsActive && !string.IsNullOrEmpty(GetPasswordHash(ctx, user.UserId)) && VerifyPassword(password, GetPasswordHash(ctx, user.UserId)))
             throw new Exception("Valid credentials cannot record an authentication failure.");
         InsertAuthenticationFailure(ctx, user);
     }

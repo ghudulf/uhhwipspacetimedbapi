@@ -69,7 +69,8 @@ internal static class BootstrapTests
             Console.WriteLine("PASS checked authentication rejects bad passwords while committing independently reverified failure audits; valid credentials cannot forge failures");
             Assert(await authentication.AuthenticateDirectQRAsync("synthetic-owner", "unbound-proof") == null, "unbound QR proof returned authenticated profile");
             await Reject(() => owner.ExecuteReducerAsync(new Reducer.BootstrapInstallation(apiIdentity.Value, "synthetic-owner", "replacement-password-value"), _ => true));
-            Assert(await owner.ReadAsync(c => c.Db.UserProfile.UserId.Find(ownerIdentity)!.PasswordHash) == provisioned.PasswordHash, "bootstrap overwrote existing password");
+            Assert((await authentication.AuthenticateAsync("synthetic-owner", password))?.UserId == ownerIdentity, "bootstrap overwrote existing password");
+            Assert(await api.ReadAsync(c => c.Db.UserProfile.Iter().All(u => string.IsNullOrEmpty(u.PasswordHash))), "bootstrap exposed credentials in public profiles");
             await owner.ExecuteReducerAsync(new Reducer.BootstrapInstallation(apiIdentity.Value, null, null), _ => true);
             pumping = false;
             api.Disconnect();

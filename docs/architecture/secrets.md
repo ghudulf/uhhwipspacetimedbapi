@@ -12,6 +12,9 @@ were hashed from revision `7975e59`. Treat them as compromised, not as defaults.
 | same | `QRLogin:EncryptionKey` | legacy QR encryption secret `bc95736a` | Removed; hash revoked; owner must rotate |
 | same | `SpacetimeDB:AdminToken` | owner JWT `28a4f03a` | Removed; hash revoked; owner must revoke/replace |
 | `BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/DataProtectionKeys/key-6c9f99f5-3174-4eba-b458-3b7875284042.xml` | `masterKey/value` | Data Protection key `f19ef4a8` | Removed; key directory ignored; owner must retire deployed copies |
+| `SAMPLE_CODE_FOR_REFERRING_TOHOWTODOSOMETHING/YANDEXSAMPLE.CS` | captured HTML `secretKey` | third-party credential-like material `2c51938f` | Flagged; noncompiled reference capture retained for owner review; never use |
+| same | captured HTML `tuneSecretKey` | third-party credential-like material `e7ec3e08` | Flagged; noncompiled reference capture retained for owner review; never use |
+| same | captured HTML `trustServiceToken` | third-party bearer-like material `58ce52fa` | Flagged; noncompiled reference capture retained for owner review; never use |
 
 Inventory covered all tracked files, including appsettings, launch settings,
 register_client.json, spacetime configuration, scripts, docs, packaging, tests,
@@ -20,8 +23,12 @@ long secret/password/key/token assignments, PEM markers and XML key material
 were checked. `register_client.json:client_secret` (`1e1ace94`) and
 `BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/OAUTH_IMPLEMENTATION.md:clientSecret`
 (`a383d1eb`) are explicitly descriptive placeholders, not operational credentials.
-Sample source hits were counter names, UI markup and captured example HTML;
-test passwords are synthetic. No additional operational secret was identified.
+Other sample source hits were counter names, UI markup and descriptive token
+placeholders; test passwords are synthetic. The three third-party captured HTML
+values above have unknown validity and must be treated as compromised if still
+valid. They are not application configuration. The owner should decide whether
+to discard the reference capture and contact its originating account operator;
+this migration does not attempt third-party credential revocation.
 
 ## Configuration and startup
 
@@ -51,7 +58,7 @@ Missing, weak or revoked JWT secrets otherwise fail startup with
 `JwtSettings:Secret is missing, weak or revoked` and generation instructions.
 An explicitly weak/revoked legacy QR key fails startup; an absent QR key derives
 from the effective JWT secret using HKDF-SHA256 context `bru-qr-legacy/1`.
-OpenIddict uses a separate HKDF context `bru-openiddict/1` to derive its 256-bit key,
+OpenIddict encryption uses a separate HKDF context `bru-openiddict/1` to derive its 256-bit key,
 not truncation or padding. An invalid/revoked owner token is ignored with a
 key-name-only warning; absent tokens disable log fetching. No SDK/client-token or
 `SPACETIME_TOKEN` fallback bypasses this policy.
@@ -129,3 +136,52 @@ secret contents into issue reports.
 6. Verify fresh login, refresh/OpenIddict, QR, cookies and log-fetch behavior;
    confirm all replicas reject old tokens. Do not restore compromised secrets
    as rollback. Keep incident and backup retention under the owner's policy.
+
+## Physical password-credential migration
+
+`UserCredential(UserId, PasswordHash, UpdatedAt)` is a **private** SpacetimeDB
+table. Trusted API authorization does not grant access to it. The module alone
+reads credentials for authentication; deployment owners retain administrative
+database access. Code generation emits the row's data type but **no table handle**
+without `--include-private`. Real-host integration tests additionally verify that
+both SQL queries and explicit subscriptions are rejected for non-owner clients,
+even after granting them trusted API status.
+
+All password writes (registration, password change, administrator reset and
+installation provisioning) write the private table and clear the legacy profile
+column. Account claiming moves the private row with its identity and moves its
+role assignments; account deletion deletes its credential. Demo/initial accounts
+remain credential-less until explicitly provisioned. Read fallback prefers a
+private credential, otherwise reading the old column **inside the module only**,
+so publishing can precede migration without breaking existing logins.
+
+Deploy in a maintenance window:
+
+1. Back up the database to restricted storage and stop normal API traffic. The
+   legacy public column may still contain hashes until migration commits.
+2. Publish the new module and matching API/bindings. Do not expose a legacy API
+   or export path that reads old hashes during this interval.
+3. With the deployment owner's CLI identity, invoke
+   `spacetime call --server <server> <database> migrate_password_credentials`.
+   Confirm command syntax against `spacetime call --help` for your installed CLI.
+   Never place owner tokens or passwords in command-line arguments.
+4. Migration copies each nonempty legacy hash only if no private row exists,
+   clears the old column in the same transaction, and logs counts only. Repeating
+   the reducer is safe and never overwrites an existing private credential.
+5. Verify real logins, password change, registration, claim and provisioning.
+   Query all `UserProfile` rows as the trusted API and confirm the legacy hash
+   column is empty; verify direct credential SQL/subscription denial. Resume
+   traffic only after these checks succeed.
+
+**Rollback requires restoring the restricted database backup.** The legacy
+column is nulled; publishing the previous module alone cannot restore its hashes
+and will break password login. Do not repopulate the public column from private
+credentials as an operational shortcut.
+
+Generic `DataService` user-profile imports cannot supply a password safely, so
+they now reject new user imports and explicitly require a password through the
+normal `RegisterUser` account-registration path. No default password is generated
+and a hash is never interpreted as a password. Updating imported profile metadata
+does not reset credentials. User exports use a public profile projection in all
+four formats, even when the input is a legacy profile containing a hash. The
+desktop parser ignores legacy hash fields. API mappers/DTOs never read hashes.
