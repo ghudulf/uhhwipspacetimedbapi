@@ -30,6 +30,7 @@ public sealed partial class ApplicationOperations
         RegisterFleet(database, buses);
         RegisterCatalog(database, routes, employees, maintenance);
         RegisterAdmin(database);
+        RegisterCatalogReads(database);
         var businessZone = TimeZoneInfo.FindSystemTimeZoneById(configuration?["Business:TimeZone"] ?? "UTC");
         Register<SalesReportRequest>("reports.sales", "sales.view", false, async (_, request, _, ct) =>
             await SalesReportProjection.ReadAsync(database, request, businessZone, ct));

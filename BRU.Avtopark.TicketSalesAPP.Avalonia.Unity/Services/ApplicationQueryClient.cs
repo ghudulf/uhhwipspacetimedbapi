@@ -24,7 +24,7 @@ internal static class ApplicationQueryClient
     }
     public static async Task<TResponse> ReadAsync<TRequest, TResponse>(string operation, TRequest request, CancellationToken cancellationToken)
     {
-        if (operation is not ("reports.sales" or "buses.list" or "routes.list" or "employees.list" or "employees.get" or "jobs.list" or "jobs.get" or "maintenance.list" or "maintenance.get" or "mutations.receipt")) throw new ArgumentException("Read operation is not registered.", nameof(operation));
+        if (operation is not ("reports.sales" or "buses.list" or "routes.list" or "routes.get" or "employees.list" or "employees.get" or "jobs.list" or "jobs.get" or "maintenance.list" or "maintenance.get" or "tickets.get" or "schedules.get" or "users.get" or "roles.get" or "permissions.get" or "mutations.receipt")) throw new ArgumentException("Read operation is not registered.", nameof(operation));
         var api = ApiClientService.Instance;
         var baseUrl = await api.DiscoverApiBaseUrlAsync(cancellationToken);
         var token = api.AuthToken ?? throw new ApplicationCommandException("unauthenticated");

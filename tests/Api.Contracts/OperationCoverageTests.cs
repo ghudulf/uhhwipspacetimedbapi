@@ -42,6 +42,10 @@ internal static class OperationCoverageTests
         var endpoints = Endpoints().Select(e => e.Key).ToHashSet(StringComparer.Ordinal);
         if (!endpoints.SetEquals(coverage.Keys)) throw new Exception("Endpoint coverage drift. Missing: " + string.Join(", ", endpoints.Except(coverage.Keys)) + "; stale: " + string.Join(", ", coverage.Keys.Except(endpoints)));
         var operations = Operations();
+        var descriptors = Regex.Matches(content, @"(?m)^\| v2 ([a-z]+\.[a-z.-]+) \| `([^`]+)` \| (true|false) \|\r?$")
+            .Select(m => (m.Groups[1].Value, m.Groups[2].Value, bool.Parse(m.Groups[3].Value))).ToArray();
+        var expected = operations.Capabilities.Select(c => (c.Name, c.Permission ?? "authenticated", c.Mutation)).ToArray();
+        if (descriptors.Length != expected.Length || !descriptors.ToHashSet().SetEquals(expected)) throw new Exception("Shared operation capability ledger drift.");
         foreach (Match operation in Regex.Matches(content, @"(?:v2 |adapter→)([a-z]+\.[a-z][a-z.-]*)"))
             if (!operations.Contains(operation.Groups[1].Value)) throw new Exception("Coverage names an unregistered operation: " + operation.Groups[1].Value);
         if (content.Contains("Pending parity verification", StringComparison.OrdinalIgnoreCase)) throw new Exception("Coverage contains an unresolved placeholder.");
@@ -61,6 +65,7 @@ internal static class OperationCoverageTests
         var missingDisposition = first.Split('|'); missingDisposition[5] = " ";
         Reject(content.Replace(first, string.Join("|", missingDisposition), StringComparison.Ordinal));
         Reject(content + "\nadapter→unregistered.operation\n");
+        Reject(content.Replace("| v2 jobs.get | `jobs.view` | false |\n", "", StringComparison.Ordinal));
         Console.WriteLine($"PASS coverage ledger drift: {count} reflected controller/method/verb/route endpoints, explicit dispositions, registered v2 references and negative drift cases");
     }
 
