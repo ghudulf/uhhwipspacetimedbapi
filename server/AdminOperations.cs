@@ -64,7 +64,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateUserV2(ReducerContext ctx, string operationId, Identity actingUser, string login, string initialCredential, string email, string phoneNumber, uint? roleId)
         => CommitCatalogMutation(ctx, operationId, actingUser, "users", "create", null, null,
-            MutationHash(login, MutationHash(initialCredential), email, phoneNumber, roleId?.ToString()),
+            MutationHash(login, email, phoneNumber, roleId?.ToString()), // The credential is deliberately excluded: receipt hashes must never become an offline password oracle.
             actor => RegisterUserCore(ctx, login, initialCredential, email, phoneNumber, roleId, null, actor, ctx.NewUuidV4().ToString().Replace("-", "") + ctx.NewUuidV4().ToString().Replace("-", "")));
 
     [SpacetimeDB.Reducer]
