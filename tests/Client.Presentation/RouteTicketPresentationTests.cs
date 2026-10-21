@@ -1,4 +1,10 @@
 using BRU.Avtopark.Client;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Automation.Peers;
+using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using BRU.Avtopark.Contracts;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
@@ -47,7 +53,36 @@ internal static class RouteTicketPresentationTests
             confirmDelete: (_, _) => Task.FromResult(true), delete: (_, _, _) => throw new ApplicationCommandException("conflict"));
         await ticketDelete.ActivateAsync(); ticketDelete.SelectedTicket = ticketDelete.Tickets[0]; await ticketDelete.DeleteCommand.ExecuteAsync(null);
         Check(ticketDelete.ErrorMessage.Contains("продажа") && ticketDelete.Tickets.Count == 1, "sale reference conflict lost ticket or Russian reason");
+        var theme = new FluentTheme(); Application.Current!.Styles.Add(theme);
+        try
+        {
+            using var routeRuntime = new RouteManagementViewModel((_, _) => Task.FromResult(new CatalogPageResult<RouteRow>([route], 1, 100, 101, true, true, true)));
+            using var ticketRuntime = new TicketManagementViewModel((_, _) => Task.FromResult(new CatalogPageResult<TicketRow>([ticket], 1, 100, 101, true, true, true)));
+            await Pager(new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.RouteManagementToolWindow(), routeRuntime, () => routeRuntime.IsSynchronized);
+            await Pager(new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.TicketManagementToolWindow(), ticketRuntime, () => ticketRuntime.IsSynchronized);
+        }
+        finally { Application.Current.Styles.Remove(theme); }
         Console.WriteLine("PASS routes/tickets shared lifecycle/editor matrices: typed paging/search/selection, permission revocation, cancellation/session disposal, bound-row logs, unknown-delete reconciliation, metadata/finite-price/seat boundaries and reference-conflict draft retention");
+
+        async Task Pager(UserControl view, object model, Func<bool> synchronized)
+        {
+            view.DataContext = model;
+            var window = new Window { Content = view, Width = 1200, Height = 600 };
+            try
+            {
+                window.Show(); while (!synchronized()) await Task.Delay(1, stop);
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); window.UpdateLayout();
+                foreach (var text in new[] { "Назад", "Далее", "Обновить" })
+                {
+                    var button = view.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text);
+                    Check(ControlAutomationPeer.CreatePeerForElement(button)?.GetName() == text, "runtime pager automation name lost");
+                    Check(button.Focusable && button.IsVisible, "runtime pager button hidden or not keyboard eligible");
+                    if (button.IsEffectivelyEnabled) Check(button.Focus(), $"runtime pager action could not receive focus: {view.GetType().Name} / {text}");
+                }
+            }
+            finally { window.Close(); await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); }
+            Check(!synchronized(), "detached shipped screen remained synchronized");
+        }
     }
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
 }

@@ -20,7 +20,7 @@ public sealed partial class ApiSocketSession
         ["reports.sales"] = ["sales", "tickets", "routes", "schedules", "buses", "access"],
         ["reports.income"] = ["sales", "tickets", "access"],
         ["session.access"] = ["access"],
-        ["routes.list"] = ["routes", "buses", "employees", "access"],
+        ["routes.list"] = ["routes", "buses", "employees", "tickets", "access"],
         ["employees.list"] = ["employees", "jobs", "access"],
         ["employees.drivers"] = ["employees", "jobs", "access"],
         ["jobs.list"] = ["jobs", "employees", "access"],

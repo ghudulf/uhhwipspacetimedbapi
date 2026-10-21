@@ -32,6 +32,7 @@ internal static class DriverLookupOperationTests
         Check(!capability.Mutation && capability.Permission == "employees.view", "driver capability requires wrong permission or mutates");
         var resources = (Dictionary<string, string[]>)typeof(ApiSocketSession).GetField("QueryResources", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.GetValue(null)!;
         Check(resources["employees.drivers"].ToHashSet().SetEquals(["employees", "jobs", "access"]), "driver subscription resources incomplete");
+        Check(resources["routes.list"].Contains("tickets"), "active-ticket count changes do not invalidate route snapshots");
         var payload = JsonSerializer.SerializeToElement(new DriverLookupRequest(), ApiProtocol.Json);
         Check((await operations.ExecuteAsync("employees.drivers", actor, payload, null, default)) is DriverLookupResult { Items.Length: 1 }, "employees.view-only driver lookup failed");
         using var provider = new ServiceCollection().AddSingleton(database).AddSingleton(operations).AddSingleton<UserAccessService>().BuildServiceProvider();
