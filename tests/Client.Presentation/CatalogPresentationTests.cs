@@ -87,6 +87,17 @@ internal static class CatalogPresentationTests
         cancelled.Dispose();
         try { await cancelled.ActivateAsync(); throw new Exception("disposed catalog reactivated"); }
         catch (ObjectDisposedException) { }
+        var sessionCalls = 0;
+        using var sessionModel = new JobManagementViewModel((_, _) =>
+        {
+            sessionCalls++;
+            return Task.FromResult(Page(row));
+        });
+        await sessionModel.ActivateAsync();
+        ApiClientService.Instance.AuthToken = "synthetic-catalog-cancel-session";
+        Assert(!sessionModel.CanMutate, "session change did not immediately gate catalog edits");
+        await Until(() => sessionCalls == 2, stop);
+        Assert(sessionModel.SelectedJob == null, "session change retained catalog selection");
         var policy = typeof(BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation.JobEditorService)
             .GetMethod("BlocksRetry", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
         Assert(!(bool)policy.Invoke(null, [null, "conflict"])! && (bool)policy.Invoke(null, [row, "conflict"])!, "create conflicts became uncorrectable or stale edits became retryable");
