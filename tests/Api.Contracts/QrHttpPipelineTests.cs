@@ -22,7 +22,8 @@ internal static class QrHttpPipelineTests
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
-        var configuration = new ConfigurationBuilder().AddJsonFile(Path.Combine(FindRoot(), "BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/appsettings.json")).Build();
+        var configuration = new ConfigurationBuilder().AddJsonFile(Path.Combine(FindRoot(), "BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService/appsettings.json"))
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["JwtSettings:Secret"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)) }).Build();
         builder.Services.AddOptions<QrLoginOptions>().Bind(configuration.GetSection("Authentication:QrLogin"));
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<QrLoginBroker>();

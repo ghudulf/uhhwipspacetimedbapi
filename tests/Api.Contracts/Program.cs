@@ -15,6 +15,7 @@ using TicketSalesApp.AdminServer.Controllers;
 using TicketSalesApp.Services.Interfaces;
 
 await RoutingDiagnosticsTests.RunAsync();
+SecretConfigurationTests.Run();
 await EndpointAvailabilityTests.RunAsync();
 
 var loginAvailable = true;

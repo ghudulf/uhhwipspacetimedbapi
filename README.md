@@ -1106,3 +1106,6 @@ Eclipse Public License - v 2.0
 ### Initial administrator and API database identity
 
 Use [database bootstrap](docs/architecture/database-bootstrap.md) after publishing the module. The tool generates and persists the API identity through a first connection, provisions trust as the deployment owner, and sets the initial administrator password from a masked prompt. No manual password hashing or database-row editing is needed.
+# Secret storage and rotation
+
+See [secret configuration, committed-key inventory and rotation](docs/architecture/secrets.md).

@@ -31,12 +31,16 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Options;
 
 
 var builder = WebApplication.CreateBuilder(args);
+TicketSalesApp.Services.Implementations.SecretConfiguration.AddSecretFiles(builder.Configuration);
+TicketSalesApp.Services.Implementations.SecretConfiguration.ApplyPolicy(builder.Configuration, builder.Configuration,
+    builder.Environment.IsDevelopment(), message => Console.Error.WriteLine("WARNING: " + message));
 
 // Configure Data Protection with persistent key storage
 // CRITICAL: This ensures encryption keys are stable across requests and app restarts
 // Without this, OpenIddict cannot decrypt PKCE data from authorization code payloads
-var dataProtectionPath = Path.Combine(Directory.GetCurrentDirectory(), "DataProtectionKeys");
-Directory.CreateDirectory(dataProtectionPath); // Ensure directory exists
+var dataProtectionPath = builder.Configuration["DataProtection:KeysDirectory"] ?? Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU", "DataProtectionKeys");
+TicketSalesApp.Services.Implementations.OwnerOnlyFile.CreateDirectory(dataProtectionPath);
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
@@ -300,18 +304,11 @@ builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
+var key = System.Security.Cryptography.HKDF.DeriveKey(System.Security.Cryptography.HashAlgorithmName.SHA256,
+    Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured")),
+    32, info: Encoding.UTF8.GetBytes("bru-openiddict/1"));
 
 // Existing AES encryption uses a 256-bit key. Never silently add entropy by zero padding.
-if (key.Length != 32)
-{
-    if (key.Length > 32 && builder.Configuration.GetValue<bool>("JwtSettings:AllowLegacyKeyTruncation"))
-    {
-        Log.Warning("Explicit legacy JWT key truncation enabled; coordinate signing/encryption key migration before disabling it");
-        key = key[..32];
-    }
-    else throw new InvalidOperationException("JwtSettings:Secret must encode exactly 32 UTF-8 bytes. Legacy truncation requires an explicit compatibility setting.");
-}
 
 // Create symmetric security key with KeyId for OpenIddict compatibility
 var symmetricKey = new SymmetricSecurityKey(key)

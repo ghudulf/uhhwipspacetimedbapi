@@ -42,8 +42,7 @@ public static class DatabaseCredentialFile
             return; // Existing valid identity token remains stable across restart.
         }
         var directory = Path.GetDirectoryName(path)!;
-        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(directory);
-        else Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        OwnerOnlyFile.CreateDirectory(directory);
         var temporary = Path.Combine(directory, ".credential-" + Guid.NewGuid().ToString("N"));
         try
         {
@@ -51,6 +50,7 @@ public static class DatabaseCredentialFile
             if (!OperatingSystem.IsWindows()) options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
             using (var file = new FileStream(temporary, options))
             {
+                OwnerOnlyFile.Restrict(temporary);
                 JsonSerializer.Serialize(file, new Credential(NormalizeHost(host), database, identity, token));
                 file.Flush(true);
             }

@@ -6,9 +6,36 @@ using TicketSalesApp.Services.Implementations;
 
 try
 {
+    if (args.FirstOrDefault() == "generate-secrets")
+    {
+        if (args.Length < 3 || args[1] != "--out" || args.Length > 4 || (args.Length == 4 && args[3] != "--force"))
+            throw new BootstrapException("Usage: generate-secrets --out <dir> [--force]");
+        var directory = Path.GetFullPath(args[2]);
+        OwnerOnlyFile.CreateDirectory(directory);
+        var path = Path.Combine(directory, "JwtSettings__Secret");
+        if (new FileInfo(path).LinkTarget != null) throw new BootstrapException("Secret output must not be a symbolic link.");
+        var secret = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        var temporary = Path.Combine(directory, ".secret-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var fileOptions = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
+            if (!OperatingSystem.IsWindows()) fileOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            using (var file = new FileStream(temporary, fileOptions))
+            {
+                OwnerOnlyFile.Restrict(temporary);
+                file.Write(Encoding.UTF8.GetBytes(secret));
+                file.Flush(true);
+            }
+            File.Move(temporary, path, args.Contains("--force"));
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        Console.WriteLine("JwtSettings__Secret sha256:" + SecretConfiguration.Fingerprint(secret));
+        return 0;
+    }
     if (args.Contains("--help") || args.Length == 0)
     {
         Console.WriteLine("DatabaseBootstrap --host URL --database NAME --owner-token-file PATH [--credential-file PATH] [--admin-login admin] [--password-file PATH | --trust-only]");
+        Console.WriteLine("DatabaseBootstrap generate-secrets --out <dir> [--force]");
         Console.WriteLine("Run after publishing the module. Connects as the API first, saves its generated identity, then provisions it with owner authorization. Password input is masked; existing passwords are never overwritten.");
         return 0;
     }

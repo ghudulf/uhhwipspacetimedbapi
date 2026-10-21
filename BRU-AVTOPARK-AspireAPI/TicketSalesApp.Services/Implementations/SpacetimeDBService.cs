@@ -248,10 +248,7 @@ namespace TicketSalesApp.Services.Implementations
                 // 2. Environment variable SPACETIME_TOKEN
                 // 3. WebSocket token (short-lived token from current connection)
                 // 4. AuthToken (client connection token - may not have log permissions)
-                var token = _configuration["SpacetimeDB:AdminToken"]
-                           ?? Environment.GetEnvironmentVariable("SPACETIME_TOKEN")
-                           ?? await GetWebSocketTokenAsync()
-                           ?? _connectionToken;
+                var token = _configuration["SpacetimeDB:AdminToken"];
 
                 if (string.IsNullOrEmpty(token))
                 {

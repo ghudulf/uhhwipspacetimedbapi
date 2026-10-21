@@ -95,3 +95,6 @@ HTTP mutation adapters echo their normalized effective receipt key in `Operation
 The module adds `BootstrapInstallation` (owner-only, initial-password and trust changes atomic) and `AuthenticateUserChecked` (rejected credentials fail the reducer). No user IDs or existing password hashes are rewritten. The API supports its own first connection followed by explicitly enabled owner-authorized provisioning and reports pending trust via readiness. The deployment owner token is used only by a temporary connection; the API's persisted token belongs to its separate generated identity. [Bootstrap instructions](database-bootstrap.md) describe masked/manual and API-startup paths, secret-file permissions, existing-password handling and legacy token cutover.
 
 Actual synthetic database tests cover both paths, password rejection, no overwrite, scope isolation, restart identity reuse and revocation. A fresh production-module CLI smoke confirms that initialization plus initial admin-password provisioning works without manually hashing/inserting credentials. Native Windows ACL and production secret-mount configuration still require deployment-host verification.
+# Secret storage
+
+See [secrets and credential migration](secrets.md) for required rotation of historical keys, mounted configuration and startup policy.
