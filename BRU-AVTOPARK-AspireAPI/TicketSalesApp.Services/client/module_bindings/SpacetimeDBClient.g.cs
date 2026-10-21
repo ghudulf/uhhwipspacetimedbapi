@@ -80,6 +80,7 @@ namespace SpacetimeDB.Types
             AddTable(UserSettings = new(conn));
             AddTable(WebAuthnChallenge = new(conn));
             AddTable(WebAuthnCredential = new(conn));
+            AddTable(WebAuthnUserHandle = new(conn));
         }
     }
 
@@ -615,6 +616,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.UserSettings().ToSql(),
             new QueryBuilder().From.WebAuthnChallenge().ToSql(),
             new QueryBuilder().From.WebAuthnCredential().ToSql(),
+            new QueryBuilder().From.WebAuthnUserHandle().ToSql(),
         }
         ;
     }
@@ -674,6 +676,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<UserSettings, UserSettingsCols, UserSettingsIxCols> UserSettings() => new("user_settings", new UserSettingsCols("user_settings"), new UserSettingsIxCols("user_settings"));
         public global::SpacetimeDB.Table<WebAuthnChallenge, WebAuthnChallengeCols, WebAuthnChallengeIxCols> WebAuthnChallenge() => new("web_authn_challenge", new WebAuthnChallengeCols("web_authn_challenge"), new WebAuthnChallengeIxCols("web_authn_challenge"));
         public global::SpacetimeDB.Table<WebAuthnCredential, WebAuthnCredentialCols, WebAuthnCredentialIxCols> WebAuthnCredential() => new("web_authn_credential", new WebAuthnCredentialCols("web_authn_credential"), new WebAuthnCredentialIxCols("web_authn_credential"));
+        public global::SpacetimeDB.Table<WebAuthnUserHandle, WebAuthnUserHandleCols, WebAuthnUserHandleIxCols> WebAuthnUserHandle() => new("web_authn_user_handle", new WebAuthnUserHandleCols("web_authn_user_handle"), new WebAuthnUserHandleIxCols("web_authn_user_handle"));
     }
 
     public sealed class TypedSubscriptionBuilder
@@ -831,6 +834,7 @@ namespace SpacetimeDB.Types
                 Reducer.EnableTotp args => Reducers.InvokeEnableTotp(eventContext, args),
                 Reducer.EnableWebAuthn args => Reducers.InvokeEnableWebAuthn(eventContext, args),
                 Reducer.EnsureDefaultPermissions args => Reducers.InvokeEnsureDefaultPermissions(eventContext, args),
+                Reducer.EnsureWebAuthnUserHandle args => Reducers.InvokeEnsureWebAuthnUserHandle(eventContext, args),
                 Reducer.MigratePasswordCredentials args => Reducers.InvokeMigratePasswordCredentials(eventContext, args),
                 Reducer.AssignUserRoleV2 args => Reducers.InvokeAssignUserRoleV2(eventContext, args),
                 Reducer.CreatePermissionV2 args => Reducers.InvokeCreatePermissionV2(eventContext, args),
@@ -868,6 +872,7 @@ namespace SpacetimeDB.Types
                 Reducer.RegisterUser args => Reducers.InvokeRegisterUser(eventContext, args),
                 Reducer.RegisterWebAuthnCredential args => Reducers.InvokeRegisterWebAuthnCredential(eventContext, args),
                 Reducer.RemoveRole args => Reducers.InvokeRemoveRole(eventContext, args),
+                Reducer.RemoveOwnWebAuthnCredential args => Reducers.InvokeRemoveOwnWebAuthnCredential(eventContext, args),
                 Reducer.ReplaceOidcApplication args => Reducers.InvokeReplaceOidcApplication(eventContext, args),
                 Reducer.ReplaceOidcScope args => Reducers.InvokeReplaceOidcScope(eventContext, args),
                 Reducer.ReplaceOidcToken args => Reducers.InvokeReplaceOidcToken(eventContext, args),

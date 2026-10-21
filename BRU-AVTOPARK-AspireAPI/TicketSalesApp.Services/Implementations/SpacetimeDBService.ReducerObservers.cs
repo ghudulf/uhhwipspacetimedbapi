@@ -55,7 +55,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnDeactivateSchedule += (ctx, scheduleId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnDeactivateTotpSecret += (ctx, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnDeactivateUser += (ctx, userId, actingUser) => OnReducerCompleted(ctx);
-        connection.Reducers.OnDeactivateWebAuthnCredential += (ctx, id) => OnReducerCompleted(ctx);
+        connection.Reducers.OnDeactivateWebAuthnCredential += (ctx, id, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnDebugVerifyPassword += (ctx, password, storedHash) => OnReducerCompleted(ctx);
         connection.Reducers.OnDeleteBus += (ctx, busId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnDeleteBusV2 += (ctx, operationId, actingUser, busId, expectedRevision) => OnReducerCompleted(ctx);
@@ -93,6 +93,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnEnableTotp += (ctx, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnEnableWebAuthn += (ctx, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnEnsureDefaultPermissions += (ctx) => OnReducerCompleted(ctx);
+        connection.Reducers.OnEnsureWebAuthnUserHandle += (ctx, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnGenerateTotpSecret += (ctx, userId, secret) => OnReducerCompleted(ctx);
         connection.Reducers.OnGetBusMaintenanceHistory += (ctx, busId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnGrantPermissionToRole += (ctx, roleId, permissionId, actingUserId) => OnReducerCompleted(ctx);
@@ -109,6 +110,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnRegisterQrLoginDevice += (ctx, deviceId, publicKey, deviceName, platform, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnRegisterUser += (ctx, login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity) => OnReducerCompleted(ctx);
         connection.Reducers.OnRegisterWebAuthnCredential += (ctx, userId, credentialId, publicKey, counter, deviceName) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRemoveOwnWebAuthnCredential += (ctx, id, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnRemoveRole += (ctx, userId, roleId, actingUserId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRemoveUserRoleV2 += (ctx, operationId, actingUser, entityId, expectedRevision, roleId) => OnReducerCompleted(ctx);
         connection.Reducers.OnReplaceOidcApplication += (ctx, clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType, permissions, requirements, displayNames, properties, expectedRevision, create) => OnReducerCompleted(ctx);

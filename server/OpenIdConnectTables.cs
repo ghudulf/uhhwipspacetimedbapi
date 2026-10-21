@@ -360,7 +360,10 @@ public static partial class Module
     public static void RegisterWebAuthnCredential(ReducerContext ctx, Identity userId, byte[] credentialId, string publicKey, uint counter, string? deviceName = null)
     {
         RequireTrustedApi(ctx);
-        Log.Info($"[RegisterWebAuthnCredential] Starting for user: {userId}, device: {deviceName ?? "unnamed"}");
+        if (ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true) throw new Exception("Active account required.");
+        if (credentialId.Length is < 1 or > 1024 || string.IsNullOrWhiteSpace(publicKey) || publicKey.Length > 8192)
+            throw new Exception("Invalid WebAuthn credential.");
+        if (ctx.Db.WebAuthnCredential.Iter().Any(c => c.CredentialId.SequenceEqual(credentialId))) throw new Exception("Credential already registered.");
         var webAuthnCredential = new WebAuthnCredential
         {
             Id = GetNextId(ctx, "webAuthnCredentialId"),
@@ -373,23 +376,14 @@ public static partial class Module
             DeviceName = deviceName
         };
         ctx.Db.WebAuthnCredential.Insert(webAuthnCredential);
-        Log.Info($"[RegisterWebAuthnCredential] Successfully registered WebAuthn credential for user: {userId}");
+        Log.Info("WebAuthn credential registration committed.");
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeactivateWebAuthnCredential(ReducerContext ctx, uint id)
+    public static void DeactivateWebAuthnCredential(ReducerContext ctx, uint id, Identity? actingUser = null)
     {
         RequireTrustedApi(ctx);
-        Log.Info($"[DeactivateWebAuthnCredential] Starting for credential ID: {id}");
-        var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
-        if (credential == null)
-        {
-            Log.Error($"[DeactivateWebAuthnCredential] Credential not found: {id}");
-            throw new Exception("WebAuthn credential not found");
-        }
-        credential.IsActive = false;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[DeactivateWebAuthnCredential] Successfully deactivated credential: {id}");
+        RemoveOwnWebAuthnCredential(ctx, id, ResolveEffectiveUser(ctx, actingUser));
     }
 
 
@@ -701,9 +695,7 @@ public static partial class Module
             throw new Exception("WebAuthn credential not found");
         }
 
-        credential.Counter = counter;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[UpdateWebAuthnCounter] Successfully updated counter to: {counter}");
+        AdvanceWebAuthnCounter(ctx, credential, counter);
     }
 
     [SpacetimeDB.Reducer]
@@ -810,9 +802,7 @@ public static partial class Module
             Log.Error($"[UpdateWebAuthnCredentialCounter] Credential not found: {id}");
             throw new Exception("WebAuthn credential not found");
         }
-        credential.Counter = counter;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[UpdateWebAuthnCredentialCounter] Successfully updated counter for credential: {id}");
+        AdvanceWebAuthnCounter(ctx, credential, counter);
     }
 
     [SpacetimeDB.Reducer]

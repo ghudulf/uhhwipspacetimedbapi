@@ -1,425 +1,147 @@
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using TicketSalesApp.Services.Interfaces;
-    using Fido2NetLib;
-    using Fido2NetLib.Objects;
-    using Microsoft.Extensions.Logging;
-    using SpacetimeDB;
-    using SpacetimeDB.Types;
-    using System.Text;
+using Fido2NetLib;
+using Fido2NetLib.Objects;
+using Microsoft.Extensions.Logging;
+using SpacetimeDB;
+using SpacetimeDB.Types;
+using TicketSalesApp.Services.Diagnostics;
+using TicketSalesApp.Services.Interfaces;
 
-    namespace TicketSalesApp.Services.Implementations
+namespace TicketSalesApp.Services.Implementations;
+
+/// <summary>Shared legacy/browser verifier and committed credential storage. Never logs ceremony payloads.</summary>
+public sealed class WebAuthnService(ISpacetimeDBService database, IFido2 fido2, ILogger<WebAuthnService> logger) : IWebAuthnService
+{
+    private void Failure(Exception ex) => logger.LogWarning("WebAuthn operation rejected; failure type {FailureType}", ex.GetType().Name);
+    public Task<UserProfile?> FindActiveUserAsync(string username) => database.ReadAsync(c => c.Db.UserProfile.Iter()
+        .FirstOrDefault(user => user.IsActive && string.Equals(user.Login, username, StringComparison.OrdinalIgnoreCase)));
+    private async Task<UserProfile> Active(Identity actor) => await database.ReadAsync(c => c.Db.UserProfile.UserId.Find(actor)) is { IsActive: true } user
+        ? user : throw new InvalidOperationException("Active account required.");
+    public Task<List<WebAuthnCredential>> GetUserCredentialsAsync(Identity userId) => database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().Where(credential => credential.UserId == userId && credential.IsActive).ToList());
+    public async Task<byte[]> EnsureUserHandleAsync(Identity actor)
     {
-        /// <summary>
-        /// Implementation of the WebAuthn service
-        /// </summary>
-        public class WebAuthnService : IWebAuthnService
+        await database.ExecuteReducerAsync(new Reducer.EnsureWebAuthnUserHandle(actor), _ => true);
+        return await database.ReadAsync(c => c.Db.WebAuthnUserHandle.UserId.Find(actor)?.Handle.ToArray() ?? throw new InvalidOperationException("Handle missing after commit."));
+    }
+    public async Task<CredentialCreateOptions> CreateRegistrationOptionsAsync(Identity actor)
+    {
+        _ = await Active(actor);
+        var handle = await EnsureUserHandleAsync(actor);
+        var credentials = await GetUserCredentialsAsync(actor);
+        // Opaque labels avoid sending usernames/emails/identities to the browser or authenticator.
+        return fido2.RequestNewCredential(new Fido2User { Id = handle, Name = "Ключ доступа", DisplayName = "БРУ Автопарк" },
+            credentials.Select(credential => new PublicKeyCredentialDescriptor(credential.CredentialId.ToArray())).ToList(),
+            // Fido2 3.0.1 exposes only the legacy resident-key boolean. The browser adapter
+            // adds residentKey:"preferred" while leaving requireResidentKey false.
+            new AuthenticatorSelection { RequireResidentKey = false, UserVerification = UserVerificationRequirement.Required },
+            AttestationConveyancePreference.None, new AuthenticationExtensionsClientInputs());
+    }
+    public async Task<AssertionOptions> CreateAssertionOptionsAsync(string? username)
+    {
+        var user = username == null ? null : await FindActiveUserAsync(username);
+        var credentials = user == null ? [] : await GetUserCredentialsAsync(user.UserId);
+        return fido2.GetAssertionOptions(credentials.Select(credential => new PublicKeyCredentialDescriptor(credential.CredentialId.ToArray())).ToList(),
+            UserVerificationRequirement.Required, new AuthenticationExtensionsClientInputs());
+    }
+    public async Task VerifyRegistrationAsync(Identity actor, CredentialCreateOptions options, AuthenticatorAttestationRawResponse response)
+    {
+        _ = await Active(actor);
+        var handle = await EnsureUserHandleAsync(actor);
+        if (!options.User.Id.SequenceEqual(handle) || options.AuthenticatorSelection.UserVerification != UserVerificationRequirement.Required)
+            throw new InvalidOperationException("Registration binding rejected.");
+        var verified = await fido2.MakeNewCredentialAsync(response, options, async (args, _) =>
+            !await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().Any(credential => credential.CredentialId.SequenceEqual(args.CredentialId))));
+        await database.ExecuteReducerAsync(new Reducer.RegisterWebAuthnCredential(actor, verified.Result.CredentialId.ToList(),
+            Convert.ToBase64String(verified.Result.PublicKey), verified.Result.Counter, "Ключ доступа"), _ => true);
+        await database.ExecuteReducerAsync(new Reducer.EnableWebAuthn(actor), _ => true);
+    }
+    public async Task<UserProfile> VerifyAssertionAsync(AssertionOptions options, AuthenticatorAssertionRawResponse response, Identity? expectedActor = null)
+    {
+        if (options.UserVerification != UserVerificationRequirement.Required) throw new InvalidOperationException("User verification required.");
+        var credential = await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().FirstOrDefault(item => item.IsActive && item.CredentialId.SequenceEqual(response.Id)))
+            ?? throw new InvalidOperationException("Assertion rejected.");
+        var user = await Active(credential.UserId);
+        if (expectedActor != null && user.UserId != expectedActor) throw new InvalidOperationException("Assertion rejected.");
+        try
         {
-            private readonly ISpacetimeDBService _spacetimeService;
-            private readonly IFido2 _fido2;
-            private readonly ILogger<WebAuthnService> _logger;
-
-            public WebAuthnService(
-                ISpacetimeDBService spacetimeService,
-                IFido2 fido2,
-                ILogger<WebAuthnService> logger)
-            {
-                _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-                _fido2 = fido2 ?? throw new ArgumentNullException(nameof(fido2));
-                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            }
-
-            /// <summary>
-            /// Gets credential creation options for WebAuthn registration
-            /// </summary>
-            public async Task<(bool success, CredentialCreateOptions? options, string? errorMessage)> GetCredentialCreateOptionsAsync(Identity userId, string username)
-            {
-                try
-                {
-                    _logger.LogInformation("Getting credential creation options for user: {Username}", username);
-
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
-                    
-                    if (user == null)
-                    {
-                        _logger.LogWarning("User not found for WebAuthn registration: {UserId}", userId);
-                        return (false, null, "User not found");
-                    }
-
-                    // Get existing credentials
-                    var existingCredentials = await GetUserCredentialsAsync(userId);
-                    var excludeCredentials = existingCredentials
-                        .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
-                        .ToList();
-
-                    // Create options
-                    var authenticatorSelection = new AuthenticatorSelection
-                    {
-                        RequireResidentKey = false,
-                        UserVerification = UserVerificationRequirement.Preferred
-                    };
-
-                    var options = _fido2.RequestNewCredential(
-                        new Fido2User
-                        {
-                            Id = System.Text.Encoding.UTF8.GetBytes(userId.ToString()),
-                            Name = username,
-                            DisplayName = username
-                        },
-                        excludeCredentials,
-                        authenticatorSelection,
-                        AttestationConveyancePreference.None,
-                        new AuthenticationExtensionsClientInputs()
-                    );
-
-                    // Store challenge in SpacetimeDB
-                    conn.Reducers.StoreWebAuthnChallenge(
-                        userId,
-                        Convert.ToBase64String(options.Challenge),
-                        (ulong)((DateTimeOffset)DateTime.UtcNow.AddMinutes(5)).ToUnixTimeMilliseconds()
-                    );
-
-                    return (true, options, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting credential creation options for user: {Username}", username);
-                    return (false, null, "An error occurred while creating WebAuthn registration options");
-                }
-            }
-
-            /// <summary>
-            /// Completes WebAuthn registration
-            /// </summary>
-            public async Task<(bool success, string? errorMessage)> CompleteRegistrationAsync(Identity userId, string username, AuthenticatorAttestationRawResponse attestationResponse)
-            {
-                try
-                {
-                    _logger.LogInformation("Completing WebAuthn registration for user: {Username}", username);
-
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
-                    
-                    if (user == null)
-                    {
-                        _logger.LogWarning("User not found for WebAuthn registration completion: {UserId}", userId);
-                        return (false, "User not found");
-                    }
-
-                    // Get the challenge
-                    var challenge = conn.Db.WebAuthnChallenge.Iter()
-                        .FirstOrDefault(c => c.UserId.Equals(userId) && c.ExpiresAt > (ulong)((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds());
-                    
-                    if (challenge == null)
-                    {
-                        _logger.LogWarning("Challenge not found or expired for user: {Username}", username);
-                        return (false, "Challenge not found or expired");
-                    }
-
-                    // Get existing credentials
-                    var existingCredentials = await GetUserCredentialsAsync(userId);
-                    var excludeCredentials = existingCredentials
-                        .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
-                        .ToList();
-
-                    // Verify and make credential
-                    var success = await _fido2.MakeNewCredentialAsync(
-                        attestationResponse,
-                        new CredentialCreateOptions
-                        {
-                            User = new Fido2User
-                            {
-                                Id = System.Text.Encoding.UTF8.GetBytes(userId.ToString()),
-                                Name = username,
-                                DisplayName = username
-                            },
-                            Challenge = System.Text.Encoding.UTF8.GetBytes(challenge.Challenge),
-                            ExcludeCredentials = excludeCredentials,
-                            AuthenticatorSelection = new AuthenticatorSelection
-                            {
-                                RequireResidentKey = false,
-                                UserVerification = UserVerificationRequirement.Preferred
-                            },
-                            Attestation = AttestationConveyancePreference.None
-                        },
-                        (_, _) => Task.FromResult(true)
-                    );
-
-                    // Store credential in SpacetimeDB
-                    conn.Reducers.RegisterWebAuthnCredential(
-                        userId,
-                        success.Result.CredentialId.ToList(),
-                        Convert.ToBase64String(success.Result.PublicKey),
-                        success.Result.Counter,
-                        null // No device name provided
-                    );
-
-                    // Enable WebAuthn for the user
-                    conn.Reducers.EnableWebAuthn(userId);
-
-                    // Delete the challenge
-                    conn.Reducers.DeleteWebAuthnChallenge(challenge.Id);
-
-                    _logger.LogInformation("WebAuthn registration completed successfully for user: {Username}", username);
-                    return (true, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error completing WebAuthn registration for user: {Username}", username);
-                    return (false, "An error occurred while completing WebAuthn registration");
-                }
-            }
-
-            /// <summary>
-            /// Gets assertion options for WebAuthn authentication
-            /// </summary>
-            public async Task<(bool success, AssertionOptions? options, string? errorMessage)> GetAssertionOptionsAsync(string username)
-            {
-                try
-                {
-                    _logger.LogInformation("Getting assertion options for user: {Username}", username);
-
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Find user by username
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.Login == username && u.IsActive);
-                    
-                    if (user == null)
-                    {
-                        _logger.LogWarning("User not found for WebAuthn assertion: {Username}", username);
-                        return (false, null, "User not found");
-                    }
-
-                    // Get user credentials
-                    var credentials = await GetUserCredentialsAsync(user.UserId);
-                    if (!credentials.Any())
-                    {
-                        _logger.LogWarning("No WebAuthn credentials found for user: {Username}", username);
-                        return (false, null, "No WebAuthn credentials found for this user");
-                    }
-
-                    var allowedCredentials = credentials
-                        .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId.ToArray()))
-                        .ToList();
-
-                    // Create options
-                    var options = _fido2.GetAssertionOptions(
-                        allowedCredentials,
-                        UserVerificationRequirement.Preferred,
-                        new AuthenticationExtensionsClientInputs()
-                    );
-
-                    // Store challenge in SpacetimeDB
-                    conn.Reducers.StoreWebAuthnChallenge(
-                        user.UserId,
-                        Convert.ToBase64String(options.Challenge),
-                        (ulong)((DateTimeOffset)DateTime.UtcNow.AddMinutes(5)).ToUnixTimeMilliseconds()
-                    );
-
-                    return (true, options, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting assertion options for user: {Username}", username);
-                    return (false, null, "An error occurred while creating WebAuthn assertion options");
-                }
-            }
-
-            /// <summary>
-            /// Completes WebAuthn authentication
-            /// </summary>
-            public async Task<(bool success, UserProfile? user, string? errorMessage)> CompleteAssertionAsync(string username, AuthenticatorAssertionRawResponse assertionResponse)
-            {
-                try
-                {
-                    _logger.LogInformation("Completing WebAuthn assertion for user: {Username}", username);
-
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Find user by username
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.Login == username && u.IsActive);
-                    
-                    if (user == null)
-                    {
-                        _logger.LogWarning("User not found for WebAuthn assertion completion: {Username}", username);
-                        return (false, null, "User not found");
-                    }
-
-                    // Get the challenge
-                    var challenge = conn.Db.WebAuthnChallenge.Iter()
-                        .FirstOrDefault(c => c.UserId.Equals(user.UserId) && c.ExpiresAt > (ulong)((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds());
-                    
-                    if (challenge == null)
-                    {
-                        _logger.LogWarning("Challenge not found or expired for user: {Username}", username);
-                        return (false, null, "Challenge not found or expired");
-                    }
-
-                    // Get the credential
-                    var credential = conn.Db.WebAuthnCredential.Iter()
-                        .FirstOrDefault(c => c.UserId.Equals(user.UserId) && 
-                                            c.CredentialId.SequenceEqual(assertionResponse.Id) && 
-                                            c.IsActive);
-                    
-                    if (credential == null)
-                    {
-                        _logger.LogWarning("Credential not found for user: {Username}", username);
-                        return (false, null, "Credential not found");
-                    }
-
-                    // Verify the assertion
-                    var storedCounter = credential.Counter;
-                    var result = await _fido2.MakeAssertionAsync(
-                        assertionResponse,
-                        new AssertionOptions
-                        {
-                            Challenge = System.Text.Encoding.UTF8.GetBytes(challenge.Challenge),
-                            AllowCredentials = new List<PublicKeyCredentialDescriptor>
-                            {
-                                new PublicKeyCredentialDescriptor(credential.CredentialId.ToArray())
-                            },
-                            UserVerification = UserVerificationRequirement.Preferred
-                        },
-                        Convert.FromBase64String(credential.PublicKey),
-                        storedCounter,
-                        (_, _) => Task.FromResult(true)
-                    );
-
-                    // Update the counter
-                    conn.Reducers.UpdateWebAuthnCredentialCounter(
-                        credential.Id,
-                        result.Counter
-                    );
-
-                    // Delete the challenge
-                    conn.Reducers.DeleteWebAuthnChallenge(challenge.Id);
-
-                    _logger.LogInformation("WebAuthn assertion completed successfully for user: {Username}", username);
-                    return (true, user, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error completing WebAuthn assertion for user: {Username}", username);
-                    return (false, null, "An error occurred while completing WebAuthn authentication");
-                }
-            }
-
-            /// <summary>
-            /// Removes a WebAuthn credential
-            /// </summary>
-            public async Task<(bool success, string? errorMessage)> RemoveCredentialAsync(Identity userId, string credentialId)
-            {
-                try
-                {
-                    _logger.LogInformation("Removing WebAuthn credential for user ID: {UserId}", userId);
-
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
-                    
-                    if (user == null)
-                    {
-                        _logger.LogWarning("User not found for WebAuthn credential removal: {UserId}", userId);
-                        return (false, "User not found");
-                    }
-
-                    // Find the credential
-                    var credential = conn.Db.WebAuthnCredential.Iter()
-                        .FirstOrDefault(c => c.UserId.Equals(userId) && 
-                                            Convert.ToBase64String(c.CredentialId.ToArray()) == credentialId && 
-                                            c.IsActive);
-                    
-                    if (credential == null)
-                    {
-                        _logger.LogWarning("Credential not found for user ID: {UserId}", userId);
-                        return (false, "Credential not found");
-                    }
-
-                    // Deactivate the credential
-                    conn.Reducers.DeactivateWebAuthnCredential(credential.Id);
-
-                    // Check if this was the last credential
-                    var remainingCredentials = conn.Db.WebAuthnCredential.Iter()
-                        .Count(c => c.UserId.Equals(userId) && c.IsActive);
-                    
-                    if (remainingCredentials == 0)
-                    {
-                        // Disable WebAuthn for the user
-                        conn.Reducers.DisableWebAuthn(userId);
-                    }
-
-                    _logger.LogInformation("WebAuthn credential removed successfully for user ID: {UserId}", userId);
-                    return (true, null);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error removing WebAuthn credential for user ID: {UserId}", userId);
-                    return (false, "An error occurred while removing WebAuthn credential");
-                }
-            }
-
-            /// <summary>
-            /// Gets all WebAuthn credentials for a user
-            /// </summary>
-            public async Task<List<WebAuthnCredential>> GetUserCredentialsAsync(Identity userId)
-            {
-                try
-                {
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Get all active credentials for the user
-                    var credentials = conn.Db.WebAuthnCredential.Iter()
-                        .Where(c => c.UserId.Equals(userId) && c.IsActive)
-                        .ToList();
-                    
-                    return credentials;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting WebAuthn credentials for user ID: {UserId}", userId);
-                    return new List<WebAuthnCredential>();
-                }
-            }
-
-            /// <summary>
-            /// Checks if WebAuthn is enabled for a user
-            /// </summary>
-            public async Task<bool> IsWebAuthnEnabledAsync(Identity userId)
-            {
-                try
-                {
-                    var conn = _spacetimeService.GetConnection();
-                    
-                    // Get user settings
-                    var userSettings = conn.Db.UserSettings.Iter()
-                        .FirstOrDefault(s => s.UserId.Equals(userId));
-                    
-                    return userSettings?.WebAuthnEnabled ?? false;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error checking if WebAuthn is enabled for user ID: {UserId}", userId);
-                    return false;
-                }
-            }
+            var result = await fido2.MakeAssertionAsync(response, options, Convert.FromBase64String(credential.PublicKey), credential.Counter,
+                async (args, _) => await database.ReadAsync(c => c.Db.WebAuthnUserHandle.UserId.Find(credential.UserId) is { } handle &&
+                    handle.Handle.SequenceEqual(args.UserHandle) && credential.CredentialId.SequenceEqual(args.CredentialId)));
+            // The module independently rejects a stale/nonmonotonic writer, even if two verifiers raced.
+            await database.ExecuteReducerAsync(new Reducer.UpdateWebAuthnCounter(credential.CredentialId.ToList(), result.Counter), _ => true);
+            _ = await Active(user.UserId);
+            return user;
+        }
+        catch
+        {
+            logger.LogWarning("WebAuthn assertion/counter rejected; credential {CredentialFingerprint}", SafeDiagnostics.Fingerprint(Convert.ToBase64String(credential.CredentialId.ToArray())));
+            throw;
         }
     }
-
-
-
-
-
-
+    private async Task<WebAuthnChallenge> Challenge(Identity actor) => await database.ReadAsync(c => c.Db.WebAuthnChallenge.Iter()
+        .Where(item => item.UserId == actor && item.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()).OrderByDescending(item => item.Id).FirstOrDefault())
+        ?? throw new InvalidOperationException("Challenge unavailable.");
+    private static byte[] DecodeChallenge(string value) => Microsoft.IdentityModel.Tokens.Base64UrlEncoder.DecodeBytes(value);
+    public async Task<(bool success, CredentialCreateOptions? options, string? errorMessage)> GetCredentialCreateOptionsAsync(Identity userId, string username)
+    {
+        try
+        {
+            var options = await CreateRegistrationOptionsAsync(userId);
+            await database.ExecuteReducerAsync(new Reducer.StoreWebAuthnChallenge(userId, Convert.ToBase64String(options.Challenge),
+                (ulong)DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds()), _ => true);
+            return (true, options, null);
+        }
+        catch (Exception ex) { Failure(ex); return (false, null, "WebAuthn registration unavailable"); }
+    }
+    public async Task<(bool success, string? errorMessage)> CompleteRegistrationAsync(Identity userId, string username, AuthenticatorAttestationRawResponse response)
+    {
+        try
+        {
+            var challenge = await Challenge(userId);
+            var options = await CreateRegistrationOptionsAsync(userId);
+            options.Challenge = DecodeChallenge(challenge.Challenge);
+            // Committed consume before verification prevents replay, including concurrent legacy submissions.
+            await database.ExecuteReducerAsync(new Reducer.DeleteWebAuthnChallenge(challenge.Id), _ => true);
+            await VerifyRegistrationAsync(userId, options, response);
+            return (true, null);
+        }
+        catch (Exception ex) { Failure(ex); return (false, "WebAuthn registration rejected"); }
+    }
+    public async Task<(bool success, AssertionOptions? options, string? errorMessage)> GetAssertionOptionsAsync(string username)
+    {
+        try
+        {
+            var user = await FindActiveUserAsync(username);
+            var options = await CreateAssertionOptionsAsync(username);
+            if (user != null) await database.ExecuteReducerAsync(new Reducer.StoreWebAuthnChallenge(user.UserId, Convert.ToBase64String(options.Challenge),
+                (ulong)DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds()), _ => true);
+            return (true, options, null);
+        }
+        catch (Exception ex) { Failure(ex); return (false, null, "WebAuthn unavailable"); }
+    }
+    public async Task<(bool success, UserProfile? user, string? errorMessage)> CompleteAssertionAsync(string username, AuthenticatorAssertionRawResponse response)
+    {
+        try
+        {
+            var actor = await FindActiveUserAsync(username) ?? throw new InvalidOperationException("Assertion rejected.");
+            var challenge = await Challenge(actor.UserId);
+            var options = await CreateAssertionOptionsAsync(username);
+            options.Challenge = DecodeChallenge(challenge.Challenge);
+            await database.ExecuteReducerAsync(new Reducer.DeleteWebAuthnChallenge(challenge.Id), _ => true);
+            return (true, await VerifyAssertionAsync(options, response, actor.UserId), null);
+        }
+        catch (Exception ex) { Failure(ex); return (false, null, "WebAuthn assertion rejected"); }
+    }
+    public async Task<(bool success, string? errorMessage)> RemoveCredentialAsync(Identity userId, string credentialId)
+    {
+        try
+        {
+            var id = Convert.FromBase64String(credentialId);
+            var credential = await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().FirstOrDefault(item => item.UserId == userId && item.IsActive && item.CredentialId.SequenceEqual(id)))
+                ?? throw new InvalidOperationException("Own credential required.");
+            await database.ExecuteReducerAsync(new Reducer.RemoveOwnWebAuthnCredential(credential.Id, userId), _ => true);
+            return (true, null);
+        }
+        catch (Exception ex) { Failure(ex); return (false, "WebAuthn removal rejected"); }
+    }
+    public Task<bool> IsWebAuthnEnabledAsync(Identity userId) => database.ReadAsync(c => c.Db.UserSettings.Iter().Any(item => item.UserId == userId && item.WebAuthnEnabled));
+}
