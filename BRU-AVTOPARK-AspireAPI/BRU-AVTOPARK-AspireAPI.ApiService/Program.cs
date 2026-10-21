@@ -47,12 +47,20 @@ builder.Services.AddDataProtection()
     .SetApplicationName("BRU-AVTOPARK-AspireAPI");
 
 // Configure Serilog
+var trafficOptions = TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.ServerOptions(builder.Configuration);
+TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Configure(trafficOptions);
+var trafficFormatter = new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter(trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full);
 Log.Logger = new LoggerConfiguration()
                  .MinimumLevel.Debug()
+                 .Enrich.FromLogContext()
+                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                 .MinimumLevel.Override("System", LogEventLevel.Information)
                  // Hosting request-start logs include callback query strings (OIDC codes/state).
                  .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
-                .WriteTo.Console(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter())
-                .WriteTo.Debug(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter())
+                .WriteTo.Console(trafficFormatter)
+                .WriteTo.Debug(trafficFormatter)
+                .WriteTo.File(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter(), "logs/app-.jsonl",
+                    rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14)
                 .WriteTo.Logger(lc => lc
                     .Filter.ByExcluding(logEvent =>
                     {
@@ -71,10 +79,13 @@ Log.Logger = new LoggerConfiguration()
                                (message.StartsWith("{") && message.Contains("\"target\":\"UpdateOpenIdClient\"")) ||
                                (message.StartsWith("{") && message.Contains("\"target\":\"RegisterOpenIdClient\""));
                     })
-                    .WriteTo.File(BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.LogFormatter(), "logs/app-.log",
+                    .WriteTo.File(trafficFormatter, "logs/app-.log",
                         rollingInterval: RollingInterval.Day,
-                        restrictedToMinimumLevel: LogEventLevel.Information))
+                        fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14,
+                        restrictedToMinimumLevel: LogEventLevel.Debug))
                 .CreateLogger();
+if (trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full) Log.Warning(TicketSalesApp.Services.Diagnostics.EscapedTextFormatter.UnsafeWarning);
+Log.Information("API logs: {LogDirectory}", Path.GetFullPath("logs"));
 
 builder.Host.UseSerilog();
 
@@ -657,6 +668,7 @@ catch (Exception ex)
 
 // CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
 app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.RequestTraceMiddleware>();
+app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.TrafficLoggingMiddleware>();
 app.UseExceptionHandler();
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
