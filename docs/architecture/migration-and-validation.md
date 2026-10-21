@@ -1,6 +1,6 @@
 # Architecture implementation ledger and deployment requirements
 
-This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation, browser Hello orchestration and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) distinguishes implemented Entra browser login/linking from unfinished passkeys and refresh integration.
+This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) distinguishes implemented Entra/passkey browser ceremonies from unfinished refresh integration and unverified real Windows/browser platforms.
 
 ## Database boundary
 
@@ -148,6 +148,32 @@ idempotency-hash fix without further production changes to that operation.
 Entra is disabled by default and must be configured/validated with a real tenant
 before rollout. Provider flows are bounded process memory and lost on restart.
 The v2 refresh adapter is tested with fake orchestration; the existing production
-refresh method still rejects as unimplemented. Passkeys remain unadvertised and
-the WebAuthn storage/counter/challenge work is not complete. See the explicit
-[remaining work and deviations](provider-authentication.md#refresh-checkpoint-and-remaining-passkey-work).
+refresh method still rejects as unimplemented; that work is separate from the
+passkey rollout. See the explicit [refresh checkpoint](provider-authentication.md#refresh-checkpoint-unchanged-by-passkey-rollout).
+
+## Passkey storage and browser rollout
+
+Publish the additive protected `WebAuthnUserHandle` table and trusted-API
+`EnsureWebAuthnUserHandle` / `RemoveOwnWebAuthnCredential` reducers first. Preserve
+all existing credential/profile rows. The legacy `DeactivateWebAuthnCredential`
+signature now appends an optional acting-user argument and enforces ownership;
+deploy regenerated pinned-2.1.0 bindings and the completion observers together.
+Review and rehearse the server's required client-break migration plan; do not
+clear data. Counter reducers now reject nonmonotonic values except 0→0; obsolete
+clients that wrote arbitrary counters or removed by bare IDs are not compatible.
+
+Handles are generated once per active user on demand using transaction-seeded
+module pseudo-random bytes (not an OS CSPRNG), are opaque public identifiers and
+are protected by the same trusted-API RLS partition. New registrations use those
+handles; no username/identity/JWT-secret derivation is used. WebAuthn writes are
+now committed; legacy stored challenges are decoded correctly and all options
+require user verification. Authenticators without UV may require replacement.
+
+Keep `Authentication:Passkeys:Enabled=false` until explicit public origin,
+Fido2 RP id/origins and proxy path base are configured and validated. Then enable
+the capability-gated login/key-management UI. Existing list/delete feature flags
+must also permit credential management. Rollback disables the browser endpoints
+and UI without deleting keys. Real-reducer integration covers persistent handle
+idempotency/RLS, duplicate credentials, monotonic/zero counters and own-only
+committed service/removal behavior. Real Fido2 software-authenticator tests and
+headless Avalonia tests do not replace real browser/Windows Hello validation.

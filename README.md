@@ -12,9 +12,10 @@ A comprehensive multi-tenant SaaS application for managing bus fleet operations,
 - **Authentication**: OpenID Connect with OAuth 2.0, WebAuthn, TOTP
 
 Provider rollout checkpoint: [Microsoft Entra system-browser login and secure
-account linking](docs/architecture/provider-authentication.md) are implemented
-behind a default-off flag. Browser passkeys/Windows Hello and automatic session
-refresh remain unfinished and are not advertised as delivered.
+account linking](docs/architecture/provider-authentication.md) and system-browser
+passkey registration/login/key management are implemented behind default-off
+flags. Windows Hello depends on browser/platform WebAuthn support; real platform
+validation and automatic session refresh remain unfinished.
 - **Real-time Sync**: SpacetimeDB client SDK with automatic data synchronization
 
 ### Project Structure
