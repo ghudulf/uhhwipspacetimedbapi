@@ -1,6 +1,11 @@
 using BRU_AVTOPARK_AspireAPI.ApiService.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 
 internal static class RequestTraceTests
 {
@@ -22,7 +27,33 @@ internal static class RequestTraceTests
         using var reader = new StreamReader(context.Response.Body);
         if (!string.Equals(await reader.ReadToEndAsync(), "{\"error\":\"existing-error-shape\"}", StringComparison.Ordinal))
             throw new Exception("Trace middleware changed the response body contract");
+        await ExceptionPipelineAsync();
         Console.WriteLine("PASS request trace: existing HttpContext identifier in log scope and error response header; status and body shape preserved");
+    }
+
+    private static async Task ExceptionPipelineAsync()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+        builder.Logging.ClearProviders();
+        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+            context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
+        await using var app = builder.Build();
+        app.Use((context, next) => { context.TraceIdentifier = "existing-pipeline-trace"; return next(); });
+        app.UseMiddleware<RequestTraceMiddleware>(); app.UseExceptionHandler();
+        app.MapGet("/failure", (HttpContext _) => Task.FromException(new InvalidOperationException("synthetic request failure")));
+        await app.StartAsync();
+        try
+        {
+            var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+            using var http = new HttpClient(); http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            using var response = await http.GetAsync(address + "/failure");
+            using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if ((int)response.StatusCode != 500 || response.Headers.GetValues("Trace-Id").Single() != "existing-pipeline-trace" ||
+                document.RootElement.GetProperty("traceId").GetString() != "existing-pipeline-trace")
+                throw new Exception("Exception-handler response clearing lost request correlation");
+        }
+        finally { await app.StopAsync(); }
     }
     private sealed class Capture : ILogger<RequestTraceMiddleware>
     {
