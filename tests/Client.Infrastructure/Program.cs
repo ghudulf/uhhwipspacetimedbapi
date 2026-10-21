@@ -65,6 +65,13 @@ Assert(BRU.Avtopark.Client.ClientEndpoints.ServerRoot("https://example.invalid/c
 try { BRU.Avtopark.Client.ClientEndpoints.ServerRoot("https://example.invalid/api/?token=synthetic"); throw new Exception("Credential-bearing base accepted"); }
 catch (ArgumentException) { }
 Console.WriteLine("PASS shared endpoint normalization preserves HTTPS/proxy prefixes and rejects credential-bearing bases");
+foreach (var remote in new[] { "http://192.0.2.1/api/", "http://api.example.invalid/api/" })
+{
+    try { BRU.Avtopark.Client.ClientEndpoints.ServerRoot(remote); throw new Exception("Remote plaintext API credentials allowed"); }
+    catch (ArgumentException) { }
+}
+Assert(BRU.Avtopark.Client.ClientEndpoints.ServerRoot("http://127.0.0.1:5000/api/").IsLoopback, "loopback development rejected");
+Console.WriteLine("PASS remote HTTP API bases rejected before credentials; HTTPS/proxy paths and loopback development retained");
 
 Assert(BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(new Uri("https://example.invalid/proxy/api/"), "/api/auth/ws").AbsoluteUri == "wss://example.invalid/proxy/api/auth/ws", "WebSocket normalization changed HTTPS/prefix");
 try { BRU.Avtopark.Client.ClientEndpoints.WebSocketEndpoint(new Uri("http://192.168.1.1/api/"), "/api/auth/ws"); throw new Exception("Unencrypted LAN authentication allowed"); }

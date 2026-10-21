@@ -175,7 +175,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     subnet, ScanRangeStart, ScanRangeEnd);
 
                 var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
-                    .Select(i => $"http://{subnet}.{i}:{ApiPort}/");
+                    .Select(i => $"https://{subnet}.{i}:{ApiPort}/");
 
                 var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
                 if (found != null)
@@ -241,7 +241,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         public HttpClient CreateClient()
         {
             var baseUrl = _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
-            var client = new HttpClient
+            _ = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl);
+            var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {
                 BaseAddress = new Uri(baseUrl)
             };

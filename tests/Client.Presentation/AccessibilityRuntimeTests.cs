@@ -38,6 +38,9 @@ internal static class AccessibilityRuntimeTests
         var previousTransport = Environment.GetEnvironmentVariable("BRU_TRANSPORT");
         try
         {
+            baseField.SetValue(api, "http://192.0.2.1/api/");
+            try { using var rejected = api.CreateClient(); throw new Exception("Legacy API client accepted remote plaintext credentials"); }
+            catch (ArgumentException) { }
             baseField.SetValue(api, server.Origin + "api/");
             Environment.SetEnvironmentVariable("BRU_TRANSPORT", "http");
             api.AuthToken = "synthetic-accessibility-session";

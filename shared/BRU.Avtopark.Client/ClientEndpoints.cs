@@ -42,6 +42,8 @@ public static class ClientEndpoints
         var uri = new Uri(apiBase, UriKind.Absolute);
         if (uri.Scheme is not ("http" or "https") || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0)
             throw new ArgumentException("Expected an HTTP(S) API base without credentials, query or fragment.", nameof(apiBase));
+        if (uri.Scheme != "https" && !uri.IsLoopback)
+            throw new ArgumentException("Configure HTTPS for remote API access. Plain HTTP is limited to loopback development.", nameof(apiBase));
         var path = uri.AbsolutePath.TrimEnd('/');
         if (path.EndsWith("/api", StringComparison.OrdinalIgnoreCase)) path = path[..^4];
         return new UriBuilder(uri) { Path = path + "/" }.Uri;
