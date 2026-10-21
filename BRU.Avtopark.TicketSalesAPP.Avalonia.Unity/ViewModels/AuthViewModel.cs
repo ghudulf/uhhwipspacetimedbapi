@@ -352,7 +352,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 HttpResponseMessage response = await _httpClient.PostAsJsonAsync("auth/login", loginRequest, _jsonOptions);
                 string responseContent = await response.Content.ReadAsStringAsync();
 
-                Log.Debug("Raw response content: {Content}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                Log.Debug("Raw response content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                 StatusMessage = "Обработка ответа...";
 
                 if (response.IsSuccessStatusCode)
@@ -365,7 +365,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     }
                     catch (JsonException jsonEx)
                     {
-                        Log.Error(jsonEx, "JSON deserialization error during login success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                        Log.Error(jsonEx, "JSON deserialization error during login success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                         ErrorMessage = "Ошибка обработки ответа сервера (неверный формат).";
                         await GoToPreviousStepAsync(true); // Go back to step 1 on error
                         return;
@@ -465,7 +465,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         Log.Information("User role determined: {Role} (Admin: {IsAdmin})", userRole, isAdmin);
                         
                         Log.Debug("Server claims structure: {Shape}",
-                            TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(JsonSerializer.Serialize(result.Data.Claims)));
+                            TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(JsonSerializer.Serialize(result.Data.Claims)));
 
                         // Store both token and role information in ApiClientService
                         await NativeSessionRefresher.StoreLoginAsync(result.Data.Token, result.Data.RefreshToken);
@@ -516,7 +516,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         catch (JsonException jsonEx)
                         {
                             // Log the parsing error but provide a more generic error message to the user
-                            Log.Error(jsonEx, "Error parsing JSON error response. Status: {StatusCode}, Raw content: {Content}", response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                            Log.Error(jsonEx, "Error parsing JSON error response. Status: {StatusCode}, Raw content: {Content}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                             ErrorMessage = $"Ошибка аутентификации: {(int)response.StatusCode} ({response.ReasonPhrase})";
                         }
                     }
@@ -813,11 +813,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             try
             {
                 var validateRequest = new { tempToken = _tempToken, code = TotpCode };
-                Log.Debug("TOTP VALIDATION REQUEST: {RequestJson}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(JsonSerializer.Serialize(validateRequest, _jsonOptions)));
+                Log.Debug("TOTP VALIDATION REQUEST: {RequestJson}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.AuthJson(JsonSerializer.Serialize(validateRequest, _jsonOptions)));
 
                     var response = await _httpClient.PostAsJsonAsync("auth/totp/validate", validateRequest, _jsonOptions);
                     var responseContent = await response.Content.ReadAsStringAsync();
-                Log.Debug("TOTP VALIDATION RESPONSE Status: {StatusCode}, Content: {ResponseContent}", response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                Log.Debug("TOTP VALIDATION RESPONSE Status: {StatusCode}, Content: {ResponseContent}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -830,7 +830,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                      }
                       catch (JsonException jsonEx)
                      {
-                         Log.Error(jsonEx, "JSON deserialization error during TOTP validation success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                         Log.Error(jsonEx, "JSON deserialization error during TOTP validation success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                          ErrorMessage = "Ошибка обработки ответа сервера TOTP.";
                          IsLoading = false;
                          return; // Stay on step 3
@@ -868,7 +868,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 else
                 {
                     ErrorMessage = "Неверный код TOTP.";
-                    Log.Error("TOTP validation failed: User={Username}, StatusCode={StatusCode}, Response={Response}", Username, response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(responseContent));
+                    Log.Error("TOTP validation failed: User={Username}, StatusCode={StatusCode}, Response={Response}", Username, response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                 }
             }
             catch (Exception ex)
@@ -1019,7 +1019,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             {
                 var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
                 Log.Debug("{TokenType} payload structure: {Shape}", tokenType,
-                    TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(jwt.Payload.SerializeToJson()));
+                    TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(jwt.Payload.SerializeToJson()));
             }
             catch (Exception ex) { Log.Warning("Token diagnostics unavailable: {ErrorType}", ex.GetType().Name); }
         }

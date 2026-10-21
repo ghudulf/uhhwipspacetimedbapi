@@ -40,7 +40,7 @@ public static class DebugPayload
     public static string Fingerprint(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
     public static string Mask(int length) => $"***({length})";
 
-    public static string Json(string? raw, TrafficLevel level = TrafficLevel.Redacted, int max = 65536)
+    public static string Json(string? raw, TrafficLevel level = TrafficLevel.Redacted, int max = 65536, bool authentication = false)
     {
         if (level == TrafficLevel.Off) return "";
         raw ??= "null";
@@ -63,7 +63,7 @@ public static class DebugPayload
                         case JsonTokenType.PropertyName:
                             var name = reader.GetString()!;
                             writer.WritePropertyName(name);
-                            if (IsCredential(name))
+                            if (IsCredential(name) || authentication && Normalize(name) is "code" or "credential" or "qrpng" or "qrpayload")
                             {
                                 if (!reader.Read()) throw new JsonException();
                                 var start = reader.TokenStartIndex;
@@ -72,7 +72,11 @@ public static class DebugPayload
                                 writer.WriteStringValue(Mask(length >= 0 ? length : checked((int)(reader.BytesConsumed - start))));
                             }
                             break;
-                        case JsonTokenType.String: writer.WriteStringValue(reader.GetString()); break;
+                        case JsonTokenType.String:
+                            var text = reader.GetString()!;
+                            // QR/protocol envelopes may embed credential-bearing JSON as a string.
+                            writer.WriteStringValue(text.StartsWith('{') || text.StartsWith('[') ? Json(text, level, int.MaxValue, authentication) : text);
+                            break;
                         case JsonTokenType.Number: writer.WriteRawValue(reader.ValueSpan, skipInputValidation: true); break;
                         case JsonTokenType.True: writer.WriteBooleanValue(true); break;
                         case JsonTokenType.False: writer.WriteBooleanValue(false); break;
@@ -83,14 +87,14 @@ public static class DebugPayload
             }
             return Truncate(Encoding.UTF8.GetString(output.ToArray()), max);
         }
-        catch (JsonException) { return Truncate(Text(raw), max); }
+        catch (JsonException) { return Truncate(Text(raw, authentication), max); }
     }
 
     // Handles form data and malformed/partial JSON without silently dropping debugging data.
-    private static string Text(string raw) => Regex.Replace(raw,
-        "(?<key>[\\w-]+)(?<separator>\\\"?\\s*[:=]\\s*\\\"?)(?<value>[^\\\"&\\s,}]+)",
-        match => IsCredential(match.Groups["key"].Value)
-            ? match.Groups["key"].Value + match.Groups["separator"].Value + Mask(match.Groups["value"].Length) : match.Value,
+    private static string Text(string raw, bool authentication) => Regex.Replace(raw,
+        "(?<key>[\\w-]+)(?<separator>\\\"?\\s*[:=]\\s*)(?:\\\"(?<quoted>(?:\\\\.|[^\\\"\\\\])*)(?:\\\"|$)|(?<value>[^&\\s,}]+))",
+        match => IsCredential(match.Groups["key"].Value) || authentication && Normalize(match.Groups["key"].Value) is "code" or "credential"
+            ? match.Groups["key"].Value + match.Groups["separator"].Value + Mask(match.Groups["quoted"].Success ? match.Groups["quoted"].Length : match.Groups["value"].Length) : match.Value,
         RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     public static string Truncate(string raw, int max)

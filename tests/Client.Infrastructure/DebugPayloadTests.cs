@@ -17,6 +17,8 @@ internal static class DebugPayloadTests
         Check(DebugPayload.Json(raw, TrafficLevel.Full) == raw && DebugPayload.Json(raw, TrafficLevel.Off) == "", "levels");
         Check(DebugPayload.Json("password=sentinel&name=Alice").Contains("password=***(8)") && !DebugPayload.Json("{\"token\":\"sentinel").Contains("sentinel"), "partial/form masking");
         Check(DebugPayload.Json("not JSON, bus 42") == "not JSON, bus 42", "non JSON retained");
+        Check(!DebugPayload.Json("{\"password\":\"multi word sentinel").Contains("sentinel"), "partial quoted credential");
+        Check(!DebugPayload.Json("{\"code\":\"sentinel\"}", authentication: true).Contains("sentinel"), "auth-only generic TOTP code");
         Check(DebugPayload.Binary(42) == "[binary 42 bytes]", "binary summary");
         Check(DebugPayload.Truncate("a😀b", 3) == "a…[truncated 5 bytes]" && DebugPayload.Truncate("abc", 3) == "abc", "UTF8 truncation");
         var url = DebugPayload.Url("https://host/api?name=Alice&access_token=sentinel&state=state&code=123&limit=20");

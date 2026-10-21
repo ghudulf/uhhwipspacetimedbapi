@@ -43,7 +43,7 @@ public static class WindowsAccountClient
         if (status) endpoint = new Uri(endpoint.AbsoluteUri + "/status");
         // This handler is isolated: credentials never reach discovery, redirects, arbitrary URLs or proxy authentication.
         using var handler = new HttpClientHandler { UseDefaultCredentials = true, AllowAutoRedirect = false, UseProxy = false };
-        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(45) };
+        using var client = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler(handler)) { Timeout = TimeSpan.FromSeconds(45) };
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
         if (applicationToken != null) request.Content = JsonContent.Create(new { applicationToken });
         request.Headers.Add("X-BRU-Native-Login", "1");

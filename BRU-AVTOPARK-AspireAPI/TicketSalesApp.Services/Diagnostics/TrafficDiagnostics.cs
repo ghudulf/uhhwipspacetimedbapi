@@ -19,14 +19,15 @@ public static class TrafficDiagnostics
     public static void Configure(TrafficOptions options) => configured = options;
     public static bool Enabled => Options.Level != TrafficLevel.Off;
     public static string Json(string? raw) => DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes);
+    public static string AuthJson(string? raw) => DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes, authentication: true);
     public static string Url(string raw) => DebugPayload.Url(raw, Options.Level);
     public static string Serialize(object? value) => Json(JsonSerializer.Serialize(value, new JsonSerializerOptions { IncludeFields = true }));
-    public static string Body(byte[] preview, long length, string? contentType, TrafficOptions options)
+    public static string Body(byte[] preview, long length, string? contentType, TrafficOptions options, bool authentication = false)
     {
         if (options.Level == TrafficLevel.Off) return "";
         if (!IsText(contentType)) return DebugPayload.Binary(length, options.Level);
         var raw = Encoding.UTF8.GetString(preview);
-        var result = DebugPayload.Json(raw, options.Level, options.MaxBodyBytes);
+        var result = DebugPayload.Json(raw, options.Level, options.MaxBodyBytes, authentication);
         return length > preview.Length && !result.Contains("…[truncated ", StringComparison.Ordinal)
             ? result + $"…[truncated {length - preview.Length} bytes]" : result;
     }

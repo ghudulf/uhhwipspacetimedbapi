@@ -272,7 +272,7 @@ public partial class MainWindow : Window
                 Serilog.Log.Warning("Token test: no auth token set in ApiClientService");
 
             // Build a root-level client (no /api/ prefix) with the Bearer token
-            using var rootClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+            using var rootClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { BaseAddress = new Uri(serverRoot) };
             if (!string.IsNullOrEmpty(token))
                 rootClient.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);

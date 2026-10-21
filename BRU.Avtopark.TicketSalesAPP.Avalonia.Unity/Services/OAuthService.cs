@@ -29,7 +29,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             string redirectUri,
             TokenStorageService tokenStorage)
         {
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler());
             _clientId = clientId;
             _authorizationEndpoint = authorizationEndpoint;
             _tokenEndpoint = tokenEndpoint;
@@ -97,7 +97,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Error("Token exchange failed with status {StatusCode}: {Response}", response.StatusCode, SafeDiagnostics.JsonShape(responseContent));
+                    Log.Error("Token exchange failed with status {StatusCode}: {Response}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                     
                     // Check if this is an authorization-related error
                     if (responseContent.Contains("authorization") || 
@@ -116,7 +116,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     throw new Exception($"Token exchange failed (HTTP {(int)response.StatusCode}).");
                 }
 
-                Log.Debug("Token response shape: {Content}", SafeDiagnostics.JsonShape(responseContent));
+                Log.Debug("Token response JSON: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
 
                 var tokenResponse = JsonSerializer.Deserialize<OAuthTokenResponse>(responseContent, new JsonSerializerOptions
                 {
@@ -186,7 +186,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, SafeDiagnostics.JsonShape(errorContent));
+                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     
                     // If refresh token is invalid or expired, clear stored tokens
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || 
@@ -320,7 +320,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 var payloadBytes = Convert.FromBase64String(payload);
                 var payloadJson = Encoding.UTF8.GetString(payloadBytes);
                 
-                Log.Debug("{TokenType} claims shape (unvalidated diagnostic decoding): {Shape}", tokenType, SafeDiagnostics.JsonShape(payloadJson));
+                Log.Debug("{TokenType} claims JSON (unvalidated diagnostic decoding): {Shape}", tokenType, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(payloadJson));
             }
             catch (Exception ex)
             {

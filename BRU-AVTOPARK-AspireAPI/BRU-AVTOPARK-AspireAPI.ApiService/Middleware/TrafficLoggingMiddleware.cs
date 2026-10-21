@@ -24,7 +24,7 @@ public sealed class TrafficLoggingMiddleware(RequestDelegate next, ILogger<Traff
             Array.Resize(ref prefix, count);
             // Do not keep extending FileBufferingReadStream when the endpoint reads a large request.
             request.Body = new TrafficReplayStream(prefix, original, leaveOpen: true);
-            requestBody = TrafficDiagnostics.Body(prefix, request.ContentLength ?? count, request.ContentType, options);
+            requestBody = TrafficDiagnostics.Body(prefix, request.ContentLength ?? count, request.ContentType, options, request.Path.StartsWithSegments("/api/auth"));
         }
         else if (!upgrade && request.ContentLength is { } length) requestBody = DebugPayload.Binary(length, options.Level);
         var requestHeaders = DebugPayload.Headers(request.Headers.Where(h => Selected(h.Key)).Select(h =>
@@ -39,7 +39,7 @@ public sealed class TrafficLoggingMiddleware(RequestDelegate next, ILogger<Traff
         finally
         {
             context.Response.Body = originalResponse;
-            var body = Capture() ? TrafficDiagnostics.Body(tee.Preview, tee.TotalBytes, context.Response.ContentType, options) : "[skipped streaming/HTML/file/upgrade]";
+            var body = Capture() ? TrafficDiagnostics.Body(tee.Preview, tee.TotalBytes, context.Response.ContentType, options, request.Path.StartsWithSegments("/api/auth")) : "[skipped streaming/HTML/file/upgrade]";
             var headers = DebugPayload.Headers(context.Response.Headers.Select(h => new KeyValuePair<string, IEnumerable<string>>(h.Key, h.Value.Select(v => v ?? ""))), options.Level);
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             logger.LogDebug("HTTP response {Method} {Url} Status={StatusCode} TraceId={TraceId} ElapsedMs={ElapsedMs} Headers={Headers} Body={Body}", request.Method, url, context.Response.StatusCode, context.TraceIdentifier, elapsed, System.Text.Json.JsonSerializer.Serialize(headers), body);

@@ -24,7 +24,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
 
         // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
-        private static readonly HttpClient _probeClient = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
+        private static readonly HttpClient _probeClient = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
 
         // IP range to scan: 192.168.0.100 – 192.168.0.249
         private const int ScanRangeStart = 100;
@@ -244,7 +244,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             var baseUrl = _discoveredBaseUrl ?? DefaultBaseUrl;
             _ = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl);
-            var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+            var client = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler())
             {
                 BaseAddress = new Uri(baseUrl)
             };

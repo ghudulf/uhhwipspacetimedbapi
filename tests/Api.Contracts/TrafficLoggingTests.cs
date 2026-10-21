@@ -71,10 +71,34 @@ internal static class TrafficLoggingTests
             Check(text.Split(EscapedTextFormatter.UnsafeWarning).Length == 2 && text.Contains("[Debug] Source TraceId=trace") && text.Contains("\\n") && text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 3, "human formatter / one warning / forged record");
         }
         await HostedAsync();
+        await ClientAsync();
         Console.WriteLine("PASS traffic middleware: bodies/trace/headers/credentials, off/full/redacted, health/stream/HTML skips, byte-identical delivery, capped tee, config, readable escaped formatter and real hosted HTTP capture");
     }
     private static IConfiguration Config(string level) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         { ["Diagnostics:Traffic:Level"] = level, ["Diagnostics:Traffic:MaxBodyBytes"] = "256" }).Build();
+    private static async Task ClientAsync()
+    {
+        var raw = """{"name":"Alice","access_token":"sentinel","nullable":null}""";
+        using var handler = new TrafficLoggingHandler(new Reply(raw), new(MaxBodyBytes: 64));
+        var lines = new List<string>(); handler.Logged += lines.Add;
+        using var http = new HttpClient(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.test/data?code=sentinel") { Content = new StringContent(raw, Encoding.UTF8, "application/json") };
+        request.Headers.Authorization = new("Bearer", "sentinel");
+        using var result = await http.SendAsync(request);
+        Check(await result.Content.ReadAsStringAsync() == raw && await request.Content.ReadAsStringAsync() == raw, "client preview consumed content");
+        var log = string.Join('\n', lines);
+        Check(log.Contains("Alice") && log.Contains("nullable") && log.Contains("sha256:") && !log.Contains("sentinel"), "client raw JSON / headers / masking");
+        using var largeHandler = new TrafficLoggingHandler(new Reply(new string('x', 10000)), new(MaxBodyBytes: 32));
+        lines.Clear(); largeHandler.Logged += lines.Add;
+        using var largeClient = new HttpClient(largeHandler);
+        var large = await largeClient.GetStringAsync("https://api.test/data");
+        Check(large.Length == 10000 && lines.Last().Contains("…[truncated 9968 bytes]"), "client cap / replay");
+    }
+    private sealed class Reply(string raw) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(raw, Encoding.UTF8, "application/json") });
+    }
     private static async Task HostedAsync()
     {
         var logs = new Capture(); var builder = WebApplication.CreateBuilder();

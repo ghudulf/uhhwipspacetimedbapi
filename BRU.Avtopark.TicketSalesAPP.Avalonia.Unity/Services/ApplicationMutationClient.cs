@@ -12,7 +12,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 internal static class ApplicationMutationClient
 {
-    private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) };
+    private static readonly HttpClient Http = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromSeconds(30) };
 
     public static async Task<MutationResult> ExecuteAsync<T>(string operation, T payload, string operationId,
         string expectedBaseUrl, string expectedToken, CancellationToken cancellationToken)

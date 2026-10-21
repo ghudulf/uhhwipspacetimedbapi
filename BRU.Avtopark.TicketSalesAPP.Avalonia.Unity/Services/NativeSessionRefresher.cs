@@ -13,7 +13,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 public sealed class NativeSessionRefresher : ISessionRefresher
 {
-    private static readonly HttpClient DefaultHttp = new(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient DefaultHttp = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })) { Timeout = TimeSpan.FromSeconds(15) };
     private readonly HttpClient http;
     public NativeSessionRefresher(HttpClient? http = null) => this.http = http ?? DefaultHttp;
     public static async Task StoreLoginAsync(string access, string? refresh)

@@ -12,7 +12,7 @@ public sealed record SessionAccess(bool IsActive, bool IsAdministrator, string[]
 /// <summary>Realtime access snapshot with an HTTP adapter for a capability-declared unsupported operation.</summary>
 public static class SessionAccessClient
 {
-    private static readonly HttpClient Client = new(new HttpClientHandler { AllowAutoRedirect = false })
+    private static readonly HttpClient Client = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler())
         { Timeout = TimeSpan.FromSeconds(15) };
 
     public static async Task<SessionAccess?> GetAsync(string baseUrl, string token, CancellationToken cancellationToken)

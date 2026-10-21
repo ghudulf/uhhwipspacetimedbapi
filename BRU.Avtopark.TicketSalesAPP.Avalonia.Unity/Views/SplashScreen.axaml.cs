@@ -81,7 +81,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri;
 
                 SetStatus("Проверка подключения...");
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                using var client = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromSeconds(5) };
 
                 // Try well-known health/status endpoints — continue on 404 or network error,
                 // don't bail out on the first non-2xx response.

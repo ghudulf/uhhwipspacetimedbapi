@@ -12,7 +12,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 /// <summary>Read-only transport policy shared by migrated screens. Mutation retries do not use this path.</summary>
 internal static class ApplicationQueryClient
 {
-    private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(30) };
+    private static readonly HttpClient Http = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromSeconds(30) };
     public static async System.Collections.Generic.IAsyncEnumerable<BRU.Avtopark.Client.QueryUpdate<TResponse>> WatchAsync<TRequest, TResponse>(
         string operation, TRequest request, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {

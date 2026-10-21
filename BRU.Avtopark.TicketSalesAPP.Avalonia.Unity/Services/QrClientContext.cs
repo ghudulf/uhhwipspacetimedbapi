@@ -10,7 +10,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 public static class QrClientContext
 {
-    private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient Http = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromSeconds(15) };
     public static IQrLoginApi CreateApi() => new QrLoginClient(Http, ApiClientService.Instance.CurrentBaseUrl ?? throw new QrLoginException("invalid_server"));
     // Resolve the current account from the existing authenticated JSON profile endpoint, not a user-entered enrollment label.
     public static async Task<string> AccountAsync(string apiBase, string bearer, CancellationToken cancellationToken)

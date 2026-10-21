@@ -9,7 +9,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 public static class ProviderClientContext
 {
-    private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient Http = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })) { Timeout = TimeSpan.FromSeconds(15) };
     public static IBrowserLauncher Browser { get; set; } = new SystemBrowserLauncher();
     public static IProviderLoginApi CreateApi() => new ProviderLoginClient(Http, ApiClientService.Instance.CurrentBaseUrl ?? throw new ProviderLoginException("invalid_server"));
     public static IPasskeyManagementApi CreateManagementApi() => new ProviderLoginClient(Http, ApiClientService.Instance.CurrentBaseUrl ?? throw new ProviderLoginException("invalid_server"));

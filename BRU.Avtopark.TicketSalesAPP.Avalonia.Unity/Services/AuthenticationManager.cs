@@ -544,7 +544,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 var fullUrl = $"{serverRoot}connect/tokeninfo";
                 Log.Information("Fetching token claims from: {Url}", fullUrl);
 
-                using var httpClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+                using var httpClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { BaseAddress = new Uri(serverRoot) };
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
 // what fucking 3 seconds - TOKENINFO IS SLOW 
@@ -608,7 +608,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 else
                 {
                     var body = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(body));
+                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(body));
                 }
             }
             catch (Exception ex)
