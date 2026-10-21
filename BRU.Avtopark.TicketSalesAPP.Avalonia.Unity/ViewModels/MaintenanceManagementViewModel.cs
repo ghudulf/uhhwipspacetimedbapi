@@ -773,4 +773,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             MaintenanceRecords = new ObservableCollection<MaintenanceDisplayModel>(filteredRecords);
         }
     }
-} 
+}

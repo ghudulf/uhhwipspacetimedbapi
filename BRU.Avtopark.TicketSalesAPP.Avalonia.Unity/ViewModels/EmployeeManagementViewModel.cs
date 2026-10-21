@@ -714,4 +714,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             Employees = new ObservableCollection<EmployeeDisplayModel>(filteredEmployees);
         }
     }
-} 
+}

@@ -1102,4 +1102,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
         }
     }
-} 
+}
