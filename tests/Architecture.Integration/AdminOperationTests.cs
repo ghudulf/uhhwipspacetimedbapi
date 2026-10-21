@@ -19,6 +19,8 @@ internal static class AdminOperationTests
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         using var response = await http.PostAsync("http://127.0.0.1:3000/v1/database/bru-architecture-integration/call/prepare_admin_operations_test", content);
         response.EnsureSuccessStatusCode();
+        var operations = new ApplicationOperations(db, new TicketSalesService(db, NullLogger<TicketSalesService>.Instance),
+            new BusService(db, NullLogger<BusService>.Instance), NullLogger<ApplicationOperations>.Instance);
         const uint route = 3000000000;
         string Id() => Guid.NewGuid().ToString("N");
         async Task<MutationReceipt> Send<T>(T reducer, string id) where T : Reducer, IReducerArgs, new() =>
@@ -36,10 +38,12 @@ internal static class AdminOperationTests
             var concurrent = await Task.WhenAll(Send(create(operation, label), operation), Send(create(operation, label), operation));
             Check(concurrent[0].EntityId == concurrent[1].EntityId, resource + " concurrent replay returned another identity");
             var first = concurrent[0];
+            await CatalogReadAssertions.MatchesListAsync(operations, actor, resource, first.EntityId, first.Revision);
             await Reject(() => Send(create(operation, label + "-different"), operation));
             var edit = Id();
             var changed = await Send(update(edit, first.EntityId, first.Revision), edit);
             Check(changed.Revision > first.Revision, resource + " update did not bump revision");
+            await CatalogReadAssertions.MatchesListAsync(operations, actor, resource, first.EntityId, changed.Revision);
             await Send(update(edit, first.EntityId, first.Revision), edit);
             await Reject(() => Send(update(Id(), first.EntityId, first.Revision), Id()));
             await legacy(first.EntityId);
@@ -47,6 +51,7 @@ internal static class AdminOperationTests
             var removal = Id(); var removed = await Send(delete(removal, first.EntityId, null), removal);
             var replay = await Send(delete(removal, first.EntityId, null), removal);
             Check(removed.EntityId == replay.EntityId && removed.Revision > changed.Revision, resource + " delete/replay receipt invalid");
+            await CatalogReadAssertions.MissingAsync(operations, actor, resource, first.EntityId);
             Console.WriteLine("PASS " + resource + " create/update/delete actor receipts, concurrent replay, mismatch, stale revision and legacy-writer conflicts");
         }
         await Crud<Reducer.CreateTicketV2, Reducer.UpdateTicketV2, Reducer.DeleteTicketV2>("tickets",
@@ -148,8 +153,6 @@ internal static class AdminOperationTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteTicketV2(Id(), actor, ticket.EntityId, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.SetScheduleActiveV2(Id(), actor, schedule.EntityId, null, false), _ => true));
         Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().All(u => string.IsNullOrEmpty(u.PasswordHash))), "administration exposed credentials in profiles");
-        var operations = new ApplicationOperations(db, new TicketSalesService(db, NullLogger<TicketSalesService>.Instance),
-            new BusService(db, NullLogger<BusService>.Instance), NullLogger<ApplicationOperations>.Instance);
         foreach (var query in new[] { "tickets.list", "schedules.list", "users.list", "roles.list", "permissions.list" })
         {
             var projected = await operations.ExecuteAsync(query, actor, JsonSerializer.SerializeToElement(new PageRequest()), null, default);
@@ -159,6 +162,7 @@ internal static class AdminOperationTests
         var detail = (UserRow)(await operations.ExecuteAsync("users.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
         Check(detail.Identity == userIdentity.ToString() && detail.Roles.Length > 0, "real administrative user projection lost identity/roles");
         Console.WriteLine("PASS real five-resource paged projections, credential-free users.get and role/permission/user changes invalidate access resources");
+        Console.WriteLine("PASS real tickets/schedules/roles/permissions get: typed list-row equality, revision advances after update and deleted entities return not_found; users.get retained");
         var remove = Id(); await Send(new Reducer.RemoveUserRoleV2(remove, actor, user.EntityId, null, role.EntityId), remove);
         var deleteSale = Id(); await Send(new Reducer.DeleteSaleV2(deleteSale, actor, sale.EntityId, null), deleteSale);
         var deleteTicket = Id(); await Send(new Reducer.DeleteTicketV2(deleteTicket, actor, ticket.EntityId, null), deleteTicket);

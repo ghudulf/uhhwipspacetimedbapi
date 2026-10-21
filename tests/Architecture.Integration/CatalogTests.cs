@@ -57,13 +57,24 @@ internal static class CatalogTests
         Assert((await Page<RouteRow>("routes", "Updated")).Items.Any(r => r.RouteId == route.RouteId && r.Revision == 3), "typed route page lost legacy revision");
         Assert((await Page<EmployeeRow>("employees", "Synthetic Shared")).Items.Any(e => e.EmployeeId == employee.EmployeeId && e.EmployedSince?.Year >= 2026), "typed employee timestamp/identity lost");
         Assert((await Page<MaintenanceRow>("maintenance", "Synthetic")).Items.Any(m => m.MaintenanceId == record.MaintenanceId && m.NextServiceDate == DateTimeOffset.FromUnixTimeMilliseconds(2000)), "typed maintenance timestamp/identity lost");
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 3, deadline.Token);
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "employees", employee.EmployeeId, 1, deadline.Token);
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "maintenance", record.MaintenanceId, 1, deadline.Token);
+        await routes.UpdateRouteAsync(route.RouteId, travelTime: "00:20", actingUser: owner, expectedRevision: 3);
+        await employees.UpdateEmployeeAsync(employee.EmployeeId, employeePatronym: "Updated", actingUser: owner, expectedRevision: 1);
+        await maintenance.UpdateMaintenanceAsync(record.MaintenanceId, serviceEngineer: "Updated", actingUser: owner, expectedRevision: 1);
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 4, deadline.Token);
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "employees", employee.EmployeeId, 2, deadline.Token);
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "maintenance", record.MaintenanceId, 2, deadline.Token);
         await Reject(() => maintenance.UpdateMaintenanceAsync(record.MaintenanceId, nextServiceDate: 500, actingUser: owner));
         await Reject(() => maintenance.UpdateMaintenanceAsync(record.MaintenanceId, busId: uint.MaxValue, actingUser: owner));
         Assert((await maintenance.GetMaintenanceByIdAsync(record.MaintenanceId))?.NextServiceDate == 2000, "invalid maintenance edit partially committed");
         var remove = Guid.NewGuid().ToString("N");
-        await maintenance.DeleteMaintenanceAsync(record.MaintenanceId, owner, remove, 1);
-        await maintenance.DeleteMaintenanceAsync(record.MaintenanceId, owner, remove, 1);
+        await maintenance.DeleteMaintenanceAsync(record.MaintenanceId, owner, remove, 2);
+        await maintenance.DeleteMaintenanceAsync(record.MaintenanceId, owner, remove, 2);
+        await CatalogReadAssertions.MissingAsync(operations, owner, "maintenance", record.MaintenanceId, deadline.Token);
         await routes.DeleteRouteAsync(route.RouteId, owner);
+        await CatalogReadAssertions.MissingAsync(operations, owner, "routes", route.RouteId, deadline.Token);
         await buses.DeleteBusAsync(bus.BusId, owner);
         async Task SetHistoricalReference(bool present)
         {
@@ -76,6 +87,7 @@ internal static class CatalogTests
         await Reject(() => employees.DeleteEmployeeAsync(employee.EmployeeId, owner));
         await SetHistoricalReference(false);
         foreach (var row in sameName) await employees.DeleteEmployeeAsync(row!.EmployeeId, owner);
+        await CatalogReadAssertions.MissingAsync(operations, owner, "employees", employee.EmployeeId, deadline.Token);
         await employees.DeleteJobAsync(job.JobId, owner);
         // Legacy creation reducers must no longer accept an anonymous direct caller.
         using var anonymous = new HttpClient();
@@ -84,6 +96,7 @@ internal static class CatalogTests
         using var rejected = await anonymous.PostAsync("http://127.0.0.1:3000/v1/database/bru-architecture-integration/call/create_job", untrustedBody);
         Assert(!rejected.IsSuccessStatusCode, "legacy job creation accepted unauthenticated caller");
         Console.WriteLine("PASS catalog exact concurrent identities, actor-bound replay, duplicate title, reference integrity, legacy/v2 conflicts, maintenance rollback and unauthorized legacy creation");
+        Console.WriteLine("PASS real employees/routes/maintenance get: typed list-row equality, authoritative revisions advance after update and deleted entities return not_found");
     }
     private static async Task Reject(Func<Task> action)
     {
