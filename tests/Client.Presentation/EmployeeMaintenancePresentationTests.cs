@@ -41,6 +41,37 @@ internal static class EmployeeMaintenancePresentationTests
         Console.WriteLine("PASS employees: typed paged activation/search, permissions/revocation, stable selection, live invalidation/stale rows, session/editor cancellation, delete reconciliation, bound-row capture and editor validation/draft/operation-ID/receipt/conflict state");
     }
 
+    public static async Task MaintenanceAsync(CancellationToken stop)
+    {
+        var date = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+        var row = new MaintenanceRow(9, 7, date, date.AddDays(1), "Инженер", null, null, null, null, 1, "Синтетический автобус");
+        await ScreenAsync<MaintenanceRow, MaintenanceDisplayModel>(
+            (read, watch, edit, confirm, delete) => new MaintenanceManagementViewModel(read, watch, edit, confirm, delete),
+            row, row with { ServiceEngineer = "Обновлено", Revision = 2 }, item => item.ServiceEngineer ?? "", "Обновлено", stop);
+        var unknown = new MaintenanceDisplayModel(row with { LastServiceDate = null, NextServiceDate = null });
+        Assert(unknown.LastServiceDateDisplay == "Не указано" && unknown.NextServiceDateDisplay == "Не указано" && unknown.MaintenanceCost == null && unknown.TotalMaintenanceCost == null, "unknown maintenance projection fabricated");
+        var known = new MaintenanceDisplayModel(row with { MaintenanceCost = 1.25m, PartsCost = 2.5m, LaborCost = 3.75m });
+        Assert(known.TotalMaintenanceCost == 7.5m, "decimal maintenance total incorrect");
+        var draft = MaintenanceEditorService.DraftFrom(row);
+        Assert(MaintenanceEditorService.Validate(draft) == null, "valid maintenance rejected");
+        foreach (var invalid in new Action<MaintenanceDraft>[] {
+            d => d.BusId = 0, d => d.ServiceEngineer = " ", d => d.ServiceEngineer = new('я', 201), d => d.FoundIssues = new('я', 4001),
+            d => d.Roadworthiness = new('я', 201), d => d.MaintenanceType = new('я', 201), d => d.Mileage = new('я', 101),
+            d => d.LastServiceDate = null, d => d.NextServiceDate = null, d => d.LastServiceDate = DateTimeOffset.UnixEpoch.AddMilliseconds(-1),
+            d => d.NextServiceDate = d.LastServiceDate!.Value.AddMilliseconds(-1) })
+        {
+            draft = MaintenanceEditorService.DraftFrom(row); invalid(draft);
+            Assert(MaintenanceEditorService.Validate(draft) is { Length: > 0 }, "invalid maintenance draft accepted");
+        }
+        draft = MaintenanceEditorService.DraftFrom(row);
+        draft.ServiceEngineer = draft.Roadworthiness = draft.MaintenanceType = new('я', 200); draft.FoundIssues = new('я', 4000); draft.Mileage = new('я', 100);
+        draft.LastServiceDate = DateTimeOffset.UnixEpoch; draft.NextServiceDate = DateTimeOffset.MaxValue;
+        Assert(MaintenanceEditorService.Validate(draft) == null, "maintenance validation boundary rejected");
+        await EditorAsync(row, row with { Revision = 7 }, MaintenanceEditorService.DraftFrom, r => r.Revision,
+            MaintenanceEditorService.Validate, d => d.ServiceEngineer = "Сохранённый черновик", d => d.ServiceEngineer, stop);
+        Console.WriteLine("PASS maintenance: typed paged activation/search, permissions/revocation, stable selection, live invalidation/stale rows, session/editor cancellation, delete reconciliation, bound-row capture and editor date/text validation/draft/operation-ID/receipt/conflict state");
+    }
+
     internal static async Task ScreenAsync<TRow, TItem>(Factory<TRow, TItem> factory, TRow row, TRow changed,
         Func<TItem, string> display, string changedText, CancellationToken stop) where TItem : class
     {
@@ -74,6 +105,13 @@ internal static class EmployeeMaintenancePresentationTests
             updates.Writer.TryWrite(new(null, false, "forbidden")); await Until(() => model.Items.Count == 0, stop);
             Assert(model.SelectedItem == null && !model.CanMutate, "query revocation retained eligibility/selection");
             model.Deactivate(); Assert(subscription.IsCancellationRequested, "detached screen kept subscription");
+
+            var pageRequests = new List<PageRequest>();
+            using var paged = factory((request, _) => { pageRequests.Add(request); return Task.FromResult(Page(row, page: request.Page)); }, null, null, null, null);
+            await paged.ActivateAsync(); await paged.NextPageCommand.ExecuteAsync(null);
+            Assert(pageRequests[^1].Page == 2 && pageRequests[^1].PageSize == 100 && paged.CanGoPrevious, "next-page request ignored fixed pager");
+            await paged.PreviousPageCommand.ExecuteAsync(null); Assert(pageRequests[^1].Page == 1, "previous-page request ignored pager");
+            paged.Deactivate();
 
             var old = new TaskCompletionSource<CatalogPageResult<TRow>>(TaskCreationOptions.RunContinuationsAsynchronously);
             var fresh = new TaskCompletionSource<CatalogPageResult<TRow>>(TaskCreationOptions.RunContinuationsAsynchronously);

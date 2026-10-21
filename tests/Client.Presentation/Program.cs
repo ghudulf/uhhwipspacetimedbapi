@@ -105,6 +105,7 @@ Dispatcher.UIThread.Post(async () =>
         Console.WriteLine("PASS live fleet synchronization gating, stale-row retention, stable selection and subscription disposal");
         await CatalogPresentationTests.RunAsync(stop.Token);
         await EmployeeMaintenancePresentationTests.EmployeesAsync(stop.Token);
+        await EmployeeMaintenancePresentationTests.MaintenanceAsync(stop.Token);
         await QrPresentationTests.RunAsync();
         await ProviderPresentationTests.RunAsync();
         await PasskeyPresentationTests.RunAsync();
