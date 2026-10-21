@@ -35,7 +35,8 @@ public static class TrafficDiagnostics
     }
     public static string ReducerArguments(object args, string operation, TrafficOptions options)
     {
-        var values = args.GetType().GetFields().ToDictionary(field => field.Name, field => field.GetValue(args));
+        var values = args is IDictionary<string, object> dictionary ? dictionary.ToDictionary(pair => pair.Key, pair => (object?)pair.Value)
+            : args.GetType().GetFields().ToDictionary(field => field.Name, field => field.GetValue(args));
         if (options.Level == TrafficLevel.Redacted && operation.Contains("token", StringComparison.OrdinalIgnoreCase))
             foreach (var key in values.Keys.ToArray())
                 if (key.EndsWith("Hash", StringComparison.OrdinalIgnoreCase)) values[key] = DebugPayload.Mask(values[key]?.ToString()?.Length ?? 0);

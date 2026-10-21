@@ -139,7 +139,8 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             }
 
             sendLock.Dispose();
-            _logger.LogInformation("[AuthWS:{ConnId}] Session closed", connectionId);
+            _logger.LogInformation("[AuthWS:{ConnId}] Session closed Status={CloseStatus} Reason={Reason}", connectionId, webSocket.CloseStatus,
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(webSocket.CloseStatusDescription));
         }
     }
 

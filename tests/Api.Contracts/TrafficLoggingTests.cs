@@ -136,6 +136,8 @@ internal static class TrafficLoggingTests
         catch (TicketSalesApp.Services.Interfaces.DatabaseUnavailableException) { }
         var reducer = logs.Messages.Single(line => line.Contains("Reducer call"));
         Check(reducer.Contains("Arguments=") && reducer.Contains("***") && !reducer.Contains("sentinel"), "reducer hash argument leak");
+        var legacy = TrafficDiagnostics.ReducerArguments(new Dictionary<string, object> { ["username"] = "Alice", ["passwordHash"] = "sentinel", ["tokenHash"] = "sentinel" }, "legacy_login", new());
+        Check(legacy.Contains("Alice") && !legacy.Contains("sentinel"), "legacy dictionary argument masking");
     }
     private static async Task HostedAsync()
     {

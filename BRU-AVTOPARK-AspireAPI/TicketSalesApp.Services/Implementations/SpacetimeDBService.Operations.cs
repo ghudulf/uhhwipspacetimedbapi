@@ -120,6 +120,9 @@ public partial class SpacetimeDBService
     private void QueueLegacyCommand(string command, Dictionary<string, object> args)
     {
         var snapshot = new Dictionary<string, object>(args);
+        var options = Diagnostics.TrafficDiagnostics.ServerOptions(_configuration);
+        if (options.Level != BRU.Avtopark.Contracts.TrafficLevel.Off)
+            _logger.LogDebug("Legacy reducer call {Operation} Arguments={Arguments}", command, Diagnostics.TrafficDiagnostics.ReducerArguments(snapshot, command, options));
         Enqueue(new QueuedWork(_ => ProcessCommand(command, snapshot),
             ex => _logger.LogWarning("Legacy command {Command} was not completed: {Failure}", command, ex.GetType().Name)));
     }
@@ -147,6 +150,8 @@ public partial class SpacetimeDBService
         // Reference identity is preserved by the SDK's pendingReducerCalls map. Equal argument
         // values on simultaneous calls cannot complete one another's task.
         if (_pending.TryRemove(context.Event.Reducer, out var pending)) pending.Complete(context);
+        else if (context.Event.Status is Status.Committed)
+            _logger.LogDebug("Legacy reducer committed {Operation} Status={Status}", context.Event.Reducer.GetType().Name, "Committed");
         else if (context.Event.Status is not Status.Committed)
             _logger.LogWarning("Legacy reducer rejected: {Reducer}, status {Status}", context.Event.Reducer.GetType().Name, context.Event.Status.GetType().Name);
     }
