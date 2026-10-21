@@ -149,7 +149,7 @@ changing routes, regenerate with `dotnet run --project tests/Api.Contracts --
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployees` | GET | `/api/Employees` | legacy: controller/service endpoint retained; no shared-handler parity claim |
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `CreateEmployee` | POST | `/api/Employees` | legacy: controller/service endpoint retained; no shared-handler parity claim |
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployeesByJob` | GET | `/api/Employees/by-job/{jobId}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
-| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetDrivers` | GET | `/api/Employees/drivers` | legacy: controller/service endpoint retained; no shared-handler parity claim |
+| `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetDrivers` | GET | `/api/Employees/drivers` | adapter→employees.drivers; legacy nested Job envelope retained |
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `StreamRealtimeEvents` | GET | `/api/Employees/realtime/ws` | HTTP-only: realtime transport upgrade, event stream or connection diagnostics |
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `DeleteEmployee` | DELETE | `/api/Employees/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
 | `TicketSalesApp.AdminServer.Controllers.EmployeesController` | `GetEmployee` | GET | `/api/Employees/{id}` | legacy: controller/service endpoint retained; no shared-handler parity claim |
@@ -251,6 +251,7 @@ Resource-specific HTTP reads marked legacy above are not falsely claimed as adap
 | v2 buses.update | `buses.edit` | true |
 | v2 employees.create | `employees.create` | true |
 | v2 employees.delete | `employees.delete` | true |
+| v2 employees.drivers | `employees.view` | false |
 | v2 employees.get | `employees.view` | false |
 | v2 employees.list | `employees.view` | false |
 | v2 employees.update | `employees.edit` | true |

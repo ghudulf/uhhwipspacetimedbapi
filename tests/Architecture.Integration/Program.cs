@@ -83,6 +83,7 @@ try
         return;
     }
 
+    await DriverLookupTests.RunAsync(database, owner, ownerToken);
     await CommittedServiceTests.SecurityAsync(database, owner);
     await CredentialMigrationTests.RunAsync(database, owner, ownerToken);
     await AdminOperationTests.RunAsync(database, owner, ownerToken);

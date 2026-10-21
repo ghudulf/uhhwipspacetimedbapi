@@ -113,6 +113,7 @@ internal static class OperationCoverageTests
     private static string Disposition(Endpoint endpoint)
     {
         var controller = endpoint.Controller.Split('.').Last();
+        if (controller == "EmployeesController" && endpoint.Method == "GetDrivers") return "adapter→employees.drivers; legacy nested Job envelope retained";
         var resources = new Dictionary<string, string> { ["TicketsController"] = "tickets", ["RouteSchedulesController"] = "schedules", ["UsersController"] = "users", ["RolesController"] = "roles", ["PermissionsController"] = "permissions", ["BusesController"] = "buses", ["TicketSalesController"] = "sales" };
         if (resources.TryGetValue(controller, out var resource))
         {

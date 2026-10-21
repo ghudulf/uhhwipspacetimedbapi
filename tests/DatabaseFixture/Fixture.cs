@@ -105,6 +105,18 @@ public static partial class Module
         if (visible && grant == null) ctx.Db.RolePermission.Insert(new RolePermission { Id = ctx.Db.RolePermission.Iter().Max(p => p.Id) + 1, RoleId = 1, PermissionId = permission.PermissionId });
         if (!visible && grant != null) ctx.Db.RolePermission.Id.Delete(grant.Id);
     }
+
+    [SpacetimeDB.Reducer]
+    public static void SeedDriverLookupRows(ReducerContext ctx, uint jobId, bool present)
+    {
+        RequireDeploymentOwner(ctx);
+        for (uint i = 0; i < 1001; i++)
+        {
+            var id = 3999998000 + i;
+            ctx.Db.Employee.EmployeeId.Delete(id);
+            if (present) ctx.Db.Employee.Insert(new Employee { EmployeeId = id, JobId = jobId, Name = "Bounded", Surname = "Z" + i.ToString("D4"), Patronym = "" });
+        }
+    }
     [SpacetimeDB.Reducer]
     public static void PrepareQrDeviceTest(ReducerContext ctx, string identityHex, bool active)
     {

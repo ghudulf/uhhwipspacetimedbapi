@@ -776,60 +776,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("drivers")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetDrivers()
         {
-            if (!await HasPermissionAsync("employees.view")) return Forbid();
-            _logger.LogInformation("REQUEST RECEIVED: GetDrivers");
-            
-            try
-            {
-                if (!await HasPermissionAsync("employees.view"))
-                {
-                    _logger.LogWarning("Unauthorized attempt to view drivers");
-                    return Forbid();
-                }
-
-                _logger.LogInformation("DATABASE OPERATION: Fetching all jobs to identify driver job");
-                var jobs = await _employeeService.GetAllJobsAsync();
-                _logger.LogInformation("FULL JOBS DATA: {JobsData}", JsonSerializer.Serialize(jobs));
-                
-                var driverJob = jobs.FirstOrDefault(j => j.JobTitle.Contains("Driver", StringComparison.OrdinalIgnoreCase));
-
-                if (driverJob == null)
-                {
-                    _logger.LogWarning("DATABASE RESULT: Driver job not found in jobs list");
-                    _logger.LogInformation("RESPONSE SENT: Empty array - no driver job found");
-                    return Ok(Array.Empty<dynamic>());
-                }
-
-                _logger.LogInformation("DATABASE OPERATION: Fetching employees with driver job ID {JobId}", driverJob.JobId);
-                var drivers = await _employeeService.GetEmployeesByJobIdAsync(driverJob.JobId);
-                
-                // Map to anonymous type
-                var result = drivers.Select(d => new {
-                    d.EmployeeId,
-                    d.Name,
-                    d.Surname,
-                    d.Patronym,
-                    d.JobId,
-                    Job = new { driverJob.JobId, driverJob.JobTitle, driverJob.Internship }
-                }).ToList();
-                
-                _logger.LogInformation("DATABASE RESULT: Retrieved {Count} drivers", result.Count);
-                _logger.LogInformation("FULL DRIVERS DATA: {DriversData}", JsonSerializer.Serialize(result));
-                
-                foreach (var driver in result)
-                {
-                    _logger.LogDebug("Driver ID: {EmployeeId}, Name: {Name}, Surname: {Surname}", 
-                        driver.EmployeeId, driver.Name, driver.Surname);
-                }
-                
-                _logger.LogInformation("RESPONSE SENT: Returning {Count} drivers to client", result.Count);
-                return Ok(result);
-            }
-            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
-            {
-                _logger.LogError(ex, "Error retrieving drivers");
-                return StatusCode(500, "An error occurred while retrieving drivers");
-            }
+            var actor = await RequireApplicationActorAsync();
+            var result = (BRU.Avtopark.Contracts.DriverLookupResult)(await HttpContext.RequestServices.GetRequiredService<ApplicationOperations>()
+                .ExecuteAsync("employees.drivers", actor, JsonSerializer.SerializeToElement(new BRU.Avtopark.Contracts.DriverLookupRequest(), BRU.Avtopark.Contracts.ApiProtocol.Json), null, HttpContext.RequestAborted))!;
+            _logger.LogInformation("Driver lookup returned {Count} rows, truncated={Truncated}", result.Items.Length, result.Truncated);
+            return Ok(result.Items.Select(d => new { d.EmployeeId, d.Name, d.Surname, d.Patronym, d.JobId,
+                Job = new { d.JobId, d.JobTitle, d.Internship } }).ToArray());
         }
     }
 

@@ -7,6 +7,18 @@ public sealed partial class ApplicationOperations
 {
     private void RegisterCatalog(ISpacetimeDBService database, IRouteService? routes, IEmployeeService? employees, IMaintenanceService? maintenance)
     {
+        Register<DriverLookupRequest>("employees.drivers", "employees.view", false, async (_, request, _, ct) =>
+        {
+            if (request.Limit is < 1 or > 1000) throw new OperationException("validation_failed");
+            return await database.ReadAsync(c =>
+            {
+                var job = c.Db.Job.Iter().Where(j => j.JobTitle.Contains("Driver", StringComparison.OrdinalIgnoreCase)).OrderBy(j => j.JobId).FirstOrDefault();
+                if (job == null) return new DriverLookupResult([], false);
+                var rows = c.Db.Employee.Iter().Where(e => e.JobId == job.JobId).OrderBy(e => e.Surname, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ThenBy(e => e.EmployeeId).Take(request.Limit + 1).ToArray();
+                return new DriverLookupResult(rows.Take(request.Limit).Select(e => new DriverRow(e.EmployeeId, e.Name, e.Surname, e.Patronym, e.JobId, job.JobTitle, job.Internship, Version(c, "employees", e.EmployeeId))).ToArray(), rows.Length > request.Limit);
+            }, ct);
+        });
         Register<PageRequest>("routes.list", "routes.view", false, async (actor, request, _, ct) =>
         {
             ValidatePage(request);
