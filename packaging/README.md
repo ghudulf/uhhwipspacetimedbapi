@@ -33,6 +33,58 @@ Both hosts put logs and WebView2 data in the per-user local application-data dir
 
 Native Flatpak sandbox execution, Windows MakeAppx/signing/install/update/uninstall, DPAPI, browser callbacks, accessibility and real Windows authentication require the relevant platform. Cross-compilation alone does not validate those flows. MAUI uses the shared client library but retains its own host/package targets; these desktop scripts package the Avalonia standalone host.
 
+### Static packaging validation
+
+From the repository root:
+
+```sh
+dotnet run --project tests/Client.Infrastructure
+tools/validate-packaging.sh --require-all
+```
+
+The pure-.NET `PackagingPolicyTests` requires no external validators. It parses
+AppStream/MSIX/App Installer XML and the literal Flatpak JSON embedded in
+`prepare.sh`, checks desktop/MAUI application IDs and exact display versions,
+release/launcher/icon/install identities, Windows template placeholders and
+synthetic x64/arm64 substitutions, and the `EPL-2.0` project license against
+`LICENSE`. AppStream's separate metadata license is `CC0-1.0`. Every packaging
+file is checked for credential/private-key patterns and private-key container
+extensions; matching values are never printed. These heuristic checks are a
+regression guard, not proof that arbitrary secret material is absent.
+
+Flatpak broad filesystem/device/bus/share grants are rejected, including read-only
+host/home variants. **There is no permission allowlist.** Any future exception
+must identify the exact argument and justification in the test and this document.
+
+The shell script runs each available external validator, reports skipped tools,
+and returns nonzero on any finding. `--require-all` also fails on missing tools or
+the PowerShell analyzer module; without it, skipped checks are not a validation
+claim. Install the tools through your trusted package manager; PowerShell must be
+on `PATH`, with PSScriptAnalyzer installed (for example,
+`Install-Module PSScriptAnalyzer -Scope CurrentUser`). The script does not install
+tools, publish binaries, sign, install or execute packages, or contact validation
+services. AppStream/XML validation disables network access.
+
+Validated in this Linux workspace (all passed; PSScriptAnalyzer: zero findings):
+
+| Tool/version | Command/check |
+| --- | --- |
+| AppStream `appstreamcli` 1.0.5 | `appstreamcli validate --no-net --pedantic packaging/flatpak/com.bru.avtopark.ticketsales.metainfo.xml` |
+| desktop-file-utils 0.28 | `desktop-file-validate packaging/flatpak/com.bru.avtopark.ticketsales.desktop` |
+| ShellCheck 0.10.0 | `shellcheck packaging/flatpak/prepare.sh tools/validate-packaging.sh` |
+| libxml2 `xmllint` 2.9.14 | `xmllint --nonet --noout packaging/flatpak/*.xml packaging/windows/*.in` (XML well-formedness, not Windows SDK schema certification) |
+| PowerShell 7.6.7 | PowerShell parser over `packaging/windows/Build-Package.ps1`, without executing it |
+| PSScriptAnalyzer 1.25.0 | `Invoke-ScriptAnalyzer -Path packaging/windows/Build-Package.ps1 -Severity Information,Warning,Error` |
+
+**Real-host gates remain:** Windows SDK MakeAppx validation, MSIX certificate
+signing/trust, install/update/uninstall, and HTTPS App Installer update delivery;
+Flatpak build/execution and browser/portal integration on a real Linux desktop;
+Android/iOS packaging, signing and device installation; and macOS signing and
+notarization if a macOS distribution is produced. Flatpak execution is blocked
+in this workspace by bubblewrap's `/proc` sandbox restriction; static validator
+success does not establish sandbox/runtime compatibility. Generic MAUI or desktop
+builds do not validate these distribution flows.
+
 ### Accessibility validation
 
 Run `dotnet run --project tests/Client.Presentation` from the repository root.
