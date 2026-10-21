@@ -9,6 +9,44 @@ using TicketSalesApp.Services.Interfaces;
 
 internal static class CommittedServiceTests
 {
+    public static async Task TicketsAndSchedulesAsync(ISpacetimeDBService db, Identity owner, string ownerToken)
+    {
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ownerToken);
+        using var body = new StringContent("[]", System.Text.Encoding.UTF8, "application/json");
+        body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        using var response = await http.PostAsync("http://127.0.0.1:3000/v1/database/bru-architecture-integration/call/prepare_committed_service_test_route", body);
+        response.EnsureSuccessStatusCode();
+        const uint route = 3900000000;
+        var deniedActor = Identity.FromHexString(new string('d', 64));
+        var tickets = new TicketService(db, NullLogger<TicketService>.Instance);
+        await Reject(() => tickets.CreateTicketAsync(route, 1, 5, "Cash", 0, deniedActor));
+        Check(await tickets.CreateTicketAsync(route, 1, 5, "Cash", 0, owner), "ticket creation not committed");
+        var ticket = (await tickets.GetTicketsByRouteIdAsync(route)).Single();
+        await Reject(() => tickets.UpdateTicketAsync(ticket.TicketId, ticketPrice: 7, actingUser: deniedActor));
+        Check(await tickets.UpdateTicketAsync(ticket.TicketId, ticketPrice: 7, actingUser: owner) &&
+            (await tickets.GetTicketByIdAsync(ticket.TicketId))!.TicketPrice == 7, "ticket update not committed");
+        await Reject(() => tickets.DeleteTicketAsync(ticket.TicketId, deniedActor));
+        Check(await tickets.DeleteTicketAsync(ticket.TicketId, owner) && await tickets.GetTicketByIdAsync(ticket.TicketId) == null, "ticket deletion not committed");
+        using var schedules = new RouteScheduleService(db, NullLogger<RouteScheduleService>.Instance, new ConfigurationBuilder().Build());
+        await Reject(() => schedules.CreateScheduleAsync(routeId: route, departureTime: 1000, arrivalTime: 2000, actingUser: deniedActor));
+        const string notes = "literal [CORRELATION:user-text]";
+        var ids = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => schedules.CreateScheduleAsync(routeId: route,
+            departureTime: 1000, arrivalTime: 2000, notes: notes, actingUser: owner)));
+        Check(ids.All(id => id.HasValue) && ids.Distinct().Count() == 2, "identical concurrent schedules correlated to wrong row");
+        foreach (var id in ids)
+        {
+            var scheduleId = id!.Value;
+            Check((await schedules.GetScheduleByIdAsync(scheduleId))!.Notes == notes, "schedule notes changed by correlation workaround");
+            await Reject(() => schedules.UpdateScheduleAsync(scheduleId, price: 9, actingUser: deniedActor));
+            Check(await schedules.UpdateScheduleAsync(scheduleId, price: 9, actingUser: owner) &&
+                (await schedules.GetScheduleByIdAsync(scheduleId))!.Price == 9, "schedule update not committed");
+            await Reject(() => schedules.DeleteScheduleAsync(scheduleId, deniedActor));
+            Check(await schedules.DeleteScheduleAsync(scheduleId, owner) && await schedules.GetScheduleByIdAsync(scheduleId) == null, "schedule deletion not committed");
+        }
+        Console.WriteLine("PASS migrated ticket/schedule services: committed CRUD/rejection readback, two identical concurrent schedule creates get exact receipt IDs, notes unchanged and no callback/polling correlation");
+    }
+
     public static async Task AdministrationAsync(ISpacetimeDBService db, Identity owner)
     {
         var roles = new RoleService(db, NullLogger<RoleService>.Instance);
@@ -94,6 +132,12 @@ internal static class CommittedServiceTests
         return (value % 1000000).ToString("D6");
     }
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+    private static async Task Reject(Func<Task> action)
+    {
+        try { await action(); }
+        catch (ReducerRejectedException) { return; }
+        throw new Exception("Service reported a rejected reducer as success");
+    }
     private sealed class UnusedEmail : IEmailService
     {
         public Task SendEmailAsync(string to, string subject, string body) => throw new NotSupportedException();

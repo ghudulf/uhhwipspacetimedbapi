@@ -4,6 +4,12 @@ using SpacetimeDB;
 public static partial class Module
 {
     [SpacetimeDB.Reducer]
+    public static void PrepareCommittedServiceTestRoute(ReducerContext ctx)
+    {
+        RequireDeploymentOwner(ctx);
+        ctx.Db.Route.Insert(new Route { RouteId = 3900000000, RouteNumber = "synthetic-service", StartPoint = "Service A", EndPoint = "Service B", IsActive = true });
+    }
+    [SpacetimeDB.Reducer]
     public static void PrepareRefreshTokenTest(ReducerContext ctx, string identityHex)
     {
         RequireDeploymentOwner(ctx);

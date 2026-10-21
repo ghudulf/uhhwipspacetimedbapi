@@ -227,11 +227,11 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | Services/PermissionService.cs | 8 raw accesses; 3 dispatches | Queued materialized reads; Core-backed committed create/update/delete |
 | Services/QRAuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
 | Services/RoleService.cs | 9 raw accesses; 8 dispatches | Queued materialized reads; existing v2 composite create/update commits metadata and permission sets atomically; other Core-backed writes committed |
-| Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Pending |
+| Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Queued reads/committed Core-backed writes; create uses existing v2 receipt, removes notes tagging and async-void callbacks; disposal cancels service lifetime |
 | Services/SettingsService.cs | 6 raw accesses; 5 dispatches; fallback disables 2FA on errors | Queued reads/committed writes; errors no longer fabricate 2FA-disabled defaults |
 | Services/SpacetimeDBService.cs | 1 public raw accessor declaration | Serialized SDK owner; public accessor removal pending |
 | Services/TicketSalesService.cs | 9 raw accesses | Pending |
-| Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Pending |
+| Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Queued reads/committed Core-backed writes; obsolete payment-field update returns false instead of unsubmitted success |
 | Services/TotpService.cs | 6 raw accesses; 5 dispatches | Queued reads/committed writes; challenge consumption uses atomic replay-checking reducer; HMAC disposed |
 | Services/UserService.cs | 8 raw accesses; 3 dispatches | Queued materialized reads; committed v2 create allocates distinct account identity; Core-backed update/delete; no sleep polling |
 | TicketSalesApp.Services/Interfaces/ISpacetimeDBService.cs | 1 raw accessor declaration | Pending |
