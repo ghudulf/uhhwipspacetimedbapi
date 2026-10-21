@@ -58,7 +58,12 @@ public sealed class WebAuthnService(ISpacetimeDBService database, IFido2 fido2, 
     public async Task<UserProfile> VerifyAssertionAsync(AssertionOptions options, AuthenticatorAssertionRawResponse response, Identity? expectedActor = null)
     {
         if (options.UserVerification != UserVerificationRequirement.Required) throw new InvalidOperationException("User verification required.");
-        var credential = await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().FirstOrDefault(item => item.IsActive && item.CredentialId.SequenceEqual(response.Id)))
+        var credential = await database.ReadAsync(c =>
+        {
+            // Historical rows may predate reducer uniqueness checks; never choose an arbitrary owner.
+            var matches = c.Db.WebAuthnCredential.Iter().Where(item => item.IsActive && item.CredentialId.SequenceEqual(response.Id)).Take(2).ToArray();
+            return matches.Length == 1 ? matches[0] : null;
+        })
             ?? throw new InvalidOperationException("Assertion rejected.");
         var user = await Active(credential.UserId);
         if (expectedActor != null && user.UserId != expectedActor) throw new InvalidOperationException("Assertion rejected.");

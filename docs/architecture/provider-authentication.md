@@ -233,6 +233,10 @@ endpoints as well. Challenges are consumed before verification. Existing
 nonresident keys without UV support must be re-enrolled/replaced; historical
 identity-derived user handles are not adopted for new registrations. Existing
 credential rows/keys are not rewritten or cleared by this migration.
+Historical credentials returning identity-derived handles must be re-enrolled
+after a full alternative login; no identity-handle fallback is introduced.
+Ambiguous historical active credential-ID mappings fail closed rather than
+choosing an arbitrary account. Reconcile such rows administratively.
 
 The UI reuses `GET /api/auth/webauthn/credentials` and
 `DELETE /api/auth/webauthn/credentials/{id}` with the full bearer; lists contain
