@@ -1266,4 +1266,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             return LoadSchedules();
         }
     }
-} 
+}
