@@ -30,6 +30,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private const int ScanRangeStart = 100;
         private const int ScanRangeEnd = 249;
         private const int ApiPort = 5000;
+        // Remote servers must be reached over TLS: the API's HTTPS endpoint (appsettings Kestrel:EndPoints:Https), never the plain-HTTP dev port.
+        private const int RemoteHttpsPort = 5001;
         private const string PingPath = "api/discovery/ping";
         private const int ProbeTimeoutMs = 500;
 
@@ -175,7 +177,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     subnet, ScanRangeStart, ScanRangeEnd);
 
                 var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
-                    .Select(i => $"https://{subnet}.{i}:{ApiPort}/");
+                    .Select(i => $"https://{subnet}.{i}:{RemoteHttpsPort}/");
 
                 var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
                 if (found != null)
