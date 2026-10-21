@@ -62,6 +62,7 @@ public record UserTokenPayload
 /// </summary>
 public interface IAuthOrchestrationService
 {
+    Task<LoginResult> CompleteQrLoginAsync(SpacetimeDB.Identity approverUserId, bool approvedByAuthenticatedSession);
     /// <summary>Authenticate a user by username/password. Returns null on failure.</summary>
     Task<AuthenticationResult?> AuthenticateAsync(string username, string password);
 

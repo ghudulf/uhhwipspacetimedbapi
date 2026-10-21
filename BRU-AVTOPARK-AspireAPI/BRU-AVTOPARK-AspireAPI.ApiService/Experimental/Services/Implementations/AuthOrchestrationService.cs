@@ -285,6 +285,15 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         return await CompletePrimaryAuthenticationAsync(user);
     }
 
+    public async Task<LoginResult> CompleteQrLoginAsync(Identity approverUserId, bool approvedByAuthenticatedSession)
+    {
+        var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(approverUserId));
+        if (user?.IsActive != true) return LoginResult.Failed("qr_login_failed");
+        if (!approvedByAuthenticatedSession) return await CompletePrimaryAuthenticationAsync(user);
+        var (token, dto, claims) = await GenerateAuthTokenAsync(user);
+        return LoginResult.Successful(token, dto, claims);
+    }
+
     private async Task<LoginResult> CompletePrimaryAuthenticationAsync(UserProfile user)
     {
         if (!user.IsActive) return LoginResult.Failed("Account is inactive");
@@ -1757,28 +1766,22 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<QRLoginStatusResult> CheckQRLoginStatusAsync(string sessionId)
     {
-        _logger.LogInformation("QR login status check orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login status checking logic
         await Task.CompletedTask;
-        return QRLoginStatusResult.Successful("pending");
+        return QRLoginStatusResult.Failed("unsupported");
     }
 
     /// <inheritdoc />
     public async Task<QRLoginCancelResult> CancelQRLoginAsync(string sessionId)
     {
-        _logger.LogInformation("QR login cancellation orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login cancellation logic
         await Task.CompletedTask;
-        return QRLoginCancelResult.Successful();
+        throw new NotSupportedException("Use /api/auth/qr sessions.");
     }
 
     /// <inheritdoc />
     public async Task<QRLoginNotifyResult> NotifyQRLoginAsync(string sessionId, string status)
     {
-        _logger.LogInformation("QR login notification orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login notification logic
         await Task.CompletedTask;
-        return QRLoginNotifyResult.Successful();
+        throw new NotSupportedException("Use /api/auth/qr sessions.");
     }
 
     /// <inheritdoc />

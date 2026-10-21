@@ -1495,39 +1495,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     "POST /api/auth/qr-login/direct", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/direct" });
             }
-            _logger.LogInformation("Refactored QR Login Direct endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.DirectQRLoginAsync(request.Username, request.DeviceType);
-
-            if (!result.Success)
-            {
-                return Unauthorized(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Direct QR login failed"
-                });
-            }
-
-            return Ok(new ApiResponse<QRLoginResponse>
-            {
-                Success = true,
-                Message = "Direct QR login successful",
-                Data = new QRLoginResponse
-                {
-                    Token = result.QrCode!,
-                    QrCodeData = result.RawData!,
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(5)
-                }
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions" });
         }
 
         /// <summary>
@@ -1554,38 +1522,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     "GET /api/auth/qr-login/status", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/qr-login/status" });
             }
-            _logger.LogInformation("Refactored QR Login Status endpoint called for device: {DeviceId}", deviceId);
-
-            if (string.IsNullOrEmpty(deviceId))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Device ID is required"
-                });
-            }
-
-            var result = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to check QR login status"
-                });
-            }
-
-            return Ok(new ApiResponse<QRLoginStatusResponse>
-            {
-                Success = true,
-                Message = "QR login status retrieved",
-                Data = new QRLoginStatusResponse
-                {
-                    Status = result.Status!,
-                    Token = result.Token
-                }
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/status" });
         }
 
         /// <summary>
@@ -1612,33 +1549,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     "POST /api/auth/qr-login/cancel", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/cancel" });
             }
-            _logger.LogInformation("Refactored QR Login Cancel endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.CancelQRLoginAsync(request.Token);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to cancel QR login"
-                });
-            }
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "QR login cancelled successfully"
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/cancel" });
         }
 
         /// <summary>
@@ -1651,7 +1562,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("qr-login/notify")]
-        [Authorize]
+        [AllowAnonymous]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -1666,33 +1577,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     "POST /api/auth/qr-login/notify", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/notify" });
             }
-            _logger.LogInformation("Refactored QR Login Notify endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.NotifyQRLoginAsync(request.DeviceId, request.Token);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to notify device"
-                });
-            }
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "Device notified successfully"
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/approve" });
         }
 
         #endregion

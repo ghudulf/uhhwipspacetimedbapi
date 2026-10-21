@@ -128,6 +128,11 @@ builder.Services.AddSwaggerGen(c =>
 // Add SpacetimeDB services
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISpacetimeDBService, TicketSalesApp.Services.Implementations.SpacetimeDBService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Authorization.UserAccessService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:QrLogin"));
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginBroker>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceStore, TicketSalesApp.Services.Implementations.QrLoginDeviceStore>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals
 builder.Services.AddHostedService<SpacetimeFrameTickService>();
