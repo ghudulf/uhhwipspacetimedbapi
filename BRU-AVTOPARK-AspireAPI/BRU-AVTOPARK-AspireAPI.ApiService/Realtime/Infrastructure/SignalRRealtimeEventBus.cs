@@ -21,7 +21,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly IHubContext<SystemEventsHub> _hubContext;
     private readonly ILogger<SignalRRealtimeEventBus> _logger;
     private readonly RealtimeEventOptions _options;
-    private readonly SemaphoreSlim _disposalLock = new(1, 1);
+    private readonly object _disposalGate = new();
     private int _disposed;
     private bool _stopping;
     private int _gapPending;
@@ -131,18 +131,14 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         // Atomically check the shutdown gate and register the subscriber so that
         // a concurrent StopAsync/DisposeAsync cannot miss this subscriber between
         // the check and the add (TOCTOU).
-        await _disposalLock.WaitAsync(cancellationToken);
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_disposalGate)
         {
             if (_stopping || _disposed != 0)
             {
                 throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
             }
             _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
-        }
-        finally
-        {
-            _disposalLock.Release();
         }
 
         _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", 
@@ -252,7 +248,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         finally
         {
             // Dispose all active subscriptions even if base.StopAsync throws or is canceled
-            await DisposeAllSubscriptionsAsync();
+            lock (_disposalGate) DisposeAllSubscriptionsCore();
         }
 
         _logger.LogInformation("[EventBus] Event bus stopped successfully");
@@ -317,22 +313,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     }
 
     /// <summary>
-    /// Disposes all active subscriptions with lock acquisition.
-    /// </summary>
-    private async Task DisposeAllSubscriptionsAsync()
-    {
-        await _disposalLock.WaitAsync();
-        try
-        {
-            DisposeAllSubscriptionsCore();
-        }
-        finally
-        {
-            _disposalLock.Release();
-        }
-    }
-
-    /// <summary>
     /// Core teardown logic shared by both DisposeAsync and Dispose.
     /// </summary>
     private void DisposeCoreLogic()
@@ -354,50 +334,23 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <summary>
     /// Asynchronously disposes the event bus and all its resources.
     /// </summary>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        // Use Interlocked.CompareExchange to ensure only one thread disposes
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
-        {
-            return;
-        }
-
-        await _disposalLock.WaitAsync();
-        try
-        {
-            // Shared core teardown logic
-            DisposeCoreLogic();
-
-            // Dispose all subscriptions (call core method directly since we already hold the lock)
-            DisposeAllSubscriptionsCore();
-        }
-        finally
-        {
-            _disposalLock.Release();
-            _disposalLock.Dispose();
-        }
-
-        base.Dispose();
-        GC.SuppressFinalize(this);
+        Dispose();
+        return default;
     }
 
     public override void Dispose()
     {
         if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            // Synchronous disposal follows same teardown path
-            _disposalLock.Wait();
-            try
+            // All guarded operations are synchronous channel/dictionary updates. A monitor
+            // avoids a disposable semaphore racing late StopAsync/subscriber teardown.
+            lock (_disposalGate)
             {
                 DisposeCoreLogic();
                 DisposeAllSubscriptionsCore();
             }
-            finally
-            {
-                _disposalLock.Release();
-                _disposalLock.Dispose();
-            }
-
             base.Dispose();
             GC.SuppressFinalize(this);
         }

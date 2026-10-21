@@ -153,8 +153,9 @@ public sealed class RealtimeController : BaseController
         using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync("bru.interactive.v1");
         var sessionId = Guid.NewGuid().ToString();
         var userId = validatedClaims.TryGetValue("sub", out var subObj) ? subObj?.ToString() ?? "anonymous" : "anonymous";
-        var sendLock = new SemaphoreSlim(1, 1);
-        var cts = new CancellationTokenSource();
+        using var sendLock = new SemaphoreSlim(1, 1);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted,
+            HttpContext.RequestServices.GetService<IHostApplicationLifetime>()?.ApplicationStopping ?? default);
         
         _logger.LogInformation("[{SessionId}] Interactive WebSocket session started for user: {UserId}", sessionId, userId);
 
@@ -183,9 +184,13 @@ public sealed class RealtimeController : BaseController
         var heartbeatTask = SendHeartbeatsAsync(webSocket, sessionId, sendLock, cts.Token);
         var receiveTask = HandleInteractiveMessagesAsync(webSocket, sessionId, userId, sendLock, cts.Token);
 
-        await Task.WhenAny(heartbeatTask, receiveTask);
-        
-        cts.Cancel();
+        try { await Task.WhenAny(heartbeatTask, receiveTask); }
+        finally
+        {
+            cts.Cancel();
+            try { await Task.WhenAll(heartbeatTask, receiveTask); }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        }
         _logger.LogInformation("[{SessionId}] Interactive WebSocket session ended", sessionId);
     }
 
@@ -197,7 +202,7 @@ public sealed class RealtimeController : BaseController
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 
-                var process = System.Diagnostics.Process.GetCurrentProcess();
+                using var process = System.Diagnostics.Process.GetCurrentProcess();
                 await SendJsonAsync(webSocket, new
                 {
                     type = "heartbeat",
@@ -225,7 +230,7 @@ public sealed class RealtimeController : BaseController
         CancellationToken cancellationToken)
     {
         var buffer = new byte[8192];
-        var streamingSessions = new Dictionary<string, CancellationTokenSource>();
+        var streamingSessions = new Dictionary<string, (CancellationTokenSource Source, Task Completion)>();
 
         try
         {
@@ -282,11 +287,9 @@ public sealed class RealtimeController : BaseController
         finally
         {
             // Cancel all streaming sessions
-            foreach (var streamCts in streamingSessions.Values)
-            {
-                streamCts.Cancel();
-                streamCts.Dispose();
-            }
+            foreach (var stream in streamingSessions.Values) stream.Source.Cancel();
+            try { await Task.WhenAll(streamingSessions.Values.Select(stream => stream.Completion)); }
+            finally { foreach (var stream in streamingSessions.Values) stream.Source.Dispose(); }
         }
     }
 
@@ -297,7 +300,7 @@ public sealed class RealtimeController : BaseController
         string? requestId,
         string sessionId,
         string userId,
-        Dictionary<string, CancellationTokenSource> streamingSessions,
+        Dictionary<string, (CancellationTokenSource Source, Task Completion)> streamingSessions,
         SemaphoreSlim sendLock,
         CancellationToken cancellationToken)
     {
@@ -420,18 +423,15 @@ public sealed class RealtimeController : BaseController
         JsonElement root,
         string? requestId,
         string sessionId,
-        Dictionary<string, CancellationTokenSource> streamingSessions,
+        Dictionary<string, (CancellationTokenSource Source, Task Completion)> streamingSessions,
         SemaphoreSlim sendLock,
         CancellationToken cancellationToken)
     {
         if (command == "stream:start")
         {
+            if (streamingSessions.Count >= 16) throw new InvalidOperationException("Interactive stream limit reached.");
             var resource = root.TryGetProperty("resource", out var res) ? res.GetString() : null;
             var streamId = Guid.NewGuid().ToString();
-            var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
-            streamingSessions[streamId] = streamCts;
-
             await SendJsonAsync(webSocket, new
             {
                 type = "stream:started",
@@ -443,27 +443,30 @@ public sealed class RealtimeController : BaseController
                 timestamp = DateTime.UtcNow
             }, sendLock, cancellationToken);
 
-            // Start streaming in background
-            _ = Task.Run(async () =>
+            var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            streamingSessions[streamId] = (streamCts, RunStreamAsync());
+            async Task RunStreamAsync()
             {
                 try
                 {
                     await StreamDataAsync(webSocket, resource, streamId, sessionId, sendLock, streamCts.Token);
                 }
+                catch (OperationCanceledException) when (streamCts.IsCancellationRequested) { }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "[{SessionId}] Error in streaming task for {Resource}", sessionId, resource);
+                    _logger.LogError("[{SessionId}] Streaming task failed: {ErrorType}", sessionId, ex.GetType().Name);
                 }
-            }, streamCts.Token);
+            }
         }
         else if (command == "stream:stop")
         {
             var streamId = root.TryGetProperty("streamId", out var sid) ? sid.GetString() : null;
             
-            if (streamId != null && streamingSessions.TryGetValue(streamId, out var streamCts))
+            if (streamId != null && streamingSessions.Remove(streamId, out var stream))
             {
-                streamCts.Cancel();
-                streamingSessions.Remove(streamId);
+                stream.Source.Cancel();
+                try { await stream.Completion; }
+                finally { stream.Source.Dispose(); }
 
                 await SendJsonAsync(webSocket, new
                 {

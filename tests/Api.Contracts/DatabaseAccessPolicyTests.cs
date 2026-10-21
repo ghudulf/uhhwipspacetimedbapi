@@ -28,8 +28,6 @@ internal static class DatabaseAccessPolicyTests
         if (Regex.IsMatch(code, @"\.GetAwaiter\s*\(\s*\)\s*\.GetResult\s*\(")) yield return "sync-over-async GetResult";
         foreach (Match call in Regex.Matches(code, @"\b(\w+)\.Wait\s*\(\s*\)"))
         {
-            // SemaphoreSlim disposal locking, not Task.Wait (separate lifecycle audit).
-            if (path.EndsWith("/SignalRRealtimeEventBus.cs", StringComparison.Ordinal) && call.Groups[1].Value == "_disposalLock") continue;
             yield return "blocking Wait: " + call.Value;
         }
         foreach (Match read in Regex.Matches(code, @"\b(\w+)\.Result\b(?!\s*=)"))

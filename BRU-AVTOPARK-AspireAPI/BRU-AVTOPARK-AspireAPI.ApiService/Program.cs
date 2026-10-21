@@ -160,6 +160,8 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceS
 builder.Services.AddHostedService<SpacetimeFrameTickService>();
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>());
+builder.Services.AddHostedService(sp => new BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService(
+    ct => RegisterDefaultOAuthClientsAsync(sp, ct), sp.GetRequiredService<ILogger<BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService>>()));
 builder.Services.AddHealthChecks().AddCheck<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartupHealthCheck>("database_provisioning", tags: new[] { "ready" });
 
 // Configure Fido2 for WebAuthn
@@ -1264,16 +1266,11 @@ foreach (var endpoint in loginEndpoints)
 
 startupLogger.LogInformation("========== ENDPOINT MAPPING DIAGNOSTICS END ==========");
 
-// Initialize SpacetimeDB connection
-var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
-// The hosted database coordinator owns the first connection and subsequent reconnects.
-
-// Start background task to register OAuth clients once subscription is ready
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("Starting background task for OAuth client registration...");
-
-_ = Task.Run(async () =>
+// The hosted service observes this startup task and cancels all readiness waits on shutdown.
+static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, CancellationToken stoppingToken)
 {
+    var spacetimeService = services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
+    var logger = services.GetRequiredService<ILogger<BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService>>();
     try
     {
         // Wait for connection (max 30 seconds)
@@ -1281,7 +1278,7 @@ _ = Task.Run(async () =>
         var startTime = DateTime.UtcNow;
         while (!spacetimeService.IsConnected() && (DateTime.UtcNow - startTime) < maxWaitTime)
         {
-            await Task.Delay(500);
+            await Task.Delay(500, stoppingToken);
         }
 
         if (!spacetimeService.IsConnected())
@@ -1300,7 +1297,7 @@ _ = Task.Run(async () =>
         
         while (!spacetimeService.IsSubscriptionReady() && (DateTime.UtcNow - startTime) < maxSubscriptionWaitTime)
         {
-            await Task.Delay(500);
+            await Task.Delay(500, stoppingToken);
             
             // Log progress every 10 seconds
             if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 10)
@@ -1321,12 +1318,12 @@ _ = Task.Run(async () =>
         logger.LogInformation("SpacetimeDB subscription applied successfully after {Elapsed:F1}s, proceeding with client registration", 
             (DateTime.UtcNow - startTime).TotalSeconds);
 
-        var databaseStartup = app.Services.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
+        var databaseStartup = services.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
         while (!databaseStartup.IsReady)
-            await Task.Delay(500, app.Lifetime.ApplicationStopping);
+            await Task.Delay(500, stoppingToken);
 
         // Auto-register default OAuth clients
-        using (var scope = app.Services.CreateScope())
+        using (var scope = services.CreateScope())
         {
             var openIdConnectService = scope.ServiceProvider.GetRequiredService<TicketSalesApp.Services.Interfaces.IOpenIdConnectService>();
             
@@ -1335,6 +1332,7 @@ _ = Task.Run(async () =>
             // Register desktop client if it doesn't exist
             var desktopClientId = "bru-avtopark-desktop-client";
             var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+            stoppingToken.ThrowIfCancellationRequested();
             
             if (!clientExists)
             {
@@ -1366,6 +1364,7 @@ _ = Task.Run(async () =>
                 
                 if (success)
                 {
+                    stoppingToken.ThrowIfCancellationRequested();
                     logger.LogInformation("Successfully registered default desktop client");
                     
                     var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
@@ -1420,6 +1419,7 @@ _ = Task.Run(async () =>
             // Register required OAuth scopes
             logger.LogInformation("Registering required OAuth scopes...");
             var scopeManager = openIdConnectService.GetScopeManager();
+            stoppingToken.ThrowIfCancellationRequested();
             
             var requiredScopes = new[]
             {
@@ -1435,7 +1435,8 @@ _ = Task.Run(async () =>
             {
                 try
                 {
-                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                    stoppingToken.ThrowIfCancellationRequested();
+                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name, stoppingToken);
                     if (existingScope == null)
                     {
                         logger.LogInformation("Creating scope: {ScopeName}", scopeInfo.Name);
@@ -1447,7 +1448,7 @@ _ = Task.Run(async () =>
                             Description = scopeInfo.Description
                         };
 
-                        await scopeManager.CreateAsync(scopeDescriptor);
+                        await scopeManager.CreateAsync(scopeDescriptor, stoppingToken);
                         logger.LogInformation("Successfully created scope: {ScopeName}", scopeInfo.Name);
                     }
                     else
@@ -1455,9 +1456,10 @@ _ = Task.Run(async () =>
                         logger.LogInformation("Scope already exists: {ScopeName}", scopeInfo.Name);
                     }
                 }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { throw; }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Error creating scope {ScopeName}: {Message}", scopeInfo.Name, ex.Message);
+                    logger.LogError("Error creating scope {ScopeName}: {ErrorType}", scopeInfo.Name, ex.GetType().Name);
                 }
             }
 
@@ -1465,7 +1467,7 @@ _ = Task.Run(async () =>
             logger.LogInformation("Verifying registered scopes...");
             foreach (var scopeInfo in requiredScopes)
             {
-                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name, stoppingToken);
                 if (registeredScope != null)
                 {
                     logger.LogInformation("✓ Scope verified: {ScopeName}", scopeInfo.Name);
@@ -1477,11 +1479,12 @@ _ = Task.Run(async () =>
             }
         }
     }
+    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { throw; }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error during OAuth client registration: {Message}", ex.Message);
+        logger.LogError("Error during OAuth client registration: {ErrorType}", ex.GetType().Name);
     }
-});
+}
 
 app.Run();
 

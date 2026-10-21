@@ -243,14 +243,14 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | API/Experimental/Services/Implementations/TokenService.cs | 2 raw accesses | Async queued active-profile/role/permission snapshot for signing |
 | API/Controllers/BaseController.cs | 8 sync-over-async wrappers | Removed; all controller callers await authentication/access/identity checks |
 | API/Experimental/Services/Implementations/HtmlRenderingService.cs | 16 sync-over-async rendering wrappers | Return rendering tasks; interfaces and all controller callers await them |
-| API/Program.cs | 1 detached Task.Run startup task; fatal startup logging | Pending |
-| API/Controllers/RealtimeController.cs | 1 detached Task.Run connection task | Pending |
-| API/Realtime/Infrastructure/SignalRRealtimeEventBus.cs | 1 synchronous semaphore wait during disposal | Pending |
+| API/Program.cs | 1 detached Task.Run startup task; fatal startup logging | OAuth registration owned by cancellable/observed BackgroundService; readiness waits cancel on shutdown; fatal logs remain startup-only |
+| API/Controllers/RealtimeController.cs | 1 detached Task.Run connection task | Streams own tracked completions/CTS; stop/disconnect cancels, awaits and disposes all; heartbeat/receive joined before socket disposal |
+| API/Realtime/Infrastructure/SignalRRealtimeEventBus.cs | 1 synchronous semaphore wait during disposal | Short synchronous channel/dictionary gate replaces disposable semaphore; repeated sync/async/DI disposal safe |
 
 `DatabaseAccessPolicyTests` now scans application C# for raw connections,
 reducer dispatches and task blocking, with the sole startup owner-bootstrap
 dispatch exception explained above. Non-task MVC/verification/tuple result
-properties and a synchronous semaphore-disposal lock are explicitly distinguished
+properties are explicitly distinguished
 from blocking task waits. Negative fixtures prove new raw access and task blocking
 are rejected. A separate diagnostics guard is planned to check credential-bearing log
 templates/arguments; outcome words and fingerprints are not credential values.
@@ -263,3 +263,7 @@ before releasing them to callers. Mutating a returned entity cannot modify the
 SDK cache. Application DTO projections must contain scalar/projected data, not
 SDK table handles. Real-fixture tests check that modifying a returned permission
 does not alter a subsequent read until the update reducer commits.
+
+`ServiceLifecycleTests` checks cancellable startup shutdown and observed failure,
+DI-disposed schedule cancellation and repeated event-bus stop/sync/async disposal
+with active subscription completion under a two-second deadline.
