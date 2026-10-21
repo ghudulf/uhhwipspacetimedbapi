@@ -104,7 +104,7 @@ public sealed partial class RealtimeApplicationClient
     }
     private void EndSubscriptions(string code)
     {
-        foreach (var updates in _subscriptions.Values)
-            updates.Writer.TryComplete(new ApplicationCommandException(code));
+        foreach (var entry in _subscriptions.ToArray())
+            if (_subscriptions.TryRemove(entry.Key, out var updates)) updates.Writer.TryComplete(new ApplicationCommandException(code));
     }
 }

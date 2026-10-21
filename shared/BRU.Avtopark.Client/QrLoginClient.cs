@@ -59,6 +59,8 @@ public sealed class QrLoginClient : IQrLoginApi
         {
             var uri = new Uri(root, "api/auth/qr/" + path);
             using var request = new HttpRequestMessage(method, uri);
+            request.Headers.Add("X-BRU-Native-Login", "1");
+            request.Headers.Add("X-BRU-Device", "native");
             if (bearer != null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
             if (body != null)
             {

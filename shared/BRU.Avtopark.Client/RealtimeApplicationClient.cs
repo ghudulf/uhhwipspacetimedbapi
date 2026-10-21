@@ -61,6 +61,8 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             throw new ArgumentException("Realtime requires HTTPS (HTTP is allowed only for loopback development).", nameof(apiBase));
         var endpoint = ClientEndpoints.WebSocketEndpoint(apiBase, "api/realtime/stream");
         _socket.Options.AddSubProtocol(ApiProtocol.Subprotocol);
+        _socket.Options.SetRequestHeader("X-BRU-Native-Login", "1");
+        _socket.Options.SetRequestHeader("X-BRU-Device", "native");
         _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
         // Authentication travels inside the encrypted session; no token in URLs, logs or proxy headers.
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);

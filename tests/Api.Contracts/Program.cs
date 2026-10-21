@@ -84,6 +84,7 @@ await SessionRefreshTests.RunAsync();
 await ProviderClientTests.RunAsync();
 await PasskeyTests.RunAsync();
 await NativeRefreshTests.RunAsync();
+await SessionRefreshCoordinatorTests.RunAsync();
 
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 
