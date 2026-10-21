@@ -194,3 +194,12 @@ origin-bound storage and failure behavior. Older clients/browsers get access-onl
 sessions and must sign in at expiry. Refresh cannot repair uncertain mutations;
 they are never replayed automatically. Windows DPAPI and memory-only unsupported
 platform behavior remain unchanged; real platform storage/UI checks are required.
+
+Native-refresh checkpoint validation passed Api.Contracts (including reflected
+endpoint-ledger drift), Client.Presentation, Client.Infrastructure and a fresh
+Architecture.Integration fixture plus catalog/fleet/bootstrap/diagnostics modes.
+API and desktop nonincremental builds, production WASI publish and generic MAUI
+`EnableMobileTargets=false` build passed. The existing handoff-8 warning baseline
+and this checkpoint have the same 185 deduplicated path/code/message signatures;
+no new warnings were introduced. This is synthetic/headless/Linux validation,
+not real Windows Hello, mobile keystore or distributed-deployment certification.

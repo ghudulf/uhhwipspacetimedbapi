@@ -54,6 +54,9 @@ Credential replacement/password change or reset through module writers, identity
 deactivation and deletion invoke module-level revocation hooks transactionally.
 Refresh revocation does not retroactively blacklist existing access tokens;
 protected operations continue to validate token lifetime and active account/access.
+The module's own `ChangePassword` and administrator reset writers enforce the
+hook. The separate legacy API `ChangePasswordAsync` orchestration remains an
+unimplemented ceremony; this rollout does not claim to complete that endpoint.
 
 ## Explicit native opt-in, not a browser credential
 
