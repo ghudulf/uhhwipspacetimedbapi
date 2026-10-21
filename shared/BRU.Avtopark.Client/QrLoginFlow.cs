@@ -38,7 +38,7 @@ public sealed class QrLoginFlow : IAsyncDisposable
         if (created != null)
         {
             if (!QrLoginProtocol.TryParsePayload(created.QrPayload, out var payload) || payload.SessionId != created.SessionId || payload.ApprovalSecret != created.ApprovalSecret
-                || !QrLoginProtocol.TryDecode(created.PollSecret, 32, out _) || created.VerificationCode.Length != 6 || !created.VerificationCode.All(char.IsAsciiDigit)) error = "invalid_response";
+                || !QrLoginProtocol.TryDecode(created.PollSecret, 32, out _) || created.VerificationCode is not { Length: 6 } || !created.VerificationCode.All(char.IsAsciiDigit)) error = "invalid_response";
             else if (!QrOrigin.IsSameServer(payload.Origin, api.ApiBase)) error = "origin_mismatch";
             else session = created; // No secret is sent (including cancellation) before payload/origin validation.
         }

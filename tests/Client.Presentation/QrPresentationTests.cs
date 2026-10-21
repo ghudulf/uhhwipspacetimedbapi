@@ -55,6 +55,9 @@ internal static class QrPresentationTests
         var expired = new FakeApi(clock) { SessionSeconds = -3 };
         await using (var flow = new QrLoginFlow(expired, clock, clock.Delay))
         { var events = await Collect(flow.StartApprovalSessionAsync("Desktop", "test")); Check(events[^1].State == QrFlowState.Expired && expired.StatusCalls == 0, "local expiry"); }
+        var malformed = new FakeApi(clock) { InvalidCode = true };
+        await using (var flow = new QrLoginFlow(malformed, clock, clock.Delay))
+        { var events = await Collect(flow.StartApprovalSessionAsync("Desktop", "test")); Check(events[^1].Code == "invalid_response" && malformed.StatusCalls == 0 && malformed.CancelCalls == 0, "malformed creation response fails before secrets"); }
         var cancelled = new FakeApi(clock);
         var cancelFlow = new QrLoginFlow(cancelled, clock, clock.Delay);
         await using (var iterator = cancelFlow.StartApprovalSessionAsync("Desktop", "test").GetAsyncEnumerator())
@@ -202,11 +205,11 @@ internal static class QrPresentationTests
         public string ApiBase => Origin + "/api/";
         public string ResponseOrigin = Origin;
         public int SessionSeconds = 120, Calls, StatusCalls, CompleteCalls, CancelCalls, ApproveCalls, RevokeCalls, PollFailures;
-        public bool ApprovalFailure, EnrollFailure;
+        public bool ApprovalFailure, EnrollFailure, InvalidCode;
         public Queue<QrPoll> Polls = new();
         public Action<string, string>? Complete;
         public Task<QrCreateResponse> CreateSessionAsync(string deviceName, string platform, string? username = null, string? deviceId = null, CancellationToken cancellationToken = default)
-        { Calls++; return Task.FromResult(new QrCreateResponse(Id, PollSecret, Approval, QrLoginProtocol.BuildPayload(Id, Approval, ResponseOrigin), "invalid-server-png", "654321", clock.GetUtcNow().AddSeconds(SessionSeconds), 500)); }
+        { Calls++; return Task.FromResult(new QrCreateResponse(Id, PollSecret, Approval, QrLoginProtocol.BuildPayload(Id, Approval, ResponseOrigin), "invalid-server-png", InvalidCode ? null! : "654321", clock.GetUtcNow().AddSeconds(SessionSeconds), 500)); }
         public Task<QrPoll> StatusAsync(string id, string pollSecret, CancellationToken cancellationToken = default)
         { Calls++; StatusCalls++; if (PollFailures-- > 0) throw new QrLoginException("network_error"); return Task.FromResult(Polls.TryDequeue(out var poll) ? poll : new QrPoll("pending")); }
         public Task CancelAsync(string id, string pollSecret, CancellationToken cancellationToken = default) { Calls++; CancelCalls++; return Task.CompletedTask; }
