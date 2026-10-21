@@ -174,6 +174,9 @@ internal static class AdminOperationTests
             Check(!new[] { "PasswordHash", "Password", "Secret", "Token" }.Any(term => serialized.Contains('"' + term + '"', StringComparison.OrdinalIgnoreCase)), "administrative query exposed a credential member");
         }
         var detail = (UserRow)(await operations.ExecuteAsync("users.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+        var ticketDetail = (TicketRow)(await operations.ExecuteAsync("tickets.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(ticket.EntityId)), null, default))!;
+        var ticketRoute = await db.ReadAsync(c => c.Db.Route.RouteId.Find(route)!);
+        Check(ticketDetail.RouteStartPoint == ticketRoute.StartPoint && ticketDetail.RouteEndPoint == ticketRoute.EndPoint && ticketDetail.RouteTravelTime == ticketRoute.TravelTime, "typed ticket projection lost route endpoint/duration fields");
         Check(detail.Identity == userIdentity.ToString() && detail.Roles.Length > 0, "real administrative user projection lost identity/roles");
         Console.WriteLine("PASS real five-resource paged projections, credential-free users.get and role/permission/user changes invalidate access resources");
         Console.WriteLine("PASS real tickets/schedules/roles/permissions get: typed list-row equality, revision advances after update and deleted entities return not_found; users.get retained");

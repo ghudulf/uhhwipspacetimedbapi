@@ -1,6 +1,7 @@
 namespace BRU.Avtopark.Contracts;
 
-public sealed record TicketRow(uint Id, uint RouteId, string? RouteLabel, uint SeatNumber, decimal? TicketPrice, string PaymentMethod, DateTimeOffset? PurchaseTime, bool IsActive, ulong Revision);
+public sealed record TicketRow(uint Id, uint RouteId, string? RouteLabel, uint SeatNumber, decimal? TicketPrice, string PaymentMethod, DateTimeOffset? PurchaseTime, bool IsActive, ulong Revision,
+    string? RouteStartPoint = null, string? RouteEndPoint = null, string? RouteTravelTime = null);
 public sealed record ScheduleRow(uint Id, uint RouteId, string? RouteLabel, string? BusLabel, string? DriverLabel, DateTimeOffset? DepartureTime, DateTimeOffset? ArrivalTime, decimal? Price, uint AvailableSeats, bool IsActive, ulong Revision);
 public sealed record UserRow(uint Id, string Identity, string Login, string? Email, string? PhoneNumber, bool IsActive, DateTimeOffset? CreatedAt, DateTimeOffset? LastLoginAt, string[] Roles, ulong Revision);
 public sealed record RoleRow(uint Id, int LegacyRoleId, string Name, string? Description, bool IsSystem, uint Priority, bool IsActive, uint[] PermissionIds, string[] Permissions, int UserCount, ulong Revision);

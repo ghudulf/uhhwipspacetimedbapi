@@ -32,8 +32,7 @@ public sealed partial class ApplicationOperations
         RegisterEntityRead(database, "tickets", "tickets.view", (c, id, access) =>
         {
             var t = c.Db.Ticket.TicketId.Find(id) ?? throw new OperationException("not_found");
-            return new TicketRow(t.TicketId, t.RouteId, access.Allows("routes.view") ? RouteLabel(c, t.RouteId) : null,
-                t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId));
+            return ProjectTicket(c, t, access);
         });
         RegisterEntityRead(database, "schedules", "schedules.view", (c, id, access) =>
         {
@@ -72,4 +71,12 @@ public sealed partial class ApplicationOperations
         access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null,
         access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null,
         r.RouteNumber, r.StopCount, r.RouteLength, r.RouteDescription, r.RouteType, ticketCount);
+
+    private static TicketRow ProjectTicket(DbConnection c, Ticket t, UserAccessSnapshot access)
+    {
+        var route = access.Allows("routes.view") ? c.Db.Route.RouteId.Find(t.RouteId) : null;
+        return new TicketRow(t.TicketId, t.RouteId, route == null ? null : route.StartPoint + " — " + route.EndPoint,
+            t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId),
+            route?.StartPoint, route?.EndPoint, route?.TravelTime);
+    }
 }

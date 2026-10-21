@@ -17,8 +17,7 @@ public sealed partial class ApplicationOperations
             {
                 var rows = c.Db.Ticket.Iter().Where(t => Matches(request.Search, t.TicketId.ToString(), t.SeatNumber.ToString(), t.PaymentMethod,
                     access.Allows("routes.view") ? c.Db.Route.RouteId.Find(t.RouteId)?.StartPoint : null, access.Allows("routes.view") ? c.Db.Route.RouteId.Find(t.RouteId)?.EndPoint : null)).OrderBy(t => t.TicketId).ToArray();
-                return new CatalogPageResult<TicketRow>(Page(rows, request).Select(t => new TicketRow(t.TicketId, t.RouteId,
-                    access.Allows("routes.view") ? RouteLabel(c, t.RouteId) : null, t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId))).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("tickets.create"), access.Allows("tickets.edit"), access.Allows("tickets.delete"));
+                return new CatalogPageResult<TicketRow>(Page(rows, request).Select(t => ProjectTicket(c, t, access)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("tickets.create"), access.Allows("tickets.edit"), access.Allows("tickets.delete"));
             }, ct);
         });
         Register<PageRequest>("schedules.list", "schedules.view", false, async (actor, request, _, ct) =>
