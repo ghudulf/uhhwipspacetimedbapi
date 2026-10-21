@@ -43,6 +43,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
         AddCommand?.NotifyCanExecuteChanged(); EditCommand?.NotifyCanExecuteChanged(); DeleteCommand?.NotifyCanExecuteChanged();
     }
     protected override void SnapshotApplied(CatalogPageResult<TRow> page) => _uncertainDeletes.Clear();
+    protected virtual string DeleteConflictMessage => "Удаление отклонено. Запись изменилась или используется связанными записями. Обновите данные.";
     private async Task EditAsync(TRow? row, bool create)
     {
         if (_edit == null || (create ? !CanCreate : !CanEdit) || _editing) return;
@@ -87,7 +88,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
             HasError = true;
             ErrorMessage = code == "commit_outcome_unknown"
                 ? "Результат удаления неизвестен. Обновите список; повторная отправка заблокирована."
-                : "Удаление отклонено. Обновите данные и проверьте связанные записи и права доступа.";
+                : code == "conflict" ? DeleteConflictMessage : "Удаление отклонено. Обновите данные и проверьте связанные записи и права доступа.";
             Log.Information("{Screen} delete {OperationId}: {Code}, entity {EntityId}, revision {Revision}", GetType().Name, operationId, code, _key(row), _revision(row));
         }
         finally { _editing = false; EligibilityChanged(); }

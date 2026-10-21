@@ -52,6 +52,7 @@ public sealed class RouteManagementViewModel : EditableCatalogViewModel<RouteRow
         : base("routes.list", row => row.RouteId, item => item.RouteId, row => new(row), (item, row) => item.Update(row), item => item.Row, row => row.Revision,
             delete ?? DeleteAsync, read, watch, edit, confirmDelete) { }
     protected override void SelectionChanged() => this.RaisePropertyChanged(nameof(SelectedRoute));
+    protected override string DeleteConflictMessage => "Маршрут нельзя удалить: он изменён или связан с билетами, расписаниями и другими записями. Обновите данные.";
     private static Task<MutationResult> DeleteAsync(RouteRow row, string operationId, CancellationToken ct)
     {
         var api = ApiClientService.Instance;

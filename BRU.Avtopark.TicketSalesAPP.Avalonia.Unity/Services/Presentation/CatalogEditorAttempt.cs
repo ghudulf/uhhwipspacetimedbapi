@@ -18,6 +18,8 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
     private readonly Func<TRow, TDraft> _draft;
     private readonly Func<TRow, ulong> _revision;
     private bool _newAttempt;
+    private readonly uint? _entityId;
+    private readonly string? _conflictMessage;
     public TDraft Draft { get; private set; }
     public TRow? Current { get; private set; }
     public ulong? ExpectedRevision { get; private set; }
@@ -32,10 +34,11 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
 
     public CatalogEditorAttempt(TRow? original, Func<TRow?, TDraft> draft, Func<TRow, ulong> revision,
         Func<TDraft, string?> validate, Func<TDraft, ulong?, string, CancellationToken, Task<MutationResult>> execute,
-        Func<string, CancellationToken, Task<MutationResult?>> receipt, Func<CancellationToken, Task<TRow>> readCurrent)
+        Func<string, CancellationToken, Task<MutationResult?>> receipt, Func<CancellationToken, Task<TRow>> readCurrent, uint? entityId = null, string? conflictMessage = null)
     {
         _create = original == null; _draft = row => draft(row); _revision = revision; _validate = validate;
         _execute = execute; _receipt = receipt; _readCurrent = readCurrent;
+        _entityId = entityId; _conflictMessage = conflictMessage;
         Draft = draft(original); ExpectedRevision = original == null ? null : revision(original);
     }
     public async Task SubmitAsync(Func<bool> canSubmit, CancellationToken ct)
@@ -49,17 +52,17 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
         {
             var result = await _execute(Draft, ExpectedRevision, OperationId, ct);
             IsCommitted = true; IsBlocked = true;
-            Log.Information("Catalog editor {RowType} operation {OperationId}: {Code}, revision {Revision}", typeof(TRow).Name, OperationId, "ok", result.Revision);
+            Log.Information("Catalog editor {RowType} operation {OperationId}: {Code}, entity {EntityId}, revision {Revision}", typeof(TRow).Name, OperationId, "ok", result.EntityId, result.Revision);
         }
         catch (Exception exception)
         {
             var code = exception is ApplicationCommandException failure ? failure.Code : "commit_outcome_unknown";
-            Log.Information("Catalog editor {RowType} operation {OperationId}: {Code}, revision {Revision}", typeof(TRow).Name, OperationId, code, ExpectedRevision);
+            Log.Information("Catalog editor {RowType} operation {OperationId}: {Code}, entity {EntityId}, revision {Revision}", typeof(TRow).Name, OperationId, code, _entityId, ExpectedRevision);
             CanReconcile = code == "commit_outcome_unknown";
             CanReload = !_create && code == "conflict";
             IsBlocked = code is not ("validation_failed" or "forbidden") && !(_create && code == "conflict");
             _newAttempt = !CanReconcile;
-            Message = code == "conflict" ? "Данные изменились или изменение отклонено. Черновик сохранён; можно загрузить актуальные данные."
+            Message = code == "conflict" ? _conflictMessage ?? "Данные изменились или изменение отклонено. Черновик сохранён; можно загрузить актуальные данные."
                 : CanReconcile ? "Результат неизвестен. Проверьте его перед повтором; черновик сохранён."
                 : "Изменение отклонено. Проверьте поля и права доступа. Черновик сохранён.";
         }
@@ -75,7 +78,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
             if (receipt != null)
             {
                 IsCommitted = true; CanReconcile = false;
-                Log.Information("Catalog editor {RowType} receipt {OperationId}: {Code}, revision {Revision}", typeof(TRow).Name, OperationId, "ok", receipt.Revision);
+                Log.Information("Catalog editor {RowType} receipt {OperationId}: {Code}, entity {EntityId}, revision {Revision}", typeof(TRow).Name, OperationId, "ok", receipt.EntityId, receipt.Revision);
             }
             else Message = "Подтверждение пока не найдено. Это не означает отмену операции. Проверьте снова; повторная отправка заблокирована.";
         }

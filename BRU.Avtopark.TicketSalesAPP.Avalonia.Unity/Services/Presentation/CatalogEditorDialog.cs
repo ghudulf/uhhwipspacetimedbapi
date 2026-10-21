@@ -19,7 +19,7 @@ internal static class CatalogEditorDialog
     }
     internal static async Task<bool> ShowAsync<TRow, TDraft>(ControlDialogHost host, string title,
         CatalogEditorAttempt<TRow, TDraft> attempt, Control[] fields, Action<TDraft> readFields, Action<TDraft> writeFields,
-        Func<bool> canSubmit, CancellationToken cancellationToken) where TRow : class where TDraft : class
+        Func<bool> canSubmit, CancellationToken cancellationToken, string? notice = null) where TRow : class where TDraft : class
     {
         var api = ApiClientService.Instance;
         var token = api.AuthToken; var origin = api.CurrentBaseUrl;
@@ -38,7 +38,7 @@ internal static class CatalogEditorDialog
         foreach (var field in new Control[] { error, save, reconcile, reload, replace }) panel.Children.Add(field);
         void Update()
         {
-            error.Text = attempt.Message;
+            error.Text = string.IsNullOrEmpty(attempt.Message) ? notice : attempt.Message;
             save.IsEnabled = !attempt.IsBlocked && !attempt.IsBusy;
             reconcile.IsVisible = attempt.CanReconcile; reconcile.IsEnabled = !attempt.IsBusy;
             reload.IsVisible = attempt.CanReload; reload.IsEnabled = !attempt.IsBusy;
