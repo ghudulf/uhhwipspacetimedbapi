@@ -78,6 +78,14 @@ Existing package families are retained. DataProtection.Extensions is patched to 
 
 SecurityCodeScan installs all three declared SDKs and builds module, API, Aspire host, desktop and generic MAUI from their project directories. This preserves their individual SDK selection and avoids using SDK 10 for the SDK 8 WASI module or net11 MAUI. The Windows workflow still needs execution in GitHub Actions. CodeQL and DevSkim remain configured.
 
+The [local security validation ledger](security-validation.md) records the disabled
+workflows' local equivalents, raw/triaged findings, the additional Desktop SDK
+10.0.201 prerequisite, and repeatable commands. It also describes the verified
+Bearer-only OAuth form authorization change, production HTTPS/Secure-cookie and
+explicit-CORS requirements, and JSON log format migration. The unresolved AppHost
+KubernetesClient advisory requires an owner-authorized compatible dependency
+upgrade; successful application builds are not a clean security signoff.
+
 ### Additive catalog revisions
 
 `EntityRevision` records route, employee, job and maintenance revisions without rewriting existing business rows. Existing rows begin at revision zero; legacy writes advance the same counter as v2 mutations. New receipts are stored in the existing actor-scoped `MutationReceipt` table. Publish the module and regenerated 2.1.0 API bindings together. Legacy direct create calls now require current sender permissions; API callers must use the actor-aware v2 adapters. No accounts or business IDs are cleared.

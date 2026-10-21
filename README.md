@@ -18,6 +18,8 @@ flags. Windows Hello depends on browser/platform WebAuthn support; real platform
 validation remains outstanding. Native refresh rotation and shared read/subscription
 recovery are implemented; see [session synchronization and deployment](docs/architecture/session-synchronization.md)
 for strict reuse/concurrency semantics, native-only opt-in and storage limitations.
+Local security checks, retained findings, deployment changes and the unresolved
+AppHost dependency advisory are recorded in [security validation](docs/architecture/security-validation.md).
 - **Real-time Sync**: SpacetimeDB client SDK with automatic data synchronization
 
 ### Project Structure

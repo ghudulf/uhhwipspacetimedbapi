@@ -187,7 +187,98 @@ Package metadata can change without source changes. Re-run the commands at relea
 time; "deprecated" is not synonymous with "vulnerable", and absence of a NuGet
 advisory is not proof that a package is maintained or safe.
 
-## Remaining checkpoints
+## Reproduce locally
 
-The reproducible runner and final validation results are being recorded next.
-The unresolved AppHost advisory remains a release gate requiring an owner decision.
+Install the declared SDKs/workloads (including Desktop SDK 10.0.201), DevSkim and,
+optionally, the CodeQL CLI/C# query pack through trusted distribution channels.
+The runner does not install tools or edit project/workflow files. Normal NuGet
+restore still requires access to the configured package feeds.
+
+```sh
+tools/validate-security.sh --output /absolute/fresh/external-artifacts
+# If tool shims are not on PATH:
+DEVSKIM=/absolute/path/devskim CODEQL=/absolute/path/codeql \
+  tools/validate-security.sh --codeql --output /absolute/fresh/with-codeql
+```
+
+Requires Bash, Python 3, Git and .NET. Output must be fresh and outside the
+repository; the default is a private temporary directory. `summary.json` records
+every exact command, working directory, exit code and artifact path. Keep these
+artifacts private: analyzer/compiler/CodeQL artifacts can contain source context.
+No source-based rule exclusions are applied.
+
+The script restores/audits all tracked projects, scans a snapshot of **tracked
+working-tree files** before compiler caches are created, builds the workflow's
+SecurityCodeScan target set with external props, and optionally creates/analyzes
+a fresh CodeQL database under a 40-minute create+analyze deadline. Commit new files
+before running so they are included in the snapshot; tracked symlinks require
+explicit review rather than following them outside the repository. Analyzer props
+exist only in the external artifact directory and are imported solely by `-p:`.
+
+Exit codes: **0** means no raw findings/deprecations; **1** means retained raw
+findings/deprecations (including justified pattern/quality alerts); **2** means a
+missing tool, failed build/scan or timeout. A documented false positive is not
+silently filtered to make the runner green. The completed default run executed
+**61 commands, zero execution errors**, and exited **1** for the retained findings.
+The optional CodeQL commands were separately run successfully as recorded above.
+
+| Check | Before | After |
+| --- | --- | --- |
+| SecurityCodeScan | 71 | 66 |
+| DevSkim, comparable tracked source | 281 | 281 |
+| CodeQL C# security-and-quality | 687 | 673 |
+| NuGet vulnerable package entries | 1 (AppHost only) | 1 (AppHost only) |
+| NuGet distinct deprecated package/version pairs | 48 | 48 |
+
+## Final local verification
+
+All passed on the changed application code with a fresh, isolated synthetic
+SpacetimeDB fixture (never a production database):
+
+- `dotnet run --project tests/Api.Contracts`, including the **198-endpoint** reflected
+  operation-coverage drift check and new HTTP/log/authorization regressions.
+- `dotnet run --project tests/Client.Presentation` and `tests/Client.Infrastructure`.
+- `dotnet run --project tests/Architecture.Integration`, then `--catalog-only`,
+  `--fleet-only`, `--bootstrap-only`, `--diagnostics-only` with `--no-build`.
+- Nonincremental ApiService and Desktop builds; Release WASI production publish
+  from `server`; generic MAUI build from its directory with
+  `-p:EnableMobileTargets=false`; Release fixture publish before fresh installation.
+- `git diff --check`; ShellCheck and Bash syntax validation of the new runner.
+- Warning comparison: **189 baseline / 189 current unique path+code+message
+  signatures, zero new signatures**, including NuGet/compiler/Avalonia diagnostics.
+
+Local evidence is retained outside the repository under `/tmp/opencode/`:
+`h11-security-codeql-{current,after}.sarif` and associated databases/logs,
+`h11-security-runner-result/summary.json` (package/DevSkim/SCS artifacts),
+`h11-security-full-verification.log`, `h10-security-final-*.log`, and
+`h11-security-warning-comparison.log`. These are this workspace's evidence, not
+files an owner must already possess to rerun the documented commands.
+
+## Re-enable the three workflows (owner action only)
+
+No `.github/` file or repository setting was changed here.
+
+1. Confirm Actions and code scanning are permitted for this repository/plan. In
+   **Settings → Actions → General**, allow the existing third-party/pinned actions
+   under the organization's policy and the required SARIF `security-events: write`
+   permission. Do not expose secrets to untrusted pull-request code.
+2. Open **Actions**, select **SecurityCodeScan**, **DevSkim**, then **CodeQL Advanced**.
+   For each disabled workflow, use **Enable workflow** (the banner or the workflow's
+   `…` menu). Enabling execution is not the same as approving/reviewing findings.
+3. These files have push/PR filters for `main` and schedules, but **no
+   `workflow_dispatch` trigger**. Do not expect a Run workflow button: trigger an
+   authorized push/PR to the configured branch or wait for the next schedule.
+4. Before relying on SecurityCodeScan CI, the owner must reconcile its installed
+   SDK list with Desktop's 10.0.201 pin and validate Windows workloads. Also review
+   SARIF upload permissions. Local Linux coverage does not certify that Windows job.
+5. CodeQL's existing Actions/C#/JavaScript matrix and default build-mode/query
+   configuration are broader/different from this manual API/Services C# suite.
+   Review those real CI runs separately; do not claim their success from this ledger.
+
+## Remaining release gates
+
+The AppHost KubernetesClient advisory and dependency deprecation migrations remain
+open; the major upgrade decision belongs to the owner. Real proxy/TLS/certificate,
+Windows/domain/browser/mobile validation, distributed deployment, and the actual
+GitHub workflow runs remain unverified. Quality/pattern alerts are retained with
+the dispositions above, not represented as zero findings or security certification.
