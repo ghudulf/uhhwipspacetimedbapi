@@ -33,6 +33,7 @@ public sealed record AttachRequest(string Token);
 public sealed record LoginCommand(string Username, string Password);
 public sealed record TotpCommand(string Code);
 public sealed record RefreshCommand(string RefreshToken);
+public sealed record LogoutCommand(string? RefreshToken = null);
 public sealed record CancelCommand(string RequestId);
 public sealed record AuthenticationReply(string State, string? Token = null, bool TotpEnabled = false, bool WebAuthnEnabled = false,
     string? RefreshToken = null, DateTime? ExpiresAt = null);

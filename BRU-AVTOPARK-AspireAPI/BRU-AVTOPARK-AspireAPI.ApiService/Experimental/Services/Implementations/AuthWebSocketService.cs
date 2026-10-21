@@ -187,6 +187,15 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
                         connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
+                case "auth:logout":
+                    var logoutProof = ReadOptionalString(root, "refreshToken");
+                    var logout = logoutProof == null ? LogoutResult.Successful() : await _orchestration.LogoutAsync(default, logoutProof);
+                    CancelQrSubscriptions(qrSubscriptions);
+                    claimsHolder.Claims = null;
+                    await WsSendAsync(webSocket, new { type = "auth:logged-out", requestId, success = logout.Success,
+                        error = logout.Success ? null : "invalid_refresh_token" }, sendLock, cts.Token);
+                    break;
+
                 case "auth:qr-status":
                     if (claimsHolder.Claims == null)
                     {
@@ -300,6 +309,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             requestId,
             success = true,
             token = result.Token,
+            refreshToken = result.RefreshToken,
             user = result.User == null ? null : new
             {
                 id = result.User.Id,

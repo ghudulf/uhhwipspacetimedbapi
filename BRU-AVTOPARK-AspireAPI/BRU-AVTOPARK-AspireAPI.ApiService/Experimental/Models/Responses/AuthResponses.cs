@@ -36,6 +36,8 @@ public record UserDto
 /// <summary>Login success payload including JWT token and optional claims map.</summary>
 public record LoginResponse
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public string Token { get; init; } = string.Empty;
     public UserDto User { get; init; } = new();
     public Dictionary<string, object>? Claims { get; init; }

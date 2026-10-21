@@ -142,6 +142,8 @@ builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.Q
 builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowOptions>()
     .Bind(builder.Configuration.GetSection("Authentication:Providers"));
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowBroker>();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.RefreshRateBudget>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens>();
 builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>, BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptionsValidator>();
 builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>()
     .Bind(builder.Configuration.GetSection("Authentication:Entra")).ValidateOnStart();

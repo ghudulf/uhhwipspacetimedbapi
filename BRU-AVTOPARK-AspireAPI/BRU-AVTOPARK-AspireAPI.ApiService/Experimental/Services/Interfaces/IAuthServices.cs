@@ -315,7 +315,7 @@ public interface IAuthOrchestrationService
     Task<PasswordChangeResult> ChangePasswordAsync(SpacetimeDB.Identity userId, string currentPassword, string newPassword);
 
     /// <summary>Logs out user.</summary>
-    Task<LogoutResult> LogoutAsync(SpacetimeDB.Identity userId);
+    Task<LogoutResult> LogoutAsync(SpacetimeDB.Identity userId, string? refreshToken = null);
 
     /// <summary>Refreshes JWT token.</summary>
     Task<RefreshTokenResult> RefreshTokenAsync(string refreshToken);
@@ -352,6 +352,8 @@ public record ClaimResult(bool Success, string? ErrorMessage = null);
 /// <summary>Result of login orchestration including 2FA detection.</summary>
 public record LoginResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }
@@ -386,6 +388,8 @@ public record LoginResult
 /// <summary>Result of TOTP validation orchestration.</summary>
 public record TotpValidationResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }
@@ -402,6 +406,8 @@ public record TotpValidationResult
 /// <summary>Result of WebAuthn validation orchestration.</summary>
 public record WebAuthnValidationResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }
@@ -418,6 +424,8 @@ public record WebAuthnValidationResult
 /// <summary>Result of magic link validation orchestration.</summary>
 public record MagicLinkValidationResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }
@@ -679,6 +687,8 @@ public record QRLoginResult
 /// <summary>Result of QR login validation orchestration.</summary>
 public record QRValidationResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }
@@ -834,6 +844,8 @@ public record WebAuthnLoginOptionsResult
 /// <summary>Result of WebAuthn login completion.</summary>
 public record WebAuthnLoginResult
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? RefreshToken { get; init; }
     public bool Success { get; init; }
     public string? ErrorMessage { get; init; }
     public string? Token { get; init; }

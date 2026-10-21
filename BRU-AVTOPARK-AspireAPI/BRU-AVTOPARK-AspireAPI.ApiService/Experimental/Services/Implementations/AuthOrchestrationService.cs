@@ -37,6 +37,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     private readonly IProfileService _profileService;
     private readonly IOpenIdConnectService _openIdConnectService;
     private readonly ILogger<AuthOrchestrationService> _logger;
+    private readonly BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens? _nativeRefresh;
 
     public AuthOrchestrationService(
         IAuthenticationService authService,
@@ -51,7 +52,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         IQRAuthenticationService qrAuthService,
         IProfileService profileService,
         IOpenIdConnectService openIdConnectService,
-        ILogger<AuthOrchestrationService> logger)
+        ILogger<AuthOrchestrationService> logger,
+        BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens? nativeRefresh = null)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -66,6 +68,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         _profileService = profileService ?? throw new ArgumentNullException(nameof(profileService));
         _openIdConnectService = openIdConnectService ?? throw new ArgumentNullException(nameof(openIdConnectService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _nativeRefresh = nativeRefresh;
     }
 
     /// <inheritdoc />
@@ -290,8 +293,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(approverUserId));
         if (user?.IsActive != true) return LoginResult.Failed("qr_login_failed");
         if (!approvedByAuthenticatedSession) return await CompletePrimaryAuthenticationAsync(user);
-        var (token, dto, claims) = await GenerateAuthTokenAsync(user);
-        return LoginResult.Successful(token, dto, claims);
+        return await FinalizeLoginAsync(user);
     }
 
     private async Task<LoginResult> CompletePrimaryAuthenticationAsync(UserProfile user)
@@ -314,10 +316,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 if (settings.WebAuthnEnabled)
                 {
                     // Check if user has any active WebAuthn credentials
-                    var conn = _spacetimeService.GetConnection();
-                    var credentials = conn.Db.WebAuthnCredential.Iter()
-                        .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
-                        .ToList();
+                    var credentials = await _webAuthnService.GetUserCredentialsAsync(user.UserId);
 
                     if (!credentials.Any())
                     {
@@ -340,10 +339,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 6: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
             _logger.LogInformation("Login successful for user: {UserFingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(user.UserId.ToString()));
-            return LoginResult.Successful(jwtToken, userDto, claims);
+            return await FinalizeLoginAsync(user);
     }
 
     /// <inheritdoc />
@@ -374,8 +371,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 4: Get user profile by Identity
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId.Value));
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(userId.Value));
             if (user is null)
             {
                 _logger.LogError("User not found after successful TOTP validation: {UserId}", userId);
@@ -383,10 +379,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 5: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("TOTP validation successful for user: {UserId}", userId);
-            return TotpValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return TotpValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -411,8 +405,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user profile by Identity to get username for WebAuthn validation
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId.Value));
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(userId.Value));
             if (user is null)
             {
                 _logger.LogError("User not found for WebAuthn validation: {UserId}", userId);
@@ -433,10 +426,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 5: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(validatedUser);
-
-            _logger.LogInformation("WebAuthn validation successful for user: {UserId}", userId);
-            return WebAuthnValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(validatedUser);
+            return WebAuthnValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -464,10 +455,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             await _magicLinkService.MarkMagicLinkAsUsedAsync(token);
 
             // Step 3: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("Magic link validation successful for user: {UserId}", user.UserId);
-            return MagicLinkValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return MagicLinkValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -1564,10 +1553,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("QR login validation successful for user: {Username}", user.Login);
-            return QRValidationResult.Successful(jwtToken, userDto);
+            var final = await FinalizeLoginAsync(user);
+            return QRValidationResult.Successful(final.Token!, final.User!) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -1719,6 +1706,13 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// </summary>
     /// <param name="user">The authenticated user profile</param>
     /// <returns>Tuple containing JWT token, UserDto, and token claims</returns>
+    private async Task<LoginResult> FinalizeLoginAsync(UserProfile user)
+    {
+        if (!user.IsActive) throw new InvalidOperationException("Active account required.");
+        var (token, dto, claims) = await GenerateAuthTokenAsync(user);
+        var refresh = _nativeRefresh == null ? null : await _nativeRefresh.IssueAsync(user.UserId);
+        return LoginResult.Successful(token, dto, claims) with { RefreshToken = refresh };
+    }
     private async Task<(string jwtToken, UserDto userDto, Dictionary<string, object> claims)> GenerateAuthTokenAsync(UserProfile user)
     {
         // Step 1: Generate JWT token using TokenService (which queries DB for roles/permissions)
@@ -1849,9 +1843,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            return WebAuthnLoginResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return WebAuthnLoginResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -1927,21 +1920,32 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     }
 
     /// <inheritdoc />
-    public async Task<LogoutResult> LogoutAsync(Identity userId)
+    public async Task<LogoutResult> LogoutAsync(Identity userId, string? refreshToken = null)
     {
-        _logger.LogInformation("Logout orchestration started for user ID: {UserId}", userId);
-        // TODO: Implement logout logic
-        await Task.CompletedTask;
-        return LogoutResult.Successful();
+        try
+        {
+            if (refreshToken != null) await (_nativeRefresh ?? throw new InvalidOperationException()).RevokeAsync(refreshToken);
+            return LogoutResult.Successful();
+        }
+        catch { return LogoutResult.Failed("invalid_refresh_token"); }
     }
 
     /// <inheritdoc />
     public async Task<RefreshTokenResult> RefreshTokenAsync(string refreshToken)
     {
-        _logger.LogInformation("Token refresh orchestration started");
-        // TODO: Implement token refresh logic
-        await Task.CompletedTask;
-        return RefreshTokenResult.Failed("Not implemented");
+        try
+        {
+            var rotation = _nativeRefresh == null ? null : await _nativeRefresh.RotateAsync(refreshToken);
+            if (rotation == null) return RefreshTokenResult.Failed("invalid_refresh_token");
+            var (access, _, _) = await GenerateAuthTokenAsync(rotation.User);
+            var expires = new JwtSecurityTokenHandler().ReadJwtToken(access).ValidTo;
+            return RefreshTokenResult.Successful(access, rotation.RefreshToken, expires);
+        }
+        catch
+        {
+            _logger.LogWarning("Native refresh denied");
+            return RefreshTokenResult.Failed("invalid_refresh_token");
+        }
     }
 
     /// <inheritdoc />

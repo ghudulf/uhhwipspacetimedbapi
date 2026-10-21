@@ -184,7 +184,15 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
         {
             case "capabilities": return Capabilities();
             case "ping": return new { state = _state, utc = DateTimeOffset.UtcNow };
-            case "auth.logout": ResetSession(); return new AuthenticationReply(_state);
+            case "auth.logout":
+                var logout = command.Payload.Deserialize<LogoutCommand>(ApiProtocol.Json) ?? new();
+                try
+                {
+                    if (logout.RefreshToken != null && !(await authentication.LogoutAsync(default, logout.RefreshToken)).Success)
+                        throw new OperationException("invalid_refresh_token");
+                }
+                finally { ResetSession(); }
+                return new AuthenticationReply(_state);
             case "auth.refresh":
                 if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
                 var refresh = command.Payload.Deserialize<RefreshCommand>(ApiProtocol.Json) ?? throw new OperationException("validation_failed");
@@ -225,7 +233,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 }
                 if (!authenticated.Success || authenticated.Token == null) throw new OperationException("invalid_credentials");
                 await AttachAsync(authenticated.Token, ct);
-                return new AuthenticationReply(_state, authenticated.Token);
+                return new AuthenticationReply(_state, authenticated.Token, RefreshToken: authenticated.RefreshToken);
             case "auth.totp":
                 if (runtimeFlags != null && !await runtimeFlags.GetFlagAsync("TotpValidateEndpointEnabled")) throw new OperationException("endpoint_unavailable");
                 if (!admission.TryAuthenticate(address)) throw new OperationException("rate_limited");
@@ -236,7 +244,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 ct.ThrowIfCancellationRequested();
                 if (!completed.Success || completed.Token == null) throw new OperationException("invalid_credentials");
                 await AttachAsync(completed.Token, ct);
-                return new AuthenticationReply(_state, completed.Token);
+                return new AuthenticationReply(_state, completed.Token, RefreshToken: completed.RefreshToken);
         }
         if (command.Operation != "subscriptions.open" && command.Operation != "subscriptions.close" && !operations.Contains(command.Operation)) throw new OperationException("unsupported_operation");
         if (_token == null) throw new OperationException("unauthenticated");

@@ -212,7 +212,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "Authentication successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -625,7 +625,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "TOTP validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -874,7 +874,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "WebAuthn login successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -967,7 +967,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "WebAuthn validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -1237,7 +1237,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "Magic link validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -1456,7 +1456,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "QR login successful",
                 Data = new BRU_AVTOPARK.Models.Responses.LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = new Dictionary<string, object>(),
                     User = new BRU_AVTOPARK.Models.Responses.UserDto
                     {
@@ -3347,7 +3347,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout()
+        [Microsoft.AspNetCore.Cors.DisableCors, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Logout([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] NativeLogoutRequest? request = null)
         {
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableLogoutRefactoring), _featureFlags.Value.EnableLogoutRefactoring))
             {
@@ -3371,7 +3372,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
-            var result = await _authOrchestrationService.LogoutAsync(identity);
+            var result = await _authOrchestrationService.LogoutAsync(identity, request?.RefreshToken);
 
             if (!result.Success)
             {
@@ -3400,6 +3401,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// </remarks>
         [HttpPost("refresh")]
         [AllowAnonymous]
+        [Microsoft.AspNetCore.Cors.DisableCors, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None), RequestSizeLimit(4096)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
             if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableRefreshTokenRefactoring), _featureFlags.Value.EnableRefreshTokenRefactoring))
@@ -3443,6 +3445,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
             });
         }
+        public sealed record NativeLogoutRequest(string? RefreshToken);
 
         /// <summary>
         /// GET /api/auth/settings - Get user authentication settings
