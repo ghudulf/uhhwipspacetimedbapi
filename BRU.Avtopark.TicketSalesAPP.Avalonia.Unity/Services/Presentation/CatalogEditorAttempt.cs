@@ -28,6 +28,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
     public bool IsCommitted { get; private set; }
     public bool CanReconcile { get; private set; }
     public bool CanReload { get; private set; }
+    public event Action? Changed;
 
     public CatalogEditorAttempt(TRow? original, Func<TRow?, TDraft> draft, Func<TRow, ulong> revision,
         Func<TDraft, string?> validate, Func<TDraft, ulong?, string, CancellationToken, Task<MutationResult>> execute,
@@ -62,7 +63,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
                 : CanReconcile ? "Результат неизвестен. Проверьте его перед повтором; черновик сохранён."
                 : "Изменение отклонено. Проверьте поля и права доступа. Черновик сохранён.";
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; Changed?.Invoke(); }
     }
     public async Task ReconcileAsync(CancellationToken ct)
     {
@@ -83,7 +84,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
             Message = "Не удалось проверить результат. Черновик сохранён; повторите проверку.";
             Log.Debug("Catalog receipt {OperationId}: {Code}", OperationId, exception is ApplicationCommandException failure ? failure.Code : exception.GetType().Name);
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; Changed?.Invoke(); }
     }
     public async Task ReloadAsync(CancellationToken ct)
     {
@@ -92,7 +93,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
         try
         {
             Current = await _readCurrent(ct);
-            Message = "Актуальная запись загружена. Черновик остаётся в полях; замените его только явным действием.";
+            Message = $"Сейчас на сервере: {Current}. Черновик остаётся в полях; замените его только явным действием.";
             Log.Debug("Catalog conflict read {OperationId}: {Code}, revision {Revision}, row {@Row}", OperationId, "ok", _revision(Current), Current);
         }
         catch (Exception exception)
@@ -100,7 +101,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
             Message = "Не удалось загрузить актуальную запись. Черновик сохранён.";
             Log.Debug("Catalog conflict read {OperationId}: {Code}", OperationId, exception is ApplicationCommandException failure ? failure.Code : exception.GetType().Name);
         }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; Changed?.Invoke(); }
     }
     public void ReplaceWithCurrent()
     {
@@ -108,5 +109,6 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
         Draft = _draft(Current); ExpectedRevision = _revision(Current); Current = null;
         CanReload = false; IsBlocked = false; _newAttempt = true;
         Message = "Актуальные данные загружены. Проверьте изменения перед сохранением.";
+        Changed?.Invoke();
     }
 }

@@ -185,6 +185,8 @@ internal static class EmployeeMaintenancePresentationTests
         Assert(ids.Count == 2 && ids[0] != uncertainId && attempt.CanReconcile && attempt.IsBlocked, "uncertain attempt ID/block wrong");
         await attempt.SubmitAsync(() => true, stop); await attempt.ReconcileAsync(stop);
         Assert(ids.Count == 2 && attempt.OperationId == uncertainId && attempt.IsBlocked && !attempt.IsCommitted && ReferenceEquals(uncertainDraft, attempt.Draft), "missing receipt permitted replay or lost draft/ID");
+        var drafts = new CatalogEditorDrafts<TRow, TDraft>();
+        Assert(ReferenceEquals(drafts.Get(1, () => attempt), drafts.Get(1, () => throw new Exception("uncertain dialog reopening created a new attempt"))), "dialog reopening lost uncertain draft");
         receiptExists = true; await attempt.ReconcileAsync(stop);
         Assert(attempt.IsCommitted && ids.Count == 2 && attempt.OperationId == uncertainId, "receipt did not settle same attempt without replay");
 
@@ -201,6 +203,9 @@ internal static class EmployeeMaintenancePresentationTests
         var saving = inFlight.SubmitAsync(() => true, stop); var stable = inFlight.OperationId;
         await inFlight.SubmitAsync(() => true, stop); Assert(pendingCount == 1 && inFlight.OperationId == stable, "concurrent save changed operation ID or duplicated mutation");
         pending.SetResult(Result(stable)); await saving; Assert(inFlight.IsCommitted, "known mutation success not settled");
+        Assert(ReferenceEquals(drafts.Get(1, () => inFlight), inFlight), "settled attempt was retained on reopening");
+        ApiClientService.Instance.AuthToken = Guid.NewGuid().ToString("N");
+        Assert(ReferenceEquals(drafts.Get(1, () => create), create), "prior-session draft leaked into a new session");
     }
     private sealed class Capture : ILogEventSink { public List<LogEvent> Events { get; } = []; public void Emit(LogEvent value) => Events.Add(value); }
     private static async Task Until(Func<bool> predicate, CancellationToken ct) { while (!predicate()) await Task.Delay(1, ct); }

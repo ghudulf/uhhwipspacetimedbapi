@@ -19,6 +19,7 @@ public sealed class EmployeeDraft
 
 public sealed class EmployeeEditorService(ControlDialogHost host)
 {
+    private readonly CatalogEditorDrafts<EmployeeRow, EmployeeDraft> _drafts = new();
     public static string? Validate(EmployeeDraft draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name)) return "Имя сотрудника обязательно.";
@@ -52,12 +53,12 @@ public sealed class EmployeeEditorService(ControlDialogHost host)
         var patronym = CatalogEditorDialog.Text("Отчество", 200);
         var job = new ComboBox { ItemsSource = jobs, ItemTemplate = new global::Avalonia.Controls.Templates.FuncDataTemplate<JobRow>((row, _) => new TextBlock { Text = row?.JobTitle }) };
         AutomationProperties.SetName(job, "Должность");
-        var attempt = new CatalogEditorAttempt<EmployeeRow, EmployeeDraft>(original, DraftFrom, row => row.Revision, Validate,
+        var attempt = _drafts.Get(original?.EmployeeId ?? 0, () => new CatalogEditorAttempt<EmployeeRow, EmployeeDraft>(original, DraftFrom, row => row.Revision, Validate,
             (draft, revision, id, cancellation) => original == null
                 ? ApplicationMutationClient.ExecuteAsync("employees.create", new CreateEmployeeCommand(draft.Name, draft.Surname, draft.Patronym, draft.JobId), id, origin, token, cancellation)
                 : ApplicationMutationClient.ExecuteAsync("employees.update", new UpdateEmployeeCommand(original.EmployeeId, revision, draft.Name, draft.Surname, draft.Patronym, draft.JobId), id, origin, token, cancellation),
             (id, cancellation) => ApplicationQueryClient.ReadAsync<ReceiptRequest, MutationResult?>("mutations.receipt", new(id), cancellation),
-            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, EmployeeRow>("employees.get", new(original!.EmployeeId), cancellation));
+            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, EmployeeRow>("employees.get", new(original!.EmployeeId), cancellation)));
         return await CatalogEditorDialog.ShowAsync(host, original == null ? "Добавить сотрудника" : "Редактировать сотрудника", attempt,
             [surname, name, patronym, job],
             draft => { draft.Name = name.Text ?? ""; draft.Surname = surname.Text ?? ""; draft.Patronym = patronym.Text ?? ""; draft.JobId = (job.SelectedItem as JobRow)?.JobId ?? 0; },

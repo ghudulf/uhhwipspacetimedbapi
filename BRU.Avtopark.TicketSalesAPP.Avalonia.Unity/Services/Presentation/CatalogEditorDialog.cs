@@ -52,16 +52,19 @@ internal static class CatalogEditorDialog
             await action();
             if (OwnsSession()) Update();
         }
+        void AttemptChanged() => global::Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (OwnsSession()) Update(); });
+        attempt.Changed += AttemptChanged;
         save.Click += async (_, _) => await Run(async () => { readFields(attempt.Draft); await attempt.SubmitAsync(() => OwnsSession() && canSubmit(), closed.Token); });
         reconcile.Click += async (_, _) => await Run(() => attempt.ReconcileAsync(closed.Token));
         reload.Click += async (_, _) => await Run(() => attempt.ReloadAsync(closed.Token));
         replace.Click += (_, _) => { if (!OwnsSession()) return; attempt.ReplaceWithCurrent(); writeFields(attempt.Draft); Update(); };
         writeFields(attempt.Draft);
+        Update();
         try
         {
             await host.ShowAsync(title, new ScrollViewer { Content = panel }, closed.Token, () => !attempt.IsBusy);
             return attempt.IsCommitted && token == api.AuthToken && origin == api.CurrentBaseUrl && !cancellationToken.IsCancellationRequested;
         }
-        finally { closed.Cancel(); api.OnAuthTokenChanged -= SessionChanged; }
+        finally { attempt.Changed -= AttemptChanged; if (!attempt.IsBusy) readFields(attempt.Draft); closed.Cancel(); api.OnAuthTokenChanged -= SessionChanged; }
     }
 }

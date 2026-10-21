@@ -23,6 +23,7 @@ public sealed class MaintenanceDraft
 
 public sealed class MaintenanceEditorService(ControlDialogHost host)
 {
+    private readonly CatalogEditorDrafts<MaintenanceRow, MaintenanceDraft> _drafts = new();
     public static string? Validate(MaintenanceDraft draft)
     {
         if (draft.BusId == 0) return "Выберите автобус.";
@@ -67,14 +68,14 @@ public sealed class MaintenanceEditorService(ControlDialogHost host)
         var roadworthiness = CatalogEditorDialog.Text("Состояние", 200);
         var type = CatalogEditorDialog.Text("Тип обслуживания", 200);
         var mileage = CatalogEditorDialog.Text("Пробег", 100);
-        var attempt = new CatalogEditorAttempt<MaintenanceRow, MaintenanceDraft>(original, DraftFrom, row => row.Revision, Validate,
+        var attempt = _drafts.Get(original?.MaintenanceId ?? 0, () => new CatalogEditorAttempt<MaintenanceRow, MaintenanceDraft>(original, DraftFrom, row => row.Revision, Validate,
             (draft, revision, id, cancellation) => original == null
                 ? ApplicationMutationClient.ExecuteAsync("maintenance.create", new CreateMaintenanceCommand(draft.BusId, Milliseconds(draft.LastServiceDate), draft.ServiceEngineer, draft.FoundIssues,
                     Milliseconds(draft.NextServiceDate), draft.Roadworthiness, draft.MaintenanceType), id, origin, token, cancellation)
                 : ApplicationMutationClient.ExecuteAsync("maintenance.update", new UpdateMaintenanceCommand(original.MaintenanceId, revision, draft.BusId, Milliseconds(draft.LastServiceDate), draft.ServiceEngineer,
                     draft.FoundIssues, Milliseconds(draft.NextServiceDate), draft.Roadworthiness, draft.MaintenanceType, draft.Mileage), id, origin, token, cancellation),
             (id, cancellation) => ApplicationQueryClient.ReadAsync<ReceiptRequest, MutationResult?>("mutations.receipt", new(id), cancellation),
-            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, MaintenanceRow>("maintenance.get", new(original!.MaintenanceId), cancellation));
+            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, MaintenanceRow>("maintenance.get", new(original!.MaintenanceId), cancellation)));
         var fields = new List<Control> { bus, last, next, engineer, issues, roadworthiness, type };
         if (original != null) fields.Add(mileage);
         return await CatalogEditorDialog.ShowAsync(host, original == null ? "Добавить запись обслуживания" : "Редактировать запись обслуживания", attempt, fields.ToArray(),
