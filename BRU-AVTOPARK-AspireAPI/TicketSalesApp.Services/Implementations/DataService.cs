@@ -24,7 +24,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Handle different entity types
                 if (typeof(T) == typeof(UserProfile))
@@ -75,6 +76,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogWarning("Unsupported entity type: {Type}", typeof(T).Name);
                 return null;
+                });
             }
             catch (Exception ex)
             {
@@ -87,7 +89,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Handle different entity types
                 if (typeof(T) == typeof(UserProfile))
@@ -128,6 +131,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogWarning("Unsupported entity type: {Type}", typeof(T).Name);
                 return new List<T>();
+                });
             }
             catch (Exception ex)
             {
@@ -142,7 +146,6 @@ namespace TicketSalesApp.Services.Implementations
             {
                 if (typeof(T) == typeof(UserProfile))
                     throw new InvalidOperationException("User imports require an explicit password through the normal RegisterUser account-registration path. Profile data is not a credential.");
-                var conn = _spacetimeService.GetConnection();
                 
                 // Handle different entity types
                 if (typeof(T) == typeof(Role))
@@ -152,11 +155,9 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
 
                     // Call the CreateRole reducer
-                    conn.Reducers.CreateRoleReducer(role.LegacyRoleId, role.Name, role.Description, role.IsSystem, role.Priority, null);
-                    
-                    // Find the newly created role
-                    var newRole = conn.Db.Role.Iter()
-                        .FirstOrDefault(r => r.Name == role.Name);
+                    var newRole = await _spacetimeService.ExecuteReducerAsync(
+                        new Reducer.CreateRoleReducer(role.LegacyRoleId, role.Name, role.Description, role.IsSystem, role.Priority, null),
+                        c => c.Db.Role.Iter().Single(r => r.Name == role.Name));
                     
                     return newRole as T;
                 }
@@ -167,11 +168,9 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the AddNewPermission reducer
-                    conn.Reducers.AddNewPermission(permission.Name, permission.Description, permission.Category, null);
-                    
-                    // Find the newly created permission
-                    var newPermission = conn.Db.Permission.Iter()
-                        .FirstOrDefault(p => p.Name == permission.Name);
+                    var newPermission = await _spacetimeService.ExecuteReducerAsync(
+                        new Reducer.AddNewPermission(permission.Name, permission.Description, permission.Category, null),
+                        c => c.Db.Permission.Iter().Single(p => p.Name == permission.Name));
                     
                     return newPermission as T;
                 }
@@ -182,11 +181,8 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the CreateBus reducer
-                    conn.Reducers.CreateBus(bus.Model, bus.RegistrationNumber, null);
-                    
-                    // Find the newly created bus
-                    var newBus = conn.Db.Bus.Iter()
-                        .FirstOrDefault(b => b.Model == bus.Model);
+                    var newBus = await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateBus(bus.Model, bus.RegistrationNumber, null),
+                        c => c.Db.Bus.Iter().Single(b => b.RegistrationNumber == bus.RegistrationNumber));
                     
                     return newBus as T;
                 }
@@ -205,7 +201,6 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
                 
                 // Handle different entity types
                 if (typeof(T) == typeof(UserProfile))
@@ -215,7 +210,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the UpdateUser reducer
-                    conn.Reducers.UpdateUser(
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateUser(
                         user.UserId,
                         user.Login,
                         null, // Profile imports never reset credentials.
@@ -224,7 +219,7 @@ namespace TicketSalesApp.Services.Implementations
                         user.Email,
                         user.IsActive,
                         null  // actingUser
-                    );
+                    ), _ => true);
                     
                     // Return the updated user
                     return await GetAsync<T>(user.LegacyUserId);
@@ -236,7 +231,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
 
                     // Call the UpdateRole reducer
-                    conn.Reducers.UpdateRoleReducer(role.RoleId, role.Name, role.Description, role.LegacyRoleId, role.Priority, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateRoleReducer(role.RoleId, role.Name, role.Description, role.LegacyRoleId, role.Priority, null), _ => true);
                     
                     // Return the updated role
                     return await GetAsync<T>((uint)role.LegacyRoleId);
@@ -248,7 +243,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the UpdatePermission reducer
-                    conn.Reducers.UpdatePermission(permission.PermissionId, permission.Name, permission.Description, permission.Category, permission.IsActive, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdatePermission(permission.PermissionId, permission.Name, permission.Description, permission.Category, permission.IsActive, null), _ => true);
                     
                     // Return the updated permission
                     return await GetAsync<T>(permission.PermissionId);
@@ -260,7 +255,7 @@ namespace TicketSalesApp.Services.Implementations
                         throw new ArgumentException("Invalid entity type");
                     
                     // Call the UpdateBus reducer
-                    conn.Reducers.UpdateBus(bus.BusId, bus.Model, bus.RegistrationNumber, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateBus(bus.BusId, bus.Model, bus.RegistrationNumber, null), _ => true);
                     
                     // Return the updated bus
                     return await GetAsync<T>(bus.BusId);
@@ -280,53 +275,52 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
                 
                 // Handle different entity types
                 if (typeof(T) == typeof(UserProfile))
                 {
                     // Find user by legacy ID
-                    var userProfile = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.LegacyUserId == id);
+                    var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.LegacyUserId == id));
                     
                     if (userProfile == null)
                         return false;
                     
                     // Call the DeleteUser reducer
-                    conn.Reducers.DeleteUser(userProfile.UserId, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteUser(userProfile.UserId, null), _ => true);
                     return true;
                 }
                 else if (typeof(T) == typeof(Role))
                 {
                     // Find role by ID
-                    var role = conn.Db.Role.RoleId.Find(id);
+                    var role = await _spacetimeService.ReadAsync(c => c.Db.Role.RoleId.Find(id));
                     if (role == null)
                         return false;
                     
                     // Call the DeleteRole reducer
-                    conn.Reducers.DeleteRole(role.RoleId, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteRole(role.RoleId, null), _ => true);
                     return true;
                 }
                 else if (typeof(T) == typeof(Permission))
                 {
                     // Find permission by ID
-                    var permission = conn.Db.Permission.PermissionId.Find(id);
+                    var permission = await _spacetimeService.ReadAsync(c => c.Db.Permission.PermissionId.Find(id));
                     if (permission == null)
                         return false;
                     
                     // Call the DeletePermission reducer
-                    conn.Reducers.DeletePermission(permission.PermissionId, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeletePermission(permission.PermissionId, null), _ => true);
                     return true;
                 }
                 else if (typeof(T) == typeof(Bus))
                 {
                     // Find bus by ID
-                    var bus = conn.Db.Bus.BusId.Find(id);
+                    var bus = await _spacetimeService.ReadAsync(c => c.Db.Bus.BusId.Find(id));
                     if (bus == null)
                         return false;
                     
                     // Call the DeleteBus reducer
-                    conn.Reducers.DeleteBus(bus.BusId, null);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteBus(bus.BusId, null), _ => true);
                     return true;
                 }
                 

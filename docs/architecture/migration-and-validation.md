@@ -217,10 +217,10 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 
 | File | Before | After |
 | --- | --- | --- |
-| Services/AdminActionLogger.cs | 3 raw accesses; 1 dispatch | Pending |
+| Services/AdminActionLogger.cs | 3 raw accesses; 1 dispatch | Queued materialized reads and committed audit write with request cancellation; no invented receipt |
 | Services/AuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
 | Services/AuthorizationStore.cs | 14 raw accesses/accessor declarations; 4 dispatches | Pending |
-| Services/DataService.cs | 5 raw accesses; 11 dispatches | Pending |
+| Services/DataService.cs | 5 raw accesses; 11 dispatches | Queued materialized reads; Core-backed writes committed with typed readback; no invented receipts |
 | Services/DatabaseInstallationProvisioner.cs | 1 temporary-owner dispatch | Pending |
 | Services/MagicLinkService.cs | 3 raw accesses; 2 dispatches | Queued reads; committed create/use, no send before commit |
 | Services/OpenIdConnectService.cs | 1 raw access | Pending |
@@ -230,7 +230,7 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Queued reads/committed Core-backed writes; create uses existing v2 receipt, removes notes tagging and async-void callbacks; disposal cancels service lifetime |
 | Services/SettingsService.cs | 6 raw accesses; 5 dispatches; fallback disables 2FA on errors | Queued reads/committed writes; errors no longer fabricate 2FA-disabled defaults |
 | Services/SpacetimeDBService.cs | 1 public raw accessor declaration | Serialized SDK owner; public accessor removal pending |
-| Services/TicketSalesService.cs | 9 raw accesses | Pending |
+| Services/TicketSalesService.cs | 9 raw accesses | Queued reads; report joins and aggregation run within one serialized read callback |
 | Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Queued reads/committed Core-backed writes; obsolete payment-field update returns false instead of unsubmitted success |
 | Services/TotpService.cs | 6 raw accesses; 5 dispatches | Queued reads/committed writes; challenge consumption uses atomic replay-checking reducer; HMAC disposed |
 | Services/UserService.cs | 8 raw accesses; 3 dispatches | Queued materialized reads; committed v2 create allocates distinct account identity; Core-backed update/delete; no sleep polling |
@@ -253,3 +253,10 @@ exceptions only. A separate diagnostics guard checks credential-bearing log
 templates/arguments; outcome words and fingerprints are not credential values.
 The final inventory must replace Pending with verified dispositions; until then
 this table records remaining work, not completed migration.
+
+The serialized database boundary now detaches generated row results using the
+pinned SDK's BSATN row serializer, including row lists/arrays and tuple results,
+before releasing them to callers. Mutating a returned entity cannot modify the
+SDK cache. Application DTO projections must contain scalar/projected data, not
+SDK table handles. Real-fixture tests check that modifying a returned permission
+does not alter a subsequent read until the update reducer commits.

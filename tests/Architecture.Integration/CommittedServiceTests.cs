@@ -9,6 +9,23 @@ using TicketSalesApp.Services.Interfaces;
 
 internal static class CommittedServiceTests
 {
+    public static async Task DataAndAuditAsync(ISpacetimeDBService db, Identity owner)
+    {
+        var data = new DataService(db, NullLogger<DataService>.Instance);
+        var name = "synthetic.data." + Guid.NewGuid().ToString("N");
+        var permission = await data.AddAsync(new Permission { Name = name, Description = "before", Category = "Test" })
+            ?? throw new Exception("DataService add returned before commit");
+        permission.Description = "after";
+        Check((await data.GetAsync<Permission>(permission.PermissionId))!.Description == "before", "service result leaked a mutable cache row");
+        Check((await data.UpdateAsync(permission))!.Description == "after", "DataService update readback stale");
+        await Reject(() => data.AddAsync(new Permission { Name = name, Description = "duplicate", Category = "Test" }));
+        Check(await data.DeleteAsync<Permission>(permission.PermissionId) && await data.GetAsync<Permission>(permission.PermissionId) == null, "DataService delete not committed");
+        var audit = new AdminActionLogger(db, NullLogger<AdminActionLogger>.Instance, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        await audit.LogActionAsync(owner.ToString(), name, "synthetic committed audit", owner);
+        Check((await audit.GetActionsByTypeAsync(name)).Count == 1, "admin audit returned before commit");
+        Console.WriteLine("PASS generic data service committed add/update/delete and duplicate rejection; admin audit committed before readback");
+    }
+
     public static async Task TicketsAndSchedulesAsync(ISpacetimeDBService db, Identity owner, string ownerToken)
     {
         using var http = new HttpClient();

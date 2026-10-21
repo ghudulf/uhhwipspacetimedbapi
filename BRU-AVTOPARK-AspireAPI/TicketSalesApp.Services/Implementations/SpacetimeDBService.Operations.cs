@@ -51,7 +51,7 @@ public partial class SpacetimeDBService
                 // SDK 2.1.0 applies this call's cache changes before dispatching its own-reducer callback.
                 if (ctx.Event.Status is Status.Committed)
                 {
-                    try { completion.TrySetResult(committedResult(conn)); }
+                    try { completion.TrySetResult(DatabaseSnapshots.Detach(committedResult(conn))); }
                     catch (Exception ex) { completion.TrySetException(ex); }
                     _logger.LogInformation("Reducer committed {Operation} {CorrelationId} in {ElapsedMs}ms", operation, correlation, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
                 }
@@ -90,7 +90,7 @@ public partial class SpacetimeDBService
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var work = new QueuedWork(conn => completion.TrySetResult(query(conn)), ex => completion.TrySetException(ex));
+        var work = new QueuedWork(conn => completion.TrySetResult(DatabaseSnapshots.Detach(query(conn))), ex => completion.TrySetException(ex));
         Enqueue(work);
         try { return await completion.Task.WaitAsync(OperationTimeout, cancellationToken).ConfigureAwait(false); }
         finally { lock (work.Gate) work.Abandoned = true; }

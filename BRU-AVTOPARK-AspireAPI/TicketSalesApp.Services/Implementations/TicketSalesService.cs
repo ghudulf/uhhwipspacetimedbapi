@@ -34,8 +34,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving all sales");
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter().ToList();
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter().ToList());
             }
             catch (Exception ex)
             {
@@ -51,7 +50,8 @@ namespace TicketSalesApp.Services.Implementations
                 page = Math.Max(1, page);
                 pageSize = Math.Clamp(pageSize, 1, 1000);
                 _logger.LogInformation("Retrieving sales page {Page} (size {PageSize})", page, pageSize);
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
 
                 // Single-pass scan: count total and collect only the requested page slice.
                 // Use safe long calculation to avoid overflow
@@ -76,6 +76,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 return (items, totalCount);
+                });
             }
             catch (Exception ex)
             {
@@ -89,8 +90,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving sale by ID: {SaleId}", saleId);
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.SaleId.Find(saleId);
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.SaleId.Find(saleId));
             }
             catch (Exception ex)
             {
@@ -104,10 +104,9 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving sales for ticket: {TicketId}", ticketId);
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter()
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
                     .Where(s => s.TicketId == ticketId)
-                    .ToList();
+                    .ToList());
             }
             catch (Exception ex)
             {
@@ -127,16 +126,15 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
-                var conn = _spacetimeService.GetConnection();
 
                 // Convert to UTC before creating DateTimeOffset to avoid relabeling local time as UTC.
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate.ToUniversalTime()).ToUnixTimeMilliseconds();
                 ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1).ToUniversalTime()).ToUnixTimeMilliseconds();
                 
-                return conn.Db.Sale.Iter()
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
                     .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
                     .OrderBy(s => s.SaleDate)
-                    .ToList();
+                    .ToList());
             }
             catch (Exception ex)
             {
@@ -206,7 +204,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps for the month
                 var startDate = new DateTime(year, month, 1);
@@ -259,6 +258,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {
@@ -278,15 +278,14 @@ namespace TicketSalesApp.Services.Implementations
                 var routePerformance = await GetRoutePerformanceAsync(startDate, endDate);
                 var transportStats = await GetTransportUtilizationAsync(startDate, endDate);
                 
-                var conn = _spacetimeService.GetConnection();
                 
                 // Calculate start and end timestamps for the month
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
                 ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1)).ToUnixTimeMilliseconds();
                 
                 // Get total tickets sold
-                var totalTicketsSold = conn.Db.Sale.Iter()
-                    .Count(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp);
+                var totalTicketsSold = await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
+                    .Count(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp));
                 
                 // Calculate average ticket price
                 decimal averageTicketPrice = totalTicketsSold > 0 ? totalIncome / totalTicketsSold : 0;
@@ -324,7 +323,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
@@ -398,6 +398,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {
@@ -410,7 +411,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
@@ -500,6 +502,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {
