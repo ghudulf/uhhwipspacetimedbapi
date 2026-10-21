@@ -37,7 +37,7 @@ internal static class QrClientTests
             if (request.RequestUri.AbsolutePath.EndsWith("/status", StringComparison.Ordinal)) return Json(new QrPoll("completed", JsonSerializer.SerializeToElement(new { requiresTwoFactor = true, tempToken = "synthetic-temp" })));
             if (request.RequestUri.AbsolutePath.EndsWith("/peek", StringComparison.Ordinal)) return Json(new QrPeekResponse("Desktop", "test", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(1), "192.0.2.x", "https://example.test/base", null, 3));
             if (request.Method == HttpMethod.Get) return Json(Array.Empty<QrDeviceInfo>());
-            if (request.RequestUri.AbsolutePath.EndsWith("/devices", StringComparison.Ordinal)) return Json(new QrDeviceResponse("device"));
+            if (request.RequestUri.AbsolutePath.EndsWith("/devices", StringComparison.Ordinal)) { var response = Json(new QrDeviceResponse("device")); response.StatusCode = HttpStatusCode.Created; return response; }
             return new(HttpStatusCode.NoContent);
         }));
         var client = new QrLoginClient(http, "https://example.test/base/api/");
@@ -60,6 +60,22 @@ internal static class QrClientTests
         try { await new QrLoginClient(network, "http://localhost/api").StatusAsync(id, "poll-secret"); throw new Exception("network failure accepted"); }
         catch (QrLoginException ex) { Check(ex.Message == "network_error", "network exception leaked input"); }
         Console.WriteLine("PASS QR origin matrix, canonical P-256/tamper vector, exact HTTP routes/bodies/bearer isolation, bounded/redirect/network/error responses");
+        var directory = Path.Combine(Path.GetTempPath(), "bru-qr-key-test-" + Guid.NewGuid().ToString("N"));
+        var store = new BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.DefaultDeviceKeyStore(directory, memoryOnly: true);
+        var storedKey = QrDeviceKey.Generate();
+        try
+        {
+            await store.SaveAsync(new("https://example.test/base", "ALICE", storedKey.DeviceId, storedKey.Pkcs8PrivateKey));
+            var loaded = await store.LoadAsync("https://EXAMPLE.test/base/api/", "alice");
+            Check(loaded?.DeviceId == storedKey.DeviceId && loaded.Pkcs8PrivateKey.SequenceEqual(storedKey.Pkcs8PrivateKey), "memory enrollment round trip");
+            CryptographicOperations.ZeroMemory(loaded!.Pkcs8PrivateKey);
+            Check(await store.LoadAsync("https://other.test/base", "alice") == null && await store.LoadAsync("https://example.test/base", "bob") == null, "key isolation");
+            Check(!Directory.Exists(directory), "private key touched disk on memory path");
+            await store.DeleteAsync("https://example.test/base", "alice");
+            Check(await store.LoadAsync("https://example.test/base", "alice") == null, "key deletion");
+        }
+        finally { CryptographicOperations.ZeroMemory(storedKey.Pkcs8PrivateKey); }
+        Console.WriteLine("PASS QR memory key store origin/account isolation, detached buffers, deletion and zero unprotected filesystem writes");
     }
     private static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value, ApiProtocol.Json)) };
     private static void Check(bool value, string message) { if (!value) throw new Exception("QR client: " + message); }

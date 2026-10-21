@@ -73,6 +73,7 @@ public sealed class QrLoginFlow : IAsyncDisposable
                     try { await delay(wait, ct).ConfigureAwait(false); }
                     catch (OperationCanceledException) { break; }
                 }
+                if (clock.GetUtcNow() >= session.ExpiresAt.AddSeconds(2)) { terminal = true; yield return new(QrFlowState.Expired); yield break; }
                 QrPoll? poll = null;
                 try { poll = await api.StatusAsync(session.SessionId, session.PollSecret, ct).ConfigureAwait(false); consecutiveErrors = 0; }
                 catch (OperationCanceledException) { break; }

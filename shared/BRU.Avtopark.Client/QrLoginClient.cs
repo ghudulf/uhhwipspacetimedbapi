@@ -51,7 +51,7 @@ public sealed class QrLoginClient : IQrLoginApi
         if (!QrLoginProtocol.TryDecode(id, 16, out _)) throw new QrLoginException("invalid_request");
         return "sessions/" + id + "/" + action;
     }
-    private async Task<T> Send<T>(HttpMethod method, string path, object? body, string? bearer, CancellationToken cancellationToken)
+    private async Task<T> Send<T>(HttpMethod method, string path, object? body, string? bearer, CancellationToken cancellationToken, HttpStatusCode? expectedStatus = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
@@ -70,6 +70,7 @@ public sealed class QrLoginClient : IQrLoginApi
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
             if ((int)response.StatusCode is >= 300 and < 400 || response.RequestMessage?.RequestUri is { } final && final != uri)
                 throw new QrLoginException("redirect_rejected", (int)response.StatusCode);
+            if (response.IsSuccessStatusCode && expectedStatus != null && response.StatusCode != expectedStatus) throw new QrLoginException("invalid_response");
             if (response.Content.Headers.ContentLength > MaxResponseBytes) throw new QrLoginException("invalid_response");
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
             using var content = new MemoryStream();
@@ -108,7 +109,7 @@ public sealed class QrLoginClient : IQrLoginApi
     public Task ApproveAsync(string id, string approvalSecret, string code, string bearer, CancellationToken cancellationToken = default) => Send<bool>(HttpMethod.Post, Session(id, "approve"), new QrApproveRequest(approvalSecret, code), bearer, cancellationToken);
     public Task DenyAsync(string id, string approvalSecret, CancellationToken cancellationToken = default) => Send<bool>(HttpMethod.Post, Session(id, "deny"), new QrSecretRequest(approvalSecret), null, cancellationToken);
     public Task CompleteAsync(string id, string approvalSecret, string code, string deviceId, string signature, CancellationToken cancellationToken = default) => Send<bool>(HttpMethod.Post, Session(id, "complete"), new QrCompleteRequest(approvalSecret, code, deviceId, signature), null, cancellationToken);
-    public Task<QrDeviceResponse> EnrollDeviceAsync(string bearer, string name, string platform, string spkiBase64, CancellationToken cancellationToken = default) => Send<QrDeviceResponse>(HttpMethod.Post, "devices", new QrEnrollRequest(name, platform, spkiBase64), bearer, cancellationToken);
+    public Task<QrDeviceResponse> EnrollDeviceAsync(string bearer, string name, string platform, string spkiBase64, CancellationToken cancellationToken = default) => Send<QrDeviceResponse>(HttpMethod.Post, "devices", new QrEnrollRequest(name, platform, spkiBase64), bearer, cancellationToken, HttpStatusCode.Created);
     public Task<QrDeviceInfo[]> ListDevicesAsync(string bearer, CancellationToken cancellationToken = default) => Send<QrDeviceInfo[]>(HttpMethod.Get, "devices", null, bearer, cancellationToken);
     public Task RevokeDeviceAsync(string bearer, string deviceId, CancellationToken cancellationToken = default) => Send<bool>(HttpMethod.Delete, "devices/" + Uri.EscapeDataString(deviceId), null, bearer, cancellationToken);
 }
