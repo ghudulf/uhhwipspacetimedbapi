@@ -316,7 +316,7 @@ Resource-specific HTTP reads marked legacy above are not falsely claimed as adap
 Provider ceremonies, OAuth/OIDC and account-security endpoints remain protocol-specific.
 Legacy controller reads and older fleet/catalog service adapters remain explicit in this ledger;
 there is no unresolved parity-verification placeholder. Employees and Maintenance join
-Buses, Jobs and reporting on the shared client transport. Routes, Sales, Tickets,
+Buses, Jobs, Routes, Tickets and reporting on the shared client transport. Sales,
 Schedules and Users/administration remain later client batches. The new `.get` reads
 for routes/employees/maintenance/tickets/schedules/roles/permissions are authorized,
 nonmutating, nonsubscribable current-row/revision projections with `not_found`/HTTP 404;
