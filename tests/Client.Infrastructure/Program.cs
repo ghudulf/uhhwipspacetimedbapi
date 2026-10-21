@@ -1,5 +1,7 @@
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
+await QrClientTests.RunAsync();
+
 var directory = Path.Combine(Path.GetTempPath(), "bru-client-test-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(directory);
 try
