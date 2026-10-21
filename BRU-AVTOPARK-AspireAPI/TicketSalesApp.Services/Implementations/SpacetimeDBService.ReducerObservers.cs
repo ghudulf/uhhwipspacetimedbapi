@@ -98,6 +98,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnGetBusMaintenanceHistory += (ctx, busId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnGrantPermissionToRole += (ctx, roleId, permissionId, actingUserId) => OnReducerCompleted(ctx);
         connection.Reducers.OnGrantRolePermissionV2 += (ctx, operationId, actingUser, entityId, expectedRevision, permissionId) => OnReducerCompleted(ctx);
+        connection.Reducers.OnIssueRefreshToken += (ctx, tokenHash, actingUser, deviceLabel, lifetimeSeconds) => OnReducerCompleted(ctx);
         connection.Reducers.OnLinkExternalAccount += (ctx, provider, issuer, subject, userId) => OnReducerCompleted(ctx);
         connection.Reducers.OnLinkOwnExternalAccount += (ctx, provider, issuer, subject, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnLogAdminAction += (ctx, userId, action, details, timestamp, ipAddress, userAgent, actingUser) => OnReducerCompleted(ctx);
@@ -116,12 +117,15 @@ public partial class SpacetimeDBService
         connection.Reducers.OnReplaceOidcApplication += (ctx, clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType, permissions, requirements, displayNames, properties, expectedRevision, create) => OnReducerCompleted(ctx);
         connection.Reducers.OnReplaceOidcScope += (ctx, internalId, expectedRevision, name, description, descriptionsJson, displayName, displayNamesJson, propertiesJson, resourcesJson) => OnReducerCompleted(ctx);
         connection.Reducers.OnReplaceOidcToken += (ctx, internalId, expectedRevision, authorizationId, applicationClientId, creationDate, expirationDate, payload, propertiesJson, redemptionDate, referenceId, status, subject, type) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRevokeAllRefreshTokens += (ctx, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeOpenIdClient += (ctx, clientId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeOpenIdGrant += (ctx, grantId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokePermissionFromRole += (ctx, roleId, permissionId, actingUserId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeQrLoginDevice += (ctx, deviceId, actingUser) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRevokeRefreshFamily += (ctx, presentedHash) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeRolePermissionV2 += (ctx, operationId, actingUser, entityId, expectedRevision, permissionId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeTrustedApi += (ctx, identity) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRotateRefreshToken += (ctx, presentedHash, newHash) => OnReducerCompleted(ctx);
         connection.Reducers.OnSayHello += (ctx) => OnReducerCompleted(ctx);
         connection.Reducers.OnSeedDemoData += (ctx, stage) => OnReducerCompleted(ctx);
         connection.Reducers.OnSetBusActiveV2 += (ctx, operationId, actingUser, busId, expectedRevision, active) => OnReducerCompleted(ctx);

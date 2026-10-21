@@ -3,6 +3,14 @@ using SpacetimeDB;
 // Exact production reducers and tables, with a bounded synthetic seed for integration tests.
 public static partial class Module
 {
+    [SpacetimeDB.Reducer]
+    public static void ExpireRefreshTokenForTest(ReducerContext ctx, string hash)
+    {
+        RequireDeploymentOwner(ctx);
+        var row = ctx.Db.RefreshTokenRecord.TokenHash.Find(hash) ?? throw new Exception("Synthetic row missing.");
+        row.ExpiresAt = RefreshNow(ctx) - 1;
+        ctx.Db.RefreshTokenRecord.TokenHash.Update(row);
+    }
     [SpacetimeDB.Reducer(SpacetimeDB.ReducerKind.Init)]
     public static void Init(ReducerContext ctx)
     {

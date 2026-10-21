@@ -1809,6 +1809,7 @@ public static partial class Module
         // Since Login is a unique constraint but not a primary key, we need to delete and re-insert
         var oldLogin = user.Login;
         var oldUserId = user.UserId;
+        RevokeAllRefreshTokensCore(ctx, oldUserId);
         ctx.Db.UserProfile.Login.Delete(oldLogin);
         
         user.UserId = userIdentity;
@@ -1888,6 +1889,7 @@ public static partial class Module
         }
         if (isActive.HasValue)
         {
+            if (!isActive.Value) RevokeAllRefreshTokensCore(ctx, userId);
             user.IsActive = isActive.Value;
         }
         // Update LastLoginAt to the current timestamp if set to a different time
@@ -2005,6 +2007,7 @@ public static partial class Module
             return;
         }
         
+        RevokeAllRefreshTokensCore(ctx, userId);
         user.IsActive = false;
         ctx.Db.UserProfile.UserId.Update(user);
         Log.Info($"User {userId} deactivated by {effectiveUser}");
@@ -2108,6 +2111,7 @@ public static partial class Module
 
         // Delete the user.
         AdvanceUserRevision(ctx, userId);
+        RevokeAllRefreshTokensCore(ctx, userId);
         ctx.Db.UserProfile.UserId.Delete(userId);
         ctx.Db.UserCredential.UserId.Delete(userId);
         Log.Info($"User {userId} has been deleted, with all associated roles removed.");

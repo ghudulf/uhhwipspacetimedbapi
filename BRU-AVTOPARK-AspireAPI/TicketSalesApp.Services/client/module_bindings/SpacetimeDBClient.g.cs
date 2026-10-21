@@ -61,6 +61,7 @@ namespace SpacetimeDB.Types
             AddTable(Permission = new(conn));
             AddTable(QrSession = new(conn));
             AddTable(QrLoginDevice = new(conn));
+            AddTable(RefreshTokenRecord = new(conn));
             AddTable(Role = new(conn));
             AddTable(RolePermission = new(conn));
             AddTable(Route = new(conn));
@@ -597,6 +598,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Permission().ToSql(),
             new QueryBuilder().From.QrSession().ToSql(),
             new QueryBuilder().From.QrLoginDevice().ToSql(),
+            new QueryBuilder().From.RefreshTokenRecord().ToSql(),
             new QueryBuilder().From.Role().ToSql(),
             new QueryBuilder().From.RolePermission().ToSql(),
             new QueryBuilder().From.Route().ToSql(),
@@ -676,6 +678,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<UserSettings, UserSettingsCols, UserSettingsIxCols> UserSettings() => new("user_settings", new UserSettingsCols("user_settings"), new UserSettingsIxCols("user_settings"));
         public global::SpacetimeDB.Table<WebAuthnChallenge, WebAuthnChallengeCols, WebAuthnChallengeIxCols> WebAuthnChallenge() => new("web_authn_challenge", new WebAuthnChallengeCols("web_authn_challenge"), new WebAuthnChallengeIxCols("web_authn_challenge"));
         public global::SpacetimeDB.Table<WebAuthnCredential, WebAuthnCredentialCols, WebAuthnCredentialIxCols> WebAuthnCredential() => new("web_authn_credential", new WebAuthnCredentialCols("web_authn_credential"), new WebAuthnCredentialIxCols("web_authn_credential"));
+        public global::SpacetimeDB.Table<RefreshTokenRecord, RefreshTokenRecordCols, RefreshTokenRecordIxCols> RefreshTokenRecord() => new("refresh_token_record", new RefreshTokenRecordCols("refresh_token_record"), new RefreshTokenRecordIxCols("refresh_token_record"));
         public global::SpacetimeDB.Table<WebAuthnUserHandle, WebAuthnUserHandleCols, WebAuthnUserHandleIxCols> WebAuthnUserHandle() => new("web_authn_user_handle", new WebAuthnUserHandleCols("web_authn_user_handle"), new WebAuthnUserHandleIxCols("web_authn_user_handle"));
     }
 
@@ -862,6 +865,10 @@ namespace SpacetimeDB.Types
                 Reducer.GrantPermissionToRole args => Reducers.InvokeGrantPermissionToRole(eventContext, args),
                 Reducer.LinkExternalAccount args => Reducers.InvokeLinkExternalAccount(eventContext, args),
                 Reducer.LinkOwnExternalAccount args => Reducers.InvokeLinkOwnExternalAccount(eventContext, args),
+                Reducer.IssueRefreshToken args => Reducers.InvokeIssueRefreshToken(eventContext, args),
+                Reducer.RotateRefreshToken args => Reducers.InvokeRotateRefreshToken(eventContext, args),
+                Reducer.RevokeRefreshFamily args => Reducers.InvokeRevokeRefreshFamily(eventContext, args),
+                Reducer.RevokeAllRefreshTokens args => Reducers.InvokeRevokeAllRefreshTokens(eventContext, args),
                 Reducer.LogAdminAction args => Reducers.InvokeLogAdminAction(eventContext, args),
                 Reducer.ProvisionTrustedApi args => Reducers.InvokeProvisionTrustedApi(eventContext, args),
                 Reducer.PruneOidcAuthorizations args => Reducers.InvokePruneOidcAuthorizations(eventContext, args),

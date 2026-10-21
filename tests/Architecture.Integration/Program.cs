@@ -52,6 +52,11 @@ try
         await BootstrapTests.RunAsync(database, owner, ownerToken);
         return;
     }
+    if (args.Contains("--refresh-only", StringComparer.Ordinal))
+    {
+        await RefreshTokenTests.RunAsync(database, owner, ownerToken);
+        return;
+    }
     if (args.Contains("--diagnostics-only", StringComparer.Ordinal))
     {
         var sentinel = "synthetic-password-" + Guid.NewGuid().ToString("N");
@@ -81,6 +86,7 @@ try
     await CredentialMigrationTests.RunAsync(database, owner, ownerToken);
     await AdminOperationTests.RunAsync(database, owner, ownerToken);
     await WebAuthnStorageTests.RunAsync(database, owner);
+    await RefreshTokenTests.RunAsync(database, owner, ownerToken);
     await QrDeviceTests.RunAsync(database, owner, ownerToken);
     var accessService = new TicketSalesApp.Services.Authorization.UserAccessService(database);
     var access = await accessService.GetAsync(owner);
@@ -258,6 +264,7 @@ try
         await Ready(stranger);
         await QrDeviceTests.OutsiderAsync(stranger, owner);
         await WebAuthnStorageTests.OutsiderAsync(stranger, owner);
+        await RefreshTokenTests.OutsiderAsync(stranger, owner);
         Assert(await stranger.ReadAsync(c => c.Db.UserProfile.Iter().Count()) == 0, "untrusted caller read password profiles");
         Assert(await stranger.ReadAsync(c => c.Db.OpenIddictSpacetimeToken.Iter().Count()) == 0, "untrusted caller read tokens");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));

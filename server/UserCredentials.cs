@@ -15,6 +15,7 @@ public static partial class Module
 
     private static void SetPasswordHash(ReducerContext ctx, Identity userId, string hash)
     {
+        RevokeAllRefreshTokensCore(ctx, userId);
         var credential = new UserCredential
         {
             UserId = userId, PasswordHash = hash,
