@@ -28,6 +28,15 @@ internal static class ServiceLifecycleTests
         await failed.ExecuteTask!.WaitAsync(deadline.Token);
         Check(failed.ExecuteTask.IsCompletedSuccessfully, "startup failure left an unobserved fault");
 
+        using var aborted = new CancellationTokenSource(); aborted.Cancel();
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext { RequestAborted = aborted.Token };
+        var requestDatabase = new SpacetimeDBService(new ConfigurationBuilder().Build(), NullLogger<SpacetimeDBService>.Instance,
+            new Microsoft.AspNetCore.Http.HttpContextAccessor { HttpContext = context });
+        try { await requestDatabase.ReadAsync(_ => true); throw new Exception("Legacy read ignored request abort"); }
+        catch (OperationCanceledException) { }
+        try { await requestDatabase.ExecuteReducerAsync(new Reducer.EnsureDefaultPermissions(), _ => true); throw new Exception("Legacy write ignored request abort"); }
+        catch (OperationCanceledException) { }
+
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         var managerCalls = 0;
         var manager = Stub.Create<IOpenIddictApplicationManager>((method, args) =>

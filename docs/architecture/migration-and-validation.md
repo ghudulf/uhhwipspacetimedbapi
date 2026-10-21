@@ -284,3 +284,10 @@ Observer ownership is checked against the real SDK: the private unsubscribe list
 is nonempty while connected, empty after disconnect and restored to exactly the
 same count after reconnect. Regenerate both observer files with
 `python3 tools/generate-reducer-observers.py` after binding changes.
+
+Legacy service interfaces need not grow a cancellation parameter to honor HTTP
+disconnects: default-token queued reads/writes inherit `RequestAborted` from the
+DI-provided context accessor. Explicit cancellation tokens remain supported;
+startup OpenIddict calls propagate the host stopping token through the managers
+and stores. Tests verify pre-dispatch request-abort cancellation and all three
+startup application-manager paths.

@@ -18,6 +18,7 @@ namespace TicketSalesApp.Services.Implementations
         // Private fields for configuration, logger, and connection management
         private readonly IConfiguration _configuration; // Configuration for the service
         private readonly ILogger<SpacetimeDBService> _logger; // Logger for the service
+        private readonly Microsoft.AspNetCore.Http.IHttpContextAccessor? _requestContexts;
         private DbConnection? _connection; // Database connection object
         private string? _connectionToken;
         private string? _credentialFile;
@@ -28,10 +29,12 @@ namespace TicketSalesApp.Services.Implementations
         private readonly bool _logReducerLogsToFile; // Flag to control whether reducer logs are logged to file
 
         // Constructor to initialize configuration and logger
-        public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger)
+        public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger,
+            Microsoft.AspNetCore.Http.IHttpContextAccessor? requestContexts = null)
         {
             _configuration = configuration; // Assign configuration
             _logger = logger; // Assign logger
+            _requestContexts = requestContexts;
 
             _logReducerLogsToFile = _configuration.GetValue<bool>("SpacetimeDB:LogReducerLogsToFile", true); // Default to true for backward compatibility
             _logger.LogInformation("SpacetimeDBService initialized");

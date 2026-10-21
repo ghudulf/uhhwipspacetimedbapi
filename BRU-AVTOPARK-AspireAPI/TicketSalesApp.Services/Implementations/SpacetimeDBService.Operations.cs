@@ -40,6 +40,7 @@ public partial class SpacetimeDBService
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(committedResult);
+        if (!cancellationToken.CanBeCanceled) cancellationToken = _requestContexts?.HttpContext?.RequestAborted ?? default;
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var operation = ((IReducerArgs)args).ReducerName;
@@ -89,6 +90,7 @@ public partial class SpacetimeDBService
     public async Task<TResult> ReadAsync<TResult>(Func<DbConnection, TResult> query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+        if (!cancellationToken.CanBeCanceled) cancellationToken = _requestContexts?.HttpContext?.RequestAborted ?? default;
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var work = new QueuedWork(conn => completion.TrySetResult(DatabaseSnapshots.Detach(query(conn))), ex => completion.TrySetException(ex));
