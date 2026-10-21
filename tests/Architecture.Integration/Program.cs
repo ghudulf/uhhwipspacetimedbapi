@@ -86,6 +86,7 @@ try
     await CommittedServiceTests.SecurityAsync(database, owner);
     await CredentialMigrationTests.RunAsync(database, owner, ownerToken);
     await AdminOperationTests.RunAsync(database, owner, ownerToken);
+    await CommittedServiceTests.AdministrationAsync(database, owner);
     await WebAuthnStorageTests.RunAsync(database, owner);
     await RefreshTokenTests.RunAsync(database, owner, ownerToken);
     await QrDeviceTests.RunAsync(database, owner, ownerToken);

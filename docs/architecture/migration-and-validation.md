@@ -224,16 +224,16 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | Services/DatabaseInstallationProvisioner.cs | 1 temporary-owner dispatch | Pending |
 | Services/MagicLinkService.cs | 3 raw accesses; 2 dispatches | Queued reads; committed create/use, no send before commit |
 | Services/OpenIdConnectService.cs | 1 raw access | Pending |
-| Services/PermissionService.cs | 8 raw accesses; 3 dispatches | Pending |
+| Services/PermissionService.cs | 8 raw accesses; 3 dispatches | Queued materialized reads; Core-backed committed create/update/delete |
 | Services/QRAuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
-| Services/RoleService.cs | 9 raw accesses; 8 dispatches | Pending |
+| Services/RoleService.cs | 9 raw accesses; 8 dispatches | Queued materialized reads; existing v2 composite create/update commits metadata and permission sets atomically; other Core-backed writes committed |
 | Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Pending |
 | Services/SettingsService.cs | 6 raw accesses; 5 dispatches; fallback disables 2FA on errors | Queued reads/committed writes; errors no longer fabricate 2FA-disabled defaults |
 | Services/SpacetimeDBService.cs | 1 public raw accessor declaration | Serialized SDK owner; public accessor removal pending |
 | Services/TicketSalesService.cs | 9 raw accesses | Pending |
 | Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Pending |
 | Services/TotpService.cs | 6 raw accesses; 5 dispatches | Queued reads/committed writes; challenge consumption uses atomic replay-checking reducer; HMAC disposed |
-| Services/UserService.cs | 8 raw accesses; 3 dispatches | Pending |
+| Services/UserService.cs | 8 raw accesses; 3 dispatches | Queued materialized reads; committed v2 create allocates distinct account identity; Core-backed update/delete; no sleep polling |
 | TicketSalesApp.Services/Interfaces/ISpacetimeDBService.cs | 1 raw accessor declaration | Pending |
 | API/Controllers/AuthController.cs | 2 raw accesses | Pending |
 | API/Controllers/DebugController.cs | 1 raw access | Pending |

@@ -34,10 +34,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting all users");
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Get all users from SpacetimeDB
-                var users = conn.Db.UserProfile.Iter().ToList();
+                var users = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().ToList());
                 
                 _logger.LogInformation("Retrieved {Count} users", users.Count);
                 return users;
@@ -55,11 +53,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting user by ID: {UserId}", userId);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by legacy ID
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == userId);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == userId));
                 
                 if (userProfile == null)
                 {
@@ -82,11 +78,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting user by login: {Login}", login);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by login
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Login == login));
                 
                 if (userProfile == null)
                 {
@@ -109,11 +103,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Updating user with ID: {UserId}", userId);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by legacy ID
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == userId);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == userId));
                 
                 if (userProfile == null)
                 {
@@ -124,7 +116,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Call the UpdateUser reducer
                 try
                 {
-                    conn.Reducers.UpdateUser(
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateUser(
                         userProfile.UserId, 
                         login, 
                         password, // Will be hashed in the reducer
@@ -133,7 +125,7 @@ namespace TicketSalesApp.Services.Implementations
                         email,
                         isActive,
                         actingUser
-                    );
+                    ), _ => true);
                     
                     _logger.LogInformation("Successfully updated user with ID: {UserId}", userId);
                     return true;
@@ -157,11 +149,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Deleting user with ID: {UserId}", userId);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by legacy ID
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == userId);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == userId));
                 
                 if (userProfile == null)
                 {
@@ -172,7 +162,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Call the DeleteUser reducer
                 try
                 {
-                    conn.Reducers.DeleteUser(userProfile.UserId,actingUser);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteUser(userProfile.UserId, actingUser), _ => true);
                     
                     _logger.LogInformation("Successfully deleted user with ID: {UserId}", userId);
                     return true;
@@ -196,11 +186,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting roles for user with ID: {UserId}", userId);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by legacy ID
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == userId);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == userId));
                 
                 if (userProfile == null)
                 {
@@ -209,8 +197,8 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get user roles
-                var userRoles = conn.Db.UserRole.UserId.Filter(userProfile.UserId)
-                    .ToList();
+                var userRoles = await _spacetimeService.ReadAsync(c => c.Db.UserRole.UserId.Filter(userProfile.UserId)
+                    .ToList());
                 
                 if (userRoles.Count == 0)
                 {
@@ -222,7 +210,7 @@ namespace TicketSalesApp.Services.Implementations
                 var roles = new List<Role>();
                 foreach (var ur in userRoles)
                 {
-                    var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                    var role = await _spacetimeService.ReadAsync(c => c.Db.Role.RoleId.Find(ur.RoleId));
                     if (role != null && role.IsActive)
                     {
                         roles.Add(role);
@@ -245,11 +233,9 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting permissions for user with ID: {UserId}", userId);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by legacy ID
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == userId);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == userId));
                 
                 if (userProfile == null)
                 {
@@ -258,9 +244,9 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get user roles
-                var userRoles = conn.Db.UserRole.UserId.Filter(userProfile.UserId)
+                var userRoles = await _spacetimeService.ReadAsync(c => c.Db.UserRole.UserId.Filter(userProfile.UserId)
                     .Select(ur => ur.RoleId)
-                    .ToList();
+                    .ToList());
                 
                 if (userRoles.Count == 0)
                 {
@@ -269,10 +255,10 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Get role permissions
-                var rolePermissions = userRoles.SelectMany(roleId => conn.Db.RolePermission.RoleId.Filter(roleId))
+                var rolePermissions = await _spacetimeService.ReadAsync(c => userRoles.SelectMany(roleId => c.Db.RolePermission.RoleId.Filter(roleId))
                     .Select(rp => rp.PermissionId)
                     .Distinct()
-                    .ToList();
+                    .ToList());
                 
                 if (rolePermissions.Count == 0)
                 {
@@ -284,7 +270,7 @@ namespace TicketSalesApp.Services.Implementations
                 var permissions = new List<Permission>();
                 foreach (var permissionId in rolePermissions)
                 {
-                    var permission = conn.Db.Permission.PermissionId.Find(permissionId);
+                    var permission = await _spacetimeService.ReadAsync(c => c.Db.Permission.PermissionId.Find(permissionId));
                     if (permission != null && permission.IsActive)
                     {
                         permissions.Add(permission);
@@ -332,8 +318,6 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Creating new user with login: {Login}", login);
                 
-                var conn = _spacetimeService.GetConnection();
-                
                 // Check if user already exists
                 var existingUser = await GetUserByLoginAsync(login);
                 if (existingUser != null)
@@ -343,10 +327,11 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null, actingUser, null);
-                
-                // Wait a moment for the reducer to complete and the subscription to update
-                await Task.Delay(100);
+                // The v2 Core-backed creator allocates a distinct account identity; legacy
+                // RegisterUser without newUserIdentity would collide with the API sender.
+                var actor = actingUser ?? _spacetimeService.GetLocalIdentity() ?? throw new DatabaseUnavailableException("Database identity unavailable.");
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateUserV2(Guid.NewGuid().ToString("N"), actor,
+                    login, password, email ?? "", phoneNumber ?? "", (uint?)role), _ => true);
                 
                 // Get the newly created user
                 var newUser = await GetUserByLoginAsync(login);

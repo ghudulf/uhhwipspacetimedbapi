@@ -9,6 +9,46 @@ using TicketSalesApp.Services.Interfaces;
 
 internal static class CommittedServiceTests
 {
+    public static async Task AdministrationAsync(ISpacetimeDBService db, Identity owner)
+    {
+        var roles = new RoleService(db, NullLogger<RoleService>.Instance);
+        var permissions = new PermissionService(db, NullLogger<PermissionService>.Instance);
+        var auth = new AuthenticationService(db, roles, NullLogger<AuthenticationService>.Instance);
+        var users = new UserService(db, auth, roles, NullLogger<UserService>.Instance);
+        var suffix = Guid.NewGuid().ToString("N");
+        var role = await db.ExecuteReducerAsync(new Reducer.CreateRoleReducer(3900000, "synthetic-service-" + suffix, "test", false, 100, owner),
+            c => c.Db.Role.Iter().Single(r => r.Name == "synthetic-service-" + suffix));
+        var user = await users.CreateUserAsync("synthetic-service-" + suffix, "synthetic-service-password", (int)role.RoleId, actingUser: owner)
+            ?? throw new Exception("Service user creation did not read committed state");
+        Check(await users.UpdateUserAsync(user.LegacyUserId, null, null, null, "service@test.invalid", null, null, owner) &&
+            (await users.GetUserByIdAsync(user.LegacyUserId))!.Email == "service@test.invalid", "user update not committed");
+        Check(!await users.DeleteUserAsync(user.LegacyUserId, user.UserId), "self deletion rejection swallowed");
+        Check(!await roles.AssignRoleToUserAsync(user.LegacyUserId, 1), "unprivileged Administrator assignment rejection swallowed");
+        Check(!await roles.RemoveRoleFromUserAsync(user.LegacyUserId, role.RoleId), "unprivileged role removal rejection swallowed");
+        var permission = await permissions.CreatePermissionAsync("synthetic.service." + suffix, "test", "Test", owner)
+            ?? throw new Exception("Permission creation did not read committed state");
+        Check(!await permissions.UpdatePermissionAsync(permission.PermissionId, null, "denied", null, null, user.UserId), "permission update rejection swallowed");
+        Check(!await permissions.DeletePermissionAsync(permission.PermissionId, user.UserId), "permission deletion rejection swallowed");
+        Check(await permissions.UpdatePermissionAsync(permission.PermissionId, null, "committed", null, null, owner) &&
+            (await permissions.GetPermissionByIdAsync(permission.PermissionId))!.Description == "committed", "permission update not committed");
+        Check(!await roles.UpdateRoleAsync(role.RoleId, null, "denied", null, null, actingUser: user.UserId), "role update rejection swallowed");
+        Check(await roles.UpdateRoleAsync(role.RoleId, null, "committed", null, [permission.PermissionId], actingUser: owner) &&
+            (await roles.GetRolePermissionsAsync(role.RoleId)).Any(p => p.PermissionId == permission.PermissionId), "role grant not committed");
+        Check(!await permissions.DeletePermissionAsync(permission.PermissionId, owner), "assigned permission deletion reported success");
+        Check(await roles.UpdateRoleAsync(role.RoleId, null, null, null, [], actingUser: owner), "role revoke not committed");
+        Check(await permissions.DeletePermissionAsync(permission.PermissionId, owner) && await permissions.GetPermissionByIdAsync(permission.PermissionId) == null, "permission deletion not committed");
+        Check(await users.DeleteUserAsync(user.LegacyUserId, owner), "user deletion not committed");
+        Check(!await roles.DeleteRoleAsync(role.RoleId, user.UserId), "role deletion rejection swallowed");
+        Check(await roles.DeleteRoleAsync(role.RoleId, owner) && await roles.GetRoleByIdAsync(role.RoleId) == null, "role deletion not committed");
+        try
+        {
+            await roles.CreateRoleAsync("synthetic-service-grant-" + suffix, "test", 3900001, 100, [uint.MaxValue], actingUser: owner);
+            throw new Exception("Rejected grant inside role creation was swallowed");
+        }
+        catch (ReducerRejectedException) { }
+        Console.WriteLine("PASS migrated administrative services: user/permission/role committed CRUD and grant/revoke readback; assign/remove/grant/update/delete rejections observable instead of swallowed");
+    }
+
     public static async Task SecurityAsync(ISpacetimeDBService db, Identity owner)
     {
         var settings = new SettingsService(db, NullLogger<SettingsService>.Instance);
