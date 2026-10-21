@@ -78,7 +78,7 @@ public sealed class RouteEditorService(ControlDialogHost host)
         return await CatalogEditorDialog.ShowAsync(host, original == null ? "Добавить маршрут" : "Редактировать маршрут", attempt,
             [number, start, end, duration, stops, length, description, type, bus, driver, active],
             d => { d.RouteNumber = number.Text ?? ""; d.StartPoint = start.Text ?? ""; d.EndPoint = end.Text ?? ""; d.TravelTime = duration.Text ?? "";
-                d.StopCount = (uint)(stops.Value ?? 0); d.RouteLength = (double)(length.Value ?? 0); d.RouteDescription = description.Text ?? ""; d.RouteType = type.Text ?? "";
+                d.StopCount = stops.Value is { } count && count == decimal.Truncate(count) ? (uint)count : uint.MaxValue; d.RouteLength = (double)(length.Value ?? 0); d.RouteDescription = description.Text ?? ""; d.RouteType = type.Text ?? "";
                 d.BusId = (bus.SelectedItem as BusRow)?.BusId ?? 0; d.DriverId = (driver.SelectedItem as DriverRow)?.EmployeeId ?? 0; d.IsActive = active.IsChecked == true; },
             d => { number.Text = d.RouteNumber; start.Text = d.StartPoint; end.Text = d.EndPoint; duration.Text = d.TravelTime; stops.Value = d.StopCount;
                 length.Value = double.IsFinite(d.RouteLength) && d.RouteLength is >= 0 and <= 1000000 ? (decimal)d.RouteLength : null;
