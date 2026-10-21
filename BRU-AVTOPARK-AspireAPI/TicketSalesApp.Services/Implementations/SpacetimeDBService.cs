@@ -110,19 +110,6 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        // Method to get the current database connection
-        public DbConnection GetConnection()
-        {
-            if (_connection == null)
-            {
-                // Throw an exception if the connection is not initialized
-                _logger.LogError("Attempted to get connection before initialization");
-                throw new InvalidOperationException("SpacetimeDB connection not initialized or not yet established. Call Connect() first and wait for connection to complete.");
-            }
-            _logger.LogDebug("Retrieved existing database connection");
-            return _connection; // Return the current connection
-        }
-
         // Method to get database identity from SpacetimeDB API
         private async Task<string?> GetDatabaseIdentityAsync(string databaseNameOrIdentity, string token)
         {

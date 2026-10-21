@@ -18,7 +18,7 @@ public interface IIdentityService
     /// Extract the user's identity from the current claims principal.
     /// Returns null if not authenticated or identity claim is missing.
     /// </summary>
-    SpacetimeDB.Identity? GetUserIdentity(System.Security.Claims.ClaimsPrincipal user);
+    Task<SpacetimeDB.Identity?> GetUserIdentityAsync(System.Security.Claims.ClaimsPrincipal user);
 
     /// <summary>
     /// Retrieve a user profile by their SpacetimeDB identity.
@@ -31,4 +31,3 @@ public interface IIdentityService
     /// </summary>
     Task<string> GenerateJwtForRegistrationAsync();
 }
-

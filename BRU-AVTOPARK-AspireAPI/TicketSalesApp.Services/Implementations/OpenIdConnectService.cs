@@ -123,7 +123,6 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Creating identity for user: {Login}", user.Login);
 
-                var conn = _spacetimeService.GetConnection();
                 
                 // Create the claims-based identity
                 var identity = new ClaimsIdentity(
@@ -138,10 +137,10 @@ namespace TicketSalesApp.Services.Implementations
                         .SetClaim(Claims.PreferredUsername, user.Login);
 
                 // Add role claims
-                var userRoles = conn.Db.UserRole.Iter()
+                var userRoles = await _spacetimeService.ReadAsync(c => c.Db.UserRole.Iter()
                     .Where(ur => ur.UserId.Equals(user.UserId))
-                    .Join(conn.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r.Name)
-                    .ToList();
+                    .Join(c.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r.Name)
+                    .ToList());
                 
                 foreach (var role in userRoles)
                 {
@@ -567,7 +566,6 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
-
 
 
 

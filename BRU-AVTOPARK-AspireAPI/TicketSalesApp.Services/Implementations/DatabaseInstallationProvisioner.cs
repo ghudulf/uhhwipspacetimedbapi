@@ -35,19 +35,26 @@ public static class DatabaseInstallationProvisioner
             .OnConnect((_, identity, _) => connected.TrySetResult(identity))
             .OnConnectError(_ => connected.TrySetException(new DatabaseUnavailableException("Owner connection failed.")))
             .OnDisconnect((_, _) => { connected.TrySetException(new DatabaseUnavailableException("Owner connection lost.")); committed.TrySetException(new CommitOutcomeUnknownException("bootstrap_installation")); }).Build();
+        void OnBootstrap(ReducerEventContext context, Identity identity, string? initialLogin, string? initialPassword)
+        {
+            if (context.Event.Status is Status.Committed) committed.TrySetResult();
+            else committed.TrySetException(new ReducerRejectedException("bootstrap_installation"));
+        }
         try
         {
             await PumpAsync(connected.Task);
             if (await connected.Task == apiIdentity) throw new IOException("The API must not run with its deployment owner's identity.");
-            connection.Reducers.OnBootstrapInstallation += (context, _, _, _) =>
-            {
-                if (context.Event.Status is Status.Committed) committed.TrySetResult();
-                else committed.TrySetException(new ReducerRejectedException("bootstrap_installation"));
-            };
+            connection.Reducers.OnBootstrapInstallation += OnBootstrap;
             connection.Reducers.BootstrapInstallation(apiIdentity, login, password);
             await PumpAsync(committed.Task);
         }
-        finally { connection.Disconnect(); }
+        finally
+        {
+            connection.Reducers.OnBootstrapInstallation -= OnBootstrap;
+            connection.Disconnect();
+            // A failed connection can fault both completions; observe the one not awaited.
+            _ = connected.Task.Exception; _ = committed.Task.Exception;
+        }
         async Task PumpAsync(Task completion)
         {
             while (!completion.IsCompleted)

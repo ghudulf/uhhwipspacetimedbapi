@@ -13,6 +13,13 @@ internal static class CommittedServiceTests
     {
         var data = new DataService(db, NullLogger<DataService>.Instance);
         var name = "synthetic.data." + Guid.NewGuid().ToString("N");
+        var roles = new RoleService(db, NullLogger<RoleService>.Instance);
+        var authentication = new AuthenticationService(db, roles, NullLogger<AuthenticationService>.Instance);
+        Check(await authentication.RegisterAsync(name, "synthetic-service-password", 1, actingUser: owner), "authentication registration not committed");
+        var registered = await db.ReadAsync(c => c.Db.UserProfile.Login.Find(name)!);
+        Check(registered.UserId != owner && await authentication.GetUserRoleAsync(registered.UserId) == 1,
+            "registration reused sender identity or role read failed");
+        await db.ExecuteReducerAsync(new Reducer.DeleteUser(registered.UserId, owner), _ => true);
         var permission = await data.AddAsync(new Permission { Name = name, Description = "before", Category = "Test" })
             ?? throw new Exception("DataService add returned before commit");
         permission.Description = "after";

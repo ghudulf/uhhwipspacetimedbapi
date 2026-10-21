@@ -26,7 +26,6 @@ namespace TicketSalesApp.Services.Interfaces
         /// Gets the current database connection
         /// </summary>
         /// <returns>The current database connection</returns>
-        DbConnection GetConnection();
         
         /// <summary>
         /// Gets the local identity for the connection

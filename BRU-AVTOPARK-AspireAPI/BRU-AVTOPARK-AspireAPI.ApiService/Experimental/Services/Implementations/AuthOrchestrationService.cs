@@ -150,7 +150,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 Username = newUser.Login,
                 Email = newUser.Email,
                 PhoneNumber = newUser.PhoneNumber,
-                Role = _authService.GetUserRole(newUser.UserId)
+                Role = await _authService.GetUserRoleAsync(newUser.UserId)
             });
         }
         catch (Exception ex) when (ex.Message?.Contains("Unauthorized") == true)
@@ -167,7 +167,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                         Username = fallback.Login,
                         Email = fallback.Email,
                         PhoneNumber = fallback.PhoneNumber,
-                        Role = _authService.GetUserRole(fallback.UserId)
+                        Role = await _authService.GetUserRoleAsync(fallback.UserId)
                     });
             }
             return new RegisterResult(false, "Registration failed during role assignment");
@@ -190,12 +190,10 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         if (generateNewIdentity)
         {
             // Identity generation would be delegated to the SpacetimeDB service
-            newIdentity = Convert.ToBase64String(
-                System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            newIdentity = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         }
 
-        var conn = _spacetimeService.GetConnection();
-        conn.Reducers.ClaimUserAccount(username, password, newIdentity);
+        await _spacetimeService.ExecuteReducerAsync(new Reducer.ClaimUserAccount(username, password, newIdentity), _ => true);
         _logger.LogInformation("Account claim processed for: {Username}", username);
 
         return new ClaimResult(true);
@@ -582,12 +580,9 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 return null;
             }
 
-            // Get SpacetimeDB connection
-            var conn = _spacetimeService.GetConnection();
-
             // Get user profile
-            var user = conn.Db.UserProfile.Iter()
-                .FirstOrDefault(u => u.UserId.ToString() == userIdClaim.Value);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.UserId.ToString() == userIdClaim.Value));
 
             if (user == null)
             {
@@ -596,58 +591,21 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Get user settings
-            var userSettings = conn.Db.UserSettings.Iter()
-                .FirstOrDefault(s => s.UserId.Equals(user.UserId));
-
-            if (userSettings == null)
-            {
-                // Create default settings if they don't exist
-                conn.Reducers.CreateUserSettings(user.UserId);
-                await Task.Delay(100); // Wait for reducer
-                userSettings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(user.UserId));
-            }
+            var userSettings = await _settingsService.GetOrCreateUserSettingsAsync(user.UserId);
 
             // Get WebAuthn credentials
-            var webAuthnCredentials = conn.Db.WebAuthnCredential.Iter()
+            var webAuthnCredentials = await _spacetimeService.ReadAsync(conn => conn.Db.WebAuthnCredential.Iter()
                 .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
                 .Select(c => new WebAuthnCredentialDto
                 {
                     Id = Convert.ToBase64String(c.CredentialId.ToArray()),
                     CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
                 })
-                .ToList();
+                .ToList());
 
             // Get user roles
-            var userRoles = conn.Db.UserRole.UserId.Filter(user.UserId)
-                .ToList();
-
-            // Get role details
-            var roles = new List<Role>();
-            foreach (var ur in userRoles)
-            {
-                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
-                if (role != null && role.IsActive)
-                {
-                    roles.Add(role);
-                }
-            }
-
-            // Get role permissions
-            var rolePermissions = roles.SelectMany(role => conn.Db.RolePermission.RoleId.Filter(role.RoleId))
-                .ToList();
-
-            // Get permission details
-            var permissionIds = rolePermissions.Select(rp => rp.PermissionId).Distinct().ToList();
-            var permissions = new List<Permission>();
-            foreach (var permissionId in permissionIds)
-            {
-                var permission = conn.Db.Permission.PermissionId.Find(permissionId);
-                if (permission != null && permission.IsActive)
-                {
-                    permissions.Add(permission);
-                }
-            }
+            var roles = (await _userService.GetUserRolesAsync(user.LegacyUserId)).ToList();
+            var permissions = (await _userService.GetUserPermissionsAsync(user.LegacyUserId)).ToList();
 
             _logger.LogInformation("Profile with SpacetimeDB data retrieved successfully for user: {UserId}", userIdClaim.Value);
 
@@ -864,8 +822,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive));
             if (user == null)
             {
                 _logger.LogWarning("User {Username} not found or inactive during OAuth authorization", username);
@@ -911,15 +868,14 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
         try
         {
-            var conn = _spacetimeService.GetConnection();
             UserProfile? user = null;
 
             // Step 1: Try to parse as hex string (SpacetimeDB.Identity)
             try
             {
                 var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
-                user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive);
+                user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive));
                 
                 if (user != null)
                 {
@@ -936,8 +892,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             // Step 2: Try to parse as LegacyUserId (uint)
             if (uint.TryParse(userId, out var legacyUserId))
             {
-                user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId && u.IsActive);
+                user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId && u.IsActive));
                 
                 if (user != null)
                 {
@@ -974,8 +930,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
             if (user == null)
             {
                 _logger.LogWarning("OAuth authorization failed - user not found: {UserId}", userId);
@@ -1075,7 +1030,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Verify the user still exists and is active
-            var conn = _spacetimeService.GetConnection();
+            return await _spacetimeService.ReadAsync(conn =>
+            {
             var user = conn.Db.UserProfile.Iter()
                 .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
 
@@ -1185,6 +1141,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             _logger.LogInformation("OAuth token identity built successfully for user {Username}", user.Login);
             return identity;
+            });
         }
         catch (Exception ex)
         {
@@ -1201,7 +1158,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
+            return await _spacetimeService.ReadAsync(conn =>
+            {
             var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive);
             if (user == null)
             {
@@ -1247,6 +1205,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             _logger.LogInformation("OAuth userinfo successful for user: {Username}, returned {ClaimCount} claims", username, claims.Count);
             return OAuthUserInfoResult.Successful(claims);
+            });
         }
         catch (Exception ex)
         {
@@ -1514,8 +1473,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
             
             if (user == null)
             {
@@ -1606,13 +1564,13 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user roles and permissions from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            
+            var roles = await _spacetimeService.ReadAsync(conn =>
+            {
             var userRoles = conn.Db.UserRole.Iter()
                 .Where(ur => ur.UserId.Equals(user.UserId))
                 .ToList();
             
-            var roles = userRoles.Select(ur =>
+            return userRoles.Select(ur =>
             {
                 var role = conn.Db.Role.RoleId.Find(ur.RoleId);
                 return role != null ? new RoleDto
@@ -1623,20 +1581,24 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                     IsSystem = role.IsSystem
                 } : null;
             }).Where(r => r != null).Cast<RoleDto>().ToList();
+            });
 
+            var permissions = await _spacetimeService.ReadAsync(conn =>
+            {
             var permissionIds = conn.Db.RolePermission.Iter()
                 .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
                 .Select(rp => rp.PermissionId)
                 .Distinct()
                 .ToList();
 
-            var permissions = conn.Db.Permission.Iter()
+            return conn.Db.Permission.Iter()
                 .Where(p => permissionIds.Contains(p.PermissionId))
                 .Select(p => p.Name)
                 .ToList();
+            });
 
             // Step 3: Get primary role
-            var primaryRole = _authService.GetUserRole(user.UserId);
+            var primaryRole = await _authService.GetUserRoleAsync(user.UserId);
 
             // Step 4: Create UserDetailDto
             var userDetailDto = new UserDetailDto
@@ -1676,14 +1638,18 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             var users = await _userService.GetAllUsersAsync();
 
             // Step 2: Convert to UserDto list
-            var userDtos = users.Select(u => new UserDto
+            var userDtos = new List<UserDto>();
+            foreach (var u in users)
             {
+                userDtos.Add(new UserDto
+                {
                 Id = u.LegacyUserId,
                 Username = u.Login,
                 Email = u.Email,
                 PhoneNumber = u.PhoneNumber,
-                Role = _authService.GetUserRole(u.UserId)
-            }).ToList();
+                Role = await _authService.GetUserRoleAsync(u.UserId)
+                });
+            }
 
             _logger.LogInformation("Retrieved {Count} users successfully", userDtos.Count);
             return UsersResult.Successful(userDtos);
@@ -1716,13 +1682,13 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     private async Task<(string jwtToken, UserDto userDto, Dictionary<string, object> claims)> GenerateAuthTokenAsync(UserProfile user)
     {
         // Step 1: Generate JWT token using TokenService (which queries DB for roles/permissions)
-        var jwtToken = _tokenService.GenerateToken(user.UserId);
+        var jwtToken = await _tokenService.GenerateTokenAsync(user.UserId);
 
         // Step 2: Extract token claims for client-side logging (matches AuthController behavior)
         var tokenClaims = _tokenService.ExtractTokenClaims(jwtToken);
 
         // Step 3: Get primary role for UserDto
-        var primaryRole = _authService.GetUserRole(user.UserId);
+        var primaryRole = await _authService.GetUserRoleAsync(user.UserId);
 
         // Step 4: Create UserDto
         var userDto = new UserDto

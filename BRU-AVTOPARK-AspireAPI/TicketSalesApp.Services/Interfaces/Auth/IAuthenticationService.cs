@@ -10,7 +10,7 @@ namespace TicketSalesApp.Services.Interfaces
         Task<UserProfile?> AuthenticateAsync(string login, string password);
         Task<bool> RegisterAsync(string login, string password, int role, string? email = null, string? phoneNumber = null, Identity? actingUser = null, string? newUserIdentity = null);
         Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken);
-        int GetUserRole(Identity userId);
+        Task<int> GetUserRoleAsync(Identity userId);
         Task<Identity?> GetUserIdentityByLoginAsync(string login);
     }
 }

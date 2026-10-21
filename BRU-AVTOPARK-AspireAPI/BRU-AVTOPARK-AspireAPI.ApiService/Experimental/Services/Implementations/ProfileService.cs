@@ -27,7 +27,8 @@ public class ProfileService : IProfileService
     {
         try
         {
-            var conn = _spacetimeService.GetConnection();
+            return await _spacetimeService.ReadAsync(conn =>
+            {
 
             // Get user profile
             var user = conn.Db.UserProfile.Iter()
@@ -107,6 +108,7 @@ public class ProfileService : IProfileService
                 Roles = roles,
                 Permissions = permissions
             };
+            });
         }
         catch (Exception ex)
         {
@@ -115,4 +117,3 @@ public class ProfileService : IProfileService
         }
     }
 }
-

@@ -62,11 +62,8 @@ namespace TicketSalesApp.Services.Implementations
                     return false;
                 }
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Check if user already exists
-                var existingUser = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
+                var existingUser = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(login));
 
                 if (existingUser != null)
                 {
@@ -75,27 +72,17 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, null, RegistrationRoleName(role), actingUser, newUserIdentity);
-
-                // Check repeatedly for a short time if the user was created
-                int attempts = 0;
-                const int maxAttempts = 10;
-                const int delayMs = 50;
-
-                while (attempts < maxAttempts)
+                if (newUserIdentity != null)
                 {
-                    var newUser = conn.Db.UserProfile.Login.Find(login);
-                    if (newUser != null)
-                    {
-                        _logger.LogInformation("Successfully registered new user with login: {Login}", login);
-                        return true;
-                    }
-                    await Task.Delay(delayMs);
-                    attempts++;
+                    return await _spacetimeService.ExecuteReducerAsync(new Reducer.RegisterUser(login, password, email ?? "", phoneNumber ?? "",
+                        null, RegistrationRoleName(role), actingUser, newUserIdentity), c => c.Db.UserProfile.Login.Find(login) != null);
                 }
-
-                _logger.LogError("Registration failed: User was not created within timeout period");
-                return false;
+                var roleName = RegistrationRoleName(role);
+                var roleId = await _spacetimeService.ReadAsync(c => c.Db.Role.Iter().FirstOrDefault(r => r.Name == roleName)?.RoleId);
+                if (roleId == null) return false;
+                var actor = actingUser ?? _spacetimeService.GetLocalIdentity() ?? throw new DatabaseUnavailableException("Database identity unavailable.");
+                return await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateUserV2(Guid.NewGuid().ToString("N"), actor,
+                    login, password, email ?? "", phoneNumber ?? "", roleId), c => c.Db.UserProfile.Login.Find(login) != null);
             }
             catch (Exception ex)
             {
@@ -119,11 +106,12 @@ namespace TicketSalesApp.Services.Implementations
             return Task.FromResult<UserProfile?>(null);
         }
 
-        public int GetUserRole(Identity userId)
+        public async Task<int> GetUserRoleAsync(Identity userId)
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
 
                 // Find user roles
                 var userRoles = conn.Db.UserRole.UserId.Filter(userId)
@@ -149,6 +137,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Get the legacy role ID for compatibility
                 var highestRole = conn.Db.Role.RoleId.Find(highestPriorityRoleId);
                 return highestRole?.LegacyRoleId ?? 0;
+                });
             }
             catch (Exception ex)
             {
@@ -534,12 +523,9 @@ namespace TicketSalesApp.Services.Implementations
                 // Normalize the login for case-insensitive comparison
                 string normalizedLogin = login.ToUpperInvariant();
 
-                // Get connection to SpacetimeDB
-                var conn = _spacetimeService.GetConnection();
-
                 // Find the user by normalized login
-                var user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == normalizedLogin);
+                var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Login == normalizedLogin));
 
                 if (user == null)
                 {

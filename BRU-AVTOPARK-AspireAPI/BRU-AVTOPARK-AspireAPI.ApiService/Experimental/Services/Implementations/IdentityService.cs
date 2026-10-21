@@ -142,7 +142,7 @@ public class IdentityService : IIdentityService
     }
 
     /// <inheritdoc />
-    public SpacetimeDB.Identity? GetUserIdentity(ClaimsPrincipal user)
+    public async Task<SpacetimeDB.Identity?> GetUserIdentityAsync(ClaimsPrincipal user)
     {
         var identityString = user.FindFirst("identity")?.Value;
         if (string.IsNullOrEmpty(identityString))
@@ -152,9 +152,8 @@ public class IdentityService : IIdentityService
 
         try
         {
-            var conn = _spacetimeService.GetConnection();
-            return conn.Db.UserProfile.Iter()
-                .FirstOrDefault(u => u.LegacyUserId.ToString() == identityString)?.UserId;
+            return await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.LegacyUserId.ToString() == identityString)?.UserId);
         }
         catch
         {
@@ -168,9 +167,8 @@ public class IdentityService : IIdentityService
         if (userId == null)
             return null;
 
-        var conn = _spacetimeService.GetConnection();
-        var user = conn.Db.UserProfile.Iter()
-            .FirstOrDefault(u => u.UserId.Equals(userId));
+        var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+            .FirstOrDefault(u => u.UserId.Equals(userId)));
 
         return user;
     }
@@ -221,4 +219,3 @@ public class IdentityService : IIdentityService
         public string Token { get; set; } = string.Empty;
     }
 }
-

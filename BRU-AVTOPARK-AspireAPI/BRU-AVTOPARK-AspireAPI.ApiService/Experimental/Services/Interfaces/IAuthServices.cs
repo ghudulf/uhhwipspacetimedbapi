@@ -16,7 +16,7 @@ namespace BRU_AVTOPARK.Services.Interfaces;
 public interface ITokenService
 {
     /// <summary>Generate a signed JWT for an authenticated user by Identity (queries DB for roles/permissions).</summary>
-    string GenerateToken(SpacetimeDB.Identity userId);
+    Task<string> GenerateTokenAsync(SpacetimeDB.Identity userId, CancellationToken cancellationToken = default);
 
     /// <summary>Generate a signed JWT from pre-computed user data (for modular architecture).</summary>
     string GenerateToken(UserTokenPayload payload);

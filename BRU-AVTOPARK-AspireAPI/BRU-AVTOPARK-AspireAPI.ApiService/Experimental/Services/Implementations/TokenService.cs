@@ -45,11 +45,10 @@ public class TokenService : ITokenService
     }
 
     /// <inheritdoc />
-    public string GenerateToken(SpacetimeDB.Identity userId)
+    public async Task<string> GenerateTokenAsync(SpacetimeDB.Identity userId, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(userId);
-
-        var conn = _spacetimeService.GetConnection();
+        return await _spacetimeService.ReadAsync(conn =>
+        {
         
         // Get user profile
         var userProfile = conn.Db.UserProfile.Iter()
@@ -60,7 +59,8 @@ public class TokenService : ITokenService
             throw new InvalidOperationException($"User not found or inactive: {userId}");
         }
 
-        return GenerateTokenForUser(userProfile);
+        return GenerateTokenForUser(conn, userProfile);
+        }, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -132,10 +132,9 @@ public class TokenService : ITokenService
     /// Generates JWT token matching EXACT AuthController behavior.
     /// This is the authoritative token generation method that matches AuthController line-by-line.
     /// </summary>
-    private string GenerateTokenForUser(SpacetimeDB.Types.UserProfile userProfile)
+    private string GenerateTokenForUser(SpacetimeDB.Types.DbConnection conn, SpacetimeDB.Types.UserProfile userProfile)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var conn = _spacetimeService.GetConnection();
         
         // Get user's roles - EXACT match to AuthController lines 5016-5023
         var userRoles = conn.Db.UserRole.Iter()

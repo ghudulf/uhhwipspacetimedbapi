@@ -70,10 +70,10 @@ internal static class NativeRefreshTests
         new ConfigurationBuilder().Build(), new QrLoginTests.EnvironmentStub(), new RefreshRateBudget(TimeProvider.System), TimeProvider.System);
     private static AuthOrchestrationService Service(Store store, NativeRefreshTokens native, ILogger<AuthOrchestrationService> logger)
     {
-        var auth = Stub.Create<IAuthenticationService>((method, _) => method.Name == "AuthenticateAsync" ? Task.FromResult<UserProfile?>(store.User) : 0);
+        var auth = Stub.Create<IAuthenticationService>((method, _) => method.Name == "AuthenticateAsync" ? (object)Task.FromResult<UserProfile?>(store.User) : Task.FromResult(0));
         var token = Stub.Create<ITokenService>((method, _) => method.Name switch
         {
-            "GenerateToken" => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("https://api.test", "native", [new Claim("identity", Actor.ToString())], DateTime.UtcNow.AddSeconds(-1), DateTime.UtcNow.AddMinutes(15))),
+            "GenerateTokenAsync" => Task.FromResult(new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("https://api.test", "native", [new Claim("identity", Actor.ToString())], DateTime.UtcNow.AddSeconds(-1), DateTime.UtcNow.AddMinutes(15)))),
             "ExtractTokenClaims" => new Dictionary<string, object>(),
             _ => throw new Exception("Unexpected token call")
         });

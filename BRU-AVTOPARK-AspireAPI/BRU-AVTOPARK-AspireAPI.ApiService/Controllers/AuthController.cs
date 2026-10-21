@@ -2177,8 +2177,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _cache.Set($"oidc_request_params_{requestId}", requestParams, TimeSpan.FromMinutes(10));
 
             // Create a cookie session for the user so ~/connect/authorize can authenticate them
-            var conn = _spacetimeService.GetConnection();
-            var userProfile = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == authenticatedUsername);
+            var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(authenticatedUsername), HttpContext.RequestAborted);
             if (userProfile == null)
             {
                 _logger.LogError("OAuthBackchannelAuthorize: User profile not found for {Username}", authenticatedUsername);
@@ -4018,8 +4017,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Get the actual SpacetimeDB Identity from the database
-                var conn = _spacetimeService.GetConnection();
-                var userProfile = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == request.Username);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(request.Username), HttpContext.RequestAborted);
                 if (userProfile == null)
                 {
                     _logger.LogError("User profile not found for authenticated user: {Username}", request.Username);
