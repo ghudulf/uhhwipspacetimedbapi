@@ -137,7 +137,57 @@ endpoint, and accept configured HTTPS. No source query or rule was suppressed.
   text. Update log consumers accordingly; this does not permit logging credentials.
 - These local checks do not establish real proxy/certificate/domain/browser security.
 
+## Dependency checkpoint
+
+Every one of the **17** tracked projects was restored without analyzer injection,
+then audited from its project directory with its declared SDK:
+
+```sh
+dotnet restore PROJECT.csproj # generic MAUI adds -p:EnableMobileTargets=false
+dotnet list PROJECT.csproj package --vulnerable --include-transitive --format json
+dotnet list PROJECT.csproj package --deprecated --include-transitive --format json
+```
+
+NuGet source: `https://api.nuget.org/v3/index.json`. Counts below are package/version
+entries per graph, not build warnings or distinct CVEs. Both before/after runs have
+the same results: **one vulnerable package in AppHost only**, **48 distinct
+deprecated package/version pairs** across the graphs. No package family was
+upgraded or advisory suppressed under the guise of a safe patch.
+
+| Project (directory/stem abbreviation) | Vulnerable before/after | Deprecated before/after |
+| --- | --- | --- |
+| ApiService | 0 / 0 | 28 / 28 |
+| TicketSalesApp.Services | 0 / 0 | 14 / 14 |
+| BRU.Avtopark.Contracts | 0 / 0 | 0 / 0 |
+| BRU.Avtopark.Client | 0 / 0 | 0 / 0 |
+| Avalonia library | 0 / 0 | 14 / 14 |
+| Desktop | 0 / 0 | 14 / 14 |
+| generic MAUI | 0 / 0 | 14 / 14 |
+| DatabaseBootstrap | 0 / 0 | 14 / 14 |
+| Api.Contracts | 0 / 0 | 26 / 26 |
+| Architecture.Integration | 0 / 0 | 26 / 26 |
+| Client.Infrastructure | 0 / 0 | 0 / 0 |
+| Client.Presentation | 0 / 0 | 14 / 14 |
+| DatabaseFixture | 0 / 0 | 0 / 0 |
+| StdbModule | 0 / 0 | 0 / 0 |
+| AppHost | 1 / 1 | 9 / 9 |
+| ServiceDefaults | 0 / 0 | 2 / 2 |
+| Web | 0 / 0 | 2 / 2 |
+
+| Dependency finding | Disposition / required owner action |
+| --- | --- |
+| AppHost → KubernetesClient **15.0.1**, Moderate [GHSA-w7r3-mgwf-4mqq](https://github.com/advisories/GHSA-w7r3-mgwf-4mqq) | **Unresolved vulnerability, not a false positive.** Advisory affects versions below **17.0.14**; forcing 15.x → 17.x is a major dependency override, outside the authorized safe patch/minor scope. The owner must plan a compatible Aspire/Kubernetes dependency upgrade and validate the orchestrator. Do not use untrusted Kubernetes configuration. This finding prevents a clean security signoff even though the application/test graphs report zero vulnerable packages. |
+| App.Metrics 4.3.0 family (15 pairs) | Legacy/unmaintained metrics packages; replacement requires a telemetry migration, not a patch. No vulnerability was reported for these versions by this NuGet feed snapshot. |
+| Aspire Hosting/AppHost/Dashboard/Orchestration 9.0.0 and ServiceDiscovery 9.0.0 families (six pairs) | Deprecated orchestration/service-discovery generation; coordinate upgrade with the unresolved Kubernetes advisory and SDK/platform support. |
+| IdentityModel/JWT families 6.25.1, 6.34.0, 7.1.2, 7.4.0 (16 pairs) | Deprecated authentication dependencies across different graphs. Preserve pinned OpenIddict 4.1.0 interoperability; moving families requires explicit authorization and authentication migration tests. Do not force one global major version through all graphs. |
+| OpenIddict 4.1.0 family (seven pairs) | Deprecated upstream; intentionally retained compatibility boundary. A major OpenIddict upgrade is not a local patch/minor fix. |
+| Microsoft.AspNetCore.Http.Abstractions/Features 2.2.0, Microsoft.NETCore.Platforms 5.0.0, System.Security.AccessControl 5.0.0 (four pairs) | Legacy transitive compatibility dependencies; migrate owning packages rather than overriding unrelated platform/abstraction majors. |
+
+Package metadata can change without source changes. Re-run the commands at release
+time; "deprecated" is not synonymous with "vulnerable", and absence of a NuGet
+advisory is not proof that a package is maintained or safe.
+
 ## Remaining checkpoints
 
-Package triage, the reproducible runner and final validation results are being
-recorded in subsequent steps. This is not yet the full audit signoff.
+The reproducible runner and final validation results are being recorded next.
+The unresolved AppHost advisory remains a release gate requiring an owner decision.
