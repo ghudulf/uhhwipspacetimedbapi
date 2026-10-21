@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -16,7 +19,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class PermissionsController : BaseController
@@ -149,7 +152,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!IsAdmin() && !HasPermission("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
             var model = request.Payload?.Deserialize<CreatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
+            var created = await AdminCreatePermissionAsync(model, request);
 
             object result;
             if (IsAdmin() || HasPermission("permissions.view"))
@@ -190,7 +193,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.created (Resource: permissions, EventName: permission.created, PermissionId: {PermissionId})", created.PermissionId);
                 }
@@ -218,7 +221,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
+            var success = await AdminUpdatePermissionAsync(id, model, request);
             var entity = await _permissionService.GetPermissionByIdAsync(id);
 
             object result;
@@ -260,7 +263,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.updated (Resource: permissions, EventName: permission.updated, PermissionId: {PermissionId})", id);
                 }
@@ -296,7 +299,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new InvalidOperationException("Cannot delete permission as it is currently assigned to one or more roles");
             }
 
-            var success = await _permissionService.DeletePermissionAsync(id);
+            var success = await AdminBooleanAsync("permissions.delete", new DeletePermissionCommand(id, AdminExpectedRevision(request)), request);
 
             object result;
             if (IsAdmin() || HasPermission("permissions.view"))
@@ -337,7 +340,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for permission.deleted (Resource: permissions, EventName: permission.deleted, PermissionId: {PermissionId})", id);
                 }
@@ -376,7 +379,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permissions", result.Count());
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permissions");
                 return StatusCode(500, new { message = "Error retrieving permissions", error = ex.Message });
@@ -414,7 +417,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error retrieving permission {id}", error = ex.Message });
@@ -443,11 +446,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 
                 // Call the CreatePermission method
-                var permission = await _permissionService.CreatePermissionAsync(
-                    model.Name,
-                    model.Description,
-                    model.Category
-                );
+                var permission = await AdminCreatePermissionAsync(model);
 
                 if (permission == null)
                 {
@@ -466,7 +465,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     permission.Name, permission.PermissionId);
                 return CreatedAtAction(nameof(GetPermission), new { id = permission.PermissionId }, permission);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error creating permission {PermissionName}", model.Name);
                 return StatusCode(500, new { message = $"Error creating permission {model.Name}", error = ex.Message });
@@ -503,13 +502,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the UpdatePermission method
-                var success = await _permissionService.UpdatePermissionAsync(
-                    id,
-                    model.Name,
-                    model.Description,
-                    model.Category,
-                    model.IsActive
-                );
+                var success = await AdminUpdatePermissionAsync(id, model);
 
                 if (!success)
                 {
@@ -527,7 +520,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully updated permission {PermissionId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error updating permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error updating permission {id}", error = ex.Message });
@@ -572,7 +565,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the DeletePermission method
-                var success = await _permissionService.DeletePermissionAsync(id);
+                var success = await AdminBooleanAsync("permissions.delete", new DeletePermissionCommand(id, AdminExpectedRevision()));
                 if (!success)
                 {
                     _logger.LogWarning("Failed to delete permission {PermissionId}", id);
@@ -589,7 +582,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully deleted permission {PermissionId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error deleting permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error deleting permission {id}", error = ex.Message });
@@ -612,7 +605,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permission categories", categories.Count());
                 return Ok(categories);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permission categories");
                 return StatusCode(500, new { message = "Error retrieving permission categories", error = ex.Message });
@@ -645,7 +638,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permissions for category {Category}", result.Count(), category);
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permissions for category {Category}", category);
                 return StatusCode(500, new { message = $"Error retrieving permissions for category {category}", error = ex.Message });
@@ -662,6 +655,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdatePermissionModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
         public string? Category { get; set; }

@@ -27,6 +27,7 @@ public sealed partial class ApplicationOperations
         _logger = logger;
         RegisterFleet(database, buses);
         RegisterCatalog(database, routes, employees, maintenance);
+        RegisterAdmin(database);
         var businessZone = TimeZoneInfo.FindSystemTimeZoneById(configuration?["Business:TimeZone"] ?? "UTC");
         Register<SalesReportRequest>("reports.sales", "sales.view", false, async (_, request, _, ct) =>
             await SalesReportProjection.ReadAsync(database, request, businessZone, ct));
@@ -90,15 +91,39 @@ public sealed partial class ApplicationOperations
     {
         if (!_handlers.TryGetValue(operation, out var handler)) throw new OperationException("unsupported_operation");
         if (handler.Capability.Mutation) ValidateOperationId(operationId);
-        await AuthorizeAsync(operation, actor, ct);
         var started = Stopwatch.GetTimestamp();
+        // v2 already measures its outer bru.operation span. HTTP and v1 adapters enter here directly.
+        var measure = Activity.Current?.OperationName != "bru.operation";
+        using var activity = measure ? OperationTelemetry.Traces.StartActivity("bru.operation") : null;
+        activity?.SetTag("bru.operation", operation);
+        var outcome = "success";
         try
         {
+            await AuthorizeAsync(operation, actor, ct);
             var result = await handler.Execute(actor, payload, operationId, ct);
             _logger.LogInformation("Operation {Operation} committed/completed in {ElapsedMs} ms", operation, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             return result;
         }
-        catch (JsonException) { throw new OperationException("validation_failed"); }
+        catch (JsonException) { outcome = "validation_failed"; throw new OperationException("validation_failed"); }
+        catch (Exception ex)
+        {
+            outcome = ex switch
+            {
+                OperationException error => error.Code, ReducerRejectedException => "conflict",
+                CommitOutcomeUnknownException => "commit_outcome_unknown", DatabaseUnavailableException => "database_unavailable",
+                OperationCanceledException => "cancelled", ArgumentException => "validation_failed", _ => "internal_error"
+            };
+            throw;
+        }
+        finally
+        {
+            if (measure)
+            {
+                var tags = new System.Diagnostics.TagList { { "operation", operation }, { "outcome", outcome } };
+                OperationTelemetry.Completed.Add(1, tags);
+                OperationTelemetry.Duration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds, tags);
+            }
+        }
     }
 
     public async Task AuthorizeAsync(string operation, Identity actor, CancellationToken ct)

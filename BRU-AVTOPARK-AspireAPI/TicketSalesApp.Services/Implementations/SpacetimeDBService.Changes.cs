@@ -38,20 +38,28 @@ public partial class SpacetimeDBService
         connection.Db.SaleRevision.OnInsert += (context, row) => Changes.Publish("sales");
         connection.Db.SaleRevision.OnUpdate += (context, previous, row) => Changes.Publish("sales");
         connection.Db.SaleRevision.OnDelete += (context, row) => Changes.Publish("sales");
-        connection.Db.UserProfile.OnInsert += (context, row) => Changes.Publish("access");
-        connection.Db.UserProfile.OnUpdate += (context, previous, row) => Changes.Publish("access");
-        connection.Db.UserProfile.OnDelete += (context, row) => Changes.Publish("access");
-        connection.Db.UserRole.OnInsert += (context, row) => Changes.Publish("access");
-        connection.Db.UserRole.OnUpdate += (context, previous, row) => Changes.Publish("access");
-        connection.Db.UserRole.OnDelete += (context, row) => Changes.Publish("access");
-        connection.Db.Role.OnInsert += (context, row) => Changes.Publish("access");
-        connection.Db.Role.OnUpdate += (context, previous, row) => Changes.Publish("access");
-        connection.Db.Role.OnDelete += (context, row) => Changes.Publish("access");
-        connection.Db.Permission.OnInsert += (context, row) => Changes.Publish("access");
-        connection.Db.Permission.OnUpdate += (context, previous, row) => Changes.Publish("access");
-        connection.Db.Permission.OnDelete += (context, row) => Changes.Publish("access");
-        connection.Db.RolePermission.OnInsert += (context, row) => Changes.Publish("access");
-        connection.Db.RolePermission.OnUpdate += (context, previous, row) => Changes.Publish("access");
-        connection.Db.RolePermission.OnDelete += (context, row) => Changes.Publish("access");
+        connection.Db.UserProfile.OnInsert += (context, row) => PublishAccessChange("users");
+        connection.Db.UserProfile.OnUpdate += (context, previous, row) => PublishAccessChange("users");
+        connection.Db.UserProfile.OnDelete += (context, row) => PublishAccessChange("users");
+        connection.Db.UserRole.OnInsert += (context, row) => PublishAccessChange("users", "roles");
+        connection.Db.UserRole.OnUpdate += (context, previous, row) => PublishAccessChange("users", "roles");
+        connection.Db.UserRole.OnDelete += (context, row) => PublishAccessChange("users", "roles");
+        connection.Db.Role.OnInsert += (context, row) => PublishAccessChange("roles");
+        connection.Db.Role.OnUpdate += (context, previous, row) => PublishAccessChange("roles");
+        connection.Db.Role.OnDelete += (context, row) => PublishAccessChange("roles");
+        connection.Db.Permission.OnInsert += (context, row) => PublishAccessChange("permissions");
+        connection.Db.Permission.OnUpdate += (context, previous, row) => PublishAccessChange("permissions");
+        connection.Db.Permission.OnDelete += (context, row) => PublishAccessChange("permissions");
+        connection.Db.RolePermission.OnInsert += (context, row) => PublishAccessChange("roles", "permissions");
+        connection.Db.RolePermission.OnUpdate += (context, previous, row) => PublishAccessChange("roles", "permissions");
+        connection.Db.RolePermission.OnDelete += (context, row) => PublishAccessChange("roles", "permissions");
+        connection.Db.EntityRevision.OnInsert += (context, row) => Changes.Publish(row.Key.Split(':')[0]);
+        connection.Db.EntityRevision.OnUpdate += (context, previous, row) => Changes.Publish(row.Key.Split(':')[0]);
+        connection.Db.EntityRevision.OnDelete += (context, row) => Changes.Publish(row.Key.Split(':')[0]);
+    }
+    private void PublishAccessChange(params string[] resources)
+    {
+        Changes.Publish("access");
+        foreach (var resource in resources) Changes.Publish(resource);
     }
 }

@@ -31,10 +31,17 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateScheduleV2(ReducerContext ctx, string operationId, Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats,
         string[]? daysOfWeek, string? startPoint, string? endPoint, string[]? routeStops, ulong? arrivalTime, uint? stopDurationMinutes,
-        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes)
+        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, string[]? busTypes)
         => CommitCatalogMutation(ctx, operationId, actingUser, "schedules", "create", null, null,
-            ScheduleMutationHash(null, null, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, null),
-            actor => CreateRouteScheduleCore(ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor));
+            ScheduleMutationHash(null, null, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes),
+            actor =>
+            {
+                if (busTypes?.Length > 200) throw new Exception("Too many bus types.");
+                if (busTypes != null) foreach (var type in busTypes) ValidateText(type, 200, true);
+                var id = CreateRouteScheduleCore(ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor);
+                var schedule = ctx.Db.RouteSchedule.ScheduleId.Find(id)!; schedule.BusTypes = busTypes; ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
+                return id;
+            });
 
     [SpacetimeDB.Reducer]
     public static void UpdateScheduleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId,
@@ -86,14 +93,24 @@ public static partial class Module
             MutationHash(entityId.ToString(), expectedRevision?.ToString(), roleId.ToString()), actor => { RemoveRoleCore(ctx, UserIdentity(ctx, entityId), roleId, actor); return entityId; }, "assign_roles");
 
     [SpacetimeDB.Reducer]
-    public static void CreateRoleV2(ReducerContext ctx, string operationId, Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority)
-        => CommitCatalogMutation(ctx, operationId, actingUser, "roles", "create", null, null, MutationHash(legacyRoleId.ToString(), name, description, isSystem.ToString(), priority.ToString()),
-            actor => CreateRoleCore(ctx, legacyRoleId, name, description, isSystem, priority, actor));
+    public static void CreateRoleV2(ReducerContext ctx, string operationId, Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority, uint[]? permissionIds)
+        => CommitCatalogMutation(ctx, operationId, actingUser, "roles", "create", null, null, MutationHash(legacyRoleId.ToString(), name, description, isSystem.ToString(), priority.ToString(), permissionIds == null ? null : MutationHash(permissionIds.Select(p => p.ToString()).ToArray())),
+            actor => { var id = CreateRoleCore(ctx, legacyRoleId, name, description, isSystem, priority, actor); ReplaceRolePermissions(ctx, id, permissionIds, actor); return id; });
 
     [SpacetimeDB.Reducer]
-    public static void UpdateRoleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority)
-        => CommitCatalogMutation(ctx, operationId, actingUser, "roles", "update", entityId, expectedRevision, MutationHash(entityId.ToString(), expectedRevision?.ToString(), name, description, legacyRoleId?.ToString(), priority?.ToString()),
-            actor => { UpdateRoleCore(ctx, entityId, name, description, legacyRoleId, priority, actor); return entityId; });
+    public static void UpdateRoleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority, uint[]? permissionIds)
+        => CommitCatalogMutation(ctx, operationId, actingUser, "roles", "update", entityId, expectedRevision, MutationHash(entityId.ToString(), expectedRevision?.ToString(), name, description, legacyRoleId?.ToString(), priority?.ToString(), permissionIds == null ? null : MutationHash(permissionIds.Select(p => p.ToString()).ToArray())),
+            actor => { UpdateRoleCore(ctx, entityId, name, description, legacyRoleId, priority, actor); ReplaceRolePermissions(ctx, entityId, permissionIds, actor); return entityId; });
+
+    private static void ReplaceRolePermissions(ReducerContext ctx, uint roleId, uint[]? permissionIds, Identity actor)
+    {
+        if (permissionIds == null) return;
+        if (permissionIds.Length > 500 || permissionIds.Distinct().Count() != permissionIds.Length) throw new Exception("Invalid permission set.");
+        // Each core checks grant_permissions and anti-escalation; the outer reducer is one transaction.
+        var previous = ctx.Db.RolePermission.RoleId.Filter(roleId).Select(r => r.PermissionId).ToArray();
+        foreach (var id in previous.Except(permissionIds)) RevokePermissionFromRoleCore(ctx, roleId, id, actor);
+        foreach (var id in permissionIds.Except(previous)) GrantPermissionToRoleCore(ctx, roleId, id, actor);
+    }
 
     [SpacetimeDB.Reducer]
     public static void DeleteRoleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision)

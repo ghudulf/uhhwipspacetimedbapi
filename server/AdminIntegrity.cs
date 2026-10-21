@@ -33,6 +33,13 @@ public static partial class Module
             throw new Exception("Invalid ticket fields.");
         ValidateText(payment, 100, true);
     }
+    private static void ValidateTicketSeat(ReducerContext ctx, uint routeId, uint seat)
+    {
+        var route = ctx.Db.Route.RouteId.Find(routeId) ?? throw new Exception("Route not found.");
+        var bus = ctx.Db.Bus.BusId.Find(route.BusId);
+        var capacity = bus?.SeatedCapacity ?? bus?.Capacity ?? 0;
+        if (seat == 0 || capacity > 0 && seat > capacity) throw new Exception("Seat does not exist on the route's bus.");
+    }
 
     private static void ValidateScheduleFields(ulong departure, ulong arrival, double price, string? start, string? end,
         string[]? stops, string[]? days, string[]? times, double[]? distances, string? notes)

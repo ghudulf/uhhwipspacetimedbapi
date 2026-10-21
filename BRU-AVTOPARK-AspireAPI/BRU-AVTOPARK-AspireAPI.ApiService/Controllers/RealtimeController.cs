@@ -1089,6 +1089,16 @@ public sealed class RealtimeController : BaseController
         try
         {
             // CRITICAL: Map CRUD command to permission action (same pattern as individual controllers)
+            if (IsAdministrativeCommand(resource, command))
+            {
+                var request = new BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest(command, requestId,
+                    root.TryGetProperty("id", out var entity) ? entity.GetUInt32() : null,
+                    root.TryGetProperty("payload", out var payload) ? payload : null)
+                { OperationId = root.TryGetProperty("operationId", out var operation) ? operation.GetString() : null };
+                var committed = await AdminSpecialRealtimeAsync(resource, request);
+                await SendJsonAsync(webSocket, new { type = "result", requestId, command, resource, ok = true, data = committed, timestamp = DateTimeOffset.UtcNow }, sendLock, cancellationToken);
+                return;
+            }
             var permissionAction = command switch
             {
                 "read_all" => "view",
@@ -1256,7 +1266,8 @@ public sealed class RealtimeController : BaseController
                         await SendErrorAsync(webSocket, requestId, "ID required for delete operation", sendLock, cancellationToken);
                         return;
                     }
-                    await ExecuteDeleteAsync(service, resource, deleteId.Value, validatedClaims, actor.GetValueOrDefault(), operationId!, cancellationToken);
+                    await ExecuteDeleteAsync(service, resource, deleteId.Value, validatedClaims, actor.GetValueOrDefault(), operationId!, cancellationToken,
+                        root.TryGetProperty("expectedRevision", out var revisionElement) && revisionElement.ValueKind != JsonValueKind.Null ? revisionElement.GetUInt64() : null);
                     result = new { deleted = true, id = deleteId.Value };
                     break;
 
@@ -1403,7 +1414,8 @@ public sealed class RealtimeController : BaseController
     }
 
     private static bool RequiresStableOperation(string resource) => resource.ToLowerInvariant().Replace("_", "-") is
-        "buses" or "employees" or "jobs" or "maintenance" or "routes" or "ticket-sales" or "ticketsales";
+        "buses" or "employees" or "jobs" or "maintenance" or "routes" or "ticket-sales" or "ticketsales" or
+        "tickets" or "route-schedules" or "routeschedules" or "users" or "roles" or "permissions";
 
     private async Task<object?> ExecuteCreateAsync(object service, string resource, JsonElement payload, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken)
     {
@@ -1415,13 +1427,13 @@ public sealed class RealtimeController : BaseController
             "employees" => await CreateEmployeeAsync((IEmployeeService)service, payload, actor, operationId),
             "jobs" => await CreateJobAsync((IEmployeeService)service, payload, actor, operationId),
             "maintenance" => await CreateMaintenanceAsync((IMaintenanceService)service, payload, actor, operationId),
-            "permissions" => await CreatePermissionAsync((IPermissionService)service, payload, validatedClaims),
-            "roles" => await CreateRoleAsync((IRoleService)service, payload, validatedClaims),
+            "permissions" => await AdminCreatePermissionAsync(AdminPayload<CreatePermissionModel>(payload), AdminRequest("create", operationId, null, payload)),
+            "roles" => await AdminCreateRoleAsync(AdminPayload<CreateRoleModel>(payload), AdminRequest("create", operationId, null, payload)),
             "routes" => await CreateRouteAsync((IRouteService)service, payload, actor, operationId),
-            "route-schedules" or "routeschedules" => await CreateRouteScheduleAsync((IRouteScheduleService)service, payload, validatedClaims),
-            "tickets" => await CreateTicketAsync((ITicketService)service, payload, validatedClaims),
+            "route-schedules" or "routeschedules" => await AdminCreateScheduleAsync(AdminPayload<CreateRouteScheduleModel>(payload), AdminRequest("create", operationId, null, payload)),
+            "tickets" => await AdminCreateTicketEntityAsync(AdminPayload<CreateTicketModel>(payload), AdminRequest("create", operationId, null, payload)),
             "ticket-sales" or "ticketsales" => await CreateSaleAsync((ITicketSalesService)service, payload, actor, operationId),
-            "users" => await CreateUserAsync((IUserService)service, payload, validatedClaims),
+            "users" => TicketSalesApp.AdminServer.Mappers.UserMapper.MapToSafeUserDto((await AdminCreateUserAsync(AdminPayload<CreateUserModel>(payload), AdminRequest("create", operationId, null, payload)))!),
             _ => throw new NotSupportedException($"Create not supported for resource: {resource}")
         };
     }
@@ -1436,13 +1448,13 @@ public sealed class RealtimeController : BaseController
             "employees" => await UpdateEmployeeAsync((IEmployeeService)service, id, payload, actor, operationId),
             "jobs" => await UpdateJobAsync((IEmployeeService)service, id, payload, actor, operationId),
             "maintenance" => await UpdateMaintenanceAsync((IMaintenanceService)service, id, payload, actor, operationId),
-            "permissions" => await UpdatePermissionAsync((IPermissionService)service, id, payload),
-            "roles" => await UpdateRoleAsync((IRoleService)service, id, payload),
+            "permissions" => await AdminUpdatePermissionAsync(id, AdminPayload<UpdatePermissionModel>(payload), AdminRequest("update", operationId, id, payload)),
+            "roles" => await AdminUpdateRoleAsync(id, AdminPayload<UpdateRoleModel>(payload), AdminRequest("update", operationId, id, payload)),
             "routes" => await UpdateRouteAsync((IRouteService)service, id, payload, actor, operationId),
-            "route-schedules" or "routeschedules" => await UpdateRouteScheduleAsync((IRouteScheduleService)service, id, payload),
-            "tickets" => await UpdateTicketAsync((ITicketService)service, id, payload),
+            "route-schedules" or "routeschedules" => await AdminUpdateScheduleAsync(id, AdminPayload<UpdateRouteScheduleModel>(payload), AdminRequest("update", operationId, id, payload)),
+            "tickets" => await AdminUpdateTicketAsync(id, AdminPayload<UpdateTicketModel>(payload), AdminRequest("update", operationId, id, payload)),
             "ticket-sales" or "ticketsales" => await UpdateSaleAsync((ITicketSalesService)service, id, payload, actor, operationId),
-            "users" => await UpdateUserAsync((IUserService)service, id, payload),
+            "users" => await AdminUpdateUserAsync(id, AdminPayload<UpdateUserModel>(payload), AdminRequest("update", operationId, id, payload)),
             _ => throw new NotSupportedException($"Update not supported for resource: {resource}")
         };
 
@@ -1452,10 +1464,11 @@ public sealed class RealtimeController : BaseController
         }
 
         var finalResult = await ExecuteReadAsync(service, resource, id);
+        if (finalResult is SpacetimeDB.Types.UserProfile user) return TicketSalesApp.AdminServer.Mappers.UserMapper.MapToSafeUserDto(user);
         return finalResult; // null means NotFound, which is handled by caller
     }
 
-    private async Task ExecuteDeleteAsync(object service, string resource, uint id, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken)
+    private async Task ExecuteDeleteAsync(object service, string resource, uint id, Dictionary<string, object>? validatedClaims, Identity actor, string operationId, CancellationToken cancellationToken, ulong? expectedRevision = null)
     {
         var normalizedResource = resource.ToLowerInvariant().Replace("_", "-");
         
@@ -1465,13 +1478,13 @@ public sealed class RealtimeController : BaseController
             "employees" => await ((IEmployeeService)service).DeleteEmployeeAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
             "jobs" => await ((IEmployeeService)service).DeleteJobAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
             "maintenance" => await ((IMaintenanceService)service).DeleteMaintenanceAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
-            "permissions" => await ((IPermissionService)service).DeletePermissionAsync(id),
-            "roles" => await ((IRoleService)service).DeleteRoleAsync(id),
+            "permissions" => await AdminBooleanAsync("permissions.delete", new BRU.Avtopark.Contracts.DeletePermissionCommand(id, expectedRevision), AdminRequest("delete", operationId, id, null)),
+            "roles" => await AdminBooleanAsync("roles.delete", new BRU.Avtopark.Contracts.DeleteRoleCommand(id, expectedRevision), AdminRequest("delete", operationId, id, null)),
             "routes" => await ((IRouteService)service).DeleteRouteAsync(id, actingUser: actor, operationId: operationId, cancellationToken: cancellationToken),
-            "route-schedules" or "routeschedules" => await ((IRouteScheduleService)service).DeleteScheduleAsync(id),
-            "tickets" => await ((ITicketService)service).DeleteTicketAsync(id),
+            "route-schedules" or "routeschedules" => await AdminBooleanAsync("schedules.delete", new BRU.Avtopark.Contracts.DeleteScheduleCommand(id, expectedRevision), AdminRequest("delete", operationId, id, null)),
+            "tickets" => await AdminBooleanAsync("tickets.delete", new BRU.Avtopark.Contracts.DeleteTicketCommand(id, expectedRevision), AdminRequest("delete", operationId, id, null)),
             "ticket-sales" or "ticketsales" => await ((ITicketSalesService)service).DeleteSaleAsync(id, actor, operationId, cancellationToken: cancellationToken),
-            "users" => await ((IUserService)service).DeleteUserAsync(id),
+            "users" => await AdminBooleanAsync("users.delete", new BRU.Avtopark.Contracts.DeleteUserCommand(id, expectedRevision), AdminRequest("delete", operationId, id, null)),
             _ => throw new NotSupportedException($"Delete not supported for resource: {resource}")
         };
 

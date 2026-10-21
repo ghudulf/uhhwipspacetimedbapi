@@ -239,6 +239,8 @@ public static partial class Module
         if (name != null)
         {
             // Check for name uniqueness
+            if (name != permission.Name && !IsAdministrator(ctx, effectiveUser) && !HasPermission(ctx, effectiveUser, name))
+                throw new Exception("Cannot rename a permission to a privilege the actor does not hold.");
             if (ctx.Db.Permission.Iter().Any(p => p.Name == name && p.PermissionId != permissionId))
             {
                 throw new Exception("A permission with this name already exists.");

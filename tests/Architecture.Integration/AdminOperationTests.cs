@@ -4,6 +4,10 @@ using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Implementations;
 using TicketSalesApp.Services.Interfaces;
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 internal static class AdminOperationTests
 {
@@ -51,7 +55,7 @@ internal static class AdminOperationTests
             (id, entity, version) => new(id, actor, entity, version),
             entity => db.ExecuteReducerAsync(new Reducer.UpdateTicket(entity, null, null, 21, null, null, actor), _ => true));
         await Crud<Reducer.CreateScheduleV2, Reducer.UpdateScheduleV2, Reducer.DeleteScheduleV2>("schedules",
-            (id, label) => new(id, actor, route, 1000, 12.5, 10, null, null, null, null, 2000, null, null, null, null, label),
+            (id, label) => new(id, actor, route, 1000, 12.5, 10, null, null, null, null, 2000, null, null, null, null, label, null),
             (id, entity, version) => new(id, actor, entity, version, null, null, null, null, null, null, 20, null, null, null, null, null, null, null, "edited"),
             (id, entity, version) => new(id, actor, entity, version),
             entity => db.ExecuteReducerAsync(new Reducer.UpdateRouteSchedule(entity, null, null, null, null, null, null, 21, null, null, null, null, null, null, null, "legacy", actor), _ => true));
@@ -61,8 +65,8 @@ internal static class AdminOperationTests
             (id, entity, version) => new(id, actor, entity, version),
             async entity => { var identity = await db.ReadAsync(c => c.Db.UserProfile.LegacyUserId.Find(entity)!.UserId); await db.ExecuteReducerAsync(new Reducer.UpdateUser(identity, null, null, null, null, "legacy@example.invalid", null, actor), _ => true); });
         await Crud<Reducer.CreateRoleV2, Reducer.UpdateRoleV2, Reducer.DeleteRoleV2>("roles",
-            (id, label) => new(id, actor, 0, label, "", false, 0),
-            (id, entity, version) => new(id, actor, entity, version, null, "updated", null, null),
+            (id, label) => new(id, actor, 0, label, "", false, 0, null),
+            (id, entity, version) => new(id, actor, entity, version, null, "updated", null, null, null),
             (id, entity, version) => new(id, actor, entity, version),
             entity => db.ExecuteReducerAsync(new Reducer.UpdateRole(entity, null, "legacy", null, null, actor), _ => true));
         await Crud<Reducer.CreatePermissionV2, Reducer.UpdatePermissionV2, Reducer.DeletePermissionV2>("permissions",
@@ -73,13 +77,16 @@ internal static class AdminOperationTests
 
         var userOp = Id(); var user = await Send(new Reducer.CreateUserV2(userOp, actor, "synthetic-limited-" + Id(), "synthetic-initial-credential", "", "", null), userOp);
         var userIdentity = await db.ReadAsync(c => c.Db.UserProfile.LegacyUserId.Find(user.EntityId)!.UserId);
-        var roleOp = Id(); var role = await Send(new Reducer.CreateRoleV2(roleOp, actor, 0, "synthetic-limited-" + Id(), "", false, 0), roleOp);
-        foreach (var permission in new[] { "assign_roles", "grant_permissions" })
+        var roleOp = Id(); var role = await Send(new Reducer.CreateRoleV2(roleOp, actor, 0, "synthetic-limited-" + Id(), "", false, 0, null), roleOp);
+        var accessBefore = db.Changes.Current;
+        foreach (var permission in new[] { "assign_roles", "grant_permissions", "roles.create" })
         {
             var permissionId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == permission).PermissionId);
             var id = Id(); await Send(new Reducer.GrantRolePermissionV2(id, actor, role.EntityId, null, permissionId), id);
         }
         var assign = Id(); await Send(new Reducer.AssignUserRoleV2(assign, actor, user.EntityId, null, role.EntityId), assign);
+        var accessChanges = db.Changes.Read(accessBefore).Changes.Select(c => c.Resource).ToHashSet();
+        Check(new[] { "users", "roles", "permissions", "access" }.All(accessChanges.Contains), "role/user/permission/access change journal mapping incomplete");
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, role.EntityId, null), _ => true));
         var adminId = await db.ReadAsync(c => c.Db.Role.Iter().Single(r => r.Name == "Administrator").RoleId);
         var elevated = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "users.delete").PermissionId);
@@ -88,23 +95,43 @@ internal static class AdminOperationTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateTicketV2(Id(), userIdentity, 1, null, null, null, 1, null, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateScheduleV2(Id(), userIdentity, 1, null, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateUserV2(Id(), userIdentity, user.EntityId, null, "x@example.invalid", null), _ => true));
-        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), userIdentity, role.EntityId, null, null, "x", null, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), userIdentity, role.EntityId, null, null, "x", null, null, null), _ => true));
+        var compoundOp = Id();
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateRoleV2(compoundOp, userIdentity, 0, "synthetic-compound-denied-" + compoundOp, "", false, 0, new() { elevated }), _ => true));
+        Check(!await db.ReadAsync(c => c.Db.Role.Iter().Any(r => r.Name == "synthetic-compound-denied-" + compoundOp)), "composite privilege denial left a partial role");
+        var scopedId = Id();
+        var ownerScoped = await Send(new Reducer.CreateRoleV2(scopedId, actor, 0, "synthetic-owner-scoped-" + scopedId, "", false, 0, null), scopedId);
+        var userScoped = await db.ExecuteReducerAsync(new Reducer.CreateRoleV2(scopedId, userIdentity, 0, "synthetic-user-scoped-" + scopedId, "", false, 0, null), c => c.Db.MutationReceipt.Key.Find(userIdentity + ":" + scopedId)!);
+        Check(userScoped.Actor == userIdentity && ownerScoped.Actor == actor && userScoped.EntityId != ownerScoped.EntityId, "receipt key was not actor-scoped");
+        foreach (var scopedRole in new[] { ownerScoped.EntityId, userScoped.EntityId })
+        { var cleanup = Id(); await Send(new Reducer.DeleteRoleV2(cleanup, actor, scopedRole, null), cleanup); }
         await Reject(() => db.ExecuteReducerAsync(new Reducer.CreatePermissionV2(Id(), userIdentity, "synthetic-denied-" + Id(), "", ""), _ => true));
         var ownerLegacy = await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(actor)!.LegacyUserId);
         await Reject(() => db.ExecuteReducerAsync(new Reducer.SetUserActiveV2(Id(), actor, ownerLegacy, null, false), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteUserV2(Id(), actor, ownerLegacy, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.RemoveUserRoleV2(Id(), actor, ownerLegacy, null, adminId), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.RevokeRolePermissionV2(Id(), actor, adminId, null, elevated), _ => true));
-        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), actor, adminId, null, "renamed-admin", null, null, null), _ => true));
-        var systemOp = Id(); var system = await Send(new Reducer.CreateRoleV2(systemOp, actor, 0, "synthetic-system-" + Id(), "", true, 0), systemOp);
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), actor, adminId, null, "renamed-admin", null, null, null, null), _ => true));
+        var systemOp = Id(); var system = await Send(new Reducer.CreateRoleV2(systemOp, actor, 0, "synthetic-system-" + Id(), "", true, 0, null), systemOp);
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, system.EntityId, null), _ => true));
-        var scheduleOp = Id(); var schedule = await Send(new Reducer.CreateScheduleV2(scheduleOp, actor, route, 1000, 0, 10, null, null, null, null, 2000, null, null, null, null, null), scheduleOp);
+        var scheduleOp = Id(); var schedule = await Send(new Reducer.CreateScheduleV2(scheduleOp, actor, route, 1000, 0, 10, null, null, null, null, 2000, null, null, null, null, null, null), scheduleOp);
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoute(route, actor), _ => true));
         var ticketOp = Id(); var ticket = await Send(new Reducer.CreateTicketV2(ticketOp, actor, route, 10, (uint)Random.Shared.Next(1000, int.MaxValue), "Cash", null), ticketOp);
         var saleOp = Id(); var sale = await Send(new Reducer.CreateSaleV2(saleOp, actor, ticket.EntityId, "Synthetic buyer", "", null, null), saleOp);
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteTicketV2(Id(), actor, ticket.EntityId, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.SetScheduleActiveV2(Id(), actor, schedule.EntityId, null, false), _ => true));
         Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().All(u => string.IsNullOrEmpty(u.PasswordHash))), "administration exposed credentials in profiles");
+        var operations = new ApplicationOperations(db, new TicketSalesService(db, NullLogger<TicketSalesService>.Instance),
+            new BusService(db, NullLogger<BusService>.Instance), NullLogger<ApplicationOperations>.Instance);
+        foreach (var query in new[] { "tickets.list", "schedules.list", "users.list", "roles.list", "permissions.list" })
+        {
+            var projected = await operations.ExecuteAsync(query, actor, JsonSerializer.SerializeToElement(new PageRequest()), null, default);
+            var serialized = JsonSerializer.Serialize(projected, ApiProtocol.Json);
+            Check(!new[] { "PasswordHash", "Password", "Secret", "Token" }.Any(term => serialized.Contains('"' + term + '"', StringComparison.OrdinalIgnoreCase)), "administrative query exposed a credential member");
+        }
+        var detail = (UserRow)(await operations.ExecuteAsync("users.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+        Check(detail.Identity == userIdentity.ToString() && detail.Roles.Length > 0, "real administrative user projection lost identity/roles");
+        Console.WriteLine("PASS real five-resource paged projections, credential-free users.get and role/permission/user changes invalidate access resources");
         var remove = Id(); await Send(new Reducer.RemoveUserRoleV2(remove, actor, user.EntityId, null, role.EntityId), remove);
         var deleteSale = Id(); await Send(new Reducer.DeleteSaleV2(deleteSale, actor, sale.EntityId, null), deleteSale);
         var deleteTicket = Id(); await Send(new Reducer.DeleteTicketV2(deleteTicket, actor, ticket.EntityId, null), deleteTicket);

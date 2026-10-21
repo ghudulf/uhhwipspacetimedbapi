@@ -85,8 +85,8 @@ public partial class SpacetimeDBService
         connection.Reducers.OnMigratePasswordCredentials += (ctx) => OnReducerCompleted(ctx);
         connection.Reducers.OnAssignUserRoleV2 += (ctx, operationId, actingUser, entityId, expectedRevision, roleId) => OnReducerCompleted(ctx);
         connection.Reducers.OnCreatePermissionV2 += (ctx, operationId, actingUser, name, description, category) => OnReducerCompleted(ctx);
-        connection.Reducers.OnCreateRoleV2 += (ctx, operationId, actingUser, legacyRoleId, name, description, isSystem, priority) => OnReducerCompleted(ctx);
-        connection.Reducers.OnCreateScheduleV2 += (ctx, operationId, actingUser, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes) => OnReducerCompleted(ctx);
+        connection.Reducers.OnCreateRoleV2 += (ctx, operationId, actingUser, legacyRoleId, name, description, isSystem, priority, permissionIds) => OnReducerCompleted(ctx);
+        connection.Reducers.OnCreateScheduleV2 += (ctx, operationId, actingUser, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes) => OnReducerCompleted(ctx);
         connection.Reducers.OnCreateTicketV2 += (ctx, operationId, actingUser, routeId, price, seatNumber, paymentMethod, purchaseTime) => OnReducerCompleted(ctx);
         connection.Reducers.OnCreateUserV2 += (ctx, operationId, actingUser, login, initialCredential, email, phoneNumber, roleId) => OnReducerCompleted(ctx);
         connection.Reducers.OnDeletePermissionV2 += (ctx, operationId, actingUser, entityId, expectedRevision) => OnReducerCompleted(ctx);
@@ -100,7 +100,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnSetScheduleActiveV2 += (ctx, operationId, actingUser, entityId, expectedRevision, active) => OnReducerCompleted(ctx);
         connection.Reducers.OnSetUserActiveV2 += (ctx, operationId, actingUser, entityId, expectedRevision, active) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdatePermissionV2 += (ctx, operationId, actingUser, entityId, expectedRevision, name, description, category, isActive) => OnReducerCompleted(ctx);
-        connection.Reducers.OnUpdateRoleV2 += (ctx, operationId, actingUser, entityId, expectedRevision, name, description, legacyRoleId, priority) => OnReducerCompleted(ctx);
+        connection.Reducers.OnUpdateRoleV2 += (ctx, operationId, actingUser, entityId, expectedRevision, name, description, legacyRoleId, priority, permissionIds) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateScheduleV2 += (ctx, operationId, actingUser, entityId, expectedRevision, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateTicketV2 += (ctx, operationId, actingUser, entityId, expectedRevision, routeId, seatNumber, price, paymentMethod, isActive) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateUserV2 += (ctx, operationId, actingUser, entityId, expectedRevision, email, phoneNumber) => OnReducerCompleted(ctx);

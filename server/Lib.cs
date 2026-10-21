@@ -2332,7 +2332,12 @@ public static partial class Module
         if (price.HasValue) schedule.Price = price.Value;
         if (availableSeats.HasValue) schedule.AvailableSeats = availableSeats.Value;
         if (daysOfWeek != null) schedule.DaysOfWeek = daysOfWeek;
-        if (busTypes != null) schedule.BusTypes = busTypes;
+        if (busTypes != null)
+        {
+            if (busTypes.Length > 200) throw new Exception("Too many bus types.");
+            foreach (var type in busTypes) ValidateText(type, 200, true);
+            schedule.BusTypes = busTypes;
+        }
         if (stopDurationMinutes.HasValue) schedule.StopDurationMinutes = stopDurationMinutes.Value;
         if (isRecurring.HasValue) schedule.IsRecurring = isRecurring.Value;
         if (estimatedStopTimes != null) schedule.EstimatedStopTimes = estimatedStopTimes;

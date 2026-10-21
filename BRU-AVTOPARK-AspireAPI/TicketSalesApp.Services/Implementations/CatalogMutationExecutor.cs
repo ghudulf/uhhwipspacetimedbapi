@@ -5,7 +5,7 @@ using TicketSalesApp.Services.Interfaces;
 
 namespace TicketSalesApp.Services.Implementations;
 
-internal sealed class CatalogMutationExecutor(ISpacetimeDBService database, ILogger logger)
+public sealed class CatalogMutationExecutor(ISpacetimeDBService database, ILogger logger)
 {
     public async Task<MutationReceipt> ExecuteAsync<T>(T reducer, Identity actor, string id, CancellationToken ct) where T : Reducer, IReducerArgs, new()
     {

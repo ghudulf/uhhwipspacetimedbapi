@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateRoleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority);
+        public delegate void CreateRoleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority, System.Collections.Generic.List<uint>? permissionIds);
         public event CreateRoleV2Handler? OnCreateRoleV2;
 
-        public void CreateRoleV2(string operationId, SpacetimeDB.Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority)
+        public void CreateRoleV2(string operationId, SpacetimeDB.Identity actingUser, int legacyRoleId, string name, string description, bool isSystem, uint priority, System.Collections.Generic.List<uint>? permissionIds)
         {
-            conn.InternalCallReducer(new Reducer.CreateRoleV2(operationId, actingUser, legacyRoleId, name, description, isSystem, priority));
+            conn.InternalCallReducer(new Reducer.CreateRoleV2(operationId, actingUser, legacyRoleId, name, description, isSystem, priority, permissionIds));
         }
 
         public bool InvokeCreateRoleV2(ReducerEventContext ctx, Reducer.CreateRoleV2 args)
@@ -42,7 +42,8 @@ namespace SpacetimeDB.Types
                 args.Name,
                 args.Description,
                 args.IsSystem,
-                args.Priority
+                args.Priority,
+                args.PermissionIds
             );
             return true;
         }
@@ -68,6 +69,8 @@ namespace SpacetimeDB.Types
             public bool IsSystem;
             [DataMember(Name = "priority")]
             public uint Priority;
+            [DataMember(Name = "permission_ids")]
+            public System.Collections.Generic.List<uint>? PermissionIds;
 
             public CreateRoleV2(
                 string OperationId,
@@ -76,7 +79,8 @@ namespace SpacetimeDB.Types
                 string Name,
                 string Description,
                 bool IsSystem,
-                uint Priority
+                uint Priority,
+                System.Collections.Generic.List<uint>? PermissionIds
             )
             {
                 this.OperationId = OperationId;
@@ -86,6 +90,7 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.IsSystem = IsSystem;
                 this.Priority = Priority;
+                this.PermissionIds = PermissionIds;
             }
 
             public CreateRoleV2()

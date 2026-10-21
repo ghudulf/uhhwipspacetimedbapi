@@ -73,6 +73,7 @@ await RealtimeTests.RunAsync();
 ReportTests.Run();
 await SharedClientTests.RunAsync();
 await FleetOperationTests.RunAsync();
+await AdminOperationTests.RunAsync();
 await ReviewRegressionTests.RunAsync();
 await QrLoginTests.RunAsync();
 

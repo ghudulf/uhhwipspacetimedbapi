@@ -51,6 +51,7 @@ public static partial class Module
         }
 
         // Check if the seat is already taken
+        ValidateTicketSeat(ctx, routeId, seatNumber);
         if (ctx.Db.Ticket.Iter().Any(t => t.RouteId == routeId && t.SeatNumber == seatNumber && t.IsActive))
         {
             Log.Error($"[CreateTicket] Seat {seatNumber} already taken on route {routeId}");
@@ -278,6 +279,7 @@ public static partial class Module
             ticket.IsActive = isActive.Value;
         }
 
+        ValidateTicketSeat(ctx, ticket.RouteId, ticket.SeatNumber);
         if (ticket.IsActive && ctx.Db.Ticket.Iter().Any(t => t.TicketId != ticketId && t.RouteId == ticket.RouteId && t.SeatNumber == ticket.SeatNumber && t.IsActive))
             throw new Exception("Seat is already taken.");
         ticket.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;

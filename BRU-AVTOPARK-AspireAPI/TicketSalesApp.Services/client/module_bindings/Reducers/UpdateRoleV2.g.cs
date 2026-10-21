@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateRoleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority);
+        public delegate void UpdateRoleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority, System.Collections.Generic.List<uint>? permissionIds);
         public event UpdateRoleV2Handler? OnUpdateRoleV2;
 
-        public void UpdateRoleV2(string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority)
+        public void UpdateRoleV2(string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, string? name, string? description, int? legacyRoleId, uint? priority, System.Collections.Generic.List<uint>? permissionIds)
         {
-            conn.InternalCallReducer(new Reducer.UpdateRoleV2(operationId, actingUser, entityId, expectedRevision, name, description, legacyRoleId, priority));
+            conn.InternalCallReducer(new Reducer.UpdateRoleV2(operationId, actingUser, entityId, expectedRevision, name, description, legacyRoleId, priority, permissionIds));
         }
 
         public bool InvokeUpdateRoleV2(ReducerEventContext ctx, Reducer.UpdateRoleV2 args)
@@ -43,7 +43,8 @@ namespace SpacetimeDB.Types
                 args.Name,
                 args.Description,
                 args.LegacyRoleId,
-                args.Priority
+                args.Priority,
+                args.PermissionIds
             );
             return true;
         }
@@ -71,6 +72,8 @@ namespace SpacetimeDB.Types
             public int? LegacyRoleId;
             [DataMember(Name = "priority")]
             public uint? Priority;
+            [DataMember(Name = "permission_ids")]
+            public System.Collections.Generic.List<uint>? PermissionIds;
 
             public UpdateRoleV2(
                 string OperationId,
@@ -80,7 +83,8 @@ namespace SpacetimeDB.Types
                 string? Name,
                 string? Description,
                 int? LegacyRoleId,
-                uint? Priority
+                uint? Priority,
+                System.Collections.Generic.List<uint>? PermissionIds
             )
             {
                 this.OperationId = OperationId;
@@ -91,6 +95,7 @@ namespace SpacetimeDB.Types
                 this.Description = Description;
                 this.LegacyRoleId = LegacyRoleId;
                 this.Priority = Priority;
+                this.PermissionIds = PermissionIds;
             }
 
             public UpdateRoleV2()

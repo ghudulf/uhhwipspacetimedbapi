@@ -241,7 +241,7 @@ internal static class ReviewRegressionTests
         foreach (var resource in new[] { "buses", "employees", "jobs", "maintenance", "routes", "ticket-sales", "ticket_sales", "ticketsales" })
             Assert((bool)requiresStable.Invoke(null, [resource])!, "receipt-backed resource lost stable-ID requirement");
         foreach (var resource in new[] { "permissions", "roles", "route-schedules", "routeschedules", "route_schedules", "tickets", "users" })
-            Assert(!(bool)requiresStable.Invoke(null, [resource])!, "legacy resource gained an unsupported stable-ID requirement");
+            Assert((bool)requiresStable.Invoke(null, [resource])!, "administrative receipt-backed resource lost stable-ID requirement");
         var properties = typeof(FeatureFlagOptions).GetProperties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
         foreach (var category in new[] { "OAuth", "WebAuthn" })
             Assert(properties.Where(p => p.StartsWith(category, StringComparison.Ordinal) && p.EndsWith("EndpointEnabled", StringComparison.Ordinal)).ToHashSet()

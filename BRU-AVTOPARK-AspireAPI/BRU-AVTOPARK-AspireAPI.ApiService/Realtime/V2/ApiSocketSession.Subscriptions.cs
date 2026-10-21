@@ -23,7 +23,13 @@ public sealed partial class ApiSocketSession
         ["routes.list"] = ["routes", "buses", "employees", "access"],
         ["employees.list"] = ["employees", "jobs", "access"],
         ["jobs.list"] = ["jobs", "employees", "access"],
-        ["maintenance.list"] = ["maintenance", "buses", "access"]
+        ["maintenance.list"] = ["maintenance", "buses", "access"],
+        ["tickets.list"] = ["tickets", "routes", "access"],
+        ["schedules.list"] = ["schedules", "routes", "buses", "employees", "access"],
+        ["users.list"] = ["users", "roles", "access"],
+        ["users.get"] = ["users", "roles", "access"],
+        ["roles.list"] = ["roles", "permissions", "users", "access"],
+        ["permissions.list"] = ["permissions", "access"]
     };
     private static void ValidateSubscriptionId(string id)
     {

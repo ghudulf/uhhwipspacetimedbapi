@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateScheduleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes);
+        public delegate void CreateScheduleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, System.Collections.Generic.List<string>? busTypes);
         public event CreateScheduleV2Handler? OnCreateScheduleV2;
 
-        public void CreateScheduleV2(string operationId, SpacetimeDB.Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes)
+        public void CreateScheduleV2(string operationId, SpacetimeDB.Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats, System.Collections.Generic.List<string>? daysOfWeek, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? arrivalTime, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, System.Collections.Generic.List<string>? busTypes)
         {
-            conn.InternalCallReducer(new Reducer.CreateScheduleV2(operationId, actingUser, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes));
+            conn.InternalCallReducer(new Reducer.CreateScheduleV2(operationId, actingUser, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes));
         }
 
         public bool InvokeCreateScheduleV2(ReducerEventContext ctx, Reducer.CreateScheduleV2 args)
@@ -51,7 +51,8 @@ namespace SpacetimeDB.Types
                 args.IsRecurring,
                 args.EstimatedStopTimes,
                 args.StopDistances,
-                args.Notes
+                args.Notes,
+                args.BusTypes
             );
             return true;
         }
@@ -95,6 +96,8 @@ namespace SpacetimeDB.Types
             public System.Collections.Generic.List<double>? StopDistances;
             [DataMember(Name = "notes")]
             public string? Notes;
+            [DataMember(Name = "bus_types")]
+            public System.Collections.Generic.List<string>? BusTypes;
 
             public CreateScheduleV2(
                 string OperationId,
@@ -112,7 +115,8 @@ namespace SpacetimeDB.Types
                 bool? IsRecurring,
                 System.Collections.Generic.List<string>? EstimatedStopTimes,
                 System.Collections.Generic.List<double>? StopDistances,
-                string? Notes
+                string? Notes,
+                System.Collections.Generic.List<string>? BusTypes
             )
             {
                 this.OperationId = OperationId;
@@ -131,6 +135,7 @@ namespace SpacetimeDB.Types
                 this.EstimatedStopTimes = EstimatedStopTimes;
                 this.StopDistances = StopDistances;
                 this.Notes = Notes;
+                this.BusTypes = BusTypes;
             }
 
             public CreateScheduleV2()
