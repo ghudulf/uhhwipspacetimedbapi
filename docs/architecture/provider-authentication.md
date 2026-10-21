@@ -3,9 +3,9 @@
 **Delivered:** bounded provider broker; Microsoft Entra ID code+PKCE server,
 shared client and Avalonia login/link/status/unlink UI; system-browser passkey
 registration/login, real software-authenticator tests, committed WebAuthn storage
-and own-key management UI; own-account unlink reducer; v2 refresh transport
-adapter. **Not delivered:** production refresh-token orchestration, session-refresh
-coordinator and token-storage integration. Windows Hello is accessed only through
+and own-key management UI; own-account unlink reducer; native refresh issuance,
+rotation, shared session-refresh coordination and native token-storage integration
+([session model and rollout](session-synchronization.md)). Windows Hello is accessed only through
 the system browser's WebAuthn/platform authenticator, not native Hello APIs.
 
 ## Entra protocol and security boundary
@@ -255,21 +255,24 @@ Login selection remains hidden until the capability is enabled. Accessibility
 names and status announcements cover the added controls. No embedded credential
 WebView and no unverified native MAUI browser implementation were added.
 
-## Refresh checkpoint (unchanged by passkey rollout)
+## Refresh checkpoint
 
 V2 `auth.refresh {refreshToken}` consumes the shared connection authentication
 budget, calls `IAuthOrchestrationService.RefreshTokenAsync`, validates the new
 access token and active actor, replaces socket credentials, increments session
 generation and invalidates every open lease with `session_changed`. Its reply
 can carry the rotated refresh token and expiry. It can run after access expiry;
-the refresh token, not a stale access token, is its credential. Tests use a fake
-orchestrator and real framed sockets.
+the refresh token, not a stale access token, is its credential. Framed-socket tests
+use fake orchestration; production orchestration and real-module family reducers
+are covered separately.
 
-**Production refresh is not functional:** the existing orchestration method is
-still a `Not implemented` rejection. No refresh-token issuance/security model
-was invented here. The planned `ISessionRefresher`, single-flight coordinator,
-stored-token implementation and UI `SessionExpired` recovery remain unfinished;
-mutations are never automatically retried by current code.
+Production refresh now uses native-only opt-in (no Origin header), hash-only
+single-use families and committed reuse revocation. Concurrent duplicate rotation
+is intentionally strict: one successor is created, then the entire family is
+revoked. The shared coordinator single-flights reads/subscriptions; native storage
+conditionally applies the rotated pair and coalesces `SessionExpired`. Mutations
+are never automatically retried. See [session synchronization](session-synchronization.md)
+for lifetimes, storage/platform limits, revocation, failure modes and deployment.
 
 ## Validation, deviations and rollout
 
@@ -298,11 +301,10 @@ uncertain-outcome blocking and programmatic interactive accessibility names.
 Deviations: the module handle generator is explicitly pseudo-random;
 `residentKey:"preferred"` is added at the browser-options adapter for Fido2 3.0.1;
 invalid cryptographic assertions burn immediately; RP id is conservatively pinned
-to the exact API host rather than permitting parent domains. Client refresh
-integration remains out of scope. Entra metadata/JWKS remain same-authority-host
+to the exact API host rather than permitting parent domains. Entra metadata/JWKS remain same-authority-host
 pinned; own unlink removes all own mappings for the selected provider; custom
-desktop authority allow-list configuration remains unfinished. No new token model
-or weak fallback was introduced.
+desktop authority allow-list configuration remains unfinished. Native refresh is
+separate from provider/browser credentials; no weak storage fallback was introduced.
 
 Publish the additive module reducer/bindings **before** this API. Enable Entra
 only after tenant/callback validation; deploy capable clients after the API.

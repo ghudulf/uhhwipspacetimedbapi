@@ -15,7 +15,9 @@ Provider rollout checkpoint: [Microsoft Entra system-browser login and secure
 account linking](docs/architecture/provider-authentication.md) and system-browser
 passkey registration/login/key management are implemented behind default-off
 flags. Windows Hello depends on browser/platform WebAuthn support; real platform
-validation and automatic session refresh remain unfinished.
+validation remains outstanding. Native refresh rotation and shared read/subscription
+recovery are implemented; see [session synchronization and deployment](docs/architecture/session-synchronization.md)
+for strict reuse/concurrency semantics, native-only opt-in and storage limitations.
 - **Real-time Sync**: SpacetimeDB client SDK with automatic data synchronization
 
 ### Project Structure

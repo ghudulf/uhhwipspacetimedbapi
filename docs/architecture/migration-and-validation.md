@@ -1,6 +1,6 @@
 # Architecture implementation ledger and deployment requirements
 
-This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) distinguishes implemented Entra/passkey browser ceremonies from unfinished refresh integration and unverified real Windows/browser platforms.
+This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) and [session synchronization model](session-synchronization.md) distinguish implemented Entra/passkey/native refresh integration from unverified real Windows/browser/mobile platforms.
 
 ## Database boundary
 
@@ -147,9 +147,9 @@ idempotency-hash fix without further production changes to that operation.
 
 Entra is disabled by default and must be configured/validated with a real tenant
 before rollout. Provider flows are bounded process memory and lost on restart.
-The v2 refresh adapter is tested with fake orchestration; the existing production
-refresh method still rejects as unimplemented; that work is separate from the
-passkey rollout. See the explicit [refresh checkpoint](provider-authentication.md#refresh-checkpoint-unchanged-by-passkey-rollout).
+The v2 refresh adapter is tested with fake orchestration; production native
+orchestration and real-module family rotation/reuse are tested separately. See
+the [refresh checkpoint](provider-authentication.md#refresh-checkpoint).
 
 ## Passkey storage and browser rollout
 
@@ -177,3 +177,20 @@ and UI without deleting keys. Real-reducer integration covers persistent handle
 idempotency/RLS, duplicate credentials, monotonic/zero counters and own-only
 committed service/removal behavior. Real Fido2 software-authenticator tests and
 headless Avalonia tests do not replace real browser/Windows Hello validation.
+
+## Native refresh and session synchronization rollout
+
+Publish the additive protected `RefreshTokenRecord` table and `IssueRefreshToken`,
+`RotateRefreshToken`, `RevokeRefreshFamily`, `RevokeAllRefreshTokens` reducers
+**before the API**, with regenerated bindings/observers. Preserve existing rows
+and trusted API provisioning; rehearse any client-break plan without data deletion.
+Then deploy the API and capable native clients. Password/credential changes and
+account deactivation/deletion now revoke refresh families in the module.
+
+The [session synchronization guide](session-synchronization.md) defines the
+native-header/no-Origin rule, absolute lifetimes, strict duplicate rotation
+(one successor then whole-family revocation), rate/retention limits, conditional
+origin-bound storage and failure behavior. Older clients/browsers get access-only
+sessions and must sign in at expiry. Refresh cannot repair uncertain mutations;
+they are never replayed automatically. Windows DPAPI and memory-only unsupported
+platform behavior remain unchanged; real platform storage/UI checks are required.

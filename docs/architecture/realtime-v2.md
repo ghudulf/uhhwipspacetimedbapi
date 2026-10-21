@@ -50,6 +50,18 @@ Connections are limited to 128 per process and four per source address. Authenti
 
 Session attach revalidates token proof; every protected command revalidates its token and current database permissions. Query subscriptions reauthorize on delivery and expire their snapshot lease when committed data changes. Password/TOTP orchestration shares the existing authentication service. Windows/Entra/WebAuthn browser and platform ceremonies must not be replaced with client-supplied usernames or biometric data.
 
+`auth.refresh {refreshToken}` supports native single-use refresh families after
+access expiry. It requires the native opt-in handshake header and no Origin,
+uses shared authentication budgets, revalidates the replacement access token,
+advances generation and invalidates every lease with `session_changed`. Reuse
+commits whole-family revocation rather than returning a successor. Concurrent
+duplicates deliberately create one successor then revoke the whole family.
+The native client currently rotates over HTTP, conditionally stores the pair and
+rebinds its transport. One shared flight recovers concurrent reads/subscriptions;
+reads retry once and subscriptions reacquire snapshots. Mutations never refresh
+or retry automatically. See [session synchronization](session-synchronization.md)
+for storage, failure/cooldown rules, native-only issuance and rollout order.
+
 Sale, fleet, catalog and administrative mutations require a stable `operationId` in the envelope. The ID is scoped to actor and payload by the database. After disconnect or `commit_outcome_unknown`, query `mutations.receipt`. A missing receipt does not prove that a submitted operation cannot still commit. Never generate a replacement operation ID and blindly resubmit. Receipts contain no tokens or credentials.
 
 The shared HTTP adapter is `POST /api/operations/{operation}` with the same payload and bearer authorization. Mutations use `Idempotency-Key`; GUID text in D/N/B/P format is normalized to N. HTTP adapters generate a key if omitted and always echo the effective key in `Operation-Id` for receipt reconciliation. V1 realtime mutations require a stable GUID `operationId`, falling back to a valid GUID `requestId`, normalized to N; neither may be silently replaced with a fresh ID. Existing HTTP sale/fleet mutations and resource socket mutations preserve their original response formats. Existing `/api/session/access` also invokes the shared handler.
