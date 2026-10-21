@@ -27,7 +27,13 @@ internal static class NativeRefreshTests
         context.Request.Headers.Remove("Origin"); context.Request.Headers["X-BRU-Device"] = "Device\n" + new string('x', 100);
         var login = await service.CompleteQrLoginAsync(Actor, true);
         Check(login.RefreshToken is { Length: 43 } && store.Root!.TokenHash == NativeRefreshTokens.Hash(login.RefreshToken) && store.Root.DeviceLabel.Length == 64 && !store.Root.DeviceLabel.Any(char.IsControl), "native opaque/hash/label finalization");
-        var originalExpiry = store.Root.ExpiresAt;
+        context.Request.Headers.Origin = "https://browser.test";
+        Check(!(await service.RefreshTokenAsync(login.RefreshToken!)).Success && store.Root!.UsedAt == null, "Origin-bearing refresh consumed proof");
+        context.Request.Headers.Remove("Origin");
+        context.Request.Headers.Remove("X-BRU-Native-Login");
+        Check(!(await service.RefreshTokenAsync(login.RefreshToken!)).Success && store.Root!.UsedAt == null, "refresh without native opt-in consumed proof");
+        context.Request.Headers["X-BRU-Native-Login"] = "1";
+        var originalExpiry = store.Root!.ExpiresAt;
         var refreshed = await service.RefreshTokenAsync(login.RefreshToken!);
         Check(refreshed.Success && refreshed.RefreshToken is { Length: 43 } && refreshed.RefreshToken != login.RefreshToken && store.Next!.ExpiresAt == originalExpiry &&
             store.Next.TokenHash == NativeRefreshTokens.Hash(refreshed.RefreshToken) && refreshed.Token != null && refreshed.ExpiresAt > DateTime.UtcNow, "real orchestration rotation/mint/absolute family expiry");

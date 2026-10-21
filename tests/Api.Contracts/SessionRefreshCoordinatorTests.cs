@@ -20,6 +20,10 @@ internal static class SessionRefreshCoordinatorTests
         try { await coordinator.ExecuteAsync<string>("https://api.test", "new", true, (_, _) => { mutationCalls++; throw new ApplicationCommandException("session_expired"); }); }
         catch (ApplicationCommandException) { }
         Check(mutationCalls == 1 && calls == 1, "mutation refreshed/retried");
+        var uncertainCalls = 0;
+        try { await coordinator.ExecuteAsync<string>("https://api.test", "new", true, (_, _) => { uncertainCalls++; throw new ApplicationCommandException("commit_outcome_unknown"); }); }
+        catch (ApplicationCommandException ex) when (ex.Code == "commit_outcome_unknown") { }
+        Check(uncertainCalls == 1 && calls == 1, "uncertain mutation refreshed/retried");
         var failureCalls = 0; var events = 0;
         var failed = new SessionRefreshCoordinator(new Refresher(() => { failureCalls++; throw new InvalidOperationException("private-token-sentinel"); }), TimeProvider.System);
         failed.SessionExpired += () => events++;

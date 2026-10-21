@@ -4,6 +4,15 @@ using SpacetimeDB;
 public static partial class Module
 {
     [SpacetimeDB.Reducer]
+    public static void PrepareRefreshTokenTest(ReducerContext ctx, string identityHex)
+    {
+        RequireDeploymentOwner(ctx);
+        var identity = Identity.FromHexString(identityHex);
+        if (ctx.Db.UserProfile.UserId.Find(identity) != null) throw new Exception("Fresh synthetic fixture required.");
+        ctx.Db.UserProfile.Insert(new UserProfile { UserId = identity, LegacyUserId = 3999999999,
+            Login = "synthetic-refresh-user", IsActive = true });
+    }
+    [SpacetimeDB.Reducer]
     public static void ExpireRefreshTokenForTest(ReducerContext ctx, string hash)
     {
         RequireDeploymentOwner(ctx);
