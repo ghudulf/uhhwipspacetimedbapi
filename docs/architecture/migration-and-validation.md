@@ -203,3 +203,53 @@ API and desktop nonincremental builds, production WASI publish and generic MAUI
 and this checkpoint have the same 185 deduplicated path/code/message signatures;
 no new warnings were introduced. This is synthetic/headless/Linux validation,
 not real Windows Hello, mobile keystore or distributed-deployment certification.
+
+## Remaining database-access and lifecycle inventory (handoff 10)
+
+Inventory taken at `8150c2d`, before changes. Paths below are relative to
+`BRU-AVTOPARK-AspireAPI/`: **Services** means `TicketSalesApp.Services/Implementations/`;
+**API** means `BRU-AVTOPARK-AspireAPI.ApiService/`. Counts are textual call sites,
+not a claim that every `.Result` property is a task or every dispatch is unobserved.
+The installation provisioner's temporary owner connection needs separate review.
+`TwoFactorService`, `UsersController` and `TicketsController` already have no
+raw connection access/dispatch sites in this checkout. Generated bindings and
+SpacetimeDBService's serialized SDK internals are outside the application boundary.
+
+| File | Before | After |
+| --- | --- | --- |
+| Services/AdminActionLogger.cs | 3 raw accesses; 1 dispatch | Pending |
+| Services/AuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
+| Services/AuthorizationStore.cs | 14 raw accesses/accessor declarations; 4 dispatches | Pending |
+| Services/DataService.cs | 5 raw accesses; 11 dispatches | Pending |
+| Services/DatabaseInstallationProvisioner.cs | 1 temporary-owner dispatch | Pending |
+| Services/MagicLinkService.cs | 3 raw accesses; 2 dispatches | Pending |
+| Services/OpenIdConnectService.cs | 1 raw access | Pending |
+| Services/PermissionService.cs | 8 raw accesses; 3 dispatches | Pending |
+| Services/QRAuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
+| Services/RoleService.cs | 9 raw accesses; 8 dispatches | Pending |
+| Services/RouteScheduleService.cs | 9 raw accesses; 5 dispatches | Pending |
+| Services/SettingsService.cs | 6 raw accesses; 5 dispatches; fallback disables 2FA on errors | Pending |
+| Services/SpacetimeDBService.cs | 1 public raw accessor declaration | Serialized SDK owner; public accessor removal pending |
+| Services/TicketSalesService.cs | 9 raw accesses | Pending |
+| Services/TicketService.cs | 13 raw accesses; 7 dispatches (includes commented obsolete call) | Pending |
+| Services/TotpService.cs | 6 raw accesses; 5 dispatches | Pending |
+| Services/UserService.cs | 8 raw accesses; 3 dispatches | Pending |
+| TicketSalesApp.Services/Interfaces/ISpacetimeDBService.cs | 1 raw accessor declaration | Pending |
+| API/Controllers/AuthController.cs | 2 raw accesses | Pending |
+| API/Controllers/DebugController.cs | 1 raw access | Pending |
+| API/Experimental/Services/Implementations/AuthOrchestrationService.cs | 9 raw accesses; 2 dispatches | Pending |
+| API/Experimental/Services/Implementations/IdentityService.cs | 2 raw accesses | Pending |
+| API/Experimental/Services/Implementations/ProfileService.cs | 1 raw access | Pending |
+| API/Experimental/Services/Implementations/TokenService.cs | 2 raw accesses | Pending |
+| API/Controllers/BaseController.cs | 8 sync-over-async wrappers | Pending |
+| API/Experimental/Services/Implementations/HtmlRenderingService.cs | 16 sync-over-async rendering wrappers | Pending |
+| API/Program.cs | 1 detached Task.Run startup task; fatal startup logging | Pending |
+| API/Controllers/RealtimeController.cs | 1 detached Task.Run connection task | Pending |
+| API/Realtime/Infrastructure/SignalRRealtimeEventBus.cs | 1 synchronous semaphore wait during disposal | Pending |
+
+Planned ratchets: `DatabaseAccessPolicyTests` scans application C# for raw
+connections, reducer dispatches and task blocking, with explicit justified
+exceptions only. A separate diagnostics guard checks credential-bearing log
+templates/arguments; outcome words and fingerprints are not credential values.
+The final inventory must replace Pending with verified dispositions; until then
+this table records remaining work, not completed migration.
