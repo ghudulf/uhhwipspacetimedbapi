@@ -32,3 +32,32 @@ Both hosts put logs and WebView2 data in the per-user local application-data dir
 ## Validation gates
 
 Native Flatpak sandbox execution, Windows MakeAppx/signing/install/update/uninstall, DPAPI, browser callbacks, accessibility and real Windows authentication require the relevant platform. Cross-compilation alone does not validate those flows. MAUI uses the shared client library but retains its own host/package targets; these desktop scripts package the Avalonia standalone host.
+
+### Accessibility validation
+
+Run `dotnet run --project tests/Client.Presentation` from the repository root.
+`AccessibilityPolicyTests` scans every library `.axaml` file, including `Views/**`,
+`Controls/**`, `App.axaml` and resources. It requires interactive names (explicit
+`AutomationProperties.Name`/`LabeledBy`, or static text content/headers), named or
+decorative (`AccessibilityView="Raw"`) images, live status/error announcements,
+default/cancel dialog actions, and no application tab-stop suppression. Its rule
+fixtures cover both accepted and rejected markup. There is no source allowlist.
+
+`AccessibilityRuntimeTests` opens the login selector, QR display/device/approval/
+devices, provider login, passkey management, Entra link, Windows link, central
+view and generic modal dialog. A loopback-only synthetic API supplies capability,
+profile, QR and session values; no real provider/browser/account is used. It walks
+materialized visual trees with Fluent templates, checks resolved automation names
+and peers, updates a bound action name, rejects empty bindings/nonfocusable actions,
+and focuses enabled visible interactive controls, including populated item templates.
+The only template exceptions are Fluent scrollbar repeat buttons and the
+`PART_HorizontalScrollBar`/`PART_VerticalScrollBar` parts owned by a `ScrollViewer`.
+A `ListBox` may delegate tab focus to its realized items; those items are still
+individually named, checked and focused. No application controls/windows are exempt.
+
+**Not verified headlessly:** contrast, visual rendering with the shipped themes,
+native keyboard traversal/order, OS screen-reader announcements and mobile/native
+automation integration. Before distribution, validate those on real supported
+Windows/Linux/mobile hosts, including error/status updates, dialog Enter/Escape,
+keyboard-only use, light/dark/high-contrast modes and scaling. Passing these tests
+is not an accessibility-conformance certification.
