@@ -67,4 +67,4 @@ $installer.Replace('@PUBLISHER@', $xmlPublisher).Replace('@VERSION@', $Version).
     Replace('@INSTALLER_URI@', $installerUri).Replace('@PACKAGE_URI@', $packageUri) |
     Set-Content -Encoding utf8 (Join-Path $outputRoot "BRU.Avtopark-$Architecture.appinstaller")
 }
-Write-Host "Package created: $packagePath (no installation performed)"
+Write-Output "Package created: $packagePath (no installation performed)"
