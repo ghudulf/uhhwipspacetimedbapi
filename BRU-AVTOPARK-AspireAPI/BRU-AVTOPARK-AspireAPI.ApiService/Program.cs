@@ -48,7 +48,9 @@ builder.Services.AddDataProtection()
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
+                 .MinimumLevel.Debug()
+                 // Hosting request-start logs include callback query strings (OIDC codes/state).
+                 .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
                 .WriteTo.Console()
                 .WriteTo.Debug()
                 .WriteTo.Logger(lc => lc
@@ -85,6 +87,7 @@ builder.Services.AddLogging(loggingBuilder =>
     loggingBuilder.AddConsole();
     loggingBuilder.AddDebug();
     loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+    loggingBuilder.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
     
     // Suppress Windows Event Log to avoid permission errors
     loggingBuilder.AddFilter("Microsoft.Extensions.Logging.EventLog", LogLevel.None);
@@ -139,6 +142,13 @@ builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.Q
 builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowOptions>()
     .Bind(builder.Configuration.GetSection("Authentication:Providers"));
 builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowBroker>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>, BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptionsValidator>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Entra")).ValidateOnStart();
+builder.Services.AddHttpClient("entra", client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceStore, TicketSalesApp.Services.Implementations.QrLoginDeviceStore>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals

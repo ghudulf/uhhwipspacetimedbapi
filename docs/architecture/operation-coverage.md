@@ -26,6 +26,12 @@ changing routes, regenerate with `dotnet run --project tests/Api.Contracts --
 
 | Controller | Method | HTTP | Route | Disposition |
 |---|---|---|---|---|
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `Callback` | GET | `/api/auth/entra/callback` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `Cancel` | POST | `/api/auth/entra/flows/{flowId}/cancel` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `Complete` | POST | `/api/auth/entra/flows/{flowId}/complete` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `LinkStatus` | POST | `/api/auth/entra/link/status` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `Start` | POST | `/api/auth/entra/start` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
+| `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationController` | `Unlink` | POST | `/api/auth/entra/unlink` | HTTP-only: authentication/provider/OAuth-OIDC or account-security ceremony; preserve protocol/HTML response |
 | `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `List` | GET | `/api/auth/qr/devices` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
 | `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Enroll` | POST | `/api/auth/qr/devices` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
 | `BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginController` | `Revoke` | DELETE | `/api/auth/qr/devices/{deviceId}` | HTTP-only: QR ceremony; full bearer, own-device enrollment/list/revocation |
