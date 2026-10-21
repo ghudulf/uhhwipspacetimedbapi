@@ -235,6 +235,10 @@ changing routes, regenerate with `dotnet run --project tests/Api.Contracts --
 
 ## Registered shared v2 operations
 
+Editable catalog/admin list results carry `CatalogPageResult<T>` permission flags;
+the tickets/schedules/users/roles/permissions page contracts are no longer bare
+`PageResult<T>`. Capability names, permissions and mutation flags are unchanged.
+
 These descriptors are shared by the generic HTTP operation transport and v2 socket.
 Resource-specific HTTP reads marked legacy above are not falsely claimed as adapters.
 

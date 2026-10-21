@@ -20,6 +20,7 @@ internal static class CatalogReadAssertions
         {
             var result = await operations.ExecuteAsync(resource + ".list", actor, JsonSerializer.SerializeToElement(new PageRequest(page, 100), ApiProtocol.Json), null, ct);
             var json = JsonSerializer.SerializeToElement(result, ApiProtocol.Json);
+            if (!json.TryGetProperty("canCreate", out _) || !json.TryGetProperty("canEdit", out _) || !json.TryGetProperty("canDelete", out _)) throw new Exception(resource + " editable page omitted mutation permissions");
             foreach (var row in json.GetProperty("items").EnumerateArray())
                 if (row.GetProperty(key).GetUInt32() == id)
                 {

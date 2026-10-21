@@ -17,8 +17,8 @@ public sealed partial class ApplicationOperations
             {
                 var rows = c.Db.Ticket.Iter().Where(t => Matches(request.Search, t.TicketId.ToString(), t.SeatNumber.ToString(), t.PaymentMethod,
                     access.Allows("routes.view") ? c.Db.Route.RouteId.Find(t.RouteId)?.StartPoint : null, access.Allows("routes.view") ? c.Db.Route.RouteId.Find(t.RouteId)?.EndPoint : null)).OrderBy(t => t.TicketId).ToArray();
-                return new PageResult<TicketRow>(Page(rows, request).Select(t => new TicketRow(t.TicketId, t.RouteId,
-                    access.Allows("routes.view") ? RouteLabel(c, t.RouteId) : null, t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<TicketRow>(Page(rows, request).Select(t => new TicketRow(t.TicketId, t.RouteId,
+                    access.Allows("routes.view") ? RouteLabel(c, t.RouteId) : null, t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId))).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("tickets.create"), access.Allows("tickets.edit"), access.Allows("tickets.delete"));
             }, ct);
         });
         Register<PageRequest>("schedules.list", "schedules.view", false, async (actor, request, _, ct) =>
@@ -27,7 +27,7 @@ public sealed partial class ApplicationOperations
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.RouteSchedule.Iter().Where(s => Matches(request.Search, s.StartPoint, s.EndPoint, s.Notes)).OrderBy(s => s.ScheduleId).ToArray();
-                return new PageResult<ScheduleRow>(Page(rows, request).Select(s =>
+                return new CatalogPageResult<ScheduleRow>(Page(rows, request).Select(s =>
                 {
                     var route = c.Db.Route.RouteId.Find(s.RouteId);
                     var bus = access.Allows("buses.view") && route != null ? c.Db.Bus.BusId.Find(route.BusId) : null;
@@ -35,16 +35,16 @@ public sealed partial class ApplicationOperations
                     return new ScheduleRow(s.ScheduleId, s.RouteId, access.Allows("routes.view") ? RouteLabel(c, s.RouteId) : null,
                         bus == null ? null : bus.Model + " " + bus.RegistrationNumber, driver == null ? null : driver.Surname + " " + driver.Name,
                         Timestamp(s.DepartureTime), Timestamp(s.ArrivalTime), Amount(s.Price), s.AvailableSeats, s.IsActive, Version(c, "schedules", s.ScheduleId));
-                }).ToArray(), request.Page, request.PageSize, rows.Length);
+                }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("schedules.create"), access.Allows("schedules.edit"), access.Allows("schedules.delete"));
             }, ct);
         });
-        Register<PageRequest>("users.list", "users.view", false, (actor, request, _, ct) =>
+        Register<PageRequest>("users.list", "users.view", false, async (actor, request, _, ct) =>
         {
-            ValidatePage(request);
-            return Read(database, c =>
+            ValidatePage(request); var access = await _access.GetAsync(actor, ct);
+            return await database.ReadAsync(c =>
             {
                 var rows = c.Db.UserProfile.Iter().Where(u => Matches(request.Search, u.Login, u.Email, u.PhoneNumber)).OrderBy(u => u.LegacyUserId).ToArray();
-                return new PageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u)).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("users.create"), access.Allows("users.edit"), access.Allows("users.delete"));
             }, ct);
         });
         Register<EntityRequest>("users.get", "users.view", false, (_, request, _, ct) =>
@@ -52,27 +52,27 @@ public sealed partial class ApplicationOperations
             AdminId(request.Id);
             return Read(database, c => PublicUser(c, c.Db.UserProfile.LegacyUserId.Find(request.Id) ?? throw new OperationException("not_found")), ct);
         });
-        Register<PageRequest>("roles.list", "roles.view", false, (_, request, _, ct) =>
+        Register<PageRequest>("roles.list", "roles.view", false, async (actor, request, _, ct) =>
         {
-            ValidatePage(request);
-            return Read(database, c =>
+            ValidatePage(request); var access = await _access.GetAsync(actor, ct);
+            return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Role.Iter().Where(r => Matches(request.Search, r.Name, r.Description)).OrderBy(r => r.RoleId).ToArray();
-                return new PageResult<RoleRow>(Page(rows, request).Select(r =>
+                return new CatalogPageResult<RoleRow>(Page(rows, request).Select(r =>
                 {
                     var permissions = c.Db.RolePermission.RoleId.Filter(r.RoleId).Select(p => c.Db.Permission.PermissionId.Find(p.PermissionId)).Where(p => p != null).ToArray();
                     return new RoleRow(r.RoleId, r.LegacyRoleId, r.Name, r.Description, r.IsSystem, r.Priority, r.IsActive,
                         permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId));
-                }).ToArray(), request.Page, request.PageSize, rows.Length);
+                }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("roles.create"), access.Allows("roles.edit"), access.Allows("roles.delete"));
             }, ct);
         });
-        Register<PageRequest>("permissions.list", "permissions.view", false, (_, request, _, ct) =>
+        Register<PageRequest>("permissions.list", "permissions.view", false, async (actor, request, _, ct) =>
         {
-            ValidatePage(request);
-            return Read(database, c =>
+            ValidatePage(request); var access = await _access.GetAsync(actor, ct);
+            return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Permission.Iter().Where(p => Matches(request.Search, p.Name, p.Description, p.Category)).OrderBy(p => p.PermissionId).ToArray();
-                return new PageResult<PermissionRow>(Page(rows, request).Select(p => new PermissionRow(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId))).ToArray(), request.Page, request.PageSize, rows.Length);
+                return new CatalogPageResult<PermissionRow>(Page(rows, request).Select(p => new PermissionRow(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId))).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("permissions.create"), access.Allows("permissions.edit"), access.Allows("permissions.delete"));
             }, ct);
         });
 

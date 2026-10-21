@@ -68,8 +68,8 @@ internal static class AdminOperationTests
                 if (type == typeof(Role)) return Task.FromResult<Role?>(new Role { RoleId = 7, Name = "synthetic", Description = "" });
                 if (type == typeof(Permission)) return Task.FromResult<Permission?>(new Permission { PermissionId = 7, Name = "synthetic", Description = "", Category = "" });
                 if (type == typeof(UserRow)) return Task.FromResult(new UserRow(7, actor.ToString(), "synthetic", null, null, true, null, null, [], 0));
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PageResult<>))
-                    return Completed(type, Activator.CreateInstance(type, Array.CreateInstance(type.GetGenericArguments()[0], 0), 1, 50, 0));
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(CatalogPageResult<>))
+                    return Completed(type, Activator.CreateInstance(type, Array.CreateInstance(type.GetGenericArguments()[0], 0), 1, 50, 0, false, false, false));
                 if (type == typeof(AdminLookupSnapshot))
                 { lookupReads++; return Task.FromResult(new AdminLookupSnapshot(new Dictionary<uint, TicketLookup>(), new Dictionary<uint, RouteLookup>(),
                     new Dictionary<uint, RoleLookup>(), new Dictionary<uint, PermissionLookup>(), [], [], [])); }

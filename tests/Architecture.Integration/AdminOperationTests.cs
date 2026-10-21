@@ -95,6 +95,20 @@ internal static class AdminOperationTests
         var assign = Id(); await Send(new Reducer.AssignUserRoleV2(assign, actor, user.EntityId, null, role.EntityId), assign);
         var accessChanges = db.Changes.Read(accessBefore).Changes.Select(c => c.Resource).ToHashSet();
         Check(new[] { "users", "roles", "permissions", "access" }.All(accessChanges.Contains), "role/user/permission/access change journal mapping incomplete");
+        foreach (var resource in new[] { "tickets", "schedules", "users", "roles", "permissions" })
+        {
+            var permissionId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == resource + ".view").PermissionId);
+            var grantView = Id(); await Send(new Reducer.GrantRolePermissionV2(grantView, actor, role.EntityId, null, permissionId), grantView);
+            var payload = JsonSerializer.SerializeToElement(new PageRequest(), ApiProtocol.Json);
+            var limited = JsonSerializer.SerializeToElement(await operations.ExecuteAsync(resource + ".list", userIdentity, payload, null, default), ApiProtocol.Json);
+            Check(limited.GetProperty("canCreate").GetBoolean() == (resource == "roles") && !limited.GetProperty("canEdit").GetBoolean() && !limited.GetProperty("canDelete").GetBoolean(), resource + " page permission flags do not reflect limited actor grants");
+            var full = JsonSerializer.SerializeToElement(await operations.ExecuteAsync(resource + ".list", actor, payload, null, default), ApiProtocol.Json);
+            Check(full.GetProperty("canCreate").GetBoolean() && full.GetProperty("canEdit").GetBoolean() && full.GetProperty("canDelete").GetBoolean(), resource + " owner page permission flags missing");
+            var revokeView = Id(); await Send(new Reducer.RevokeRolePermissionV2(revokeView, actor, role.EntityId, null, permissionId), revokeView);
+            try { await operations.ExecuteAsync(resource + ".list", userIdentity, payload, null, default); throw new Exception("revoked list remained readable"); }
+            catch (OperationException ex) when (ex.Code == "forbidden") { }
+        }
+        Console.WriteLine("PASS editable administrative pages carry current per-resource create/edit/delete flags for owner/limited actors and honor view revocation");
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, role.EntityId, null), _ => true));
         var adminId = await db.ReadAsync(c => c.Db.Role.Iter().Single(r => r.Name == "Administrator").RoleId);
         var elevated = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "users.delete").PermissionId);
