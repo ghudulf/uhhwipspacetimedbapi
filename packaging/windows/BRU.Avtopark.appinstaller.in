@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2018" Uri="@INSTALLER_URI@" Version="@VERSION@">
+ <MainPackage Name="com.bru.avtopark.ticketsales" Publisher="@PUBLISHER@" Version="@VERSION@" ProcessorArchitecture="@ARCHITECTURE@" Uri="@PACKAGE_URI@" />
+ <UpdateSettings><OnLaunch HoursBetweenUpdateChecks="24" ShowPrompt="true" /></UpdateSettings>
+</AppInstaller>

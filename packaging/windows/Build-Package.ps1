@@ -16,6 +16,9 @@ if (@($parsedVersion.Major, $parsedVersion.Minor, $parsedVersion.Build, $parsedV
 if ($parsedVersion.Major -eq 0) { throw 'MSIX major version must be nonzero.' }
 if ($UpdateBaseUri -and ($UpdateBaseUri.Scheme -ne 'https' -or $UpdateBaseUri.Query -or $UpdateBaseUri.Fragment -or $UpdateBaseUri.UserInfo)) { throw 'Use an HTTPS update directory URL without credentials, query or fragment.' }
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
+[xml]$projectMetadata = Get-Content (Join-Path $repoRoot 'BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop/BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.csproj') -Raw
+$displayVersion = $projectMetadata.SelectSingleNode('//ApplicationDisplayVersion').InnerText
+if ("$($parsedVersion.Major).$($parsedVersion.Minor).$($parsedVersion.Build)" -ne $displayVersion) { throw 'Update the project display version before packaging a different release.' }
 $null = New-Item -ItemType Directory -Force $OutputDirectory
 $outputRoot = (Resolve-Path $OutputDirectory).Path
 $stage = Join-Path $outputRoot "stage-$Architecture"
@@ -42,21 +45,9 @@ try {
     }
 } finally { $bitmap.Dispose(); $icon.Dispose() }
 $xmlPublisher = [System.Security.SecurityElement]::Escape($Publisher)
-@"
-<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
- xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
- xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">
- <Identity Name="com.bru.avtopark.ticketsales" Publisher="$xmlPublisher" Version="$Version" ProcessorArchitecture="$Architecture" />
- <Properties><DisplayName>BRU Avtopark</DisplayName><PublisherDisplayName>BRU Avtopark</PublisherDisplayName><Logo>Assets\Logo50.png</Logo></Properties>
- <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
- <Resources><Resource Language="en-us" /><Resource Language="ru-ru" /></Resources>
- <Applications><Application Id="App" Executable="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop.exe" EntryPoint="Windows.FullTrustApplication">
- <uap:VisualElements DisplayName="BRU Avtopark" Description="Fleet and ticket sales management" BackgroundColor="transparent" Square150x150Logo="Assets\Logo150.png" Square44x44Logo="Assets\Logo44.png" />
- </Application></Applications>
- <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
-</Package>
-"@ | Set-Content -Encoding utf8 (Join-Path $stage 'AppxManifest.xml')
+$manifest = Get-Content (Join-Path $PSScriptRoot 'AppxManifest.xml.in') -Raw
+$manifest.Replace('@PUBLISHER@', $xmlPublisher).Replace('@VERSION@', $Version).Replace('@ARCHITECTURE@', $Architecture) |
+    Set-Content -Encoding utf8 (Join-Path $stage 'AppxManifest.xml')
 $packageName = "BRU.Avtopark-$Version-$Architecture.msix"
 $packagePath = Join-Path $outputRoot $packageName
 & $makeAppx pack /d $stage /p $packagePath /o
@@ -71,12 +62,9 @@ if ($UpdateBaseUri) {
     $baseUri = [uri]::new($UpdateBaseUri.AbsoluteUri.TrimEnd('/') + '/')
     $packageUri = [System.Security.SecurityElement]::Escape([uri]::new($baseUri, $packageName).AbsoluteUri)
     $installerUri = [System.Security.SecurityElement]::Escape([uri]::new($baseUri, "BRU.Avtopark-$Architecture.appinstaller").AbsoluteUri)
-@"
-<?xml version="1.0" encoding="utf-8"?>
-<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2018" Uri="$installerUri" Version="$Version">
- <MainPackage Name="com.bru.avtopark.ticketsales" Publisher="$xmlPublisher" Version="$Version" ProcessorArchitecture="$Architecture" Uri="$packageUri" />
- <UpdateSettings><OnLaunch HoursBetweenUpdateChecks="24" ShowPrompt="true" /></UpdateSettings>
-</AppInstaller>
-"@ | Set-Content -Encoding utf8 (Join-Path $outputRoot "BRU.Avtopark-$Architecture.appinstaller")
+$installer = Get-Content (Join-Path $PSScriptRoot 'BRU.Avtopark.appinstaller.in') -Raw
+$installer.Replace('@PUBLISHER@', $xmlPublisher).Replace('@VERSION@', $Version).Replace('@ARCHITECTURE@', $Architecture).
+    Replace('@INSTALLER_URI@', $installerUri).Replace('@PACKAGE_URI@', $packageUri) |
+    Set-Content -Encoding utf8 (Join-Path $outputRoot "BRU.Avtopark-$Architecture.appinstaller")
 }
 Write-Host "Package created: $packagePath (no installation performed)"

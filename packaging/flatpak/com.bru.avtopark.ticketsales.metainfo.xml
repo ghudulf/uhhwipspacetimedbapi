@@ -4,8 +4,16 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>EPL-2.0</project_license>
   <name>BRU Avtopark</name>
+  <developer id="io.github.ghudulf"><name>BRU Avtopark contributors</name></developer>
   <summary>Fleet and ticket sales management</summary>
   <description><p>Manage buses, routes, schedules and ticket sales using a configured BRU Avtopark server.</p></description>
   <launchable type="desktop-id">com.bru.avtopark.ticketsales.desktop</launchable>
   <url type="homepage">https://github.com/ghudulf/uhhwipspacetimedbapi</url>
+  <categories><category>Office</category></categories>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-10-21">
+      <description><p>Desktop fleet management and ticket sales client with native session synchronization.</p></description>
+    </release>
+  </releases>
 </component>
