@@ -40,13 +40,13 @@ internal static class PasskeyTests
         }
         var registered = new Store(); var logs = new Capture(); var verifier = Service(registered, logs); using var key = new SoftwareAuthenticator();
         var create = await verifier.CreateRegistrationOptionsAsync(Actor); await verifier.VerifyRegistrationAsync(Actor, create, key.Register(create, Origin));
-        foreach (var tamper in new[] { "challenge", "origin", "rp", "uv", "handle", "unknown", "inactive" })
+        foreach (var tamper in new[] { "challenge", "origin", "rp", "uv", "handle", "unknown", "inactive", "account" })
         {
             var options = await verifier.CreateAssertionOptionsAsync(null);
             var response = key.Assert(options, tamper == "origin" ? "https://evil.test" : Origin, tamper == "rp" ? "evil.test" : Rp,
                 uv: tamper != "uv", challenge: tamper == "challenge" ? new byte[32] : null, handle: tamper == "handle" ? new byte[32] : null);
             registered.Unknown = tamper == "unknown"; registered.Active = tamper != "inactive"; registered.OwnsHandle = tamper != "handle";
-            await Reject(() => verifier.VerifyAssertionAsync(options, response));
+            await Reject(() => verifier.VerifyAssertionAsync(options, response, tamper == "account" ? Identity.FromHexString(new string('2', 64)) : null));
             registered.Unknown = false; registered.Active = true; registered.OwnsHandle = true;
         }
         for (var i = 0; i < 2; i++)
@@ -105,9 +105,9 @@ internal static class PasskeyTests
         c.Request.Scheme = "https"; c.Request.Host = new(Rp);
         Check(QrLoginTests.Code(await c.Start(new("register"))) == 401, "registration without bearer"); c.Request.Headers.Authorization = "Bearer session";
         using var authenticator = new SoftwareAuthenticator();
-        async Task<(PasskeyStartResponse Flow, string Browser)> Start(string purpose)
+        async Task<(PasskeyStartResponse Flow, string Browser)> Start(string purpose, string? username = null)
         {
-            var flow = (PasskeyStartResponse)((JsonResult)await c.Start(new(purpose))).Value!;
+            var flow = (PasskeyStartResponse)((JsonResult)await c.Start(new(purpose, username))).Value!;
             var b = QueryHelpers.ParseQuery(new Uri(flow.BrowserUrl).Query)["b"].ToString();
             Check(b != flow.FlowSecret, "browser/redemption secrets not split");
             return (flow, b);
@@ -129,6 +129,12 @@ internal static class PasskeyTests
         Check(QrLoginTests.Code(await c.Assert(login.Flow.FlowId, new(login.Browser, JsonSerializer.SerializeToElement(authenticator.Assert(assertionOptions, Origin, Rp))))) == 200, "browser login verification");
         Check(Json(await c.Complete(login.Flow.FlowId, new(login.Flow.FlowSecret))).Contains("\"requiresTwoFactor\":true", StringComparison.Ordinal) && primaryPolicies.SequenceEqual([false]), "UV bypassed second factor");
         Check(Json(await c.Complete(login.Flow.FlowId, new(login.Flow.FlowSecret))) == "{\"state\":\"consumed\"}", "flow replay");
+        var unknownHint = await Start("login", "unknown");
+        var hintedOptions = JsonSerializer.SerializeToElement(((JsonResult)await c.Options(unknownHint.Flow.FlowId, new(unknownHint.Browser))).Value, ApiProtocol.Json);
+        store.UnknownUser = true;
+        Check(QrLoginTests.Code(await c.Assert(unknownHint.Flow.FlowId, new(unknownHint.Browser, JsonSerializer.SerializeToElement(authenticator.Assert(
+            AssertionOptions.FromJson(hintedOptions.GetProperty("publicKey").GetRawText()), Origin, Rp, counter: 2))))) == 400, "unknown hint fell back to another account's discoverable credential");
+        store.UnknownUser = false;
         var failures = await Start("login");
         for (var i = 0; i < 3; i++) Check(QrLoginTests.Code(await c.Options(failures.Flow.FlowId, new("wrong"))) == 404, "bad browser token");
         Check(Json(await c.Complete(failures.Flow.FlowId, new(failures.Flow.FlowSecret))) == "{\"state\":\"failed\"}", "three-failure burn");
@@ -153,7 +159,7 @@ internal static class PasskeyTests
         public readonly byte[] Handle = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
         public readonly List<WebAuthnCredential> Credentials = new();
         public readonly List<string> Writes = new();
-        public bool Active = true, Unknown, OwnsHandle = true;
+        public bool Active = true, Unknown, UnknownUser, OwnsHandle = true;
         private WebAuthnChallenge? challenge;
         public ISpacetimeDBService Database { get; }
         public Store()
@@ -163,7 +169,7 @@ internal static class PasskeyTests
                 if (method.Name == "ReadAsync")
                 {
                     var type = method.GetGenericArguments()[0];
-                    if (type == typeof(UserProfile)) return Task.FromResult<UserProfile?>(new() { UserId = Actor, Login = "private-user", IsActive = Active });
+                    if (type == typeof(UserProfile)) return Task.FromResult<UserProfile?>(UnknownUser ? null : new() { UserId = Actor, Login = "private-user", IsActive = Active });
                     if (type == typeof(byte[])) return Task.FromResult(Handle.ToArray());
                     if (type == typeof(List<WebAuthnCredential>)) return Task.FromResult(Credentials.Where(c => c.IsActive).ToList());
                     if (type == typeof(WebAuthnCredential)) return Task.FromResult(Unknown ? null : Credentials.FirstOrDefault(c => c.IsActive));

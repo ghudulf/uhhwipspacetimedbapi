@@ -121,7 +121,10 @@ public sealed class PasskeyAuthenticationController(IOptions<PasskeyOptions> opt
             {
                 var credential = request.Credential.Deserialize<AuthenticatorAssertionRawResponse>() ?? throw new JsonException();
                 credentialId = credential.Id;
-                actor = (await webauthn.VerifyAssertionAsync(AssertionOptions.FromJson(context.OptionsJson!), credential)).UserId;
+                Identity? expectedActor = null;
+                if (context.Username != null)
+                    expectedActor = (await webauthn.FindActiveUserAsync(context.Username) ?? throw new InvalidOperationException()).UserId;
+                actor = (await webauthn.VerifyAssertionAsync(AssertionOptions.FromJson(context.OptionsJson!), credential, expectedActor)).UserId;
             }
             if (!broker.Authenticate(id, "passkey", credentialId: Convert.ToBase64String(credentialId), authenticatedUser: actor)) throw new InvalidOperationException();
             return Ok(new { state = "authenticated" });
