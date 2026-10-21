@@ -15,7 +15,7 @@
                            FontSize="14" FontWeight="SemiBold"
                            Foreground="{DynamicResource BruTitleForeground}"
                            VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="1"
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="1"
                            x:Name="ProgressText"
                            FontSize="11"
                            Foreground="{DynamicResource BruSubtleForeground}"
@@ -38,13 +38,13 @@
                         Padding="16,6" CornerRadius="0"
                         IsEnabled="False"
                         Click="BackButton_Click"/>
-                <TextBlock Grid.Column="1"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="1"
                            x:Name="StatusText"
                            FontSize="11"
                            Foreground="{DynamicResource BruSubtleForeground}"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Center"/>
-                <Button Grid.Column="2"
+                <Button IsCancel="True" Grid.Column="2"
                         x:Name="CancelButton"
                         Content="Отмена"
                         Padding="16,6" CornerRadius="0"

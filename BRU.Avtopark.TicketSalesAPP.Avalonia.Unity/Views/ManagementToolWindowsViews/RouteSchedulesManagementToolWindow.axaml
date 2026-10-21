@@ -22,7 +22,7 @@
 
                 <!-- Filter Controls -->
                 <Grid ColumnDefinitions="*,*,Auto,Auto" Margin="0,0,0,10">
-                    <ComboBox Grid.Column="0" 
+                    <ComboBox AutomationProperties.Name="Маршрут расписания" Grid.Column="0"
                              ItemsSource="{Binding Routes}"
                              SelectedItem="{Binding SelectedRoute}"
                              PlaceholderText="Выберите маршрут"
@@ -39,7 +39,7 @@
                        
                     </ComboBox>
                     
-                    <CalendarDatePicker Grid.Column="1"
+                    <CalendarDatePicker AutomationProperties.Name="Дата расписания" Grid.Column="1"
                                       SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
                                       PlaceholderText="Выберите дату"
                                       Margin="0,0,10,0"/>
@@ -55,7 +55,7 @@
                 </Grid>
 
                 <!-- Error Message -->
-                <TextBlock Text="{Binding ErrorMessage}"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                          Foreground="Red"
                          IsVisible="{Binding HasError}"/>
             </StackPanel>
@@ -64,7 +64,7 @@
         <!-- Main Content Grid -->
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,300">
             <!-- Schedule Grid -->
-            <DataGrid Grid.Column="0"
+            <DataGrid AutomationProperties.Name="Расписание маршрутов" Grid.Column="0"
                     ItemsSource="{Binding Schedules}"
                     SelectedItem="{Binding SelectedSchedule}"
                     AutoGenerateColumns="False"
@@ -196,4 +196,4 @@
                         HorizontalAlignment="Center"/>
         </Grid>
     </Grid>
-</UserControl> 
+</UserControl>

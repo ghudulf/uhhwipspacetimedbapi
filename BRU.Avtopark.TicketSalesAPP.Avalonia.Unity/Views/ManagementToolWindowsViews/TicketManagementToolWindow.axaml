@@ -9,7 +9,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="20">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-            <TextBox Grid.Column="0"
+            <TextBox AutomationProperties.Name="Поиск билетов" Grid.Column="0"
                      Text="{Binding SearchText}"
                      PlaceholderText="Поиск билетов..."
                      Margin="0,0,10,0"/>
@@ -18,7 +18,7 @@
                     Content="Добавить билет"/>
         </Grid>
 
-        <DataGrid Grid.Row="1"
+        <DataGrid AutomationProperties.Name="Билеты" Grid.Row="1"
                   ItemsSource="{Binding Tickets}"
                   SelectedItem="{Binding SelectedTicket}"
                   IsReadOnly="True"
@@ -43,7 +43,7 @@
         </DataGrid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0"
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="Red"
                        IsVisible="{Binding HasError}"/>

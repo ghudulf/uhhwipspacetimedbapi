@@ -102,7 +102,7 @@
                                      Width="7" Height="7"
                                      Fill="#4CAF50"
                                      VerticalAlignment="Center"/>
-                            <TextBlock x:Name="StatusLabel"
+                            <TextBlock AutomationProperties.LiveSetting="Polite" x:Name="StatusLabel"
                                        Text="Подключено"
                                        FontSize="11"
                                        Foreground="#90FFFFFF"/>
@@ -110,7 +110,7 @@
                     </StackPanel>
 
                     <!-- Close button -->
-                    <Button Grid.Column="2"
+                    <Button AutomationProperties.Name="Закрыть" Grid.Column="2"
                             x:Name="ClosePopupButton"
                             Width="24" Height="24"
                             Padding="0"
@@ -178,7 +178,7 @@
                                Foreground="#70FFFFFF"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"/>
-                    <Button x:Name="LoginFromOverlayBtn"
+                    <Button AutomationProperties.Name="Войти" x:Name="LoginFromOverlayBtn"
                             HorizontalAlignment="Center"
                             Padding="20,8"
                             CornerRadius="6"
@@ -201,56 +201,56 @@
                         Margin="8,2,8,2"
                         Spacing="1">
 
-                <Button x:Name="CentralViewBtn" Classes="module">
+                <Button AutomationProperties.Name="Центральный вид" x:Name="CentralViewBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="ViewDashboard" Width="18" Height="18" Foreground="#FF5722"/>
                         <TextBlock Text="Центральный вид" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="EmployeeBtn" Classes="module">
+                <Button AutomationProperties.Name="Сотрудники" x:Name="EmployeeBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="AccountGroup" Width="18" Height="18" Foreground="#90CAF9"/>
                         <TextBlock Text="Сотрудники" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="BusBtn" Classes="module">
+                <Button AutomationProperties.Name="Автобусы" x:Name="BusBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="Bus" Width="18" Height="18" Foreground="#A5D6A7"/>
                         <TextBlock Text="Автобусы" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="RouteBtn" Classes="module">
+                <Button AutomationProperties.Name="Маршруты" x:Name="RouteBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="MapMarkerPath" Width="18" Height="18" Foreground="#CE93D8"/>
                         <TextBlock Text="Маршруты" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="TicketBtn" Classes="module">
+                <Button AutomationProperties.Name="Продажа билетов" x:Name="TicketBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="Ticket" Width="18" Height="18" Foreground="#FFD54F"/>
                         <TextBlock Text="Продажа билетов" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="MaintenanceBtn" Classes="module">
+                <Button AutomationProperties.Name="Техобслуживание" x:Name="MaintenanceBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="Wrench" Width="18" Height="18" Foreground="#FFAB91"/>
                         <TextBlock Text="Техобслуживание" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="SalesBtn" Classes="module">
+                <Button AutomationProperties.Name="Статистика продаж" x:Name="SalesBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="ChartBar" Width="18" Height="18" Foreground="#80DEEA"/>
                         <TextBlock Text="Статистика продаж" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="SchedulesBtn" Classes="module">
+                <Button AutomationProperties.Name="Расписание" x:Name="SchedulesBtn" Classes="module">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <materialIcons:MaterialIcon Kind="CalendarClock" Width="18" Height="18" Foreground="#B0BEC5"/>
                         <TextBlock Text="Расписание" FontSize="13" VerticalAlignment="Center"/>
@@ -265,7 +265,7 @@
             <!-- ── Footer actions ──────────────────────────────────────── -->
             <StackPanel Margin="8,2,8,8" Spacing="1">
 
-                <Button x:Name="ShowMainWindowBtn"
+                <Button AutomationProperties.Name="Показать главное окно" x:Name="ShowMainWindowBtn"
                         Classes="footer-action"
                         IsVisible="False">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -274,14 +274,14 @@
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="LogoutBtn" Classes="footer-danger">
+                <Button AutomationProperties.Name="Выйти из аккаунта" x:Name="LogoutBtn" Classes="footer-danger">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <materialIcons:MaterialIcon Kind="Logout" Width="15" Height="15"/>
                         <TextBlock Text="Выйти из аккаунта" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button x:Name="ExitBtn" Classes="footer-action">
+                <Button AutomationProperties.Name="Выход из приложения" x:Name="ExitBtn" Classes="footer-action">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <materialIcons:MaterialIcon Kind="ExitToApp" Width="15" Height="15"/>
                         <TextBlock Text="Выход из приложения" VerticalAlignment="Center"/>

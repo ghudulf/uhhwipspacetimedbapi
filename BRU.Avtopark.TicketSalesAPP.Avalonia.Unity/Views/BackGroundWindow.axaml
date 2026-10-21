@@ -63,7 +63,7 @@
     <Grid>
         <!-- Main background image with overlay for better contrast in both modes -->
         <Grid>
-            <Image Margin="0" Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Setup_background_(Longhorn_Build_4051_Setup).png" Stretch="UniformToFill"/>
+            <Image AutomationProperties.AccessibilityView="Raw" Margin="0" Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/Setup_background_(Longhorn_Build_4051_Setup).png" Stretch="UniformToFill"/>
             <Rectangle Fill="{DynamicResource BackgroundOverlay}" />
         </Grid>
         
@@ -104,7 +104,7 @@
                                VerticalAlignment="Top"/>
                     
                     <!-- BRU ID Logo placed on top of the black stripe, positioned near right edge -->
-                    <Image Grid.Column="0"
+                    <Image AutomationProperties.AccessibilityView="Raw" Grid.Column="0"
                            Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruidlogo.png"
                            Width="100" Height="25" 
                            Stretch="Uniform"
@@ -156,7 +156,7 @@
                         Padding="8,3" 
                         Margin="25,0,0,0"
                         HorizontalAlignment="Left">
-                    <Image Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruSMARTSTARTLOGO.png" 
+                    <Image AutomationProperties.AccessibilityView="Raw" Source="avares://BRU.Avtopark.TicketSalesAPP.Avalonia.Unity/bruSMARTSTARTLOGO.png"
                            Height="50" ToolTip.Tip="Модуль Администратора SmartStart"/> 
                 </Border>
 

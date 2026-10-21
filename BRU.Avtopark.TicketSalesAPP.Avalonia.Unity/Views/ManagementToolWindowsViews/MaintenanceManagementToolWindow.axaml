@@ -13,7 +13,7 @@
     
     <Grid RowDefinitions="Auto,*,Auto" Margin="10">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-            <TextBox Grid.Column="0" 
+            <TextBox AutomationProperties.Name="Поиск записей обслуживания" Grid.Column="0"
                      Text="{Binding SearchText}"
                      PlaceholderText="Поиск по инженеру, проблемам, состоянию или модели автобуса..."
                      Margin="0,0,10,0"/>
@@ -23,7 +23,7 @@
                     IsEnabled="{Binding !IsBusy}"/>
         </Grid>
 
-        <DataGrid Grid.Row="1"
+        <DataGrid AutomationProperties.Name="Записи обслуживания" Grid.Row="1"
                   ItemsSource="{Binding MaintenanceRecords}"
                   SelectedItem="{Binding SelectedRecord}"
                   AutoGenerateColumns="False"
@@ -79,7 +79,7 @@
         </DataGrid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" 
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="Red"
                        IsVisible="{Binding HasError}"

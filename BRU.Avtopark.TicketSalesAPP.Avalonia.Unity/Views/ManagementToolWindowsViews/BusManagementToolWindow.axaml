@@ -31,7 +31,7 @@
                             IsEnabled="{Binding CanCreate}"/>
                  </Grid>
 				<Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
-					<TextBlock Grid.Column="0"
+					<TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
 							   Text="{Binding ErrorMessage}"
 							   Foreground="Red"
 							   IsVisible="{Binding HasError}"
@@ -49,7 +49,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Content="Назад" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding CanGoPrevious}" AutomationProperties.Name="Предыдущая страница автобусов"/>
                     <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding SynchronizationMessage}" VerticalAlignment="Center" AutomationProperties.Name="Состояние синхронизации"/>
+                    <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding SynchronizationMessage}" VerticalAlignment="Center" AutomationProperties.Name="Состояние синхронизации"/>
                     <Button Content="Далее" Command="{Binding NextPageCommand}" IsEnabled="{Binding CanGoNext}" AutomationProperties.Name="Следующая страница автобусов"/>
                     <Button Content="Обновить" Command="{Binding LoadDataCommand}" IsEnabled="{Binding !IsBusy}"/>
                     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="80" AutomationProperties.Name="Загрузка автобусов"/>
@@ -58,7 +58,7 @@
 
 		
 
-        <DataGrid Grid.Row="1"
+        <DataGrid AutomationProperties.Name="Автобусы" Grid.Row="1"
                   ItemsSource="{Binding Buses}"
                   SelectedItem="{Binding SelectedBus}"
                   AutoGenerateColumns="False"

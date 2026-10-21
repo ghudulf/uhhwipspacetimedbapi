@@ -42,7 +42,7 @@
                                Foreground="{DynamicResource BruSubtleForeground}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <Button Grid.Column="1"
+                <Button IsCancel="True" Grid.Column="1"
                         x:Name="CancelButton"
                         Content="Отмена"
                         Padding="20,6"

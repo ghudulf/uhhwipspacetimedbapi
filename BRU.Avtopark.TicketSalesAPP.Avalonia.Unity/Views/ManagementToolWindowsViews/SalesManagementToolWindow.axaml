@@ -20,7 +20,7 @@
                              Foreground="White" 
                              VerticalAlignment="Center"
                              FontSize="14"/>
-                    <DatePicker SelectedDate="{Binding StartDate}"
+                    <DatePicker AutomationProperties.Name="Начальная дата продаж" SelectedDate="{Binding StartDate}"
                               Background="#34495e"
                               Foreground="White"
                               Width="150"/>
@@ -28,7 +28,7 @@
                              Foreground="White" 
                              VerticalAlignment="Center"
                              FontSize="14"/>
-                    <DatePicker SelectedDate="{Binding EndDate}"
+                    <DatePicker AutomationProperties.Name="Конечная дата продаж" SelectedDate="{Binding EndDate}"
                               Background="#34495e"
                               Foreground="White"
                               Width="150"/>
@@ -56,7 +56,7 @@
         <!-- Main Content -->
         <Grid Grid.Row="1" ColumnDefinitions="*,300">
             <!-- Sales DataGrid -->
-            <DataGrid Grid.Column="0"
+            <DataGrid AutomationProperties.Name="Продажи" Grid.Column="0"
                      ItemsSource="{Binding Sales}"
                      SelectedItem="{Binding SelectedSale}"
                      IsReadOnly="True"
@@ -106,7 +106,7 @@
                         Command="{Binding DeleteCommand}"
                         IsEnabled="{Binding SelectedSale, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
-                <TextBlock Text="{Binding ErrorMessage}"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                           Foreground="#c0392b"
                           TextWrapping="Wrap"
                           IsVisible="{Binding HasError}"

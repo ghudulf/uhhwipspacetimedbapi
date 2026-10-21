@@ -14,7 +14,7 @@
                     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3"
                                  AutomationProperties.Name="Обновление отчёта" />
                     <StackPanel IsVisible="{Binding HasError}" Spacing="6">
-                        <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningColor}" />
+                        <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningColor}" />
                         <Button Content="Повторить" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"
                                 AutomationProperties.Name="Повторить загрузку отчёта" />
                     </StackPanel>
@@ -124,7 +124,7 @@
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Доход по месяцам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <DataGrid Grid.Row="1"
+                                <DataGrid AutomationProperties.Name="Доходы по месяцам" Grid.Row="1"
                                         ItemsSource="{Binding MonthlyIncomes}"
                                         AutoGenerateColumns="False"
                                         IsReadOnly="True"
@@ -146,7 +146,7 @@
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Доход по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <DataGrid Grid.Row="1"
+                                <DataGrid AutomationProperties.Name="Доходы по маршрутам" Grid.Row="1"
                                         ItemsSource="{Binding RouteIncomes}"
                                         AutoGenerateColumns="False"
                                         IsReadOnly="True"

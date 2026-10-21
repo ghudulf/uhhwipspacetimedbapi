@@ -64,7 +64,7 @@
                      FontStyle="Italic"/>
 
             <!-- Button Area -->
-            <Button Grid.Row="3"
+            <Button IsDefault="True" Grid.Row="3"
                     Content="ОК"
                     HorizontalAlignment="Right"
                     Width="100"

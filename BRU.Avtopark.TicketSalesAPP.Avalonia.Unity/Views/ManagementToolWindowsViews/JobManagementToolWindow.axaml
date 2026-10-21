@@ -24,7 +24,7 @@
                     IsEnabled="{Binding CanCreate}"/>
         </Grid>
 
-        <TextBlock Grid.Row="1" Text="{Binding SynchronizationMessage}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+        <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Row="1" Text="{Binding SynchronizationMessage}" Margin="0,0,0,6" TextWrapping="Wrap"/>
         <DataGrid Grid.Row="2" AutomationProperties.Name="Должности"
                   ItemsSource="{Binding Jobs}"
                   SelectedItem="{Binding SelectedJob}"
@@ -51,7 +51,7 @@
         </DataGrid>
 
         <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" 
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="Red"
                        IsVisible="{Binding HasError}"

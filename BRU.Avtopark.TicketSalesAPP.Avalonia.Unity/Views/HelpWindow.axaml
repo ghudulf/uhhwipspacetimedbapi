@@ -70,7 +70,7 @@
 
             <!-- Search Box -->
             <Grid Grid.Row="0" Margin="5">
-                <TextBox Classes="search-box" Name="SearchBox" 
+                <TextBox AutomationProperties.Name="Поиск в справке" Classes="search-box" Name="SearchBox"
                          PlaceholderText="Поиск в справке (Ctrl+F)"/>
                 <material:MaterialIcon Kind="Search" 
                                      Height="16" Width="16"
@@ -83,7 +83,7 @@
             <!-- Navigation Tree -->
             <ScrollViewer Grid.Row="1" Margin="1">
                 <StackPanel Name="NavigationPanel">
-                    <TreeView Margin="10" Name="HelpTreeView" Background="Transparent">
+                    <TreeView AutomationProperties.Name="Разделы справки" Margin="10" Name="HelpTreeView" Background="Transparent">
                         <TreeViewItem Header="Обзор возможностей программы" IsExpanded="True">
                             <TreeViewItem Header="Основные функции" Name="BasicFunctionsItem"/>
                             <TreeViewItem Header="Интерфейс пользователя" Name="UserInterfaceItem">
@@ -222,12 +222,12 @@
                     <!-- Recent Topics -->
                     <TextBlock Text="Недавно просмотренные разделы" 
                              Classes="subheader"/>
-                    <ListBox Name="RecentTopics" Background="Transparent" 
+                    <ListBox AutomationProperties.Name="Последние темы" Name="RecentTopics" Background="Transparent"
                             Margin="0,10,0,20"/>
 
                     <!-- Popular Topics -->
                     <TextBlock Text="Популярные разделы" Classes="subheader"/>
-                    <ListBox Name="PopularTopics" Background="Transparent"/>
+                    <ListBox AutomationProperties.Name="Популярные темы" Name="PopularTopics" Background="Transparent"/>
                 </StackPanel>
             </ScrollViewer>
 
@@ -250,4 +250,4 @@
             </Grid>
         </Grid>
     </Grid>
-</Window> 
+</Window>

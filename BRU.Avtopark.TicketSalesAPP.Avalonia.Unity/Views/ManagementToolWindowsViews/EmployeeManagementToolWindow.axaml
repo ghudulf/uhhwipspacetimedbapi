@@ -24,7 +24,7 @@
 
                 <!-- Controls -->
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-                    <TextBox Grid.Column="0" 
+                    <TextBox AutomationProperties.Name="Поиск сотрудников" Grid.Column="0"
                              Text="{Binding SearchText}"
                              PlaceholderText="Поиск по фамилии, имени, отчеству или должности..."
                              Margin="0,0,10,0"/>
@@ -34,7 +34,7 @@
                             IsEnabled="{Binding !IsBusy}"/>
                 </Grid>
                 <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" 
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="Red"
                        IsVisible="{Binding HasError}"
@@ -51,7 +51,7 @@
         </Grid>
             </StackPanel>
 
-        <DataGrid Grid.Row="1"
+        <DataGrid AutomationProperties.Name="Сотрудники" Grid.Row="1"
                   ItemsSource="{Binding Employees}"
                   SelectedItem="{Binding SelectedEmployee}"
                   AutoGenerateColumns="False"

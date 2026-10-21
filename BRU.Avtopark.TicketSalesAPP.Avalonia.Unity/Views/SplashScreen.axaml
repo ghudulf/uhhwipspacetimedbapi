@@ -100,7 +100,7 @@
                                FontSize="11"/>
                 </StackPanel>
 
-                <TextBlock Name="StatusMessage"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Name="StatusMessage"
                            Grid.Column="1"
                            Text="Запуск..."
                            Foreground="#88FFFFFF"
@@ -116,7 +116,7 @@
                     VerticalAlignment="Bottom"
                     Margin="0,0,0,50"
                     Padding="16,8">
-                <TextBlock Name="ErrorMessage"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Name="ErrorMessage"
                            Foreground="#FFFF6B6B"
                            FontSize="13"
                            TextWrapping="Wrap"
