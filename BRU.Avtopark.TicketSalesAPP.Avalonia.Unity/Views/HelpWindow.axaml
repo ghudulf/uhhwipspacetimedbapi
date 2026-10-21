@@ -176,7 +176,7 @@
         </Grid>
 
         <!-- Splitter -->
-        <GridSplitter Grid.Column="1" Width="4" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+        <GridSplitter AutomationProperties.Name="Изменить ширину разделов справки" Grid.Column="1" Width="4" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
 
         <!-- Main Content Area -->
         <Grid Grid.Column="2">

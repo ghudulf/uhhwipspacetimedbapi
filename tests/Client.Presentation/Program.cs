@@ -107,6 +107,7 @@ Dispatcher.UIThread.Post(async () =>
         await ProviderPresentationTests.RunAsync();
         await PasskeyPresentationTests.RunAsync();
         await NativeSessionPresentationTests.RunAsync();
+        await AccessibilityRuntimeTests.RunAsync(stop.Token);
         var navigation = new CentralViewWindowViewModel();
         var applyAccess = typeof(CentralViewWindowViewModel).GetMethod("ApplyAccess", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
         applyAccess.Invoke(navigation, [new SessionAccess(true, false, [], ["sales.view"]), true]);

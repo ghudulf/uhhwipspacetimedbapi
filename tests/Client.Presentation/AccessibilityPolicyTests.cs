@@ -8,7 +8,8 @@ internal static class AccessibilityPolicyTests
         "Button", "RepeatButton", "ToggleButton", "RadioButton", "CheckBox", "TextBox", "MaskedTextBox",
         "AutoCompleteBox", "ComboBox", "ComboBoxItem", "ListBox", "ListBoxItem", "DataGrid", "Slider",
         "NumericUpDown", "DatePicker", "TimePicker", "CalendarDatePicker", "Calendar", "MenuItem",
-        "TabItem", "TreeView", "TreeViewItem", "SplitButton", "ToggleSplitButton", "HyperlinkButton"
+        "TabControl", "TabItem", "TreeView", "TreeViewItem", "SplitButton", "ToggleSplitButton", "HyperlinkButton",
+        "ToggleSwitch", "GridSplitter", "ScrollBar", "Menu", "ContextMenu"
     };
     private static readonly HashSet<string> TextContent = new(StringComparer.Ordinal)
         { "Button", "RepeatButton", "ToggleButton", "RadioButton", "CheckBox", "MenuItem", "TabItem", "TreeViewItem", "ListBoxItem", "ComboBoxItem", "HyperlinkButton" };

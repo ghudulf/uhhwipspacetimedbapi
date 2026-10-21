@@ -96,7 +96,7 @@
             </DataGrid>
 
             <!-- Separator -->
-            <GridSplitter Grid.Column="1" Width="5" Background="{DynamicResource SystemAccentColor}" />
+            <GridSplitter AutomationProperties.Name="Изменить ширину расписания" Grid.Column="1" Width="5" Background="{DynamicResource SystemAccentColor}" />
 
             <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="10">
                 <TextBlock Text="Остановки маршрута" 
