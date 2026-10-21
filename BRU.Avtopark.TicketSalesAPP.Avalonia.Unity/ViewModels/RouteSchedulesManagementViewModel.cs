@@ -477,6 +477,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
                         Schedules = new ObservableCollection<RouteScheduleDisplayModel>(
                             schedules.OrderBy(s => s.DepartureTime).Select(s => new RouteScheduleDisplayModel(s)));
+                        Services.DataGridDiagnostics.DumpRows(nameof(RouteSchedulesManagementViewModel), Schedules, CurrentPage);
                         
                         this.RaisePropertyChanged(nameof(PageInfo));
                         this.RaisePropertyChanged(nameof(TotalPages));

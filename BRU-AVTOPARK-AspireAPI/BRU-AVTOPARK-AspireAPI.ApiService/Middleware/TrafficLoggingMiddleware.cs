@@ -19,7 +19,7 @@ public sealed class TrafficLoggingMiddleware(RequestDelegate next, ILogger<Traff
         {
             var original = request.Body;
             request.EnableBuffering();
-            var prefix = new byte[options.MaxBodyBytes];
+            var prefix = new byte[options.MaxBodyBytes + 1];
             var count = await request.Body.ReadAtLeastAsync(prefix, prefix.Length, throwOnEndOfStream: false, context.RequestAborted);
             Array.Resize(ref prefix, count);
             // Do not keep extending FileBufferingReadStream when the endpoint reads a large request.
@@ -39,7 +39,7 @@ public sealed class TrafficLoggingMiddleware(RequestDelegate next, ILogger<Traff
         finally
         {
             context.Response.Body = originalResponse;
-            var body = Capture() ? TrafficDiagnostics.Body(tee.Preview, tee.TotalBytes, context.Response.ContentType, options, request.Path.StartsWithSegments("/api/auth")) : "[skipped streaming/HTML/file/upgrade]";
+            var body = Capture() ? TrafficDiagnostics.Body(tee.Preview, tee.TotalBytes, context.Response.ContentType, options, request.Path.StartsWithSegments("/api/auth"), response: true) : "[skipped streaming/HTML/file/upgrade]";
             var headers = DebugPayload.Headers(context.Response.Headers.Select(h => new KeyValuePair<string, IEnumerable<string>>(h.Key, h.Value.Select(v => v ?? ""))), options.Level);
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             logger.LogDebug("HTTP response {Method} {Url} Status={StatusCode} TraceId={TraceId} ElapsedMs={ElapsedMs} Headers={Headers} Body={Body}", request.Method, url, context.Response.StatusCode, context.TraceIdentifier, elapsed, System.Text.Json.JsonSerializer.Serialize(headers), body);

@@ -25,7 +25,7 @@ public sealed class TrafficLoggingHandler : DelegatingHandler
         try
         {
             var response = await base.SendAsync(request, cancellationToken);
-            body = await PreviewAsync(response.Content, replacement => response.Content = replacement, settings, request.RequestUri, cancellationToken);
+            body = await PreviewAsync(response.Content, replacement => response.Content = replacement, settings, request.RequestUri, cancellationToken, response: true);
             headers = HeaderJson(response.Headers.Concat(response.Content.Headers), settings);
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             Log.Debug("HTTP client response {Method} {Url} Status={StatusCode} TraceId={TraceId} ElapsedMs={ElapsedMs} Headers={Headers} Body={Body}", request.Method, url, (int)response.StatusCode, correlation, elapsed, headers, body);
@@ -39,19 +39,19 @@ public sealed class TrafficLoggingHandler : DelegatingHandler
         }
     }
     private static string HeaderJson(IEnumerable<KeyValuePair<string, IEnumerable<string>>> headers, TrafficOptions options) => System.Text.Json.JsonSerializer.Serialize(DebugPayload.Headers(headers, options.Level));
-    private static async Task<string> PreviewAsync(HttpContent? content, Action<HttpContent> replace, TrafficOptions options, Uri? uri, CancellationToken ct)
+    private static async Task<string> PreviewAsync(HttpContent? content, Action<HttpContent> replace, TrafficOptions options, Uri? uri, CancellationToken ct, bool response = false)
     {
         if (content == null) return "";
         var type = content.Headers.ContentType?.MediaType;
         if (type == "text/event-stream" || type == "text/html" && (options.Level != TrafficLevel.Full || uri?.AbsolutePath.Contains("/auth/", StringComparison.OrdinalIgnoreCase) == true)) return "[skipped streaming/HTML]";
         if (!TrafficDiagnostics.IsText(type)) return DebugPayload.Binary(content.Headers.ContentLength ?? 0, options.Level);
         var stream = await content.ReadAsStreamAsync(ct);
-        var prefix = new byte[options.MaxBodyBytes];
+        var prefix = new byte[options.MaxBodyBytes + 1];
         var count = await stream.ReadAtLeastAsync(prefix, prefix.Length, throwOnEndOfStream: false, ct);
         Array.Resize(ref prefix, count);
         var replay = new StreamContent(new TrafficReplayStream(prefix, stream));
         foreach (var header in content.Headers) replay.Headers.TryAddWithoutValidation(header.Key, header.Value);
         replace(replay);
-        return TrafficDiagnostics.Body(prefix, content.Headers.ContentLength ?? count, type, options, uri?.AbsolutePath.Contains("/auth/", StringComparison.OrdinalIgnoreCase) == true || uri?.AbsolutePath.Contains("/token", StringComparison.OrdinalIgnoreCase) == true);
+        return TrafficDiagnostics.Body(prefix, content.Headers.ContentLength ?? count, type, options, uri?.AbsolutePath.Contains("/auth/", StringComparison.OrdinalIgnoreCase) == true || uri?.AbsolutePath.Contains("/token", StringComparison.OrdinalIgnoreCase) == true, response);
     }
 }

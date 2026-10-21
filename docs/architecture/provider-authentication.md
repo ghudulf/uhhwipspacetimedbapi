@@ -58,10 +58,12 @@ Broker limits: 2,000 live flows, five live per source IP, ten creations/minute/I
 90 polls/minute/flow, and bounded tombstone/rate dictionaries. Mutations sweep
 expiry and old entries. TTL clamps to 60–600 seconds. Flows do not survive API
 restart; deploy behind affinity or restart the ceremony after an instance change.
-No URLs containing queries, state, nonce, codes, subjects, emails or tokens are
-logged by provider code. Named-client logging is removed; framework request-start
-logging is raised to Warning because it includes callback queries. Apply the same
-redaction to ingress/proxy/access logs and production telemetry.
+The shared [debug traffic facility](diagnostics.md) defaults to `redacted`:
+credential values and selected URL query keys are masked, while subjects,
+usernames, IDs and emails are debugging data and may appear at Debug. `full` is
+unsafe and exposes credentials. Provider HTML bodies remain excluded. Framework
+request-start logging stays Warning because it includes callback queries. Apply
+equivalent controls to ingress/proxy/access logs and restrict log-file access.
 
 ## Configuration and Entra registration
 
@@ -74,7 +76,7 @@ the optional client secret. For example, mount an owner-only
 | `Authentication:Entra:Enabled` | `false`; disabled routes return 404, including invalid JSON |
 | `Authentication:Entra:TenantId` | Required tenant GUID |
 | `Authentication:Entra:ClientId` | Required application/client GUID |
-| `Authentication:Entra:ClientSecret` | Optional; mounted secret/environment, never diagnostics |
+| `Authentication:Entra:ClientSecret` | Optional; mounted secret/environment; masked in default redacted diagnostics (full is unsafe) |
 | `Authentication:Entra:RedirectUri` | API public origin/path-base + `/api/auth/entra/callback` |
 | `Authentication:Entra:Authority` | `https://login.microsoftonline.com/{tenant}/v2.0` |
 | `Authentication:Entra:AllowMultiTenant` | `false` |

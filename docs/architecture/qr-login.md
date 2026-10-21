@@ -55,7 +55,7 @@ The singleton broker uses a single lock for transitions, injected `TimeProvider`
 * **QR theft:** QR grants peek/deny/proof submission access, not poll access. Bearer approval still requires full authentication and the separately displayed code. Short TTL and three attempts constrain guessing. Protect screenshots and QR display channels.
 * **Enumeration:** bound creation returns the same response shape for nonexistent users/devices; decoy sessions cannot be approved/redeemed. Completion uses uniform 401 bodies and decoy crypto work; this is not a guarantee of mathematically identical wall-clock latency across database/network conditions.
 * **Replay:** unique challenge, signed origin/account/device/code, atomic one-time redemption and terminal-state checks prevent signature/token replay. Revoked or inactive-user keys are not returned by the store.
-* **Diagnostics:** the QR path does not log request secrets, codes, tokens, usernames or IPs. Any future correlating diagnostics must use `SafeDiagnostics.Fingerprint`, never raw values.
+* **Diagnostics:** shared [debug traffic levels](diagnostics.md) default to `redacted`: credential values are masked, but usernames, IDs, IPs and other business data may be logged at Debug. `full` is an explicitly unsafe opt-in and can expose QR/login proofs. Access-control and review logs before sharing; do not assume identifier-free output.
 
 ## Configuration and deployment
 

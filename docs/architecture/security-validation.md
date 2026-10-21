@@ -106,8 +106,8 @@ only: this is not the workflows' Actions/JavaScript CodeQL matrix certification.
 
 | Rule / after count | Triage |
 | --- | --- |
-| cs/exposure-of-sensitive-information: 16 → 0 | Fixed raw email/subject logging in EmailService, MagicLinkService, AuthOrchestrationService and InputSanitizationService. Delivery failures retain exception type, not provider exception text or recipient. Tests capture malicious private email/subject values and verify omission. |
-| cs/log-forging: 172 → 163 | Fixed at the configured sinks: API Serilog console/debug/rolling-file sinks now use escaped JSON records; Microsoft console logging uses JSON too. A regression supplies CR/LF/terminal-control characters in template, property and exception text and verifies exactly one parseable physical JSON record. Remaining source-to-ILogger alerts do not model the configured formatter; they are retained, not suppressed. Consumers must parse JSON records, not render property values as independent log entries. |
+| cs/exposure-of-sensitive-information: 16 → 0 | Historical scan checkpoint. Current debug-traffic policy deliberately preserves business identifiers, names, emails and phones. Only credential values are masked by default; full mode is unsafe. Delivery-error omission tests remain, but logs are not PII-free. |
+| cs/log-forging: 172 → 163 | Historical scan checkpoint. Current readable sinks escape CR/LF and terminal controls in rendered messages/properties/exceptions; a separate JSONL sink retains machine-readable single-record output. Tests cover both formats. Remaining source-to-ILogger alerts are retained, not suppressed. |
 | cs/user-controlled-bypass: 9 | TokenTest branches only choose how to display the supplied token, not grant authentication; Entra/passkey purpose=link/register branches require a separately verified actor; Windows request flags enforce native HTTPS and then verify Negotiate/application proofs; Admin flags reject empty dictionaries after administrator checks; native-refresh opt-in is followed by refresh-proof validation. Input-dependent branches do not bypass those mandatory checks. |
 | cs/local-not-disposed: 2 → 0 | Fixed disposal of MailMessage and the realtime demo DataTable. |
 | cs/path-combine: 5 | Constant installation/static-resource components; credential paths use a SHA-256 scope filename and random constant-prefix temporary filename. Root directories are trusted service configuration, not request path components. No request-controlled rooted path reaches these joins. |
@@ -141,8 +141,11 @@ or rule was suppressed; approved LAN plaintext is an explicit security tradeoff.
   independent of Development/Production. Plaintext LAN traffic exposes bearer and
   refresh tokens to on-path observers; use `never`/`loopback` or a trusted VPN on
   untrusted networks.
-- API log files/console/debug records are now JSON, including escaped exception
-  text. Update log consumers accordingly; this does not permit logging credentials.
+- API/client Console/Debug/`.log` records are readable, escaped one-line text;
+  `.jsonl` files retain structured JSON. [Debug traffic](diagnostics.md) defaults
+  to credential-only `redacted`, not identifier-free output. Business data is
+  visible; explicit `full` disables masking and emits unsafe-mode warnings.
+  Restrict directory access, retention and sharing.
 - These local checks do not establish real proxy/certificate/domain/browser security.
 
 ## Dependency checkpoint

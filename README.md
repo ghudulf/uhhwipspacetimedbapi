@@ -7,6 +7,11 @@ Set API `Network__PlaintextPolicy` and client `BRU_PLAINTEXT_POLICY` to `never`,
 `loopback`, `lan` (default), or `any`. See [network policy](docs/architecture/network-policy.md)
 for address/name scope, discovery ports, security risks and HTTPS-only platform exceptions.
 
+Debug traffic defaults to **`redacted`**: raw HTTP/WebSocket JSON and bound DataGrid
+rows preserve business data while masking credential values. See
+[diagnostics](docs/architecture/diagnostics.md) for configuration, log locations,
+blank-grid debugging and the explicitly unsafe `full` level.
+
 ## 🏗️ Architecture Overview
 
 ### Technology Stack

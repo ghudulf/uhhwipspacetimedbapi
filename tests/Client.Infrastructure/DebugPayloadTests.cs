@@ -26,6 +26,9 @@ internal static class DebugPayloadTests
         var headers = DebugPayload.Headers(new Dictionary<string, IEnumerable<string>> { ["Authorization"] = ["Bearer sentinel"], ["Cookie"] = ["sid=sentinel"], ["X-Api-Key"] = ["sentinel"], ["Content-Type"] = ["application/json"] });
         Check(headers["Authorization"] == "Bearer sha256:" + DebugPayload.Fingerprint("Bearer sentinel") && !string.Join(' ', headers.Values).Contains("sentinel") && headers["Cookie"].StartsWith("sid sha256:"), "header contract");
         Check(DebugPayload.Fingerprint("same") == DebugPayload.Fingerprint("same") && DebugPayload.Fingerprint("same").Length == 8, "stable fingerprint");
+        Check(!DebugPayload.Url("/api?%61ccess_token=sentinel").Contains("sentinel"), "encoded query key");
+        Check(DebugPayload.Json("{\"code\":\"invalid_totp\"}", authentication: true, response: true).Contains("invalid_totp"), "auth error code retained");
+        Check(!DebugPayload.Headers(new Dictionary<string, IEnumerable<string>> { ["Authorization"] = ["sentinel"] })["Authorization"].Contains("sentinel"), "malformed header credential");
         Check(TrafficOptions.ParseLevel(null) == TrafficLevel.Redacted && TrafficOptions.ParseLevel("FULL") == TrafficLevel.Full, "configuration defaults");
         Console.WriteLine("PASS DebugPayload credential-only masking, business data, numeric fidelity, duplicate/nested/array values, UTF8 cap, malformed/text/binary, levels, URLs and stable header fingerprints");
     }

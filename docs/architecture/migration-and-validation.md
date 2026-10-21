@@ -81,8 +81,10 @@ SecurityCodeScan installs all three declared SDKs and builds module, API, Aspire
 The [local security validation ledger](security-validation.md) records the disabled
 workflows' local equivalents, raw/triaged findings, the additional Desktop SDK
 10.0.201 prerequisite, and repeatable commands. It also describes the verified
-Bearer-only OAuth form authorization change, production HTTPS/Secure-cookie and
-explicit-CORS requirements, and JSON log format migration. The unresolved AppHost
+Bearer-only OAuth form authorization change and historical transport/log changes.
+Current behavior is governed by [network policy](network-policy.md) and
+[debug traffic diagnostics](diagnostics.md): LAN HTTP defaults, readable escaped
+logs plus JSONL, credential-only masking and visible business data. The unresolved AppHost
 KubernetesClient advisory requires an owner-authorized compatible dependency
 upgrade; successful application builds are not a clean security signoff.
 

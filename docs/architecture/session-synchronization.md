@@ -5,8 +5,10 @@
 Native application sessions use short-lived existing access tokens plus opaque,
 single-use refresh proofs. They are separate from OpenIddict OAuth refresh tokens
 and browser cookies. The API generates 32 CSPRNG bytes encoded as 43-character
-base64url text. Only SHA-256/base64url hashes reach the module. Never log proofs,
-access tokens, request bodies or reducer arguments containing credentials.
+base64url text. Only SHA-256/base64url hashes reach the module. The shared
+[debug traffic facility](diagnostics.md) logs raw bodies/reducer arguments with
+credential values masked at default `redacted`; usernames/IDs/business data remain
+visible. Explicit `full` disables masking and is unsafe, including for refresh proofs.
 
 `RefreshTokenRecord` stores the hash, user, family, issue/absolute expiry times,
 used/revoked times and a sanitized device label (maximum 64 characters). The root
@@ -94,8 +96,9 @@ refresh proofs or use an unverified weaker storage fallback.
 `ISessionRefresher` dispatches exactly once. It conditionally replaces the stored
 token pair before applying the new access token, rejecting a response for a
 different account/server or superseded access token. Network, timeout, malformed
-or rejected responses clear only the matching stored session. No credentials or
-exception payloads are written to diagnostics.
+or rejected responses clear only the matching stored session. Default redacted
+traffic masks credentials, while business fields remain visible; full mode can
+record reusable credentials. Restrict access and retention of diagnostic files.
 
 The shared `SessionRefreshCoordinator` single-flights concurrent read and
 subscription expiries, caches the replacement for late arrivals, and applies a

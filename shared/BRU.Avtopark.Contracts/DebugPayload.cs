@@ -40,7 +40,7 @@ public static class DebugPayload
     public static string Fingerprint(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
     public static string Mask(int length) => $"***({length})";
 
-    public static string Json(string? raw, TrafficLevel level = TrafficLevel.Redacted, int max = 65536, bool authentication = false)
+    public static string Json(string? raw, TrafficLevel level = TrafficLevel.Redacted, int max = 65536, bool authentication = false, bool response = false)
     {
         if (level == TrafficLevel.Off) return "";
         raw ??= "null";
@@ -63,7 +63,7 @@ public static class DebugPayload
                         case JsonTokenType.PropertyName:
                             var name = reader.GetString()!;
                             writer.WritePropertyName(name);
-                            if (IsCredential(name) || authentication && Normalize(name) is "code" or "credential" or "qrpng" or "qrpayload")
+                            if (IsCredential(name) || authentication && (Normalize(name) is "credential" or "qrpng" or "qrpayload" || !response && Normalize(name) == "code"))
                             {
                                 if (!reader.Read()) throw new JsonException();
                                 var start = reader.TokenStartIndex;
@@ -72,11 +72,7 @@ public static class DebugPayload
                                 writer.WriteStringValue(Mask(length >= 0 ? length : checked((int)(reader.BytesConsumed - start))));
                             }
                             break;
-                        case JsonTokenType.String:
-                            var text = reader.GetString()!;
-                            // QR/protocol envelopes may embed credential-bearing JSON as a string.
-                            writer.WriteStringValue(text.StartsWith('{') || text.StartsWith('[') ? Json(text, level, int.MaxValue, authentication) : text);
-                            break;
+                        case JsonTokenType.String: writer.WriteStringValue(reader.GetString()); break;
                         case JsonTokenType.Number: writer.WriteRawValue(reader.ValueSpan, skipInputValidation: true); break;
                         case JsonTokenType.True: writer.WriteBooleanValue(true); break;
                         case JsonTokenType.False: writer.WriteBooleanValue(false); break;
@@ -87,7 +83,7 @@ public static class DebugPayload
             }
             return Truncate(Encoding.UTF8.GetString(output.ToArray()), max);
         }
-        catch (JsonException) { return Truncate(Text(raw, authentication), max); }
+        catch (JsonException) { return Truncate(Text(raw, authentication && !response), max); }
     }
 
     // Handles form data and malformed/partial JSON without silently dropping debugging data.
@@ -118,8 +114,8 @@ public static class DebugPayload
             var value = string.Join(", ", values);
             if (level != TrafficLevel.Full && name.ToLowerInvariant() is "authorization" or "cookie" or "set-cookie" or "x-api-key")
             {
-                var label = name.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ? value.Split(' ')[0] :
-                    name.Contains("cookie", StringComparison.OrdinalIgnoreCase) ? string.Join(";", value.Split(';').Select(item => item.Split('=')[0].Trim())) : name;
+                var label = name.Equals("Authorization", StringComparison.OrdinalIgnoreCase) && value.Contains(' ') ? value.Split(' ')[0] :
+                    name.Contains("cookie", StringComparison.OrdinalIgnoreCase) && value.Contains('=') ? string.Join(";", value.Split(';').Select(item => item.Split('=')[0].Trim())) : name;
                 value = label + " sha256:" + Fingerprint(value);
             }
             result[name] = value;
@@ -131,7 +127,9 @@ public static class DebugPayload
     {
         if (level == TrafficLevel.Off) return "";
         if (level == TrafficLevel.Full) return raw;
-        return Regex.Replace(raw, "(?<key>[?&](?:access_token|token|code|state|id_token|refresh_token|client_secret)=)(?<value>[^&#]*)",
-            match => match.Groups["key"].Value + Mask(match.Groups["value"].Length), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        return Regex.Replace(raw, "(?<prefix>[?&])(?<key>[^=&#]+)=(?<value>[^&#]*)",
+            match => new[] { "access_token", "token", "code", "state", "id_token", "refresh_token", "client_secret" }.Contains(Uri.UnescapeDataString(match.Groups["key"].Value), StringComparer.OrdinalIgnoreCase)
+                ? match.Groups["prefix"].Value + match.Groups["key"].Value + "=" + Mask(match.Groups["value"].Length) : match.Value,
+            RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
     }
 }

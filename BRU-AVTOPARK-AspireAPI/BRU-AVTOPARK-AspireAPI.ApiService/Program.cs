@@ -95,7 +95,7 @@ builder.AddServiceDefaults();
 builder.Services.AddLogging(loggingBuilder =>
 {
     loggingBuilder.ClearProviders();
-    loggingBuilder.AddJsonConsole();
+    // Serilog supplies readable escaped Console/Debug and a separate JSONL file sink.
     loggingBuilder.SetMinimumLevel(LogLevel.Debug);
     loggingBuilder.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
     

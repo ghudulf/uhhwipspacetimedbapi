@@ -31,7 +31,7 @@ public static class TrafficDiagnostics
     {
         if (!Enabled || !Options.Websocket) return;
         Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "WebSocket {Direction} Frame={Frame}", direction,
-            DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes, raw.Contains("totp", StringComparison.OrdinalIgnoreCase)));
+            DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes, direction == "RECEIVED RAW" && raw.Contains("totp", StringComparison.OrdinalIgnoreCase)));
     }
     public static string ReducerArguments(object args, string operation, TrafficOptions options)
     {
@@ -50,14 +50,20 @@ public static class TrafficDiagnostics
         var count = items is System.Collections.ICollection collection ? collection.Count : items.Cast<object?>().Count();
         return "rows=" + count + (options.Rows || options.Level == TrafficLevel.Full ? " preview=" + Serialize(items.Cast<object?>().Take(options.MaxRows).ToArray(), options) : "");
     }
-    public static string Body(byte[] preview, long length, string? contentType, TrafficOptions options, bool authentication = false)
+    public static string Body(byte[] preview, long length, string? contentType, TrafficOptions options, bool authentication = false, bool response = false)
     {
         if (options.Level == TrafficLevel.Off) return "";
         if (!IsText(contentType)) return DebugPayload.Binary(length, options.Level);
-        var raw = Encoding.UTF8.GetString(preview);
-        var result = DebugPayload.Json(raw, options.Level, options.MaxBodyBytes, authentication);
-        return length > preview.Length && !result.Contains("…[truncated ", StringComparison.Ordinal)
-            ? result + $"…[truncated {length - preview.Length} bytes]" : result;
+        var characters = new char[preview.Length];
+        var characterCount = Encoding.UTF8.GetDecoder().GetChars(preview, 0, preview.Length, characters, 0, flush: false);
+        var raw = new string(characters, 0, characterCount);
+        var result = DebugPayload.Json(raw, options.Level, options.MaxBodyBytes, authentication, response);
+        var rawBytes = Encoding.UTF8.GetBytes(raw);
+        var retainedBytes = Math.Min(rawBytes.Length, options.MaxBodyBytes);
+        while (retainedBytes > 0 && retainedBytes < rawBytes.Length && (rawBytes[retainedBytes] & 0xc0) == 0x80) retainedBytes--;
+        if (length <= retainedBytes) return result;
+        result = System.Text.RegularExpressions.Regex.Replace(result, "…\\[truncated [0-9]+ bytes\\]$", "");
+        return result + $"…[truncated {length - retainedBytes} bytes]";
     }
     public static bool IsText(string? contentType) => contentType != null &&
         (contentType.Contains("json", StringComparison.OrdinalIgnoreCase) || contentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ||
