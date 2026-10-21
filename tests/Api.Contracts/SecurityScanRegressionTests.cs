@@ -38,6 +38,7 @@ internal static class SecurityScanRegressionTests
         Check(await controller.UpdateClientSubmit("client", update) is ForbidResult, "nonadministrator update reached service");
         Check(await controller.DeleteClientSubmit("client", forged) is ForbidResult, "nonadministrator delete reached service");
         await HttpAndLogBoundariesAsync();
+        NetworkBoundaryTests.NativeRefresh();
         Console.WriteLine("PASS security scan regressions: OAuth client form mutations require verified Bearer administrator; forged form tokens and authenticated nonadministrators rejected before services");
     }
 

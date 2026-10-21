@@ -101,6 +101,7 @@ internal static class EntraAuthenticationTests
         foreach (var result in new[] { await c.Start(new("login")), await c.Callback(null, null, null), await c.Complete("id", new(null)), await c.Cancel("id", new(null)), await c.LinkStatus(), await c.Unlink() })
             Check(QrLoginTests.Code(result) == 404, "disabled route exposed");
         options.Enabled = true;
+        await NetworkBoundaryTests.CheckAsync(c, "Boundary");
         c.Request.Scheme = "http"; Check(QrLoginTests.Code(await c.Start(new("login"))) == 400, "HTTPS gate"); c.Request.Scheme = "https";
         Check(QrLoginTests.Code(await c.Start(new("link"))) == 401, "link without bearer");
         c.Request.Headers.Authorization = "Bearer session";

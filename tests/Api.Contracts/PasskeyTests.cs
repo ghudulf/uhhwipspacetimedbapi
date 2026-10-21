@@ -91,6 +91,11 @@ internal static class PasskeyTests
         var development = new PasskeyOptionsValidator(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             { ["Fido2:ServerDomain"] = "localhost", ["Fido2:Origins:0"] = "http://localhost:5000" }).Build(), new QrLoginTests.EnvironmentStub { EnvironmentName = "Development" });
         Check(development.Validate(null, new() { Enabled = true, PublicOrigin = "http://localhost:5000" }).Succeeded, "Development loopback exemption");
+        var productionLoopback = new PasskeyOptionsValidator(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { ["Fido2:ServerDomain"] = "localhost", ["Fido2:Origins:0"] = "http://localhost:5000" }).Build(), new QrLoginTests.EnvironmentStub());
+        Check(productionLoopback.Validate(null, new() { Enabled = true, PublicOrigin = "http://localhost:5000" }).Succeeded, "loopback secure context must not depend on server environment");
+        var insecure = validator.Validate(null, new() { Enabled = true, PublicOrigin = "http://192.168.1.20:5000" });
+        Check(insecure.FailureMessage == "Passkeys require explicit Authentication:Passkeys:PublicOrigin, Fido2:ServerDomain and Fido2:Origins. Browsers only expose WebAuthn in secure contexts: http://192.168.x.x does NOT work; http://localhost does. Use HTTPS or HTTP loopback.", "exact WebAuthn startup diagnostic");
     }
     private static async Task ControllerAsync()
     {
@@ -103,6 +108,7 @@ internal static class PasskeyTests
         var c = new PasskeyAuthenticationController(Options.Create(config), broker, webauthn, tokens, new(store.Database), store.Database, auth, new QrLoginTests.EnvironmentStub())
         { ControllerContext = new() { HttpContext = new DefaultHttpContext() } };
         c.Request.Scheme = "https"; c.Request.Host = new(Rp);
+        await NetworkBoundaryTests.CheckAsync(c, "Boundary");
         Check(QrLoginTests.Code(await c.Start(new("register"))) == 401, "registration without bearer"); c.Request.Headers.Authorization = "Bearer session";
         using var authenticator = new SoftwareAuthenticator();
         async Task<(PasskeyStartResponse Flow, string Browser)> Start(string purpose, string? username = null)

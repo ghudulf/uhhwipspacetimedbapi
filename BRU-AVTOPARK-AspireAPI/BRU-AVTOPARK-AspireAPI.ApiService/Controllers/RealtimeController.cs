@@ -132,6 +132,7 @@ public sealed class RealtimeController : BaseController
     [HttpGet("interactive")]
     public async Task InteractiveWebSocket()
     {
+        if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext)) { Response.StatusCode = 400; return; }
         if (!HttpContext.WebSockets.IsWebSocketRequest)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -636,6 +637,7 @@ public sealed class RealtimeController : BaseController
     [HttpGet("stream")]
     public async Task StreamEvents()
     {
+        if (!Security.HttpSecurityPolicy.IsTransportAllowed(HttpContext)) { Response.StatusCode = 400; return; }
         if (HttpContext.WebSockets.WebSocketRequestedProtocols.Contains(BRU.Avtopark.Contracts.ApiProtocol.Subprotocol))
         {
             await StreamV2Async();

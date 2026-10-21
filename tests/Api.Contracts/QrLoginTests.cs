@@ -142,6 +142,7 @@ internal static class QrLoginTests
         QrLoginController Controller() => new(broker, store, tokens, new UserAccessService(database), database, auth, flags, new EnvironmentStub())
             { ControllerContext = new() { HttpContext = new DefaultHttpContext() } };
         var controller = Controller(); controller.Request.Scheme = "https"; controller.Request.Host = new("api.example.test"); controller.Request.Headers.Authorization = "Bearer synthetic";
+        await NetworkBoundaryTests.CheckAsync(controller, "BoundaryAsync", "QRLoginGenerateEndpointEnabled");
         enabled = false; Assert(Code(await controller.Create(new("desktop", "test"))) == 503, "flag gate"); enabled = true;
         controller.Request.Scheme = "http"; Assert(Code(await controller.Create(new("desktop", "test"))) == 400, "HTTPS gate"); controller.Request.Scheme = "https";
         var created = Create(broker);
