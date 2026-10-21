@@ -10,6 +10,11 @@ A comprehensive multi-tenant SaaS application for managing bus fleet operations,
 - **API Layer**: ASP.NET Core 9.0 with .NET Aspire orchestration
 - **Desktop Client**: Avalonia UI 11.2 (cross-platform XAML framework)
 - **Authentication**: OpenID Connect with OAuth 2.0, WebAuthn, TOTP
+
+Provider rollout checkpoint: [Microsoft Entra system-browser login and secure
+account linking](docs/architecture/provider-authentication.md) are implemented
+behind a default-off flag. Browser passkeys/Windows Hello and automatic session
+refresh remain unfinished and are not advertised as delivered.
 - **Real-time Sync**: SpacetimeDB client SDK with automatic data synchronization
 
 ### Project Structure

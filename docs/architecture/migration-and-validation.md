@@ -1,6 +1,6 @@
 # Architecture implementation ledger and deployment requirements
 
-This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; full provider validation, Entra/Hello orchestration and the full v2 transport rollout must not be inferred from the database foundation.
+This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation, browser Hello orchestration and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) distinguishes implemented Entra browser login/linking from unfinished passkeys and refresh integration.
 
 ## Database boundary
 
@@ -125,9 +125,29 @@ validation before persistence, HTTP/v1 adapters, framed v2 dispatch, six new
 subscription leases and the complete reflected endpoint coverage ledger.
 
 The [coverage ledger](operation-coverage.md) has explicit dispositions for all
-185 current controller/method/verb/route combinations. Its drift test rejects
+current controller/method/verb/route combinations. Its drift test rejects
 missing/stale rows, empty dispositions and unregistered operation references.
 Protocol-only auth/QR/provider/upgrade/diagnostic endpoints are not claimed as
 CRUD parity; legacy read projections remain labelled. See
 [administrative compatibility notes](realtime-v2.md#administrative-contracts-and-compatibility)
 for profile-only user updates, activation payloads and atomic permission sets.
+
+## Provider checkpoint — additive own-link unlink reducer
+
+Publish the additive `UnlinkOwnExternalAccount(provider, actingUser)` reducer
+before the matching API and regenerated bindings/observer. It requires a trusted
+API sender, resolves the effective actor, requires an active account, and deletes
+only that actor's links for the requested provider. No schema or data rewrite is
+required. It intentionally does not ensure another usable credential remains.
+Fresh-fixture Architecture.Integration verifies Entra `LinkOwnExternalAccount`,
+committed own unlink, absent-link rejection, preservation of another user's link
+and the actor's other-provider links, and untrusted-sender rejection. The WASI
+build and full integration suite also include the preceding `users.create`
+idempotency-hash fix without further production changes to that operation.
+
+Entra is disabled by default and must be configured/validated with a real tenant
+before rollout. Provider flows are bounded process memory and lost on restart.
+The v2 refresh adapter is tested with fake orchestration; the existing production
+refresh method still rejects as unimplemented. Passkeys remain unadvertised and
+the WebAuthn storage/counter/challenge work is not complete. See the explicit
+[remaining work and deviations](provider-authentication.md#refresh-checkpoint-and-remaining-passkey-work).

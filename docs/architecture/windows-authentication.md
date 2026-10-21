@@ -14,7 +14,7 @@ The provider reuses local active-account and second-factor checks. Temporary sec
 
 Explicitly set `BRU_TRUSTED_API_ORIGIN=https://your-api.example.org/` for the native desktop process. It must be an origin with no credentials, query, fragment or application path. This selects the configured server before LAN discovery and reveals the Windows/Kerberos option in the existing login selector. Requests carrying default credentials are restricted to that origin, with redirects and proxies disabled. An automatically discovered server is never trusted for integrated credentials.
 
-The existing login wizard handles a successful local JWT or the required TOTP step. Windows Hello/browser WebAuthn orchestration, Microsoft/Entra callbacks, and binding provider results into the v2 realtime authentication state are separate outstanding implementation work. Existing WebAuthn desktop support must not be described as a completed Windows Hello implementation.
+The existing login wizard handles a successful local JWT or the required TOTP step. Microsoft/Entra system-browser callbacks and securely bound linking now have a separate [provider implementation checkpoint](provider-authentication.md). Windows Hello/browser WebAuthn orchestration and automatic v2 session refresh remain unfinished. Existing WebAuthn desktop support must not be described as a completed Windows Hello implementation.
 
 ## Required platform validation
 
@@ -25,6 +25,6 @@ Test IIS and Kestrel with domain Windows 10/11 clients, Linux Kerberos where ena
 
 Sign in to the existing local application account first, including its configured second factor. Open **Связать учётную запись Windows** from the navigation menu and explicitly choose **Связать**. The client sends the active application-session token in the HTTPS request body while Negotiate verifies the Windows identity. The server independently validates both identities and commits `LinkOwnExternalAccount` as the trusted API. It checks the target local account is active and rejects any existing external mapping; the client cannot choose another application identity in its payload. Session changes cancel and close the linking UI. Automatic retries are forbidden when the link outcome is uncertain.
 
-The owner provisioning reducer remains available for managed deployments. Self-service linking does not depend on pre-linking in a browser or by an administrator. Microsoft/Entra/passkey linking will use the same dual-proof model with their own verified provider ceremonies.
+The owner provisioning reducer remains available for managed deployments. Self-service linking does not depend on pre-linking in a browser or by an administrator. Microsoft/Entra linking uses the same dual-proof model with a separately verified OIDC ceremony; passkey registration remains outstanding.
 
 The Avalonia linking dialog also supports an explicit status check through `POST /api/auth/windows/link/status`. It requires the same validated Negotiate principal and application bearer proof as linking, and reports only linked/unlinked/linked-elsewhere. It never returns the other account identity. This read helps reconcile interrupted requests. Native credential requests preserve the selected deployment path prefix after checking the explicitly configured trusted HTTPS origin.
