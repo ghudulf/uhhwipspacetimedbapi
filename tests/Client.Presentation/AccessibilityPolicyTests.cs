@@ -27,6 +27,7 @@ internal static class AccessibilityPolicyTests
         if (violations.Length != 0) throw new Exception("Accessibility policy violations (" + violations.Length + "):\n" + string.Join('\n', violations));
         AssertJobsPager(root, "Employee");
         AssertJobsPager(root, "Maintenance");
+        AssertJobsPager(root, "Route");
         var invalid = XDocument.Parse("""
             <StackPanel><Button/><TextBox/><Image/><TextBlock Name="ErrorText"/><TextBlock Text="{Binding SynchronizationMessage}"/>
             <Button Content="OK"/><Button Content="Отмена"/><Button Content="Named" IsTabStop="False"/></StackPanel>
