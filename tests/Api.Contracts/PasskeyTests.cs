@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SpacetimeDB;
 using SpacetimeDB.Types;
@@ -37,7 +38,7 @@ internal static class PasskeyTests
             }
             else { await Reject(() => service.VerifyRegistrationAsync(Actor, options, response)); Check(store.Credentials.Count == 0, "bad registration persisted"); }
         }
-        var registered = new Store(); var verifier = Service(registered); using var key = new SoftwareAuthenticator();
+        var registered = new Store(); var logs = new Capture(); var verifier = Service(registered, logs); using var key = new SoftwareAuthenticator();
         var create = await verifier.CreateRegistrationOptionsAsync(Actor); await verifier.VerifyRegistrationAsync(Actor, create, key.Register(create, Origin));
         foreach (var tamper in new[] { "challenge", "origin", "rp", "uv", "handle", "unknown", "inactive" })
         {
@@ -54,6 +55,11 @@ internal static class PasskeyTests
             Check((await verifier.VerifyAssertionAsync(options, key.Assert(options, Origin, Rp, counter: 0))).UserId == Actor, "synced zero counter rejected");
         }
         var assertion = await verifier.CreateAssertionOptionsAsync(null);
+        using (var imposter = new SoftwareAuthenticator())
+        {
+            key.Id.CopyTo(imposter.Id, 0); imposter.Handle = key.Handle;
+            await Reject(() => verifier.VerifyAssertionAsync(assertion, imposter.Assert(assertion, Origin, Rp)));
+        }
         await verifier.VerifyAssertionAsync(assertion, key.Assert(assertion, Origin, Rp));
         var replay = await verifier.CreateAssertionOptionsAsync(null); await Reject(() => verifier.VerifyAssertionAsync(replay, key.Assert(replay, Origin, Rp)));
         await verifier.RemoveCredentialAsync(Actor, Convert.ToBase64String(key.Id));
@@ -67,11 +73,13 @@ internal static class PasskeyTests
         Check((await legacyService.CompleteRegistrationAsync(Actor, "private-user", legacyKey.Register(legacyOptions.options!, Origin))).success, "legacy Base64 registration challenge reconstruction");
         var legacyAssertion = await legacyService.GetAssertionOptionsAsync("private-user");
         Check((await legacyService.CompleteAssertionAsync("private-user", legacyKey.Assert(legacyAssertion.options!, Origin, Rp))).success, "legacy Base64 assertion reconstruction");
+        foreach (var secret in new[] { "private-user", Actor.ToString(), Convert.ToBase64String(key.Id), Convert.ToBase64String(registered.Handle), Convert.ToBase64String(assertion.Challenge), registered.Credentials.Single().PublicKey })
+            Check(!string.Join('\n', logs.Messages).Contains(secret, StringComparison.Ordinal), "sensitive verifier logging");
         Console.WriteLine("PASS passkey software ES256/CBOR authenticator with real Fido2: none registration, challenge/origin/RP/UV rejection, signed login, user-handle/unknown/inactive wrapper checks, zero counters, replay/clone rejection, committed removal, nonenumerating options and legacy Base64 challenge parity");
         await ControllerAsync();
         await PasskeyHttpPipelineTests.RunAsync();
     }
-    internal static WebAuthnService Service(Store store) => new(store.Database, new Fido2(new Fido2Configuration { ServerDomain = Rp, ServerName = "Tests", Origins = new HashSet<string> { Origin } }), NullLogger<WebAuthnService>.Instance);
+    internal static WebAuthnService Service(Store store, ILogger<WebAuthnService>? logger = null) => new(store.Database, new Fido2(new Fido2Configuration { ServerDomain = Rp, ServerName = "Tests", Origins = new HashSet<string> { Origin } }), logger ?? NullLogger<WebAuthnService>.Instance);
     private static void ValidateConfiguration()
     {
         var good = new Dictionary<string, string?> { ["Fido2:ServerDomain"] = Rp, ["Fido2:Origins:0"] = Origin };
@@ -80,6 +88,9 @@ internal static class PasskeyTests
         foreach (var origin in new[] { "", "http://api.example.test", "https://other.test", Origin + "/path", "https://user@api.example.test", Origin + "?secret=1" })
             Check(validator.Validate(null, new() { Enabled = true, PublicOrigin = origin }).Failed, "invalid startup origin accepted");
         Check(new PasskeyOptionsValidator(new ConfigurationBuilder().Build(), new QrLoginTests.EnvironmentStub()).Validate(null, new() { Enabled = true, PublicOrigin = Origin }).Failed, "missing RP/origin accepted");
+        var development = new PasskeyOptionsValidator(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { ["Fido2:ServerDomain"] = "localhost", ["Fido2:Origins:0"] = "http://localhost:5000" }).Build(), new QrLoginTests.EnvironmentStub { EnvironmentName = "Development" });
+        Check(development.Validate(null, new() { Enabled = true, PublicOrigin = "http://localhost:5000" }).Succeeded, "Development loopback exemption");
     }
     private static async Task ControllerAsync()
     {
@@ -104,6 +115,7 @@ internal static class PasskeyTests
         var registration = await Start("register");
         var page = (ContentResult)await c.Browser(registration.Flow.FlowId, registration.Browser);
         Check(page.Content!.Contains("history.replaceState", StringComparison.Ordinal) && c.Response.Headers.ContentSecurityPolicy.ToString().Contains("script-src 'nonce-", StringComparison.Ordinal) && !page.Content.Contains("onclick", StringComparison.OrdinalIgnoreCase), "browser page safety");
+        Check(QrLoginTests.Code(await c.Browser(registration.Flow.FlowId, registration.Browser)) == 404, "landing browser token replay");
         Check(QrLoginTests.Code(await c.Complete(registration.Flow.FlowId, new(registration.Browser))) == 404, "browser token redeemed flow");
         var registrationOptions = JsonSerializer.SerializeToElement(((JsonResult)await c.Options(registration.Flow.FlowId, new(registration.Browser))).Value, ApiProtocol.Json);
         Check(registrationOptions.GetProperty("publicKey").GetProperty("authenticatorSelection").GetProperty("residentKey").GetString() == "preferred", "residentKey preferred adapter");
@@ -128,6 +140,13 @@ internal static class PasskeyTests
     }
     private static string Json(IActionResult result) => JsonSerializer.Serialize(((JsonResult)result).Value, ApiProtocol.Json);
     private static async Task Reject(Func<Task> action) { try { await action(); } catch { return; } throw new Exception("Passkey invalid proof accepted"); }
+    private sealed class Capture : ILogger<WebAuthnService>
+    {
+        public readonly List<string> Messages = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel level) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
+    }
     internal static void Check(bool condition, string message) { if (!condition) throw new Exception("Passkey: " + message); }
     internal sealed class Store
     {

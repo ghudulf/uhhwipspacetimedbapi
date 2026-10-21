@@ -41,6 +41,7 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
         public byte[]? BrowserHash;
         public string? Username, OptionsJson;
         public int BrowserPhase, Attempts = 3;
+        public bool BrowserLandingUsed;
         public readonly Queue<DateTimeOffset> Polls = new();
     }
     private const int Capacity = 2000;
@@ -188,7 +189,19 @@ public sealed class ProviderFlowBroker(TimeProvider time, IOptions<ProviderFlowO
         }
         return flow;
     }
-    public void ValidateBrowser(string id, string? token) { lock (gate) { _ = Browser(id, token, 0); } }
+    public void ValidateBrowser(string id, string? token)
+    {
+        lock (gate)
+        {
+            var flow = Browser(id, token, 0);
+            if (flow.BrowserLandingUsed)
+            {
+                if (--flow.Attempts <= 0) { flow.State = ProviderFlowState.Failed; ClearProof(flow); }
+                throw new ProviderFlowException("not_found", 404);
+            }
+            flow.BrowserLandingUsed = true;
+        }
+    }
     public ProviderBrowserContext BeginBrowserOptions(string id, string? token)
     {
         lock (gate) { var flow = Browser(id, token, 0); flow.BrowserPhase = 1; return new(flow.Purpose, flow.Actor, flow.Username, null); }
