@@ -1333,7 +1333,7 @@ static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, Ca
             
             // Register desktop client if it doesn't exist
             var desktopClientId = "bru-avtopark-desktop-client";
-            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId, stoppingToken);
             stoppingToken.ThrowIfCancellationRequested();
             
             if (!clientExists)
@@ -1361,7 +1361,7 @@ static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, Ca
                         "http://localhost:5501/"
                     },
                     allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
-                    requireConsent: false
+                    requireConsent: false, cancellationToken: stoppingToken
                 );
                 
                 if (success)
@@ -1369,7 +1369,7 @@ static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, Ca
                     stoppingToken.ThrowIfCancellationRequested();
                     logger.LogInformation("Successfully registered default desktop client");
                     
-                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId, stoppingToken);
                     if (!verifyExists) throw new InvalidOperationException("Committed default client could not be read.");
                     logger.LogInformation("Default desktop client persistence confirmed after committed store operation");
                 }
@@ -1403,7 +1403,7 @@ static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, Ca
                         "http://localhost:5501/"
                     },
                     allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
-                    requireConsent: false
+                    requireConsent: false, cancellationToken: stoppingToken
                 );
                 
                 if (success)

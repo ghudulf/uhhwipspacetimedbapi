@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Implementations;
 using TicketSalesApp.Services.Interfaces;
@@ -26,6 +27,22 @@ internal static class ServiceLifecycleTests
         await failed.StartAsync(default);
         await failed.ExecuteTask!.WaitAsync(deadline.Token);
         Check(failed.ExecuteTask.IsCompletedSuccessfully, "startup failure left an unobserved fault");
+
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        var managerCalls = 0;
+        var manager = Stub.Create<IOpenIddictApplicationManager>((method, args) =>
+        {
+            if (method.Name != "FindByClientIdAsync" || (CancellationToken)args![1]! != cancelled.Token)
+                throw new Exception("Startup manager call lost host cancellation");
+            managerCalls++;
+            return new ValueTask<object?>(Task.FromCanceled<object?>(cancelled.Token));
+        });
+        using var managers = new ServiceCollection().AddSingleton(manager).BuildServiceProvider();
+        var oidc = new OpenIdConnectService(Stub.Create<ISpacetimeDBService>(), managers, NullLogger<OpenIdConnectService>.Instance);
+        Check(!(await oidc.GetApplicationByClientIdAsync("synthetic", cancelled.Token)).success &&
+            !(await oidc.RegisterClientApplicationAsync("synthetic", "", "test", ["https://client.invalid/callback"], [], ["openid"], false, cancelled.Token)).success &&
+            !(await oidc.UpdateClientApplicationAsync("synthetic", null, null, null, null, null, null, cancelled.Token)).success && managerCalls == 3,
+            "Startup service cancellation did not reach all application manager paths");
 
         var pending = new TaskCompletionSource<List<RouteSchedule>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var db = Stub.Create<ISpacetimeDBService>((method, args) => method.Name == "ReadAsync"
