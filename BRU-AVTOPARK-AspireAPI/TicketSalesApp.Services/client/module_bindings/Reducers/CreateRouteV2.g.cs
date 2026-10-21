@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void CreateRouteV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive);
+        public delegate void CreateRouteV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, string routeNumber, uint stopCount, double routeLength, string? routeDescription, string? routeType);
         public event CreateRouteV2Handler? OnCreateRouteV2;
 
-        public void CreateRouteV2(string operationId, SpacetimeDB.Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive)
+        public void CreateRouteV2(string operationId, SpacetimeDB.Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, string routeNumber, uint stopCount, double routeLength, string? routeDescription, string? routeType)
         {
-            conn.InternalCallReducer(new Reducer.CreateRouteV2(operationId, actingUser, startPoint, endPoint, driverId, busId, travelTime, isActive));
+            conn.InternalCallReducer(new Reducer.CreateRouteV2(operationId, actingUser, startPoint, endPoint, driverId, busId, travelTime, isActive, routeNumber, stopCount, routeLength, routeDescription, routeType));
         }
 
         public bool InvokeCreateRouteV2(ReducerEventContext ctx, Reducer.CreateRouteV2 args)
@@ -43,7 +43,12 @@ namespace SpacetimeDB.Types
                 args.DriverId,
                 args.BusId,
                 args.TravelTime,
-                args.IsActive
+                args.IsActive,
+                args.RouteNumber,
+                args.StopCount,
+                args.RouteLength,
+                args.RouteDescription,
+                args.RouteType
             );
             return true;
         }
@@ -71,6 +76,16 @@ namespace SpacetimeDB.Types
             public string? TravelTime;
             [DataMember(Name = "is_active")]
             public bool IsActive;
+            [DataMember(Name = "route_number")]
+            public string RouteNumber;
+            [DataMember(Name = "stop_count")]
+            public uint StopCount;
+            [DataMember(Name = "route_length")]
+            public double RouteLength;
+            [DataMember(Name = "route_description")]
+            public string? RouteDescription;
+            [DataMember(Name = "route_type")]
+            public string? RouteType;
 
             public CreateRouteV2(
                 string OperationId,
@@ -80,7 +95,12 @@ namespace SpacetimeDB.Types
                 uint DriverId,
                 uint BusId,
                 string? TravelTime,
-                bool IsActive
+                bool IsActive,
+                string RouteNumber,
+                uint StopCount,
+                double RouteLength,
+                string? RouteDescription,
+                string? RouteType
             )
             {
                 this.OperationId = OperationId;
@@ -91,6 +111,11 @@ namespace SpacetimeDB.Types
                 this.BusId = BusId;
                 this.TravelTime = TravelTime;
                 this.IsActive = IsActive;
+                this.RouteNumber = RouteNumber;
+                this.StopCount = StopCount;
+                this.RouteLength = RouteLength;
+                this.RouteDescription = RouteDescription;
+                this.RouteType = RouteType;
             }
 
             public CreateRouteV2()
@@ -98,6 +123,7 @@ namespace SpacetimeDB.Types
                 this.OperationId = "";
                 this.StartPoint = "";
                 this.EndPoint = "";
+                this.RouteNumber = "";
             }
 
             string IReducerArgs.ReducerName => "create_route_v_2";

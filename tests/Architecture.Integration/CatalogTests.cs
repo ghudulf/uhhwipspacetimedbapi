@@ -34,8 +34,10 @@ internal static class CatalogTests
         var employee = sameName[0]!;
         var bus = (await buses.CreateBusAsync("catalog-synthetic", actingUser: owner))!;
         var createId = Guid.NewGuid().ToString("N");
-        var route = (await routes.CreateRouteRecordAsync("A", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId))!;
-        Assert((await routes.CreateRouteRecordAsync("A", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId))?.RouteId == route.RouteId, "route replay duplicated entity");
+        var route = (await routes.CreateRouteRecordAsync("A", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId, routeNumber: "R-14", stopCount: 12, routeLength: 25.5, routeDescription: "Описание", routeType: "Городской"))!;
+        Assert(route.RouteNumber == "R-14" && route.StopCount == 12 && route.RouteLength == 25.5 && route.RouteDescription == "Описание" && route.RouteType == "Городской", "route create lost metadata");
+        Assert((await routes.CreateRouteRecordAsync("A", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId, routeNumber: "R-14", stopCount: 12, routeLength: 25.5, routeDescription: "Описание", routeType: "Городской"))?.RouteId == route.RouteId, "route replay duplicated entity");
+        await Reject(() => routes.CreateRouteAsync("A", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId, routeNumber: "changed"));
         await Reject(() => routes.CreateRouteAsync("different", "B", employee.EmployeeId, bus.BusId, "00:10", true, owner, createId));
         await Reject(() => employees.DeleteEmployeeAsync(employee.EmployeeId, owner));
         await Reject(() => employees.DeleteJobAsync(job.JobId, owner));
@@ -60,10 +62,38 @@ internal static class CatalogTests
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 3, deadline.Token);
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "employees", employee.EmployeeId, 1, deadline.Token);
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "maintenance", record.MaintenanceId, 1, deadline.Token);
-        await routes.UpdateRouteAsync(route.RouteId, travelTime: "00:20", actingUser: owner, expectedRevision: 3);
+        await routes.UpdateRouteAsync(route.RouteId, travelTime: "00:20", isActive: false, actingUser: owner, expectedRevision: 3, routeNumber: "R-15", stopCount: 0, routeLength: 0, routeDescription: "", routeType: "Междугородний");
+        var details = (await routes.GetRouteByIdAsync(route.RouteId))!;
+        Assert(details.RouteNumber == "R-15" && details.StopCount == 0 && details.RouteLength == 0 && details.RouteDescription == "" && details.RouteType == "Междугородний" && !details.IsActive, "route atomic update/activation lost metadata or empty/zero values");
+        foreach (var invalid in new Func<Task>[] {
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeNumber: new string('x', 51)),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeDescription: new string('x', 2001)),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeType: new string('x', 101)),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, stopCount: 10001),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeLength: -1),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeLength: double.NaN),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeLength: double.PositiveInfinity),
+            () => routes.UpdateRouteAsync(route.RouteId, actingUser: owner, routeLength: 1000001) }) await Reject(invalid);
         await employees.UpdateEmployeeAsync(employee.EmployeeId, employeePatronym: "Updated", actingUser: owner, expectedRevision: 1);
         await maintenance.UpdateMaintenanceAsync(record.MaintenanceId, serviceEngineer: "Updated", actingUser: owner, expectedRevision: 1);
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 4, deadline.Token);
+        var accessService = new TicketSalesApp.Services.Authorization.UserAccessService(database);
+        var originallyVisible = (await accessService.GetAsync(owner)).Allows("tickets.view");
+        async Task SeedTickets(bool present, bool visible)
+        {
+            using var seed = new StringContent(JsonSerializer.Serialize(new object[] { route.RouteId, present, visible }), Encoding.UTF8);
+            seed.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            using var response = await http.PostAsync("http://127.0.0.1:3000/v1/database/bru-architecture-integration/call/set_catalog_route_tickets", seed);
+            response.EnsureSuccessStatusCode();
+            while ((await accessService.GetAsync(owner)).Allows("tickets.view") != visible) await Task.Delay(10, deadline.Token);
+        }
+        await SeedTickets(true, true);
+        Assert((await Page<RouteRow>("routes", "R-15")).Items.Single(r => r.RouteId == route.RouteId).TicketCount == 1, "route counted inactive tickets or lost active ticket count");
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 4, deadline.Token);
+        await SeedTickets(true, false);
+        Assert((await Page<RouteRow>("routes", "R-15")).Items.Single(r => r.RouteId == route.RouteId).TicketCount == null, "route fabricated/exposed count without tickets.view");
+        await CatalogReadAssertions.MatchesListAsync(operations, owner, "routes", route.RouteId, 4, deadline.Token);
+        await SeedTickets(false, originallyVisible);
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "employees", employee.EmployeeId, 2, deadline.Token);
         await CatalogReadAssertions.MatchesListAsync(operations, owner, "maintenance", record.MaintenanceId, 2, deadline.Token);
         await Reject(() => maintenance.UpdateMaintenanceAsync(record.MaintenanceId, nextServiceDate: 500, actingUser: owner));

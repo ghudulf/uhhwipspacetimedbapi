@@ -24,7 +24,7 @@ public static class TrafficDiagnostics
     public static string Serialize(object? value, TrafficOptions? options = null)
     {
         options ??= Options;
-        try { return DebugPayload.Json(JsonSerializer.Serialize(value, new JsonSerializerOptions { IncludeFields = true }), options.Level, options.MaxBodyBytes); }
+        try { return DebugPayload.Json(JsonSerializer.Serialize(value, new JsonSerializerOptions { IncludeFields = true, NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals }), options.Level, options.MaxBodyBytes); }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException) { return "[unserializable " + value?.GetType().Name + "]"; }
     }
     public static void Frame(Microsoft.Extensions.Logging.ILogger logger, string direction, string raw)

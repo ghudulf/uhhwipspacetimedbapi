@@ -3,14 +3,14 @@ using SpacetimeDB;
 public static partial class Module
 {
     [SpacetimeDB.Reducer]
-    public static void CreateRouteV2(ReducerContext ctx, string operationId, Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive)
+    public static void CreateRouteV2(ReducerContext ctx, string operationId, Identity actingUser, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, string routeNumber, uint stopCount, double routeLength, string? routeDescription, string? routeType)
         => CommitCatalogMutation(ctx, operationId, actingUser, "routes", "create", null, null,
-            MutationHash(startPoint, endPoint, driverId.ToString(), busId.ToString(), travelTime, isActive.ToString()), actor => CreateRouteCore(ctx, startPoint, endPoint, driverId, busId, travelTime, isActive, actor));
+            MutationHash(startPoint, endPoint, driverId.ToString(), busId.ToString(), travelTime, isActive.ToString(), routeNumber, stopCount.ToString(), routeLength.ToString("R", System.Globalization.CultureInfo.InvariantCulture), routeDescription, routeType), actor => CreateRouteCore(ctx, startPoint, endPoint, driverId, busId, travelTime, isActive, actor, routeNumber, stopCount, routeLength, routeDescription, routeType));
 
     [SpacetimeDB.Reducer]
-    public static void UpdateRouteV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive)
+    public static void UpdateRouteV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, string? routeNumber, uint? stopCount, double? routeLength, string? routeDescription, string? routeType)
         => CommitCatalogMutation(ctx, operationId, actingUser, "routes", "update", entityId, expectedRevision,
-            MutationHash(entityId.ToString(), expectedRevision?.ToString(), startPoint, endPoint, driverId?.ToString(), busId?.ToString(), travelTime, isActive?.ToString()), actor => { UpdateRoute(ctx, entityId, startPoint, endPoint, driverId, busId, travelTime, isActive, actor); return entityId; });
+            MutationHash(entityId.ToString(), expectedRevision?.ToString(), startPoint, endPoint, driverId?.ToString(), busId?.ToString(), travelTime, isActive?.ToString(), routeNumber, stopCount?.ToString(), routeLength?.ToString("R", System.Globalization.CultureInfo.InvariantCulture), routeDescription, routeType), actor => { UpdateRouteCore(ctx, entityId, startPoint, endPoint, driverId, busId, travelTime, isActive, actor, routeNumber, stopCount, routeLength, routeDescription, routeType); return entityId; });
 
     [SpacetimeDB.Reducer]
     public static void DeleteRouteV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision)

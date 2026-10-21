@@ -16,6 +16,8 @@ internal static class CatalogReadOperationTests
 {
     public static async Task RunAsync()
     {
+        var nonfinite = TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Serialize(new { RouteLength = double.NaN }, new TrafficOptions(TrafficLevel.Redacted));
+        Assert(nonfinite.Contains("NaN"), "nonfinite input validation was preempted by diagnostic serialization");
         var actor = Identity.FromHexString(new string('7', 64));
         var rows = new (string Resource, object Row)[]
         {

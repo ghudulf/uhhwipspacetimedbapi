@@ -13,10 +13,15 @@ public sealed partial class ApplicationOperations
             var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
-                var rows = c.Db.Route.Iter().Where(r => string.IsNullOrWhiteSpace(request.Search) || (r.StartPoint + " " + r.EndPoint).Contains(request.Search, StringComparison.OrdinalIgnoreCase))
+                var rows = c.Db.Route.Iter().Where(r => Matches(request.Search, r.StartPoint, r.EndPoint, r.RouteNumber,
+                    access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null,
+                    access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null))
                     .OrderBy(r => r.RouteId).ToArray();
-                return new CatalogPageResult<RouteRow>(rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(r => new RouteRow(r.RouteId, r.StartPoint, r.EndPoint, r.DriverId, r.BusId, r.TravelTime, r.IsActive, Version(c, "routes", r.RouteId), access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null, access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null, access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("routes.create"), access.Allows("routes.edit"), access.Allows("routes.delete"));
+                var page = Page(rows, request).ToArray();
+                var ids = page.Select(r => r.RouteId).ToHashSet();
+                var counts = access.Allows("tickets.view") ? c.Db.Ticket.Iter().Where(t => t.IsActive && ids.Contains(t.RouteId)).GroupBy(t => t.RouteId).ToDictionary(g => g.Key, g => g.Count()) : null;
+                return new CatalogPageResult<RouteRow>(page.Select(r => ProjectRoute(c, r, access, counts?.GetValueOrDefault(r.RouteId))).ToArray(),
+                    request.Page, request.PageSize, rows.Length, access.Allows("routes.create"), access.Allows("routes.edit"), access.Allows("routes.delete"));
             }, ct);
         });
         Register<PageRequest>("employees.list", "employees.view", false, async (actor, request, _, ct) =>
@@ -78,7 +83,8 @@ public sealed partial class ApplicationOperations
                 if (request.DriverId == 0) throw new OperationException("validation_failed");
                 if (request.BusId == 0) throw new OperationException("validation_failed");
                 ValidateCatalogText(request.TravelTime, 100, false, false);
-                await routes.CreateRouteAsync(request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime, request.IsActive, actor, id, ct);
+                ValidateRouteDetails(request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
+                await routes.CreateRouteAsync(request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime, request.IsActive, actor, id, ct, request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
                 return await CommittedReceipt(database, actor, id!, ct);
             });
             Register<UpdateRouteCommand>("routes.update", "routes.edit", true, async (actor, request, id, ct) =>
@@ -89,7 +95,8 @@ public sealed partial class ApplicationOperations
                 if (request.DriverId == 0) throw new OperationException("validation_failed");
                 if (request.BusId == 0) throw new OperationException("validation_failed");
                 ValidateCatalogText(request.TravelTime, 100, false, false);
-                await routes.UpdateRouteAsync(request.Id, request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime, request.IsActive, actor, id, request.ExpectedRevision, ct);
+                ValidateRouteDetails(request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
+                await routes.UpdateRouteAsync(request.Id, request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime, request.IsActive, actor, id, request.ExpectedRevision, ct, request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
                 return await CommittedReceipt(database, actor, id!, ct);
             });
             Register<DeleteRouteCommand>("routes.delete", "routes.delete", true, async (actor, request, id, ct) =>
@@ -202,5 +209,10 @@ public sealed partial class ApplicationOperations
     private static void ValidateCatalogText(string? value, int max, bool required, bool nonempty)
     {
         if (required && value == null || value != null && (value.Length > max || nonempty && string.IsNullOrWhiteSpace(value))) throw new OperationException("validation_failed");
+    }
+    private static void ValidateRouteDetails(string? number, uint? stops, double? length, string? description, string? type)
+    {
+        ValidateCatalogText(number, 50, false, false); ValidateCatalogText(description, 2000, false, false); ValidateCatalogText(type, 100, false, false);
+        if (stops > 10000 || length.HasValue && (!double.IsFinite(length.Value) || length < 0 || length > 1000000)) throw new OperationException("validation_failed");
     }
 }

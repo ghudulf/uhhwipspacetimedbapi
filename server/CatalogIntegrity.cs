@@ -36,6 +36,12 @@ public static partial class Module
     {
         if (value != null && (value.Length > max || nonempty && string.IsNullOrWhiteSpace(value))) throw new Exception("Invalid field length or value.");
     }
+    private static void ValidateRouteDetails(string? number, uint? stops, double? length, string? description, string? type)
+    {
+        if (number?.Length > 50 || description?.Length > 2000 || type?.Length > 100 || stops > 10000 ||
+            length.HasValue && (!double.IsFinite(length.Value) || length < 0 || length > 1000000)) throw new Exception("Invalid route details.");
+    }
+
     private static void ValidateRouteFields(string? start, string? end, string? duration)
     {
         ValidateText(start, 200, true); ValidateText(end, 200, true); ValidateText(duration, 100);

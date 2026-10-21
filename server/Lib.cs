@@ -1440,9 +1440,11 @@ public static partial class Module
     public static void CreateRoute(ReducerContext ctx, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime = null, bool isActive = true)
         => CreateRouteCore(ctx, startPoint, endPoint, driverId, busId, travelTime, isActive, null);
 
-    private static uint CreateRouteCore(ReducerContext ctx, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, Identity? actingUser)
+    private static uint CreateRouteCore(ReducerContext ctx, string startPoint, string endPoint, uint driverId, uint busId, string? travelTime, bool isActive, Identity? actingUser,
+        string routeNumber = "", uint stopCount = 0, double routeLength = 0, string? routeDescription = null, string? routeType = null)
     {
         ValidateRouteFields(startPoint, endPoint, travelTime);
+        ValidateRouteDetails(routeNumber, stopCount, routeLength, routeDescription, routeType);
         if (isActive && ctx.Db.Bus.BusId.Find(busId)?.IsActive != true) throw new Exception("Active route requires an active bus.");
         var effectiveUser = ResolveEffectiveUser(ctx, actingUser);
         if (!HasPermission(ctx, effectiveUser, "routes.create")) throw new Exception("Missing routes.create permission.");
@@ -1476,7 +1478,11 @@ public static partial class Module
         // Create a new route with the provided information
         var route = new Route
         {
-            RouteNumber = "", // No route number is supplied by the legacy form. Preserve unknown explicitly.
+            RouteNumber = routeNumber,
+            StopCount = stopCount,
+            RouteLength = routeLength,
+            RouteDescription = routeDescription,
+            RouteType = routeType,
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             RouteId = routeId,           // Set the route ID
             StartPoint = startPoint,     // Set the start point
@@ -2123,8 +2129,13 @@ public static partial class Module
 
     [SpacetimeDB.Reducer]
     public static void UpdateRoute(ReducerContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, Identity? actingUser = null)
+        => UpdateRouteCore(ctx, routeId, startPoint, endPoint, driverId, busId, travelTime, isActive, actingUser);
+
+    private static void UpdateRouteCore(ReducerContext ctx, uint routeId, string? startPoint, string? endPoint, uint? driverId, uint? busId, string? travelTime, bool? isActive, Identity? actingUser,
+        string? routeNumber = null, uint? stopCount = null, double? routeLength = null, string? routeDescription = null, string? routeType = null)
     {
         ValidateRouteFields(startPoint, endPoint, travelTime);
+        ValidateRouteDetails(routeNumber, stopCount, routeLength, routeDescription, routeType);
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
         // when called through the API, not the actual logged-in user's identity
@@ -2177,6 +2188,11 @@ public static partial class Module
             route.IsActive = isActive.Value;
         }
         if (route.IsActive && ctx.Db.Bus.BusId.Find(route.BusId)?.IsActive != true) throw new Exception("Active route requires an active bus.");
+        if (routeNumber != null) route.RouteNumber = routeNumber;
+        if (stopCount.HasValue) route.StopCount = stopCount.Value;
+        if (routeLength.HasValue) route.RouteLength = routeLength.Value;
+        if (routeDescription != null) route.RouteDescription = routeDescription;
+        if (routeType != null) route.RouteType = routeType;
         if (!route.IsActive && ctx.Db.RouteSchedule.Iter().Any(r => r.RouteId == routeId && r.IsActive)) throw new Exception("Deactivate schedules first.");
         ctx.Db.Route.RouteId.Update(route);
         AdvanceEntityRevision(ctx, "routes", routeId);

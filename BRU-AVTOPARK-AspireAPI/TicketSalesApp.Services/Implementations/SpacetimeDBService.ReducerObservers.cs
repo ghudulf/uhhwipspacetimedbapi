@@ -113,7 +113,7 @@ public partial class SpacetimeDBService
         RemoteReducers.CreateRouteScheduleHandler onCreateRouteSchedule = (ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes) => OnReducerCompleted(ctx);
         connection.Reducers.OnCreateRouteSchedule += onCreateRouteSchedule;
         _connectionUnsubscriptions.Add(() => connection.Reducers.OnCreateRouteSchedule -= onCreateRouteSchedule);
-        RemoteReducers.CreateRouteV2Handler onCreateRouteV2 = (ctx, operationId, actingUser, startPoint, endPoint, driverId, busId, travelTime, isActive) => OnReducerCompleted(ctx);
+        RemoteReducers.CreateRouteV2Handler onCreateRouteV2 = (ctx, operationId, actingUser, startPoint, endPoint, driverId, busId, travelTime, isActive, routeNumber, stopCount, routeLength, routeDescription, routeType) => OnReducerCompleted(ctx);
         connection.Reducers.OnCreateRouteV2 += onCreateRouteV2;
         _connectionUnsubscriptions.Add(() => connection.Reducers.OnCreateRouteV2 -= onCreateRouteV2);
         RemoteReducers.CreateSaleHandler onCreateSale = (ctx, ticketId, buyerName, buyerPhone, saleLocation, saleNotes) => OnReducerCompleted(ctx);
@@ -464,7 +464,7 @@ public partial class SpacetimeDBService
         RemoteReducers.UpdateRouteScheduleHandler onUpdateRouteSchedule = (ctx, scheduleId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateRouteSchedule += onUpdateRouteSchedule;
         _connectionUnsubscriptions.Add(() => connection.Reducers.OnUpdateRouteSchedule -= onUpdateRouteSchedule);
-        RemoteReducers.UpdateRouteV2Handler onUpdateRouteV2 = (ctx, operationId, actingUser, entityId, expectedRevision, startPoint, endPoint, driverId, busId, travelTime, isActive) => OnReducerCompleted(ctx);
+        RemoteReducers.UpdateRouteV2Handler onUpdateRouteV2 = (ctx, operationId, actingUser, entityId, expectedRevision, startPoint, endPoint, driverId, busId, travelTime, isActive, routeNumber, stopCount, routeLength, routeDescription, routeType) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateRouteV2 += onUpdateRouteV2;
         _connectionUnsubscriptions.Add(() => connection.Reducers.OnUpdateRouteV2 -= onUpdateRouteV2);
         RemoteReducers.UpdateSaleHandler onUpdateSale = (ctx, saleId, ticketId, ticketSoldToUser, ticketSoldToUserPhone, saleLocation, saleNotes, actingUser) => OnReducerCompleted(ctx);

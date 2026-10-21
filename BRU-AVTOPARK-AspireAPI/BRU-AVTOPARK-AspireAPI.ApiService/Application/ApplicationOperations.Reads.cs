@@ -12,10 +12,7 @@ public sealed partial class ApplicationOperations
         RegisterEntityRead(database, "routes", "routes.view", (c, id, access) =>
         {
             var r = c.Db.Route.RouteId.Find(id) ?? throw new OperationException("not_found");
-            return new RouteRow(r.RouteId, r.StartPoint, r.EndPoint, r.DriverId, r.BusId, r.TravelTime, r.IsActive, Version(c, "routes", r.RouteId),
-                access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null,
-                access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null,
-                access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null);
+            return ProjectRoute(c, r, access, access.Allows("tickets.view") ? c.Db.Ticket.Iter().Count(t => t.RouteId == r.RouteId && t.IsActive) : null);
         });
         RegisterEntityRead(database, "employees", "employees.view", (c, id, access) =>
         {
@@ -69,4 +66,10 @@ public sealed partial class ApplicationOperations
             var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c => project(c, request.Id, access), ct);
         });
+
+    private static RouteRow ProjectRoute(DbConnection c, SpacetimeDB.Types.Route r, UserAccessSnapshot access, int? ticketCount) => new(r.RouteId, r.StartPoint, r.EndPoint, r.DriverId, r.BusId, r.TravelTime, r.IsActive, Version(c, "routes", r.RouteId),
+        access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.Model : null,
+        access.Allows("buses.view") ? c.Db.Bus.BusId.Find(r.BusId)?.RegistrationNumber : null,
+        access.Allows("employees.view") && c.Db.Employee.EmployeeId.Find(r.DriverId) is { } driver ? driver.Surname + " " + driver.Name : null,
+        r.RouteNumber, r.StopCount, r.RouteLength, r.RouteDescription, r.RouteType, ticketCount);
 }

@@ -86,6 +86,25 @@ public static partial class Module
         ctx.Db.Maintenance.MaintenanceId.Delete(id);
         if (present) ctx.Db.Maintenance.Insert(new Maintenance { MaintenanceId = id, BusId = 0, ScheduledByEmployeeId = employeeId });
     }
+
+    [SpacetimeDB.Reducer]
+    public static void SetCatalogRouteTickets(ReducerContext ctx, uint routeId, bool present, bool visible)
+    {
+        RequireDeploymentOwner(ctx);
+        const uint first = 3999999980;
+        ctx.Db.Ticket.TicketId.Delete(first); ctx.Db.Ticket.TicketId.Delete(first + 1);
+        if (present)
+        {
+            ctx.Db.Ticket.Insert(new Ticket { TicketId = first, RouteId = routeId, SeatNumber = 1, IsActive = true, PaymentMethod = "Cash" });
+            ctx.Db.Ticket.Insert(new Ticket { TicketId = first + 1, RouteId = routeId, SeatNumber = 2, IsActive = false, PaymentMethod = "Cash" });
+        }
+        var permission = ctx.Db.Permission.Iter().FirstOrDefault(p => p.Name == "tickets.view");
+        if (permission == null)
+            permission = ctx.Db.Permission.Insert(new Permission { PermissionId = ctx.Db.Permission.Iter().Max(p => p.PermissionId) + 1, Name = "tickets.view", Description = "Synthetic ticket visibility", Category = "Test", IsActive = true });
+        var grant = ctx.Db.RolePermission.Iter().FirstOrDefault(p => p.RoleId == 1 && p.PermissionId == permission.PermissionId);
+        if (visible && grant == null) ctx.Db.RolePermission.Insert(new RolePermission { Id = ctx.Db.RolePermission.Iter().Max(p => p.Id) + 1, RoleId = 1, PermissionId = permission.PermissionId });
+        if (!visible && grant != null) ctx.Db.RolePermission.Id.Delete(grant.Id);
+    }
     [SpacetimeDB.Reducer]
     public static void PrepareQrDeviceTest(ReducerContext ctx, string identityHex, bool active)
     {

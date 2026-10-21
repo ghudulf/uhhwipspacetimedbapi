@@ -118,6 +118,16 @@ internal static class FleetOperationTests
             await Check("routes.update", new UpdateRouteCommand(7, 1, "Changed"));
             await Check("routes.delete", new DeleteRouteCommand(7, 1));
             await Check("routes.set-active", new SetRouteActiveCommand(7, false, 1));
+            await Check("routes.create", new CreateRouteCommand("A", "B", 1, 1, "00:10", true, "R-14", 10, 12.5, "Описание", "Городской"));
+            await Check("routes.update", new UpdateRouteCommand(7, 1, IsActive: false, RouteNumber: "R-15", StopCount: 0, RouteLength: 0, RouteDescription: "", RouteType: "Тип"));
+            foreach (var invalid in new object[] {
+                new UpdateRouteCommand(7, RouteNumber: new string('x', 51)), new UpdateRouteCommand(7, StopCount: 10001),
+                new UpdateRouteCommand(7, RouteLength: -1), new UpdateRouteCommand(7, RouteLength: 1000001),
+                new UpdateRouteCommand(7, RouteDescription: new string('x', 2001)), new UpdateRouteCommand(7, RouteType: new string('x', 101)) })
+            {
+                using var rejection = await http.PostAsJsonAsync("/api/operations/routes.update", invalid, ApiProtocol.Json, deadline.Token);
+                Assert(rejection.StatusCode == HttpStatusCode.BadRequest, "invalid route metadata reached persistence");
+            }
             await Check("employees.create", new CreateEmployeeCommand("Synthetic", "Employee", "", 1));
             await Check("employees.update", new UpdateEmployeeCommand(7, 1, "Changed"));
             await Check("employees.delete", new DeleteEmployeeCommand(7, 1));
