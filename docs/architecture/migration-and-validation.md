@@ -241,15 +241,18 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | API/Experimental/Services/Implementations/IdentityService.cs | 2 raw accesses | Async queued identity/profile reads |
 | API/Experimental/Services/Implementations/ProfileService.cs | 1 raw access | Queued projected profile read |
 | API/Experimental/Services/Implementations/TokenService.cs | 2 raw accesses | Async queued active-profile/role/permission snapshot for signing |
-| API/Controllers/BaseController.cs | 8 sync-over-async wrappers | Pending |
-| API/Experimental/Services/Implementations/HtmlRenderingService.cs | 16 sync-over-async rendering wrappers | Pending |
+| API/Controllers/BaseController.cs | 8 sync-over-async wrappers | Removed; all controller callers await authentication/access/identity checks |
+| API/Experimental/Services/Implementations/HtmlRenderingService.cs | 16 sync-over-async rendering wrappers | Return rendering tasks; interfaces and all controller callers await them |
 | API/Program.cs | 1 detached Task.Run startup task; fatal startup logging | Pending |
 | API/Controllers/RealtimeController.cs | 1 detached Task.Run connection task | Pending |
 | API/Realtime/Infrastructure/SignalRRealtimeEventBus.cs | 1 synchronous semaphore wait during disposal | Pending |
 
-Planned ratchets: `DatabaseAccessPolicyTests` scans application C# for raw
-connections, reducer dispatches and task blocking, with explicit justified
-exceptions only. A separate diagnostics guard checks credential-bearing log
+`DatabaseAccessPolicyTests` now scans application C# for raw connections,
+reducer dispatches and task blocking, with the sole startup owner-bootstrap
+dispatch exception explained above. Non-task MVC/verification/tuple result
+properties and a synchronous semaphore-disposal lock are explicitly distinguished
+from blocking task waits. Negative fixtures prove new raw access and task blocking
+are rejected. A separate diagnostics guard is planned to check credential-bearing log
 templates/arguments; outcome words and fingerprints are not credential values.
 The final inventory must replace Pending with verified dispositions; until then
 this table records remaining work, not completed migration.

@@ -107,7 +107,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!await HasPermissionAsync("jobs.view") && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for jobs.view");
             }
@@ -141,7 +141,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             if (!await HasPermissionAsync("jobs.view")) throw new UnauthorizedAccessException("View permission required.");
-            if (!await HasPermissionAsync("jobs.view") && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for jobs.view");
             }
@@ -325,7 +325,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!await HasPermissionAsync("jobs.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetJobs - Fetching all jobs");
             
-            if (!await HasPermissionAsync("jobs.view") && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 _logger.LogWarning("Unauthorized attempt to access jobs list");
                 return Forbid();
@@ -385,7 +385,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!await HasPermissionAsync("jobs.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetJob with ID {JobId}", id);
             
-            if (!await HasPermissionAsync("jobs.view") && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 _logger.LogWarning("Unauthorized attempt to access job {JobId}", id);
                 return Forbid();

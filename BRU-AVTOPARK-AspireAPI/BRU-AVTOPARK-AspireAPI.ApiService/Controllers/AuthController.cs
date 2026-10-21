@@ -125,7 +125,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderLoginForm(error, message);
+                var html = await _htmlRenderingService.RenderLoginForm(error, message);
                 return Content(html, "text/html");
             }
 
@@ -284,7 +284,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderRegisterForm(error, message);
+                var html = await _htmlRenderingService.RenderRegisterForm(error, message);
                 return Content(html, "text/html");
             }
 
@@ -1302,7 +1302,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
             _logger.LogInformation("Refactored Magic Link Page endpoint called");
 
-            var html = _htmlRenderingService.RenderMagicLinkForm(error, message);
+            var html = await _htmlRenderingService.RenderMagicLinkForm(error, message);
             return Content(html, "text/html");
         }
 
@@ -1336,7 +1336,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _logger.LogInformation("Refactored QR Login Page endpoint called");
 
             // Generate a placeholder QR code for the page
-            var html = _htmlRenderingService.RenderQrLogin("placeholder-qr-code");
+            var html = await _htmlRenderingService.RenderQrLogin("placeholder-qr-code");
             return Content(html, "text/html");
         }
 
@@ -1694,7 +1694,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    return Content(_htmlRenderingService.RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
+                    return Content(await _htmlRenderingService.RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
                 }
 
                 // JSON response for headless clients: return all info needed to render their own login UI
@@ -2335,7 +2335,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             // Check if browser request - return HTML
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
+                var html = await _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
                 {
                     ClientId = c.ClientId,
                     DisplayName = c.DisplayName
@@ -2412,7 +2412,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     RequireConsent = result.Client.RequireConsent
                 };
 
-                var html = _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
+                var html = await _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
                 return Content(html, "text/html");
             }
 
@@ -2662,7 +2662,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 return Ok(new { form = "new_client", fields = new[] { "clientId", "clientSecret", "displayName", "redirectUris", "allowedScopes", "requireConsent" } });
             }
 
-            var html = _htmlRenderingService.RenderOidcClientForm(null, null, token);
+            var html = await _htmlRenderingService.RenderOidcClientForm(null, null, token);
             return Content(html, "text/html");
         }
 
@@ -2721,7 +2721,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var html = _htmlRenderingService.RenderOidcClientForm(id, clientResponse, token);
+            var html = await _htmlRenderingService.RenderOidcClientForm(id, clientResponse, token);
             return Content(html, "text/html");
         }
 
@@ -2771,7 +2771,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 OidcId = s
             }).ToList();
 
-            var html = _htmlRenderingService.RenderOidcScopesList(scopeDtos, token);
+            var html = await _htmlRenderingService.RenderOidcScopesList(scopeDtos, token);
             return Content(html, "text/html");
         }
 
@@ -2804,7 +2804,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth authorizations page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth authorizations page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -2837,7 +2837,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth tokens page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth tokens page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -2870,7 +2870,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth dashboard page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth dashboard page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -2903,7 +2903,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth settings page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth settings page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -2936,7 +2936,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth logs page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth logs page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -2969,7 +2969,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth help page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth help page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -3002,7 +3002,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth test page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth test page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -3037,7 +3037,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage(error ?? "OAuth callback page not yet implemented");
+            var html = await _htmlRenderingService.RenderErrorPage(error ?? "OAuth callback page not yet implemented");
             return Content(html, "text/html");
         }
 
@@ -3143,7 +3143,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Render HTML using HtmlRenderingService
-                var html = _htmlRenderingService.RenderProfilePage(
+                var html = await _htmlRenderingService.RenderProfilePage(
                     profileRenderData.User,
                     profileRenderData.TotpEnabled,
                     profileRenderData.WebAuthnCredentials,
@@ -3325,7 +3325,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderLogoutPage(), "text/html");
+                return Content(await _htmlRenderingService.RenderLogoutPage(), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3655,7 +3655,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderSuccessPage(token ?? ""), "text/html");
+                return Content(await _htmlRenderingService.RenderSuccessPage(token ?? ""), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3692,7 +3692,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderErrorPage(errorMessage), "text/html");
+                return Content(await _htmlRenderingService.RenderErrorPage(errorMessage), "text/html");
             }
 
             return BadRequest(new ApiResponse<object>
@@ -3726,7 +3726,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderClaimAccountForm(error, message), "text/html");
+                return Content(await _htmlRenderingService.RenderClaimAccountForm(error, message), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3771,11 +3771,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 
                 if (!result.Success)
                 {
-                    return Content(_htmlRenderingService.RenderErrorPage(result.ErrorMessage ?? "Failed to generate WebAuthn options"), "text/html");
+                    return Content(await _htmlRenderingService.RenderErrorPage(result.ErrorMessage ?? "Failed to generate WebAuthn options"), "text/html");
                 }
 
                 var optionsJson = System.Text.Json.JsonSerializer.Serialize(result.Options);
-                return Content(_htmlRenderingService.RenderWebAuthnRegistration(optionsJson), "text/html");
+                return Content(await _htmlRenderingService.RenderWebAuthnRegistration(optionsJson), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3984,7 +3984,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(), 
+                        return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(),
                             "Invalid or expired request. Please try again."), "text/html");
                     }
                     return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
@@ -4010,7 +4010,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, clientName, scopes, 
+                        return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId, clientName, scopes,
                             "Invalid username or password. Please try again."), "text/html");
                     }
                     return Unauthorized(new { error = "invalid_credentials", error_description = "Invalid username or password" });
@@ -4110,7 +4110,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogError(ex, "Error processing authorization callback for RequestId: {RequestId}", request.RequestId);
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
+                    return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(),
                         "An error occurred while processing your request. Please try again."), "text/html");
                 }
                 return StatusCode(500, new { error = "server_error", 
@@ -4188,7 +4188,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
                             RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOidcClientForm(null, clientData, request.Token), "text/html");
+                        return Content(await _htmlRenderingService.RenderOidcClientForm(null, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4327,7 +4327,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
                             RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOidcClientForm(clientId, clientData, request.Token), "text/html");
+                        return Content(await _htmlRenderingService.RenderOidcClientForm(clientId, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>

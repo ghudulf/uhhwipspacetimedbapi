@@ -35,10 +35,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </summary>
         /// <returns>HTML view for feature flags management</returns>
         [HttpGet("feature-flags-ui")]
-        public IActionResult FeatureFlagsUI()
+        public async Task<IActionResult> FeatureFlagsUI()
         {
             // Additional manual admin check (defense in depth)
-            if (!IsAdmin())
+            if (!await IsAdminAsync())
             {
                 _logger.LogWarning("Unauthorized access attempt to FeatureFlagsUI by non-admin user");
                 return Forbid();
@@ -57,7 +57,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Additional manual admin check (defense in depth)
-                if (!IsAdmin())
+                if (!await IsAdminAsync())
                 {
                     _logger.LogWarning("Unauthorized access attempt to GetFeatureFlags by non-admin user");
                     return Forbid();
@@ -98,7 +98,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Additional manual admin check (defense in depth)
-                if (!IsAdmin())
+                if (!await IsAdminAsync())
                 {
                     _logger.LogWarning("Unauthorized access attempt to UpdateFeatureFlag by non-admin user");
                     return Forbid();
@@ -174,7 +174,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Additional manual admin check (defense in depth)
-                if (!IsAdmin())
+                if (!await IsAdminAsync())
                 {
                     _logger.LogWarning("Unauthorized access attempt to BulkUpdateFeatureFlags by non-admin user");
                     return Forbid();
@@ -258,7 +258,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Additional manual admin check (defense in depth)
-                if (!IsAdmin())
+                if (!await IsAdminAsync())
                 {
                     _logger.LogWarning("Unauthorized access attempt to ResetFeatureFlags by non-admin user");
                     return Forbid();
@@ -309,7 +309,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Additional manual admin check (defense in depth)
-                if (!IsAdmin())
+                if (!await IsAdminAsync())
                 {
                     _logger.LogWarning("Unauthorized access attempt to GetFeatureFlagAuditLog by non-admin user");
                     return Forbid();

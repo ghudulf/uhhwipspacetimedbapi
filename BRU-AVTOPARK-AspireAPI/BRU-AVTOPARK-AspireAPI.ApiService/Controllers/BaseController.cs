@@ -124,14 +124,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronously validates if the current request is authenticated.
-        /// This is a backwards-compatible wrapper around IsAuthenticatedAsync.
-        /// For new code, prefer using IsAuthenticatedAsync for better async/await patterns.
-        /// </summary>
-        /// <returns>True if authenticated with valid token; false otherwise.</returns>
-        protected bool IsAuthenticated() => IsAuthenticatedAsync().GetAwaiter().GetResult();
-
-        /// <summary>
         /// Determine whether the current request is associated with an administrator account.
         /// </summary>
         /// <remarks>
@@ -190,11 +182,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
 
-        protected bool HasPermission(string permissionName)
-        {
-            return HasPermissionAsync(permissionName).GetAwaiter().GetResult();
-        }
-
         /// <summary>
         /// Checks if the current user has a specific permission using pre-validated claims.
         /// This overload avoids re-validation when claims have already been validated.
@@ -202,8 +189,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
         /// <param name="validatedClaims">Pre-validated claims dictionary from ValidateOAuthTokenAsync.</param>
         /// <returns>True if the user has the specified permission; false otherwise.</returns>
-        protected bool HasPermission(string permissionName, Dictionary<string, object>? validatedClaims)
-            => HasPermissionAsync(permissionName).GetAwaiter().GetResult();
+        protected Task<bool> HasPermissionAsync(string permissionName, Dictionary<string, object>? validatedClaims)
+            => HasPermissionAsync(permissionName);
 
         protected async Task<bool> HasPermissionAsync(string permissionName)
         {
@@ -245,11 +232,6 @@ namespace TicketSalesApp.AdminServer.Controllers
             var header = Request.Headers.Authorization.ToString();
             if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return header[7..];
             return HttpContext.WebSockets.IsWebSocketRequest ? Request.Query["access_token"].FirstOrDefault() : null;
-        }
-
-        protected string? GetUserId()
-        {
-            return GetUserIdAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -349,13 +331,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
-
-        /// <summary>
-        /// Synchronous wrapper for GetSpacetimeIdentityAsync - for backward compatibility.
-        /// Prefer using GetSpacetimeIdentityAsync when possible.
-        /// </summary>
-        /// <returns>The SpacetimeDB identity string if present; otherwise null.</returns>
-        protected string? GetSpacetimeIdentity() => GetSpacetimeIdentityAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// CRITICAL FIX: Validates encrypted OpenIddict tokens by calling the tokeninfo endpoint
@@ -622,13 +597,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronous wrapper for GetXuidAsync - for backward compatibility.
-        /// Prefer using GetXuidAsync when possible.
-        /// </summary>
-        /// <returns>The XUID string if present; otherwise null.</returns>
-        protected string? GetXuid() => GetXuidAsync().GetAwaiter().GetResult();
-
-        /// <summary>
         /// Retrieve the current user's username from ASP.NET Core claims or from validated OAuth token claims.
         /// </summary>
         /// <returns>The username if present in claims (`"name"`, `"preferred_username"`, or `ClaimTypes.Name`); otherwise <c>null</c>.</returns>
@@ -674,20 +642,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
-
-        /// <summary>
-        /// Retrieve the current user's username from claims, or null if none is available.
-        /// Synchronous wrapper for GetUserNameAsync - for backward compatibility. Prefer using GetUserNameAsync when possible.
-        /// </summary>
-        /// <returns>The username extracted from the user's claims (for example `name` or `preferred_username`), or `null` if not found.</returns>
-        protected string? GetUserName() => GetUserNameAsync().GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Synchronously determines whether the current user has administrator privileges.
-        /// Synchronous wrapper for IsAdminAsync - for backward compatibility. Prefer using IsAdminAsync when possible.
-        /// </summary>
-        /// <returns>`true` if the current user is an administrator, `false` otherwise.</returns>
-        protected bool IsAdmin() => IsAdminAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Validates a token supplied directly as a string, supporting both JWE (encrypted,

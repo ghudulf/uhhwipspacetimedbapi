@@ -70,7 +70,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             // Allow connection for mutation-only users; permission checks enforced per-command
             var isAdmin = await IsAdminAsync();
 
-            var eventsSource = (isAdmin || HasPermission("employees.view", claims))
+            var eventsSource = (isAdmin || await HasPermissionAsync("employees.view", claims))
                 ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("employees", cancellationToken), "employees.view", cancellationToken)
                 : EmptyAsyncEnumerable();
 

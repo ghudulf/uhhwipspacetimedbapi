@@ -35,7 +35,7 @@ internal static class RoutingTests
             var controller = new AuthController(
                 Stub.Create<IAuthOrchestrationService>((method, _) => method.Name == "GetOAuthScopesAsync"
                     ? Task.FromResult(OAuthScopesResult.Successful(new List<string> { "openid" })) : throw new Exception("Unexpected operation")),
-                Stub.Create<IHtmlRenderingService>((method, _) => method.Name == "RenderOidcScopesList" ? "<html>scopes</html>" : throw new Exception("Unexpected renderer")),
+                Stub.Create<IHtmlRenderingService>((method, _) => method.Name == "RenderOidcScopesList" ? Task.FromResult("<html>scopes</html>") : throw new Exception("Unexpected renderer")),
                 Stub.Create<IRequestDetector>((method, _) => method.Name == "IsBrowserRequest" ? browser : throw new Exception("Unexpected detection")),
                 Options.Create(new FeatureFlagOptions { EnableOAuthScopesRefactoring = true, EnableOAuthScopesPageRefactoring = true }),
                 NullLogger<AuthController>.Instance, cache, Stub.Create<IOidcHelperService>(), Stub.Create<IOpenIdConnectService>(),

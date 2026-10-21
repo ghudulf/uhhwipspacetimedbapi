@@ -70,7 +70,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Require admin or users.view permission to subscribe to users channel
-            if (!await IsAdminAsync() && !HasPermission("users.view", claims))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -235,7 +235,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 201,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: GetUserId(),
+                        UserId: await GetUserIdAsync(),
                         UserName: await GetUserNameAsync(),
                         Tenant: User?.FindFirst("tenant")?.Value,
                         SourceIp: GetClientIp(),
@@ -298,7 +298,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: GetUserId(),
+                        UserId: await GetUserIdAsync(),
                         UserName: await GetUserNameAsync(),
                         Tenant: User?.FindFirst("tenant")?.Value,
                         SourceIp: GetClientIp(),

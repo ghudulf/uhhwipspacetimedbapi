@@ -986,7 +986,7 @@ public sealed class RealtimeController : BaseController
             }
             
             // Use BaseController's HasPermission method with validated claims
-            var hasPermission = HasPermission(permissionName, validatedClaims);
+            var hasPermission = await HasPermissionAsync(permissionName, validatedClaims);
             
             if (!hasPermission)
             {

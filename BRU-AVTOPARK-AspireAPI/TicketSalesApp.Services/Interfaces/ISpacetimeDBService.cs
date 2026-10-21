@@ -97,4 +97,4 @@ namespace TicketSalesApp.Services.Interfaces
         /// <returns>The filtered log content as a string</returns>
         Task<string> FetchReducerLogsAsync(string reducerName = "RegisterOpenIdClient", int numLines = 200);
     }
-} 
+}

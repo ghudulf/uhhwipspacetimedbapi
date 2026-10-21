@@ -9,40 +9,40 @@ namespace BRU_AVTOPARK.Services.Interfaces;
 public interface IHtmlRenderingService
 {
     /// <summary>Render the login page with optional error/success messages.</summary>
-    string RenderLoginForm(string? error = null, string? message = null);
+    Task<string> RenderLoginForm(string? error = null, string? message = null);
 
     /// <summary>Render the TOTP setup page with QR code and secret key.</summary>
-    string RenderTotpSetup(string qrCodeUri, string secretKey);
+    Task<string> RenderTotpSetup(string qrCodeUri, string secretKey);
 
     /// <summary>Render the WebAuthn registration page.</summary>
-    string RenderWebAuthnRegistration(string options);
+    Task<string> RenderWebAuthnRegistration(string options);
 
     /// <summary>Render the magic link request page.</summary>
-    string RenderMagicLinkForm(string? error = null, string? message = null);
+    Task<string> RenderMagicLinkForm(string? error = null, string? message = null);
 
     /// <summary>Render the QR code login page.</summary>
-    string RenderQrLogin(string qrCode);
+    Task<string> RenderQrLogin(string qrCode);
 
     /// <summary>Render the OAuth login form during authorization flow.</summary>
-    string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null);
+    Task<string> RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null);
 
     /// <summary>Render the success page after authentication.</summary>
-    string RenderSuccessPage(string token);
+    Task<string> RenderSuccessPage(string token);
 
     /// <summary>Render an error page with a message.</summary>
-    string RenderErrorPage(string error);
+    Task<string> RenderErrorPage(string error);
 
     /// <summary>Render the logout confirmation page.</summary>
-    string RenderLogoutPage();
+    Task<string> RenderLogoutPage();
 
     /// <summary>Render the user registration form (admin only).</summary>
-    string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false);
+    Task<string> RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false);
 
     /// <summary>Render the account claim form.</summary>
-    string RenderClaimAccountForm(string? error = null, string? message = null);
+    Task<string> RenderClaimAccountForm(string? error = null, string? message = null);
 
     /// <summary>Render the user profile page with security settings and roles.</summary>
-    string RenderProfilePage(
+    Task<string> RenderProfilePage(
         SpacetimeDB.Types.UserProfile user,
         bool totpEnabled,
         List<WebAuthnCredentialDto> webAuthnCredentials,
@@ -50,15 +50,14 @@ public interface IHtmlRenderingService
         List<SpacetimeDB.Types.Permission> permissions);
 
     /// <summary>Render the OIDC clients list page (admin).</summary>
-    string RenderOidcClientsList(List<ClientDto> clients, string? token = null);
+    Task<string> RenderOidcClientsList(List<ClientDto> clients, string? token = null);
 
     /// <summary>Render the OIDC scopes list page (admin).</summary>
-    string RenderOidcScopesList(List<ScopeDto> scopes, string? token = null);
+    Task<string> RenderOidcScopesList(List<ScopeDto> scopes, string? token = null);
 
     /// <summary>Render the OIDC client details page (admin).</summary>
-    string RenderOidcClientDetails(GetClientResponse client, string? token = null);
+    Task<string> RenderOidcClientDetails(GetClientResponse client, string? token = null);
 
     /// <summary>Render the OIDC client create/edit form (admin).</summary>
-    string RenderOidcClientForm(string? clientId = null, GetClientResponse? client = null, string? token = null);
+    Task<string> RenderOidcClientForm(string? clientId = null, GetClientResponse? client = null, string? token = null);
 }
-

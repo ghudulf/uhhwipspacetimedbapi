@@ -92,7 +92,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !HasPermission("buses.view", claims))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
