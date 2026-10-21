@@ -23,7 +23,19 @@ internal static class CommittedServiceTests
         var audit = new AdminActionLogger(db, NullLogger<AdminActionLogger>.Instance, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         await audit.LogActionAsync(owner.ToString(), name, "synthetic committed audit", owner);
         Check((await audit.GetActionsByTypeAsync(name)).Count == 1, "admin audit returned before commit");
+        var authorizations = new AuthorizationStore(db, NullLogger<AuthorizationStore>.Instance);
+        var grant = await authorizations.InstantiateAsync(default);
+        grant.Subject = owner.ToString(); grant.Type = "permanent"; grant.Status = "valid";
+        await authorizations.CreateAsync(grant, default);
+        var cold = new AuthorizationStore(db, NullLogger<AuthorizationStore>.Instance);
+        Check((await cold.FindByIdAsync(grant.OpenIddictAuthorizationId, default))?.Id == grant.Id, "authorization create/cold readback");
+        grant.Status = "revoked";
+        await authorizations.UpdateAsync(grant, default);
+        Check((await cold.FindByIdAsync(grant.OpenIddictAuthorizationId, default))?.Status == "revoked", "authorization update not committed");
+        await authorizations.DeleteAsync(grant, default);
+        Check(await cold.FindByIdAsync(grant.OpenIddictAuthorizationId, default) == null, "authorization delete not committed");
         Console.WriteLine("PASS generic data service committed add/update/delete and duplicate rejection; admin audit committed before readback");
+        Console.WriteLine("PASS authorization store committed create/update/delete and cold reconstruction without polling, process mappings or property-value diagnostics");
     }
 
     public static async Task TicketsAndSchedulesAsync(ISpacetimeDBService db, Identity owner, string ownerToken)

@@ -219,7 +219,7 @@ SpacetimeDBService's serialized SDK internals are outside the application bounda
 | --- | --- | --- |
 | Services/AdminActionLogger.cs | 3 raw accesses; 1 dispatch | Queued materialized reads and committed audit write with request cancellation; no invented receipt |
 | Services/AuthenticationService.cs | 3 raw accesses; 1 dispatch | Pending |
-| Services/AuthorizationStore.cs | 14 raw accesses/accessor declarations; 4 dispatches | Pending |
+| Services/AuthorizationStore.cs | 14 raw accesses/accessor declarations; 4 dispatches | Queued cancellable detached reads and committed create/update/delete/prune; removes polling/pending-task caches and PKCE/property-value logs |
 | Services/DataService.cs | 5 raw accesses; 11 dispatches | Queued materialized reads; Core-backed writes committed with typed readback; no invented receipts |
 | Services/DatabaseInstallationProvisioner.cs | 1 temporary-owner dispatch | Pending |
 | Services/MagicLinkService.cs | 3 raw accesses; 2 dispatches | Queued reads; committed create/use, no send before commit |
