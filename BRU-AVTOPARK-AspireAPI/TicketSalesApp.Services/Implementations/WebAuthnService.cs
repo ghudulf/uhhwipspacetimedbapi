@@ -50,8 +50,9 @@ public sealed class WebAuthnService(ISpacetimeDBService database, IFido2 fido2, 
             throw new InvalidOperationException("Registration binding rejected.");
         var verified = await fido2.MakeNewCredentialAsync(response, options, async (args, _) =>
             !await database.ReadAsync(c => c.Db.WebAuthnCredential.Iter().Any(credential => credential.CredentialId.SequenceEqual(args.CredentialId))));
-        await database.ExecuteReducerAsync(new Reducer.RegisterWebAuthnCredential(actor, verified.Result.CredentialId.ToList(),
-            Convert.ToBase64String(verified.Result.PublicKey), verified.Result.Counter, "Ключ доступа"), _ => true);
+        var credential = verified.Result ?? throw new InvalidOperationException("Registration verification returned no credential.");
+        await database.ExecuteReducerAsync(new Reducer.RegisterWebAuthnCredential(actor, credential.CredentialId.ToList(),
+            Convert.ToBase64String(credential.PublicKey), credential.Counter, "Ключ доступа"), _ => true);
         await database.ExecuteReducerAsync(new Reducer.EnableWebAuthn(actor), _ => true);
     }
     public async Task<UserProfile> VerifyAssertionAsync(AssertionOptions options, AuthenticatorAssertionRawResponse response, Identity? expectedActor = null)
