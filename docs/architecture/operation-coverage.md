@@ -30,13 +30,23 @@ Baseline: PR #23 head `e35e483d6a14a1c855ee5aefcc65a69e8bfcdeb4`. This inventory
 | AuthController | 1123 | `[HttpPost("magic-link/send")]` | Pending parity verification |
 | AuthController | 1179 | `[HttpPost("validate-magic-link")]` | Pending parity verification |
 | AuthController | 1272 | `[HttpGet("magic-link")]` | Pending parity verification |
-| AuthController | 1305 | `[HttpGet("qr-login")]` | Pending parity verification |
-| AuthController | 1335 | `[HttpPost("qr-login/generate")]` | Pending parity verification |
-| AuthController | 1398 | `[HttpPost("qr-login/validate")]` | Pending parity verification |
-| AuthController | 1465 | `[HttpPost("qr-login/direct")]` | Pending parity verification |
-| AuthController | 1525 | `[HttpGet("qr-login/status")]` | Pending parity verification |
-| AuthController | 1583 | `[HttpPost("qr-login/cancel")]` | Pending parity verification |
-| AuthController | 1636 | `[HttpPost("qr-login/notify")]` | Pending parity verification |
+| AuthController | legacy | `[HttpGet("qr-login")]` | Legacy page unchanged; new protocol: [QR login](qr-login.md) |
+| AuthController | legacy | `[HttpPost("qr-login/generate")]` | Legacy encrypted bearer QR unchanged |
+| AuthController | legacy | `[HttpPost("qr-login/validate")]` | Legacy encrypted bearer QR unchanged |
+| AuthController | legacy | `[HttpPost("qr-login/direct")]` | 410 moved to `/api/auth/qr/sessions`; feature-disabled remains 503 |
+| AuthController | legacy | `[HttpGet("qr-login/status")]` | 410 moved to `/api/auth/qr/sessions/{id}/status`; feature-disabled remains 503 |
+| AuthController | legacy | `[HttpPost("qr-login/cancel")]` | 410 moved to `/api/auth/qr/sessions/{id}/cancel`; feature-disabled remains 503 |
+| AuthController | legacy | `[HttpPost("qr-login/notify")]` | 410 moved to `/api/auth/qr/sessions/{id}/approve`; feature-disabled remains 503 |
+| QrLoginController | new | `POST /api/auth/qr/sessions` | Anonymous challenge and PNG; bound-account decoys |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/status` | Secret-bound, exactly-once login redemption |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/cancel` | Secret-bound cancellation |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/peek` | Secret-bound confirmation metadata |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/approve` | Full bearer, active account, verification code |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/deny` | Secret-bound denial |
+| QrLoginController | new | `POST /api/auth/qr/sessions/{id}/complete` | Enrolled P-256 proof; primary-factor policy |
+| QrLoginController | new | `POST /api/auth/qr/devices` | Full bearer, canonical P-256 enrollment |
+| QrLoginController | new | `GET /api/auth/qr/devices` | Full bearer, own active devices only |
+| QrLoginController | new | `DELETE /api/auth/qr/devices/{deviceId}` | Full bearer, own-device revocation |
 | AuthController | 1703 | `[HttpGet("~/connect/authorize")]` | Pending parity verification |
 | AuthController | 1704 | `[HttpPost("~/connect/authorize")]` | Pending parity verification |
 | AuthController | 1877 | `[HttpPost("~/connect/token")]` | Pending parity verification |

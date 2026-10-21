@@ -93,6 +93,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnPruneOidcTokens += (ctx, thresholdDate) => OnReducerCompleted(ctx);
         connection.Reducers.OnRecordAuthenticationFailure += (ctx, login, password) => OnReducerCompleted(ctx);
         connection.Reducers.OnRegisterOpenIdClient += (ctx, clientId, clientSecret, displayName, redirectUris, postLogoutRedirectUris, allowedScopes, consentType, clientType) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRegisterQrLoginDevice += (ctx, deviceId, publicKey, deviceName, platform, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnRegisterUser += (ctx, login, password, email, phoneNumber, roleId, roleName, actingUser, newUserIdentity) => OnReducerCompleted(ctx);
         connection.Reducers.OnRegisterWebAuthnCredential += (ctx, userId, credentialId, publicKey, counter, deviceName) => OnReducerCompleted(ctx);
         connection.Reducers.OnRemoveRole += (ctx, userId, roleId, actingUserId) => OnReducerCompleted(ctx);
@@ -102,6 +103,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnRevokeOpenIdClient += (ctx, clientId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeOpenIdGrant += (ctx, grantId) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokePermissionFromRole += (ctx, roleId, permissionId, actingUserId) => OnReducerCompleted(ctx);
+        connection.Reducers.OnRevokeQrLoginDevice += (ctx, deviceId, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnRevokeTrustedApi += (ctx, identity) => OnReducerCompleted(ctx);
         connection.Reducers.OnSayHello += (ctx) => OnReducerCompleted(ctx);
         connection.Reducers.OnSeedDemoData += (ctx, stage) => OnReducerCompleted(ctx);
@@ -109,6 +111,7 @@ public partial class SpacetimeDBService
         connection.Reducers.OnSetRouteActiveV2 += (ctx, operationId, actingUser, entityId, expectedRevision, active) => OnReducerCompleted(ctx);
         connection.Reducers.OnStoreTotpSecret += (ctx, userId, secret) => OnReducerCompleted(ctx);
         connection.Reducers.OnStoreWebAuthnChallenge += (ctx, userId, challenge, expiresAt) => OnReducerCompleted(ctx);
+        connection.Reducers.OnTouchQrLoginDevice += (ctx, deviceId) => OnReducerCompleted(ctx);
         connection.Reducers.OnUnlinkExternalAccount += (ctx, provider, issuer, subject) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateBus += (ctx, busId, model, registrationNumber, actingUser) => OnReducerCompleted(ctx);
         connection.Reducers.OnUpdateBusV2 += (ctx, operationId, actingUser, busId, expectedRevision, model, registrationNumber, capacity, busType, year, vin, licensePlate, currentStatus, active) => OnReducerCompleted(ctx);

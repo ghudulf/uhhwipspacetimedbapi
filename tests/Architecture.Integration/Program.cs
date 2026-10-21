@@ -78,6 +78,7 @@ try
         return;
     }
 
+    await QrDeviceTests.RunAsync(database, owner, ownerToken);
     var accessService = new TicketSalesApp.Services.Authorization.UserAccessService(database);
     var access = await accessService.GetAsync(owner);
     Assert(access.IsActive && access.IsAdministrator && access.Allows("sales.update") && !access.Allows("missing.permission"), "access snapshot disagrees with database");
@@ -241,6 +242,7 @@ try
     try
     {
         await Ready(stranger);
+        await QrDeviceTests.OutsiderAsync(stranger, owner);
         Assert(await stranger.ReadAsync(c => c.Db.UserProfile.Iter().Count()) == 0, "untrusted caller read password profiles");
         Assert(await stranger.ReadAsync(c => c.Db.OpenIddictSpacetimeToken.Iter().Count()) == 0, "untrusted caller read tokens");
         await Reject<ReducerRejectedException>(() => stranger.ExecuteReducerAsync(new Reducer.LinkExternalAccount("windows", "synthetic-realm", "attacker", owner), _ => true));

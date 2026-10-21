@@ -93,7 +93,7 @@ public sealed class QrLoginBroker(TimeProvider time, IOptions<QrLoginOptions> op
         if (!sessions.TryGetValue(id, out var session) || !Matches(poll ? session.PollSecretHash : session.ApprovalSecretHash, secret)) throw new QrLoginException("not_found", 404);
         return session;
     }
-    public QrPeekResponse Peek(string id, string secret)
+    public QrPeekResponse Peek(string id, string? secret)
     {
         lock (gate)
         {
@@ -102,7 +102,7 @@ public sealed class QrLoginBroker(TimeProvider time, IOptions<QrLoginOptions> op
             return new(s.DeviceName, s.Platform, s.CreatedAt, s.ExpiresAt, QrLoginProtocol.MaskIp(s.RequestedFromIp), s.Origin, s.BoundUsername, s.CodeAttemptsRemaining);
         }
     }
-    public string Status(string id, string secret, out QrRedemption? redemption)
+    public string Status(string id, string? secret, out QrRedemption? redemption)
     {
         lock (gate)
         {
@@ -121,10 +121,10 @@ public sealed class QrLoginBroker(TimeProvider time, IOptions<QrLoginOptions> op
             return s.State == QrState.Redeemed ? "consumed" : s.State.ToString().ToLowerInvariant();
         }
     }
-    public void Cancel(string id, string secret) { lock (gate) { var s = Get(id, secret, true); if (Live(s) && s.State != QrState.Approved) s.State = QrState.Cancelled; } }
-    public void Deny(string id, string secret) { lock (gate) { var s = Get(id, secret); if (s.State is QrState.Pending or QrState.Scanned) s.State = QrState.Denied; } }
+    public void Cancel(string id, string? secret) { lock (gate) { var s = Get(id, secret, true); if (Live(s)) s.State = QrState.Cancelled; } }
+    public void Deny(string id, string? secret) { lock (gate) { var s = Get(id, secret); if (s.State is QrState.Pending or QrState.Scanned) s.State = QrState.Denied; } }
     private static void Attempt(Session s) { if (--s.CodeAttemptsRemaining <= 0) s.State = QrState.Denied; }
-    public void Approve(string id, string secret, string code, Identity user, string username)
+    public void Approve(string id, string? secret, string? code, Identity user, string username)
     {
         lock (gate)
         {

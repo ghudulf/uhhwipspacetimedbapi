@@ -64,6 +64,21 @@ public static partial class Module
         if (present) ctx.Db.Maintenance.Insert(new Maintenance { MaintenanceId = id, BusId = 0, ScheduledByEmployeeId = employeeId });
     }
     [SpacetimeDB.Reducer]
+    public static void PrepareQrDeviceTest(ReducerContext ctx, string identityHex, bool active)
+    {
+        RequireDeploymentOwner(ctx);
+        var identity = Identity.FromHexString(identityHex);
+        var user = ctx.Db.UserProfile.UserId.Find(identity);
+        if (user == null) ctx.Db.UserProfile.Insert(new UserProfile { UserId = identity, LegacyUserId = 4000000000, Login = "synthetic-qr-device-user", IsActive = active });
+        else
+        {
+            if (user.Login != "synthetic-qr-device-user") throw new Exception("Synthetic fixture only.");
+            user.IsActive = active;
+            ctx.Db.UserProfile.UserId.Update(user);
+        }
+    }
+
+    [SpacetimeDB.Reducer]
     public static void PrepareBootstrapTest(ReducerContext ctx)
     {
         RequireDeploymentOwner(ctx);

@@ -19,9 +19,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Authentication;
 public sealed class QrRequestValidationAttribute : ActionFilterAttribute
 {
     public QrRequestValidationAttribute() => Order = int.MinValue;
-    public override void OnActionExecuting(ActionExecutingContext context)
+    public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (!context.ModelState.IsValid) context.Result = new BadRequestObjectResult(new { code = "invalid_request" });
+        context.HttpContext.Response.Headers.CacheControl = "no-store";
+        if (!context.ModelState.IsValid)
+        {
+            context.ActionDescriptor.RouteValues.TryGetValue("action", out var action);
+            var flag = action switch { "Create" => "QRLoginGenerateEndpointEnabled", "Status" => "QRLoginStatusEndpointEnabled", "Cancel" => "QRLoginCancelEndpointEnabled",
+                "Peek" or "Approve" or "Deny" => "QRLoginValidateEndpointEnabled", _ => "QRLoginDirectEndpointEnabled" };
+            context.Result = await ((QrLoginController)context.Controller).BoundaryAsync(flag) ?? new BadRequestObjectResult(new { code = "invalid_request" });
+            return;
+        }
+        await next();
     }
 }
 
@@ -34,12 +43,21 @@ public sealed class QrLoginController(QrLoginBroker broker, IQrLoginDeviceStore 
     private static readonly byte[] DecoyKey = CreateDecoy();
     private static byte[] CreateDecoy() { using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256); return key.ExportSubjectPublicKeyInfo(); }
     private IActionResult Error(int status, string code) => StatusCode(status, new { code });
-    private async Task<IActionResult> Run(string flag, Func<Task<IActionResult>> action)
+    internal async Task<IActionResult?> BoundaryAsync(string flag)
     {
         try
         {
             if (!await flags.GetFlagAsync(flag)) return Error(503, "endpoint_unavailable");
             if (!Request.IsHttps && !(environment.IsDevelopment() && HttpContext.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip))) return Error(400, "https_required");
+            return null;
+        }
+        catch { return Error(503, "qr_login_unavailable"); }
+    }
+    private async Task<IActionResult> Run(string flag, Func<Task<IActionResult>> action)
+    {
+        try
+        {
+            if (await BoundaryAsync(flag) is { } boundary) return boundary;
             return await action();
         }
         catch (QrLoginException ex)
@@ -129,10 +147,10 @@ public sealed class QrLoginController(QrLoginBroker broker, IQrLoginDeviceStore 
         }
         if (signatureValid)
         {
-            try { await devices.TouchAsync(request.DeviceId); }
+            try { await devices.TouchAsync(request.DeviceId ?? ""); }
             catch { signatureValid = false; }
         }
-        return broker.Complete(id, request.ApprovalSecret, request.VerificationCode, request.DeviceId, user?.UserId, signatureValid)
+        return broker.Complete(id, request.ApprovalSecret ?? "", request.VerificationCode ?? "", request.DeviceId ?? "", user?.UserId, signatureValid)
             ? NoContent() : Error(401, "qr_login_failed");
     });
     [HttpPost("devices")]

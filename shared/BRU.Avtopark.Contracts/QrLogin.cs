@@ -10,13 +10,13 @@ namespace BRU.Avtopark.Contracts;
 public sealed record QrCreateRequest(string DeviceName, string Platform, string? Username = null, string? DeviceId = null);
 public sealed record QrCreateResponse(string SessionId, string PollSecret, string ApprovalSecret, string QrPayload, string QrPng, string VerificationCode, DateTimeOffset ExpiresAt, int PollIntervalMs);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record QrPollRequest(string PollSecret);
+public sealed record QrPollRequest(string? PollSecret = null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record QrSecretRequest(string ApprovalSecret);
+public sealed record QrSecretRequest(string? ApprovalSecret = null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record QrApproveRequest(string ApprovalSecret, string VerificationCode);
+public sealed record QrApproveRequest(string? ApprovalSecret = null, string? VerificationCode = null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record QrCompleteRequest(string ApprovalSecret, string VerificationCode, string DeviceId, string Signature);
+public sealed record QrCompleteRequest(string? ApprovalSecret = null, string? VerificationCode = null, string? DeviceId = null, string? Signature = null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record QrEnrollRequest(string DeviceName, string Platform, string PublicKey);
 public sealed record QrDeviceResponse(string DeviceId);
