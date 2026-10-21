@@ -1,0 +1,133 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace BRU.Avtopark.Contracts;
+
+public enum TrafficLevel { Off, Redacted, Full }
+
+public sealed record TrafficOptions(TrafficLevel Level = TrafficLevel.Redacted, int MaxBodyBytes = 65536,
+    bool Websocket = true, bool Rows = false, int MaxRows = 20)
+{
+    public static TrafficLevel ParseLevel(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "redacted" => TrafficLevel.Redacted,
+        "off" => TrafficLevel.Off,
+        "full" => TrafficLevel.Full,
+        _ => throw new ArgumentException("Traffic level must be off, redacted or full.")
+    };
+}
+
+/// <summary>Pure traffic formatting. Business data is retained; only credential values are masked.</summary>
+public static class DebugPayload
+{
+    private static readonly HashSet<string> Credentials = new(StringComparer.Ordinal)
+    {
+        "password", "currentpassword", "newpassword", "passwd", "secret", "clientsecret", "token", "accesstoken",
+        "refreshtoken", "idtoken", "temptoken", "authorization", "cookie", "setcookie", "flowsecret", "pollsecret",
+        "approvalsecret", "browsertoken", "verificationcode", "totpcode", "otp", "pin", "signature", "assertion", "privatekey", "apikey"
+    };
+    private static string Normalize(string name) => name.Replace("_", "").Replace("-", "").ToLowerInvariant();
+    public static bool IsCredential(string name)
+    {
+        var normalized = Normalize(name);
+        // Reducer hash arguments are still credentials, not ordinary business identifiers.
+        if (normalized.EndsWith("hash", StringComparison.Ordinal)) normalized = normalized[..^4];
+        return Credentials.Contains(normalized) || normalized.EndsWith("token", StringComparison.Ordinal) ||
+            normalized.EndsWith("secret", StringComparison.Ordinal) || normalized.EndsWith("password", StringComparison.Ordinal);
+    }
+    public static string Fingerprint(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
+    public static string Mask(int length) => $"***({length})";
+
+    public static string Json(string? raw, TrafficLevel level = TrafficLevel.Redacted, int max = 65536)
+    {
+        if (level == TrafficLevel.Off) return "";
+        raw ??= "null";
+        if (level == TrafficLevel.Full) return Truncate(raw, max);
+        try
+        {
+            var bytes = Encoding.UTF8.GetBytes(raw);
+            var reader = new Utf8JsonReader(bytes, new JsonReaderOptions { MaxDepth = 128 });
+            using var output = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(output))
+            {
+                while (reader.Read())
+                {
+                    switch (reader.TokenType)
+                    {
+                        case JsonTokenType.StartObject: writer.WriteStartObject(); break;
+                        case JsonTokenType.EndObject: writer.WriteEndObject(); break;
+                        case JsonTokenType.StartArray: writer.WriteStartArray(); break;
+                        case JsonTokenType.EndArray: writer.WriteEndArray(); break;
+                        case JsonTokenType.PropertyName:
+                            var name = reader.GetString()!;
+                            writer.WritePropertyName(name);
+                            if (IsCredential(name))
+                            {
+                                if (!reader.Read()) throw new JsonException();
+                                var start = reader.TokenStartIndex;
+                                var length = reader.TokenType == JsonTokenType.String ? reader.GetString()!.Length : -1;
+                                reader.Skip();
+                                writer.WriteStringValue(Mask(length >= 0 ? length : checked((int)(reader.BytesConsumed - start))));
+                            }
+                            break;
+                        case JsonTokenType.String: writer.WriteStringValue(reader.GetString()); break;
+                        case JsonTokenType.Number: writer.WriteRawValue(reader.ValueSpan, skipInputValidation: true); break;
+                        case JsonTokenType.True: writer.WriteBooleanValue(true); break;
+                        case JsonTokenType.False: writer.WriteBooleanValue(false); break;
+                        case JsonTokenType.Null: writer.WriteNullValue(); break;
+                    }
+                }
+                if (reader.BytesConsumed == 0) throw new JsonException();
+            }
+            return Truncate(Encoding.UTF8.GetString(output.ToArray()), max);
+        }
+        catch (JsonException) { return Truncate(Text(raw), max); }
+    }
+
+    // Handles form data and malformed/partial JSON without silently dropping debugging data.
+    private static string Text(string raw) => Regex.Replace(raw,
+        "(?<key>[\\w-]+)(?<separator>\\\"?\\s*[:=]\\s*\\\"?)(?<value>[^\\\"&\\s,}]+)",
+        match => IsCredential(match.Groups["key"].Value)
+            ? match.Groups["key"].Value + match.Groups["separator"].Value + Mask(match.Groups["value"].Length) : match.Value,
+        RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+    public static string Truncate(string raw, int max)
+    {
+        max = Math.Max(0, max);
+        var bytes = Encoding.UTF8.GetBytes(raw);
+        if (bytes.Length <= max) return raw;
+        var count = max;
+        while (count > 0 && (bytes[count] & 0xc0) == 0x80) count--;
+        return Encoding.UTF8.GetString(bytes, 0, count) + $"…[truncated {bytes.Length - count} bytes]";
+    }
+
+    public static string Binary(long bytes, TrafficLevel level = TrafficLevel.Redacted) => level == TrafficLevel.Off ? "" : $"[binary {bytes} bytes]";
+
+    public static IReadOnlyDictionary<string, string> Headers(IEnumerable<KeyValuePair<string, IEnumerable<string>>> headers, TrafficLevel level = TrafficLevel.Redacted)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (level == TrafficLevel.Off) return result;
+        foreach (var (name, values) in headers)
+        {
+            var value = string.Join(", ", values);
+            if (level != TrafficLevel.Full && name.ToLowerInvariant() is "authorization" or "cookie" or "set-cookie" or "x-api-key")
+            {
+                var label = name.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ? value.Split(' ')[0] :
+                    name.Contains("cookie", StringComparison.OrdinalIgnoreCase) ? string.Join(";", value.Split(';').Select(item => item.Split('=')[0].Trim())) : name;
+                value = label + " sha256:" + Fingerprint(value);
+            }
+            result[name] = value;
+        }
+        return result;
+    }
+
+    public static string Url(string raw, TrafficLevel level = TrafficLevel.Redacted)
+    {
+        if (level == TrafficLevel.Off) return "";
+        if (level == TrafficLevel.Full) return raw;
+        return Regex.Replace(raw, "(?<key>[?&](?:access_token|token|code|state|id_token|refresh_token|client_secret)=)(?<value>[^&#]*)",
+            match => match.Groups["key"].Value + Mask(match.Groups["value"].Length), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+    }
+}

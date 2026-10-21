@@ -2,6 +2,7 @@ using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
 
 PackagingPolicyTests.Run();
 NetworkPolicyTests.Run();
+DebugPayloadTests.Run();
 await ClientNetworkPolicyTests.RunAsync();
 await QrClientTests.RunAsync();
 
