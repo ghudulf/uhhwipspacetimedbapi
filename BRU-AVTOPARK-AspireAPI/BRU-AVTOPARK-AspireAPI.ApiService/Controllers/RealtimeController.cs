@@ -246,6 +246,7 @@ public sealed class RealtimeController : BaseController
                 }
 
                 var messageJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "RECEIVED RAW", messageJson);
                 _logger.LogInformation("[{SessionId}] Interactive message received; body omitted", sessionId);
 
                 JsonDocument? doc = null;
@@ -728,6 +729,7 @@ public sealed class RealtimeController : BaseController
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var messageJson = Encoding.UTF8.GetString(ms.ToArray());
+                    TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "RECEIVED RAW", messageJson);
                     var sanitizedMessage = SanitizeMessageForLogging(messageJson);
                     _logger.LogDebug("[{ConnectionId}] <<<< RECEIVED: {Message}", connectionId, sanitizedMessage);
 
@@ -2053,7 +2055,7 @@ public sealed class RealtimeController : BaseController
         };
         
         var json = JsonSerializer.Serialize(data, options);
-        _logger.LogDebug(">>>> SENDING: {Json}", json);
+        TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "SENDING", json);
         
         var bytes = Encoding.UTF8.GetBytes(json);
         

@@ -46,6 +46,8 @@ public partial class SpacetimeDBService
         var operation = ((IReducerArgs)args).ReducerName;
         var correlation = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
         var started = Stopwatch.GetTimestamp();
+        if (Diagnostics.TrafficDiagnostics.ServerOptions(_configuration).Level != BRU.Avtopark.Contracts.TrafficLevel.Off)
+            _logger.LogDebug("Reducer call {Operation} {CorrelationId} Arguments={Arguments}", operation, correlation, Diagnostics.TrafficDiagnostics.ReducerArguments(args, operation, Diagnostics.TrafficDiagnostics.ServerOptions(_configuration)));
         var work = new QueuedWork(conn =>
         {
             _pending.TryAdd(args, new PendingReducer(ctx =>
@@ -95,7 +97,14 @@ public partial class SpacetimeDBService
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var work = new QueuedWork(conn => completion.TrySetResult(DatabaseSnapshots.Detach(query(conn))), ex => completion.TrySetException(ex));
         Enqueue(work);
-        try { return await completion.Task.WaitAsync(OperationTimeout, cancellationToken).ConfigureAwait(false); }
+        try
+        {
+            var result = await completion.Task.WaitAsync(OperationTimeout, cancellationToken).ConfigureAwait(false);
+            var options = Diagnostics.TrafficDiagnostics.ServerOptions(_configuration);
+            if (options.Level != BRU.Avtopark.Contracts.TrafficLevel.Off)
+                _logger.LogDebug("Database ReadAsync snapshot {Snapshot}", Diagnostics.TrafficDiagnostics.Snapshot(result, options));
+            return result;
+        }
         finally { lock (work.Gate) work.Abandoned = true; }
     }
 

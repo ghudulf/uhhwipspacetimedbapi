@@ -51,6 +51,7 @@ public sealed partial class ApiSocketSession
             throw new OperationException("resync_required");
         await operations.AuthorizeAsync(request.Operation, actor, ct);
         _subscriptions[request.SubscriptionId] = new(request.SubscriptionId, request.Operation, resources, watermark);
+        logger.LogDebug("Subscription opened {SubscriptionId} {Operation} Epoch={Epoch} Watermark={Watermark}", request.SubscriptionId, request.Operation, watermark.Epoch, watermark.Sequence);
         return new SubscriptionSnapshot(request.SubscriptionId, request.Operation,
             JsonSerializer.SerializeToElement(snapshot, ApiProtocol.Json), ToContract(watermark));
     }

@@ -193,7 +193,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to get WebSocket token. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(errorContent));
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     return null;
                 }
 
@@ -294,7 +294,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to fetch logs. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, TicketSalesApp.Services.Diagnostics.SafeDiagnostics.JsonShape(errorContent));
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     _logger.LogInformation("Reducer logs not available via HTTP API. Check SpacetimeDB server console for reducer logs.");
                     return $"Warning: Failed to fetch logs: {response.StatusCode} - {errorContent}";
                 }
@@ -1484,6 +1484,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the successful subscription application
                 _logger.LogInformation("SpacetimeDB subscription applied successfully");
                 _logger.LogDebug("Database tables are now available in the client cache");
+                LogTableSnapshots();
                 _subscriptionApplied = true;
                 UpdateReadiness();
             }

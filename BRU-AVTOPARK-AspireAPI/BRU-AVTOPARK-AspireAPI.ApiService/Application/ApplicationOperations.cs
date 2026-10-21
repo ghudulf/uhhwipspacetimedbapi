@@ -19,12 +19,14 @@ public sealed partial class ApplicationOperations
     private readonly Dictionary<string, Handler> _handlers = new(StringComparer.Ordinal);
     private readonly UserAccessService _access;
     private readonly ILogger<ApplicationOperations> _logger;
+    private readonly TrafficOptions _traffic;
     private sealed record Handler(OperationCapability Capability, Func<Identity, JsonElement, string?, CancellationToken, Task<object?>> Execute);
 
     public ApplicationOperations(ISpacetimeDBService database, ITicketSalesService sales, IBusService buses, ILogger<ApplicationOperations> logger, IConfiguration? configuration = null, IRouteService? routes = null, IEmployeeService? employees = null, IMaintenanceService? maintenance = null)
     {
         _access = new(database);
         _logger = logger;
+        _traffic = configuration == null ? TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Options : TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.ServerOptions(configuration);
         RegisterFleet(database, buses);
         RegisterCatalog(database, routes, employees, maintenance);
         RegisterAdmin(database);
@@ -97,10 +99,15 @@ public sealed partial class ApplicationOperations
         using var activity = measure ? OperationTelemetry.Traces.StartActivity("bru.operation") : null;
         activity?.SetTag("bru.operation", operation);
         var outcome = "success";
+        if (_traffic.Level != TrafficLevel.Off)
+            _logger.LogDebug("Operation {Operation} Actor={ActorFingerprint} OperationId={OperationId} Payload={Payload}", operation, DebugPayload.Fingerprint(actor.ToString()), operationId, DebugPayload.Json(payload.GetRawText(), _traffic.Level, _traffic.MaxBodyBytes));
         try
         {
             await AuthorizeAsync(operation, actor, ct);
             var result = await handler.Execute(actor, payload, operationId, ct);
+            if (_traffic.Level != TrafficLevel.Off)
+                _logger.LogDebug("Operation {Operation} Actor={ActorFingerprint} OperationId={OperationId} Result={Result} ElapsedMs={ElapsedMs} ErrorCode={ErrorCode}", operation, DebugPayload.Fingerprint(actor.ToString()), operationId,
+                    DebugPayload.Json(JsonSerializer.Serialize(result, ApiProtocol.Json), _traffic.Level, _traffic.MaxBodyBytes), Stopwatch.GetElapsedTime(started).TotalMilliseconds, "success");
             _logger.LogInformation("Operation {Operation} committed/completed in {ElapsedMs} ms", operation, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             return result;
         }
@@ -117,6 +124,8 @@ public sealed partial class ApplicationOperations
         }
         finally
         {
+            if (outcome != "success" && _traffic.Level != TrafficLevel.Off)
+                _logger.LogDebug("Operation {Operation} Actor={ActorFingerprint} OperationId={OperationId} ElapsedMs={ElapsedMs} ErrorCode={ErrorCode}", operation, DebugPayload.Fingerprint(actor.ToString()), operationId, Stopwatch.GetElapsedTime(started).TotalMilliseconds, outcome);
             if (measure)
             {
                 var tags = new System.Diagnostics.TagList { { "operation", operation }, { "outcome", outcome } };

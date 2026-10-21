@@ -30,8 +30,9 @@ internal static class RealtimeTests
             loginEntered.TrySetResult();
             return finishLogin.Task;
         });
+        var traffic = new TrafficLoggingTests.Capture();
         var session = new ApiSocketSession(operations, Stub.Create<IAuthWebSocketTokenValidator>(), authentication, database,
-            new ConnectionAdmission(), NullLogger<ApiSocketSession>.Instance);
+            new ConnectionAdmission(), traffic.Logger<ApiSocketSession>());
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -64,7 +65,7 @@ internal static class RealtimeTests
         await Send(client, "auth.totp", new TotpCommand("123456"), deadline.Token);
         Assert((await Receive(client, deadline.Token)).Code == "challenge_expired", "unbound second factor accepted");
 
-        var login = await Send(client, "auth.login", new LoginCommand("synthetic", "synthetic"), deadline.Token);
+        var login = await Send(client, "auth.login", new LoginCommand("synthetic", "traffic-password-sentinel"), deadline.Token);
         await loginEntered.Task.WaitAsync(deadline.Token);
         // Queue a read and then cancel it while the serial worker is waiting for authentication.
         var queued = await Send(client, "sales.list", new PageRequest(), deadline.Token);
@@ -82,6 +83,8 @@ internal static class RealtimeTests
         Assert((await Receive(client, deadline.Token)).Code == "challenge_expired", "logout retained the challenge");
         await client.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "test complete", deadline.Token);
         await running.WaitAsync(deadline.Token);
+        var lines = string.Join('\n', traffic.Messages);
+        Assert(lines.Contains("RECEIVED RAW") && lines.Contains("SENDING") && lines.Contains("auth.login") && !lines.Contains("traffic-password-sentinel") && !lines.Contains("123456"), "v2 frame logging / credential contract");
         Console.WriteLine("PASS v2 capability negotiation, anonymous allowlist, unknown operations, connection/auth budgets, bound challenges, cancellation and logout over framed sockets");
     }
     private static async Task<string> Send<T>(WebSocket socket, string operation, T payload, CancellationToken ct)

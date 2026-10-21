@@ -52,6 +52,16 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
     public bool IsConnected => Volatile.Read(ref _connected) == 1 && !_lifetime.IsCancellationRequested && _socket.State == WebSocketState.Open;
     public Capabilities? Capabilities { get; private set; }
     public event Action<RealtimeDiagnostic>? Diagnostic;
+    /// <summary>Policy-formatted frame previews, never raw credentials unless full was explicitly selected.</summary>
+    public event Action<string, string>? FrameLogged;
+    private void LogFrame(string direction, byte[] bytes)
+    {
+        var options = ClientTrafficOptions.Current;
+        if (options.Level == TrafficLevel.Off) return;
+        var raw = System.Text.Encoding.UTF8.GetString(bytes);
+        var preview = DebugPayload.Json(raw, options.Level, options.MaxBodyBytes, raw.Contains("auth.totp", StringComparison.OrdinalIgnoreCase));
+        try { FrameLogged?.Invoke(direction, preview); } catch { /* Diagnostics must not change delivery. */ }
+    }
 
     public async Task ConnectAsync(Uri apiBase, string? token, CancellationToken cancellationToken)
     {
@@ -104,6 +114,7 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             if (mutation && !Guid.TryParseExact(operationId, "N", out _)) throw new ArgumentException("A stable mutation operation ID is required.", nameof(operationId));
             var command = new CommandEnvelope(requestId, operation, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), operationId);
             var bytes = JsonSerializer.SerializeToUtf8Bytes(command, ApiProtocol.Json);
+            LogFrame("SENDING", bytes);
             if (bytes.Length > ApiProtocol.MaxMessageBytes) throw new ArgumentException("Command is too large.", nameof(payload));
             _pending[requestId] = pending;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
@@ -165,7 +176,9 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
             {
                 var command = new CommandEnvelope(Guid.NewGuid().ToString("N"), "cancel", JsonSerializer.SerializeToElement(new CancelCommand(requestId), ApiProtocol.Json));
                 Interlocked.Increment(ref _countedRequests);
-                await _socket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(command, ApiProtocol.Json), WebSocketMessageType.Text, true, deadline.Token);
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(command, ApiProtocol.Json);
+                LogFrame("SENDING", bytes);
+                await _socket.SendAsync(bytes, WebSocketMessageType.Text, true, deadline.Token);
             }
             finally { _send.Release(); }
         }
@@ -190,7 +203,9 @@ public sealed partial class RealtimeApplicationClient : IAsyncDisposable
                         throw new JsonException("Invalid response frame.");
                     stream.Write(buffer, 0, part.Count);
                 } while (!part.EndOfMessage);
-                var result = JsonSerializer.Deserialize<ResultEnvelope>(stream.ToArray(), ApiProtocol.Json) ?? throw new JsonException("Missing envelope.");
+                var raw = stream.ToArray();
+                LogFrame("RECEIVED RAW", raw);
+                var result = JsonSerializer.Deserialize<ResultEnvelope>(raw, ApiProtocol.Json) ?? throw new JsonException("Missing envelope.");
                 if (result.Type == "welcome")
                 {
                     if (!_welcome.TrySetResult(result.Data?.Deserialize<Capabilities>(ApiProtocol.Json) ?? throw new JsonException("Missing capabilities.")))

@@ -72,6 +72,7 @@ internal static class TrafficLoggingTests
         }
         await HostedAsync();
         await ClientAsync();
+        await OperationsAndReducersAsync();
         Console.WriteLine("PASS traffic middleware: bodies/trace/headers/credentials, off/full/redacted, health/stream/HTML skips, byte-identical delivery, capped tee, config, readable escaped formatter and real hosted HTTP capture");
     }
     private static IConfiguration Config(string level) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -99,6 +100,22 @@ internal static class TrafficLoggingTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(raw, Encoding.UTF8, "application/json") });
     }
+    private static async Task OperationsAndReducersAsync()
+    {
+        var logs = new Capture();
+        var database = Stub.Create<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>((_, _) =>
+            Task.FromResult(new TicketSalesApp.Services.Authorization.UserAccessSnapshot(true, true, ["Administrator"], [])));
+        var operations = new BRU_AVTOPARK_AspireAPI.ApiService.Application.ApplicationOperations(database,
+            Stub.Create<TicketSalesApp.Services.Interfaces.ITicketSalesService>(), Stub.Create<TicketSalesApp.Services.Interfaces.IBusService>(),
+            logs.Logger<BRU_AVTOPARK_AspireAPI.ApiService.Application.ApplicationOperations>());
+        await operations.ExecuteAsync("session.access", SpacetimeDB.Identity.FromHexString(new string('1', 64)), System.Text.Json.JsonSerializer.SerializeToElement(new EmptyRequest()), null, default);
+        Check(logs.Messages.Any(line => line.Contains("Result=") && line.Contains("Administrator") && line.Contains("Actor=")), "operation result JSON missing");
+        var service = new TicketSalesApp.Services.Implementations.SpacetimeDBService(Config("redacted"), logs.Logger<TicketSalesApp.Services.Implementations.SpacetimeDBService>());
+        try { await service.ExecuteReducerAsync(new SpacetimeDB.Types.Reducer.RotateRefreshToken("sentinel", "next-sentinel"), _ => true); }
+        catch (TicketSalesApp.Services.Interfaces.DatabaseUnavailableException) { }
+        var reducer = logs.Messages.Single(line => line.Contains("Reducer call"));
+        Check(reducer.Contains("Arguments=") && reducer.Contains("***") && !reducer.Contains("sentinel"), "reducer hash argument leak");
+    }
     private static async Task HostedAsync()
     {
         var logs = new Capture(); var builder = WebApplication.CreateBuilder();
@@ -119,7 +136,7 @@ internal static class TrafficLoggingTests
         finally { await app.StopAsync(); }
     }
     private static void Check(bool condition, string message) { if (!condition) throw new Exception("TrafficLogging: " + message); }
-    private sealed class Capture : ILoggerProvider
+    internal sealed class Capture : ILoggerProvider
     {
         public List<string> Messages { get; } = [];
         public ILogger CreateLogger(string categoryName) => new Sink(this);

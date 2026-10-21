@@ -101,6 +101,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
                     continue;
 
                 var json = Encoding.UTF8.GetString(ms.ToArray());
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "RECEIVED RAW", json);
                 await HandleMessageAsync(webSocket, json, sendLock, connectionId,
                     claimsHolder, qrSubscriptions, qrPollerTasks, sourceIp, cts);
             }
@@ -623,6 +624,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             return;
 
         var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, WsJsonOptions);
+        TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "SENDING", Encoding.UTF8.GetString(bytes));
 
         await sendLock.WaitAsync(cancellationToken);
         try

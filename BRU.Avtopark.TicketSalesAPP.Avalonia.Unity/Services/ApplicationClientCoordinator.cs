@@ -72,6 +72,7 @@ public static class ApplicationClientCoordinator
             if (_client != null) await _client.DisposeAsync();
             _client = null;
             var candidate = new RealtimeApplicationClient();
+            candidate.FrameLogged += (direction, frame) => Serilog.Log.Debug("WebSocket {Direction} Frame={Frame}", direction, frame);
             candidate.Diagnostic += diagnostic => Serilog.Log.Information(
                 "Client operation {Operation}, request {RequestId}, transport websocket, generation {Generation}: {Outcome} in {ElapsedMs} ms",
                 diagnostic.Operation, diagnostic.RequestId, diagnostic.Generation, diagnostic.Outcome, diagnostic.ElapsedMs);

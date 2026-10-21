@@ -282,7 +282,7 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
         Interlocked.Exchange(ref _authenticateByTicks, DateTimeOffset.UtcNow.AddSeconds(45).UtcTicks);
         Interlocked.Increment(ref _generation);
     }
-    private static async Task<CommandEnvelope?> ReceiveAsync(WebSocket socket, CancellationToken ct)
+    private async Task<CommandEnvelope?> ReceiveAsync(WebSocket socket, CancellationToken ct)
     {
         using var stream = new MemoryStream();
         var buffer = new byte[4096];
@@ -295,15 +295,17 @@ public sealed partial class ApiSocketSession(ApplicationOperations operations, I
                 throw new OperationException("invalid_message");
             stream.Write(buffer, 0, part.Count);
         } while (!part.EndOfMessage);
+        TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(logger, "RECEIVED RAW", System.Text.Encoding.UTF8.GetString(stream.ToArray()));
         return JsonSerializer.Deserialize<CommandEnvelope>(stream.ToArray(), ApiProtocol.Json) ?? throw new OperationException("invalid_envelope");
     }
-    private static async Task WriteAsync(WebSocket socket, ChannelReader<ResultEnvelope> output, CancellationTokenSource stop)
+    private async Task WriteAsync(WebSocket socket, ChannelReader<ResultEnvelope> output, CancellationTokenSource stop)
     {
         try
         {
             await foreach (var result in output.ReadAllAsync(stop.Token))
             {
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(result, ApiProtocol.Json);
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(logger, "SENDING", System.Text.Encoding.UTF8.GetString(bytes));
                 if (bytes.Length > ApiProtocol.MaxResponseBytes) throw new OperationException("response_too_large");
                 using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
                 deadline.CancelAfter(TimeSpan.FromSeconds(10));

@@ -21,7 +21,35 @@ public static class TrafficDiagnostics
     public static string Json(string? raw) => DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes);
     public static string AuthJson(string? raw) => DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes, authentication: true);
     public static string Url(string raw) => DebugPayload.Url(raw, Options.Level);
-    public static string Serialize(object? value) => Json(JsonSerializer.Serialize(value, new JsonSerializerOptions { IncludeFields = true }));
+    public static string Serialize(object? value, TrafficOptions? options = null)
+    {
+        options ??= Options;
+        try { return DebugPayload.Json(JsonSerializer.Serialize(value, new JsonSerializerOptions { IncludeFields = true }), options.Level, options.MaxBodyBytes); }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException) { return "[unserializable " + value?.GetType().Name + "]"; }
+    }
+    public static void Frame(Microsoft.Extensions.Logging.ILogger logger, string direction, string raw)
+    {
+        if (!Enabled || !Options.Websocket) return;
+        Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "WebSocket {Direction} Frame={Frame}", direction,
+            DebugPayload.Json(raw, Options.Level, Options.MaxBodyBytes, raw.Contains("totp", StringComparison.OrdinalIgnoreCase)));
+    }
+    public static string ReducerArguments(object args, string operation, TrafficOptions options)
+    {
+        var values = args.GetType().GetFields().ToDictionary(field => field.Name, field => field.GetValue(args));
+        if (options.Level == TrafficLevel.Redacted && operation.Contains("token", StringComparison.OrdinalIgnoreCase))
+            foreach (var key in values.Keys.ToArray())
+                if (key.EndsWith("Hash", StringComparison.OrdinalIgnoreCase)) values[key] = DebugPayload.Mask(values[key]?.ToString()?.Length ?? 0);
+        return Serialize(values, options);
+    }
+    public static string Snapshot(object? value, TrafficOptions options)
+    {
+        var items = value as System.Collections.IEnumerable;
+        if (value is string) items = null;
+        items ??= value?.GetType().GetProperty("Items")?.GetValue(value) as System.Collections.IEnumerable;
+        if (items == null) return "type=" + (value?.GetType().Name ?? "null") + (options.Rows || options.Level == TrafficLevel.Full ? " value=" + Serialize(value, options) : "");
+        var count = items is System.Collections.ICollection collection ? collection.Count : items.Cast<object?>().Count();
+        return "rows=" + count + (options.Rows || options.Level == TrafficLevel.Full ? " preview=" + Serialize(items.Cast<object?>().Take(options.MaxRows).ToArray(), options) : "");
+    }
     public static string Body(byte[] preview, long length, string? contentType, TrafficOptions options, bool authentication = false)
     {
         if (options.Level == TrafficLevel.Off) return "";
