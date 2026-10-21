@@ -96,7 +96,7 @@ public sealed partial class ApplicationOperations
                 if (request.BusId == 0) throw new OperationException("validation_failed");
                 ValidateCatalogText(request.TravelTime, 100, false, false);
                 ValidateRouteDetails(request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
-                await routes.CreateRouteAsync(request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime, request.IsActive, actor, id, ct, request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
+                await routes.CreateRouteAsync(request.StartPoint, request.EndPoint, request.DriverId, request.BusId, request.TravelTime ?? "", request.IsActive, actor, id, ct, request.RouteNumber, request.StopCount, request.RouteLength, request.RouteDescription, request.RouteType);
                 return await CommittedReceipt(database, actor, id!, ct);
             });
             Register<UpdateRouteCommand>("routes.update", "routes.edit", true, async (actor, request, id, ct) =>
