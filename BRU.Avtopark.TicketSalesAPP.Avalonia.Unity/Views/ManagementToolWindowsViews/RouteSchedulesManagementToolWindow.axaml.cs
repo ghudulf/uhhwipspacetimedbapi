@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels;
+using BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindowsViews
 {
@@ -9,7 +10,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
         public RouteSchedulesManagementToolWindow()
         {
             InitializeComponent();
-            DataContext = new RouteSchedulesManagementViewModel();
+            var dialogs = new ControlDialogHost(this);
+            var editor = new ScheduleEditorService(dialogs);
+            DataContext = new RouteSchedulesManagementViewModel(null, edit: editor.ShowAsync,
+                confirmDelete: (row, ct) => dialogs.ConfirmAsync("Удаление расписания", $"Удалить расписание {row.Id}? Связанные продажи могут запретить удаление.", ct));
+            AttachedToVisualTree += async (_, _) => { if (DataContext is RouteSchedulesManagementViewModel model) await model.ActivateAsync(); };
+            DetachedFromVisualTree += (_, _) => { if (DataContext is RouteSchedulesManagementViewModel model) model.Deactivate(); };
         }
 
         private void InitializeComponent()
@@ -17,4 +23,4 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
             AvaloniaXamlLoader.Load(this);
         }
     }
-} 
+}
