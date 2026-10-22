@@ -73,7 +73,7 @@ internal static class EmployeeMaintenancePresentationTests
     }
 
     internal static async Task ScreenAsync<TRow, TItem>(Factory<TRow, TItem> factory, TRow row, TRow changed,
-        Func<TItem, string> display, string changedText, CancellationToken stop) where TItem : class
+        Func<TItem, string> display, string changedText, CancellationToken stop, Action<PageRequest>? checkRequest = null) where TItem : class
     {
         CatalogPageResult<TRow> Page(TRow value, bool allowed = true, int page = 1) => new([value], page, 100, 201, allowed, allowed, allowed);
         var sink = new Capture(); var previousLogger = Log.Logger; var previousTraffic = Environment.GetEnvironmentVariable("BRU_DEBUG_TRAFFIC");
@@ -88,7 +88,9 @@ internal static class EmployeeMaintenancePresentationTests
                 (_, ct) => { subscription = ct; return updates.Reader.ReadAllAsync(ct); }, (_, _, _) => Task.FromResult(false), (_, _) => Task.FromResult(false), null);
             Assert(requests.Count == 0, "screen constructor started IO");
             await model.ActivateAsync();
-            Assert(requests.Single() == new PageRequest(1, 100, "") && model.Items.Count == 1 && !model.CanCreate, "typed activation/paging/sync gating failed");
+            var request = requests.Single();
+            if (checkRequest == null) Assert(request == new PageRequest(1, 100, ""), "typed default request failed"); else checkRequest(request);
+            Assert(model.Items.Count == 1 && !model.CanCreate, "typed activation/paging/sync gating failed");
             var dump = sink.Events.LastOrDefault(e => e.Properties.TryGetValue("Screen", out var screen) && screen.ToString().Contains(model.GetType().Name) && e.Properties.ContainsKey("BoundRows"));
             Assert(dump != null && dump.Properties["RowCount"].ToString() == "1", "snapshot did not dump bound row count");
             using (var dumped = System.Text.Json.JsonDocument.Parse((string)((ScalarValue)dump!.Properties["BoundRows"]).Value!))

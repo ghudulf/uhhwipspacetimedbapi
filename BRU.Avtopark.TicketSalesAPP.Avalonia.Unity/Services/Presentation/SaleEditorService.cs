@@ -19,7 +19,7 @@ public sealed class SaleDraft
 public sealed class SaleEditorService(ControlDialogHost host)
 {
     private readonly CatalogEditorDrafts<SaleRow, SaleDraft> _drafts = new();
-    public static SaleDraft DraftFrom(SaleRow? row) => new() { TicketId = row?.TicketId ?? 0, BuyerName = row?.BuyerName ?? "", BuyerPhone = row?.BuyerPhone ?? "" };
+    public static SaleDraft DraftFrom(SaleRow? row) => new() { TicketId = row?.TicketId ?? 0, BuyerName = row?.BuyerName ?? "ФИЗ.ПРОДАЖА", BuyerPhone = row?.BuyerPhone ?? "" };
     public static string? Validate(SaleDraft d)
     {
         if (d.TicketId == 0) return "Выберите билет. Если список пуст, проверьте право просмотра билетов.";
@@ -46,7 +46,7 @@ public sealed class SaleEditorService(ControlDialogHost host)
         var name = CatalogEditorDialog.Text("Покупатель", 200); var phone = CatalogEditorDialog.Text("Телефон покупателя", 50);
         var attempt = _drafts.Get(original?.SaleId ?? 0, () => new CatalogEditorAttempt<SaleRow, SaleDraft>(original, DraftFrom, r => r.Revision, Validate,
             (d, revision, id, cancellation) => original == null
-                ? ApplicationMutationClient.ExecuteAsync("sales.create", new CreateSaleCommand(d.TicketId, d.BuyerName.Length == 0 ? null : d.BuyerName, d.BuyerPhone), id, origin, token, cancellation)
+                ? ApplicationMutationClient.ExecuteAsync("sales.create", new CreateSaleCommand(d.TicketId, d.BuyerName.Length == 0 ? "ФИЗ.ПРОДАЖА" : d.BuyerName, d.BuyerPhone, "POS"), id, origin, token, cancellation)
                 : ApplicationMutationClient.ExecuteAsync("sales.update", new UpdateSaleCommand(original.SaleId, revision, d.BuyerName.Length == 0 ? null : d.BuyerName, d.BuyerPhone), id, origin, token, cancellation),
             (id, cancellation) => ApplicationQueryClient.ReadAsync<ReceiptRequest, MutationResult?>("mutations.receipt", new(id), cancellation),
             cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, SaleRow>("sales.get", new(original!.SaleId), cancellation), original?.SaleId,

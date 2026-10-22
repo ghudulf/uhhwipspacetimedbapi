@@ -107,6 +107,7 @@ Dispatcher.UIThread.Post(async () =>
         await EmployeeMaintenancePresentationTests.EmployeesAsync(stop.Token);
         await EmployeeMaintenancePresentationTests.MaintenanceAsync(stop.Token);
         await RouteTicketPresentationTests.RunAsync(stop.Token);
+        await ScheduleSalePresentationTests.RunAsync(stop.Token);
         await CatalogHttpPresentationTests.RunAsync(stop.Token);
         await QrPresentationTests.RunAsync();
         await ProviderPresentationTests.RunAsync();

@@ -29,6 +29,7 @@ public sealed class ScheduleDraft
     public uint StopDurationMinutes { get; set; }
     public string Notes { get; set; } = "";
     public string[] BusTypes { get; set; } = [];
+    public bool HasIntegralCounts { get; set; } = true;
 }
 
 public sealed class ScheduleEditorService(ControlDialogHost host)
@@ -48,6 +49,7 @@ public sealed class ScheduleEditorService(ControlDialogHost host)
     public static string? Validate(ScheduleDraft d)
     {
         if (d.RouteId == 0) return "Выберите маршрут. Если список пуст, проверьте право просмотра маршрутов.";
+        if (!d.HasIntegralCounts) return "Число мест и время стоянки должны быть целыми неотрицательными числами.";
         if (!d.DepartureTime.HasValue || !d.ArrivalTime.HasValue || d.DepartureTime < DateTimeOffset.UnixEpoch || d.ArrivalTime < d.DepartureTime) return "Укажите даты и время: прибытие не может быть раньше отправления.";
         if (!d.Price.HasValue || !double.IsFinite(d.Price.Value) || d.Price < 0 || d.Price > 1e12) return "Цена должна быть конечным числом от 0 до 1000000000000.";
         if (string.IsNullOrWhiteSpace(d.StartPoint) || string.IsNullOrWhiteSpace(d.EndPoint) || d.StartPoint.Length > 200 || d.EndPoint.Length > 200) return "Укажите начальную и конечную остановки (до 200 символов).";
@@ -88,6 +90,7 @@ public sealed class ScheduleEditorService(ControlDialogHost host)
             [route, departure, arrival, start, end, price, seats, active, recurring, days, stops, times, distances, duration, types, notes],
             d => { d.RouteId = (route.SelectedItem as RouteRow)?.RouteId ?? 0; d.DepartureTime = ParseDate(departure.Text); d.ArrivalTime = ParseDate(arrival.Text);
                 d.StartPoint = start.Text ?? ""; d.EndPoint = end.Text ?? ""; d.Price = price.Value.HasValue ? (double)price.Value.Value : null;
+                d.HasIntegralCounts = seats.Value is { } count && count == decimal.Truncate(count) && duration.Value is { } minutes && minutes == decimal.Truncate(minutes);
                 d.AvailableSeats = Integer(seats); d.StopDurationMinutes = Integer(duration); d.IsActive = active.IsChecked == true; d.IsRecurring = recurring.IsChecked == true;
                 d.DaysOfWeek = Split(days.Text); d.RouteStops = Split(stops.Text); d.EstimatedStopTimes = Split(times.Text); d.BusTypes = Split(types.Text); d.Notes = notes.Text ?? "";
                 d.StopDistances = Split(distances.Text).Select(s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : double.NaN).ToArray(); },
