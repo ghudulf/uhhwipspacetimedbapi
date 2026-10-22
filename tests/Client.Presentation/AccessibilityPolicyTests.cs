@@ -29,6 +29,8 @@ internal static class AccessibilityPolicyTests
         AssertJobsPager(root, "Maintenance");
         AssertJobsPager(root, "Route");
         AssertJobsPager(root, "Ticket");
+        AssertJobsPager(root, "RouteSchedules");
+        AssertJobsPager(root, "Sales");
         var invalid = XDocument.Parse("""
             <StackPanel><Button/><TextBox/><Image/><TextBlock Name="ErrorText"/><TextBlock Text="{Binding SynchronizationMessage}"/>
             <Button Content="OK"/><Button Content="Отмена"/><Button Content="Named" IsTabStop="False"/></StackPanel>

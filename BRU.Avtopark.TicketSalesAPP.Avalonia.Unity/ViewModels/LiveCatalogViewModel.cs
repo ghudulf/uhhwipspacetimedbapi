@@ -50,7 +50,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
     public string SearchText
     {
         get => _search;
-        set { if (_search == value) return; this.RaiseAndSetIfChanged(ref _search, value); _page = 1; if (_active) _loading = LoadData(); }
+        set { if (_search == value) return; this.RaiseAndSetIfChanged(ref _search, value); QueryChanged(); }
     }
     public bool IsBusy { get => _busy; protected set { this.RaiseAndSetIfChanged(ref _busy, value); NotifyEligibility(); } }
     public bool IsSynchronized { get => _synchronized; private set { this.RaiseAndSetIfChanged(ref _synchronized, value); NotifyEligibility(); this.RaisePropertyChanged(nameof(SynchronizationMessage)); } }
@@ -145,7 +145,9 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
                 if (_origin != null && _origin != origin) Clear();
                 _origin = origin;
             }
-            var request = new PageRequest(_page, PageSize, SearchText);
+            await PrepareQueryAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            var request = BuildRequest();
             var page = await _read(request, cancellation.Token);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -225,6 +227,9 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
         this.RaisePropertyChanged(nameof(PageInfo)); NotifyEligibility();
     }
     protected virtual void SnapshotApplied(CatalogPageResult<TRow> page) { }
+    protected virtual PageRequest BuildRequest() => new(_page, PageSize, SearchText);
+    protected virtual Task PrepareQueryAsync(CancellationToken ct) => Task.CompletedTask;
+    protected void QueryChanged() { _page = 1; if (_active) _loading = LoadData(); }
     public void Dispose()
     {
         if (_disposed) return;

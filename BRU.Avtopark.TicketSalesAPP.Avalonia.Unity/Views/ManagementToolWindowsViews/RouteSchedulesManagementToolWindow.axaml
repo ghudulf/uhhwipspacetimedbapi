@@ -46,7 +46,7 @@
                     
                     <Button Grid.Column="2"
                             Command="{Binding AddCommand}"
-                            Content="Добавить расписание"
+                             Content="Добавить расписание" IsEnabled="{Binding CanCreate}"
                             Margin="0,0,10,0"/>
                     
                     <Button Grid.Column="3"
@@ -148,25 +148,12 @@
         <!-- Action Buttons and Pagination -->
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
             <!-- Pagination Controls -->
-            <StackPanel Grid.Column="0" 
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Left" 
-                        Spacing="10">
-                <Button Command="{Binding FirstPageCommand}"
-                        Content="⏮ First"
-                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                <Button Command="{Binding PreviousPageCommand}"
-                        Content="◀ Previous"
-                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                <TextBlock Text="{Binding PageInfo}"
-                          VerticalAlignment="Center"
-                          Margin="10,0"/>
-                <Button Command="{Binding NextPageCommand}"
-                        Content="Next ▶"
-                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                <Button Command="{Binding LastPageCommand}"
-                        Content="Last ⏭"
-                        IsEnabled="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                <Button Content="Назад" Command="{Binding PreviousPageCommand}"/>
+                <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+                <Button Content="Далее" Command="{Binding NextPageCommand}"/>
+                <Button Content="Обновить" Command="{Binding LoadDataCommand}"/>
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="70"/>
             </StackPanel>
             
             <!-- Action Buttons -->
@@ -177,11 +164,11 @@
                 <Button Command="{Binding EditCommand}"
                         CommandParameter="{Binding SelectedSchedule}"
                         Content="Редактировать"
-                        IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        IsEnabled="{Binding CanEdit}"/>
                 <Button Command="{Binding DeleteCommand}"
                         CommandParameter="{Binding SelectedSchedule}"
                         Content="Удалить"
-                        IsEnabled="{Binding SelectedSchedule, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        IsEnabled="{Binding CanDelete}"/>
             </StackPanel>
         </Grid>
 

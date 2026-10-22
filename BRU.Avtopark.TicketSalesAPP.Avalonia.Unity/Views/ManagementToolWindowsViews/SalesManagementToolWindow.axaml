@@ -8,7 +8,7 @@
              x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.SalesManagementToolWindow"
              x:DataType="vm:SalesManagementViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
         <!-- Top Bar -->
         <Border Grid.Row="0" Background="#2D3436" Height="65">
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0">
@@ -35,7 +35,7 @@
                 </StackPanel>
 
                 <TextBlock Grid.Column="1" 
-                         Text="{Binding TotalIncome, StringFormat={}Общая сумма: {0:C}}"
+                         Text="{Binding TotalIncomeDisplay}"
                          Foreground="White"
                          FontSize="18"
                          FontWeight="Bold"
@@ -44,7 +44,7 @@
 
                 <Button Grid.Column="2"
                         Command="{Binding AddCommand}"
-                        Content="НОВАЯ ПРОДАЖА"
+                        Content="НОВАЯ ПРОДАЖА" IsEnabled="{Binding CanCreate}"
                         Background="#27ae60"
                         Foreground="White"
                         Padding="20,10"
@@ -69,7 +69,7 @@
                                       Binding="{ReflectionBinding SaleId}"
                                       Width="60"/>
                     <DataGridTextColumn Header="Дата"
-                                      Binding="{ReflectionBinding SaleDate, Converter={x:Static display:UnixMillisecondsConverter.Instance}}"
+                                      Binding="{ReflectionBinding SaleDateDisplay}"
                                       Width="150"/>
                     <DataGridTextColumn Header="ID Билета" 
                                       Binding="{ReflectionBinding TicketId}"
@@ -104,7 +104,7 @@
                         Foreground="White"
                         FontSize="14"
                         Command="{Binding DeleteCommand}"
-                        IsEnabled="{Binding SelectedSale, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                         IsEnabled="{Binding CanDelete}"/>
 
                 <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                           Foreground="#c0392b"
@@ -118,11 +118,18 @@
         <Border Grid.Row="2" 
                 Background="#34495e" 
                 Height="30">
-            <TextBlock Text="Готово"
+            <TextBlock Text="{Binding StatusMessage}" AutomationProperties.LiveSetting="Polite"
                       Foreground="White"
                       VerticalAlignment="Center"
                       Margin="10,0"/>
         </Border>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Назад" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+            <Button Content="Далее" Command="{Binding NextPageCommand}"/>
+            <Button Content="Обновить" Command="{Binding LoadDataCommand}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="70"/>
+        </StackPanel>
     </Grid>
 
     <UserControl.Styles>
