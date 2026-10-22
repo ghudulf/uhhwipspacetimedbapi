@@ -29,12 +29,14 @@ public static class DebugPayload
         "approvalsecret", "browsertoken", "verificationcode", "totpcode", "otp", "pin", "signature", "assertion", "privatekey", "apikey"
     };
     private static string Normalize(string name) => name.Replace("_", "").Replace("-", "").ToLowerInvariant();
+    // Administrative initial credentials are never diagnostic data, even in explicit full mode.
+    private static bool IsInitialCredential(string name) => Normalize(name) is "initialcredential" or "initialpassword";
     public static bool IsCredential(string name)
     {
         var normalized = Normalize(name);
         // Reducer hash arguments are still credentials, not ordinary business identifiers.
         if (normalized.EndsWith("hash", StringComparison.Ordinal)) normalized = normalized[..^4];
-        return Credentials.Contains(normalized) || normalized.EndsWith("token", StringComparison.Ordinal) ||
+        return IsInitialCredential(name) || Credentials.Contains(normalized) || normalized.EndsWith("token", StringComparison.Ordinal) ||
             normalized.EndsWith("secret", StringComparison.Ordinal) || normalized.EndsWith("password", StringComparison.Ordinal);
     }
     public static string Fingerprint(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
@@ -44,11 +46,11 @@ public static class DebugPayload
     {
         if (level == TrafficLevel.Off) return "";
         raw ??= "null";
-        if (level == TrafficLevel.Full) return Truncate(raw, max);
         try
         {
             var bytes = Encoding.UTF8.GetBytes(raw);
             var reader = new Utf8JsonReader(bytes, new JsonReaderOptions { MaxDepth = 128 });
+            var masked = false;
             using var output = new MemoryStream();
             using (var writer = new Utf8JsonWriter(output))
             {
@@ -63,8 +65,9 @@ public static class DebugPayload
                         case JsonTokenType.PropertyName:
                             var name = reader.GetString()!;
                             writer.WritePropertyName(name);
-                            if (IsCredential(name) || authentication && (Normalize(name) is "credential" or "qrpng" or "qrpayload" || !response && Normalize(name) == "code"))
+                            if (IsInitialCredential(name) || level != TrafficLevel.Full && (IsCredential(name) || authentication && (Normalize(name) is "credential" or "qrpng" or "qrpayload" || !response && Normalize(name) == "code")))
                             {
+                                masked = true;
                                 if (!reader.Read()) throw new JsonException();
                                 var start = reader.TokenStartIndex;
                                 var length = reader.TokenType == JsonTokenType.String ? reader.GetString()!.Length : -1;
@@ -84,15 +87,15 @@ public static class DebugPayload
                 }
                 if (reader.BytesConsumed == 0) throw new JsonException();
             }
-            return Truncate(Encoding.UTF8.GetString(output.ToArray()), max);
+            return Truncate(level == TrafficLevel.Full && !masked ? raw : Encoding.UTF8.GetString(output.ToArray()), max);
         }
-        catch (JsonException) { return Truncate(Text(raw, authentication && !response), max); }
+        catch (JsonException) { return Truncate(Text(raw, authentication && !response, level), max); }
     }
 
     // Handles form data and malformed/partial JSON without silently dropping debugging data.
-    private static string Text(string raw, bool authentication) => Regex.Replace(raw,
+    private static string Text(string raw, bool authentication, TrafficLevel level) => Regex.Replace(raw,
         "(?<key>[\\w-]+)(?<separator>\\\"?\\s*[:=]\\s*)(?:\\\"(?<quoted>(?:\\\\.|[^\\\"\\\\])*)(?:\\\"|$)|(?<value>[^&\\s,}]+))",
-        match => IsCredential(match.Groups["key"].Value) || authentication && Normalize(match.Groups["key"].Value) is "code" or "credential"
+        match => IsInitialCredential(match.Groups["key"].Value) || level != TrafficLevel.Full && (IsCredential(match.Groups["key"].Value) || authentication && Normalize(match.Groups["key"].Value) is "code" or "credential")
             ? match.Groups["key"].Value + match.Groups["separator"].Value + Mask(match.Groups["quoted"].Success ? match.Groups["quoted"].Length : match.Groups["value"].Length) : match.Value,
         RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 

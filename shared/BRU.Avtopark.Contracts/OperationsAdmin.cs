@@ -5,8 +5,10 @@ public sealed record TicketRow(uint Id, uint RouteId, string? RouteLabel, uint S
 public sealed record ScheduleRow(uint Id, uint RouteId, string? RouteLabel, string? BusLabel, string? DriverLabel, DateTimeOffset? DepartureTime, DateTimeOffset? ArrivalTime, decimal? Price, uint AvailableSeats, bool IsActive, ulong Revision,
     string? StartPoint = null, string? EndPoint = null, string[]? DaysOfWeek = null, string[]? RouteStops = null, string[]? EstimatedStopTimes = null,
     double[]? StopDistances = null, uint? StopDurationMinutes = null, bool IsRecurring = false, string? Notes = null, string[]? BusTypes = null);
-public sealed record UserRow(uint Id, string Identity, string Login, string? Email, string? PhoneNumber, bool IsActive, DateTimeOffset? CreatedAt, DateTimeOffset? LastLoginAt, string[] Roles, ulong Revision);
-public sealed record RoleRow(uint Id, int LegacyRoleId, string Name, string? Description, bool IsSystem, uint Priority, bool IsActive, uint[] PermissionIds, string[] Permissions, int UserCount, ulong Revision);
+public sealed record UserRow(uint Id, string Identity, string Login, string? Email, string? PhoneNumber, bool IsActive, DateTimeOffset? CreatedAt, DateTimeOffset? LastLoginAt, string[] Roles, ulong Revision,
+    uint[]? RoleIds = null, PermissionRow[]? PermissionDetails = null);
+public sealed record RoleRow(uint Id, int LegacyRoleId, string Name, string? Description, bool IsSystem, uint Priority, bool IsActive, uint[] PermissionIds, string[] Permissions, int UserCount, ulong Revision,
+    PermissionRow[]? PermissionDetails = null);
 public sealed record PermissionRow(uint Id, string Name, string? Description, string? Category, bool IsActive, ulong Revision);
 
 public sealed record CreateTicketCommand(uint RouteId, double TicketPrice, uint SeatNumber, string PaymentMethod, ulong? PurchaseTime = null);
@@ -22,7 +24,7 @@ public sealed record DeleteScheduleCommand(uint Id, ulong? ExpectedRevision = nu
 public sealed record SetScheduleActiveCommand(uint Id, bool Active, ulong? ExpectedRevision = null);
 
 // Input only. Never include this command in receipts, diagnostics, traces or response projections.
-public sealed record CreateUserCommand(string Login, string InitialCredential, string? Email = null, string? PhoneNumber = null, uint? RoleId = null);
+public sealed record CreateUserCommand(string Login, [property: System.Text.Json.Serialization.JsonPropertyName("initialPassword")] string InitialCredential, string? Email = null, string? PhoneNumber = null, uint? RoleId = null);
 public sealed record UpdateUserCommand(uint Id, string? Email = null, string? PhoneNumber = null, ulong? ExpectedRevision = null);
 public sealed record SetUserActiveCommand(uint Id, bool Active, ulong? ExpectedRevision = null);
 public sealed record DeleteUserCommand(uint Id, ulong? ExpectedRevision = null);

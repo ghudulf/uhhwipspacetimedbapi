@@ -3,6 +3,7 @@ using SpacetimeDB;
 using SpacetimeDB.Types;
 using TicketSalesApp.Services.Implementations;
 using TicketSalesApp.Services.Interfaces;
+using TicketSalesApp.Services.Authorization;
 
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Application;
 
@@ -34,14 +35,15 @@ public sealed partial class ApplicationOperations
             ValidatePage(request); var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
-                var rows = c.Db.UserProfile.Iter().Where(u => Matches(request.Search, u.Login, u.Email, u.PhoneNumber)).OrderBy(u => u.LegacyUserId).ToArray();
-                return new CatalogPageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("users.create"), access.Allows("users.edit"), access.Allows("users.delete"));
+                var rows = c.Db.UserProfile.Iter().Where(u => Matches(request.Search, u.LegacyUserId.ToString(), u.Login, u.Email, u.PhoneNumber)).OrderBy(u => u.LegacyUserId).ToArray();
+                return new CatalogPageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u, access)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("users.create"), access.Allows("users.edit"), access.Allows("users.delete"));
             }, ct);
         });
-        Register<EntityRequest>("users.get", "users.view", false, (_, request, _, ct) =>
+        Register<EntityRequest>("users.get", "users.view", false, async (actor, request, _, ct) =>
         {
             AdminId(request.Id);
-            return Read(database, c => PublicUser(c, c.Db.UserProfile.LegacyUserId.Find(request.Id) ?? throw new OperationException("not_found")), ct);
+            var access = await _access.GetAsync(actor, ct);
+            return await Read(database, c => PublicUser(c, c.Db.UserProfile.LegacyUserId.Find(request.Id) ?? throw new OperationException("not_found"), access), ct);
         });
         Register<PageRequest>("roles.list", "roles.view", false, async (actor, request, _, ct) =>
         {
@@ -53,7 +55,8 @@ public sealed partial class ApplicationOperations
                 {
                     var permissions = c.Db.RolePermission.RoleId.Filter(r.RoleId).Select(p => c.Db.Permission.PermissionId.Find(p.PermissionId)).Where(p => p != null).ToArray();
                     return new RoleRow(r.RoleId, r.LegacyRoleId, r.Name, r.Description, r.IsSystem, r.Priority, r.IsActive,
-                        permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId));
+                        permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId),
+                        access.Allows("roles.view.permissions") ? permissions.Select(p => ProjectPermission(c, p!)).ToArray() : null);
                 }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("roles.create"), access.Allows("roles.edit"), access.Allows("roles.delete"));
             }, ct);
         });
@@ -141,9 +144,14 @@ public sealed partial class ApplicationOperations
     private static IEnumerable<T> Page<T>(T[] rows, PageRequest request) => rows.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize);
     private static bool Matches(string? search, params string?[] fields) => string.IsNullOrWhiteSpace(search) || fields.Any(f => f?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
     private static string? RouteLabel(DbConnection c, uint id) => c.Db.Route.RouteId.Find(id) is { } r ? r.StartPoint + " — " + r.EndPoint : null;
-    private static UserRow PublicUser(DbConnection c, UserProfile u) => new(u.LegacyUserId, u.UserId.ToString(), u.Login, u.Email, u.PhoneNumber, u.IsActive,
+    private static UserRow PublicUser(DbConnection c, UserProfile u, UserAccessSnapshot access) => new(u.LegacyUserId, u.UserId.ToString(), u.Login, u.Email, u.PhoneNumber, u.IsActive,
         Timestamp(u.CreatedAt), u.LastLoginAt.HasValue ? Timestamp(u.LastLoginAt.Value) : null,
-        c.Db.UserRole.UserId.Filter(u.UserId).Select(ur => c.Db.Role.RoleId.Find(ur.RoleId)).Where(r => r is { IsActive: true }).Select(r => r!.Name).ToArray(), Version(c, "users", u.LegacyUserId));
+        c.Db.UserRole.UserId.Filter(u.UserId).Select(ur => c.Db.Role.RoleId.Find(ur.RoleId)).Where(r => r is { IsActive: true }).Select(r => r!.Name).ToArray(), Version(c, "users", u.LegacyUserId),
+        access.Allows("users.view.roles") ? c.Db.UserRole.UserId.Filter(u.UserId).Select(r => r.RoleId).ToArray() : null,
+        access.Allows("users.view.permissions") ? c.Db.UserRole.UserId.Filter(u.UserId).Where(ur => c.Db.Role.RoleId.Find(ur.RoleId)?.IsActive == true)
+            .SelectMany(ur => c.Db.RolePermission.RoleId.Filter(ur.RoleId)).Select(rp => c.Db.Permission.PermissionId.Find(rp.PermissionId)).Where(p => p is { IsActive: true })
+            .DistinctBy(p => p!.PermissionId).Select(p => ProjectPermission(c, p!)).ToArray() : null);
+    private static PermissionRow ProjectPermission(DbConnection c, Permission p) => new(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId));
     private static void AdminId(uint id) { if (id == 0) throw new OperationException("validation_failed"); }
     private static void AdminOptionalName(string? value, int max) { if (value != null) AdminText(value, max, true); }
     private static void AdminPermissionSet(uint[]? ids) { if (ids != null && (ids.Length > 500 || ids.Any(id => id == 0) || ids.Distinct().Count() != ids.Length)) throw new OperationException("validation_failed"); }

@@ -85,6 +85,21 @@ internal static class TrafficLoggingTests
         await HostedAsync();
         await ClientAsync();
         await OperationsAndReducersAsync();
+        foreach (var level in new[] { TrafficLevel.Redacted, TrafficLevel.Full })
+        {
+            const string initial = "h16-secret-never-in-a-sink";
+            var raw = System.Text.Json.JsonSerializer.Serialize(new CreateUserCommand("VisibleLogin", initial), ApiProtocol.Json);
+            Check(raw.Contains("initialPassword") && raw.Contains(initial), "initial password wire contract lost");
+            var logs = new Capture(); var context = new DefaultHttpContext(); context.Request.Path = "/api/operations/users.create";
+            context.Request.Method = "POST"; context.Request.ContentType = "application/json"; context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(raw)); context.Response.Body = new MemoryStream();
+            await new TrafficLoggingMiddleware(_ => Task.CompletedTask, logs.Logger<TrafficLoggingMiddleware>(), Config(level == TrafficLevel.Full ? "full" : "redacted")).InvokeAsync(context);
+            using var handler = new TrafficLoggingHandler(new Reply("{}"), new(level)); var previews = new List<string>(); handler.Logged += previews.Add;
+            using var client = new HttpClient(handler); using var reply = await client.PostAsync("https://api.test/operations/users.create", new StringContent(raw, Encoding.UTF8, "application/json"));
+            Check(!string.Join('\n', logs.Messages.Concat(previews)).Contains(initial), "initial credential reached middleware/client traffic sink");
+            Check(!DebugPayload.Json(raw, level).Contains(initial) && !DebugPayload.Json("{\"InitialCredential\":\"" + initial + "\"}", level).Contains(initial), "initial credential reached operation/frame formatter");
+            Check(!TrafficDiagnostics.ReducerArguments(new SpacetimeDB.Types.Reducer.CreateUserV2("id", SpacetimeDB.Identity.FromHexString(new string('1', 64)), "VisibleLogin", initial, "", "", null), "create_user_v2", new(level)).Contains(initial), "initial credential reached reducer log");
+        }
+        Console.WriteLine("PASS administrative initial password exclusion in redacted/full: HTTP server/client sinks, operation/frame JSON and reducer arguments; visible usernames retained");
         using (var output = new StringWriter())
         {
             var jsonFormatter = new TrafficJsonFormatter(true);

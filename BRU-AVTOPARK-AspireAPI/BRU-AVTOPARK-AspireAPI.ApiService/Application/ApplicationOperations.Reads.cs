@@ -39,12 +39,13 @@ public sealed partial class ApplicationOperations
             var s = c.Db.RouteSchedule.ScheduleId.Find(id) ?? throw new OperationException("not_found");
             return ProjectSchedule(c, s, access);
         });
-        RegisterEntityRead(database, "roles", "roles.view", (c, id, _) =>
+        RegisterEntityRead(database, "roles", "roles.view", (c, id, access) =>
         {
             var r = c.Db.Role.RoleId.Find(id) ?? throw new OperationException("not_found");
             var permissions = c.Db.RolePermission.RoleId.Filter(r.RoleId).Select(p => c.Db.Permission.PermissionId.Find(p.PermissionId)).Where(p => p != null).ToArray();
             return new RoleRow(r.RoleId, r.LegacyRoleId, r.Name, r.Description, r.IsSystem, r.Priority, r.IsActive,
-                permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId));
+                permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId),
+                access.Allows("roles.view.permissions") ? permissions.Select(p => ProjectPermission(c, p!)).ToArray() : null);
         });
         RegisterEntityRead(database, "permissions", "permissions.view", (c, id, _) =>
         {
