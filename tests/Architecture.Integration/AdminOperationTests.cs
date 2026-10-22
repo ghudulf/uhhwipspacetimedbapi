@@ -99,6 +99,10 @@ internal static class AdminOperationTests
 
         var userOp = Id(); var user = await Send(new Reducer.CreateUserV2(userOp, actor, "synthetic-limited-" + Id(), "synthetic-initial-credential", "", "", null), userOp);
         var userIdentity = await db.ReadAsync(c => c.Db.UserProfile.LegacyUserId.Find(user.EntityId)!.UserId);
+        var existingLogin = await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(userIdentity)!.Login);
+        var duplicateId = Id();
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateUserV2(duplicateId, actor, existingLogin, "synthetic-initial-credential", "", "", null), _ => true));
+        Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().Count(u => u.Login == existingLogin) == 1 && c.Db.MutationReceipt.Key.Find(actor + ":" + duplicateId) == null), "duplicate user create left another user or receipt");
         var inactive = Id(); var inactiveReceipt = await Send(new Reducer.SetUserActiveV2(inactive, actor, user.EntityId, null, false), inactive);
         Check(!await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(userIdentity)!.IsActive), "user deactivation did not commit");
         var active = Id(); await Send(new Reducer.SetUserActiveV2(active, actor, user.EntityId, inactiveReceipt.Revision, true), active);
@@ -121,6 +125,30 @@ internal static class AdminOperationTests
             Check(limited.GetProperty("canCreate").GetBoolean() == (resource == "roles") && !limited.GetProperty("canEdit").GetBoolean() && !limited.GetProperty("canDelete").GetBoolean(), resource + " page permission flags do not reflect limited actor grants");
             var full = JsonSerializer.SerializeToElement(await operations.ExecuteAsync(resource + ".list", actor, payload, null, default), ApiProtocol.Json);
             Check(full.GetProperty("canCreate").GetBoolean() && full.GetProperty("canEdit").GetBoolean() && full.GetProperty("canDelete").GetBoolean(), resource + " owner page permission flags missing");
+            if (resource is "users" or "roles" or "permissions")
+                Check(limited.GetProperty("access").GetProperty("permissions").EnumerateArray().Any(p => p.GetString() == "assign_roles") && !limited.GetProperty("access").GetProperty("isAdministrator").GetBoolean(), "administrative access projection used cached claims or lost current permissions");
+            if (resource == "users")
+            {
+                var limitedUser = (UserRow)(await operations.ExecuteAsync("users.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+                Check(limitedUser.RoleIds == null && limitedUser.PermissionDetails == null, "users.view exposed separately protected role IDs or permission details");
+                foreach (var detailPermission in new[] { "users.view.roles", "users.view.permissions" })
+                {
+                    var detailId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == detailPermission).PermissionId);
+                    var grantDetails = Id(); await Send(new Reducer.GrantRolePermissionV2(grantDetails, actor, role.EntityId, null, detailId), grantDetails);
+                }
+                var detailedUser = (UserRow)(await operations.ExecuteAsync("users.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+                Check(detailedUser.RoleIds!.Contains(role.EntityId) && detailedUser.PermissionDetails!.Any(p => p.Name == "assign_roles"), "authorized user role/permission details lost existing displayed fields");
+                await CatalogReadAssertions.MatchesListAsync(operations, actor, "users", user.EntityId, detailedUser.Revision);
+            }
+            if (resource == "roles")
+            {
+                var limitedRole = (RoleRow)(await operations.ExecuteAsync("roles.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(role.EntityId)), null, default))!;
+                Check(limitedRole.PermissionDetails == null, "roles.view exposed separately protected permission details");
+                var detailId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "roles.view.permissions").PermissionId);
+                var grantDetails = Id(); await Send(new Reducer.GrantRolePermissionV2(grantDetails, actor, role.EntityId, null, detailId), grantDetails);
+                var detailedRole = (RoleRow)(await operations.ExecuteAsync("roles.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(role.EntityId)), null, default))!;
+                Check(detailedRole.PermissionDetails!.Any(p => p.Name == "assign_roles"), "authorized role permission details missing");
+            }
             var revokeView = Id(); await Send(new Reducer.RevokeRolePermissionV2(revokeView, actor, role.EntityId, null, permissionId), revokeView);
             try { await operations.ExecuteAsync(resource + ".list", userIdentity, payload, null, default); throw new Exception("revoked list remained readable"); }
             catch (OperationException ex) when (ex.Code == "forbidden") { }
@@ -141,10 +169,17 @@ internal static class AdminOperationTests
         var roleEditPermission = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "roles.edit").PermissionId);
         var allowEdit = Id(); await Send(new Reducer.GrantRolePermissionV2(allowEdit, actor, role.EntityId, null, roleEditPermission), allowEdit);
         var previousDescription = await db.ReadAsync(c => c.Db.Role.RoleId.Find(role.EntityId)!.Description);
+        var previousPermissionIds = await db.ReadAsync(c => c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Order().ToArray());
         var attemptedPermissions = await db.ReadAsync(c => c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Append(elevated).ToList());
         var compoundUpdate = Id();
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(compoundUpdate, userIdentity, role.EntityId, null, null, "must-rollback", null, null, attemptedPermissions), _ => true));
-        Check(await db.ReadAsync(c => c.Db.Role.RoleId.Find(role.EntityId)!.Description == previousDescription && c.Db.MutationReceipt.Key.Find(userIdentity + ":" + compoundUpdate) == null), "failed composite role update committed metadata or a receipt");
+        Check(await db.ReadAsync(c => c.Db.Role.RoleId.Find(role.EntityId)!.Description == previousDescription && c.Db.MutationReceipt.Key.Find(userIdentity + ":" + compoundUpdate) == null && c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Order().SequenceEqual(previousPermissionIds)), "failed composite role update committed metadata, partial permission replacement or a receipt");
+        var atomicCreate = Id(); var atomicRole = await Send(new Reducer.CreateRoleV2(atomicCreate, actor, 0, "synthetic-atomic-" + atomicCreate, "before", false, 0, new() { roleEditPermission }), atomicCreate);
+        var atomicUpdate = Id(); var replaced = await Send(new Reducer.UpdateRoleV2(atomicUpdate, actor, atomicRole.EntityId, atomicRole.Revision, null, "after", null, null, new() { elevated }), atomicUpdate);
+        // The shared legacy cores each advance the revision inside this one reducer transaction.
+        Check(replaced.Revision > atomicRole.Revision && await db.ReadAsync(c => c.Db.EntityRevision.Key.Find("roles:" + atomicRole.EntityId)!.Revision == replaced.Revision && c.Db.Role.RoleId.Find(atomicRole.EntityId)!.Description == "after" && c.Db.RolePermission.RoleId.Filter(atomicRole.EntityId).Select(p => p.PermissionId).SequenceEqual(new[] { elevated })), "role permission-set replacement was not exact/atomic or receipt revision differed from the committed row");
+        var atomicDelete = Id(); await Send(new Reducer.DeleteRoleV2(atomicDelete, actor, atomicRole.EntityId, replaced.Revision), atomicDelete);
+        Console.WriteLine("PASS administration client foundation: duplicate login leaves no user/receipt, current page access, detail-permission degradation, exact atomic role permission replacement and rejected compound update preserves metadata/set/receipt");
         var scopedId = Id();
         var ownerScoped = await Send(new Reducer.CreateRoleV2(scopedId, actor, 0, "synthetic-owner-scoped-" + scopedId, "", false, 0, null), scopedId);
         var userScoped = await db.ExecuteReducerAsync(new Reducer.CreateRoleV2(scopedId, userIdentity, 0, "synthetic-user-scoped-" + scopedId, "", false, 0, null), c => c.Db.MutationReceipt.Key.Find(userIdentity + ":" + scopedId)!);

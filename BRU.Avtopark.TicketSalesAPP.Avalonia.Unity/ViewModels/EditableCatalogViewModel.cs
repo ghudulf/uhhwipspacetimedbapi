@@ -77,7 +77,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
             if (!await _confirmDelete(row, ct) || ct.IsCancellationRequested || !CanDelete || api.AuthToken != token || api.CurrentBaseUrl != origin ||
                 SelectedItem == null || _key(_row(SelectedItem)) != _key(row)) return;
             var result = await _delete(row, operationId, ct);
-            Log.Information("{Screen} delete {OperationId}: {Code}, revision {Revision}", GetType().Name, operationId, "ok", result.Revision);
+            Log.Information("{Screen} delete {OperationId}: {Code}, entity {EntityId}, revision {Revision}", GetType().Name, operationId, "ok", result.EntityId, result.Revision);
             if (!ct.IsCancellationRequested) await LoadData();
         }
         catch (Exception exception)
