@@ -16,7 +16,7 @@ public sealed class RoleAssignmentService(ControlDialogHost host)
     private readonly CatalogEditorDrafts<UserRow, UserActivationDraft> _active = new();
     public async Task<bool> ShowAsync(UserRow user, RoleRow? role, bool remove, Func<bool> canSubmit, CancellationToken ct)
     {
-        if (role == null || role.IsSystem || role.Name == "Administrator") return false;
+        if (role == null) return false;
         var api = ApiClientService.Instance; var origin = api.CurrentBaseUrl ?? throw new ApplicationCommandException("session_changed"); var token = api.AuthToken ?? throw new ApplicationCommandException("unauthenticated");
         var attempt = _assign.Get(user.Id, () => new CatalogEditorAttempt<UserRow, RoleAssignmentDraft>(user,
             _ => new() { RoleId = role.Id, Remove = remove }, r => r.Revision, d => d.RoleId == 0 ? "Выберите роль." : null,

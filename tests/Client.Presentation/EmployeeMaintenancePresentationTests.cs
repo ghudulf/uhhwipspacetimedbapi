@@ -91,7 +91,7 @@ internal static class EmployeeMaintenancePresentationTests
             var request = requests.Single();
             if (checkRequest == null) Assert(request == new PageRequest(1, 100, ""), "typed default request failed"); else checkRequest(request);
             Assert(model.Items.Count == 1 && !model.CanCreate, "typed activation/paging/sync gating failed");
-            var dump = sink.Events.LastOrDefault(e => e.Properties.TryGetValue("Screen", out var screen) && screen.ToString().Contains(model.GetType().Name) && e.Properties.ContainsKey("BoundRows"));
+            var dump = sink.Events.LastOrDefault(e => e.Properties.TryGetValue("Screen", out var screen) && screen is ScalarValue { Value: string name } && name == model.GetType().Name && e.Properties.ContainsKey("BoundRows"));
             Assert(dump != null && dump.Properties["RowCount"].ToString() == "1", "snapshot did not dump bound row count");
             using (var dumped = System.Text.Json.JsonDocument.Parse((string)((ScalarValue)dump!.Properties["BoundRows"]).Value!))
                 Assert(System.Text.Json.JsonElement.DeepEquals(dumped.RootElement[0].GetProperty("Row"), System.Text.Json.JsonSerializer.SerializeToElement(row)), "snapshot dump differs from actual bound row");

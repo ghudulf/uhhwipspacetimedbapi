@@ -63,7 +63,7 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
     public RoleDisplayModel? SelectedRole { get => RolesCatalog.SelectedItem; set { RolesCatalog.SelectedItem = value; DetailsChanged(); } }
     public PermissionDisplayModel[] SelectedUserPermissions => SelectedUser?.Row.PermissionDetails?.Select(p => new PermissionDisplayModel(p)).ToArray() ?? [];
     public PermissionDisplayModel[] SelectedRolePermissions => SelectedRole?.Row.PermissionDetails?.Select(p => new PermissionDisplayModel(p)).ToArray() ?? [];
-    public bool CanAssignRole => CanMutate && SelectedUser != null && RolesCatalog.IsSynchronized && SelectedRole is { IsReadOnly: false } && Allows("assign_roles");
+    public bool CanAssignRole => CanMutate && SelectedUser != null && RolesCatalog.IsSynchronized && SelectedRole != null && Allows("assign_roles");
     public bool CanSetActive => CanEdit && Allows("users.edit");
     public IAsyncRelayCommand AssignRoleCommand { get; }
     public IAsyncRelayCommand RemoveRoleCommand { get; }

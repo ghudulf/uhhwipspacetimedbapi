@@ -39,7 +39,7 @@ internal static class CatalogEditorDialog
         void Update()
         {
             error.Text = string.IsNullOrEmpty(attempt.Message) ? notice : attempt.Message;
-            save.IsEnabled = !attempt.IsBlocked && !attempt.IsBusy;
+            save.IsEnabled = !attempt.IsBlocked && !attempt.IsBusy && canSubmit();
             reconcile.IsVisible = attempt.CanReconcile; reconcile.IsEnabled = !attempt.IsBusy;
             reload.IsVisible = attempt.CanReload; reload.IsEnabled = !attempt.IsBusy;
             replace.IsVisible = attempt.Current != null; replace.IsEnabled = !attempt.IsBusy;
