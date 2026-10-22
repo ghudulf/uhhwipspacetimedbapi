@@ -27,10 +27,30 @@ Client batch 3 migrates Route Schedules and Sales to shared typed list/get/mutat
 operations (including `sales.get`), permission-bearing filtered pages and retained
 editor/receipt reconciliation. The generic `/api/operations/{operation}` HTTP
 adapter is their rollback transport; legacy read endpoints below remain legacy
-contracts, not newly claimed adapters. The remaining client screens are Users,
-Roles and Permissions. Api.Contracts still checks every reflected endpoint and
+contracts, not newly claimed adapters. The final batch also migrates Users, Roles
+and Permissions; no business CRUD/report screens remain. Api.Contracts still checks every reflected endpoint and
 registered-operation reference in this ledger; no endpoint disposition is removed
 by the client migration.
+
+Final administration client operation map (existing server compatibility endpoint
+dispositions below are unchanged):
+
+| Client function | Shared operation |
+|---|---|
+| User list/server search/refresh, profile conflict reload | `users.list`, `users.get` |
+| Masked initial-password creation; email/phone edit | `users.create`, `users.update` |
+| User activation/deactivation/delete | `users.set-active`, `users.delete` |
+| Selected user's role assignment/removal | `users.assign-role`, `users.remove-role` |
+| Role list/search/reload, metadata and atomic permission-set CRUD | `roles.list`, `roles.get`, `roles.create`, `roles.update`, `roles.delete` |
+| Permission list/search/reload/CRUD | `permissions.list`, `permissions.get`, `permissions.create`, `permissions.update`, `permissions.delete` |
+| Uncertain editor settlement | `mutations.receipt` (never automatic replay) |
+
+Role editors use atomic permission-set replacement rather than a sequence of
+`roles.grant-permission` / `roles.revoke-permission` writes; those existing
+operations remain available to compatibility adapters. Obsolete existing-account
+password/login controls are not credential-reset support. Raw diagnostic tools
+and authentication ceremonies intentionally retain their protocol transports;
+see the final inventory in migration-and-validation.md.
 
 QR display, approval, device enrollment and self-scan routes below retain their
 existing one-time protocol and tested client adapters. They are deliberately
