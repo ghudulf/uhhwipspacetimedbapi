@@ -2,7 +2,9 @@ namespace BRU.Avtopark.Contracts;
 
 public sealed record TicketRow(uint Id, uint RouteId, string? RouteLabel, uint SeatNumber, decimal? TicketPrice, string PaymentMethod, DateTimeOffset? PurchaseTime, bool IsActive, ulong Revision,
     string? RouteStartPoint = null, string? RouteEndPoint = null, string? RouteTravelTime = null);
-public sealed record ScheduleRow(uint Id, uint RouteId, string? RouteLabel, string? BusLabel, string? DriverLabel, DateTimeOffset? DepartureTime, DateTimeOffset? ArrivalTime, decimal? Price, uint AvailableSeats, bool IsActive, ulong Revision);
+public sealed record ScheduleRow(uint Id, uint RouteId, string? RouteLabel, string? BusLabel, string? DriverLabel, DateTimeOffset? DepartureTime, DateTimeOffset? ArrivalTime, decimal? Price, uint AvailableSeats, bool IsActive, ulong Revision,
+    string? StartPoint = null, string? EndPoint = null, string[]? DaysOfWeek = null, string[]? RouteStops = null, string[]? EstimatedStopTimes = null,
+    double[]? StopDistances = null, uint? StopDurationMinutes = null, bool IsRecurring = false, string? Notes = null, string[]? BusTypes = null);
 public sealed record UserRow(uint Id, string Identity, string Login, string? Email, string? PhoneNumber, bool IsActive, DateTimeOffset? CreatedAt, DateTimeOffset? LastLoginAt, string[] Roles, ulong Revision);
 public sealed record RoleRow(uint Id, int LegacyRoleId, string Name, string? Description, bool IsSystem, uint Priority, bool IsActive, uint[] PermissionIds, string[] Permissions, int UserCount, ulong Revision);
 public sealed record PermissionRow(uint Id, string Name, string? Description, string? Category, bool IsActive, ulong Revision);
@@ -12,10 +14,10 @@ public sealed record UpdateTicketCommand(uint Id, uint? RouteId = null, double? 
 public sealed record DeleteTicketCommand(uint Id, ulong? ExpectedRevision = null);
 
 public sealed record CreateScheduleCommand(uint RouteId, ulong DepartureTime, double Price, uint AvailableSeats, string[]? DaysOfWeek = null, string? StartPoint = null, string? EndPoint = null,
-    string[]? RouteStops = null, ulong? ArrivalTime = null, uint? StopDurationMinutes = null, bool? IsRecurring = null, string[]? EstimatedStopTimes = null, double[]? StopDistances = null, string? Notes = null, string[]? BusTypes = null);
+    string[]? RouteStops = null, ulong? ArrivalTime = null, uint? StopDurationMinutes = null, bool? IsRecurring = null, string[]? EstimatedStopTimes = null, double[]? StopDistances = null, string? Notes = null, string[]? BusTypes = null, bool IsActive = true);
 public sealed record UpdateScheduleCommand(uint Id, uint? RouteId = null, ulong? DepartureTime = null, double? Price = null, uint? AvailableSeats = null, string[]? DaysOfWeek = null,
     string? StartPoint = null, string? EndPoint = null, string[]? RouteStops = null, ulong? ArrivalTime = null, uint? StopDurationMinutes = null, bool? IsRecurring = null,
-    string[]? EstimatedStopTimes = null, double[]? StopDistances = null, string? Notes = null, string[]? BusTypes = null, ulong? ExpectedRevision = null);
+    string[]? EstimatedStopTimes = null, double[]? StopDistances = null, string? Notes = null, string[]? BusTypes = null, ulong? ExpectedRevision = null, bool? IsActive = null);
 public sealed record DeleteScheduleCommand(uint Id, ulong? ExpectedRevision = null);
 public sealed record SetScheduleActiveCommand(uint Id, bool Active, ulong? ExpectedRevision = null);
 

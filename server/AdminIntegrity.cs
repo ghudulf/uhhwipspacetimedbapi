@@ -54,9 +54,23 @@ public static partial class Module
         }
         if (days?.Length > 7)
             throw new Exception("Invalid schedule days.");
+        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(typeof(DayOfWeek), day)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length)) throw new Exception("Invalid schedule days.");
+        if (stops is { Length: 1 } || times?.Any(t => !TimeSpan.TryParseExact(t, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)) == true) throw new Exception("Invalid schedule stops or times.");
         if (distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true)
             throw new Exception("Invalid stop distances.");
         if (stops != null && (times is { Length: > 0 } && times.Length != stops.Length || distances is { Length: > 0 } && distances.Length != stops.Length))
             throw new Exception("Schedule stop metadata lengths differ.");
+    }
+    private static void EnsureScheduleActivation(ReducerContext ctx, uint routeId, bool active)
+    {
+        var route = ctx.Db.Route.RouteId.Find(routeId);
+        if (active && route?.IsActive != true) throw new Exception("Cannot activate schedule: the associated route is inactive or not found.");
+        if (!active)
+        {
+            var ids = ctx.Db.Ticket.Iter().Where(t => t.RouteId == routeId).Select(t => t.TicketId).ToHashSet();
+            var now = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
+            if (ctx.Db.Sale.Iter().Any(s => ids.Contains(s.TicketId) && s.SaleDate > (now > 86400000 ? now - 86400000 : 0)))
+                throw new Exception("Cannot deactivate schedule: there are recent ticket sales for this route.");
+        }
     }
 }

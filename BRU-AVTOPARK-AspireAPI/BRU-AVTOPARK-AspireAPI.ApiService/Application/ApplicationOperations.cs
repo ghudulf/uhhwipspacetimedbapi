@@ -39,19 +39,7 @@ public sealed partial class ApplicationOperations
             var access = await _access.GetAsync(actor, ct);
             return new AccessSnapshot(access.IsActive, access.IsAdministrator, access.Roles, access.Permissions);
         });
-        Register<PageRequest>("sales.list", "sales.view", false, (actor, request, _, ct) =>
-        {
-            ValidatePage(request);
-            return Read(database, c =>
-            {
-                var query = c.Db.Sale.Iter().Where(s => string.IsNullOrWhiteSpace(request.Search) || s.TicketSoldToUser.Contains(request.Search, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).ToArray();
-                return new PageResult<SaleRow>(query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize)
-                    .Select(s => new SaleRow(s.SaleId, DateTimeOffset.FromUnixTimeMilliseconds(checked((long)s.SaleDate)), s.TicketId,
-                        s.TicketSoldToUser, s.TicketSoldToUserPhone, s.SellerId?.ToString(), SalePresentation.Amount(c, s),
-                        c.Db.SaleRevision.SaleId.Find(s.SaleId)?.Revision ?? 0)).ToArray(), request.Page, request.PageSize, query.Length);
-            }, ct);
-        });
+        RegisterSalesReads(database);
         Register<CreateSaleCommand>("sales.create", "sales.create", true, async (actor, request, id, ct) =>
         {
             if (request.TicketId == 0) throw new OperationException("validation_failed");

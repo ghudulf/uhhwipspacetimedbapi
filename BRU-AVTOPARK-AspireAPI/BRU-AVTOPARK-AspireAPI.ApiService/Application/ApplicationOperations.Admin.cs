@@ -25,16 +25,8 @@ public sealed partial class ApplicationOperations
             ValidatePage(request); var access = await _access.GetAsync(actor, ct);
             return await database.ReadAsync(c =>
             {
-                var rows = c.Db.RouteSchedule.Iter().Where(s => Matches(request.Search, s.StartPoint, s.EndPoint, s.Notes)).OrderBy(s => s.ScheduleId).ToArray();
-                return new CatalogPageResult<ScheduleRow>(Page(rows, request).Select(s =>
-                {
-                    var route = c.Db.Route.RouteId.Find(s.RouteId);
-                    var bus = access.Allows("buses.view") && route != null ? c.Db.Bus.BusId.Find(route.BusId) : null;
-                    var driver = access.Allows("employees.view") && route != null ? c.Db.Employee.EmployeeId.Find(route.DriverId) : null;
-                    return new ScheduleRow(s.ScheduleId, s.RouteId, access.Allows("routes.view") ? RouteLabel(c, s.RouteId) : null,
-                        bus == null ? null : bus.Model + " " + bus.RegistrationNumber, driver == null ? null : driver.Surname + " " + driver.Name,
-                        Timestamp(s.DepartureTime), Timestamp(s.ArrivalTime), Amount(s.Price), s.AvailableSeats, s.IsActive, Version(c, "schedules", s.ScheduleId));
-                }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("schedules.create"), access.Allows("schedules.edit"), access.Allows("schedules.delete"));
+                var rows = c.Db.RouteSchedule.Iter().Where(s => (!request.RouteId.HasValue || s.RouteId == request.RouteId) && MatchesScheduleDate(s, request.Date) && Matches(request.Search, s.StartPoint, s.EndPoint, s.Notes)).OrderBy(s => s.ScheduleId).ToArray();
+                return new CatalogPageResult<ScheduleRow>(Page(rows, request).Select(s => ProjectSchedule(c, s, access)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("schedules.create"), access.Allows("schedules.edit"), access.Allows("schedules.delete"));
             }, ct);
         });
         Register<PageRequest>("users.list", "users.view", false, async (actor, request, _, ct) =>
@@ -97,15 +89,17 @@ public sealed partial class ApplicationOperations
         Register<CreateScheduleCommand>("schedules.create", "schedules.create", true, (actor, r, id, ct) =>
         {
             AdminId(r.RouteId); AdminSchedule(r.DepartureTime, r.ArrivalTime, r.Price, r.StartPoint, r.EndPoint, r.RouteStops, r.DaysOfWeek, r.EstimatedStopTimes, r.StopDistances, r.Notes); AdminArray(r.BusTypes);
+            if (r.StopDurationMinutes > 1440) throw new OperationException("validation_failed");
             return Commit(new Reducer.CreateScheduleV2(id!, actor, r.RouteId, r.DepartureTime, r.Price, r.AvailableSeats, r.DaysOfWeek?.ToList(), r.StartPoint, r.EndPoint,
-                r.RouteStops?.ToList(), r.ArrivalTime, r.StopDurationMinutes, r.IsRecurring, r.EstimatedStopTimes?.ToList(), r.StopDistances?.ToList(), r.Notes, r.BusTypes?.ToList()), actor, id, ct);
+                r.RouteStops?.ToList(), r.ArrivalTime, r.StopDurationMinutes, r.IsRecurring, r.EstimatedStopTimes?.ToList(), r.StopDistances?.ToList(), r.Notes, r.BusTypes?.ToList(), r.IsActive), actor, id, ct);
         });
         Register<UpdateScheduleCommand>("schedules.update", "schedules.edit", true, (actor, r, id, ct) =>
         {
-            AdminId(r.Id); if (r.RouteId == 0 || r.RouteId == null && r.DepartureTime == null && r.ArrivalTime == null && r.Price == null && r.AvailableSeats == null && r.DaysOfWeek == null && r.StartPoint == null && r.EndPoint == null && r.RouteStops == null && r.StopDurationMinutes == null && r.IsRecurring == null && r.EstimatedStopTimes == null && r.StopDistances == null && r.Notes == null && r.BusTypes == null) throw new OperationException("validation_failed");
+            AdminId(r.Id); if (r.RouteId == 0 || r.RouteId == null && r.DepartureTime == null && r.ArrivalTime == null && r.Price == null && r.AvailableSeats == null && r.DaysOfWeek == null && r.StartPoint == null && r.EndPoint == null && r.RouteStops == null && r.StopDurationMinutes == null && r.IsRecurring == null && r.EstimatedStopTimes == null && r.StopDistances == null && r.Notes == null && r.BusTypes == null && r.IsActive == null) throw new OperationException("validation_failed");
+            if (r.StopDurationMinutes > 1440) throw new OperationException("validation_failed");
             AdminSchedule(r.DepartureTime, r.ArrivalTime, r.Price, r.StartPoint, r.EndPoint, r.RouteStops, r.DaysOfWeek, r.EstimatedStopTimes, r.StopDistances, r.Notes); AdminArray(r.BusTypes);
             return Commit(new Reducer.UpdateScheduleV2(id!, actor, r.Id, r.ExpectedRevision, r.RouteId, r.StartPoint, r.EndPoint, r.RouteStops?.ToList(), r.DepartureTime, r.ArrivalTime,
-                r.Price, r.AvailableSeats, r.DaysOfWeek?.ToList(), r.BusTypes?.ToList(), r.StopDurationMinutes, r.IsRecurring, r.EstimatedStopTimes?.ToList(), r.StopDistances?.ToList(), r.Notes), actor, id, ct);
+                r.Price, r.AvailableSeats, r.DaysOfWeek?.ToList(), r.BusTypes?.ToList(), r.StopDurationMinutes, r.IsRecurring, r.EstimatedStopTimes?.ToList(), r.StopDistances?.ToList(), r.Notes, r.IsActive), actor, id, ct);
         });
         Register<DeleteScheduleCommand>("schedules.delete", "schedules.delete", true, (actor, r, id, ct) => { AdminId(r.Id); return Commit(new Reducer.DeleteScheduleV2(id!, actor, r.Id, r.ExpectedRevision), actor, id, ct); });
         Register<SetScheduleActiveCommand>("schedules.set-active", "schedules.edit", true, (actor, r, id, ct) => { AdminId(r.Id); return Commit(new Reducer.SetScheduleActiveV2(id!, actor, r.Id, r.ExpectedRevision, r.Active), actor, id, ct); });
@@ -161,8 +155,18 @@ public sealed partial class ApplicationOperations
     private static void AdminSchedule(ulong? departure, ulong? arrival, double? price, string? start, string? end, string[]? stops, string[]? days, string[]? times, double[]? distances, string? notes)
     {
         AdminPrice(price); AdminText(start, 200); AdminText(end, 200); AdminText(notes, 4000); AdminArray(stops); AdminArray(days); AdminArray(times);
+        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(day)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length) ||
+            stops is { Length: 1 } || times?.Any(t => !TimeSpan.TryParseExact(t, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)) == true) throw new OperationException("validation_failed");
         if (departure > 253402300799999 || arrival > 253402300799999 || departure.HasValue && arrival.HasValue && arrival != 0 && arrival < departure || days?.Length > 7 ||
             distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true ||
             stops != null && (times is { Length: > 0 } && times.Length != stops.Length || distances is { Length: > 0 } && distances.Length != stops.Length)) throw new OperationException("validation_failed");
+    }
+    private static bool MatchesScheduleDate(RouteSchedule s, DateOnly? date)
+    {
+        if (!date.HasValue) return true;
+        var start = (ulong)new DateTimeOffset(date.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeMilliseconds();
+        return s.IsRecurring
+            ? s.DaysOfWeek?.Contains(date.Value.DayOfWeek.ToString(), StringComparer.OrdinalIgnoreCase) == true && start >= s.ValidFrom && (!s.ValidUntil.HasValue || start <= s.ValidUntil)
+            : s.DepartureTime >= start && s.DepartureTime < start + 86400000;
     }
 }

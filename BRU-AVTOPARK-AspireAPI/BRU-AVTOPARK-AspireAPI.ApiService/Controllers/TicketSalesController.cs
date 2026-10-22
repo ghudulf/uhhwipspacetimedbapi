@@ -425,9 +425,7 @@ using Microsoft.AspNetCore.Authorization;
                 var end = endDate?.ToUniversalTime();
                 var rows = await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
                     .OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).Select(s => SalePresentation.Map(c, s))
-                    .Where(s => (!start.HasValue || s.SaleDate >= start) && (!end.HasValue || s.SaleDate <= end))
-                    .Where(s => string.IsNullOrEmpty(soldToUser) || s.TicketSoldToUser.Contains(soldToUser, StringComparison.OrdinalIgnoreCase))
-                    .Where(s => SalePresentation.MatchesTicketPrice(s, minPrice, maxPrice))
+                    .Where(s => SalePresentation.MatchesFilters(s, start, end, minPrice, maxPrice, soldToUser))
                     .ToArray(), HttpContext.RequestAborted);
                 return Ok(rows);
             }

@@ -28,6 +28,7 @@ internal static class CatalogReadOperationTests
             ("schedules", new ScheduleRow(7, 1, null, null, null, null, null, 10m, 20, true, 3)),
             ("roles", new RoleRow(7, 1, "Role", "", false, 1, true, [], [], 0, 3)),
             ("permissions", new PermissionRow(7, "permission", "", "", true, 3))
+            ,("sales", new SaleRow(7, null, 1, "Покупатель", "", null, null, 3))
         };
         var permissions = Array.Empty<string>(); var missing = false; var projectionReads = 0;
         var database = Stub.Create<ISpacetimeDBService>((method, _) =>
@@ -68,7 +69,7 @@ internal static class CatalogReadOperationTests
             await Reject("validation_failed", () => operations.ExecuteAsync(operation, actor, JsonSerializer.SerializeToElement(new EntityRequest(0)), null, default));
         }
         Assert(operations.Capabilities.Count(c => c.Name == "jobs.get") == 1 && operations.Capabilities.Count(c => c.Name == "users.get") == 1, "existing single-row operations duplicated");
-        Console.WriteLine("PASS catalog single-row reads: seven typed capabilities/permissions, per-call revocation, missing entity/HTTP 404, zero-ID validation, nonmutating and nonsubscribable; existing jobs/users reads not duplicated");
+        Console.WriteLine("PASS catalog/sale single-row reads: typed capabilities/permissions, per-call revocation, missing entity/HTTP 404, zero-ID validation, nonmutating and nonsubscribable; existing jobs/users reads not duplicated");
     }
     private static async Task Reject(string code, Func<Task<object?>> action)
     {

@@ -59,9 +59,25 @@ internal static class AdminOperationTests
             (id, entity, version) => new(id, actor, entity, version, null, null, 20, null, null),
             (id, entity, version) => new(id, actor, entity, version),
             entity => db.ExecuteReducerAsync(new Reducer.UpdateTicket(entity, null, null, 21, null, null, actor), _ => true));
+        async Task<MutationResult> ScheduleOperation(string name, object payload) => (MutationResult)(await operations.ExecuteAsync(name, actor, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), Id(), default))!;
+        var departure = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var nextDay = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var metadata = await ScheduleOperation("schedules.create", new CreateScheduleCommand(route, departure, 2, 20, [nextDay.DayOfWeek.ToString()], "A", "B", ["A", "B"], departure + 3600000, 5, true, ["08:00", "09:00"], [0, 12], "Notes", ["Regular"], false));
+        var metadataRow = (ScheduleRow)(await operations.ExecuteAsync("schedules.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(metadata.EntityId)), null, default))!;
+        Check(!metadataRow.IsActive && metadataRow.IsRecurring && metadataRow.RouteStops!.SequenceEqual(["A", "B"]) && metadataRow.DaysOfWeek!.Single() == nextDay.DayOfWeek.ToString() && metadataRow.EstimatedStopTimes!.Length == 2 && metadataRow.StopDistances![1] == 12 && metadataRow.StopDurationMinutes == 5 && metadataRow.Notes == "Notes" && metadataRow.BusTypes!.Single() == "Regular", "schedule metadata/initial active flag lost");
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "schedules", metadata.EntityId, metadata.Revision);
+        var filtered = (CatalogPageResult<ScheduleRow>)(await operations.ExecuteAsync("schedules.list", actor, JsonSerializer.SerializeToElement(new PageRequest(RouteId: route, Date: nextDay)), null, default))!;
+        Check(filtered.Items.Any(s => s.Id == metadata.EntityId), "recurring schedule date/route filter lost matching row");
+        var atomic = await ScheduleOperation("schedules.update", new UpdateScheduleCommand(metadata.EntityId, Price: 3, Notes: "", ExpectedRevision: metadata.Revision, IsActive: true));
+        Check(atomic.Revision == metadata.Revision + 1, "schedule activation used more than one mutation/revision");
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "schedules", metadata.EntityId, atomic.Revision);
+        await db.ExecuteReducerAsync(new Reducer.UpdateRouteSchedule(metadata.EntityId, null, null, null, null, null, null, 4, null, null, null, null, null, null, null, null, actor), _ => true);
+        await Reject(() => ScheduleOperation("schedules.update", new UpdateScheduleCommand(metadata.EntityId, Price: 5, ExpectedRevision: atomic.Revision)));
+        await ScheduleOperation("schedules.delete", new DeleteScheduleCommand(metadata.EntityId, atomic.Revision + 1));
+        Console.WriteLine("PASS schedule metadata/current-list equality, recurring route/date filter, atomic activation, empty-note clearing and legacy-update/V2 revision conflict");
         await Crud<Reducer.CreateScheduleV2, Reducer.UpdateScheduleV2, Reducer.DeleteScheduleV2>("schedules",
-            (id, label) => new(id, actor, route, 1000, 12.5, 10, null, null, null, null, 2000, null, null, null, null, label, null),
-            (id, entity, version) => new(id, actor, entity, version, null, null, null, null, null, null, 20, null, null, null, null, null, null, null, "edited"),
+            (id, label) => new(id, actor, route, 1000, 12.5, 10, null, null, null, null, 2000, null, null, null, null, label, null, true),
+            (id, entity, version) => new(id, actor, entity, version, null, null, null, null, null, null, 20, null, null, null, null, null, null, null, "edited", null),
             (id, entity, version) => new(id, actor, entity, version),
             entity => db.ExecuteReducerAsync(new Reducer.UpdateRouteSchedule(entity, null, null, null, null, null, null, 21, null, null, null, null, null, null, null, "legacy", actor), _ => true));
         await Crud<Reducer.CreateUserV2, Reducer.UpdateUserV2, Reducer.DeleteUserV2>("users",
@@ -115,7 +131,7 @@ internal static class AdminOperationTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.AssignUserRoleV2(Id(), userIdentity, user.EntityId, null, adminId), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.GrantRolePermissionV2(Id(), userIdentity, role.EntityId, null, elevated), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateTicketV2(Id(), userIdentity, 1, null, null, null, 1, null, null), _ => true));
-        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateScheduleV2(Id(), userIdentity, 1, null, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateScheduleV2(Id(), userIdentity, 1, null, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateUserV2(Id(), userIdentity, user.EntityId, null, "x@example.invalid", null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), userIdentity, role.EntityId, null, null, "x", null, null, null), _ => true));
         var compoundOp = Id();
@@ -154,9 +170,9 @@ internal static class AdminOperationTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, system.EntityId, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRole(system.EntityId, "renamed-system", null, null, null, actor), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeletePermissionV2(Id(), actor, elevated, null), _ => true));
-        var scheduleOp = Id(); var schedule = await Send(new Reducer.CreateScheduleV2(scheduleOp, actor, route, 1000, 0, 10, null, null, null, new() { "A", "B" }, 2000, null, null, null, null, null, null), scheduleOp);
+        var scheduleOp = Id(); var schedule = await Send(new Reducer.CreateScheduleV2(scheduleOp, actor, route, 1000, 0, 10, null, null, null, new() { "A", "B" }, 2000, null, null, null, null, null, null, true), scheduleOp);
         Check(await db.ReadAsync(c => c.Db.RouteSchedule.ScheduleId.Find(schedule.EntityId) is { StartPoint: "Synthetic admin start", EndPoint: "Synthetic admin end", EstimatedStopTimes.Count: 0, StopDistances.Count: 0 }), "schedule creation lost legacy label/empty-metadata defaults");
-        var scheduleEdit = Id(); schedule = await Send(new Reducer.UpdateScheduleV2(scheduleEdit, actor, schedule.EntityId, schedule.Revision, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null), scheduleEdit);
+        var scheduleEdit = Id(); schedule = await Send(new Reducer.UpdateScheduleV2(scheduleEdit, actor, schedule.EntityId, schedule.Revision, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null, null), scheduleEdit);
         var stop = Id(); var stopped = await Send(new Reducer.SetScheduleActiveV2(stop, actor, schedule.EntityId, schedule.Revision, false), stop);
         var start = Id(); await Send(new Reducer.SetScheduleActiveV2(start, actor, schedule.EntityId, stopped.Revision, true), start);
         await Send(new Reducer.SetScheduleActiveV2(stop, actor, schedule.EntityId, schedule.Revision, false), stop);
@@ -164,6 +180,23 @@ internal static class AdminOperationTests
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoute(route, actor), _ => true));
         var ticketOp = Id(); var ticket = await Send(new Reducer.CreateTicketV2(ticketOp, actor, route, 10, (uint)Random.Shared.Next(1000, int.MaxValue), "Cash", null), ticketOp);
         var saleOp = Id(); var sale = await Send(new Reducer.CreateSaleV2(saleOp, actor, ticket.EntityId, "Synthetic buyer", "", null, null), saleOp);
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "sales", sale.EntityId, sale.Revision);
+        await db.ExecuteReducerAsync(new Reducer.UpdateTicket(ticket.EntityId, null, null, 37, null, null, actor), _ => true);
+        var saleQuery = new PageRequest(1, 1, BuyerName: "Synthetic buyer", MinPrice: 36, MaxPrice: 38, StartDate: DateTimeOffset.UtcNow.AddDays(-1), EndDate: DateTimeOffset.UtcNow.AddDays(1));
+        var salePage = (CatalogPageResult<SaleRow>)(await operations.ExecuteAsync("sales.list", actor, JsonSerializer.SerializeToElement(saleQuery, ApiProtocol.Json), null, default))!;
+        Check(salePage.Items.Single().SaleId == sale.EntityId && salePage.Items.Single().RecordedAmount == 10m && salePage.Items.Single().SellerLabel == "synthetic-owner" && salePage.KnownTotal == 10m && salePage.UnknownAmountCount == 0 && salePage.CanEdit,
+            "sale ticket-price filters/recorded amount/seller/page permissions or full-query totals differ");
+        var excluded = (CatalogPageResult<SaleRow>)(await operations.ExecuteAsync("sales.list", actor, JsonSerializer.SerializeToElement(saleQuery with { MinPrice = 9, MaxPrice = 11 }, ApiProtocol.Json), null, default))!;
+        Check(excluded.TotalCount == 0, "sale search incorrectly filtered recorded amount instead of current ticket price");
+        var details = await db.ReadAsync(c => SalePresentation.Map(c, c.Db.Sale.SaleId.Find(sale.EntityId)!));
+        Check(SalePresentation.MatchesFilters(details, saleQuery.StartDate?.UtcDateTime, saleQuery.EndDate?.UtcDateTime, saleQuery.MinPrice, saleQuery.MaxPrice, saleQuery.BuyerName), "legacy HTTP filter helper disagrees with shared sale query");
+        try { await operations.ExecuteAsync("sales.update", actor, JsonSerializer.SerializeToElement(new { id = sale.EntityId, saleDate = DateTimeOffset.UtcNow, buyerName = "Changed" }, ApiProtocol.Json), Id(), default); throw new Exception("sale date mutation accepted"); }
+        catch (OperationException ex) when (ex.Code == "validation_failed") { }
+        var beforeSaleEdit = (SaleRow)(await operations.ExecuteAsync("sales.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(sale.EntityId)), null, default))!;
+        await operations.ExecuteAsync("sales.update", actor, JsonSerializer.SerializeToElement(new UpdateSaleCommand(sale.EntityId, sale.Revision, BuyerPhone: ""), ApiProtocol.Json), Id(), default);
+        var afterSaleEdit = (SaleRow)(await operations.ExecuteAsync("sales.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(sale.EntityId)), null, default))!;
+        Check(afterSaleEdit.SaleDate == beforeSaleEdit.SaleDate && afterSaleEdit.TicketId == beforeSaleEdit.TicketId && afterSaleEdit.BuyerPhone == "" && afterSaleEdit.Revision > beforeSaleEdit.Revision, "buyer-only sale edit changed immutable fields or rejected empty phone");
+        Console.WriteLine("PASS real sale paged ticket-price/date/buyer filters match legacy semantics, recorded amounts/totals and seller labels retained, sale-date mutation rejected, buyer-only empty-phone update preserves date/ticket/revisions");
         await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteTicketV2(Id(), actor, ticket.EntityId, null), _ => true));
         await Reject(() => db.ExecuteReducerAsync(new Reducer.SetScheduleActiveV2(Id(), actor, schedule.EntityId, null, false), _ => true));
         Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().All(u => string.IsNullOrEmpty(u.PasswordHash))), "administration exposed credentials in profiles");

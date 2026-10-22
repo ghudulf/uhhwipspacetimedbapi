@@ -15,7 +15,7 @@ public static class ApplicationClientCoordinator
     private static SessionRefreshCoordinator? _refresh;
     public static event Action? SessionExpired;
     private static readonly System.Collections.Generic.HashSet<string> Reads = new(StringComparer.Ordinal)
-    { "session.access", "buses.list", "sales.list", "reports.sales", "reports.income", "routes.list", "routes.get", "employees.list", "employees.get", "employees.drivers",
+    { "session.access", "buses.list", "sales.list", "sales.get", "reports.sales", "reports.income", "routes.list", "routes.get", "employees.list", "employees.get", "employees.drivers",
       "jobs.list", "jobs.get", "maintenance.list", "maintenance.get", "tickets.list", "tickets.get", "schedules.list", "schedules.get", "users.list", "users.get", "roles.list", "roles.get", "permissions.list", "permissions.get" };
     public static void ConfigureSessionRefresher(ISessionRefresher? refresher)
     {

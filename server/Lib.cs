@@ -1518,11 +1518,13 @@ public static partial class Module
 
     private static uint CreateRouteScheduleCore(ReducerContext ctx, uint routeId, ulong departureTime, double price, uint availableSeats,
         string[]? daysOfWeek, string? startPoint, string? endPoint, string[]? routeStops, ulong? arrivalTime, uint? stopDurationMinutes,
-        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, Identity? actingUser)
+        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, Identity? actingUser, bool isActive = true)
     {
         var actor = ResolveEffectiveUser(ctx, actingUser);
         if (!HasPermission(ctx, actor, "schedules.create")) throw new Exception("Missing schedules.create permission.");
         ValidateScheduleFields(departureTime, arrivalTime ?? 0, price, startPoint, endPoint, routeStops, daysOfWeek, estimatedStopTimes, stopDistances, notes);
+        if (stopDurationMinutes > 1440) throw new Exception("Invalid stop duration.");
+        if (isActive) EnsureScheduleActivation(ctx, routeId, true);
         // Validate that the route exists
         var scheduleRoute = ctx.Db.Route.RouteId.Find(routeId);
         if (scheduleRoute == null)
@@ -1567,7 +1569,7 @@ public static partial class Module
             CreatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set creation time
             UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set update time
             UpdatedBy = actor.ToString(),            // Record the effective delegated actor.
-            IsActive = true,                         // Set as active by default
+            IsActive = isActive,
             ValidFrom = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000   // Set valid from date
         };
         // Insert the new schedule into the database
@@ -2316,7 +2318,7 @@ public static partial class Module
     private static void UpdateRouteScheduleCore(ReducerContext ctx, uint scheduleId, uint? routeId, string? startPoint,
         string? endPoint, string[]? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats,
         string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes, bool? isRecurring, string[]? estimatedStopTimes,
-        double[]? stopDistances, string? notes, Identity? actingUser)
+        double[]? stopDistances, string? notes, Identity? actingUser, bool? isActive = null)
     {
         // Get the effective user identity - either the provided actingUser or ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity
@@ -2334,6 +2336,7 @@ public static partial class Module
         {
             throw new Exception("Route schedule not found.");
         }
+        var originalRouteId = schedule.RouteId;
 
         // Update properties if provided (not null)
         if (routeId.HasValue)
@@ -2363,7 +2366,14 @@ public static partial class Module
         if (isRecurring.HasValue) schedule.IsRecurring = isRecurring.Value;
         if (estimatedStopTimes != null) schedule.EstimatedStopTimes = estimatedStopTimes;
         if (stopDistances != null) schedule.StopDistances = stopDistances;
-        if (!string.IsNullOrEmpty(notes)) schedule.Notes = notes;
+        if (notes != null) schedule.Notes = notes;
+        if (schedule.StopDurationMinutes > 1440) throw new Exception("Invalid stop duration.");
+        if (isActive.HasValue)
+        {
+            EnsureScheduleActivation(ctx, schedule.RouteId, isActive.Value);
+            if (!isActive.Value && originalRouteId != schedule.RouteId) EnsureScheduleActivation(ctx, originalRouteId, false);
+            schedule.IsActive = isActive.Value;
+        }
 
         ValidateScheduleFields(schedule.DepartureTime, schedule.ArrivalTime, schedule.Price, schedule.StartPoint, schedule.EndPoint, schedule.RouteStops, schedule.DaysOfWeek, schedule.EstimatedStopTimes, schedule.StopDistances, schedule.Notes);
         // Update the "updated" fields

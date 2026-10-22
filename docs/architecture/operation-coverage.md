@@ -288,6 +288,7 @@ Resource-specific HTTP reads marked legacy above are not falsely claimed as adap
 | v2 routes.update | `routes.edit` | true |
 | v2 sales.create | `sales.create` | true |
 | v2 sales.delete | `sales.delete` | true |
+| v2 sales.get | `sales.view` | false |
 | v2 sales.list | `sales.view` | false |
 | v2 sales.update | `sales.edit` | true |
 | v2 schedules.create | `schedules.create` | true |

@@ -11,11 +11,11 @@ internal static class CatalogReadAssertions
         var expectedType = resource switch
         {
             "routes" => typeof(RouteRow), "employees" => typeof(EmployeeRow), "maintenance" => typeof(MaintenanceRow), "tickets" => typeof(TicketRow),
-            "schedules" => typeof(ScheduleRow), "roles" => typeof(RoleRow), "permissions" => typeof(PermissionRow), "users" => typeof(UserRow), _ => throw new Exception(resource)
+            "schedules" => typeof(ScheduleRow), "roles" => typeof(RoleRow), "permissions" => typeof(PermissionRow), "users" => typeof(UserRow), "sales" => typeof(SaleRow), _ => throw new Exception(resource)
         };
         var currentJson = JsonSerializer.SerializeToElement(current, ApiProtocol.Json);
         if (current?.GetType() != expectedType || currentJson.GetProperty("revision").GetUInt64() != revision) throw new Exception(resource + " get returned incorrect typed row/revision");
-        var key = resource switch { "maintenance" => "maintenanceId", "employees" => "employeeId", "routes" => "routeId", _ => "id" };
+        var key = resource switch { "maintenance" => "maintenanceId", "employees" => "employeeId", "routes" => "routeId", "sales" => "saleId", _ => "id" };
         for (var page = 1; ; page++)
         {
             var result = await operations.ExecuteAsync(resource + ".list", actor, JsonSerializer.SerializeToElement(new PageRequest(page, 100), ApiProtocol.Json), null, ct);

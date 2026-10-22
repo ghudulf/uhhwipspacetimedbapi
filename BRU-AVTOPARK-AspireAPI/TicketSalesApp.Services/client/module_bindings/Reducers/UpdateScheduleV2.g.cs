@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void UpdateScheduleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes);
+        public delegate void UpdateScheduleV2Handler(ReducerEventContext ctx, string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, bool? isActive);
         public event UpdateScheduleV2Handler? OnUpdateScheduleV2;
 
-        public void UpdateScheduleV2(string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes)
+        public void UpdateScheduleV2(string operationId, SpacetimeDB.Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId, string? startPoint, string? endPoint, System.Collections.Generic.List<string>? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats, System.Collections.Generic.List<string>? daysOfWeek, System.Collections.Generic.List<string>? busTypes, uint? stopDurationMinutes, bool? isRecurring, System.Collections.Generic.List<string>? estimatedStopTimes, System.Collections.Generic.List<double>? stopDistances, string? notes, bool? isActive)
         {
-            conn.InternalCallReducer(new Reducer.UpdateScheduleV2(operationId, actingUser, entityId, expectedRevision, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes));
+            conn.InternalCallReducer(new Reducer.UpdateScheduleV2(operationId, actingUser, entityId, expectedRevision, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, isActive));
         }
 
         public bool InvokeUpdateScheduleV2(ReducerEventContext ctx, Reducer.UpdateScheduleV2 args)
@@ -54,7 +54,8 @@ namespace SpacetimeDB.Types
                 args.IsRecurring,
                 args.EstimatedStopTimes,
                 args.StopDistances,
-                args.Notes
+                args.Notes,
+                args.IsActive
             );
             return true;
         }
@@ -104,6 +105,8 @@ namespace SpacetimeDB.Types
             public System.Collections.Generic.List<double>? StopDistances;
             [DataMember(Name = "notes")]
             public string? Notes;
+            [DataMember(Name = "is_active")]
+            public bool? IsActive;
 
             public UpdateScheduleV2(
                 string OperationId,
@@ -124,7 +127,8 @@ namespace SpacetimeDB.Types
                 bool? IsRecurring,
                 System.Collections.Generic.List<string>? EstimatedStopTimes,
                 System.Collections.Generic.List<double>? StopDistances,
-                string? Notes
+                string? Notes,
+                bool? IsActive
             )
             {
                 this.OperationId = OperationId;
@@ -146,6 +150,7 @@ namespace SpacetimeDB.Types
                 this.EstimatedStopTimes = EstimatedStopTimes;
                 this.StopDistances = StopDistances;
                 this.Notes = Notes;
+                this.IsActive = IsActive;
             }
 
             public UpdateScheduleV2()

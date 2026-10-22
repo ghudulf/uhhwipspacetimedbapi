@@ -16,7 +16,7 @@ public sealed partial class ApiSocketSession
     private static readonly Dictionary<string, string[]> QueryResources = new(StringComparer.Ordinal)
     {
         ["buses.list"] = ["buses", "routes", "maintenance", "access"],
-        ["sales.list"] = ["sales", "tickets", "access"],
+        ["sales.list"] = ["sales", "tickets", "users", "access"],
         ["reports.sales"] = ["sales", "tickets", "routes", "schedules", "buses", "access"],
         ["reports.income"] = ["sales", "tickets", "access"],
         ["session.access"] = ["access"],

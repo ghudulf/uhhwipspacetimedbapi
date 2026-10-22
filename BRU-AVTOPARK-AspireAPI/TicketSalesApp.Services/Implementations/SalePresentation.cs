@@ -10,6 +10,9 @@ public sealed record SaleDetails(uint SaleId, DateTime SaleDate, uint TicketId, 
 
 public static class SalePresentation
 {
+    public static bool MatchesFilters(SaleDetails sale, DateTime? start, DateTime? end, decimal? minimum, decimal? maximum, string? buyer) =>
+        (!start.HasValue || sale.SaleDate >= start) && (!end.HasValue || sale.SaleDate <= end) &&
+        (string.IsNullOrEmpty(buyer) || sale.TicketSoldToUser.Contains(buyer, StringComparison.OrdinalIgnoreCase)) && MatchesTicketPrice(sale, minimum, maximum);
     public static bool MatchesTicketPrice(SaleDetails sale, decimal? minimum, decimal? maximum) => sale.Ticket is { } ticket
         && (!minimum.HasValue || ticket.TicketPrice >= (double)minimum.Value)
         && (!maximum.HasValue || ticket.TicketPrice <= (double)maximum.Value);

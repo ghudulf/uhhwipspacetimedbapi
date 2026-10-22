@@ -31,14 +31,14 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateScheduleV2(ReducerContext ctx, string operationId, Identity actingUser, uint routeId, ulong departureTime, double price, uint availableSeats,
         string[]? daysOfWeek, string? startPoint, string? endPoint, string[]? routeStops, ulong? arrivalTime, uint? stopDurationMinutes,
-        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, string[]? busTypes)
+        bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, string[]? busTypes, bool isActive)
         => CommitCatalogMutation(ctx, operationId, actingUser, "schedules", "create", null, null,
-            ScheduleMutationHash(null, null, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes),
+            MutationHash(ScheduleMutationHash(null, null, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes), isActive.ToString()),
             actor =>
             {
                 if (busTypes?.Length > 200) throw new Exception("Too many bus types.");
                 if (busTypes != null) foreach (var type in busTypes) ValidateText(type, 200, true);
-                var id = CreateRouteScheduleCore(ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor);
+                var id = CreateRouteScheduleCore(ctx, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor, isActive);
                 var schedule = ctx.Db.RouteSchedule.ScheduleId.Find(id)!; schedule.BusTypes = busTypes; ctx.Db.RouteSchedule.ScheduleId.Update(schedule);
                 return id;
             });
@@ -46,10 +46,10 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateScheduleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision, uint? routeId,
         string? startPoint, string? endPoint, string[]? routeStops, ulong? departureTime, ulong? arrivalTime, double? price, uint? availableSeats,
-        string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes, bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes)
+        string[]? daysOfWeek, string[]? busTypes, uint? stopDurationMinutes, bool? isRecurring, string[]? estimatedStopTimes, double[]? stopDistances, string? notes, bool? isActive)
         => CommitCatalogMutation(ctx, operationId, actingUser, "schedules", "update", entityId, expectedRevision,
-            ScheduleMutationHash(entityId, expectedRevision, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes),
-            actor => { UpdateRouteScheduleCore(ctx, entityId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor); return entityId; });
+            MutationHash(ScheduleMutationHash(entityId, expectedRevision, routeId, departureTime, price, availableSeats, daysOfWeek, startPoint, endPoint, routeStops, arrivalTime, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, busTypes), isActive?.ToString()),
+            actor => { UpdateRouteScheduleCore(ctx, entityId, routeId, startPoint, endPoint, routeStops, departureTime, arrivalTime, price, availableSeats, daysOfWeek, busTypes, stopDurationMinutes, isRecurring, estimatedStopTimes, stopDistances, notes, actor, isActive); return entityId; });
 
     [SpacetimeDB.Reducer]
     public static void DeleteScheduleV2(ReducerContext ctx, string operationId, Identity actingUser, uint entityId, ulong? expectedRevision)

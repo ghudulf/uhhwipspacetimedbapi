@@ -25,7 +25,8 @@ public sealed record OperationCapability(string Name, bool Mutation, string? Per
 public sealed record Capabilities(string Protocol, OperationCapability[] Operations, string[] AuthenticationMethods,
     int MaxMessageBytes, int MaxOutstanding, string DatabaseState, string ConnectionId);
 public sealed record EmptyRequest;
-public sealed record PageRequest(int Page = 1, int PageSize = 100, string? Search = null);
+public sealed record PageRequest(int Page = 1, int PageSize = 100, string? Search = null,
+    DateTimeOffset? StartDate = null, DateTimeOffset? EndDate = null, decimal? MinPrice = null, decimal? MaxPrice = null, string? BuyerName = null, uint? RouteId = null, DateOnly? Date = null);
 public sealed record PageResult<T>(T[] Items, int Page, int PageSize, int TotalCount);
 public sealed record EntityRequest(uint Id);
 public sealed record AccessSnapshot(bool IsActive, bool IsAdministrator, string[] Roles, string[] Permissions);
@@ -48,5 +49,5 @@ public sealed record RevenueSummary(decimal KnownTotal, int SaleCount, int Unkno
     public bool IsComplete => UnknownAmountCount == 0;
     public decimal? AverageKnownAmount => SaleCount > UnknownAmountCount ? KnownTotal / (SaleCount - UnknownAmountCount) : null;
 }
-public sealed record SaleRow(uint SaleId, DateTimeOffset SaleDate, uint TicketId, string BuyerName, string BuyerPhone,
-    string? SellerId, decimal? RecordedAmount, ulong Revision);
+public sealed record SaleRow(uint SaleId, DateTimeOffset? SaleDate, uint TicketId, string BuyerName, string BuyerPhone,
+    string? SellerId, decimal? RecordedAmount, ulong Revision, string? SellerLabel = null);

@@ -37,12 +37,7 @@ public sealed partial class ApplicationOperations
         RegisterEntityRead(database, "schedules", "schedules.view", (c, id, access) =>
         {
             var s = c.Db.RouteSchedule.ScheduleId.Find(id) ?? throw new OperationException("not_found");
-            var route = c.Db.Route.RouteId.Find(s.RouteId);
-            var bus = access.Allows("buses.view") && route != null ? c.Db.Bus.BusId.Find(route.BusId) : null;
-            var driver = access.Allows("employees.view") && route != null ? c.Db.Employee.EmployeeId.Find(route.DriverId) : null;
-            return new ScheduleRow(s.ScheduleId, s.RouteId, access.Allows("routes.view") ? RouteLabel(c, s.RouteId) : null,
-                bus == null ? null : bus.Model + " " + bus.RegistrationNumber, driver == null ? null : driver.Surname + " " + driver.Name,
-                Timestamp(s.DepartureTime), Timestamp(s.ArrivalTime), Amount(s.Price), s.AvailableSeats, s.IsActive, Version(c, "schedules", s.ScheduleId));
+            return ProjectSchedule(c, s, access);
         });
         RegisterEntityRead(database, "roles", "roles.view", (c, id, _) =>
         {
@@ -78,5 +73,15 @@ public sealed partial class ApplicationOperations
         return new TicketRow(t.TicketId, t.RouteId, route == null ? null : route.StartPoint + " — " + route.EndPoint,
             t.SeatNumber, Amount(t.TicketPrice), t.PaymentMethod, Timestamp(t.PurchaseTime), t.IsActive, Version(c, "tickets", t.TicketId),
             route?.StartPoint, route?.EndPoint, route?.TravelTime);
+    }
+    private static ScheduleRow ProjectSchedule(DbConnection c, RouteSchedule s, UserAccessSnapshot access)
+    {
+        var route = c.Db.Route.RouteId.Find(s.RouteId);
+        var bus = access.Allows("buses.view") && route != null ? c.Db.Bus.BusId.Find(route.BusId) : null;
+        var driver = access.Allows("employees.view") && route != null ? c.Db.Employee.EmployeeId.Find(route.DriverId) : null;
+        return new ScheduleRow(s.ScheduleId, s.RouteId, access.Allows("routes.view") ? RouteLabel(c, s.RouteId) : null,
+            bus == null ? null : bus.Model + " " + bus.RegistrationNumber, driver == null ? null : driver.Surname + " " + driver.Name,
+            Timestamp(s.DepartureTime), Timestamp(s.ArrivalTime), Amount(s.Price), s.AvailableSeats, s.IsActive, Version(c, "schedules", s.ScheduleId),
+            s.StartPoint, s.EndPoint, s.DaysOfWeek?.ToArray(), s.RouteStops?.ToArray(), s.EstimatedStopTimes?.ToArray(), s.StopDistances?.ToArray(), s.StopDurationMinutes, s.IsRecurring, s.Notes, s.BusTypes?.ToArray());
     }
 }

@@ -74,7 +74,7 @@ public class RouteScheduleService : IRouteScheduleService, IDisposable
         return await new CatalogMutationExecutor(database, logger).ExecuteResultAsync(new Reducer.CreateScheduleV2(id, actor,
             route.RouteId, departureTime ?? 0, price ?? 0, availableSeats ?? 0, daysOfWeek, startPoint ?? route.StartPoint,
             endPoint ?? route.EndPoint, routeStops, arrivalTime ?? (departureTime ?? 0) + 3600000, stopDurationMinutes,
-            isRecurring, estimatedStopTimes ?? [], stopDistances ?? [], notes, busTypes), actor, id, (_, receipt) => (uint?)receipt.EntityId, lifetime.Token);
+            isRecurring, estimatedStopTimes ?? [], stopDistances ?? [], notes, busTypes, isActive ?? true), actor, id, (_, receipt) => (uint?)receipt.EntityId, lifetime.Token);
     }
 
     public async Task<bool> UpdateScheduleAsync(uint scheduleId, uint? routeId = null, string? startPoint = null, string? endPoint = null,
