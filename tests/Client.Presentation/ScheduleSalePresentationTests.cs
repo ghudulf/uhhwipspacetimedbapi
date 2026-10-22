@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -71,7 +72,8 @@ internal static class ScheduleSalePresentationTests
         schedules.SelectedDate = schedules.SelectedDate.AddDays(1); Check(requests[^1].Date == DateOnly.FromDateTime(schedules.SelectedDate.Date), "schedule date not sent"); schedules.Deactivate();
         using var forbidden = new RouteSchedulesManagementViewModel((r, _) => Task.FromResult(new CatalogPageResult<ScheduleRow>([Schedule], 1, 100, 1, false, false, false)), lookup: _ => throw new BRU.Avtopark.Client.ApplicationCommandException("forbidden"));
         await forbidden.ActivateAsync(); Check(forbidden.Schedules.Count == 1 && forbidden.Routes.Count == 0, "lookup denial hid schedule list"); forbidden.Deactivate();
-        using var sales = new SalesManagementViewModel((r, _) => { requests.Add(r); return Task.FromResult(new CatalogPageResult<SaleRow>([Sale], r.Page, 100, 201, true, true, true, 12.5m, 1)); });
+        var edits = 0;
+        using var sales = new SalesManagementViewModel((r, _) => { requests.Add(r); return Task.FromResult(new CatalogPageResult<SaleRow>([Sale], r.Page, 100, 201, true, true, true, 12.5m, 1)); }, edit: (_, _, _) => { edits++; return Task.FromResult(false); });
         await sales.ActivateAsync(); sales.MinPrice = 2; sales.MaxPrice = 20; sales.StartDate = sales.StartDate.AddDays(-1);
         Check(requests[^1].MinPrice == 2 && requests[^1].MaxPrice == 20 && requests[^1].StartDate == sales.StartDate && sales.TotalIncome == null && sales.TotalIncomeDisplay.Contains("1"), "sale filters/unknown aggregate fabricated"); sales.Deactivate();
         var theme = new FluentTheme(); Application.Current!.Styles.Add(theme);
@@ -95,6 +97,15 @@ internal static class ScheduleSalePresentationTests
                     var button = view.GetVisualDescendants().OfType<Button>().Last(b => b.Content as string == text);
                     Check(ControlAutomationPeer.CreatePeerForElement(button)?.GetName() == text && button.Focusable && button.IsVisible, "pager accessible name/focus lost");
                     if (button.IsEffectivelyEnabled) Check(button.Focus(), "pager keyboard focus failed");
+                }
+                if (model is SalesManagementViewModel saleModel)
+                {
+                    saleModel.SelectedSale = saleModel.Sales[0];
+                    var grid = view.GetVisualDescendants().OfType<DataGrid>().Single();
+                    var key = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter };
+                    grid.RaiseEvent(key); Check(key.Handled && edits == 1, "Enter did not open eligible sale editor");
+                    saleModel.Deactivate(); grid.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+                    Check(edits == 1, "stale sale keyboard gesture opened editor");
                 }
             }
             finally { window.Close(); await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); }

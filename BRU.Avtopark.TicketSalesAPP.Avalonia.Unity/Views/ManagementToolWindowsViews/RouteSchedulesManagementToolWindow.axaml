@@ -57,7 +57,8 @@
                 <!-- Error Message -->
                 <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                          Foreground="Red"
-                         IsVisible="{Binding HasError}"/>
+                          IsVisible="{Binding HasError}"/>
+                <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding SynchronizationMessage}"/>
             </StackPanel>
         </ScrollViewer>
 
@@ -84,7 +85,7 @@
                                     Binding="{ReflectionBinding ArrivalTimeDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Цена" 
-                                    Binding="{ReflectionBinding Price, StringFormat={}{0:C}}"
+                                    Binding="{ReflectionBinding PriceDisplay}"
                                     Width="Auto"/>
                     <DataGridTextColumn Header="Места" 
                                     Binding="{ReflectionBinding AvailableSeats}"

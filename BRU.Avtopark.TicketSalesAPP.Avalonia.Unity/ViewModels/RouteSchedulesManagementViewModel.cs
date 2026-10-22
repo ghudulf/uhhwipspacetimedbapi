@@ -22,6 +22,7 @@ public sealed class RouteScheduleDisplayModel(ScheduleRow row) : ReactiveObject
     public string? StartPoint => Row.StartPoint;
     public string? EndPoint => Row.EndPoint;
     public decimal? Price => Row.Price;
+    public string PriceDisplay => Price?.ToString("C", CultureInfo.CurrentCulture) ?? "Неизвестно";
     public uint AvailableSeats => Row.AvailableSeats;
     public bool IsActive => Row.IsActive;
     public string[]? RouteStops => Row.RouteStops;
@@ -37,7 +38,7 @@ public sealed class RouteScheduleDisplayModel(ScheduleRow row) : ReactiveObject
     public void Update(ScheduleRow value)
     {
         Row = value;
-        foreach (var name in new[] { nameof(RouteId), nameof(StartPoint), nameof(EndPoint), nameof(Price), nameof(AvailableSeats), nameof(IsActive), nameof(RouteStops), nameof(BusLabel), nameof(DriverLabel), nameof(DepartureTimeDisplay), nameof(ArrivalTimeDisplay) }) this.RaisePropertyChanged(name);
+        foreach (var name in new[] { nameof(RouteId), nameof(StartPoint), nameof(EndPoint), nameof(Price), nameof(PriceDisplay), nameof(AvailableSeats), nameof(IsActive), nameof(RouteStops), nameof(BusLabel), nameof(DriverLabel), nameof(DepartureTimeDisplay), nameof(ArrivalTimeDisplay) }) this.RaisePropertyChanged(name);
     }
 }
 

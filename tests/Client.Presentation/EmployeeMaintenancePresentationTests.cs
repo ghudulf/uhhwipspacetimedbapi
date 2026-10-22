@@ -164,6 +164,8 @@ internal static class EmployeeMaintenancePresentationTests
             cancelled.Dispose();
             try { await cancelled.ActivateAsync(); throw new Exception("disposed screen reactivated"); } catch (ObjectDisposedException) { }
             Assert(model.Items.Count == 0, "disposed live screen received unrelated rows");
+            if (typeof(TRow) == typeof(ScheduleRow) || typeof(TRow) == typeof(SaleRow))
+                File.WriteAllLines("/tmp/opencode/h15-" + typeof(TRow).Name + "-mutation-outcomes.log", sink.Events.Where(e => e.Properties.ContainsKey("OperationId") && e.Properties.ContainsKey("Code")).Select(e => e.RenderMessage()));
         }
         finally { Log.Logger = previousLogger; Environment.SetEnvironmentVariable("BRU_DEBUG_TRAFFIC", previousTraffic); }
     }

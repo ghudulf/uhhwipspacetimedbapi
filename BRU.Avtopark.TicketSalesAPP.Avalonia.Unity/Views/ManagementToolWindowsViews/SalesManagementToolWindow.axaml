@@ -56,11 +56,12 @@
         <!-- Main Content -->
         <Grid Grid.Row="1" ColumnDefinitions="*,300">
             <!-- Sales DataGrid -->
-            <DataGrid AutomationProperties.Name="Продажи" Grid.Column="0"
+            <DataGrid x:Name="SalesGrid" AutomationProperties.Name="Продажи" Grid.Column="0"
                      ItemsSource="{Binding Sales}"
                      SelectedItem="{Binding SelectedSale}"
-                     IsReadOnly="True"
-                     AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      AutoGenerateColumns="False"
+                      DoubleTapped="OnSaleDoubleTapped"
                     
                      BorderThickness="0"
                      Margin="10">
