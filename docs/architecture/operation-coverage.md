@@ -23,6 +23,15 @@ retry was introduced. Role metadata/permission-set updates use the existing atom
 composite reducers; schedule creation reads its exact ID from the existing receipt.
 Request/error correlation is returned in `Trace-Id` without rewriting body shapes.
 
+Client batch 3 migrates Route Schedules and Sales to shared typed list/get/mutation
+operations (including `sales.get`), permission-bearing filtered pages and retained
+editor/receipt reconciliation. The generic `/api/operations/{operation}` HTTP
+adapter is their rollback transport; legacy read endpoints below remain legacy
+contracts, not newly claimed adapters. The remaining client screens are Users,
+Roles and Permissions. Api.Contracts still checks every reflected endpoint and
+registered-operation reference in this ledger; no endpoint disposition is removed
+by the client migration.
+
 QR display, approval, device enrollment and self-scan routes below retain their
 existing one-time protocol and tested client adapters. They are deliberately
 not recast as administrative CRUD operations. See [QR login](qr-login.md).
