@@ -1,6 +1,12 @@
 # Architecture implementation ledger and deployment requirements
 
-This branch is in implementation. **It is not a completed delivery of the expanded plan.** The operation matrix tracks remaining adapter/client parity; real provider/platform validation and the full v2 transport rollout must not be inferred from the database foundation. The [provider checkpoint](provider-authentication.md) and [session synchronization model](session-synchronization.md) distinguish implemented Entra/passkey/native refresh integration from unverified real Windows/browser/mobile platforms.
+## Plan status (current)
+
+**Implemented and covered by automated tests in this repository:** shared v2 operations, subscriptions with watermarks/gap recovery, receipts/revisions for fleet, sales, reports, routes, employees, jobs, maintenance, tickets, schedules, users, roles and permissions; every business CRUD/report screen on the shared transport (see [client rollout](realtime-v2.md#client-rollout)); QR login (approval and enrolled-device flows); Microsoft Entra and passkey browser flows with bound completion/linking; native refresh tokens and session synchronization; private credential table and external secret handling; committed database access, lifecycle and diagnostic cleanup; configurable LAN-friendly plaintext policy; maximum-detail debug traffic logging; accessibility, packaging and local security validation.
+
+**Not verifiable in this repository's CI-less sandbox and therefore still open (see each document for details):** real Entra tenant behaviour, real browsers/Windows Hello/platform authenticators, Windows DPAPI/ACL execution, MSIX signing/installation, Flatpak execution (blocked by bubblewrap `/proc`), Android/iOS runs and mobile keystore/camera plug-ins, visual/contrast and screen-reader validation, production load and distributed (multi-instance) QR/provider flows, the three GitHub security workflows (disabled for inactivity; local equivalents documented in [security validation](security-validation.md)), and the AppHost `KubernetesClient` major-version advisory. The deployment owner must also rotate the historical secrets listed in [secrets](secrets.md).
+
+Historical note: earlier checkpoints below describe the state at their time. The operation matrix tracks adapter/client parity; do not infer real provider/platform validation from compilation or headless tests. The [provider checkpoint](provider-authentication.md) and [session synchronization model](session-synchronization.md) distinguish implemented Entra/passkey/native refresh integration from unverified real Windows/browser/mobile platforms.
 
 ## Database boundary
 
