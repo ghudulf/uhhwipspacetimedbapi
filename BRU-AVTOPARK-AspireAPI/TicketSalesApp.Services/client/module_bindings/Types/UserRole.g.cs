@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public ulong AssignedAt;
         [DataMember(Name = "assigned_by")]
         public string? AssignedBy;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public UserRole(
             uint Id,
             SpacetimeDB.Identity UserId,
             uint RoleId,
             ulong AssignedAt,
-            string? AssignedBy
+            string? AssignedBy,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.RoleId = RoleId;
             this.AssignedAt = AssignedAt;
             this.AssignedBy = AssignedBy;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public UserRole()

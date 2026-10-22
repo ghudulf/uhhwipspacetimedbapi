@@ -20,7 +20,7 @@
     <ApplicationId>com.bru.avtopark.ticketsales</ApplicationId>
 
     <!-- Versions -->
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
     <!-- DESKTOP constant for platform guards in shared Unity library -->
@@ -62,7 +62,7 @@
 
   <PropertyGroup>
     <!-- MAUI version property -->
-    <MauiVersion>11.0.0-preview.2.26152.10 </MauiVersion>
+    <MauiVersion>11.0.0-rc.2.26505.5</MauiVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -73,18 +73,18 @@
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <!-- Avalonia core - explicit reference so Avalonia.Controls types resolve in this project -->
-    <PackageReference Include="Avalonia" Version="12.0.0-preview2" />
-     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0-preview2-2" />
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <!-- Avalonia.Controls.Maui - replaces MAUI rendering pipeline with Avalonia/Skia -->
-    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-preview.2.26075.1512" />
+    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
     <!-- Desktop package: provides source-generated AppBuilder + run loop for net11.0 generic desktop TFM -->
     <PackageReference Include="Avalonia.Controls.Maui.Desktop"
                       Condition="'$(TargetFramework)' == 'net11.0'"
-                      Version="11.0.0-preview.2.26075.1512" />
+                      Version="11.0.0-rc.2.26287.618" />
      
     <!-- Optional: Essentials API support (FilePicker, Screenshot, etc.) -->
-    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-preview.2.26075.1512" />
-    <PackageReference Include="Avalonia.Controls.Maui.Compatibility" Version="11.0.0-preview.2.26075.1512" />
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Avalonia.Controls.Maui.Compatibility" Version="11.0.0-rc.2.26287.618" />
 
     <PackageReference Include="UraniumUI" Version="2.15.0" />
     <PackageReference Include="UraniumUI.Blurs" Version="2.15.0" />

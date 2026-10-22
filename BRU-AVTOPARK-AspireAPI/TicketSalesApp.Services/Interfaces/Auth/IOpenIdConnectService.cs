@@ -14,14 +14,14 @@ namespace TicketSalesApp.Services.Interfaces
     /// </summary>
     public interface IOpenIdConnectService
     {
-        Task<(bool success, object? application, string? errorMessage)> GetApplicationByClientIdAsync(string clientId);
+        Task<(bool success, object? application, string? errorMessage)> GetApplicationByClientIdAsync(string clientId, CancellationToken cancellationToken = default);
         Task<(bool success, List<object>? authorizations, string? errorMessage)> GetAuthorizationsAsync(string subject, object application, string status, string type, string[] scopes);
         Task<(bool success, ClaimsIdentity? identity, string? errorMessage)> CreateIdentityFromUserAsync(UserProfile user, string[] scopes);
         Task<(bool success, object? authorization, string? errorMessage)> CreateAuthorizationAsync(ClaimsIdentity identity, string subject, object application, string type, string[] scopes);
         Task<(bool success, string? id, string? errorMessage)> GetAuthorizationIdAsync(object authorization);
         Task<(bool success, List<string>? resources, string? errorMessage)> GetResourcesAsync(string[] scopes);
-        Task<(bool success, string? errorMessage)> RegisterClientApplicationAsync(string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, bool requireConsent);
-        Task<(bool success, string? errorMessage)> UpdateClientApplicationAsync(string clientId, string? clientSecret, string? displayName, string[]? redirectUris, string[]? postLogoutRedirectUris, string[]? allowedScopes, bool? requireConsent);
+        Task<(bool success, string? errorMessage)> RegisterClientApplicationAsync(string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, bool requireConsent, CancellationToken cancellationToken = default);
+        Task<(bool success, string? errorMessage)> UpdateClientApplicationAsync(string clientId, string? clientSecret, string? displayName, string[]? redirectUris, string[]? postLogoutRedirectUris, string[]? allowedScopes, bool? requireConsent, CancellationToken cancellationToken = default);
         Task<(bool success, string? errorMessage)> DeleteClientApplicationAsync(string clientId);
         Task<(bool success, List<object>? applications, string? errorMessage)> GetAllClientApplicationsAsync();
         Task<(bool success, object? application, string? errorMessage)> GetClientApplicationAsync(string clientId);
@@ -30,4 +30,3 @@ namespace TicketSalesApp.Services.Interfaces
         IOpenIddictApplicationManager GetApplicationManager();
     }
 }
-

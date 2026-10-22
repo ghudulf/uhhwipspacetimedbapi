@@ -25,19 +25,48 @@ jobs:
       - uses: nuget/setup-nuget@04b0c2b8d1b97922f67eca497d7cf0bf17b8ffe1
       - uses: microsoft/setup-msbuild@v1.0.2
 
-      - name: Set up .NET 11 SDK
+      - name: Set up repository SDKs
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '11.0.x'
+          dotnet-version: |
+            8.0.419
+            10.0.100
+            11.0.100-rc.2.26504.105
 
       - name: Set up projects for analysis
         uses: security-code-scan/security-code-scan-add-action@f8ff4f2763ed6f229eded80b1f9af82ae7f32a0d
 
-      - name: Restore dependencies
-        run: dotnet restore
+      # The module and MAUI host have their own global.json files. A root solution
+      # build selects SDK 10 and cannot build the SDK 8 WASI module or net11 host.
+      - name: Prepare module workload
+        working-directory: server
+        run: dotnet workload install wasi-experimental
 
-      - name: Build
-        run: dotnet build --no-restore
+      - name: Prepare generic MAUI host workload
+        working-directory: BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui
+        run: dotnet workload install maui-tizen --skip-manifest-update
+
+      - name: Restore and analyze all application targets with their declared SDK
+        shell: pwsh
+        run: |
+          $projects = @(
+            'server',
+            'BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.ApiService',
+            'BRU-AVTOPARK-AspireAPI/BRU-AVTOPARK-AspireAPI.AppHost',
+            'BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop',
+            'BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Maui'
+          )
+          foreach ($project in $projects) {
+            Push-Location $project
+            try {
+              dotnet restore
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              dotnet build --no-restore
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+              Pop-Location
+            }
+          }
 
       - name: Convert sarif for uploading to GitHub
         uses: security-code-scan/security-code-scan-results-action@cdb3d5e639054395e45bf401cba8688fcaf7a687

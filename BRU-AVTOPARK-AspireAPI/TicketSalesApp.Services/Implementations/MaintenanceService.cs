@@ -1,202 +1,35 @@
 using Microsoft.Extensions.Logging;
-using SpacetimeDB.Types;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using TicketSalesApp.Services.Interfaces;
 using SpacetimeDB;
+using SpacetimeDB.Types;
+using TicketSalesApp.Services.Interfaces;
+namespace TicketSalesApp.Services.Implementations;
 
-namespace TicketSalesApp.Services.Implementations
+public sealed class MaintenanceService(ISpacetimeDBService database, ILogger<MaintenanceService> logger) : IMaintenanceService
 {
-    public class MaintenanceService : IMaintenanceService
+    private readonly CatalogMutationExecutor _mutations = new(database, logger);
+    public Task<List<Maintenance>> GetAllMaintenanceRecordsAsync() => database.ReadAsync(c => c.Db.Maintenance.Iter().OrderByDescending(m => m.LastServiceDate).ThenBy(m => m.MaintenanceId).ToList());
+    public Task<Maintenance?> GetMaintenanceByIdAsync(uint maintenanceId) => database.ReadAsync(c => c.Db.Maintenance.MaintenanceId.Find(maintenanceId));
+    public Task<List<Maintenance>> GetMaintenanceByBusIdAsync(uint busId) => database.ReadAsync(c => c.Db.Maintenance.Iter().Where(m => m.BusId == busId).OrderByDescending(m => m.LastServiceDate).ThenBy(m => m.MaintenanceId).ToList());
+    public Task<List<Maintenance>> GetBusMaintenanceHistoryAsync(uint busId) => GetMaintenanceByBusIdAsync(busId);
+    public async Task<Maintenance?> CreateMaintenanceRecordAsync(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default)
     {
-        private readonly ISpacetimeDBService _spacetimeDBService;
-        private readonly ILogger<MaintenanceService> _logger;
-
-        public MaintenanceService(ISpacetimeDBService spacetimeDBService, ILogger<MaintenanceService> logger)
-        {
-            _spacetimeDBService = spacetimeDBService ?? throw new ArgumentNullException(nameof(spacetimeDBService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        public async Task<List<Maintenance>> GetAllMaintenanceRecordsAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Retrieving all maintenance records");
-                var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Maintenance.Iter().ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving all maintenance records");
-                throw;
-            }
-        }
-
-        public async Task<Maintenance?> GetMaintenanceByIdAsync(uint maintenanceId)
-        {
-            try
-            {
-                _logger.LogInformation("Retrieving maintenance record by ID: {MaintenanceId}", maintenanceId);
-                var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Maintenance.Iter()
-                    .FirstOrDefault(m => m.MaintenanceId == maintenanceId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving maintenance record by ID: {MaintenanceId}", maintenanceId);
-                throw;
-            }
-        }
-
-        public async Task<List<Maintenance>> GetMaintenanceByBusIdAsync(uint busId)
-        {
-            try
-            {
-                _logger.LogInformation("Retrieving maintenance records for bus: {BusId}", busId);
-                var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Maintenance.Iter()
-                    .Where(m => m.BusId == busId)
-                    .OrderByDescending(m => m.LastServiceDate)
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving maintenance records for bus: {BusId}", busId);
-                throw;
-            }
-        }
-
-        public async Task<bool> CreateMaintenanceAsync(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null)
-        {
-            try
-            {
-                _logger.LogInformation("Creating maintenance record for bus: {BusId}", busId);
-                var connection = _spacetimeDBService.GetConnection();
-                
-                var bus = connection.Db.Bus.Iter()
-                    .FirstOrDefault(b => b.BusId == busId);
-                if (bus == null)
-                {
-                    _logger.LogWarning("Bus not found: {BusId}", busId);
-                    return false;
-                }
-
-                // Call the CreateMaintenance reducer
-                connection.Reducers.CreateMaintenance(
-                    busId,
-                    lastServiceDate,
-                    serviceEngineer,
-                    foundIssues,
-                    nextServiceDate,
-                    roadworthiness,
-                    maintenanceType,
-                    actingUser
-                );
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating maintenance record for bus: {BusId}", busId);
-                throw;
-            }
-        }
-
-        public async Task<bool> UpdateMaintenanceAsync(uint maintenanceId, uint? busId = null, ulong? lastServiceDate = null, string? serviceEngineer = null, string? foundIssues = null, ulong? nextServiceDate = null, string? roadworthiness = null, string? maintenanceType = null, string? mileage = null, Identity? actingUser = null)
-        {
-            try
-            {
-                _logger.LogInformation("Updating maintenance record: {MaintenanceId}", maintenanceId);
-                var connection = _spacetimeDBService.GetConnection();
-                
-                var maintenance = connection.Db.Maintenance.Iter()
-                    .FirstOrDefault(m => m.MaintenanceId == maintenanceId);
-                if (maintenance == null)
-                {
-                    _logger.LogWarning("Maintenance record not found: {MaintenanceId}", maintenanceId);
-                    return false;
-                }
-
-                if (busId.HasValue)
-                {
-                    var bus = connection.Db.Bus.Iter()
-                        .FirstOrDefault(b => b.BusId == busId);
-                    if (bus == null)
-                    {
-                        _logger.LogWarning("Bus not found: {BusId}", busId);
-                        return false;
-                    }
-                }
-
-                // Call the UpdateMaintenance reducer
-                connection.Reducers.UpdateMaintenance(
-                    maintenanceId,
-                    busId ?? maintenance.BusId,
-                    lastServiceDate ?? maintenance.LastServiceDate,
-                    serviceEngineer ?? maintenance.ServiceEngineer,
-                    foundIssues ?? maintenance.FoundIssues,
-                    nextServiceDate ?? maintenance.NextServiceDate,
-                    roadworthiness ?? maintenance.Roadworthiness,
-                    maintenanceType ?? maintenance.MaintenanceType,
-                    mileage ?? maintenance.MileageThreshold,
-                    actingUser
-                );
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating maintenance record: {MaintenanceId}", maintenanceId);
-                throw;
-            }
-        }
-
-        public async Task<bool> DeleteMaintenanceAsync(uint maintenanceId, Identity? actingUser = null)
-        {
-            try
-            {
-                _logger.LogInformation("Deleting maintenance record: {MaintenanceId}", maintenanceId);
-                var connection = _spacetimeDBService.GetConnection();
-                
-                var maintenance = connection.Db.Maintenance.Iter()
-                    .FirstOrDefault(m => m.MaintenanceId == maintenanceId);
-                if (maintenance == null)
-                {
-                    _logger.LogWarning("Maintenance record not found: {MaintenanceId}", maintenanceId);
-                    return false;
-                }
-
-                // Call the DeleteMaintenance reducer
-                connection.Reducers.DeleteMaintenance(maintenanceId, actingUser);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting maintenance record: {MaintenanceId}", maintenanceId);
-                throw;
-            }
-        }
-
-        public async Task<List<Maintenance>> GetBusMaintenanceHistoryAsync(uint busId)
-        {
-            try
-            {
-                _logger.LogInformation("Retrieving maintenance history for bus: {BusId}", busId);
-                var connection = _spacetimeDBService.GetConnection();
-                return connection.Db.Maintenance.Iter()
-                    .Where(m => m.BusId == busId)
-                    .OrderByDescending(m => m.LastServiceDate)
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving maintenance history for bus: {BusId}", busId);
-                throw;
-            }
-        }
+        var actor = CatalogMutationExecutor.RequireActor(actingUser);
+        var id = operationId ?? Guid.NewGuid().ToString("N");
+        return await _mutations.ExecuteResultAsync(new Reducer.CreateMaintenanceV2(id, actor, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType), actor, id, (c, receipt) => c.Db.Maintenance.MaintenanceId.Find(receipt.EntityId), cancellationToken);
     }
-} 
+    public async Task<bool> CreateMaintenanceAsync(uint busId, ulong lastServiceDate, string serviceEngineer, string foundIssues, ulong nextServiceDate, string roadworthiness, string maintenanceType, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default) => await CreateMaintenanceRecordAsync(busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, actingUser, operationId, cancellationToken) != null;
+    public async Task<bool> UpdateMaintenanceAsync(uint maintenanceId, uint? busId = null, ulong? lastServiceDate = null, string? serviceEngineer = null, string? foundIssues = null, ulong? nextServiceDate = null, string? roadworthiness = null, string? maintenanceType = null, string? mileage = null, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default)
+    {
+        var actor = CatalogMutationExecutor.RequireActor(actingUser);
+        var id = operationId ?? Guid.NewGuid().ToString("N");
+        var receipt = await _mutations.ExecuteAsync(new Reducer.UpdateMaintenanceV2(id, actor, maintenanceId, expectedRevision, busId, lastServiceDate, serviceEngineer, foundIssues, nextServiceDate, roadworthiness, maintenanceType, mileage), actor, id, cancellationToken);
+        return true;
+    }
+    public async Task<bool> DeleteMaintenanceAsync(uint maintenanceId, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default)
+    {
+        var actor = CatalogMutationExecutor.RequireActor(actingUser);
+        var id = operationId ?? Guid.NewGuid().ToString("N");
+        var receipt = await _mutations.ExecuteAsync(new Reducer.DeleteMaintenanceV2(id, actor, maintenanceId, expectedRevision), actor, id, cancellationToken);
+        return true;
+    }
+}

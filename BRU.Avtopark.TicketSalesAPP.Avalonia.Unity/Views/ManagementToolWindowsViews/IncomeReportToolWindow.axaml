@@ -11,34 +11,41 @@
         <Grid RowDefinitions="Auto,*" Margin="20">
             <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="15">
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3"
+                                 AutomationProperties.Name="Обновление отчёта" />
+                    <StackPanel IsVisible="{Binding HasError}" Spacing="6">
+                        <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource WarningColor}" />
+                        <Button Content="Повторить" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"
+                                AutomationProperties.Name="Повторить загрузку отчёта" />
+                    </StackPanel>
                     <!-- Title and Date Range -->
                     <Grid ColumnDefinitions="*,Auto" MinHeight="90">
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Отчет по доходам" Theme="{StaticResource HeaderText}"/>
                             <TextBlock Text="Анализ продаж и доходов по периодам" Foreground="{DynamicResource SecondaryColor}"/>
                         </StackPanel>
-                        
-                        
+
+
                     </Grid>
 
                     <!-- Summary Cards -->
                     <WrapPanel Orientation="Horizontal">
                         <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="5">
-                            <DatePicker SelectedDate="{Binding StartDate}" />
+                            <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay}" AutomationProperties.Name="Начальная дата отчёта" />
                             <TextBlock Text="-" VerticalAlignment="Center"/>
-                            <DatePicker SelectedDate="{Binding EndDate}" />
+                            <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay}" AutomationProperties.Name="Конечная дата отчёта" />
                         </StackPanel>
                         <!-- Total Income Card -->
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="200" MaxWidth="500">
                             <Grid RowDefinitions="Auto,*">
-                                
+
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <icons:MaterialIcon Kind="CurrencyRub" Width="24" Height="24" 
+                                    <icons:MaterialIcon Kind="CurrencyRub" Width="24" Height="24"
                                                     Foreground="{DynamicResource PrimaryColor}"/>
-                                    <TextBlock Text="Общий доход" FontWeight="SemiBold"
+                                    <TextBlock Text="{Binding AmountSummary}" FontWeight="SemiBold"
                                             TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <TextBlock Grid.Row="1" Text="{Binding TotalIncome, StringFormat={}{0:C}}" 
+                                <TextBlock Grid.Row="1" Text="{Binding TotalIncome, StringFormat={}{0:C}}" ToolTip.Tip="{Binding AmountSummary}" AutomationProperties.HelpText="{Binding AmountSummary}"
                                         FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
                                         TextWrapping="Wrap" Margin="0,10,0,0"/>
                             </Grid>
@@ -48,12 +55,12 @@
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="300" MaxWidth="400">
                             <Grid RowDefinitions="Auto,*">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <icons:MaterialIcon Kind="Ticket" Width="24" Height="24" 
+                                    <icons:MaterialIcon Kind="Ticket" Width="24" Height="24"
                                                     Foreground="{DynamicResource InfoColor}"/>
                                     <TextBlock Text="Продано билетов" FontWeight="SemiBold"
                                             TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <TextBlock Grid.Row="1" Text="{Binding TotalTicketsSold}" 
+                                <TextBlock Grid.Row="1" Text="{Binding TotalTicketsSold}"
                                         FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
                                         TextWrapping="Wrap" Margin="0,10,0,0"/>
                             </Grid>
@@ -63,12 +70,12 @@
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="300" MaxWidth="400">
                             <Grid RowDefinitions="Auto,*">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <icons:MaterialIcon Kind="ChartLineVariant" Width="24" Height="24" 
+                                    <icons:MaterialIcon Kind="ChartLineVariant" Width="24" Height="24"
                                                     Foreground="{DynamicResource WarningColor}"/>
                                     <TextBlock Text="Средняя цена" FontWeight="SemiBold"
                                             TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <TextBlock Grid.Row="1" Text="{Binding AverageTicketPrice, StringFormat={}{0:C}}" 
+                                <TextBlock Grid.Row="1" Text="{Binding AverageTicketPrice, TargetNullValue=Неизвестно, StringFormat={}{0:C}}"
                                         FontSize="{DynamicResource FontSizeLarge}" FontWeight="Bold"
                                         TextWrapping="Wrap" Margin="0,10,0,0"/>
                             </Grid>
@@ -76,7 +83,7 @@
                     </WrapPanel>
                 </StackPanel>
             </ScrollViewer>
-        
+
             <!-- Content Section -->
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="20">
@@ -110,14 +117,14 @@
                             </StackPanel>
                         </Border>
                     </WrapPanel>
-        
+
                     <!-- Data Tables Section -->
                     <WrapPanel Orientation="Horizontal">
                         <!-- Monthly Income Table -->
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Доход по месяцам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <DataGrid Grid.Row="1" 
+                                <DataGrid AutomationProperties.Name="Доходы по месяцам" Grid.Row="1"
                                         ItemsSource="{Binding MonthlyIncomes}"
                                         AutoGenerateColumns="False"
                                         IsReadOnly="True"
@@ -129,17 +136,17 @@
                                         <DataGridTextColumn Header="Год" Binding="{ReflectionBinding Year}"/>
                                         <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
                                         <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, TargetNullValue=Неизвестно, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
                         </Border>
-        
+
                         <!-- Route Income Table -->
                         <Border Theme="{StaticResource ModernCard}" Margin="5" MinWidth="400" MaxWidth="800">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Доход по маршрутам" Theme="{StaticResource SubHeaderText}" TextWrapping="Wrap"/>
-                                <DataGrid Grid.Row="1" 
+                                <DataGrid AutomationProperties.Name="Доходы по маршрутам" Grid.Row="1"
                                         ItemsSource="{Binding RouteIncomes}"
                                         AutoGenerateColumns="False"
                                         IsReadOnly="True"
@@ -150,7 +157,7 @@
                                         <DataGridTextColumn Header="Маршрут" Binding="{ReflectionBinding RouteName}"/>
                                         <DataGridTextColumn Header="Доход" Binding="{ReflectionBinding TotalIncome, StringFormat={}{0:C}}"/>
                                         <DataGridTextColumn Header="Билетов" Binding="{ReflectionBinding TicketsSold}"/>
-                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, StringFormat={}{0:C}}"/>
+                                        <DataGridTextColumn Header="Средняя цена" Binding="{ReflectionBinding AverageTicketPrice, TargetNullValue=Неизвестно, StringFormat={}{0:C}}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

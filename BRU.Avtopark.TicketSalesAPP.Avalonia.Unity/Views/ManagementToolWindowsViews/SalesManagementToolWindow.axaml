@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:display="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
@@ -7,7 +8,7 @@
              x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.SalesManagementToolWindow"
              x:DataType="vm:SalesManagementViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
         <!-- Top Bar -->
         <Border Grid.Row="0" Background="#2D3436" Height="65">
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0">
@@ -19,7 +20,7 @@
                              Foreground="White" 
                              VerticalAlignment="Center"
                              FontSize="14"/>
-                    <DatePicker SelectedDate="{Binding StartDate}"
+                    <DatePicker AutomationProperties.Name="Начальная дата продаж" SelectedDate="{Binding StartDate}"
                               Background="#34495e"
                               Foreground="White"
                               Width="150"/>
@@ -27,14 +28,14 @@
                              Foreground="White" 
                              VerticalAlignment="Center"
                              FontSize="14"/>
-                    <DatePicker SelectedDate="{Binding EndDate}"
+                    <DatePicker AutomationProperties.Name="Конечная дата продаж" SelectedDate="{Binding EndDate}"
                               Background="#34495e"
                               Foreground="White"
                               Width="150"/>
                 </StackPanel>
 
                 <TextBlock Grid.Column="1" 
-                         Text="{Binding TotalIncome, StringFormat={}Общая сумма: {0:C}}"
+                         Text="{Binding TotalIncomeDisplay}"
                          Foreground="White"
                          FontSize="18"
                          FontWeight="Bold"
@@ -43,7 +44,7 @@
 
                 <Button Grid.Column="2"
                         Command="{Binding AddCommand}"
-                        Content="НОВАЯ ПРОДАЖА"
+                        Content="НОВАЯ ПРОДАЖА" IsEnabled="{Binding CanCreate}"
                         Background="#27ae60"
                         Foreground="White"
                         Padding="20,10"
@@ -55,11 +56,12 @@
         <!-- Main Content -->
         <Grid Grid.Row="1" ColumnDefinitions="*,300">
             <!-- Sales DataGrid -->
-            <DataGrid Grid.Column="0"
+            <DataGrid x:Name="SalesGrid" AutomationProperties.Name="Продажи" Grid.Column="0"
                      ItemsSource="{Binding Sales}"
                      SelectedItem="{Binding SelectedSale}"
-                     IsReadOnly="True"
-                     AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      AutoGenerateColumns="False"
+                      DoubleTapped="OnSaleDoubleTapped"
                     
                      BorderThickness="0"
                      Margin="10">
@@ -68,7 +70,7 @@
                                       Binding="{ReflectionBinding SaleId}"
                                       Width="60"/>
                     <DataGridTextColumn Header="Дата"
-                                      Binding="{ReflectionBinding SaleDate, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                      Binding="{ReflectionBinding SaleDateDisplay}"
                                       Width="150"/>
                     <DataGridTextColumn Header="ID Билета" 
                                       Binding="{ReflectionBinding TicketId}"
@@ -103,9 +105,9 @@
                         Foreground="White"
                         FontSize="14"
                         Command="{Binding DeleteCommand}"
-                        IsEnabled="{Binding SelectedSale, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                         IsEnabled="{Binding CanDelete}"/>
 
-                <TextBlock Text="{Binding ErrorMessage}"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                           Foreground="#c0392b"
                           TextWrapping="Wrap"
                           IsVisible="{Binding HasError}"
@@ -117,11 +119,18 @@
         <Border Grid.Row="2" 
                 Background="#34495e" 
                 Height="30">
-            <TextBlock Text="Готово"
+            <TextBlock Text="{Binding StatusMessage}" AutomationProperties.LiveSetting="Polite"
                       Foreground="White"
                       VerticalAlignment="Center"
                       Margin="10,0"/>
         </Border>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Назад" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+            <Button Content="Далее" Command="{Binding NextPageCommand}"/>
+            <Button Content="Обновить" Command="{Binding LoadDataCommand}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="70"/>
+        </StackPanel>
     </Grid>
 
     <UserControl.Styles>

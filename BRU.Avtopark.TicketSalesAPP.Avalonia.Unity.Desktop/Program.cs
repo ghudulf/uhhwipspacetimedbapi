@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Serilog;
 using Serilog.Events;
 using System;
+using System.IO;
 
 namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Desktop;
 
@@ -13,17 +14,12 @@ class Program
     {
         try
         {
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.Debug()
-                .WriteTo.File("logs/app-.log",
-                    rollingInterval: RollingInterval.Day,
-                    restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File("logs/debug-.log",
-                    rollingInterval: RollingInterval.Day,
-                    restrictedToMinimumLevel: LogEventLevel.Verbose)
-                .CreateLogger();
+            var userData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU.Avtopark.TicketSalesApp");
+            var logs = Path.Combine(userData, "logs");
+            Directory.CreateDirectory(logs);
+            // MSIX and Flatpak installation directories are read-only.
+            Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(userData, "WebView2"));
+            BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ClientLogging.Configure();
 
             // --tray or --headless: start without any visible window, tray icon only
             bool headless = Array.Exists(args, a =>

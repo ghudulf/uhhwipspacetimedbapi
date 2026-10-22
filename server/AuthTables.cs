@@ -29,6 +29,9 @@ public static partial class Module
         
         [SpacetimeDB.Default(false)]
         public bool? PhoneNumberConfirmed; // phone number confirmation status for OpenID Connect compliance
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
 
@@ -48,6 +51,9 @@ public static partial class Module
         public bool IsTelegramNotificationsEnabled;
         public bool IsDiscordNotificationsEnabled;
 
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -89,11 +95,15 @@ public static partial class Module
         [PrimaryKey, AutoInc]
         public uint Id;                  // Single primary key
 
+        [SpacetimeDB.Index.BTree]
         public Identity UserId;          // References UserProfile.UserId
         public uint RoleId;              // References Role.RoleId
 
         public ulong AssignedAt;
         public string? AssignedBy;        // Track who assigned the role
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -102,11 +112,15 @@ public static partial class Module
         [PrimaryKey, AutoInc]
         public uint Id;                  // Single primary key
 
+        [SpacetimeDB.Index.BTree]
         public uint RoleId;              // References Role.RoleId
         public uint PermissionId;        // References Permission.PermissionId
 
         public ulong GrantedAt;
         public string? GrantedBy;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -120,6 +134,9 @@ public static partial class Module
         public ulong ExpiryTime;         // Unix timestamp for expiration
         public string InitiatingDevice;  // "desktop" or "mobile"
         public bool IsUsed;              // Flag to prevent reuse
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     // Feature Flag Management

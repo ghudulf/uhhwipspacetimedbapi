@@ -24,7 +24,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         private static readonly SemaphoreSlim _discoveryLock = new(1, 1);
 
         // Shared HttpClient for discovery probes — avoids socket exhaustion from per-probe HttpClient creation
-        private static readonly HttpClient _probeClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
+        private static readonly HttpClient _probeClient = new(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromMilliseconds(ProbeTimeoutMs) };
 
         // IP range to scan: 192.168.0.100 – 192.168.0.249
         private const int ScanRangeStart = 100;
@@ -37,6 +37,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         {
             get
             {
+                _ = BRU.Avtopark.Client.ClientNetworkPolicy.Mode; // Fail invalid client configuration at startup.
                 if (_instance == null)
                 {
                     lock (_lock)
@@ -62,14 +63,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Information("ApiClientService.AuthToken: Setting new token");
                     if (value != null)
                     {
-                       Serilog.Log.Debug("ApiClientService.AuthToken: New token length: {Length}, preview: {Preview}...",
-                            value.Length, value.Length > 20 ? value.Substring(0, 20) : value);
+                       Serilog.Log.Debug("ApiClientService.AuthToken: Session credential replaced");
                     }
                     else
                     {
                         Serilog.Log.Information("ApiClientService.AuthToken: Token cleared (set to null)");
                     }
                     _authToken = value;
+                    _ = ResetRealtimeAsync();
                     OnAuthTokenChanged?.Invoke(this, value);
                 }
                 else
@@ -77,6 +78,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                     Serilog.Log.Debug("ApiClientService.AuthToken: Token value unchanged, skipping event");
                 }
             }
+        }
+
+        private static async Task ResetRealtimeAsync()
+        {
+            try { await ApplicationClientCoordinator.ResetAsync(); }
+            catch (Exception ex) { Serilog.Log.Warning("Realtime session cleanup failed: {ExceptionType}", ex.GetType().Name); }
         }
 
         public bool? IsAdmin
@@ -118,7 +125,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         /// <summary>
         /// Returns the currently cached base URL, or null if discovery hasn't run yet.
         /// </summary>
-        public string? CurrentBaseUrl => _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
+        public string? CurrentBaseUrl => _discoveredBaseUrl ?? DefaultBaseUrl;
+        private static string DefaultBaseUrl => BRU.Avtopark.Client.ClientNetworkPolicy.Mode == BRU.Avtopark.Contracts.PlaintextPolicy.Never
+            ? "https://localhost:5001/api/" : $"http://localhost:{ApiPort}/api/";
 
         /// <summary>
         /// True when a live host was confirmed via the ping endpoint during discovery
@@ -143,10 +152,19 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (_discoveredBaseUrl != null)
                     return _discoveredBaseUrl;
 
+                if (WindowsAccountClient.TrustedOrigin is { } configured)
+                {
+                    // Explicit configuration takes precedence over LAN discovery.
+                    _discoveredBaseUrl = new Uri(configured, "api/").AbsoluteUri;
+                    _wasDiscoveredSuccessfully = await PingApiAsync(configured.AbsoluteUri, cancellationToken);
+                    return _discoveredBaseUrl;
+                }
+
                 Serilog.Log.Information("ApiClientService: Starting API server discovery...");
 
                 // 1. Try localhost first (fastest path for the dev machine)
-                var localhostUrl = $"http://localhost:{ApiPort}/";
+                var mode = BRU.Avtopark.Client.ClientNetworkPolicy.Mode;
+                var localhostUrl = mode == BRU.Avtopark.Contracts.PlaintextPolicy.Never ? "https://localhost:5001/" : $"http://localhost:{ApiPort}/";
                 if (await PingApiAsync(localhostUrl, cancellationToken))
                 {
                     Serilog.Log.Information("ApiClientService: API found at localhost");
@@ -160,10 +178,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 Serilog.Log.Information("ApiClientService: Scanning LAN range {Subnet}.{Start}-{End}...",
                     subnet, ScanRangeStart, ScanRangeEnd);
 
-                var candidates = Enumerable.Range(ScanRangeStart, ScanRangeEnd - ScanRangeStart + 1)
-                    .Select(i => $"http://{subnet}.{i}:{ApiPort}/");
-
-                var found = await FindFirstRespondingHostAsync(candidates, cancellationToken);
+                var found = await FindFirstRespondingHostAsync(BRU.Avtopark.Client.DiscoveryEndpoints.Candidates(subnet, tls: false, mode), cancellationToken)
+                    ?? await FindFirstRespondingHostAsync(BRU.Avtopark.Client.DiscoveryEndpoints.Candidates(subnet, tls: true, mode), cancellationToken);
                 if (found != null)
                 {
                     Serilog.Log.Information("ApiClientService: API found at {Url}", found);
@@ -174,7 +190,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
                 // 3. Fall back to localhost even if it didn't respond (offline/dev scenario)
                 Serilog.Log.Warning("ApiClientService: No API server found on LAN, falling back to localhost");
-                _discoveredBaseUrl = $"http://localhost:{ApiPort}/api/";
+                _discoveredBaseUrl = $"{localhostUrl}api/";
                 return _discoveredBaseUrl;
             }
             finally
@@ -188,6 +204,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
         /// </summary>
         public void ResetDiscovery()
         {
+            AuthToken = null; // A discovered server change starts a new application session.
             _discoveredBaseUrl = null;
             _wasDiscoveredSuccessfully = false;
             Serilog.Log.Information("ApiClientService: Discovery cache cleared");
@@ -225,8 +242,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         public HttpClient CreateClient()
         {
-            var baseUrl = _discoveredBaseUrl ?? $"http://localhost:{ApiPort}/api/";
-            var client = new HttpClient
+            var baseUrl = _discoveredBaseUrl ?? DefaultBaseUrl;
+            _ = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl);
+            var client = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler())
             {
                 BaseAddress = new Uri(baseUrl)
             };
@@ -240,8 +258,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             else
             {
                 Serilog.Log.Warning("ApiClientService.CreateClient: No auth token available, Authorization header NOT added");
-                Serilog.Log.Warning("ApiClientService.CreateClient: _authToken is null or empty. Current value: {TokenValue}",
-                    _authToken ?? "(null)");
             }
 
             return client;
@@ -251,6 +267,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
 
         private static async Task<bool> PingApiAsync(string baseUrl, CancellationToken cancellationToken)
         {
+            if (!BRU.Avtopark.Client.ClientNetworkPolicy.IsHttpAllowed(new Uri(baseUrl))) return false;
             try
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

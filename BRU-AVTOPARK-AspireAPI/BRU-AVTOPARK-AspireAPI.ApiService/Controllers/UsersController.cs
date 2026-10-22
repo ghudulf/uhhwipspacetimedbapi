@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 // API/Controllers/UsersController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +26,7 @@ using TicketSalesApp.AdminServer.Mappers;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class UsersController : BaseController
@@ -67,7 +70,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Require admin or users.view permission to subscribe to users channel
-            if (!await IsAdminAsync() && !HasPermission("users.view", claims))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("users.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -75,7 +78,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("users", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("users", cancellationToken), "users.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -89,6 +92,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>The handler's response object: for "read_all" or "read" commands an object containing user data; for "create", "update", and "delete" commands an operation result object indicating success and related data.</returns>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            if (IsAdministrativeCommand("users", request.Command)) return await AdminSpecialRealtimeAsync("users", request);
+            await RequireRealtimeCommandAsync("users", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch
@@ -144,20 +149,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new InvalidOperationException($"User {id} not found");
             }
 
-            var conn = _spacetimeService.GetConnection();
-            var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(false, HttpContext.RequestAborted);
+            var userRoles = conn.UserRoles.Where(ur => ur.UserId.Equals(user.UserId)).ToList();
             var roles = userRoles.Select(ur => {
-                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                var role = conn.Roles.GetValueOrDefault(ur.RoleId);
                 return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
             }).Where(r => r != null).ToList();
 
-            var permissionIds = conn.Db.RolePermission.Iter()
+            var permissionIds = conn.RolePermissions
                 .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
                 .Select(rp => rp.PermissionId)
                 .Distinct()
                 .ToList();
             var permissions = permissionIds.Select(pid => {
-                var perm = conn.Db.Permission.PermissionId.Find(pid);
+                var perm = conn.Permissions.GetValueOrDefault(pid);
                 return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
             }).Where(p => p != null).ToList();
 
@@ -200,7 +205,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var created = await _userService.CreateUserAsync(model.Login, model.Password, model.Role, model.Email, model.PhoneNumber);
+            var created = await AdminCreateUserAsync(model, request);
             
             // Map to safe projection (exclude PasswordHash)
             var safeEntity = created != null ? UserMapper.MapToSafeUserDto(created) : null;
@@ -230,7 +235,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 201,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: GetUserId(),
+                        UserId: await GetUserIdAsync(),
                         UserName: await GetUserNameAsync(),
                         Tenant: User?.FindFirst("tenant")?.Value,
                         SourceIp: GetClientIp(),
@@ -262,7 +267,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateUserModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await _userService.UpdateUserAsync(id, model.Login, model.Password, model.Role, model.Email, model.PhoneNumber, model.IsActive);
+            var success = await AdminUpdateUserAsync(id, model, request);
             var entity = await _userService.GetUserByIdAsync(id);
             
             // Map to safe projection (exclude PasswordHash)
@@ -293,7 +298,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         StatusCode: 200,
                         OccurredAt: DateTimeOffset.UtcNow,
                         CorrelationId: Guid.NewGuid().ToString(),
-                        UserId: GetUserId(),
+                        UserId: await GetUserIdAsync(),
                         UserName: await GetUserNameAsync(),
                         Tenant: User?.FindFirst("tenant")?.Value,
                         SourceIp: GetClientIp(),
@@ -343,7 +348,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new InvalidOperationException("You cannot delete your own account");
             }
 
-            var success = await _userService.DeleteUserAsync(id);
+            var success = await AdminBooleanAsync("users.delete", new DeleteUserCommand(id, AdminExpectedRevision(request)), request);
 
             // Only include snapshot if user has view permission
             object result;
@@ -430,20 +435,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return NotFound();
             }
             
-            var conn = _spacetimeService.GetConnection();
-            var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(false, HttpContext.RequestAborted);
+            var userRoles = conn.UserRoles.Where(ur => ur.UserId.Equals(user.UserId)).ToList();
             var roles = userRoles.Select(ur => {
-                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                var role = conn.Roles.GetValueOrDefault(ur.RoleId);
                 return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
             }).Where(r => r != null).ToList();
 
-            var permissionIds = conn.Db.RolePermission.Iter()
+            var permissionIds = conn.RolePermissions
                 .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
                 .Select(rp => rp.PermissionId)
                 .Distinct()
                 .ToList();
             var permissions = permissionIds.Select(pid => {
-                var perm = conn.Db.Permission.PermissionId.Find(pid);
+                var perm = conn.Permissions.GetValueOrDefault(pid);
                 return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
             }).Where(p => p != null).ToList();
 
@@ -484,13 +489,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return BadRequest("Login already exists");
             }
 
-            var createdUser = await _userService.CreateUserAsync(
-                model.Login, 
-                model.Password, 
-                model.Role, 
-                model.Email, 
-                model.PhoneNumber
-            );
+            var createdUser = await AdminCreateUserAsync(model);
 
             if (createdUser == null)
             {
@@ -537,15 +536,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Update user
-            var success = await _userService.UpdateUserAsync(
-                id,
-                model.Login,
-                model.Password,
-                model.Role,
-                model.Email,
-                model.PhoneNumber,
-                model.IsActive
-            );
+            var success = await AdminUpdateUserAsync(id, model);
 
             if (!success)
             {
@@ -592,7 +583,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Delete user
-            var success = await _userService.DeleteUserAsync(id);
+            var success = await AdminBooleanAsync("users.delete", new DeleteUserCommand(id, AdminExpectedRevision()));
             if (!success)
             {
                 Log.Error("Failed to delete user with ID {UserId}", id);
@@ -676,14 +667,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost("{id}/roles")]
         public async Task<IActionResult> AssignRoleToUser(uint id, [FromBody] AssignRoleModel model)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("users.assign.roles"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("assign_roles"))
             {
                 Log.Warning("Unauthorized attempt to assign role to user {UserId}", id);
                 return Forbid();
             }
 
             Log.Information("Assigning role {RoleId} to user {UserId}", model.RoleId, id);
-            var success = await _roleService.AssignRoleToUserAsync(id, model.RoleId);
+            var success = await AdminBooleanAsync("users.assign-role", new AssignUserRoleCommand(id, model.RoleId, model.ExpectedRevision ?? AdminExpectedRevision()));
             
             if (!success)
             {
@@ -698,14 +689,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}/roles/{roleId}")]
         public async Task<IActionResult> RemoveRoleFromUser(uint id, uint roleId)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("users.remove.roles"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("assign_roles"))
             {
                 Log.Warning("Unauthorized attempt to remove role from user {UserId}", id);
                 return Forbid();
             }
 
             Log.Information("Removing role {RoleId} from user {UserId}", roleId, id);
-            var success = await _roleService.RemoveRoleFromUserAsync(id, roleId);
+            var success = await AdminBooleanAsync("users.remove-role", new RemoveUserRoleCommand(id, roleId, AdminExpectedRevision()));
             
             if (!success)
             {
@@ -730,7 +721,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                                 User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
                     if (string.IsNullOrEmpty(userLogin))
                     {
-                        Log.Warning("No suitable username/login claim found in token. Claims: {@Claims}", User.Claims.Select(c => new { c.Type, c.Value }));
+                Log.Warning("No suitable username/login claim found; claim values omitted");
                         return Unauthorized(new { message = "Invalid token: no suitable username/login claim found" });
                     }
                 }
@@ -744,20 +735,20 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound(new { message = $"User '{userLogin}' not found" });
                 }
 
-                var conn = _spacetimeService.GetConnection();
-                var userRoles = conn.Db.UserRole.Iter().Where(ur => ur.UserId.Equals(user.UserId)).ToList();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(false, HttpContext.RequestAborted);
+                var userRoles = conn.UserRoles.Where(ur => ur.UserId.Equals(user.UserId)).ToList();
                 var roles = userRoles.Select(ur => {
-                    var role = conn.Db.Role.RoleId.Find(ur.RoleId);
+                    var role = conn.Roles.GetValueOrDefault(ur.RoleId);
                     return role != null ? new { role.RoleId, role.Name, role.Description, role.IsSystem } : null;
                 }).Where(r => r != null).ToList();
 
-                var permissionIds = conn.Db.RolePermission.Iter()
+                var permissionIds = conn.RolePermissions
                     .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
                     .Select(rp => rp.PermissionId)
                     .Distinct()
                     .ToList();
                 var permissions = permissionIds.Select(pid => {
-                    var perm = conn.Db.Permission.PermissionId.Find(pid);
+                    var perm = conn.Permissions.GetValueOrDefault(pid);
                     return perm != null ? new { perm.PermissionId, perm.Name, perm.Description, perm.Category } : null;
                 }).Where(p => p != null).ToList();
 
@@ -778,7 +769,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 Log.Information("Successfully retrieved current user information for {Username}", user.Login);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 Log.Error(ex, "Error retrieving current user");
                 return StatusCode(500, new { message = "Internal server error while retrieving user information" });
@@ -797,6 +788,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdateUserModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public string? Login { get; set; }
         public string? Password { get; set; }
         public int? Role { get; set; }
@@ -808,6 +800,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class AssignRoleModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public required uint RoleId { get; set; }
     }
 }

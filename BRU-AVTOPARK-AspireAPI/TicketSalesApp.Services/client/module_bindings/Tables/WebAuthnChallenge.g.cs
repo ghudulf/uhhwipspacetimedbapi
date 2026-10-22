@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "web_authn_challenge";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(WebAuthnChallenge row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(WebAuthnChallengeHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(WebAuthnChallenge row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal WebAuthnChallengeHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -44,6 +54,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<WebAuthnChallenge, string> Challenge { get; }
         public global::SpacetimeDB.Col<WebAuthnChallenge, ulong> ExpiresAt { get; }
         public global::SpacetimeDB.Col<WebAuthnChallenge, ulong> CreatedAt { get; }
+        public global::SpacetimeDB.Col<WebAuthnChallenge, uint> ApiAccessPartition { get; }
 
         public WebAuthnChallengeCols(string tableName)
         {
@@ -52,16 +63,19 @@ namespace SpacetimeDB.Types
             Challenge = new global::SpacetimeDB.Col<WebAuthnChallenge, string>(tableName, "challenge");
             ExpiresAt = new global::SpacetimeDB.Col<WebAuthnChallenge, ulong>(tableName, "expires_at");
             CreatedAt = new global::SpacetimeDB.Col<WebAuthnChallenge, ulong>(tableName, "created_at");
+            ApiAccessPartition = new global::SpacetimeDB.Col<WebAuthnChallenge, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class WebAuthnChallengeIxCols
     {
         public global::SpacetimeDB.IxCol<WebAuthnChallenge, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<WebAuthnChallenge, uint> ApiAccessPartition { get; }
 
         public WebAuthnChallengeIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<WebAuthnChallenge, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<WebAuthnChallenge, uint>(tableName, "api_access_partition");
         }
     }
 }

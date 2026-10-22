@@ -1,3 +1,5 @@
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -19,7 +21,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class RoutesController : BaseController
@@ -27,6 +29,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly IRouteService _routeService;
         private readonly ILogger<RoutesController> _logger;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly CatalogLookupService _catalog;
         private readonly IRealtimeEventBus _realtimeEventBus;
 
         /// <summary>
@@ -37,8 +40,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="spacetimeService">Service providing access to related Bus and Driver data.</param>
         /// <param name="realtimeEventBus">Event bus used to subscribe to and publish realtime route events.</param>
         /// <exception cref="ArgumentNullException">Thrown when any constructor argument is null.</exception>
-        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus)
+        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger, ISpacetimeDBService spacetimeService, IRealtimeEventBus realtimeEventBus, CatalogLookupService catalog)
         {
+            _catalog = catalog;
             _routeService = routeService ?? throw new ArgumentNullException(nameof(routeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
@@ -55,15 +59,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            if (!await IsAuthenticatedAsync())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("routes.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("routes", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("routes", cancellationToken), "routes.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -85,6 +94,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when a required `Id` is missing for "read" or when `Command` is unsupported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("routes", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch
@@ -112,12 +122,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is null or cannot be deserialized into a CreateRouteModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("routes.create")) throw new UnauthorizedAccessException("Admin role required");
 
             var model = request.Payload?.Deserialize<CreateRouteModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var success = await _routeService.CreateRouteAsync(model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, true);
+            var success = await _routeService.CreateRouteAsync(model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, true,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "create", success, snapshot };
         }
@@ -137,13 +148,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when `request.Id` is null or when the request payload is missing or invalid.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("routes.edit")) throw new UnauthorizedAccessException("Admin role required");
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateRouteModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await _routeService.UpdateRouteAsync(id, model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, null);
+            var success = await _routeService.UpdateRouteAsync(id, model.StartPoint, model.EndPoint, model.DriverId, model.BusId, model.TravelTime, null,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var entity = await _routeService.GetRouteByIdAsync(id);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "update", success, entity, snapshot };
@@ -164,10 +176,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when `request.Id` is null.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("routes.delete")) throw new UnauthorizedAccessException("Admin role required");
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _routeService.DeleteRouteAsync(id);
+            var success = await _routeService.DeleteRouteAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var snapshot = await _routeService.GetAllRoutesAsync();
             return new { operation = "delete", success, deletedId = id, snapshot };
         }
@@ -179,14 +192,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetRoutes()
         {
+            if (!await HasPermissionAsync("routes.view")) return Forbid();
             Log.Information("Fetching all routes with their related data");
             var routes = await _routeService.GetAllRoutesAsync();
-            var conn = _spacetimeService.GetConnection();
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses | CatalogLookups.Employees, HttpContext.RequestAborted);
 
             // Map to anonymous type including Bus and Driver
             var result = routes.Select(r => {
-                var bus = conn.Db.Bus.BusId.Find(r.BusId);
-                var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                var bus = lookup.Buses.GetValueOrDefault(r.BusId);
+                var driver = lookup.Employees.GetValueOrDefault(r.DriverId);
                 return new {
                     r.RouteId,
                     r.StartPoint,
@@ -208,6 +222,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetRoute(uint id)
         {
+            if (!await HasPermissionAsync("routes.view")) return Forbid();
             Log.Information("Fetching route with ID {RouteId}", id);
             var route = await _routeService.GetRouteByIdAsync(id);
 
@@ -217,9 +232,9 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return NotFound();
             }
 
-            var conn = _spacetimeService.GetConnection();
-            var bus = conn.Db.Bus.BusId.Find(route.BusId);
-            var driver = conn.Db.Employee.EmployeeId.Find(route.DriverId);
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses | CatalogLookups.Employees, HttpContext.RequestAborted);
+            var bus = lookup.Buses.GetValueOrDefault(route.BusId);
+            var driver = lookup.Employees.GetValueOrDefault(route.DriverId);
 
             // Map to anonymous type including Bus and Driver
             var result = new {
@@ -242,7 +257,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Route>> CreateRoute([FromBody] CreateRouteModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("routes.create"))
             {
                 Log.Warning("Unauthorized attempt to create route by non-admin user");
                 return Forbid();
@@ -250,29 +265,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             Log.Information("Creating new route from {StartPoint} to {EndPoint}", model.StartPoint, model.EndPoint);
 
-            var success = await _routeService.CreateRouteAsync(
+            var route = await _routeService.CreateRouteRecordAsync(
                 model.StartPoint,
                 model.EndPoint,
                 model.DriverId,
                 model.BusId,
                 model.TravelTime,
-                true // isActive
-            );
-
-            if (!success)
-            {
-                Log.Warning("Failed to create route");
-                return BadRequest("Failed to create route");
-            }
-
-            // Get the newly created route
-            var routes = await _routeService.GetAllRoutesAsync();
-            var route = routes.LastOrDefault();
+                true, // isActive
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
             if (route == null)
             {
-                Log.Error("Route was created but could not be retrieved");
-                return StatusCode(500, "Route was created but could not be retrieved");
+                Log.Warning("Failed to create route");
+                return BadRequest("Failed to create route");
             }
 
             Log.Information("Successfully created route with ID {RouteId}", route.RouteId);
@@ -282,7 +287,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRoute(uint id, [FromBody] UpdateRouteModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("routes.edit"))
             {
                 Log.Warning("Unauthorized attempt to update route by non-admin user");
                 return Forbid();
@@ -296,8 +301,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 model.EndPoint,
                 model.DriverId,
                 model.BusId,
-                model.TravelTime
-            );
+                model.TravelTime,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
             if (!success)
             {
@@ -312,7 +317,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRoute(uint id)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("routes.delete"))
             {
                 Log.Warning("Unauthorized attempt to delete route by non-admin user");
                 return Forbid();
@@ -320,7 +325,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             Log.Information("Deleting route with ID {RouteId}", id);
 
-            var success = await _routeService.DeleteRouteAsync(id);
+            var success = await _routeService.DeleteRouteAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
             if (!success)
             {
                 Log.Warning("Route with ID {RouteId} not found for deletion", id);
@@ -338,11 +344,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             [FromQuery] string? busModel = null,
             [FromQuery] string? driverName = null)
         {
+            if (!await HasPermissionAsync("routes.view")) return Forbid();
             Log.Information("Searching routes with start point: {StartPoint}, end point: {EndPoint}, bus model: {BusModel}, driver name: {DriverName}",
                 startPoint ?? "any", endPoint ?? "any", busModel ?? "any", driverName ?? "any");
 
             var routes = await _routeService.GetAllRoutesAsync();
-            var conn = _spacetimeService.GetConnection();
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses | CatalogLookups.Employees, HttpContext.RequestAborted);
             var query = routes.AsEnumerable();
 
             // Apply filters
@@ -356,7 +363,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!string.IsNullOrEmpty(busModel))
             {
                 query = query.Where(r => {
-                    var bus = conn.Db.Bus.BusId.Find(r.BusId);
+                    var bus = lookup.Buses.GetValueOrDefault(r.BusId);
                     return bus != null && bus.Model.Contains(busModel, StringComparison.OrdinalIgnoreCase);
                 });
             }
@@ -365,7 +372,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!string.IsNullOrEmpty(driverName))
             {
                 query = query.Where(r => {
-                    var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                    var driver = lookup.Employees.GetValueOrDefault(r.DriverId);
                     return driver != null && 
                            (driver.Name.Contains(driverName, StringComparison.OrdinalIgnoreCase) || 
                             driver.Surname.Contains(driverName, StringComparison.OrdinalIgnoreCase));
@@ -374,8 +381,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             // Map to anonymous type including Bus and Driver
             var result = query.Select(r => {
-                var bus = conn.Db.Bus.BusId.Find(r.BusId);
-                var driver = conn.Db.Employee.EmployeeId.Find(r.DriverId);
+                var bus = lookup.Buses.GetValueOrDefault(r.BusId);
+                var driver = lookup.Employees.GetValueOrDefault(r.DriverId);
                 return new {
                     r.RouteId,
                     r.StartPoint,

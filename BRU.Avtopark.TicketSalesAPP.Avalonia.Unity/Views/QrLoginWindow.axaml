@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.QrLoginWindow"
+        Title="Вход по QR с телефона" AutomationProperties.Name="Вход по QR с телефона"
+        Width="480" Height="720" MinWidth="360" MinHeight="540" WindowStartupLocation="CenterOwner">
+    <ScrollViewer AutomationProperties.Name="Содержимое QR-входа">
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="Вход по QR с телефона" FontSize="22" AutomationProperties.Name="Заголовок QR-входа" />
+            <TextBlock Text="Откройте приложение на телефоне → «Подтвердить вход по QR» → введите код" TextWrapping="Wrap" AutomationProperties.Name="Инструкция подтверждения QR-входа" />
+            <TextBox Text="{Binding DeviceName}" Watermark="Имя этого устройства" MaxLength="64" AutomationProperties.Name="Имя устройства для подтверждения" />
+            <TextBox Text="{Binding Username}" Watermark="Только для этого пользователя (необязательно)" MaxLength="128" AutomationProperties.Name="Только для этого пользователя" />
+            <Image Source="{Binding QrImage}" Width="260" Height="260" Stretch="Uniform" AutomationProperties.Name="QR-код входа, созданный на этом устройстве" />
+            <TextBlock Text="{Binding VerificationCode}" FontSize="38" FontWeight="Bold" HorizontalAlignment="Center" AutomationProperties.Name="Код для ввода на подтверждающем устройстве" />
+            <TextBlock Text="{Binding Countdown}" AutomationProperties.Name="Оставшееся время QR-входа" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.Name="Состояние QR-входа" AutomationProperties.LiveSetting="Polite" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Новый QR" Command="{Binding NewCommand}" IsDefault="True" AutomationProperties.Name="Создать новый QR-код" />
+                <Button Content="Отмена" Click="Cancel_Click" IsCancel="True" AutomationProperties.Name="Отменить QR-вход" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

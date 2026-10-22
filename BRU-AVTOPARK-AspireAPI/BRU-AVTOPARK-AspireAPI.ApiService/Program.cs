@@ -1,3 +1,4 @@
+using TicketSalesApp.AdminServer.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
@@ -30,22 +31,36 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Options;
 
 
 var builder = WebApplication.CreateBuilder(args);
+TicketSalesApp.Services.Implementations.SecretConfiguration.AddSecretFiles(builder.Configuration);
+TicketSalesApp.Services.Implementations.SecretConfiguration.ApplyPolicy(builder.Configuration, builder.Configuration,
+    builder.Environment.IsDevelopment(), message => Console.Error.WriteLine("WARNING: " + message));
 
 // Configure Data Protection with persistent key storage
 // CRITICAL: This ensures encryption keys are stable across requests and app restarts
 // Without this, OpenIddict cannot decrypt PKCE data from authorization code payloads
-var dataProtectionPath = Path.Combine(Directory.GetCurrentDirectory(), "DataProtectionKeys");
-Directory.CreateDirectory(dataProtectionPath); // Ensure directory exists
+var dataProtectionPath = builder.Configuration["DataProtection:KeysDirectory"] ?? Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU", "DataProtectionKeys");
+TicketSalesApp.Services.Implementations.OwnerOnlyFile.CreateDirectory(dataProtectionPath);
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
     .SetApplicationName("BRU-AVTOPARK-AspireAPI");
 
 // Configure Serilog
+var trafficOptions = TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.ServerOptions(builder.Configuration);
+TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Configure(trafficOptions);
+var trafficFormatter = new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter(trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full);
 Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.Debug()
+                 .MinimumLevel.Debug()
+                 .Enrich.FromLogContext()
+                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                 .MinimumLevel.Override("System", LogEventLevel.Information)
+                 // Hosting request-start logs include callback query strings (OIDC codes/state).
+                 .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
+                .WriteTo.Console(new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter())
+                .WriteTo.Debug(new TicketSalesApp.Services.Diagnostics.EscapedTextFormatter())
+                .WriteTo.File(new TicketSalesApp.Services.Diagnostics.TrafficJsonFormatter(trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full), "logs/app-.jsonl",
+                    rollingInterval: RollingInterval.Day, fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14)
                 .WriteTo.Logger(lc => lc
                     .Filter.ByExcluding(logEvent =>
                     {
@@ -64,10 +79,13 @@ Log.Logger = new LoggerConfiguration()
                                (message.StartsWith("{") && message.Contains("\"target\":\"UpdateOpenIdClient\"")) ||
                                (message.StartsWith("{") && message.Contains("\"target\":\"RegisterOpenIdClient\""));
                     })
-                    .WriteTo.File("logs/app-.log",
+                    .WriteTo.File(trafficFormatter, "logs/app-.log",
                         rollingInterval: RollingInterval.Day,
-                        restrictedToMinimumLevel: LogEventLevel.Information))
+                        fileSizeLimitBytes: 10485760, rollOnFileSizeLimit: true, retainedFileCountLimit: 14,
+                        restrictedToMinimumLevel: LogEventLevel.Debug))
                 .CreateLogger();
+if (trafficOptions.Level == BRU.Avtopark.Contracts.TrafficLevel.Full) Log.Warning(TicketSalesApp.Services.Diagnostics.EscapedTextFormatter.UnsafeWarning);
+Log.Information("API logs: {LogDirectory}", Path.GetFullPath("logs"));
 
 builder.Host.UseSerilog();
 
@@ -77,16 +95,20 @@ builder.AddServiceDefaults();
 builder.Services.AddLogging(loggingBuilder =>
 {
     loggingBuilder.ClearProviders();
-    loggingBuilder.AddConsole();
-    loggingBuilder.AddDebug();
+    // Serilog supplies readable escaped Console/Debug and a separate JSONL file sink.
     loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+    loggingBuilder.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
     
     // Suppress Windows Event Log to avoid permission errors
     loggingBuilder.AddFilter("Microsoft.Extensions.Logging.EventLog", LogLevel.None);
 });
 
 // Add services to the container.
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+    context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ConnectionAdmission>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.V2.ApiSocketSession>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Application.ApplicationOperations>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -123,16 +145,42 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add SpacetimeDB services
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ISpacetimeDBService, TicketSalesApp.Services.Implementations.SpacetimeDBService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Authorization.UserAccessService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:QrLogin"));
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.QrLoginBroker>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Providers"));
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.ProviderFlowBroker>();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.RefreshRateBudget>();
+builder.Services.AddScoped<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>, BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptionsValidator>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Entra")).ValidateOnStart();
+builder.Services.AddHttpClient("entra", client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.EntraAuthenticationService>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptions>, BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptionsValidator>();
+builder.Services.AddOptions<BRU_AVTOPARK_AspireAPI.ApiService.Authentication.PasskeyOptions>()
+    .Bind(builder.Configuration.GetSection("Authentication:Passkeys")).ValidateOnStart();
+builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IQrLoginDeviceStore, TicketSalesApp.Services.Implementations.QrLoginDeviceStore>();
 
 // Register a hosted service that will call ProcessFrameTick() at regular intervals
 builder.Services.AddHostedService<SpacetimeFrameTickService>();
+builder.Services.AddSingleton<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>());
+builder.Services.AddHostedService(sp => new BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService(
+    ct => RegisterDefaultOAuthClientsAsync(sp, ct), sp.GetRequiredService<ILogger<BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService>>()));
+builder.Services.AddHealthChecks().AddCheck<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartupHealthCheck>("database_provisioning", tags: new[] { "ready" });
 
 // Configure Fido2 for WebAuthn
 builder.Services.AddFido2(options =>
 {
-    options.ServerDomain = "localhost";
+    options.ServerDomain = builder.Configuration["Fido2:ServerDomain"] ?? "localhost";
     options.ServerName = "TicketSalesApp Admin API";
-    options.Origins = new HashSet<string> { "https://localhost:5001" };
+    options.Origins = (builder.Configuration.GetSection("Fido2:Origins").Get<string[]>() ?? ["https://localhost:5001"]).ToHashSet(StringComparer.Ordinal);
     options.TimestampDriftTolerance = 300000;
 });
 
@@ -157,6 +205,7 @@ builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IBusService, Ti
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IPermissionService, TicketSalesApp.Services.Implementations.PermissionService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.ITicketService, TicketSalesApp.Services.Implementations.TicketService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteService, TicketSalesApp.Services.Implementations.RouteService>();
+builder.Services.AddSingleton<TicketSalesApp.Services.Implementations.CatalogLookupService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IRouteScheduleService, TicketSalesApp.Services.Implementations.RouteScheduleService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IEmployeeService, TicketSalesApp.Services.Implementations.EmployeeService>();
 builder.Services.AddSingleton<TicketSalesApp.Services.Interfaces.IMaintenanceService, TicketSalesApp.Services.Implementations.MaintenanceService>();
@@ -221,6 +270,8 @@ builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IProfileService, BRU
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IRequestDetector, BRU_AVTOPARK.Services.Implementations.RequestDetector>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IOidcHelperService, BRU_AVTOPARK.Services.Implementations.OidcHelperService>();
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IIdentityService, BRU_AVTOPARK.Services.Implementations.IdentityService>();
+builder.Services.AddHttpClient("DatabaseIdentity", client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 
 // Add input sanitization service for security
 builder.Services.AddScoped<BRU_AVTOPARK.Services.Interfaces.IInputSanitizationService, BRU_AVTOPARK.Services.Implementations.InputSanitizationService>();
@@ -274,43 +325,24 @@ builder.Services.AddHttpClient("TokenInfo", client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Configure ForwardedHeaders middleware to trust proxies and populate RemoteIpAddress
-// IMPORTANT: Clearing KnownNetworks/KnownProxies and setting ForwardLimit = 1 trusts only the immediate upstream proxy.
-// This is suitable for single-proxy setups (e.g., Nginx/Caddy directly in front of the app).
-// For production multi-proxy environments (e.g., CDN -> Load Balancer -> App):
-// - Set ForwardLimit = null (trust all proxies) or a specific count
-// - Add known proxy IP ranges to KnownProxies/KnownNetworks for security
+// Trust loopback defaults and explicitly configured proxies only.
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
                                Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
-    // Clear default networks/proxies and configure based on your infrastructure
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
-    // For development, trust all proxies (in production, configure specific KnownProxies/KnownNetworks)
-    options.ForwardLimit = 1; // Only trust the first proxy
+    foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+        options.KnownProxies.Add(System.Net.IPAddress.Parse(address));
+    options.ForwardLimit = 1;
 });
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret is not configured"));
+var encryptionKey = new SymmetricSecurityKey(System.Security.Cryptography.HKDF.DeriveKey(
+    System.Security.Cryptography.HashAlgorithmName.SHA256, key, 32,
+    info: Encoding.UTF8.GetBytes("bru-openiddict/1"))) { KeyId = "openiddict-encryption-v1" };
 
-// Ensure key is exactly 32 bytes (256 bits)
-if (key.Length != 32)
-{
-    var newKey = new byte[32];
-    if (key.Length < 32)
-    {
-        // If key is too short, pad with zeros
-        Array.Copy(key, newKey, key.Length);
-    }
-    else
-    {
-        // If key is too long, truncate
-        Array.Copy(key, newKey, 32);
-    }
-    key = newKey;
-}
+// Existing AES encryption uses a 256-bit key. Never silently add entropy by zero padding.
 
 // Create symmetric security key with KeyId for OpenIddict compatibility
 var symmetricKey = new SymmetricSecurityKey(key)
@@ -329,7 +361,7 @@ builder.Services.AddOpenIddict()
         options.SetDefaultApplicationEntity<TicketSalesApp.Services.Implementations.OpenIddictApplication>();
         // Authorization storage disabled - PKCE data stored in token payload
         // options.SetDefaultAuthorizationEntity<SpacetimeDB.Types.OpenIddictSpacetimeAuthorization>();
-        options.SetDefaultTokenEntity<OpenIddict.Abstractions.OpenIddictTokenDescriptor>();
+        options.SetDefaultTokenEntity<TicketSalesApp.Services.Implementations.OpenIddictToken>();
         options.SetDefaultScopeEntity<OpenIddict.Abstractions.OpenIddictScopeDescriptor>();
         
         // Register stores
@@ -362,14 +394,29 @@ builder.Services.AddOpenIddict()
         }
         else
         {
-            options.AddEphemeralSigningKey();
+            var certificatePath = builder.Configuration["OpenIddict:SigningCertificatePath"]
+                ?? throw new InvalidOperationException("A persistent OpenIddict signing certificate is required outside Development.");
+            var certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
+                certificatePath, builder.Configuration["OpenIddict:SigningCertificatePassword"],
+                System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.EphemeralKeySet);
+            if (!certificate.HasPrivateKey || certificate.NotAfter.ToUniversalTime() <= DateTime.UtcNow)
+                throw new InvalidOperationException("OpenIddict signing certificate requires a valid private key and expiry.");
+            options.AddSigningCertificate(certificate);
+            Log.Information("Persistent OpenIddict signing certificate selected: {KeyId}, expires {ExpiresAt}", certificate.Thumbprint, certificate.NotAfter);
         }
 
         // Add encryption key
-        options.AddEncryptionKey(symmetricKey);
+        options.AddEncryptionKey(encryptionKey);
 
         // Set a fixed issuer to work with both HTTP and HTTPS
-        options.SetIssuer(new Uri("http://localhost:5000/"));
+        var issuerText = builder.Configuration["OpenIddict:Issuer"]
+            ?? (builder.Environment.IsDevelopment() ? "http://localhost:5000/" : throw new InvalidOperationException("OpenIddict:Issuer is required."));
+        if (!Uri.TryCreate(issuerText, UriKind.Absolute, out var issuer) ||
+            issuer.Scheme is not ("http" or "https") || issuer.Host is "0.0.0.0" or "::" ||
+            !string.IsNullOrEmpty(issuer.UserInfo) || !string.IsNullOrEmpty(issuer.Query) || !string.IsNullOrEmpty(issuer.Fragment))
+            throw new InvalidOperationException("OpenIddict:Issuer must be a concrete HTTP(S) issuer URL.");
+        options.SetIssuer(issuer);
+        Log.Information("OpenIddict issuer {Issuer}; PKCE required, authorization storage disabled", issuer);
 
         options.UseAspNetCore()
             .EnableTokenEndpointPassthrough()
@@ -385,7 +432,7 @@ builder.Services.AddOpenIddict()
         // Import the configuration from the local OpenIddict server instance.
         options.UseLocalServer();
 
-        options.AddEncryptionKey(symmetricKey); // << Important
+        options.AddEncryptionKey(encryptionKey);
 
         // Configure the token validation parameters to accept our custom JWT tokens
         options.Configure(validationOptions =>
@@ -403,17 +450,21 @@ builder.Services.AddOpenIddict()
         });
     });
 // Configure CORS
+var plaintextPolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.Mode(builder.Configuration);
+var allowedCorsOrigins = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CorsOrigins(builder.Configuration, plaintextPolicy);
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddPolicy("ConfiguredOrigins", builder =>
     {
         builder
-            .AllowAnyOrigin()
+            .SetIsOriginAllowed(origin => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.IsCorsOriginAllowed(origin, allowedCorsOrigins, plaintextPolicy))
             .AllowAnyMethod()
             .AllowAnyHeader()
             .WithExposedHeaders("Content-Disposition", "Authorization");
     });
 });
+
+builder.Services.AddWindowsAccountAuthentication(builder.Configuration);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -432,9 +483,7 @@ builder.Services.AddAuthentication(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
-    // SameAsRequest allows cookies over HTTP when accessed via LAN IP (http://192.168.x.x:5000)
-    // while still using Secure cookies when accessed over HTTPS in production.
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.CookiePolicy(plaintextPolicy);
     options.Cookie.SameSite = SameSiteMode.Lax;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -618,11 +667,15 @@ catch (Exception ex)
 }
 
 // CONFIGURE MIDDLEWARE PIPELINE WITH ERROR HANDLING
+app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.RequestTraceMiddleware>();
+app.UseMiddleware<BRU_AVTOPARK_AspireAPI.ApiService.Middleware.TrafficLoggingMiddleware>();
+app.UseExceptionHandler();
 // Configure ForwardedHeaders middleware FIRST to process proxy headers
 app.UseForwardedHeaders();
+app.Use((context, next) => BRU_AVTOPARK_AspireAPI.ApiService.Security.HttpSecurityPolicy.EnforceHttps(context, next, plaintextPolicy));
+if (!app.Environment.IsDevelopment()) app.UseHsts();
 
-// CRITICAL: CORS must run BEFORE authentication/authorization for preflight requests
-app.UseCors("AllowAll");
+
 
 try
 {
@@ -647,6 +700,9 @@ catch (Exception ex)
     Log.Fatal(ex, "FATAL ERROR: Failed to register routing middleware");
     throw;
 }
+
+// Routing selects endpoint CORS metadata; preflight still runs before authentication.
+app.UseCors("ConfiguredOrigins");
 
 // CRITICAL: Serve static files from Experimental folder (CSS, JS)
 // This allows the browser to load /css/bru-design-system.css and /js/*.js files
@@ -676,9 +732,6 @@ app.UseControllerLogging();
 // This provides defense-in-depth protection against injection attacks
 app.UseMiddleware<BRU_AVTOPARK.Middleware.InputValidationMiddleware>();
 
-// Configure the HTTP request pipeline.
-app.UseExceptionHandler();
-
 // Add authentication and authorization in the correct order
 app.UseAuthentication();
 app.UseAuthorization();
@@ -697,8 +750,7 @@ foreach (var origin in realtimeOptions.AllowedOrigins.Where(origin => !string.Is
 {
     webSocketOptions.AllowedOrigins.Add(origin);
 }
-// Allow any LAN IP — native Avalonia clients don't send Origin headers so this covers browser-based access
-webSocketOptions.AllowedOrigins.Add("*");
+// Native clients without an Origin header are supported by the middleware.
 
 app.UseWebSockets(webSocketOptions);
 
@@ -1229,16 +1281,11 @@ foreach (var endpoint in loginEndpoints)
 
 startupLogger.LogInformation("========== ENDPOINT MAPPING DIAGNOSTICS END ==========");
 
-// Initialize SpacetimeDB connection
-var spacetimeService = app.Services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
-spacetimeService.Connect();
-
-// Start background task to register OAuth clients once subscription is ready
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("Starting background task for OAuth client registration...");
-
-_ = Task.Run(async () =>
+// The hosted service observes this startup task and cancels all readiness waits on shutdown.
+static async Task RegisterDefaultOAuthClientsAsync(IServiceProvider services, CancellationToken stoppingToken)
 {
+    var spacetimeService = services.GetRequiredService<TicketSalesApp.Services.Interfaces.ISpacetimeDBService>();
+    var logger = services.GetRequiredService<ILogger<BRU_AVTOPARK_AspireAPI.ApiService.Services.OAuthClientRegistrationService>>();
     try
     {
         // Wait for connection (max 30 seconds)
@@ -1246,7 +1293,7 @@ _ = Task.Run(async () =>
         var startTime = DateTime.UtcNow;
         while (!spacetimeService.IsConnected() && (DateTime.UtcNow - startTime) < maxWaitTime)
         {
-            await Task.Delay(500);
+            await Task.Delay(500, stoppingToken);
         }
 
         if (!spacetimeService.IsConnected())
@@ -1265,7 +1312,7 @@ _ = Task.Run(async () =>
         
         while (!spacetimeService.IsSubscriptionReady() && (DateTime.UtcNow - startTime) < maxSubscriptionWaitTime)
         {
-            await Task.Delay(500);
+            await Task.Delay(500, stoppingToken);
             
             // Log progress every 10 seconds
             if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 10)
@@ -1286,8 +1333,12 @@ _ = Task.Run(async () =>
         logger.LogInformation("SpacetimeDB subscription applied successfully after {Elapsed:F1}s, proceeding with client registration", 
             (DateTime.UtcNow - startTime).TotalSeconds);
 
+        var databaseStartup = services.GetRequiredService<BRU_AVTOPARK_AspireAPI.ApiService.Services.ApiDatabaseStartup>();
+        while (!databaseStartup.IsReady)
+            await Task.Delay(500, stoppingToken);
+
         // Auto-register default OAuth clients
-        using (var scope = app.Services.CreateScope())
+        using (var scope = services.CreateScope())
         {
             var openIdConnectService = scope.ServiceProvider.GetRequiredService<TicketSalesApp.Services.Interfaces.IOpenIdConnectService>();
             
@@ -1295,7 +1346,8 @@ _ = Task.Run(async () =>
             
             // Register desktop client if it doesn't exist
             var desktopClientId = "bru-avtopark-desktop-client";
-            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
+            var (clientExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId, stoppingToken);
+            stoppingToken.ThrowIfCancellationRequested();
             
             if (!clientExists)
             {
@@ -1322,68 +1374,17 @@ _ = Task.Run(async () =>
                         "http://localhost:5501/"
                     },
                     allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
-                    requireConsent: false
+                    requireConsent: false, cancellationToken: stoppingToken
                 );
                 
                 if (success)
                 {
+                    stoppingToken.ThrowIfCancellationRequested();
                     logger.LogInformation("Successfully registered default desktop client");
                     
-                    // CRITICAL: Process frame ticks to ensure SpacetimeDB cache is updated
-                    // The reducer writes to the database, but the local cache needs frame ticks to sync
-                    logger.LogInformation("[FrameTick] Processing frame ticks to sync SpacetimeDB cache...");
-                    for (int i = 0; i < 10; i++)
-                    {
-                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
-                        spacetimeService.ProcessFrameTick();
-                        await Task.Delay(100); // Small delay between ticks
-                    }
-                    logger.LogInformation("[FrameTick] Completed 10 frame ticks");
-                    
-                    // Fetch and display reducer logs from SpacetimeDB
-                    logger.LogInformation("Fetching SpacetimeDB reducer logs for RegisterOpenIdClient...");
-                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("RegisterOpenIdClient", numLines: 300);
-                    if (!reducerLogs.StartsWith("Error"))
-                    {
-                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
-                        logger.LogInformation(reducerLogs);
-                        logger.LogInformation("=== End of Reducer Logs ===");
-                    }
-                    
-                    // Verify the client is retrievable from cache
-                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
-                    if (verifyExists)
-                    {
-                        logger.LogInformation("Verified default desktop client is retrievable from database");
-                    }
-                    else
-                    {
-                        logger.LogWarning("Default desktop client was registered but cannot be retrieved from cache yet - processing more frame ticks");
-                        
-                        // Try more aggressive syncing
-                        logger.LogInformation("[FrameTick] Processing additional 20 frame ticks...");
-                        for (int i = 0; i < 20; i++)
-                        {
-                            if (i % 5 == 0)
-                            {
-                                logger.LogDebug("[FrameTick] Processing tick {TickNumber}/20", i + 1);
-                            }
-                            spacetimeService.ProcessFrameTick();
-                            await Task.Delay(50);
-                        }
-                        logger.LogInformation("[FrameTick] Completed additional 20 frame ticks");
-                        
-                        // Final verification
-                        var (finalCheck, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId);
-                        if (finalCheck)
-                        {
-                            logger.LogInformation("Client now retrievable after additional frame ticks");
-                        }
-                        else
-                        {
-                            logger.LogError("Client still not retrievable after 30 frame ticks - SpacetimeDB cache sync issue");
-                        }
-                    }
+                    var (verifyExists, _, _) = await openIdConnectService.GetApplicationByClientIdAsync(desktopClientId, stoppingToken);
+                    if (!verifyExists) throw new InvalidOperationException("Committed default client could not be read.");
+                    logger.LogInformation("Default desktop client persistence confirmed after committed store operation");
                 }
                 else
                 {
@@ -1415,32 +1416,14 @@ _ = Task.Run(async () =>
                         "http://localhost:5501/"
                     },
                     allowedScopes: new[] { "openid", "profile", "email", "roles", "api", "offline_access" },
-                    requireConsent: false
+                    requireConsent: false, cancellationToken: stoppingToken
                 );
                 
                 if (success)
                 {
                     logger.LogInformation("Successfully updated default desktop client with correct scope permissions");
                     
-                    // Process frame ticks to sync the update
-                    logger.LogInformation("[FrameTick] Processing frame ticks to sync client update...");
-                    for (int i = 0; i < 10; i++)
-                    {
-                        logger.LogDebug("[FrameTick] Processing tick {TickNumber}/10", i + 1);
-                        spacetimeService.ProcessFrameTick();
-                        await Task.Delay(100);
-                    }
-                    logger.LogInformation("[FrameTick] Completed frame ticks for client update");
-                    
-                    // Fetch and display reducer logs from SpacetimeDB
-                    logger.LogInformation("Fetching SpacetimeDB reducer logs for UpdateOpenIdClient...");
-                    var reducerLogs = await spacetimeService.FetchReducerLogsAsync("UpdateOpenIdClient", numLines: 300);
-                    if (!reducerLogs.StartsWith("Error"))
-                    {
-                        logger.LogInformation("=== SpacetimeDB Reducer Logs ===");
-                        logger.LogInformation(reducerLogs);
-                        logger.LogInformation("=== End of Reducer Logs ===");
-                    }
+                    logger.LogInformation("Default client update committed through the database coordinator");
                 }
                 else
                 {
@@ -1451,6 +1434,7 @@ _ = Task.Run(async () =>
             // Register required OAuth scopes
             logger.LogInformation("Registering required OAuth scopes...");
             var scopeManager = openIdConnectService.GetScopeManager();
+            stoppingToken.ThrowIfCancellationRequested();
             
             var requiredScopes = new[]
             {
@@ -1466,7 +1450,8 @@ _ = Task.Run(async () =>
             {
                 try
                 {
-                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                    stoppingToken.ThrowIfCancellationRequested();
+                    var existingScope = await scopeManager.FindByNameAsync(scopeInfo.Name, stoppingToken);
                     if (existingScope == null)
                     {
                         logger.LogInformation("Creating scope: {ScopeName}", scopeInfo.Name);
@@ -1478,7 +1463,7 @@ _ = Task.Run(async () =>
                             Description = scopeInfo.Description
                         };
 
-                        await scopeManager.CreateAsync(scopeDescriptor);
+                        await scopeManager.CreateAsync(scopeDescriptor, stoppingToken);
                         logger.LogInformation("Successfully created scope: {ScopeName}", scopeInfo.Name);
                     }
                     else
@@ -1486,27 +1471,18 @@ _ = Task.Run(async () =>
                         logger.LogInformation("Scope already exists: {ScopeName}", scopeInfo.Name);
                     }
                 }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { throw; }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Error creating scope {ScopeName}: {Message}", scopeInfo.Name, ex.Message);
+                    logger.LogError("Error creating scope {ScopeName}: {ErrorType}", scopeInfo.Name, ex.GetType().Name);
                 }
             }
-
-            // Process frame ticks to sync scope data
-            logger.LogInformation("[FrameTick] Processing frame ticks to sync scope data...");
-            for (int i = 0; i < 10; i++)
-            {
-                logger.LogDebug("[FrameTick] Processing scope sync tick {TickNumber}/10", i + 1);
-                spacetimeService.ProcessFrameTick();
-                await Task.Delay(100);
-            }
-            logger.LogInformation("[FrameTick] Completed scope sync frame ticks");
 
             // Verify scopes are retrievable
             logger.LogInformation("Verifying registered scopes...");
             foreach (var scopeInfo in requiredScopes)
             {
-                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name);
+                var registeredScope = await scopeManager.FindByNameAsync(scopeInfo.Name, stoppingToken);
                 if (registeredScope != null)
                 {
                     logger.LogInformation("✓ Scope verified: {ScopeName}", scopeInfo.Name);
@@ -1518,11 +1494,12 @@ _ = Task.Run(async () =>
             }
         }
     }
+    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { throw; }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error during OAuth client registration: {Message}", ex.Message);
+        logger.LogError("Error during OAuth client registration: {ErrorType}", ex.GetType().Name);
     }
-});
+}
 
 app.Run();
 

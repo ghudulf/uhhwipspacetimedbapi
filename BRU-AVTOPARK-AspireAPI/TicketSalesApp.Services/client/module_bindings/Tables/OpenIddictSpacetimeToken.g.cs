@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "open_iddict_spacetime_token";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(OpenIddictSpacetimeToken row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(OpenIddictSpacetimeTokenHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(OpenIddictSpacetimeToken row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal OpenIddictSpacetimeTokenHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -52,6 +62,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Status { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Subject { get; }
         public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string> Type { get; }
+        public global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint> ApiAccessPartition { get; }
 
         public OpenIddictSpacetimeTokenCols(string tableName)
         {
@@ -68,16 +79,19 @@ namespace SpacetimeDB.Types
             Status = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "status");
             Subject = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "subject");
             Type = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, string>(tableName, "type");
+            ApiAccessPartition = new global::SpacetimeDB.Col<OpenIddictSpacetimeToken, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class OpenIddictSpacetimeTokenIxCols
     {
         public global::SpacetimeDB.IxCol<OpenIddictSpacetimeToken, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<OpenIddictSpacetimeToken, uint> ApiAccessPartition { get; }
 
         public OpenIddictSpacetimeTokenIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeToken, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<OpenIddictSpacetimeToken, uint>(tableName, "api_access_partition");
         }
     }
 }

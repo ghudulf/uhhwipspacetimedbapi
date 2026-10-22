@@ -57,14 +57,14 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Gets an application by client ID
         /// </summary>
-        public async Task<(bool success, object? application, string? errorMessage)> GetApplicationByClientIdAsync(string clientId)
+        public async Task<(bool success, object? application, string? errorMessage)> GetApplicationByClientIdAsync(string clientId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Getting application by client ID: {ClientId}", clientId);
 
                 var applicationManager = GetApplicationManagerInternal();
-                var application = await applicationManager.FindByClientIdAsync(clientId);
+                var application = await applicationManager.FindByClientIdAsync(clientId, cancellationToken);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -123,7 +123,6 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Creating identity for user: {Login}", user.Login);
 
-                var conn = _spacetimeService.GetConnection();
                 
                 // Create the claims-based identity
                 var identity = new ClaimsIdentity(
@@ -138,10 +137,10 @@ namespace TicketSalesApp.Services.Implementations
                         .SetClaim(Claims.PreferredUsername, user.Login);
 
                 // Add role claims
-                var userRoles = conn.Db.UserRole.Iter()
+                var userRoles = await _spacetimeService.ReadAsync(c => c.Db.UserRole.Iter()
                     .Where(ur => ur.UserId.Equals(user.UserId))
-                    .Join(conn.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r.Name)
-                    .ToList();
+                    .Join(c.Db.Role.Iter(), ur => ur.RoleId, r => r.RoleId, (ur, r) => r.Name)
+                    .ToList());
                 
                 foreach (var role in userRoles)
                 {
@@ -234,7 +233,7 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Registers a new client application
         /// </summary>
-        public async Task<(bool success, string? errorMessage)> RegisterClientApplicationAsync(string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, bool requireConsent)
+        public async Task<(bool success, string? errorMessage)> RegisterClientApplicationAsync(string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, bool requireConsent, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -260,7 +259,7 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Check if application with the same client ID already exists
                 var applicationManager = GetApplicationManagerInternal();
-                var existingApp = await applicationManager.FindByClientIdAsync(clientId);
+                var existingApp = await applicationManager.FindByClientIdAsync(clientId, cancellationToken);
                 if (existingApp != null)
                 {
                     _logger.LogWarning("An application with this client ID already exists: {ClientId}", clientId);
@@ -311,7 +310,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Create the application with the complete descriptor
-                var application = await applicationManager.CreateAsync(descriptor);
+                var application = await applicationManager.CreateAsync(descriptor, cancellationToken);
 
                 _logger.LogInformation("Client application registered successfully: {ClientId}", clientId);
                 return (true, null);
@@ -326,14 +325,14 @@ namespace TicketSalesApp.Services.Implementations
         /// <summary>
         /// Updates a client application
         /// </summary>
-        public async Task<(bool success, string? errorMessage)> UpdateClientApplicationAsync(string clientId, string? clientSecret, string? displayName, string[]? redirectUris, string[]? postLogoutRedirectUris, string[]? allowedScopes, bool? requireConsent)
+        public async Task<(bool success, string? errorMessage)> UpdateClientApplicationAsync(string clientId, string? clientSecret, string? displayName, string[]? redirectUris, string[]? postLogoutRedirectUris, string[]? allowedScopes, bool? requireConsent, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Updating client application: {ClientId}", clientId);
 
                 var applicationManager = GetApplicationManagerInternal();
-                var application = await applicationManager.FindByClientIdAsync(clientId);
+                var application = await applicationManager.FindByClientIdAsync(clientId, cancellationToken);
                 if (application == null)
                 {
                     _logger.LogWarning("Application not found with client ID: {ClientId}", clientId);
@@ -345,11 +344,11 @@ namespace TicketSalesApp.Services.Implementations
                 var descriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientId,
-                    DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application),
+                    DisplayName = displayName ?? await applicationManager.GetDisplayNameAsync(application, cancellationToken),
                     ConsentType = requireConsent.HasValue ? 
                         (requireConsent.Value ? ConsentTypes.Explicit : ConsentTypes.Implicit) : 
-                        await applicationManager.GetConsentTypeAsync(application),
-                    Type = await applicationManager.GetClientTypeAsync(application) ?? ClientTypes.Public
+                        await applicationManager.GetConsentTypeAsync(application, cancellationToken),
+                    Type = await applicationManager.GetClientTypeAsync(application, cancellationToken) ?? ClientTypes.Public
                 };
                 
                 // Update client secret if provided
@@ -368,7 +367,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    var existingUris = await applicationManager.GetRedirectUrisAsync(application);
+                    var existingUris = await applicationManager.GetRedirectUrisAsync(application, cancellationToken);
                     foreach (var uri in existingUris)
                     {
                         descriptor.RedirectUris.Add(new Uri(uri));
@@ -385,7 +384,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
                 else
                 {
-                    var existingUris = await applicationManager.GetPostLogoutRedirectUrisAsync(application);
+                    var existingUris = await applicationManager.GetPostLogoutRedirectUrisAsync(application, cancellationToken);
                     foreach (var uri in existingUris)
                     {
                         descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
@@ -421,14 +420,14 @@ namespace TicketSalesApp.Services.Implementations
                 else
                 {
                     // Copy existing permissions if no new scopes provided
-                    foreach (var permission in await applicationManager.GetPermissionsAsync(application))
+                    foreach (var permission in await applicationManager.GetPermissionsAsync(application, cancellationToken))
                     {
                         descriptor.Permissions.Add(permission);
                     }
                 }
                 
                 // Update the application
-                await applicationManager.UpdateAsync(application, descriptor);
+                await applicationManager.UpdateAsync(application, descriptor, cancellationToken);
                 
                 _logger.LogInformation("Client application updated successfully: {ClientId}", clientId);
                 return (true, null);
@@ -567,8 +566,6 @@ namespace TicketSalesApp.Services.Implementations
         }
     }
 }
-
-
 
 
 

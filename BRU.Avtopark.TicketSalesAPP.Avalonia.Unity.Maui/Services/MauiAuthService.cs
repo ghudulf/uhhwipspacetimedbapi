@@ -44,11 +44,11 @@ public sealed class MauiAuthService
         }
     }
 
-    public TokenStorageService TokenStorage { get; } = new TokenStorageService();
+    public TokenStorageService TokenStorage => new(ApiClientService.Instance.CurrentBaseUrl!);
 
     // ── Constructor ──────────────────────────────────────────────────────
 
-    public MauiAuthService() { }
+    private MauiAuthService() { }
 
     // ── Initialization (discovery) ───────────────────────────────────────
 
@@ -199,23 +199,19 @@ public sealed class MauiAuthService
     private OAuthService BuildOAuthService(string? serverRoot)
     {
         // serverRoot may be the full "api/" base — strip to get server root
-        var root = serverRoot ?? $"http://localhost:5000/";
-        if (root.EndsWith("api/", StringComparison.OrdinalIgnoreCase))
-            root = root[..^4];
-        root = root.TrimEnd('/');
+        var root = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(serverRoot ?? "http://localhost:5000/").AbsoluteUri.TrimEnd('/');
 
         var authEndpoint  = $"{root}/connect/authorize";
         var tokenEndpoint = $"{root}/connect/token";
         // Redirect URI is always localhost — it's a server-side endpoint registered in OpenIddict.
         // Only authorize/token endpoints use the discovered LAN IP.
-        var redirectUri   = "http://localhost:5000/callback";
+        var redirectUri   = BRU.Avtopark.Client.ClientEndpoints.DefaultOAuthCallbackUri;
 
         Log.Information("[MauiAuthService] Building OAuthService: auth={Auth}, token={Token}",
             authEndpoint, tokenEndpoint);
 
         return new OAuthService(
             clientId: "bru-avtopark-desktop-client",
-            clientSecret: "your-secure-client-secret-here-change-in-production",
             authorizationEndpoint: authEndpoint,
             tokenEndpoint: tokenEndpoint,
             redirectUri: redirectUri,

@@ -1,3 +1,5 @@
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -18,14 +20,15 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class MaintenanceController : BaseController
     {
         private readonly IMaintenanceService _maintenanceService;
         private readonly ILogger<MaintenanceController> _logger;
-        private readonly ISpacetimeDBService _spacetimeService; // Added SpacetimeDBService
+        private readonly ISpacetimeDBService _spacetimeService;
+        private readonly CatalogLookupService _catalog; // Added SpacetimeDBService
 
         private readonly IRealtimeEventBus _realtimeEventBus;
 
@@ -41,8 +44,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             IMaintenanceService maintenanceService,
             ILogger<MaintenanceController> logger,
             ISpacetimeDBService spacetimeService, // Added SpacetimeDBService
-            IRealtimeEventBus realtimeEventBus)
+            IRealtimeEventBus realtimeEventBus, CatalogLookupService catalog)
         {
+            _catalog = catalog;
             _maintenanceService = maintenanceService ?? throw new ArgumentNullException(nameof(maintenanceService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService)); // Added SpacetimeDBService
@@ -67,9 +71,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("maintenance.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("maintenance", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("maintenance", cancellationToken), "maintenance.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -89,6 +98,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when "read" is requested without an Id or when the Command value is unsupported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("maintenance", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
@@ -145,6 +155,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when request.Id is not provided.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
+            if (!await HasPermissionAsync("maintenance.view")) throw new UnauthorizedAccessException("View permission required.");
             var id = request.Id ?? throw new InvalidOperationException("id is required for read");
             var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
 
@@ -153,8 +164,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return new { record = (object?)null };
             }
 
-            var conn = _spacetimeService.GetConnection();
-            var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses, HttpContext.RequestAborted);
+            var bus = lookup.Buses.GetValueOrDefault(maintenance.BusId);
 
             // Map to anonymous type matching REST endpoint projection
             var result = new {
@@ -182,12 +193,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateMaintenanceModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
+            if (!await HasPermissionAsync("maintenance.create")) throw new UnauthorizedAccessException("Not authorized for maintenance.create");
             var model = request.Payload?.Deserialize<CreateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
             var maintenanceType = string.IsNullOrWhiteSpace(model.MaintenanceType) ? "Regular" : model.MaintenanceType;
-            var createdId = await _maintenanceService.CreateMaintenanceAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, maintenanceType);
-            var record = createdId ? await _maintenanceService.GetMaintenanceByBusIdAsync(model.BusId).ContinueWith(t => t.Result.OrderByDescending(r => r.LastServiceDate).FirstOrDefault()) : null;
+            var record = await _maintenanceService.CreateMaintenanceRecordAsync(model.BusId, (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(), model.ServiceEngineer, model.FoundIssues, (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(), model.Roadworthiness, maintenanceType,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
+            var createdId = record != null;
             var result = new { operation = "create", success = createdId, record };
 
             if (createdId)
@@ -195,7 +207,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 try
                 {
                     // Extract user context from request
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -214,7 +226,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "create", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for maintenance.created (Resource: maintenance, EventName: maintenance.created, RecordId: {RecordId})", record?.MaintenanceId);
                 }
@@ -238,19 +250,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
+            if (!await HasPermissionAsync("maintenance.edit")) throw new UnauthorizedAccessException("Not authorized for maintenance.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateMaintenanceModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness);
+            var success = await _maintenanceService.UpdateMaintenanceAsync(id, model.BusId, model.LastServiceDate.HasValue ? (ulong)new DateTimeOffset(model.LastServiceDate.Value).ToUnixTimeMilliseconds() : null, model.ServiceEngineer, model.FoundIssues, model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null, model.Roadworthiness,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
 
             // Project entity to match REST endpoint shape
             object? projectedEntity = null;
             if (maintenance != null)
             {
-                var conn = _spacetimeService.GetConnection();
-                var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+                var lookup = await _catalog.ReadAsync(CatalogLookups.Buses, HttpContext.RequestAborted);
+                var bus = lookup.Buses.GetValueOrDefault(maintenance.BusId);
 
                 projectedEntity = new {
                     maintenance.MaintenanceId,
@@ -273,7 +286,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 try
                 {
                     // Extract user context from request
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -292,7 +305,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "update", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for maintenance.updated (Resource: maintenance, EventName: maintenance.updated, MaintenanceId: {MaintenanceId})", id);
                 }
@@ -316,9 +329,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id for the delete operation.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
+            if (!await HasPermissionAsync("maintenance.delete")) throw new UnauthorizedAccessException("Not authorized for maintenance.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _maintenanceService.DeleteMaintenanceAsync(id);
+            var success = await _maintenanceService.DeleteMaintenanceAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "delete", success, deletedId = id, record = (object?)null };
 
             if (success)
@@ -326,7 +340,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 try
                 {
                     // Extract user context from request
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -345,7 +359,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         Metadata: new Dictionary<string, string> { ["operation"] = "delete", ["success"] = "true" }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for maintenance.deleted (Resource: maintenance, EventName: maintenance.deleted, DeletedId: {DeletedId})", id);
                 }
@@ -361,6 +375,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetMaintenanceRecords()
         {
+            if (!await HasPermissionAsync("maintenance.view")) return Forbid();
             Log.Information("Fetching all maintenance records");
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
             
@@ -397,6 +412,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetMaintenanceRecord(uint id) // Changed return type
         {
+            if (!await HasPermissionAsync("maintenance.view")) return Forbid();
             Log.Information("Fetching maintenance record with ID {MaintenanceId}", id);
             var maintenance = await _maintenanceService.GetMaintenanceByIdAsync(id);
 
@@ -406,8 +422,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return NotFound();
             }
 
-            var conn = _spacetimeService.GetConnection();
-            var bus = conn.Db.Bus.BusId.Find(maintenance.BusId);
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses, HttpContext.RequestAborted);
+            var bus = lookup.Buses.GetValueOrDefault(maintenance.BusId);
 
             // Map to anonymous type
             var result = new {
@@ -431,7 +447,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Maintenance>> CreateMaintenanceRecord([FromBody] CreateMaintenanceModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("maintenance.create"))
             {
                 Log.Warning("Unauthorized attempt to create maintenance record by non-admin user");
                 return Forbid();
@@ -439,30 +455,20 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             Log.Information("Creating new maintenance record for bus ID {BusId}", model.BusId);
 
-            var success = await _maintenanceService.CreateMaintenanceAsync(
+            var record = await _maintenanceService.CreateMaintenanceRecordAsync(
                 model.BusId,
                 (ulong)new DateTimeOffset(model.LastServiceDate).ToUnixTimeMilliseconds(),
                 model.ServiceEngineer,
                 model.FoundIssues,
                 (ulong)new DateTimeOffset(model.NextServiceDate).ToUnixTimeMilliseconds(),
                 model.Roadworthiness,
-                "Regular" // Default maintenance type
-            );
-
-            if (!success)
-            {
-                Log.Warning("Failed to create maintenance record");
-                return BadRequest("Failed to create maintenance record");
-            }
-
-            // Get the newly created record
-            var records = await _maintenanceService.GetMaintenanceByBusIdAsync(model.BusId);
-            var record = records.OrderByDescending(r => r.LastServiceDate).FirstOrDefault();
+                "Regular", // Default maintenance type
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
             if (record == null)
             {
-                Log.Error("Maintenance record was created but could not be retrieved");
-                return StatusCode(500, "Maintenance record was created but could not be retrieved");
+                Log.Warning("Failed to create maintenance record");
+                return BadRequest("Failed to create maintenance record");
             }
 
             Log.Information("Successfully created maintenance record with ID {MaintenanceId}", record.MaintenanceId);
@@ -472,7 +478,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateMaintenanceRecord(uint id, [FromBody] UpdateMaintenanceModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("maintenance.edit"))
             {
                 Log.Warning("Unauthorized attempt to update maintenance record by non-admin user");
                 return Forbid();
@@ -487,8 +493,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 model.ServiceEngineer,
                 model.FoundIssues,
                 model.NextServiceDate.HasValue ? (ulong)new DateTimeOffset(model.NextServiceDate.Value).ToUnixTimeMilliseconds() : null,
-                model.Roadworthiness
-            );
+                model.Roadworthiness,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
             if (!success)
             {
@@ -503,7 +509,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMaintenanceRecord(uint id)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("maintenance.delete"))
             {
                 Log.Warning("Unauthorized attempt to delete maintenance record by non-admin user");
                 return Forbid();
@@ -511,7 +517,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             Log.Information("Deleting maintenance record with ID {MaintenanceId}", id);
 
-            var success = await _maintenanceService.DeleteMaintenanceAsync(id);
+            var success = await _maintenanceService.DeleteMaintenanceAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
             if (!success)
             {
                 Log.Warning("Maintenance record with ID {MaintenanceId} not found for deletion", id);
@@ -530,11 +537,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             [FromQuery] string? engineer = null,
             [FromQuery] string? roadworthiness = null)
         {
+            if (!await HasPermissionAsync("maintenance.view")) return Forbid();
             Log.Information("Searching maintenance records with parameters: StartDate={StartDate}, EndDate={EndDate}, BusModel={BusModel}, Engineer={Engineer}, Roadworthiness={Roadworthiness}",
                 startDate, endDate, busModel, engineer, roadworthiness);
 
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var conn = _spacetimeService.GetConnection();
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses, HttpContext.RequestAborted);
             var query = records.AsEnumerable();
 
             if (startDate.HasValue)
@@ -559,14 +567,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (!string.IsNullOrEmpty(busModel))
             {
                 query = query.Where(m => {
-                    var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                    var bus = lookup.Buses.GetValueOrDefault(m.BusId);
                     return bus != null && bus.Model.Contains(busModel, StringComparison.OrdinalIgnoreCase);
                 });
             }
 
             // Map to anonymous type
             var result = query.Select(m => {
-                var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                var bus = lookup.Buses.GetValueOrDefault(m.BusId);
                 return new {
                     m.MaintenanceId,
                     m.BusId,
@@ -589,10 +597,11 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("due-maintenance")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetDueMaintenanceRecords() // Changed return type
         {
+            if (!await HasPermissionAsync("maintenance.view")) return Forbid();
             Log.Information("Fetching due maintenance records");
             var now = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var records = await _maintenanceService.GetAllMaintenanceRecordsAsync();
-            var conn = _spacetimeService.GetConnection();
+            var lookup = await _catalog.ReadAsync(CatalogLookups.Buses, HttpContext.RequestAborted);
             
             var dueRecords = records.Where(m => m.NextServiceDate <= now)
                            .OrderBy(m => m.NextServiceDate)
@@ -600,7 +609,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             // Map to anonymous type
             var result = dueRecords.Select(m => {
-                var bus = conn.Db.Bus.BusId.Find(m.BusId);
+                var bus = lookup.Buses.GetValueOrDefault(m.BusId);
                 return new {
                     m.MaintenanceId,
                     m.BusId,
@@ -641,4 +650,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public DateTime? NextServiceDate { get; set; }
         public string? Roadworthiness { get; set; }
     }
-} 
+}

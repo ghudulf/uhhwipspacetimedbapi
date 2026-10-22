@@ -31,6 +31,8 @@ namespace SpacetimeDB.Types
         public string? Subject;
         [DataMember(Name = "type")]
         public string? Type;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public OpenIddictSpacetimeAuthorization(
             uint Id,
@@ -41,7 +43,8 @@ namespace SpacetimeDB.Types
             string? Scopes,
             string? Status,
             string? Subject,
-            string? Type
+            string? Type,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -53,6 +56,7 @@ namespace SpacetimeDB.Types
             this.Status = Status;
             this.Subject = Subject;
             this.Type = Type;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public OpenIddictSpacetimeAuthorization()

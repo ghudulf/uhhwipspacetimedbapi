@@ -53,9 +53,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             _completionSource = new TaskCompletionSource<OAuthResult>();
 
             Log.Information("OAuthLoginWindow created");
-            Log.Debug("Authorization URL: {Url}", authorizationUrl);
+            Log.Debug("Authorization URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(authorizationUrl));
             Log.Debug("Redirect URI: {Uri}", redirectUri);
-            Log.Debug("Expected state: {State}", expectedState);
+            Log.Debug("OAuth state validation configured");
 
 #if DEBUG
             DevToolsHelper.AttachOnce();
@@ -76,16 +76,16 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             if (!string.IsNullOrEmpty(_authorizationUrl))
             {
                 Log.Information("=== OAUTH WINDOW OPENED ===");
-                Log.Information("Authorization URL: {Url}", _authorizationUrl);
+                Log.Information("Authorization URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(_authorizationUrl));
                 Log.Information("Redirect URI: {RedirectUri}", _redirectUri);
                 
                 // CRITICAL: Check if the authorization URL is actually a callback URL
                 // This indicates stored invalid authorization data
                 if (_authorizationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
-                    _authorizationUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                    BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(_authorizationUrl, _redirectUri))
                 {
                     Log.Error("CRITICAL: Authorization URL is a callback URL! This indicates stored invalid auth data.");
-                    Log.Error("Authorization URL: {Url}", _authorizationUrl);
+                    Log.Error("Authorization URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(_authorizationUrl));
                     Log.Error("Redirect URI: {RedirectUri}", _redirectUri);
                     
                     // Show error immediately and trigger reset
@@ -98,7 +98,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                     !_authorizationUrl.Contains("response_type=", StringComparison.OrdinalIgnoreCase))
                 {
                     Log.Error("CRITICAL: Authorization URL is missing required parameters!");
-                    Log.Error("Authorization URL: {Url}", _authorizationUrl);
+                    Log.Error("Authorization URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(_authorizationUrl));
                     
                     // Show error and trigger reset
                     ShowCallbackLoopError();
@@ -189,39 +189,19 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 await ClearWebViewDataAsync(_webView);
             }
 
-            // For local development: if the auth URL uses HTTPS but the discovered server
-            // is HTTP, convert to HTTP to avoid self-signed cert issues in WebView.
             var navigationUrl = _authorizationUrl;
-            var discoveredRoot = BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ApiClientService.Instance.CurrentBaseUrl
-                                 ?? "http://localhost:5000/api/";
-            var isDiscoveredHttp = discoveredRoot.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                                   && !discoveredRoot.StartsWith("http://localhost", StringComparison.OrdinalIgnoreCase) == false
-                                   || discoveredRoot.StartsWith("http://");
 
-            if (_authorizationUrl.StartsWith("https://localhost:5001", StringComparison.OrdinalIgnoreCase))
-            {
-                navigationUrl = _authorizationUrl.Replace("https://localhost:5001", "http://localhost:5000");
-                Log.Warning("Converting HTTPS localhost:5001 to HTTP localhost:5000 for WebView compatibility: {Url}", navigationUrl);
-                Log.Warning("Note: This is only for local development. Production should use HTTPS.");
-            }
-            else if (_authorizationUrl.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase))
-            {
-                navigationUrl = _authorizationUrl.Replace("https://localhost", "http://localhost");
-                Log.Warning("Converting HTTPS localhost to HTTP for WebView compatibility: {Url}", navigationUrl);
-                Log.Warning("Note: This is only for local development. Production should use HTTPS.");
-            }
-            
             // CRITICAL: Final validation before navigation
             if (navigationUrl.Contains("/callback", StringComparison.OrdinalIgnoreCase) ||
-                navigationUrl.StartsWith(_redirectUri.Replace("https://", "http://"), StringComparison.OrdinalIgnoreCase))
+                BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(navigationUrl, _redirectUri))
             {
                 Log.Error("CRITICAL: Navigation URL is a callback URL after conversion!");
-                Log.Error("Navigation URL: {Url}", navigationUrl);
+                Log.Error("Navigation URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(navigationUrl));
                 ShowCallbackLoopError();
                 return;
             }
             
-            Log.Information("Final navigation URL: {Url}", navigationUrl);
+            Log.Information("Final navigation URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(navigationUrl));
             Log.Information("=== STARTING WEBVIEW NAVIGATION ===");
             
             // Navigate to authorization URL
@@ -260,12 +240,12 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
         private void OnWebViewNavigationStarting(object? sender, WebViewNavigationStartingEventArgs e)
         {
-            Log.Debug("WebView navigation starting to: {Url}", e.Request);
+            Log.Debug("WebView navigation starting to: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(e.Request?.ToString()));
 
             var url = e.Request?.ToString() ?? "";
             
             // Check if this is a redirect to our callback URL
-            if (url.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+            if (BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(url, _redirectUri))
             {
                 Log.Information("Redirect URI detected in WebView navigation");
                 
@@ -305,7 +285,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 // Check if the URL contains an error
                 if (url.Contains("error=", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Error("Error detected in callback URL: {Url}", url);
+                    Log.Error("Error detected in callback URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
                     // Extract error from URL
                     var uri = new Uri(url);
                     var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
@@ -583,10 +563,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             {
                 var currentUrl = _webView.Source.ToString();
                 
-                Log.Information("Current URL after navigation: {Url}", currentUrl);
+                Log.Information("Current URL after navigation: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(currentUrl));
                 
                 // Check if this is the callback URL (success case)
-                if (currentUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                if (BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(currentUrl, _redirectUri))
                 {
                     Log.Information("Redirect URI detected after navigation completed - processing callback");
                     ProcessRedirectUrl(currentUrl);
@@ -596,7 +576,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 // Check for OAuth error in URL (error=something)
                 if (currentUrl.Contains("error=", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("OAuth error parameter detected in URL: {Url}", currentUrl);
+                    Log.Warning("OAuth error parameter detected in URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(currentUrl));
                     HandleNavigationError(currentUrl);
                     return;
                 }
@@ -606,7 +586,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                     currentUrl.Contains("/error/400", StringComparison.OrdinalIgnoreCase) ||
                     currentUrl.EndsWith("/error", StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.Warning("HTTP error page detected in URL: {Url}", currentUrl);
+                    Log.Warning("HTTP error page detected in URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(currentUrl));
                     HandleNavigationError(currentUrl);
                     return;
                 }
@@ -625,7 +605,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                     
                     // If we're on the authorization endpoint or callback, consider it success
                     if (currentUrl.Contains("/connect/authorize", StringComparison.OrdinalIgnoreCase) ||
-                        currentUrl.StartsWith(_redirectUri, StringComparison.OrdinalIgnoreCase))
+                        BRU.Avtopark.Client.ClientEndpoints.IsOAuthCallback(currentUrl, _redirectUri))
                     {
                         Log.Information("Navigation reported as unsuccessful but we're on a valid OAuth page, continuing");
                         return;
@@ -643,7 +623,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
 
         private void HandleNavigationError(string failedUrl)
         {
-            Log.Error("Handling navigation error for URL: {Url}", failedUrl);
+            Log.Error("Handling navigation error for URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(failedUrl));
             
             // Check if this is an SSL/certificate error (common with localhost HTTPS)
             if (failedUrl.Contains("https://localhost", StringComparison.OrdinalIgnoreCase) ||
@@ -1046,13 +1026,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             submitButton.Click += (s, e) =>
             {
                 var url = urlTextBox.Text;
-                Log.Debug("Submit button clicked, URL: {Url}", url);
+                Log.Debug("Submit button clicked, URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
                 if (!string.IsNullOrEmpty(url))
                 {
                     // Check if URL contains error
                     if (url.Contains("error=", StringComparison.OrdinalIgnoreCase))
                     {
-                        Log.Warning("Error detected in pasted URL: {Url}", url);
+                        Log.Warning("Error detected in pasted URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
                         try
                         {
                             var uri = new Uri(url);
@@ -1180,7 +1160,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
             try
             {
                 Log.Information("Processing redirect URL");
-                Log.Debug("Redirect URL: {Url}", url);
+                Log.Debug("Redirect URL: {Url}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(url));
                 
                 var uri = new Uri(url);
                 var query = HttpUtility.ParseQueryString(uri.Query);
@@ -1190,14 +1170,14 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 var error = query["error"];
                 var errorDescription = query["error_description"];
 
-                Log.Debug("Parsed query parameters - code: {HasCode}, state: {State}, error: {Error}", 
-                    !string.IsNullOrEmpty(code), state, error);
+                Log.Debug("OAuth callback fields: code {HasCode}, state {HasState}, error {HasError}",
+                    !string.IsNullOrEmpty(code), !string.IsNullOrEmpty(state), !string.IsNullOrEmpty(error));
 
                 OAuthResult result;
 
                 if (!string.IsNullOrEmpty(error))
                 {
-                    Log.Error("OAuth error received: {Error} - {Description}", error, errorDescription);
+                    Log.Error("OAuth provider returned an error");
                     result = new OAuthResult
                     {
                         Success = false,
@@ -1207,7 +1187,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 }
                 else if (state != _expectedState)
                 {
-                    Log.Error("State mismatch - expected: {Expected}, received: {Received}", _expectedState, state);
+                    Log.Error("OAuth state validation failed");
                     result = new OAuthResult
                     {
                         Success = false,

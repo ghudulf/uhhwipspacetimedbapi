@@ -1,3 +1,4 @@
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -16,7 +17,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class JobsController : BaseController
@@ -60,9 +61,14 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("jobs.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("jobs", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("jobs", cancellationToken), "jobs.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -86,6 +92,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("jobs", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
@@ -100,7 +107,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!await IsAdminAsync() && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for jobs.view");
             }
@@ -133,7 +140,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view")) throw new UnauthorizedAccessException("View permission required.");
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for jobs.view");
             }
@@ -158,17 +166,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request Payload is missing or cannot be deserialized into a CreateJobModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("jobs.create")) throw new UnauthorizedAccessException("Admin role required");
             var model = request.Payload?.Deserialize<CreateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
+            var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "create", success };
 
             if (success)
             {
                 try
                 {
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -192,7 +201,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for job.created (Resource: jobs, EventName: job.created)");
                 }
@@ -210,11 +219,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing or invalid for the update operation.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("jobs.edit")) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdateJobModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
+            var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var entity = await _employeeService.GetJobByIdAsync(id);
             var result = new { operation = "update", success, entity };
 
@@ -222,7 +232,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 try
                 {
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -245,7 +255,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for job.updated (Resource: jobs, EventName: job.updated, JobId: {JobId})", id);
                 }
@@ -263,16 +273,17 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
+            if (!await HasPermissionAsync("jobs.delete")) throw new UnauthorizedAccessException("Admin role required");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _employeeService.DeleteJobAsync(id);
+            var success = await _employeeService.DeleteJobAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
             {
                 try
                 {
-                    var userId = GetUserId();
+                    var userId = await GetUserIdAsync();
                     var userName = await GetUserNameAsync();
                     var tenant = User?.FindFirst("tenant")?.Value;
                     var sourceIp = GetClientIp();
@@ -295,7 +306,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
                     ));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for job.deleted (Resource: jobs, EventName: job.deleted, JobId: {JobId})", id);
                 }
@@ -311,9 +322,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetJobs()
         {
+            if (!await HasPermissionAsync("jobs.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetJobs - Fetching all jobs");
             
-            if (!IsAdmin() && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 _logger.LogWarning("Unauthorized attempt to access jobs list");
                 return Forbid();
@@ -360,7 +372,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {JobCount} jobs to client", result.Count);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving all jobs");
                 return StatusCode(500, "An error occurred while retrieving jobs");
@@ -370,9 +382,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetJob(uint id)
         {
+            if (!await HasPermissionAsync("jobs.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetJob with ID {JobId}", id);
             
-            if (!IsAdmin() && !HasPermission("jobs.view"))
+            if (!await HasPermissionAsync("jobs.view"))
             {
                 _logger.LogWarning("Unauthorized attempt to access job {JobId}", id);
                 return Forbid();
@@ -403,7 +416,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving job with ID {JobId}", id);
                 return StatusCode(500, $"An error occurred while retrieving job with ID {id}");
@@ -417,7 +430,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin())
+                if (!await HasPermissionAsync("jobs.create"))
                 {
                     _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to create job by non-admin user");
                     return Forbid();
@@ -426,32 +439,19 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE OPERATION: CreateJobAsync with title {JobTitle}, internship {JobInternship}", 
                     model.JobTitle, model.JobInternship);
 
-                var success = await _employeeService.CreateJobAsync(model.JobTitle, model.JobInternship);
-                if (!success)
+                var job = await _employeeService.CreateJobRecordAsync(model.JobTitle, model.JobInternship,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
+                if (job == null)
                 {
                     _logger.LogWarning("DATABASE RESULT: Failed to create job with title {JobTitle}", model.JobTitle);
                     return BadRequest("Failed to create job");
-                }
-
-                // Get the newly created job
-                _logger.LogInformation("DATABASE OPERATION: GetAllJobsAsync to retrieve newly created job");
-                var jobs = await _employeeService.GetAllJobsAsync();
-                _logger.LogInformation("DATABASE RESULT: Retrieved {JobCount} jobs after creation", jobs.Count);
-                _logger.LogInformation("FULL JOBS DATA AFTER CREATION: {JobsData}", JsonSerializer.Serialize(jobs));
-                
-                var job = jobs.LastOrDefault();
-
-                if (job == null)
-                {
-                    _logger.LogError("DATABASE RESULT: Job was created but could not be retrieved");
-                    return StatusCode(500, "Job was created but could not be retrieved");
                 }
 
                 _logger.LogInformation("RESPONSE SENT: Successfully created job with ID {JobId}, Title: {JobTitle}, Internship: {Internship}", 
                     job.JobId, job.JobTitle, job.Internship);
                 return CreatedAtAction(nameof(GetJob), new { id = job.JobId }, job);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error creating job with title {JobTitle}", model.JobTitle);
                 return StatusCode(500, "An error occurred while creating the job");
@@ -466,7 +466,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin())
+                if (!await HasPermissionAsync("jobs.edit"))
                 {
                     _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to update job {JobId} by non-admin user", id);
                     return Forbid();
@@ -475,7 +475,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE OPERATION: UpdateJobAsync for ID {JobId}, Title: {JobTitle}, Internship: {JobInternship}", 
                     id, model.JobTitle, model.JobInternship);
 
-                var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship);
+                var success = await _employeeService.UpdateJobAsync(id, model.JobTitle, model.JobInternship,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Job with ID {JobId} not found for update", id);
@@ -489,7 +490,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Successfully updated job with ID {JobId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error updating job with ID {JobId}", id);
                 return StatusCode(500, $"An error occurred while updating job with ID {id}");
@@ -503,7 +504,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             
             try
             {
-                if (!IsAdmin())
+                if (!await HasPermissionAsync("jobs.delete"))
                 {
                     _logger.LogWarning("AUTHORIZATION FAILED: Unauthorized attempt to delete job {JobId} by non-admin user", id);
                     return Forbid();
@@ -514,7 +515,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("JOB TO DELETE: {JobData}", JsonSerializer.Serialize(jobToDelete));
                 
                 _logger.LogInformation("DATABASE OPERATION: DeleteJobAsync for ID {JobId}", id);
-                var success = await _employeeService.DeleteJobAsync(id);
+                var success = await _employeeService.DeleteJobAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Job with ID {JobId} not found for deletion", id);
@@ -524,7 +526,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Successfully deleted job with ID {JobId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error deleting job with ID {JobId}", id);
                 return StatusCode(500, $"An error occurred while deleting job with ID {id}");
@@ -536,6 +538,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             [FromQuery] string? jobTitle = null,
             [FromQuery] string? internship = null)
         {
+            if (!await HasPermissionAsync("jobs.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: SearchJobs with parameters - Title: {JobTitle}, Internship: {Internship}", 
                 jobTitle ?? "any", internship ?? "any");
             
@@ -579,7 +582,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {JobCount} jobs matching search criteria to client", result.Count);
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error searching jobs with title: {JobTitle}, internship: {Internship}", 
                     jobTitle ?? "any", internship ?? "any");

@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public ulong ExpiresAt;
         [DataMember(Name = "created_at")]
         public ulong CreatedAt;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public WebAuthnChallenge(
             uint Id,
             SpacetimeDB.Identity UserId,
             string Challenge,
             ulong ExpiresAt,
-            ulong CreatedAt
+            ulong CreatedAt,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.Challenge = Challenge;
             this.ExpiresAt = ExpiresAt;
             this.CreatedAt = CreatedAt;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public WebAuthnChallenge()

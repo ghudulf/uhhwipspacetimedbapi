@@ -109,7 +109,7 @@
                 <StackPanel Grid.Column="2" 
                             Orientation="Horizontal" 
                             Spacing="0">
-                    <Button x:Name="MinimizeButton"
+                    <Button AutomationProperties.Name="Свернуть" x:Name="MinimizeButton"
                             Width="46" Height="36"
                             Background="Transparent"
                             BorderThickness="0"
@@ -127,7 +127,7 @@
                         </Button.Styles>
                     </Button>
                     
-                    <Button x:Name="CloseButton"
+                    <Button AutomationProperties.Name="Закрыть" x:Name="CloseButton"
                             Width="46" Height="36"
                             Background="Transparent"
                             BorderThickness="0"
@@ -202,7 +202,7 @@
                                VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <Button Grid.Column="1" 
+                <Button IsCancel="True" Grid.Column="1"
                         x:Name="CancelButton"
                         Content="Отмена" 
                         Padding="20,6"

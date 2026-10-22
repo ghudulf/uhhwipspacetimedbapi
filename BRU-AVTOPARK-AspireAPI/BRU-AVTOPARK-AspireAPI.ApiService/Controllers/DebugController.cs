@@ -37,7 +37,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         [HttpGet("tables")]
         [AllowAnonymous] // Access control is handled internally by IsDevelopment check
-        public IActionResult DebugTablesPage([FromQuery] string tab = "UserProfile", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> DebugTablesPage([FromQuery] string tab = "UserProfile", [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             // !!! CRITICAL SECURITY CHECK !!!
             if (!_environment.IsDevelopment())
@@ -55,11 +55,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             {
                 _logger.LogInformation("Accessing Debug Tables Page. Tab: {Tab}, Page: {Page}, PageSize: {PageSize}", tab, page, pageSize);
 
-                var conn = _spacetimeService.GetConnection();
-                if (conn == null)
+                page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 500);
+                return await _spacetimeService.ReadAsync<IActionResult>(conn =>
                 {
-                    return Content(RenderErrorPage("SpacetimeDB connection is not available."), "text/html");
-                }
 
                 var tablesInfo = GetDebugTables();
                 var selectedTableInfo = tablesInfo.FirstOrDefault(t => t.TableDbName.Equals(tab, StringComparison.OrdinalIgnoreCase));
@@ -198,7 +196,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             }
                             
                             // Log other important fields
-                            _logger.LogInformation("  ClientSecret: {HasSecret}", !string.IsNullOrEmpty(client.ClientSecret) ? "SET" : "NOT SET");
+                            _logger.LogInformation("  Client authentication configuration present: {Configured}", !string.IsNullOrEmpty(client.ClientSecret));
                             _logger.LogInformation("  CreatedAt: {CreatedAt}", client.CreatedAt);
                             _logger.LogInformation("  CreatedBy: {CreatedBy}", client.CreatedBy ?? "null");
                         }
@@ -252,7 +250,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             _logger.LogInformation("  Descriptions (JSON): {Descriptions}", scope.Descriptions ?? "null");
                             _logger.LogInformation("  DisplayNames (JSON): {DisplayNames}", scope.DisplayNames ?? "null");
                             _logger.LogInformation("  Resources (JSON): {Resources}", scope.Resources ?? "null");
-                            _logger.LogInformation("  Properties (JSON): {Properties}", scope.Properties ?? "null");
+                            _logger.LogInformation("  Scope metadata values omitted");
                         }
                         break;
                     case "OpenIddictSpacetimeAuthorization":
@@ -273,7 +271,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             _logger.LogInformation("  Status: {Status}", auth.Status ?? "null");
                             _logger.LogInformation("  Scopes (JSON): {Scopes}", auth.Scopes ?? "null");
                             _logger.LogInformation("  CreationDate: {CreationDate}", auth.CreationDate.HasValue ? auth.CreationDate.Value.ToString() : "null");
-                            _logger.LogInformation("  Properties (JSON): {Properties}", auth.Properties ?? "null");
+                            _logger.LogInformation("  Grant metadata values omitted");
                         }
                         break;
                     case "OpenIddictSpacetimeToken":
@@ -290,17 +288,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             _logger.LogInformation("  Id (Internal): {Id}", token.Id);
                             _logger.LogInformation("  ApplicationClientId: {AppId}", token.ApplicationClientId ?? "null");
                             _logger.LogInformation("  AuthorizationId: {AuthId}", token.AuthorizationId.HasValue ? token.AuthorizationId.Value.ToString() : "null");
-                            _logger.LogInformation("  Subject: {Subject}", token.Subject ?? "null");
+                            _logger.LogInformation("  Subject omitted");
                             _logger.LogInformation("  Type: {Type}", token.Type ?? "null");
                             _logger.LogInformation("  Status: {Status}", token.Status ?? "null");
                             _logger.LogInformation("  CreationDate: {CreationDate}", token.CreationDate.HasValue ? token.CreationDate.Value.ToString() : "null");
                             _logger.LogInformation("  ExpirationDate: {ExpirationDate}", token.ExpirationDate.HasValue ? token.ExpirationDate.Value.ToString() : "null");
                             _logger.LogInformation("  RedemptionDate: {RedemptionDate}", token.RedemptionDate.HasValue ? token.RedemptionDate.Value.ToString() : "null");
-                            _logger.LogInformation("  ReferenceId: {ReferenceId}", token.ReferenceId ?? "null");
-                            _logger.LogInformation("  Payload (truncated): {Payload}", 
-                                token.Payload != null && token.Payload.Length > 100 
-                                    ? token.Payload.Substring(0, 100) + "..." 
-                                    : token.Payload ?? "null");
+                            _logger.LogInformation("  Bearer reference and payload omitted");
                         }
                         break;
                     // --- App Specific Tables ---
@@ -355,6 +349,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 if (page < 1) page = 1;
 
                 return Content(RenderDebugPage(tablesInfo, selectedTableInfo, pageItems, page, pageSize, totalPages), "text/html");
+                }, HttpContext.RequestAborted);
             }
             catch (Exception ex)
             {
@@ -1631,4 +1626,3 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
     }
 }
-

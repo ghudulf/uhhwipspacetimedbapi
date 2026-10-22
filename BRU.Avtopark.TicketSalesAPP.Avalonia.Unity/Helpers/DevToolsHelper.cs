@@ -8,11 +8,15 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
     /// </summary>
     internal static class DevToolsHelper
     {
+#if DEBUG
         private static bool _attached = false;
         private static readonly object _lock = new();
 
+#endif
+
         public static void AttachOnce()
         {
+#if DEBUG
             lock (_lock)
             {
                 if (_attached) return;
@@ -20,6 +24,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 Application.Current.AttachDeveloperTools();
                 _attached = true;
             }
+#endif
         }
     }
 }

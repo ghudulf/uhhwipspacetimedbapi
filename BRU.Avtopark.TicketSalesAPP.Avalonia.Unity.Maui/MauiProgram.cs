@@ -23,18 +23,11 @@ public static class MauiProgram
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "BRU.Avtopark.TicketSalesApp", "logs", "maui-.log");
 
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .Enrich.FromLogContext()
-            .WriteTo.Debug(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.File(logPath,
-                rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
+        Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+        Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU.Avtopark.TicketSalesApp", "WebView2"));
+        BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.ClientLogging.Configure("maui");
 
-        Log.Information("[MAUI] Serilog initialized — log path: {Path}", logPath);
         Console.WriteLine("[MAUI] CreateMauiApp: start");
 
         try

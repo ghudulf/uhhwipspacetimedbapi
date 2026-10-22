@@ -33,6 +33,8 @@ namespace SpacetimeDB.Types
         public bool IsTelegramNotificationsEnabled;
         [DataMember(Name = "is_discord_notifications_enabled")]
         public bool IsDiscordNotificationsEnabled;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public UserSettings(
             uint UserSettingId,
@@ -44,7 +46,8 @@ namespace SpacetimeDB.Types
             bool IsPushNotificationsEnabled,
             bool IsWhatsAppNotificationsEnabled,
             bool IsTelegramNotificationsEnabled,
-            bool IsDiscordNotificationsEnabled
+            bool IsDiscordNotificationsEnabled,
+            uint ApiAccessPartition
         )
         {
             this.UserSettingId = UserSettingId;
@@ -57,6 +60,7 @@ namespace SpacetimeDB.Types
             this.IsWhatsAppNotificationsEnabled = IsWhatsAppNotificationsEnabled;
             this.IsTelegramNotificationsEnabled = IsTelegramNotificationsEnabled;
             this.IsDiscordNotificationsEnabled = IsDiscordNotificationsEnabled;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public UserSettings()

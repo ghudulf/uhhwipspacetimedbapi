@@ -37,6 +37,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     private readonly IProfileService _profileService;
     private readonly IOpenIdConnectService _openIdConnectService;
     private readonly ILogger<AuthOrchestrationService> _logger;
+    private readonly BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens? _nativeRefresh;
 
     public AuthOrchestrationService(
         IAuthenticationService authService,
@@ -51,7 +52,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         IQRAuthenticationService qrAuthService,
         IProfileService profileService,
         IOpenIdConnectService openIdConnectService,
-        ILogger<AuthOrchestrationService> logger)
+        ILogger<AuthOrchestrationService> logger,
+        BRU_AVTOPARK_AspireAPI.ApiService.Authentication.NativeRefreshTokens? nativeRefresh = null)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
@@ -66,6 +68,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         _profileService = profileService ?? throw new ArgumentNullException(nameof(profileService));
         _openIdConnectService = openIdConnectService ?? throw new ArgumentNullException(nameof(openIdConnectService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _nativeRefresh = nativeRefresh;
     }
 
     /// <inheritdoc />
@@ -147,7 +150,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 Username = newUser.Login,
                 Email = newUser.Email,
                 PhoneNumber = newUser.PhoneNumber,
-                Role = _authService.GetUserRole(newUser.UserId)
+                Role = await _authService.GetUserRoleAsync(newUser.UserId)
             });
         }
         catch (Exception ex) when (ex.Message?.Contains("Unauthorized") == true)
@@ -164,7 +167,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                         Username = fallback.Login,
                         Email = fallback.Email,
                         PhoneNumber = fallback.PhoneNumber,
-                        Role = _authService.GetUserRole(fallback.UserId)
+                        Role = await _authService.GetUserRoleAsync(fallback.UserId)
                     });
             }
             return new RegisterResult(false, "Registration failed during role assignment");
@@ -187,12 +190,10 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         if (generateNewIdentity)
         {
             // Identity generation would be delegated to the SpacetimeDB service
-            newIdentity = Convert.ToBase64String(
-                System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            newIdentity = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         }
 
-        var conn = _spacetimeService.GetConnection();
-        conn.Reducers.ClaimUserAccount(username, password, newIdentity);
+        await _spacetimeService.ExecuteReducerAsync(new Reducer.ClaimUserAccount(username, password, newIdentity), _ => true);
         _logger.LogInformation("Account claim processed for: {Username}", username);
 
         return new ClaimResult(true);
@@ -259,6 +260,43 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 return LoginResult.Failed("Invalid username or password");
             }
 
+            return await CompletePrimaryAuthenticationAsync(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during login orchestration for user: {Username}", username);
+            return LoginResult.Failed("An error occurred during login");
+        }
+    }
+
+    public async Task<LoginResult> LoginExternalAsync(string provider, string issuer, string subject)
+    {
+        // Only verified provider principals may supply these identifiers.
+        if (new[] { provider, issuer, subject }.Any(p => string.IsNullOrWhiteSpace(p) || p.Length > 512 || p.Contains('\n') || p.Contains('\r')))
+            return LoginResult.Failed("Invalid external identity");
+        var key = provider + "\n" + issuer + "\n" + subject;
+        var user = await _spacetimeService.ReadAsync(connection =>
+        {
+            var link = connection.Db.ExternalAccountLink.Key.Find(key);
+            return link == null ? null : connection.Db.UserProfile.UserId.Find(link.UserId);
+        });
+        if (user?.IsActive != true) return LoginResult.Failed("External account is not linked to an active application account");
+        _logger.LogDebug("External primary authentication accepted; provider {Provider}, Subject={Subject} User={Username} UserId={UserId}",
+            provider, subject, user.Login, user.UserId);
+        return await CompletePrimaryAuthenticationAsync(user);
+    }
+
+    public async Task<LoginResult> CompleteQrLoginAsync(Identity approverUserId, bool approvedByAuthenticatedSession)
+    {
+        var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(approverUserId));
+        if (user?.IsActive != true) return LoginResult.Failed("qr_login_failed");
+        if (!approvedByAuthenticatedSession) return await CompletePrimaryAuthenticationAsync(user);
+        return await FinalizeLoginAsync(user);
+    }
+
+    private async Task<LoginResult> CompletePrimaryAuthenticationAsync(UserProfile user)
+    {
+        if (!user.IsActive) return LoginResult.Failed("Account is inactive");
             // Step 2: Get or create user settings
             var settings = await _settingsService.GetOrCreateUserSettingsAsync(user.UserId);
 
@@ -267,7 +305,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (requiresTwoFactor)
             {
-                _logger.LogInformation("2FA required for user: {Username}", username);
+                _logger.LogDebug("2FA required User={Username} UserId={UserId}", user.Login, user.UserId);
 
                 // Step 4: Create temporary token for 2FA validation
                 var tempToken = await _twoFactorService.CreateTempTokenAsync(user.UserId, "login");
@@ -276,14 +314,11 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 if (settings.WebAuthnEnabled)
                 {
                     // Check if user has any active WebAuthn credentials
-                    var conn = _spacetimeService.GetConnection();
-                    var credentials = conn.Db.WebAuthnCredential.Iter()
-                        .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
-                        .ToList();
+                    var credentials = await _webAuthnService.GetUserCredentialsAsync(user.UserId);
 
                     if (!credentials.Any())
                     {
-                        _logger.LogWarning("No WebAuthn credentials found for user: {Username}", username);
+                        _logger.LogDebug("No WebAuthn credentials found User={Username} UserId={UserId}", user.Login, user.UserId);
                         return LoginResult.Failed("No WebAuthn credentials found");
                     }
 
@@ -291,7 +326,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                     var (success, options, errorMessage) = await _webAuthnService.GetAssertionOptionsAsync(user.Login);
                     if (!success || options == null)
                     {
-                        _logger.LogWarning("Failed to create assertion options for user: {Username}", username);
+                        _logger.LogDebug("Failed to create assertion options User={Username} UserId={UserId}", user.Login, user.UserId);
                         return LoginResult.Failed(errorMessage ?? "Failed to create assertion options");
                     }
 
@@ -302,16 +337,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 6: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("Login successful for user: {Username}", username);
-            return LoginResult.Successful(jwtToken, userDto, claims);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during login orchestration for user: {Username}", username);
-            return LoginResult.Failed("An error occurred during login");
-        }
+            _logger.LogDebug("Login successful User={Username} UserId={UserId}", user.Login, user.UserId);
+            return await FinalizeLoginAsync(user);
     }
 
     /// <inheritdoc />
@@ -338,11 +365,11 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 3: Mark temporary token as used
-            await _twoFactorService.MarkTokenAsUsedAsync(tempToken);
+            if (!await _twoFactorService.MarkTokenAsUsedAsync(tempToken))
+                throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 4: Get user profile by Identity
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId.Value));
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(userId.Value));
             if (user is null)
             {
                 _logger.LogError("User not found after successful TOTP validation: {UserId}", userId);
@@ -350,10 +377,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 5: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("TOTP validation successful for user: {UserId}", userId);
-            return TotpValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return TotpValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -378,8 +403,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user profile by Identity to get username for WebAuthn validation
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId.Value));
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.UserId.Find(userId.Value));
             if (user is null)
             {
                 _logger.LogError("User not found for WebAuthn validation: {UserId}", userId);
@@ -396,13 +420,12 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 4: Mark temporary token as used
-            await _twoFactorService.MarkTokenAsUsedAsync(tempToken);
+            if (!await _twoFactorService.MarkTokenAsUsedAsync(tempToken))
+                throw new InvalidOperationException("Second-factor challenge has already been consumed or expired.");
 
             // Step 5: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(validatedUser);
-
-            _logger.LogInformation("WebAuthn validation successful for user: {UserId}", userId);
-            return WebAuthnValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(validatedUser);
+            return WebAuthnValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -430,10 +453,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             await _magicLinkService.MarkMagicLinkAsUsedAsync(token);
 
             // Step 3: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("Magic link validation successful for user: {UserId}", user.UserId);
-            return MagicLinkValidationResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return MagicLinkValidationResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -559,12 +580,9 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 return null;
             }
 
-            // Get SpacetimeDB connection
-            var conn = _spacetimeService.GetConnection();
-
             // Get user profile
-            var user = conn.Db.UserProfile.Iter()
-                .FirstOrDefault(u => u.UserId.ToString() == userIdClaim.Value);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                .FirstOrDefault(u => u.UserId.ToString() == userIdClaim.Value));
 
             if (user == null)
             {
@@ -573,60 +591,21 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Get user settings
-            var userSettings = conn.Db.UserSettings.Iter()
-                .FirstOrDefault(s => s.UserId.Equals(user.UserId));
-
-            if (userSettings == null)
-            {
-                // Create default settings if they don't exist
-                conn.Reducers.CreateUserSettings(user.UserId);
-                await Task.Delay(100); // Wait for reducer
-                userSettings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(user.UserId));
-            }
+            var userSettings = await _settingsService.GetOrCreateUserSettingsAsync(user.UserId);
 
             // Get WebAuthn credentials
-            var webAuthnCredentials = conn.Db.WebAuthnCredential.Iter()
+            var webAuthnCredentials = await _spacetimeService.ReadAsync(conn => conn.Db.WebAuthnCredential.Iter()
                 .Where(c => c.UserId.Equals(user.UserId) && c.IsActive)
                 .Select(c => new WebAuthnCredentialDto
                 {
                     Id = Convert.ToBase64String(c.CredentialId.ToArray()),
                     CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
                 })
-                .ToList();
+                .ToList());
 
             // Get user roles
-            var userRoles = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
-                .ToList();
-
-            // Get role details
-            var roles = new List<Role>();
-            foreach (var ur in userRoles)
-            {
-                var role = conn.Db.Role.RoleId.Find(ur.RoleId);
-                if (role != null && role.IsActive)
-                {
-                    roles.Add(role);
-                }
-            }
-
-            // Get role permissions
-            var rolePermissions = conn.Db.RolePermission.Iter()
-                .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
-                .ToList();
-
-            // Get permission details
-            var permissionIds = rolePermissions.Select(rp => rp.PermissionId).Distinct().ToList();
-            var permissions = new List<Permission>();
-            foreach (var permissionId in permissionIds)
-            {
-                var permission = conn.Db.Permission.PermissionId.Find(permissionId);
-                if (permission != null && permission.IsActive)
-                {
-                    permissions.Add(permission);
-                }
-            }
+            var roles = (await _userService.GetUserRolesAsync(user.LegacyUserId)).ToList();
+            var permissions = (await _userService.GetUserPermissionsAsync(user.LegacyUserId)).ToList();
 
             _logger.LogInformation("Profile with SpacetimeDB data retrieved successfully for user: {UserId}", userIdClaim.Value);
 
@@ -738,7 +717,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnCredentialsResult> GetWebAuthnCredentialsAsync(Identity userId)
     {
-        _logger.LogInformation("WebAuthn credentials retrieval orchestration started for user ID: {UserId}", userId);
+        _logger.LogDebug("WebAuthn credentials requested UserId={UserId}", userId);
 
         try
         {
@@ -752,12 +731,12 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                 CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)c.CreatedAt).DateTime
             }).ToList();
 
-            _logger.LogInformation("Retrieved {Count} WebAuthn credentials for user ID: {UserId}", credentialDtos.Count, userId);
+            _logger.LogInformation("Retrieved {Count} own WebAuthn credentials", credentialDtos.Count);
             return WebAuthnCredentialsResult.Successful(credentialDtos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during WebAuthn credentials retrieval orchestration for user ID: {UserId}", userId);
+            _logger.LogWarning("WebAuthn credential retrieval failed; failure type {FailureType}", ex.GetType().Name);
             return WebAuthnCredentialsResult.Failed("An error occurred while retrieving WebAuthn credentials");
         }
     }
@@ -765,7 +744,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<WebAuthnRemoveResult> RemoveWebAuthnCredentialAsync(Identity userId, string credentialId)
     {
-        _logger.LogInformation("WebAuthn credential removal orchestration started for user ID: {UserId}", userId);
+        _logger.LogDebug("WebAuthn removal requested UserId={UserId}", userId);
 
         try
         {
@@ -774,7 +753,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (!success)
             {
-                _logger.LogWarning("WebAuthn credential removal failed for user ID: {UserId} - {ErrorMessage}", userId, errorMessage);
+                _logger.LogWarning("Own WebAuthn credential removal rejected");
                 return WebAuthnRemoveResult.Failed(errorMessage ?? "Failed to remove WebAuthn credential");
             }
 
@@ -782,12 +761,12 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             // Note: WebAuthnService.RemoveCredentialAsync already handles disabling WebAuthn
             // if this was the last credential, so we don't need to call SettingsService here
 
-            _logger.LogInformation("WebAuthn credential removed successfully for user ID: {UserId}", userId);
+            _logger.LogInformation("Own WebAuthn credential removal committed");
             return WebAuthnRemoveResult.Successful();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during WebAuthn credential removal orchestration for user ID: {UserId}", userId);
+            _logger.LogWarning("WebAuthn credential removal failed; failure type {FailureType}", ex.GetType().Name);
             return WebAuthnRemoveResult.Failed("An error occurred while removing WebAuthn credential");
         }
     }
@@ -843,8 +822,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive));
             if (user == null)
             {
                 _logger.LogWarning("User {Username} not found or inactive during OAuth authorization", username);
@@ -890,15 +868,14 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
         try
         {
-            var conn = _spacetimeService.GetConnection();
             UserProfile? user = null;
 
             // Step 1: Try to parse as hex string (SpacetimeDB.Identity)
             try
             {
                 var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
-                user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive);
+                user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.UserId.Equals(identity) && u.IsActive));
                 
                 if (user != null)
                 {
@@ -915,8 +892,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             // Step 2: Try to parse as LegacyUserId (uint)
             if (uint.TryParse(userId, out var legacyUserId))
             {
-                user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId && u.IsActive);
+                user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId && u.IsActive));
                 
                 if (user != null)
                 {
@@ -953,8 +930,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
             if (user == null)
             {
                 _logger.LogWarning("OAuth authorization failed - user not found: {UserId}", userId);
@@ -1054,7 +1030,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Verify the user still exists and is active
-            var conn = _spacetimeService.GetConnection();
+            return await _spacetimeService.ReadAsync(conn =>
+            {
             var user = conn.Db.UserProfile.Iter()
                 .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
 
@@ -1087,8 +1064,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 4: Add role claims
-            var roles = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var roles = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .Join(conn.Db.Role.Iter(), 
                       ur => ur.RoleId, 
                       r => r.RoleId, 
@@ -1103,16 +1079,14 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             _logger.LogInformation("Added {RoleCount} roles to token for user {Username}", roles.Count, user.Login);
 
             // Step 5: Add permission claims for authorization
-            var userRoleIds = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var userRoleIds = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .Select(ur => ur.RoleId)
                 .ToList();
             
             _logger.LogInformation("User {UserId} has {RoleCount} roles: {RoleIds}", 
                 user.UserId, userRoleIds.Count, string.Join(", ", userRoleIds));
             
-            var permissions = conn.Db.RolePermission.Iter()
-                .Where(rp => userRoleIds.Contains(rp.RoleId))
+            var permissions = userRoleIds.SelectMany(roleId => conn.Db.RolePermission.RoleId.Filter(roleId))
                 .Join(conn.Db.Permission.Iter(),
                       rp => rp.PermissionId,
                       p => p.PermissionId,
@@ -1131,8 +1105,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             _logger.LogInformation("Added {PermissionCount} permissions to token for user {Username}", permissions.Count, user.Login);
             
             // Step 6: Add primary role for admin checks
-            var primaryRole = conn.Db.UserRole.Iter()
-                .Where(ur => ur.UserId.Equals(user.UserId))
+            var primaryRole = conn.Db.UserRole.UserId.Filter(user.UserId)
                 .OrderBy(ur => ur.RoleId)
                 .FirstOrDefault();
             
@@ -1168,6 +1141,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             _logger.LogInformation("OAuth token identity built successfully for user {Username}", user.Login);
             return identity;
+            });
         }
         catch (Exception ex)
         {
@@ -1184,7 +1158,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
+            return await _spacetimeService.ReadAsync(conn =>
+            {
             var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == username && u.IsActive);
             if (user == null)
             {
@@ -1230,6 +1205,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             _logger.LogInformation("OAuth userinfo successful for user: {Username}, returned {ClaimCount} claims", username, claims.Count);
             return OAuthUserInfoResult.Successful(claims);
+            });
         }
         catch (Exception ex)
         {
@@ -1497,8 +1473,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
         try
         {
             // Step 1: Get user profile from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            var user = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+            var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
             
             if (user == null)
             {
@@ -1536,10 +1511,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            _logger.LogInformation("QR login validation successful for user: {Username}", user.Login);
-            return QRValidationResult.Successful(jwtToken, userDto);
+            var final = await FinalizeLoginAsync(user);
+            return QRValidationResult.Successful(final.Token!, final.User!) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -1551,7 +1524,7 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<MagicLinkSendResult> SendMagicLinkAsync(string email, string? userAgent, string? ipAddress)
     {
-        _logger.LogInformation("Magic link send orchestration started for email: {Email}", email);
+        _logger.LogInformation("Magic link send orchestration started; recipient omitted");
 
         try
         {
@@ -1560,16 +1533,16 @@ public class AuthOrchestrationService : IAuthOrchestrationService
 
             if (!success)
             {
-                _logger.LogWarning("Magic link send failed for email: {Email} - {ErrorMessage}", email, errorMessage);
+                _logger.LogWarning("Magic link send failed; recipient and provider error omitted");
                 return MagicLinkSendResult.Failed(errorMessage ?? "Failed to send magic link");
             }
 
-            _logger.LogInformation("Magic link sent successfully to email: {Email}", email);
+            _logger.LogInformation("Magic link sent successfully; recipient omitted");
             return MagicLinkSendResult.Successful(email);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during magic link send orchestration for email: {Email}", email);
+            _logger.LogError("Magic link send orchestration failed: {ErrorType}; recipient omitted", ex.GetType().Name);
             return MagicLinkSendResult.Failed("An error occurred while sending magic link");
         }
     }
@@ -1591,13 +1564,13 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Step 2: Get user roles and permissions from SpacetimeDB
-            var conn = _spacetimeService.GetConnection();
-            
+            var roles = await _spacetimeService.ReadAsync(conn =>
+            {
             var userRoles = conn.Db.UserRole.Iter()
                 .Where(ur => ur.UserId.Equals(user.UserId))
                 .ToList();
             
-            var roles = userRoles.Select(ur =>
+            return userRoles.Select(ur =>
             {
                 var role = conn.Db.Role.RoleId.Find(ur.RoleId);
                 return role != null ? new RoleDto
@@ -1608,20 +1581,24 @@ public class AuthOrchestrationService : IAuthOrchestrationService
                     IsSystem = role.IsSystem
                 } : null;
             }).Where(r => r != null).Cast<RoleDto>().ToList();
+            });
 
+            var permissions = await _spacetimeService.ReadAsync(conn =>
+            {
             var permissionIds = conn.Db.RolePermission.Iter()
                 .Where(rp => roles.Select(r => r.RoleId).Contains(rp.RoleId))
                 .Select(rp => rp.PermissionId)
                 .Distinct()
                 .ToList();
 
-            var permissions = conn.Db.Permission.Iter()
+            return conn.Db.Permission.Iter()
                 .Where(p => permissionIds.Contains(p.PermissionId))
                 .Select(p => p.Name)
                 .ToList();
+            });
 
             // Step 3: Get primary role
-            var primaryRole = _authService.GetUserRole(user.UserId);
+            var primaryRole = await _authService.GetUserRoleAsync(user.UserId);
 
             // Step 4: Create UserDetailDto
             var userDetailDto = new UserDetailDto
@@ -1661,14 +1638,18 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             var users = await _userService.GetAllUsersAsync();
 
             // Step 2: Convert to UserDto list
-            var userDtos = users.Select(u => new UserDto
+            var userDtos = new List<UserDto>();
+            foreach (var u in users)
             {
+                userDtos.Add(new UserDto
+                {
                 Id = u.LegacyUserId,
                 Username = u.Login,
                 Email = u.Email,
                 PhoneNumber = u.PhoneNumber,
-                Role = _authService.GetUserRole(u.UserId)
-            }).ToList();
+                Role = await _authService.GetUserRoleAsync(u.UserId)
+                });
+            }
 
             _logger.LogInformation("Retrieved {Count} users successfully", userDtos.Count);
             return UsersResult.Successful(userDtos);
@@ -1691,16 +1672,23 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// </summary>
     /// <param name="user">The authenticated user profile</param>
     /// <returns>Tuple containing JWT token, UserDto, and token claims</returns>
+    private async Task<LoginResult> FinalizeLoginAsync(UserProfile user)
+    {
+        if (!user.IsActive) throw new InvalidOperationException("Active account required.");
+        var (token, dto, claims) = await GenerateAuthTokenAsync(user);
+        var refresh = _nativeRefresh == null ? null : await _nativeRefresh.IssueAsync(user.UserId);
+        return LoginResult.Successful(token, dto, claims) with { RefreshToken = refresh };
+    }
     private async Task<(string jwtToken, UserDto userDto, Dictionary<string, object> claims)> GenerateAuthTokenAsync(UserProfile user)
     {
         // Step 1: Generate JWT token using TokenService (which queries DB for roles/permissions)
-        var jwtToken = _tokenService.GenerateToken(user.UserId);
+        var jwtToken = await _tokenService.GenerateTokenAsync(user.UserId);
 
         // Step 2: Extract token claims for client-side logging (matches AuthController behavior)
         var tokenClaims = _tokenService.ExtractTokenClaims(jwtToken);
 
         // Step 3: Get primary role for UserDto
-        var primaryRole = _authService.GetUserRole(user.UserId);
+        var primaryRole = await _authService.GetUserRoleAsync(user.UserId);
 
         // Step 4: Create UserDto
         var userDto = new UserDto
@@ -1738,28 +1726,22 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     /// <inheritdoc />
     public async Task<QRLoginStatusResult> CheckQRLoginStatusAsync(string sessionId)
     {
-        _logger.LogInformation("QR login status check orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login status checking logic
         await Task.CompletedTask;
-        return QRLoginStatusResult.Successful("pending");
+        return QRLoginStatusResult.Failed("unsupported");
     }
 
     /// <inheritdoc />
     public async Task<QRLoginCancelResult> CancelQRLoginAsync(string sessionId)
     {
-        _logger.LogInformation("QR login cancellation orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login cancellation logic
         await Task.CompletedTask;
-        return QRLoginCancelResult.Successful();
+        throw new NotSupportedException("Use /api/auth/qr sessions.");
     }
 
     /// <inheritdoc />
     public async Task<QRLoginNotifyResult> NotifyQRLoginAsync(string sessionId, string status)
     {
-        _logger.LogInformation("QR login notification orchestration started for session: {SessionId}", sessionId);
-        // TODO: Implement QR login notification logic
         await Task.CompletedTask;
-        return QRLoginNotifyResult.Successful();
+        throw new NotSupportedException("Use /api/auth/qr sessions.");
     }
 
     /// <inheritdoc />
@@ -1827,9 +1809,8 @@ public class AuthOrchestrationService : IAuthOrchestrationService
             }
 
             // Generate JWT token and user DTO
-            var (jwtToken, userDto, claims) = await GenerateAuthTokenAsync(user);
-
-            return WebAuthnLoginResult.Successful(jwtToken, userDto, claims);
+            var final = await FinalizeLoginAsync(user);
+            return WebAuthnLoginResult.Successful(final.Token!, final.User!, final.Claims) with { RefreshToken = final.RefreshToken };
         }
         catch (Exception ex)
         {
@@ -1905,21 +1886,32 @@ public class AuthOrchestrationService : IAuthOrchestrationService
     }
 
     /// <inheritdoc />
-    public async Task<LogoutResult> LogoutAsync(Identity userId)
+    public async Task<LogoutResult> LogoutAsync(Identity userId, string? refreshToken = null)
     {
-        _logger.LogInformation("Logout orchestration started for user ID: {UserId}", userId);
-        // TODO: Implement logout logic
-        await Task.CompletedTask;
-        return LogoutResult.Successful();
+        try
+        {
+            if (refreshToken != null) await (_nativeRefresh ?? throw new InvalidOperationException()).RevokeAsync(refreshToken);
+            return LogoutResult.Successful();
+        }
+        catch { return LogoutResult.Failed("invalid_refresh_token"); }
     }
 
     /// <inheritdoc />
     public async Task<RefreshTokenResult> RefreshTokenAsync(string refreshToken)
     {
-        _logger.LogInformation("Token refresh orchestration started");
-        // TODO: Implement token refresh logic
-        await Task.CompletedTask;
-        return RefreshTokenResult.Failed("Not implemented");
+        try
+        {
+            var rotation = _nativeRefresh == null ? null : await _nativeRefresh.RotateAsync(refreshToken);
+            if (rotation == null) return RefreshTokenResult.Failed("invalid_refresh_token");
+            var (access, _, _) = await GenerateAuthTokenAsync(rotation.User);
+            var expires = new JwtSecurityTokenHandler().ReadJwtToken(access).ValidTo;
+            return RefreshTokenResult.Successful(access, rotation.RefreshToken, expires);
+        }
+        catch
+        {
+            _logger.LogWarning("Native refresh denied");
+            return RefreshTokenResult.Failed("invalid_refresh_token");
+        }
     }
 
     /// <inheritdoc />
@@ -1993,4 +1985,3 @@ public class ProfileRenderData
     public required List<Role> Roles { get; init; }
     public required List<Permission> Permissions { get; init; }
 }
-

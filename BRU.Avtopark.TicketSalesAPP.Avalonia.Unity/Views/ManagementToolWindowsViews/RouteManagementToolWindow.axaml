@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:display="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels"
@@ -193,7 +194,7 @@
 
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*,Auto"
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto"
         Background="{DynamicResource RtBg}">
 
     <!-- ══ TOOLBAR ══ -->
@@ -214,7 +215,7 @@
                      FontSize="11"/>
         </StackPanel>
 
-        <TextBox Grid.Column="1"
+        <TextBox AutomationProperties.Name="Поиск маршрутов" Grid.Column="1"
                  Text="{Binding SearchText}"
                  PlaceholderText="Поиск по начальной точке, конечной точке, автобусу или водителю…"
                  Background="{DynamicResource RtSearchBg}"
@@ -227,10 +228,10 @@
                  Margin="0,0,12,0"
                  VerticalAlignment="Center"/>
 
-        <Button Grid.Column="2"
+        <Button AutomationProperties.Name="Добавить маршрут" Grid.Column="2"
                 Classes="toolbar-btn-primary"
                 Command="{Binding AddCommand}"
-                IsEnabled="{Binding !IsBusy}"
+                IsEnabled="{Binding CanCreate}"
                 IsVisible="{Binding IsDialogCapable}"
                 Margin="0,0,8,0">
           <StackPanel Orientation="Horizontal" Spacing="6">
@@ -242,7 +243,7 @@
         <Button Grid.Column="3"
                 Classes="toolbar-btn"
                 Command="{Binding EditCommand}"
-                IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsEnabled="{Binding CanEdit}"
                 IsVisible="{Binding IsDialogCapable}"
                 Margin="0,0,8,0"
                 Content="Редактировать"/>
@@ -250,7 +251,7 @@
         <Button Grid.Column="4"
                 Classes="toolbar-btn-danger"
                 Command="{Binding DeleteCommand}"
-                IsEnabled="{Binding SelectedRoute, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsEnabled="{Binding CanDelete}"
                 IsVisible="{Binding IsDialogCapable}"
                 Content="Удалить"/>
       </Grid>
@@ -265,7 +266,7 @@
             IsVisible="{Binding HasError}">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <TextBlock Text="⚠" Foreground="{DynamicResource RtErrText}" FontSize="13" VerticalAlignment="Center"/>
-        <TextBlock Text="{Binding ErrorMessage}"
+        <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ErrorMessage}"
                    Foreground="{DynamicResource RtErrText}"
                    FontSize="12"
                    VerticalAlignment="Center"/>
@@ -344,10 +345,10 @@
                          Foreground="{DynamicResource RtEmptyText}"
                          FontSize="14"
                          HorizontalAlignment="Center"
-                         IsVisible="{Binding Routes.Count, Converter={x:Static ObjectConverters.IsNull}}"/>
+                         IsVisible="{Binding Routes.Count, Converter={x:Static display:ZeroCountConverter.Instance}}"/>
             </Border>
 
-            <ListBox ItemsSource="{Binding Routes}"
+            <ListBox AutomationProperties.Name="Маршруты" ItemsSource="{Binding Routes}"
                      SelectedItem="{Binding SelectedRoute}"
                      Background="Transparent"
                      BorderThickness="0"
@@ -437,5 +438,12 @@
       </StackPanel>
     </Border>
 
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Назад" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+            <Button Content="Далее" Command="{Binding NextPageCommand}"/>
+            <Button Content="Обновить" Command="{Binding LoadDataCommand}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="70"/>
+        </StackPanel>
   </Grid>
 </UserControl>

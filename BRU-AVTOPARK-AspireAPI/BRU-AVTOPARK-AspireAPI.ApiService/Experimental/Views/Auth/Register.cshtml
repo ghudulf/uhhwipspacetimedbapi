@@ -80,7 +80,7 @@
                  model="new StatusViewModel(Model.Error, Model.Message)" />
 
         <!-- Registration Form Card -->
-        <form id="registerForm" 
+        <form id="registerForm" method="post"
               class="register-form-card" 
               style="display: @(Model.IsAdmin ? "block" : "none");" 
               novalidate 
@@ -159,9 +159,10 @@
                                 <option value="0">User</option>
                                 <option value="1">Administrator</option>
                                 <option value="2">Manager</option>
-                                <option value="3">Driver</option>
-                                <option value="4">Conductor</option>
-                                <option value="5">Dispatcher</option>
+                                <option value="5">Driver</option>
+                                <option value="6">Conductor</option>
+                                <option value="3">Dispatcher</option>
+                                <option value="4">Cashier</option>
                             </select>
                             <svg class="register-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="6 9 12 15 18 9"/>

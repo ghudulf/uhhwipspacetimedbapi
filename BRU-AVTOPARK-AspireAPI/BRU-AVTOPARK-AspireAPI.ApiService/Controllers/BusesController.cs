@@ -1,3 +1,5 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,11 +19,35 @@ using TicketSalesApp.AdminServer.Models;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class BusesController : BaseController
     {
+        private async Task<SpacetimeDB.Identity> RequireActorAsync()
+        {
+            var identity = await GetSpacetimeIdentityAsync();
+            if (string.IsNullOrWhiteSpace(identity)) throw new UnauthorizedAccessException("Authenticated actor required.");
+            return SpacetimeDB.Identity.FromHexString(identity);
+        }
+
+        private async Task<MutationResult> ExecuteBusOperationAsync<T>(string name, T payload, RealtimeCrudRequest? request = null)
+        {
+            var operationId = request == null ? ApplicationOperationId() : ApplicationOperationId(request);
+            return (MutationResult)(await HttpContext.RequestServices.GetRequiredService<ApplicationOperations>().ExecuteAsync(name,
+                await RequireActorAsync(), JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), operationId, HttpContext.RequestAborted))!;
+        }
+        private async Task<Bus?> CreateBusOperationAsync(CreateBusModel model, RealtimeCrudRequest? request = null)
+        {
+            var receipt = await ExecuteBusOperationAsync("buses.create", new CreateBusCommand(model.Model, model.RegistrationNumber, model.ToDetails()), request);
+            return await _busService.GetBusByIdAsync(receipt.EntityId);
+        }
+        private async Task<bool> CommitBusOperationAsync<T>(string name, T payload, RealtimeCrudRequest? request = null)
+        {
+            await ExecuteBusOperationAsync(name, payload, request);
+            return true;
+        }
+
         private readonly IBusService _busService;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ILogger<BusesController> _logger;
@@ -66,7 +92,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return;
             }
 
-            if (!await IsAdminAsync() && !HasPermission("buses.view", claims))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("buses.view", claims))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -74,7 +100,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("buses", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("buses", cancellationToken), "buses.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -89,6 +115,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when request.Command is not one of: "read_all", "read", "create", "update", or "delete".</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("buses", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch
@@ -163,14 +190,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var bus = await _busService.CreateBusAsync(model.Model);
+            var bus = await CreateBusOperationAsync(model, request);
             var mappedEntity = bus != null ? BusMapper.ToDto(bus) : null;
             var result = new { operation = "create", success = bus is not null, entity = mappedEntity };
 
             if (bus is not null)
             {
                 // Log admin action (best-effort)
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null)
                 {
                     try
@@ -239,7 +266,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateBusModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await _busService.UpdateBusAsync(id, model.Model);
+            var success = await CommitBusOperationAsync("buses.update", new UpdateBusCommand(id, request.ExpectedRevision ?? model.ExpectedRevision, model.Model, model.RegistrationNumber, model.ToDetails()), request);
             object? entity = null;
             object? mappedEntity = null;
             
@@ -254,7 +281,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (success)
             {
                 // Log admin action (best-effort)
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null && entity != null)
                 {
                     try
@@ -325,13 +352,13 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _busService.DeleteBusAsync(id);
+            var success = await CommitBusOperationAsync("buses.delete", new DeleteBusCommand(id, request.ExpectedRevision), request);
             var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
             {
                 // Log admin action (best-effort)
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null)
                 {
                     try
@@ -414,7 +441,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {BusCount} buses to client", result.Count());
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving buses");
                 return StatusCode(500, "An error occurred while retrieving buses");
@@ -460,7 +487,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving bus with ID {BusId}", id);
                 return StatusCode(500, $"An error occurred while retrieving bus with ID {id}");
@@ -481,7 +508,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Get the current user ID from token for audit logging (best-effort)
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token before creating bus - proceeding without audit");
@@ -489,7 +516,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 _logger.LogInformation("DATABASE OPERATION: Creating new bus with model {Model}", model.Model);
                 
-                var bus = await _busService.CreateBusAsync(model.Model);
+                var bus = await CreateBusOperationAsync(model);
                 if (bus == null)
                 {
                     _logger.LogWarning("DATABASE RESULT: Failed to create bus with model {Model}", model.Model);
@@ -528,7 +555,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     bus.IsActive
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error creating bus with model {Model}", model.Model);
                 return StatusCode(500, $"An error occurred while creating bus: {ex.Message}");
@@ -550,7 +577,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Get the current user ID from token BEFORE performing the mutation
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token before updating bus");
@@ -560,7 +587,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE OPERATION: Updating bus with ID {BusId}, New Model: {Model}", 
                     id, model.Model ?? "unchanged");
                 
-                var success = await _busService.UpdateBusAsync(id, model.Model);
+                var success = await CommitBusOperationAsync("buses.update", new UpdateBusCommand(id, model.ExpectedRevision, model.Model, model.RegistrationNumber, model.ToDetails()));
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for update", id);
@@ -586,7 +613,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Updated bus with ID {BusId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error updating bus with ID {BusId}", id);
                 return StatusCode(500, $"An error occurred while updating bus: {ex.Message}");
@@ -607,7 +634,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             try
             {
                 // Get the current user ID from token BEFORE performing the mutation
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token before deleting bus");
@@ -623,7 +650,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogInformation("BUS TO BE DELETED: {BusData}", JsonSerializer.Serialize(busBeforeDeletion));
                 }
                 
-                var success = await _busService.DeleteBusAsync(id);
+                var success = await CommitBusOperationAsync("buses.delete", new DeleteBusCommand(id));
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for deletion", id);
@@ -649,7 +676,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Deleted bus with ID {BusId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error deleting bus with ID {BusId}", id);
                 return StatusCode(500, $"An error occurred while deleting bus: {ex.Message}");
@@ -703,7 +730,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {ResultCount} buses matching search criteria", result.Count());
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error searching buses");
                 return StatusCode(500, "An error occurred while searching buses");
@@ -732,7 +759,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogInformation("BUS BEFORE ACTIVATION: {BusData}", JsonSerializer.Serialize(busBeforeActivation));
                 }
                 
-                var success = await _busService.ActivateBusAsync(id);
+                var success = await CommitBusOperationAsync("buses.set-active", new SetBusActiveCommand(id, true));
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for activation", id);
@@ -749,7 +776,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully activated bus with ID {BusId}", id);
 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -773,7 +800,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Activated bus with ID {BusId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error activating bus with ID {BusId}", id);
                 return StatusCode(500, $"An error occurred while activating bus: {ex.Message}");
@@ -802,7 +829,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     _logger.LogInformation("BUS BEFORE DEACTIVATION: {BusData}", JsonSerializer.Serialize(busBeforeDeactivation));
                 }
                 
-                var success = await _busService.DeactivateBusAsync(id);
+                var success = await CommitBusOperationAsync("buses.set-active", new SetBusActiveCommand(id, false));
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Bus with ID {BusId} not found for deactivation", id);
@@ -819,7 +846,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully deactivated bus with ID {BusId}", id);
 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -843,7 +870,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Deactivated bus with ID {BusId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error deactivating bus with ID {BusId}", id);
                 return StatusCode(500, $"An error occurred while deactivating bus: {ex.Message}");
@@ -851,13 +878,28 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
     }
 
-    public class CreateBusModel
+    public class BusModelDetails
     {
-        public required string Model { get; set; }
+        public uint? Capacity { get; set; }
+        public string? BusType { get; set; }
+        public uint? Year { get; set; }
+        public string? VIN { get; set; }
+        public string? LicensePlate { get; set; }
+        public string? CurrentStatus { get; set; }
+        public bool? IsActive { get; set; }
+        public BusDetails ToDetails() => new(Capacity, BusType, Year, VIN, LicensePlate, CurrentStatus, IsActive);
     }
 
-    public class UpdateBusModel
+    public class CreateBusModel : BusModelDetails
     {
-        public string? Model { get; set; }
+        public required string Model { get; set; }
+        public string? RegistrationNumber { get; set; }
     }
-} 
+
+    public class UpdateBusModel : BusModelDetails
+    {
+        public ulong? ExpectedRevision { get; set; }
+        public string? Model { get; set; }
+        public string? RegistrationNumber { get; set; }
+    }
+}

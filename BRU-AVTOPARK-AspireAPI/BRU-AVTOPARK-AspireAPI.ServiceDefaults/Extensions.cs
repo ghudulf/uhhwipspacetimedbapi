@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
+using Polly;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -26,7 +27,18 @@ public static class Extensions
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            http.AddStandardResilienceHandler(options =>
+            {
+                var transientFailure = options.Retry.ShouldHandle;
+                options.Retry.ShouldHandle = args =>
+                {
+                    var method = args.Context.GetRequestMessage()?.Method;
+                    // An unknown response does not prove that a mutation was not committed.
+                    return method == HttpMethod.Get || method == HttpMethod.Head
+                        ? transientFailure(args)
+                        : ValueTask.FromResult(false);
+                };
+            });
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();
@@ -52,13 +64,14 @@ public static class Extensions
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
+                metrics.AddMeter("BRU.Application")
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                tracing.AddSource(builder.Environment.ApplicationName, "BRU.Application")
                     .AddAspNetCoreInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()

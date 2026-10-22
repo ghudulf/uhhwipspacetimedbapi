@@ -58,7 +58,7 @@ namespace TicketSalesApp.Services.Implementations
                     personalAcc: EncryptData(sessionId),          // Encrypted session ID
                     bankName: EncryptData(timestamp),             // Encrypted timestamp
                     BIC: EncryptData(validationCode),             // Encrypted validation code
-                    correspAcc: EncryptData(GetUserRole(user.UserId).ToString()) // Encrypted role
+                    correspAcc: EncryptData((await GetUserRoleAsync(user.UserId)).ToString()) // Encrypted role
                 );
 
                 return generator.ToString();
@@ -74,7 +74,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogDebug("Validating QR token: {Token}", token);
+                _logger.LogDebug("Validating QR token; credentials omitted");
 
                 // Split the token into its parts
                 var parts = token.Split('|', StringSplitOptions.RemoveEmptyEntries);
@@ -93,7 +93,7 @@ namespace TicketSalesApp.Services.Implementations
                     if (fieldParts.Length == 2)
                     {
                         fields[fieldParts[0]] = fieldParts[1];
-                        _logger.LogDebug("Extracted field {Field}={Value}", fieldParts[0], fieldParts[1]);
+                        _logger.LogDebug("QR field parsed; value omitted");
                     }
                 }
 
@@ -105,21 +105,19 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 var sessionId = DecryptData(fields["PersonalAcc"]);
-                _logger.LogDebug("Decrypted session ID: {SessionId}", sessionId);
+                _logger.LogDebug("QR session parsed; value omitted");
                 var cacheKey = $"qr_login_{sessionId}";
 
                 if (!_cache.TryGetValue(cacheKey, out dynamic? sessionData))
                 {
-                    _logger.LogWarning("QR login session not found or expired for key {Key}", cacheKey);
+                    _logger.LogWarning("QR login session not found or expired");
                     return (false, null);
                 }
 
-                // Get connection to SpacetimeDB
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by LegacyUserId
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.LegacyUserId == (uint)sessionData.UserId);
+                var legacyUserId = (uint)sessionData!.UserId;
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.LegacyUserId == legacyUserId));
                 
                 if (userProfile == null)
                 {
@@ -146,8 +144,7 @@ namespace TicketSalesApp.Services.Implementations
                 var expectedCode = (string)sessionData.ValidationCode;
                 if (validationCode != expectedCode)
                 {
-                    _logger.LogWarning("Invalid validation code. Expected: {Expected}, Got: {Actual}", 
-                        expectedCode, validationCode);
+                    _logger.LogWarning("Invalid QR verification; proof values omitted");
                     return (false, null);
                 }
 
@@ -244,7 +241,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogDebug("Validating direct login QR token: {Token}", token);
+                _logger.LogDebug("Validating direct login QR token; credentials omitted");
 
                 var parts = token.Split('|', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 6)
@@ -274,12 +271,8 @@ namespace TicketSalesApp.Services.Implementations
 
                 var username = DecryptData(fields["Name"]);
                 
-                // Get connection to SpacetimeDB
-                var conn = _spacetimeService.GetConnection();
-                
                 // Find user by login
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == username);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(username));
 
                 if (userProfile == null)
                 {
@@ -312,15 +305,12 @@ namespace TicketSalesApp.Services.Implementations
                 var tokenDeviceType = DecryptData(fields["CorrespAcc"]);
                 if (tokenDeviceType != deviceType)
                 {
-                    _logger.LogWarning("Device type mismatch. Expected: {Expected}, Got: {Actual}", 
-                        deviceType, tokenDeviceType);
+                    _logger.LogWarning("Device type mismatch; submitted proof fields omitted");
                     return (false, null, string.Empty);
                 }
 
                 // Update user's last login time
-                var updatedUserProfile = userProfile;
-                updatedUserProfile.LastLoginAt = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                conn.Reducers.AuthenticateUser(userProfile.Login, "");
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.AuthenticateUser(userProfile.Login, ""), _ => true);
 
                 _logger.LogInformation("Direct login validation successful for user {Username}", username);
                 return (true, userProfile, sessionId);
@@ -432,11 +422,12 @@ namespace TicketSalesApp.Services.Implementations
             return Guid.NewGuid().ToString("N").Substring(0, 8);
         }
 
-        private int GetUserRole(Identity userId)
+        private async Task<int> GetUserRoleAsync(Identity userId)
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Find user roles
                 var userRoles = conn.Db.UserRole.Iter()
@@ -463,6 +454,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Get the legacy role ID for compatibility
                 var highestRole = conn.Db.Role.RoleId.Find(highestPriorityRoleId);
                 return highestRole?.LegacyRoleId ?? 0;
+                });
             }
             catch (Exception ex)
             {

@@ -29,6 +29,8 @@ namespace SpacetimeDB.Types
         public ulong ExpiresAt;
         [DataMember(Name = "is_revoked")]
         public bool IsRevoked;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public OpenIdConnectGrant(
             string GrantId,
@@ -38,7 +40,8 @@ namespace SpacetimeDB.Types
             System.Collections.Generic.List<string> Scopes,
             ulong CreatedAt,
             ulong ExpiresAt,
-            bool IsRevoked
+            bool IsRevoked,
+            uint ApiAccessPartition
         )
         {
             this.GrantId = GrantId;
@@ -49,6 +52,7 @@ namespace SpacetimeDB.Types
             this.CreatedAt = CreatedAt;
             this.ExpiresAt = ExpiresAt;
             this.IsRevoked = IsRevoked;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public OpenIdConnectGrant()

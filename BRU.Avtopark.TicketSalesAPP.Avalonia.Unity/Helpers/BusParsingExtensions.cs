@@ -29,6 +29,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 if (busId == 0)
                 {
                     Log.Warning("Bus object has BusId 0, skipping");
+                    Services.DataGridDiagnostics.Parsed<Bus?>("Bus", busObj, null, "busId");
                     return null;
                 }
 
@@ -65,7 +66,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     registrationNumber, vin, licensePlate, currentStatus, currentLocation, 
                     currentFuelLevel, mileageTotal);
 
-                return new Bus
+                return Services.DataGridDiagnostics.Parsed("Bus", busObj, new Bus
                 {
                     BusId = busId,
                     Model = model,
@@ -90,7 +91,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     HasAirConditioning = hasAirConditioning,
                     HasWifi = hasWifi,
                     HasUsbCharging = hasUsbCharging
-                };
+                }, "busId", "model", "capacity");
             }
             catch (Exception ex)
             {
@@ -548,10 +549,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 if (saleId == 0)
                 {
                     Log.Warning("Sale object has SaleId 0, skipping");
+                    Services.DataGridDiagnostics.Parsed<Sale?>("Sale", saleObj, null, "saleId");
                     return null;
                 }
 
-                ulong saleDate = saleObj.GetValue<ulong>("saleDate", 0);
+                ulong saleDate = 0;
+                try { saleDate = Serialization.CollectionPayload.UnixMilliseconds(saleObj["saleDate"] ?? saleObj["SaleDate"]); }
+                catch (System.Text.Json.JsonException) { /* Missing or invalid dates are displayed as unknown. */ }
                 uint ticketId = saleObj.GetValue<uint>("ticketId", 0);
                 string ticketSoldToUser = saleObj.GetStringValue("ticketSoldToUser") ?? string.Empty;
                 string ticketSoldToUserPhone = saleObj.GetStringValue("ticketSoldToUserPhone") ?? string.Empty;
@@ -578,7 +582,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 string? paymentProvider = saleObj.GetStringValue("paymentProvider");
                 string? paymentReference = saleObj.GetStringValue("paymentReference");
 
-                return new Sale
+                return Services.DataGridDiagnostics.Parsed("Sale", saleObj, new Sale
                 {
                     SaleId = saleId,
                     SaleDate = saleDate,
@@ -605,7 +609,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     ChangeAmount = changeAmount,
                     PaymentProvider = paymentProvider,
                     PaymentReference = paymentReference
-                };
+                }, "saleId", "saleDate", "ticketId", "ticketSoldToUser");
             }
             catch (Exception ex)
             {
@@ -720,6 +724,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 if (jobId == 0)
                 {
                     Log.Warning("Job object has JobId 0, skipping");
+                    Services.DataGridDiagnostics.Parsed<Job?>("Job", jobObj, null, "jobId");
                     return null;
                 }
 
@@ -744,7 +749,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 uint? sickDays = jobObj.GetNullableValue<uint>("sickDays");
                 string? performanceMetrics = jobObj.GetStringValue("performanceMetrics");
 
-                return new Job
+                return Services.DataGridDiagnostics.Parsed("Job", jobObj, new Job
                 {
                     JobId = jobId,
                     JobTitle = jobTitle,
@@ -765,7 +770,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     VacationDays = vacationDays,
                     SickDays = sickDays,
                     PerformanceMetrics = performanceMetrics
-                };
+                }, "jobId", "jobTitle");
             }
             catch (Exception ex)
             {
@@ -811,7 +816,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                 ulong createdAt = userObj.GetValue<ulong>("CreatedAt", 0);
 
                 // Optional fields - match server's PascalCase naming
-                string? passwordHash = userObj.GetStringValue("PasswordHash");
                 string? email = userObj.GetStringValue("Email");
                 string? phoneNumber = userObj.GetStringValue("PhoneNumber");
                 ulong? lastLoginAt = userObj.GetNullableValue<ulong>("LastLoginAt");
@@ -829,7 +833,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Helpers
                     LegacyUserId = legacyUserId,
                     Xuid = xuid,
                     Login = login,
-                    PasswordHash = passwordHash,
                     Email = email,
                     PhoneNumber = phoneNumber,
                     IsActive = isActive,

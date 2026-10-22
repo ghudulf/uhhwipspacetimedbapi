@@ -1,147 +1,155 @@
 using System;
 using System.IO;
-using System.Text.Json;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Serilog;
 
-namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
+namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services;
+
+/// <summary>Origin-bound sessions. Windows persists using the signed-in user's DPAPI key;
+/// other platforms keep sessions in memory until a platform vault is configured.</summary>
+public sealed class TokenStorageService
 {
-    public class TokenStorageService
+    private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static string? _memoryOrigin;
+    private static byte[]? _memorySession;
+    private readonly string _origin;
+    private readonly string _directory;
+    private readonly string _path;
+    private readonly byte[] _entropy;
+
+    public TokenStorageService(string serverUrl, string? storageDirectory = null)
     {
-        private readonly string _tokenFilePath;
-        private readonly byte[] _encryptionKey;
+        var server = new Uri(serverUrl, UriKind.Absolute);
+        if (server.Scheme != Uri.UriSchemeHttp && server.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("A configured HTTP(S) server is required.", nameof(serverUrl));
+        if (!string.IsNullOrEmpty(server.UserInfo)) throw new ArgumentException("Credentials in server URLs are not supported.", nameof(serverUrl));
+        _origin = server.GetLeftPart(UriPartial.Authority).ToLowerInvariant();
+        _entropy = SHA256.HashData(Encoding.UTF8.GetBytes("bru-session-v2:" + _origin));
+        _directory = storageDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRU.Avtopark.TicketSalesApp");
+        _path = Path.Combine(_directory, "session-" + Convert.ToHexString(_entropy) + ".dpapi");
+    }
 
-        public TokenStorageService()
+    public async Task SaveTokensAsync(OAuthTokenResponse tokens)
+    {
+        ArgumentNullException.ThrowIfNull(tokens);
+        await Gate.WaitAsync();
+        try { await SaveCoreAsync(tokens); }
+        finally { Gate.Release(); }
+    }
+
+    public async Task<bool> ReplaceIfAccessMatchesAsync(string expectedAccess, OAuthTokenResponse tokens)
+    {
+        await Gate.WaitAsync();
+        try
         {
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var appFolder = Path.Combine(appDataPath, "BRU.Avtopark.TicketSalesApp");
-            Directory.CreateDirectory(appFolder);
-            _tokenFilePath = Path.Combine(appFolder, "tokens.dat");
-
-            // Generate or retrieve encryption key (in production, use a more secure method)
-            _encryptionKey = GetOrCreateEncryptionKey(appFolder);
+            if (_memoryOrigin != _origin || _memorySession == null || JsonSerializer.Deserialize<OAuthTokenResponse>(_memorySession)?.AccessToken != expectedAccess) return false;
+            await SaveCoreAsync(tokens); return true;
         }
+        finally { Gate.Release(); }
+    }
 
-        public async Task SaveTokensAsync(OAuthTokenResponse tokens)
-        {
+    private async Task SaveCoreAsync(OAuthTokenResponse tokens)
+    {
+            if (tokens.ExpiresAt == default) tokens.ExpiresAt = DateTime.UtcNow.AddSeconds(tokens.ExpiresIn);
+            ReplaceMemory(JsonSerializer.SerializeToUtf8Bytes(tokens));
+            DeleteLegacyFiles();
+            if (!OperatingSystem.IsWindows())
+            {
+                Log.Information("Session stored in memory; secure platform persistence unavailable");
+                return;
+            }
+            var temporaryPath = _path + ".tmp";
             try
             {
-                tokens.ExpiresAt = DateTime.UtcNow.AddSeconds(tokens.ExpiresIn);
-                Console.WriteLine($"[TokenStorage] Saving tokens, ExpiresAt={tokens.ExpiresAt:u}, path={_tokenFilePath}");
-
-                var json = JsonSerializer.Serialize(tokens);
-                var encrypted = EncryptString(json);
-                await File.WriteAllBytesAsync(_tokenFilePath, encrypted);
-
-                Console.WriteLine($"[TokenStorage] Saved {encrypted.Length} bytes to {_tokenFilePath}");
+                Directory.CreateDirectory(_directory);
+                var protectedBytes = ProtectedData.Protect(_memorySession!, _entropy, DataProtectionScope.CurrentUser);
+                await File.WriteAllBytesAsync(temporaryPath, protectedBytes);
+                File.Move(temporaryPath, _path, overwrite: true);
+                Log.Information("Session persisted with platform protection; expires {ExpiresAt}", tokens.ExpiresAt);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException)
             {
-                Console.WriteLine($"[TokenStorage] Error saving tokens: {ex.Message}");
-                throw;
+                File.Delete(_path); // Surface failure if an old persisted session cannot be removed.
+                Log.Warning("Secure session persistence unavailable; using memory only ({Failure})", ex.GetType().Name);
             }
-        }
+            finally { DeleteFile(temporaryPath); }
+    }
 
-        public async Task<OAuthTokenResponse?> GetTokensAsync()
+    public async Task<OAuthTokenResponse?> GetTokensAsync()
+    {
+        await Gate.WaitAsync();
+        try
         {
+            DeleteLegacyFiles(); // Legacy ciphertext and adjacent key had no trusted server binding.
+            if (_memoryOrigin == _origin && _memorySession != null)
+                return JsonSerializer.Deserialize<OAuthTokenResponse>(_memorySession);
+            if (!OperatingSystem.IsWindows() || !File.Exists(_path)) return null;
+            byte[]? plaintext = null;
             try
             {
-                if (!File.Exists(_tokenFilePath))
-                {
-                    Console.WriteLine($"[TokenStorage] No token file at {_tokenFilePath}");
-                    return null;
-                }
-
-                var fileInfo = new FileInfo(_tokenFilePath);
-                Console.WriteLine($"[TokenStorage] Reading token file: {fileInfo.Length} bytes, modified={fileInfo.LastWriteTimeUtc:u}");
-
-                var encrypted = await File.ReadAllBytesAsync(_tokenFilePath);
-                var json = DecryptString(encrypted);
-                var result = JsonSerializer.Deserialize<OAuthTokenResponse>(json);
-
-                Console.WriteLine($"[TokenStorage] Deserialized token: AccessToken.Length={result?.AccessToken?.Length ?? 0}, ExpiresAt={result?.ExpiresAt:u}");
-                return result;
+                var file = new FileInfo(_path);
+                if (file.Length > 128 * 1024) throw new CryptographicException("Invalid session file size.");
+                plaintext = ProtectedData.Unprotect(await File.ReadAllBytesAsync(_path), _entropy, DataProtectionScope.CurrentUser);
+                var tokens = JsonSerializer.Deserialize<OAuthTokenResponse>(plaintext);
+                if (tokens != null) ReplaceMemory((byte[])plaintext.Clone());
+                return tokens;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is CryptographicException or IOException or UnauthorizedAccessException or JsonException)
             {
-                Console.WriteLine($"[TokenStorage] Error reading tokens: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning("Stored session could not be restored; sign-in required ({Failure})", ex.GetType().Name);
+                DeleteFile(_path);
                 return null;
             }
+            finally { if (plaintext != null) CryptographicOperations.ZeroMemory(plaintext); }
         }
+        finally { Gate.Release(); }
+    }
 
-        public async Task ClearTokensAsync()
+    public async Task ClearTokensAsync()
+    {
+        await Gate.WaitAsync();
+        try
         {
-            try
-            {
-                if (File.Exists(_tokenFilePath))
-                {
-                    await Task.Run(() => File.Delete(_tokenFilePath));
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error clearing tokens: {ex.Message}");
-            }
+            if (_memoryOrigin == _origin) ReplaceMemory(null);
+            // Surface a failed logout deletion to the caller: otherwise restart could restore it.
+            if (File.Exists(_path)) File.Delete(_path);
+            DeleteLegacyFiles();
+            Log.Information("Stored session cleared");
         }
-
-        private byte[] GetOrCreateEncryptionKey(string appFolder)
+        finally { Gate.Release(); }
+    }
+    public async Task ClearIfAccessMatchesAsync(string expectedAccess)
+    {
+        await Gate.WaitAsync();
+        try
         {
-            var keyPath = Path.Combine(appFolder, ".key");
-            
-            if (File.Exists(keyPath))
-            {
-                return File.ReadAllBytes(keyPath);
-            }
-
-            // Generate new key
-            using var aes = Aes.Create();
-            aes.GenerateKey();
-            var key = aes.Key;
-            
-            // Save key with restricted permissions
-            File.WriteAllBytes(keyPath, key);
-            
-            return key;
+            if (_memoryOrigin != _origin || _memorySession == null || JsonSerializer.Deserialize<OAuthTokenResponse>(_memorySession)?.AccessToken != expectedAccess) return;
+            ReplaceMemory(null); if (File.Exists(_path)) File.Delete(_path); DeleteLegacyFiles();
         }
+        finally { Gate.Release(); }
+    }
 
-        private byte[] EncryptString(string plainText)
-        {
-            using var aes = Aes.Create();
-            aes.Key = _encryptionKey;
-            aes.GenerateIV();
+    private void ReplaceMemory(byte[]? session)
+    {
+        if (_memorySession != null) CryptographicOperations.ZeroMemory(_memorySession);
+        _memoryOrigin = _origin;
+        _memorySession = session;
+    }
 
-            using var encryptor = aes.CreateEncryptor();
-            using var ms = new MemoryStream();
-            
-            // Write IV first
-            ms.Write(aes.IV, 0, aes.IV.Length);
-            
-            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-            using (var sw = new StreamWriter(cs))
-            {
-                sw.Write(plainText);
-            }
+    private void DeleteLegacyFiles()
+    {
+        DeleteFile(Path.Combine(_directory, "tokens.dat"));
+        DeleteFile(Path.Combine(_directory, ".key"));
+    }
 
-            return ms.ToArray();
-        }
-
-        private string DecryptString(byte[] cipherText)
-        {
-            using var aes = Aes.Create();
-            aes.Key = _encryptionKey;
-
-            // Read IV from the beginning
-            var iv = new byte[aes.IV.Length];
-            Array.Copy(cipherText, 0, iv, 0, iv.Length);
-            aes.IV = iv;
-
-            using var decryptor = aes.CreateDecryptor();
-            using var ms = new MemoryStream(cipherText, iv.Length, cipherText.Length - iv.Length);
-            using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
-            using var sr = new StreamReader(cs);
-            
-            return sr.ReadToEnd();
-        }
+    private static void DeleteFile(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { Log.Warning("Session file cleanup failed ({Failure})", ex.GetType().Name); }
     }
 }

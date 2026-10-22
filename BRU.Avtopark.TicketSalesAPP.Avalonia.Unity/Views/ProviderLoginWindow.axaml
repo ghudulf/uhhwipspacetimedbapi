@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ProviderLoginWindow"
+        Title="Вход через системный браузер" AutomationProperties.Name="Вход через системный браузер"
+        Width="480" Height="300" MinWidth="360" MinHeight="260" WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="24" Spacing="16">
+        <TextBlock Text="Вход через системный браузер" FontSize="22" TextWrapping="Wrap" />
+        <TextBlock Text="Пароль вводится только в браузере. Не передавайте коды и адреса другим людям." TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Countdown}" AutomationProperties.Name="Оставшееся время входа" AutomationProperties.LiveSetting="Polite" />
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.Name="Состояние входа через браузер" AutomationProperties.LiveSetting="Polite" />
+        <Button Content="Отмена" Click="Cancel_Click" IsCancel="True" AutomationProperties.Name="Отменить вход через браузер" />
+    </StackPanel>
+</Window>

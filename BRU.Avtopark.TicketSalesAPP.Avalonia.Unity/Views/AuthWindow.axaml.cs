@@ -36,7 +36,9 @@ public partial class AuthWindow : Window
         private Button? _backButton;
         private Button? _cancelButton;
 
-    public AuthWindow()
+    public AuthWindow() : this(new AuthViewModel()) { }
+
+    public AuthWindow(AuthViewModel viewModel)
     {
         Log.Information("AuthWindow constructor started");
         InitializeComponent();
@@ -52,7 +54,7 @@ public partial class AuthWindow : Window
             Log.Information("Window registered with StepToContentConverter");
 
             // Initialize view model - Ensure DataContext is set correctly
-            _viewModel = new AuthViewModel();
+            _viewModel = viewModel;
             DataContext = _viewModel;
             Log.Information("AuthViewModel created and set as DataContext");
 
@@ -146,6 +148,12 @@ public partial class AuthWindow : Window
                 Log.Error("CRITICAL: ViewModel is null after initialization");
             }
 
+            Closed += (_, _) =>
+            {
+                _viewModel.LoginCompleted -= ViewModel_LoginCompleted;
+                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                _disposables.Dispose();
+            };
             Log.Information("AuthWindow constructor completed successfully");
         }
 
@@ -581,7 +589,6 @@ public partial class AuthWindow : Window
 
             // DEBUGGING: Add handler for when the user presses Enter in the password field
             passwordTextBox.KeyDown += (s, e) => {
-                Log.Debug("KeyDown event in password field: Key={Key}", e.Key);
                 if (e.Key == Key.Enter && _viewModel != null && _viewModel.CanGoForward)
                 {
                     Log.Information("Enter key pressed in password field, executing GoToNextStepCommand");

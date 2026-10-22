@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Threading;
 using System;
@@ -78,12 +78,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 bool serverFoundViaPing = Services.ApiClientService.Instance.WasDiscoveredSuccessfully;
 
                 // baseUrl ends with "api/" — strip to get server root
-                var serverRoot = baseUrl.EndsWith("api/")
-                    ? baseUrl[..^4]
-                    : baseUrl;
+                var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri;
 
                 SetStatus("Проверка подключения...");
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                using var client = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { Timeout = TimeSpan.FromSeconds(5) };
 
                 // Try well-known health/status endpoints — continue on 404 or network error,
                 // don't bail out on the first non-2xx response.
@@ -91,7 +89,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
                 {
                     try
                     {
-                        var response = await client.GetAsync($"{serverRoot.TrimEnd('/')}/{path}");
+                        using var response = await client.GetAsync($"{serverRoot.TrimEnd('/')}/{path}");
                         if (response.IsSuccessStatusCode)
                         {
                             SetStatus($"Подключено ({serverRoot.Replace("http://", "").TrimEnd('/')})");

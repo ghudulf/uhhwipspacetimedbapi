@@ -18,7 +18,7 @@ namespace TicketSalesApp.AdminServer.Controllers
     /// Controllers use [AllowAnonymous] to bypass ASP.NET auth middleware,
     /// then manually check authentication using this base class.
     /// </summary>
-    public abstract class BaseController : Controller
+    public abstract partial class BaseController : Controller
     {
         /// <summary>
         /// Cache key for storing validated OAuth claims in HttpContext.Items
@@ -57,13 +57,12 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Check if we have an Authorization header
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            var token = ResolveAccessToken();
+            if (string.IsNullOrEmpty(token))
             {
                 return false;
             }
 
-            var token = authHeader.Substring("Bearer ".Length);
             
             // Validate token format and structure
             if (string.IsNullOrWhiteSpace(token) || token.Length < 20)
@@ -125,14 +124,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronously validates if the current request is authenticated.
-        /// This is a backwards-compatible wrapper around IsAuthenticatedAsync.
-        /// For new code, prefer using IsAuthenticatedAsync for better async/await patterns.
-        /// </summary>
-        /// <returns>True if authenticated with valid token; false otherwise.</returns>
-        protected bool IsAuthenticated() => IsAuthenticatedAsync().GetAwaiter().GetResult();
-
-        /// <summary>
         /// Determine whether the current request is associated with an administrator account.
         /// </summary>
         /// <remarks>
@@ -142,197 +133,53 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Returns false on missing/invalid tokens or on any validation error.
         /// </remarks>
         /// <returns>`true` if the principal or bearer token indicates administrator privileges (via `primary_role`, `role`, or standard role claims); `false` otherwise.</returns>
-        protected async Task<bool> IsAdminAsync()
+        protected async Task<bool> IsAdminAsync() => (await GetCurrentAccessAsync()).IsAdministrator;
+
+        protected async Task<TicketSalesApp.Services.Authorization.UserAccessSnapshot> GetCurrentAccessAsync()
         {
-            try
+            string? identity;
+            if (HttpContext.WebSockets.IsWebSocketRequest)
             {
-                // Try ASP.NET Core authentication first (OpenIddict)
-                if (User?.Identity?.IsAuthenticated == true)
-                {
-                    // Log all claims for debugging
-                    var allClaims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
-                    var claimsStr = string.Join(", ", allClaims);
-                    Log.Debug("IsAdmin check - User authenticated. Claims: {Claims}", claimsStr);
-
-                    // Check primary role first
-                    var primaryRole = User.FindFirst("primary_role");
-                    Log.Debug("IsAdmin check - primary_role claim: {Value}", primaryRole?.Value ?? "NOT FOUND");
-
-                    if (primaryRole?.Value == "1")
-                    {
-                        Log.Information("IsAdmin check - User is admin (primary_role=1)");
-                        return true;
-                    }
-
-                    // Check role claims
-                    var roleClaims = User.FindAll("role");
-                    Log.Debug("IsAdmin check - role claims count: {Count}", roleClaims.Count());
-                    foreach (var claim in roleClaims)
-                    {
-                        Log.Debug("IsAdmin check - role claim value: {Value}", claim.Value);
-                    }
-
-                    if (roleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
-                    {
-                        Log.Information("IsAdmin check - User is admin (role claim)");
-                        return true;
-                    }
-
-                    // Check standard role claims
-                    var standardRoleClaims = User.FindAll(ClaimTypes.Role);
-                    Log.Debug("IsAdmin check - standard role claims count: {Count}", standardRoleClaims.Count());
-                    if (standardRoleClaims.Any(c => c.Value == "1" || c.Value == "Administrator"))
-                    {
-                        Log.Information("IsAdmin check - User is admin (standard role claim)");
-                        return true;
-                    }
-
-                    Log.Warning("IsAdmin check - User authenticated but not admin");
-                }
-                else
-                {
-                    Log.Debug("IsAdmin check - User not authenticated via ASP.NET Core");
-                }
-
-                // Try to parse as custom JWT
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                {
-                    Log.Warning("IsAdmin check - Missing or invalid Authorization header");
-                    return false;
-                }
-
-                var token = authHeader.Substring("Bearer ".Length);
-                var tokenHandler = new JwtSecurityTokenHandler();
-
-                // CRITICAL FIX: Check if it's an encrypted token (JWE) by examining the structure
-                if (IsJweToken(token))
-                {
-                    // It's an encrypted JWE token from OpenIddict, validate via tokeninfo endpoint
-                    Log.Debug("IsAdmin check - Token is encrypted (JWE), validating via tokeninfo endpoint");
-                    var claims = await ValidateOAuthTokenAsync();
-                    
-                    if (claims == null)
-                    {
-                        Log.Warning("IsAdmin check - Token validation failed");
-                        return false;
-                    }
-                    
-                    Log.Debug("IsAdmin check (OAuth) - Retrieved {ClaimCount} claims from tokeninfo", claims.Count);
-                    
-                    // Check primary_role in claims
-                    if (claims.TryGetValue("primary_role", out var primaryRoleObj) && primaryRoleObj?.ToString() == "1")
-                    {
-                        Log.Information("IsAdmin check (OAuth) - User is admin (primary_role=1)");
-                        return true;
-                    }
-                    
-                    // Check role claims
-                    if (claims.TryGetValue("role", out var roleObj))
-                    {
-                        if (roleObj is List<string> roleList && (roleList.Contains("1") || roleList.Contains("Administrator")))
-                        {
-                            Log.Information("IsAdmin check (OAuth) - User is admin (role claim in list)");
-                            return true;
-                        }
-                        else if (roleObj?.ToString() == "1" || roleObj?.ToString() == "Administrator")
-                        {
-                            Log.Information("IsAdmin check (OAuth) - User is admin (role claim)");
-                            return true;
-                        }
-                    }
-                    
-                    // Check http://schemas.microsoft.com/ws/2008/06/identity/claims/role
-                    if (claims.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var standardRoleObj))
-                    {
-                        if (standardRoleObj is List<string> standardRoleList && (standardRoleList.Contains("1") || standardRoleList.Contains("Administrator")))
-                        {
-                            Log.Information("IsAdmin check (OAuth) - User is admin (standard role claim in list)");
-                            return true;
-                        }
-                        else if (standardRoleObj?.ToString() == "1" || standardRoleObj?.ToString() == "Administrator")
-                        {
-                            Log.Information("IsAdmin check (OAuth) - User is admin (standard role claim)");
-                            return true;
-                        }
-                    }
-                    
-                    Log.Warning("IsAdmin check (OAuth) - User not admin. Claims: {Claims}", string.Join(", ", claims.Keys));
-                    return false;
-                }
-                
-                // CRITICAL FIX: Validate JWT signature properly
-                if (tokenHandler.CanReadToken(token))
-                {
-                    // It's a regular JWT - validate it properly
-                    Log.Debug("IsAdmin check (JWT) - Validating JWT signature");
-                    var claims = await ValidateOAuthTokenAsync();
-                    
-                    if (claims == null)
-                    {
-                        Log.Warning("IsAdmin check (JWT) - Token validation failed");
-                        return false;
-                    }
-                    
-                    // Check primary_role in validated claims
-                    if (claims.TryGetValue("primary_role", out var primaryRoleObj) && primaryRoleObj?.ToString() == "1")
-                    {
-                        Log.Information("IsAdmin check (JWT) - User is admin (primary_role=1)");
-                        return true;
-                    }
-                    
-                    // Check role claims
-                    if (claims.TryGetValue("role", out var roleObj))
-                    {
-                        if (roleObj is List<string> roleList && (roleList.Contains("1") || roleList.Contains("Administrator")))
-                        {
-                            Log.Information("IsAdmin check (JWT) - User is admin (role claim in list)");
-                            return true;
-                        }
-                        else if (roleObj?.ToString() == "1" || roleObj?.ToString() == "Administrator")
-                        {
-                            Log.Information("IsAdmin check (JWT) - User is admin (role claim)");
-                            return true;
-                        }
-                    }
-                    
-                    // Check http://schemas.microsoft.com/ws/2008/06/identity/claims/role
-                    if (claims.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var standardRoleObj))
-                    {
-                        if (standardRoleObj is List<string> standardRoleList && (standardRoleList.Contains("1") || standardRoleList.Contains("Administrator")))
-                        {
-                            Log.Information("IsAdmin check (JWT) - User is admin (standard role claim in list)");
-                            return true;
-                        }
-                        else if (standardRoleObj?.ToString() == "1" || standardRoleObj?.ToString() == "Administrator")
-                        {
-                            Log.Information("IsAdmin check (JWT) - User is admin (standard role claim)");
-                            return true;
-                        }
-                    }
-                    
-                    Log.Warning("IsAdmin check (JWT) - User not admin");
-                    return false;
-                }
-                
-                // If we get here, token format is unknown
-                Log.Warning("IsAdmin check - Unknown token format");
-                return false;
+                // A socket can outlive its handshake principal and per-request claim cache.
+                var token = ResolveAccessToken();
+                if (string.IsNullOrEmpty(token))
+                    return TicketSalesApp.Services.Authorization.UserAccessSnapshot.Denied;
+                var claims = await ValidateTokenDirectAsync(token, HttpContext.RequestAborted);
+                identity = claims != null && claims.TryGetValue("identity", out var claim) ? claim?.ToString() : null;
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error checking admin status");
-                return false;
-            }
+            else identity = await GetSpacetimeIdentityAsync();
+            if (string.IsNullOrWhiteSpace(identity)) return TicketSalesApp.Services.Authorization.UserAccessSnapshot.Denied;
+            SpacetimeDB.Identity actor;
+            try { actor = SpacetimeDB.Identity.FromHexString(identity); }
+            catch (FormatException) { return TicketSalesApp.Services.Authorization.UserAccessSnapshot.Denied; }
+            return await HttpContext.RequestServices.GetRequiredService<TicketSalesApp.Services.Authorization.UserAccessService>()
+                .GetAsync(actor, HttpContext.RequestAborted);
         }
 
-        /// <summary>
-        /// Checks if the current user has a specific permission.
-        /// Supports both ASP.NET Core auth and custom JWT.
-        /// </summary>
-        protected bool HasPermission(string permissionName)
+        protected async Task RequireRealtimeCommandAsync(string resource, string command)
         {
-            return HasPermissionAsync(permissionName).GetAwaiter().GetResult();
+            var action = command.Trim().ToLowerInvariant() switch
+            {
+                "read" or "read_all" or "next_page" or "prev_page" or "first_page" or "last_page" or "goto_page" => "view",
+                "create" => "create",
+                "update" => "edit",
+                "delete" => "delete",
+                _ => throw new InvalidOperationException("Unsupported command")
+            };
+            var access = await GetCurrentAccessAsync();
+            if (!access.IsAdministrator && !access.Allows(resource + "." + action)) throw new UnauthorizedAccessException("Permission required");
+        }
+
+        protected async IAsyncEnumerable<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts.ApiDomainEvent> AuthorizedEventsAsync(
+            IAsyncEnumerable<BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts.ApiDomainEvent> events, string permission,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await foreach (var domainEvent in events.WithCancellation(cancellationToken))
+            {
+                var access = await GetCurrentAccessAsync();
+                if (!access.IsAdministrator && !access.Allows(permission)) throw new UnauthorizedAccessException("Subscription permission revoked or session expired");
+                yield return domainEvent;
+            }
         }
 
         /// <summary>
@@ -342,77 +189,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
         /// <param name="validatedClaims">Pre-validated claims dictionary from ValidateOAuthTokenAsync.</param>
         /// <returns>True if the user has the specified permission; false otherwise.</returns>
-        protected bool HasPermission(string permissionName, Dictionary<string, object>? validatedClaims)
-        {
-            try
-            {
-                // Try ASP.NET Core authentication first (OpenIddict)
-                if (User?.Identity?.IsAuthenticated == true)
-                {
-                    var permissionClaims = User.FindAll("permission");
-                    if (permissionClaims.Any(c => c.Value == permissionName))
-                    {
-                        return true;
-                    }
-                }
+        protected Task<bool> HasPermissionAsync(string permissionName, Dictionary<string, object>? validatedClaims)
+            => HasPermissionAsync(permissionName);
 
-                // Use pre-validated claims if provided
-                if (validatedClaims != null && validatedClaims.TryGetValue("permission", out var permissionObj))
-                {
-                    if (permissionObj is List<string> permissionList && permissionList.Contains(permissionName))
-                    {
-                        return true;
-                    }
-                    else if (permissionObj?.ToString() == permissionName)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error checking permission: {Permission}", permissionName);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Asynchronously checks if the current user has a specific permission by inspecting validated claims.
-        /// This method properly handles both ASP.NET Core authenticated principals and OAuth tokens (including JWE).
-        /// </summary>
-        /// <param name="permissionName">The permission name to check (e.g., "buses.view").</param>
-        /// <returns>True if the user has the specified permission; false otherwise.</returns>
         protected async Task<bool> HasPermissionAsync(string permissionName)
         {
-            try
-            {
-                // Try ASP.NET Core authentication first (OpenIddict)
-                if (User?.Identity?.IsAuthenticated == true)
-                {
-                    var permissionClaims = User.FindAll("permission");
-                    Log.Debug("HasPermission check for '{Permission}' - permission claims count: {Count}", permissionName, permissionClaims.Count());
-
-                    if (permissionClaims.Any(c => c.Value == permissionName))
-                    {
-                        Log.Information("HasPermission check - User has permission '{Permission}'", permissionName);
-                        return true;
-                    }
-                }
-
-                // For tokens that aren't already authenticated, validate via OAuth
-                // This handles both regular JWTs and encrypted JWE tokens
-                var claims = await ValidateOAuthTokenAsync();
-
-                // Delegate to the synchronous overload with validated claims
-                return HasPermission(permissionName, claims);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error checking permission: {Permission}", permissionName);
-                return false;
-            }
+            var access = await GetCurrentAccessAsync();
+            var allowed = access.Allows(permissionName);
+            Log.Debug("Authorization permission {Permission}: {Allowed}, trace {TraceId}", permissionName, allowed, HttpContext.TraceIdentifier);
+            return allowed;
         }
 
 
@@ -420,9 +205,33 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// Gets the current user's ID from claims.
         /// Supports both ASP.NET Core auth and custom JWT.
         /// </summary>
-        protected string? GetUserId()
+        protected async Task<SpacetimeDB.Identity> RequireApplicationActorAsync()
         {
-            return GetUserIdAsync().GetAwaiter().GetResult();
+            var identity = await GetSpacetimeIdentityAsync();
+            if (string.IsNullOrWhiteSpace(identity)) throw new UnauthorizedAccessException("Authenticated actor required.");
+            return SpacetimeDB.Identity.FromHexString(identity);
+        }
+        protected string ApplicationOperationId()
+        {
+            var supplied = Request.Headers["Idempotency-Key"].FirstOrDefault();
+            var id = string.IsNullOrEmpty(supplied) ? Guid.NewGuid() : Guid.TryParse(supplied, out var parsed)
+                ? parsed : throw new BRU_AVTOPARK_AspireAPI.ApiService.Application.OperationException("validation_failed");
+            var effective = id.ToString("N");
+            Response.Headers["Operation-Id"] = effective;
+            return effective;
+        }
+
+        protected static string ApplicationOperationId(BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure.RealtimeCrudRequest request)
+        {
+            if (Guid.TryParse(request.OperationId, out var id) || Guid.TryParse(request.RequestId, out id)) return id.ToString("N");
+            throw new ArgumentException("A stable GUID operationId/requestId is required.", "operationId/requestId");
+        }
+
+        protected string? ResolveAccessToken()
+        {
+            var header = Request.Headers.Authorization.ToString();
+            if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return header[7..];
+            return HttpContext.WebSockets.IsWebSocketRequest ? Request.Query["access_token"].FirstOrDefault() : null;
         }
 
         /// <summary>
@@ -483,6 +292,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
+                if (HttpContext.WebSockets.IsWebSocketRequest)
+                {
+                    var token = ResolveAccessToken();
+                    var current = string.IsNullOrEmpty(token) ? null : await ValidateTokenDirectAsync(token, HttpContext.RequestAborted);
+                    return current != null && current.TryGetValue("identity", out var actor) ? actor?.ToString() : null;
+                }
                 // Try ASP.NET Core authentication first (OpenIddict)
                 if (User?.Identity?.IsAuthenticated == true)
                 {
@@ -518,13 +333,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronous wrapper for GetSpacetimeIdentityAsync - for backward compatibility.
-        /// Prefer using GetSpacetimeIdentityAsync when possible.
-        /// </summary>
-        /// <returns>The SpacetimeDB identity string if present; otherwise null.</returns>
-        protected string? GetSpacetimeIdentity() => GetSpacetimeIdentityAsync().GetAwaiter().GetResult();
-
-        /// <summary>
         /// CRITICAL FIX: Validates encrypted OpenIddict tokens by calling the tokeninfo endpoint
         /// Returns claims dictionary if valid, null if invalid.
         /// Implements per-request caching to avoid redundant validation calls.
@@ -546,48 +354,15 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return null;
                 }
                 
-                var authHeader = Request.Headers["Authorization"].ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                var token = ResolveAccessToken();
+                if (string.IsNullOrEmpty(token))
                 {
-                    // Fallback to query parameter for SignalR/WebSocket connections
-                    var accessToken = Request.Query["access_token"].ToString();
-                    if (string.IsNullOrEmpty(accessToken))
-                    {
-                        Log.Debug("ValidateOAuthTokenAsync - No Bearer token found in header or query parameter");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-                    
-                    Log.Debug("ValidateOAuthTokenAsync - Using access_token from query parameter");
-                    authHeader = $"Bearer {accessToken}";
+                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                    return null;
                 }
-                var token = authHeader.Substring("Bearer ".Length);
 
-                // Cross-request IMemoryCache: prevents thundering-herd on startup when
-                // ~15 parallel requests all carry the same JWE token and each would
-                // independently call /connect/tokeninfo.
-                var memoryCache = HttpContext.RequestServices.GetService<IMemoryCache>();
+                IMemoryCache? memoryCache = null;
                 string? tokenCacheKey = null;
-                if (memoryCache != null)
-                {
-                    // Key = SHA-256 of the raw token bytes (never store the token itself as a key)
-                    var hashBytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
-                    tokenCacheKey = "tok:" + Convert.ToBase64String(hashBytes);
-
-                    if (memoryCache.TryGetValue(tokenCacheKey, out object? cachedValue))
-                    {
-                        if (cachedValue is Dictionary<string, object> cachedClaims)
-                        {
-                            Log.Debug("ValidateOAuthTokenAsync - Cross-request cache HIT (success)");
-                            HttpContext.Items[ValidatedOAuthClaimsKey] = cachedClaims;
-                            return cachedClaims;
-                        }
-                        // null sentinel = previously failed
-                        Log.Debug("ValidateOAuthTokenAsync - Cross-request cache HIT (failure)");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-                }
 
                 // CRITICAL: Route based on token structure (dot-separated segment count)
                 // 5 segments = JWE (encrypted token) -> call tokeninfo endpoint
@@ -597,100 +372,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 if (tokenParts.Length == 5)
                 {
-                    // It's a JWE (encrypted token), call tokeninfo endpoint to validate and get claims
-                    Log.Information("ValidateOAuthTokenAsync - Token has 5 segments (JWE encrypted), calling tokeninfo endpoint");
-                    
-                    // Use IHttpClientFactory to avoid socket exhaustion
-                    var httpClientFactory = HttpContext.RequestServices.GetService<IHttpClientFactory>();
-                    if (httpClientFactory == null)
-                    {
-                        Log.Error("ValidateOAuthTokenAsync - IHttpClientFactory not available");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-                    
-                    var httpClient = httpClientFactory.CreateClient("TokenInfo");
-                    httpClient.DefaultRequestHeaders.Authorization = 
-                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                    
-                    // Use the same base URL as the current request (preserve reverse-proxy prefix)
-                    var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase.ToUriComponent()}";
-                    var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
-
-                    Log.Debug("ValidateOAuthTokenAsync - Calling {Url}", tokeninfoUrl);
-
-                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TokenInfoTimeoutSeconds));
-                    // Use only the standalone timeout; do not link HttpContext.RequestAborted so that
-                    // a client disconnect cannot abort the auth check mid-flight.
-
-                    string content;
-                    int statusCode;
-                    try
-                    {
-                        using var response = await httpClient.GetAsync(tokeninfoUrl, timeoutCts.Token);
-                        statusCode = (int)response.StatusCode;
-                        if (!response.IsSuccessStatusCode)
-                        {
-                            var errorContent = await response.Content.ReadAsStringAsync(timeoutCts.Token);
-                            Log.Warning("ValidateOAuthTokenAsync - Token validation failed with status {StatusCode}: {Error}",
-                                response.StatusCode, errorContent);
-                            memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
-                            HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                            return null;
-                        }
-                        content = await response.Content.ReadAsStringAsync(timeoutCts.Token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Warning("ValidateOAuthTokenAsync - Request cancelled or timed out calling tokeninfo");
-                        memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-
-                    Log.Debug("ValidateOAuthTokenAsync - Tokeninfo response: {Content}", content);
-
-                    System.Text.Json.JsonElement tokenInfo;
-                    try
-                    {
-                        tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
-                    }
-                    catch (System.Text.Json.JsonException ex)
-                    {
-                        Log.Warning(ex, "ValidateOAuthTokenAsync - Failed to parse tokeninfo JSON response");
-                        HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                        return null;
-                    }
-
-                    if (tokenInfo.TryGetProperty("claims", out var claimsElement))
-                    {
-                        var claims = ExtractClaimsFromJsonElement(claimsElement);
-
-                        // Defence-in-depth: verify exp even though tokeninfo should already reject expired tokens.
-                        if (claims.TryGetValue("exp", out var expObj) &&
-                            long.TryParse(expObj?.ToString(), out var expUnix))
-                        {
-                            var expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix);
-                            if (expiry < DateTimeOffset.UtcNow)
-                            {
-                                Log.Warning("ValidateOAuthTokenAsync - JWE exp claim indicates expiry at {Expiry} (now {Now})",
-                                    expiry, DateTimeOffset.UtcNow);
-                                HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                                return null;
-                            }
-                        }
-
-                        Log.Information("ValidateOAuthTokenAsync - Successfully extracted {ClaimCount} claims from tokeninfo", claims.Count);
-                        memoryCache?.Set(tokenCacheKey!, (object)claims, TimeSpan.FromSeconds(30));
-                        HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
-                        return claims;
-                    }
-                    
-                    Log.Warning("ValidateOAuthTokenAsync - No claims property found in tokeninfo response; keys present: {Keys}",
-                        string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
-                    memoryCache?.Set(tokenCacheKey!, (object?)null, TimeSpan.FromSeconds(10));
-                    HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
-                    return null;
+                    var claims = await ValidateEncryptedTokenAsync(token, HttpContext.RequestAborted);
+                    if (claims == null) HttpContext.Items[ValidatedOAuthClaimsFailedKey] = true;
+                    else HttpContext.Items[ValidatedOAuthClaimsKey] = claims;
+                    return claims;
                 }
                 
                 // Check if it's a 3-segment JWT we can validate locally
@@ -912,13 +597,6 @@ namespace TicketSalesApp.AdminServer.Controllers
         }
 
         /// <summary>
-        /// Synchronous wrapper for GetXuidAsync - for backward compatibility.
-        /// Prefer using GetXuidAsync when possible.
-        /// </summary>
-        /// <returns>The XUID string if present; otherwise null.</returns>
-        protected string? GetXuid() => GetXuidAsync().GetAwaiter().GetResult();
-
-        /// <summary>
         /// Retrieve the current user's username from ASP.NET Core claims or from validated OAuth token claims.
         /// </summary>
         /// <returns>The username if present in claims (`"name"`, `"preferred_username"`, or `ClaimTypes.Name`); otherwise <c>null</c>.</returns>
@@ -964,20 +642,6 @@ namespace TicketSalesApp.AdminServer.Controllers
                 return null;
             }
         }
-
-        /// <summary>
-        /// Retrieve the current user's username from claims, or null if none is available.
-        /// Synchronous wrapper for GetUserNameAsync - for backward compatibility. Prefer using GetUserNameAsync when possible.
-        /// </summary>
-        /// <returns>The username extracted from the user's claims (for example `name` or `preferred_username`), or `null` if not found.</returns>
-        protected string? GetUserName() => GetUserNameAsync().GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Synchronously determines whether the current user has administrator privileges.
-        /// Synchronous wrapper for IsAdminAsync - for backward compatibility. Prefer using IsAdminAsync when possible.
-        /// </summary>
-        /// <returns>`true` if the current user is an administrator, `false` otherwise.</returns>
-        protected bool IsAdmin() => IsAdminAsync().GetAwaiter().GetResult();
 
         /// <summary>
         /// Validates a token supplied directly as a string, supporting both JWE (encrypted,
@@ -1031,7 +695,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 if (tokenParts.Length == 5)
                 {
                     Log.Information("ValidateTokenDirectAsync - Token has 5 segments (JWE), calling tokeninfo endpoint");
-                    return await ValidateJweViaTokenInfoAsync(token, cancellationToken);
+                    return await ValidateEncryptedTokenAsync(token, cancellationToken);
                 }
 
                 // ── JWT path (3 segments) ────────────────────────────────────────────
@@ -1062,94 +726,14 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// cancellation token.  The response is parsed defensively: missing or malformed
         /// claim shapes are handled without throwing.
         /// </summary>
-        private async Task<Dictionary<string, object>?> ValidateJweViaTokenInfoAsync(
+        private async Task<Dictionary<string, object>?> ValidateEncryptedTokenAsync(
             string token,
             CancellationToken cancellationToken)
         {
-            var httpClientFactory = HttpContext.RequestServices.GetService<IHttpClientFactory>();
-            if (httpClientFactory == null)
-            {
-                Log.Error("ValidateJweViaTokenInfoAsync - IHttpClientFactory not registered; cannot validate JWE token");
-                return null;
-            }
-
-            var httpClient = httpClientFactory.CreateClient("TokenInfo");
-
-            // Enforce a hard timeout so a slow/hung tokeninfo call cannot block the WS loop.
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TokenInfoTimeoutSecondsWs));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-            httpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase.ToUriComponent()}";
-            var tokeninfoUrl = $"{baseUrl}/connect/tokeninfo";
-
-            Log.Debug("ValidateJweViaTokenInfoAsync - GET {Url}", tokeninfoUrl);
-
-            System.Net.Http.HttpResponseMessage response;
-            try
-            {
-                response = await httpClient.GetAsync(tokeninfoUrl, linkedCts.Token);
-            }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
-            {
-                Log.Warning("ValidateJweViaTokenInfoAsync - tokeninfo call timed out after 10 s");
-                return null;
-            }
-
-            using (response)
-            {
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
-                    Log.Warning("ValidateJweViaTokenInfoAsync - tokeninfo returned {StatusCode}: {Body}",
-                        (int)response.StatusCode, errorBody);
-                    return null;
-                }
-
-                var content = await response.Content.ReadAsStringAsync(linkedCts.Token);
-
-                System.Text.Json.JsonElement tokenInfo;
-                try
-                {
-                    tokenInfo = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
-                }
-                catch (System.Text.Json.JsonException ex)
-                {
-                    Log.Warning(ex, "ValidateJweViaTokenInfoAsync - Failed to parse tokeninfo JSON response");
-                    return null;
-                }
-
-                // The tokeninfo endpoint wraps claims under a "claims" property.
-                if (!tokenInfo.TryGetProperty("claims", out var claimsElement))
-                {
-                    Log.Warning("ValidateJweViaTokenInfoAsync - Response has no 'claims' property; keys present: {Keys}",
-                        string.Join(", ", tokenInfo.EnumerateObject().Select(p => p.Name)));
-                    return null;
-                }
-
-                var claims = ExtractClaimsFromJsonElement(claimsElement);
-
-                // Post-validation: ensure the token is not expired according to the returned claims.
-                // The tokeninfo endpoint should already reject expired tokens, but we double-check
-                // here as a defence-in-depth measure.
-                if (claims.TryGetValue("exp", out var expObj) &&
-                    long.TryParse(expObj?.ToString(), out var expUnix))
-                {
-                    var expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix);
-                    if (expiry < DateTimeOffset.UtcNow)
-                    {
-                        Log.Warning("ValidateJweViaTokenInfoAsync - Token exp claim indicates expiry at {Expiry} (now {Now})",
-                            expiry, DateTimeOffset.UtcNow);
-                        return null;
-                    }
-                }
-
-                Log.Information("ValidateJweViaTokenInfoAsync - Successfully extracted {ClaimCount} claims from JWE tokeninfo",
-                    claims.Count);
-                return claims;
-            } // end using response
+            var claims = await BRU_AVTOPARK_AspireAPI.ApiService.Authentication.LocalTokenValidation.ValidateAsync(
+                HttpContext.RequestServices, token, cancellationToken);
+            Log.Debug("Encrypted token validated locally; claim count {ClaimCount}", claims.Count);
+            return claims;
         }
 
         /// <summary>
@@ -1390,4 +974,4 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
         }
     }
-} 
+}

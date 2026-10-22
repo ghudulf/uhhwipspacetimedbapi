@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public ulong CreatedAt;
         [DataMember(Name = "is_active")]
         public bool IsActive;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public TotpSecret(
             uint Id,
             SpacetimeDB.Identity UserId,
             string Secret,
             ulong CreatedAt,
-            bool IsActive
+            bool IsActive,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.Secret = Secret;
             this.CreatedAt = CreatedAt;
             this.IsActive = IsActive;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public TotpSecret()

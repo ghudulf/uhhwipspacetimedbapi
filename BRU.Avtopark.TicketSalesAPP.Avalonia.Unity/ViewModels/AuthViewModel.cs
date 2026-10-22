@@ -29,7 +29,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
     public partial class AuthViewModel : ReactiveObject // Or ObservableObject
     {
         private readonly HttpClient _httpClient;
-        private readonly string _baseUrl;
         private readonly JsonSerializerOptions _jsonOptions;
         private string _username = string.Empty;
         private string _password = string.Empty;
@@ -154,11 +153,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         }
 
         // Constructor
-        public AuthViewModel()
+        public AuthViewModel() : this(ApiClientService.Instance.CreateClient()) { }
+        public AuthViewModel(HttpClient client)
         {
-             _httpClient = ApiClientService.Instance.CreateClient(); // Use injected or singleton service
+             _httpClient = client;
+             if (!_httpClient.DefaultRequestHeaders.Contains("X-BRU-Native-Login")) _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-BRU-Native-Login", "1");
+             if (!_httpClient.DefaultRequestHeaders.Contains("X-BRU-Device")) _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-BRU-Device", "native");
              
-            // _baseUrl = "http://localhost:5000/api"; // Fallback for testing
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -269,6 +270,57 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             Log.Debug("ViewModel.RecalculateButtonStates completed");
         }
 
+        public async Task LoginWithWindowsAccountAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            IsLoading = true;
+            ErrorMessage = string.Empty;
+            StatusMessage = "Проверка учётной записи домена…";
+            try
+            {
+                var json = await WindowsAccountClient.LoginAsync(cancellationToken);
+                await ApplyExternalLoginAsync(json, cancellationToken, "Вход с учётной записью домена");
+            }
+            catch (OperationCanceledException) { StatusMessage = "Вход отменён."; }
+            catch (InvalidOperationException ex) { ErrorMessage = ex.Message; }
+            catch (Exception ex)
+            {
+                Log.Warning("Windows account login failed: {ErrorType}", ex.GetType().Name);
+                ErrorMessage = "Не удалось подключиться к серверу Windows-входа.";
+            }
+            finally { IsLoading = false; UpdateButtonStates(); }
+        }
+
+        // Shared successful-response path. Windows retains its existing request, status, exception handling and completion behaviour.
+        public async Task ApplyExternalLoginAsync(string json, System.Threading.CancellationToken cancellationToken = default, string description = "Вход по QR")
+        {
+            var result = JsonSerializer.Deserialize<LoginResponse>(json, _jsonOptions)
+                ?? throw new InvalidOperationException("Пустой ответ сервера.");
+            cancellationToken.ThrowIfCancellationRequested();
+            if (result.RequiresTwoFactor)
+            {
+                RequiresTwoFactor = true;
+                TwoFactorType = result.TwoFactorType;
+                _tempToken = result.TempToken;
+                CurrentStep = 3;
+                StepTitle = "Двухфакторная аутентификация";
+                StatusMessage = "Подтвердите вход вторым фактором.";
+                IsLoading = false;
+                await HandleTwoFactorAuthentication(TwoFactorType);
+            }
+            else if (!string.IsNullOrWhiteSpace(result.Token))
+            {
+                await NativeSessionRefresher.StoreLoginAsync(result.Token, result.RefreshToken);
+                IsAuthenticated = true;
+                UserInfo = description;
+                CurrentStep = 4;
+                StepTitle = "Вход успешно выполнен";
+                StatusMessage = "Права доступа будут проверены на сервере.";
+                ProgressValue = 100;
+                NextButtonText = "Завершить";
+            }
+            else ErrorMessage = "Сервер не подтвердил вход.";
+        }
+
         // --- Commands using CommunityToolkit.Mvvm ---
 
         [RelayCommand(CanExecute = nameof(CanTriggerLogin))]
@@ -297,10 +349,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     loginRequest.username, loginRequest.skipTwoFactor);
 
                 StatusMessage = "Ожидание ответа от сервера...";
-                HttpResponseMessage response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/api/auth/login", loginRequest, _jsonOptions);
+                HttpResponseMessage response = await _httpClient.PostAsJsonAsync("auth/login", loginRequest, _jsonOptions);
                 string responseContent = await response.Content.ReadAsStringAsync();
 
-                Log.Debug("Raw response content: {Content}", responseContent);
+                Log.Debug("Raw response content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                 StatusMessage = "Обработка ответа...";
 
                 if (response.IsSuccessStatusCode)
@@ -309,11 +361,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     try
                     {
                         result = JsonSerializer.Deserialize<ApiResponse<LoginResponse>>(responseContent, _jsonOptions);
-                        Log.Debug("Deserialized response: {@Result}", result);
+                        Log.Debug("Login response deserialized; credential values omitted");
                     }
                     catch (JsonException jsonEx)
                     {
-                        Log.Error(jsonEx, "JSON deserialization error during login success path. Raw content: {Content}", responseContent);
+                        Log.Error(jsonEx, "JSON deserialization error during login success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                         ErrorMessage = "Ошибка обработки ответа сервера (неверный формат).";
                         await GoToPreviousStepAsync(true); // Go back to step 1 on error
                         return;
@@ -347,9 +399,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                     });
 
                     // --- Show Validation Step for a duration ---
-                    Log.Debug("Displaying validation step for 10 seconds...");
-                    await Task.Delay(10000); // Wait for 10 seconds
-                    Log.Debug("Validation step delay complete.");
+                    Log.Debug("Login response received; updating validation step");
+                    // Readiness follows the completed server request.
+
 
                     // --- NOW, decide the next step based on the API response ---
                     IsLoading = false; // Allow interaction or transition from Step 2 completed
@@ -394,7 +446,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         try
                         {
                            token = handler.ReadJwtToken(result.Data.Token);
-                            Log.Debug("JWT token claims: {@Claims}", token.Claims.Select(c => new { c.Type, c.Value }));
+                            Log.Debug("JWT claim types: {ClaimTypes}", token.Claims.Select(c => c.Type).Distinct());
                             
                             // LOGGING: Log JWT token claims for debugging
                             LogJwtTokenClaims(result.Data.Token, "Regular JWT Login Token");
@@ -412,50 +464,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         int userRole = GetUserRole(token.Claims);
                         Log.Information("User role determined: {Role} (Admin: {IsAdmin})", userRole, isAdmin);
                         
-                        // ENHANCEMENT: Log claims from server response if available
-                        if (result.Data.Claims != null && result.Data.Claims.Count > 0)
-                        {
-                            Log.Information("=== Server-Provided JWT Token Claims ===");
-                            foreach (var claim in result.Data.Claims)
-                            {
-                                if (claim.Value is System.Text.Json.JsonElement jsonElement)
-                                {
-                                    if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
-                                    {
-                                        var values = new List<string>();
-                                        foreach (var item in jsonElement.EnumerateArray())
-                                        {
-                                            values.Add(item.GetString() ?? "");
-                                        }
-                                        Log.Information("  {ClaimType}: [{Values}]", claim.Key, string.Join(", ", values));
-                                    }
-                                    else
-                                    {
-                                        Log.Information("  {ClaimType}: {Value}", claim.Key, jsonElement.GetString());
-                                    }
-                                }
-                                else
-                                {
-                                    Log.Information("  {ClaimType}: {Value}", claim.Key, claim.Value);
-                                }
-                            }
-                            Log.Information("=== End Server-Provided Claims ===");
-                        }
+                        Log.Debug("Server claims structure: {Shape}",
+                            TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(JsonSerializer.Serialize(result.Data.Claims)));
 
                         // Store both token and role information in ApiClientService
-                        ApiClientService.Instance.AuthToken = result.Data.Token;
+                        await NativeSessionRefresher.StoreLoginAsync(result.Data.Token, result.Data.RefreshToken);
                         ApiClientService.Instance.IsAdmin = isAdmin;
                         ApiClientService.Instance.UserRole = userRole;
-
-                            if (!isAdmin)
-                            {
-                                Log.Warning("Non-admin user {Username} attempted to access admin interface", Username);
-                            ErrorMessage = "Доступ запрещен: Требуются права администратора."; // Set error message
-                            await ShowNonAdminErrorAsync(); // Show message box
-                            // Don't close window, let user see the error on the login screen
-                            await GoToPreviousStepAsync(true); // Force back to step 1
-                            return; // Stop execution
-                        }
 
                         // --- Admin Login Successful ---
                         IsAuthenticated = true;
@@ -501,7 +516,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                         catch (JsonException jsonEx)
                         {
                             // Log the parsing error but provide a more generic error message to the user
-                            Log.Error(jsonEx, "Error parsing JSON error response. Status: {StatusCode}, Raw content: {Content}", response.StatusCode, responseContent);
+                            Log.Error(jsonEx, "Error parsing JSON error response. Status: {StatusCode}, Raw content: {Content}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                             ErrorMessage = $"Ошибка аутентификации: {(int)response.StatusCode} ({response.ReasonPhrase})";
                         }
                     }
@@ -730,7 +745,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         private async Task HandleTwoFactorAuthentication(string twoFactorType)
         {
             // Called after API confirms 2FA is needed and CurrentStep is set to 3
-            Log.Information("Handling 2FA process: Type={Type}, User={Username}", twoFactorType, Username);
+            Log.Information("Starting second-factor step");
             IsLoading = false; // Allow interaction with 2FA step
 
             try
@@ -738,20 +753,20 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 switch (twoFactorType.ToLowerInvariant())
                 {
                     case "totp":
-                        Log.Debug("Handling TOTP authentication for user {Username}", Username);
+                        Log.Debug("Starting TOTP step");
                         // The UI for TOTP input should be part of Step 3 content
                         // The "Next/Confirm" button for Step 3 will trigger the validation
                          StatusMessage = "Введите код из приложения аутентификации.";
                         // We need a way to get the code entered by the user. Let's add a property.
                         break;
                     case "webauthn":
-                        Log.Debug("Handling WebAuthn authentication for user {Username}", Username);
+                        Log.Debug("Starting WebAuthn step");
                         // Trigger WebAuthn flow (needs platform-specific interop or library)
                         StatusMessage = "Используйте ваш ключ безопасности WebAuthn.";
                         await HandleWebAuthnAuthenticationInternal(); // Call stub/implementation
                         break;
                     default:
-                        Log.Warning("Unsupported 2FA type: {Type} for user {Username}", twoFactorType, Username);
+                        Log.Warning("Unsupported second-factor type");
                         ErrorMessage = "Неподдерживаемый тип двухфакторной аутентификации.";
                         await GoToPreviousStepAsync(true); // Go back if 2FA type is wrong
                         break;
@@ -759,7 +774,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             }
             catch (Exception ex)
             {
-                 Log.Error(ex, "Error initiating 2FA handler for type {Type}, user {Username}", twoFactorType, Username);
+                  Log.Warning("Second-factor setup failed ({ErrorType})", ex.GetType().Name);
                  ErrorMessage = "Ошибка инициализации двухфакторной аутентификации.";
                  await GoToPreviousStepAsync(true); // Go back on error
             }
@@ -790,7 +805,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 return;
             }
 
-            Log.Information("Attempting TOTP verification: User={Username}, Code={Code}, TempToken={TempToken}", Username, TotpCode, _tempToken);
+            Log.Information("Attempting TOTP verification");
             IsLoading = true;
             StatusMessage = "Проверка кода TOTP...";
              ErrorMessage = string.Empty; // Clear previous errors
@@ -798,22 +813,24 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
             try
             {
                 var validateRequest = new { tempToken = _tempToken, code = TotpCode };
-                Log.Debug("TOTP VALIDATION REQUEST: {RequestJson}", JsonSerializer.Serialize(validateRequest, _jsonOptions));
+                Log.Debug("TOTP VALIDATION REQUEST: {RequestJson}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.AuthJson(JsonSerializer.Serialize(validateRequest, _jsonOptions)));
 
-                    var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/Auth/totp/validate", validateRequest, _jsonOptions);
+                    var response = await _httpClient.PostAsJsonAsync("auth/totp/validate", validateRequest, _jsonOptions);
                     var responseContent = await response.Content.ReadAsStringAsync();
-                Log.Debug("TOTP VALIDATION RESPONSE Status: {StatusCode}, Content: {ResponseContent}", response.StatusCode, responseContent);
+                Log.Debug("TOTP VALIDATION RESPONSE Status: {StatusCode}, Content: {ResponseContent}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
 
                     if (response.IsSuccessStatusCode)
                     {
                      ValidateTotpResponse? result = null;
                      try
                      {
-                         result = JsonSerializer.Deserialize<ValidateTotpResponse>(responseContent, _jsonOptions);
+                          using var document = JsonDocument.Parse(responseContent);
+                          var payload = document.RootElement.TryGetProperty("data", out var wrapped) ? wrapped : document.RootElement;
+                          result = payload.Deserialize<ValidateTotpResponse>(_jsonOptions);
                      }
                       catch (JsonException jsonEx)
                      {
-                         Log.Error(jsonEx, "JSON deserialization error during TOTP validation success path. Raw content: {Content}", responseContent);
+                         Log.Error(jsonEx, "JSON deserialization error during TOTP validation success path. Raw content: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                          ErrorMessage = "Ошибка обработки ответа сервера TOTP.";
                          IsLoading = false;
                          return; // Stay on step 3
@@ -826,9 +843,9 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                             // LOGGING: Log JWT token claims after TOTP validation
                             LogJwtTokenClaims(result.Token, "JWT Token after TOTP Validation");
                             
-                            ApiClientService.Instance.AuthToken = result.Token;
+                             await NativeSessionRefresher.StoreLoginAsync(result.Token, result.RefreshToken);
                             IsAuthenticated = true;
-                        UserInfo = $"Пользователь: {Username}\nРоль: Администратор"; // Update user info if needed
+                        UserInfo = $"Пользователь: {Username}"; // Update user info if needed
 
                          // Move to final success step
                         await Dispatcher.UIThread.InvokeAsync(() => {
@@ -851,7 +868,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
                 else
                 {
                     ErrorMessage = "Неверный код TOTP.";
-                    Log.Error("TOTP validation failed: User={Username}, Code={Code}, StatusCode={StatusCode}, Response={Response}", Username, TotpCode, response.StatusCode, responseContent);
+                    Log.Error("TOTP validation failed: User={Username}, StatusCode={StatusCode}, Response={Response}", Username, response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                 }
             }
             catch (Exception ex)
@@ -918,6 +935,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private class LoginResponse
         {
+            public string? RefreshToken { get; set; }
             public string? Token { get; set; }
             public bool RequiresTwoFactor { get; set; }
             public string TwoFactorType { get; set; } = string.Empty;
@@ -930,6 +948,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
 
         private class ValidateTotpResponse
         {
+            public string? RefreshToken { get; set; }
             public string Token { get; set; } = string.Empty;
             public UserDto? User { get; set; }
         }
@@ -998,126 +1017,11 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.ViewModels
         {
             try
             {
-                Log.Information("=== {TokenType} Claims ===", tokenType);
-                
-                // Parse JWT token (format: header.payload.signature)
-                var parts = token.Split('.');
-                if (parts.Length != 3)
-                {
-                    Log.Warning("Invalid JWT token format for {TokenType}", tokenType);
-                    return;
-                }
-                
-                // Decode payload (Base64Url encoded)
-                var payload = parts[1];
-                
-                // Add padding if needed for Base64 decoding
-                switch (payload.Length % 4)
-                {
-                    case 2: payload += "=="; break;
-                    case 3: payload += "="; break;
-                }
-                
-                // Replace URL-safe characters
-                payload = payload.Replace('-', '+').Replace('_', '/');
-                
-                // Decode and parse JSON
-                var payloadBytes = Convert.FromBase64String(payload);
-                var payloadJson = System.Text.Encoding.UTF8.GetString(payloadBytes);
-                
-                Log.Debug("Token payload JSON: {Payload}", payloadJson);
-                
-                // Parse as JSON document for structured logging
-                using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
-                var root = doc.RootElement;
-                
-                // Log standard claims
-                if (root.TryGetProperty("sub", out var sub))
-                    Log.Information("  Subject (sub): {Value}", sub.GetString());
-                
-                if (root.TryGetProperty("unique_name", out var uniqueName))
-                    Log.Information("  Unique Name: {Value}", uniqueName.GetString());
-                
-                if (root.TryGetProperty("name", out var name))
-                    Log.Information("  Name: {Value}", name.GetString());
-                
-                if (root.TryGetProperty("email", out var email))
-                    Log.Information("  Email: {Value}", email.GetString());
-                
-                // Log roles
-                if (root.TryGetProperty("role", out var roles))
-                {
-                    if (roles.ValueKind == System.Text.Json.JsonValueKind.Array)
-                    {
-                        var roleList = new List<string>();
-                        foreach (var role in roles.EnumerateArray())
-                        {
-                            roleList.Add(role.GetString() ?? "");
-                        }
-                        Log.Information("  Roles: {Roles}", string.Join(", ", roleList));
-                    }
-                    else
-                    {
-                        Log.Information("  Role: {Role}", roles.GetString());
-                    }
-                }
-                
-                // Log permissions
-                if (root.TryGetProperty("permission", out var permissions))
-                {
-                    if (permissions.ValueKind == System.Text.Json.JsonValueKind.Array)
-                    {
-                        var permList = new List<string>();
-                        foreach (var perm in permissions.EnumerateArray())
-                        {
-                            permList.Add(perm.GetString() ?? "");
-                        }
-                        Log.Information("  Permissions: {Permissions}", string.Join(", ", permList));
-                    }
-                    else
-                    {
-                        Log.Information("  Permission: {Permission}", permissions.GetString());
-                    }
-                }
-                
-                // Log custom claims
-                if (root.TryGetProperty("primary_role", out var primaryRole))
-                    Log.Information("  Primary Role: {Value}", primaryRole.GetString());
-                
-                if (root.TryGetProperty("identity", out var identity))
-                    Log.Information("  Identity: {Value}", identity.GetString());
-                
-                if (root.TryGetProperty("xuid", out var xuid))
-                    Log.Information("  XUID: {Value}", xuid.GetString());
-                
-                // Log token metadata
-                if (root.TryGetProperty("iat", out var iat))
-                {
-                    var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iat.GetInt64());
-                    Log.Information("  Issued At: {Value}", issuedAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
-                }
-                
-                if (root.TryGetProperty("exp", out var exp))
-                {
-                    var expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64());
-                    Log.Information("  Expires At: {Value}", expiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
-                }
-                
-                if (root.TryGetProperty("iss", out var issuer))
-                    Log.Information("  Issuer: {Value}", issuer.GetString());
-                
-                if (root.TryGetProperty("aud", out var audience))
-                    Log.Information("  Audience: {Value}", audience.GetString());
-                
-                if (root.TryGetProperty("token_usage", out var tokenUsage))
-                    Log.Information("  Token Usage: {Value}", tokenUsage.GetString());
-                
-                Log.Information("=== End {TokenType} Claims ===", tokenType);
+                var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+                Log.Debug("{TokenType} payload structure: {Shape}", tokenType,
+                    TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(jwt.Payload.SerializeToJson()));
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error parsing {TokenType} claims: {Message}", tokenType, ex.Message);
-            }
+            catch (Exception ex) { Log.Warning("Token diagnostics unavailable: {ErrorType}", ex.GetType().Name); }
         }
     }
-} 
+}

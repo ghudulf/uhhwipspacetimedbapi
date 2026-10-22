@@ -59,7 +59,7 @@
                 </Grid>
 
                 <!-- Message -->
-                <TextBlock Grid.Row="1"
+                <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Row="1"
                          Text="{Binding Message}"
                          TextWrapping="Wrap"
                          Margin="0,0,0,16"
@@ -76,12 +76,12 @@
                           Orientation="Horizontal"
                           HorizontalAlignment="Right"
                           Spacing="8">
-                    <Button x:Name="PrimaryButton"
+                    <Button IsDefault="True" AutomationProperties.Name="{Binding PrimaryButtonText}" x:Name="PrimaryButton"
                             Classes="action primary"
                             Content="{Binding PrimaryButtonText}"
                             Command="{Binding PrimaryButtonCommand}"
                             IsVisible="{Binding ShowPrimaryButton}"/>
-                    <Button x:Name="SecondaryButton"
+                    <Button IsCancel="True" AutomationProperties.Name="{Binding SecondaryButtonText}" x:Name="SecondaryButton"
                             Classes="action"
                             Content="{Binding SecondaryButtonText}"
                             Command="{Binding SecondaryButtonCommand}"
@@ -91,7 +91,7 @@
         </Border>
 
         <!-- Close Button (Outside Border) -->
-        <Button Classes="close"
+        <Button AutomationProperties.Name="Закрыть" Classes="close"
                 Click="OnCloseButtonClick"
                 Width="32"
                 Height="32"

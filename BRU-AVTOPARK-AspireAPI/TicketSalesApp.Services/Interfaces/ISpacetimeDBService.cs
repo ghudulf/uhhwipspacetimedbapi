@@ -8,6 +8,14 @@ namespace TicketSalesApp.Services.Interfaces
 {
     public interface ISpacetimeDBService
     {
+        DatabaseConnectionState State { get; }
+        DatabaseChangeJournal Changes { get; }
+        Task<TResult> ExecuteReducerAsync<TArgs, TResult>(TArgs args,
+            Func<DbConnection, TResult> committedResult, System.Threading.CancellationToken cancellationToken = default)
+            where TArgs : Reducer, IReducerArgs, new();
+        Task<TResult> ReadAsync<TResult>(Func<DbConnection, TResult> query,
+            System.Threading.CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Establishes a connection to the SpacetimeDB module
         /// </summary>
@@ -18,7 +26,6 @@ namespace TicketSalesApp.Services.Interfaces
         /// Gets the current database connection
         /// </summary>
         /// <returns>The current database connection</returns>
-        DbConnection GetConnection();
         
         /// <summary>
         /// Gets the local identity for the connection
@@ -90,4 +97,4 @@ namespace TicketSalesApp.Services.Interfaces
         /// <returns>The filtered log content as a string</returns>
         Task<string> FetchReducerLogsAsync(string reducerName = "RegisterOpenIdClient", int numLines = 200);
     }
-} 
+}

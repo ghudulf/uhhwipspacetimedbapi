@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -16,7 +19,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class RouteSchedulesController : BaseController
@@ -55,15 +58,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            if (!await IsAuthenticatedAsync())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
+            var events = await HasPermissionAsync("schedules.view")
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken), "schedules.view", cancellationToken)
+                : AdminEmptyEventsAsync();
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("route-schedules", cancellationToken),
+                events,
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -87,6 +93,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            if (IsAdministrativeCommand("schedules", request.Command)) return await AdminSpecialRealtimeAsync("schedules", request);
+            await RequireRealtimeCommandAsync("schedules", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             
             // Extract pagination parameters from root-level properties OR payload
@@ -118,10 +126,9 @@ namespace TicketSalesApp.AdminServer.Controllers
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
-                    _logger.LogDebug(ex, "Failed to parse pagination parameters from payload (page/pageSize). Using defaults. Payload: {Payload}",
-                        SanitizePayloadForLogging(request.Payload.Value));
+                    _logger.LogDebug("Failed to parse pagination parameters; using defaults; input omitted; {ErrorType}", ex.GetType().Name);
                 }
             }
             
@@ -171,7 +178,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 firstResult = await _routeScheduleService.GetSchedulesPageAsync(initialPage, currentPageSize);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch initial page", command);
                 // throw; NO THROWS HERE - WE DONT WANT RUNTIME CRASHES 
@@ -223,7 +230,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     schedules = (await _routeScheduleService.GetSchedulesPageAsync(currentPage, currentPageSize)).Item1;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "RouteSchedules WebSocket {Command} - failed to fetch page {Page}", command, currentPage);
                     return new { error = ex.Message, command };
@@ -344,10 +351,10 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a CreateRouteScheduleModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.create");
+            if (!await HasPermissionAsync("schedules.create")) throw new UnauthorizedAccessException("Not authorized for schedules.create");
             var m = request.Payload?.Deserialize<CreateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var scheduleId = await _routeScheduleService.CreateScheduleAsync(m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, true, (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null);
+            var scheduleId = await AdminCreateScheduleAsync(m, request);
             var success = scheduleId.HasValue;
             var result = new { operation = "create", success, scheduleId };
 
@@ -371,7 +378,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to publish realtime event for route-schedule.created (Resource: route-schedules, EventName: route-schedule.created, Payload: {Payload})", JsonSerializer.Serialize(result));
+                    _logger.LogError("Failed to publish route-schedule.created; event data omitted; {ErrorType}", ex.GetType().Name);
                 }
             }
 
@@ -391,12 +398,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required `id` or `payload` for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.update");
+            if (!await HasPermissionAsync("schedules.edit")) throw new UnauthorizedAccessException("Not authorized for schedules.update");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var m = request.Payload?.Deserialize<UpdateRouteScheduleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _routeScheduleService.UpdateScheduleAsync(id, m.RouteId, m.StartPoint, m.EndPoint, m.RouteStops?.ToList(), ToUnixMsUtc(m.DepartureTime), ToUnixMsUtc(m.ArrivalTime), m.Price, m.AvailableSeats, m.DaysOfWeek?.ToList(), m.BusTypes?.ToList(), m.StopDurationMinutes, m.IsRecurring, m.EstimatedStopTimes?.ToList(), m.StopDistances?.ToList(), m.Notes, m.IsActive, null, ToUnixMsUtc(m.ValidUntil));
-            var schedule = await _routeScheduleService.GetScheduleByIdAsync(id);
+            var success = await AdminUpdateScheduleAsync(id, m, request);
+            var schedule = await HasPermissionAsync("schedules.view") ? await _routeScheduleService.GetScheduleByIdAsync(id) : null;
 
             // Project entity using the shared helper to ensure consistent shape and UtcDateTime usage
             object? projectedEntity = schedule != null ? ProjectScheduleForList(schedule) : null;
@@ -444,9 +451,9 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an Id.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin()) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
+            if (!await HasPermissionAsync("schedules.delete")) throw new UnauthorizedAccessException("Not authorized for schedules.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _routeScheduleService.DeleteScheduleAsync(id);
+            var success = await AdminBooleanAsync("schedules.delete", new DeleteScheduleCommand(id, AdminExpectedRevision(request)), request);
             var result = new { operation = "delete", success, deletedId = id };
 
             if (success)
@@ -538,7 +545,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogWarning(ex, "Invalid pagination parameters: page={Page}, pageSize={PageSize}", page, pageSize);
                 return BadRequest($"Invalid pagination parameter: {ex.ParamName}. {ex.Message}");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving route schedules");
                 return StatusCode(500, "An error occurred while retrieving route schedules");
@@ -582,7 +589,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully retrieved schedule {ScheduleId}", id);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while retrieving the route schedule");
@@ -863,7 +870,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     LastPage = totalPages
                 };
 
-                Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(metadata));
+                Response.Headers["X-Pagination"] = JsonSerializer.Serialize(metadata);
 
                 _logger.LogInformation("=== ROUTE SCHEDULES SEARCH REQUEST END ===");
                 _logger.LogInformation("FINAL RESULT: Found {Count} matching schedules (Page {Page}/{TotalPages}, Total: {TotalCount})", 
@@ -873,7 +880,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error searching route schedules");
                 return StatusCode(500, "An error occurred while searching route schedules");
@@ -883,7 +890,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<RouteSchedule>> CreateRouteSchedule([FromBody] CreateRouteScheduleModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("schedules.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create route schedule");
                 return Forbid();
@@ -893,23 +900,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 _logger.LogInformation("Creating new route schedule for route {RouteId}", model.RouteId);
 
-                var scheduleId = await _routeScheduleService.CreateScheduleAsync(
-                    routeId: model.RouteId,
-                    startPoint: model.StartPoint,
-                    endPoint: model.EndPoint,
-                    routeStops: model.RouteStops?.ToList(),
-                    departureTime: ToUnixMsUtc(model.DepartureTime),
-                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
-                    price: model.Price,
-                    availableSeats: model.AvailableSeats,
-                    daysOfWeek: model.DaysOfWeek?.ToList(),
-                    busTypes: model.BusTypes?.ToList(),
-                    stopDurationMinutes: model.StopDurationMinutes,
-                    isRecurring: model.IsRecurring,
-                    estimatedStopTimes: model.EstimatedStopTimes?.ToList(),
-                    stopDistances: model.StopDistances?.ToList(),
-                    notes: model.Notes
-                );
+                var scheduleId = await AdminCreateScheduleAsync(model);
 
                 if (!scheduleId.HasValue)
                 {
@@ -929,7 +920,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully created route schedule {ScheduleId}", schedule.ScheduleId);
                 return CreatedAtAction(nameof(GetRouteSchedule), new { id = schedule.ScheduleId }, ProjectScheduleForList(schedule));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error creating route schedule");
                 return StatusCode(500, "An error occurred while creating the route schedule");
@@ -939,7 +930,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRouteSchedule(uint id, [FromBody] UpdateRouteScheduleModel model)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("schedules.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update route schedule");
                 return Forbid();
@@ -949,24 +940,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 _logger.LogInformation("Updating route schedule {ScheduleId}", id);
 
-                var success = await _routeScheduleService.UpdateScheduleAsync(
-                    scheduleId: id,
-                    routeId: model.RouteId,
-                    startPoint: model.StartPoint,
-                    endPoint: model.EndPoint,
-                    routeStops: model.RouteStops?.ToList(),
-                    departureTime: ToUnixMsUtc(model.DepartureTime),
-                    arrivalTime: ToUnixMsUtc(model.ArrivalTime),
-                    price: model.Price,
-                    availableSeats: model.AvailableSeats,
-                    daysOfWeek: model.DaysOfWeek?.ToList(),
-                    busTypes: model.BusTypes?.ToList(),
-                    stopDurationMinutes: model.StopDurationMinutes,
-                    isRecurring: model.IsRecurring,
-                    estimatedStopTimes: model.EstimatedStopTimes?.ToList(),
-                    stopDistances: model.StopDistances?.ToList(),
-                    notes: model.Notes
-                );
+                var success = await AdminUpdateScheduleAsync(id, model);
 
                 if (!success)
                 {
@@ -977,7 +951,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully updated route schedule {ScheduleId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error updating route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while updating the route schedule");
@@ -987,7 +961,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRouteSchedule(uint id)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("schedules.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete route schedule");
                 return Forbid();
@@ -997,7 +971,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             {
                 _logger.LogInformation("Deleting route schedule {ScheduleId}", id);
 
-                var success = await _routeScheduleService.DeleteScheduleAsync(id);
+                var success = await AdminBooleanAsync("schedules.delete", new DeleteScheduleCommand(id, AdminExpectedRevision()));
                 if (!success)
                 {
                     _logger.LogWarning("Route schedule {ScheduleId} not found", id);
@@ -1007,7 +981,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully deleted route schedule {ScheduleId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error deleting route schedule {ScheduleId}", id);
                 return StatusCode(500, "An error occurred while deleting the route schedule");
@@ -1167,6 +1141,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdateRouteScheduleModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public uint? RouteId { get; set; }
         public string? StartPoint { get; set; }
         public string? EndPoint { get; set; }
@@ -1185,4 +1160,4 @@ namespace TicketSalesApp.AdminServer.Controllers
         public double[]? StopDistances { get; set; }
         public string? Notes { get; set; }
     }
-} 
+}

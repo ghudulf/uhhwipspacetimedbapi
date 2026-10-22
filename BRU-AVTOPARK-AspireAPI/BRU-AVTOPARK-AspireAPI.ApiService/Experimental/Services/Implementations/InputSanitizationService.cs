@@ -109,8 +109,7 @@ public partial class InputSanitizationService : IInputSanitizationService
 
         if (sanitized != email.Trim().ToLowerInvariant())
         {
-            _logger.LogWarning("Email sanitized: original {Original}, sanitized {Sanitized}", 
-                email, sanitized);
+            _logger.LogWarning("Email sanitized; original and sanitized values omitted");
         }
 
         return sanitized;
@@ -130,13 +129,13 @@ public partial class InputSanitizationService : IInputSanitizationService
 
         if (!EmailPattern().IsMatch(email))
         {
-            _logger.LogWarning("Invalid email pattern detected: {Email}", email);
+            _logger.LogWarning("Invalid email pattern detected; value omitted");
             return false;
         }
 
         if (ContainsSuspiciousPatterns(email))
         {
-            _logger.LogWarning("Suspicious patterns detected in email: {Email}", email);
+            _logger.LogWarning("Suspicious email pattern detected; value omitted");
             return false;
         }
 

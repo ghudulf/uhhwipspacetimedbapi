@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.QrDeviceLoginWindow"
+        Title="QR-вход на этом устройстве" AutomationProperties.Name="QR-вход с ключом устройства"
+        Width="460" Height="630" MinWidth="350" MinHeight="450" WindowStartupLocation="CenterOwner">
+    <ScrollViewer AutomationProperties.Name="Содержимое входа с ключом устройства">
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="Войти по QR без пароля" FontSize="22" AutomationProperties.Name="Заголовок входа без пароля" />
+            <TextBlock Text="Нужна однократная регистрация устройства после обычного входа. QR проверяется и подписывается в приложении; камера не требуется." TextWrapping="Wrap" AutomationProperties.Name="Инструкция входа с ключом устройства" />
+            <TextBox Text="{Binding Username}" Watermark="Имя пользователя" MaxLength="128" AutomationProperties.Name="Имя пользователя для QR-входа" />
+            <Image Source="{Binding QrImage}" Width="230" Height="230" Stretch="Uniform" AutomationProperties.Name="QR-код текущего входа, проверенный и подписанный приложением" />
+            <TextBlock Text="{Binding Countdown}" AutomationProperties.Name="Оставшееся время входа" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.Name="Состояние входа с ключом устройства" AutomationProperties.LiveSetting="Polite" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Войти по QR" Command="{Binding StartCommand}" IsDefault="True" AutomationProperties.Name="Войти по QR с зарегистрированным ключом" />
+                <Button Content="Отмена" Click="Cancel_Click" IsCancel="True" AutomationProperties.Name="Отменить вход с ключом устройства" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

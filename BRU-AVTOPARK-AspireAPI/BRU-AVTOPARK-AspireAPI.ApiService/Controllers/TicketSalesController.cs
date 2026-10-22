@@ -1,3 +1,5 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
 using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using System;
@@ -15,6 +17,7 @@ using Microsoft.AspNetCore.Authorization;
     using SpacetimeDB.Types;
     using Log = Serilog.Log;
     using System.Text.Json;
+    using TicketSalesApp.Services.Implementations;
 
     using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Contracts;
 
@@ -76,9 +79,14 @@ using Microsoft.AspNetCore.Authorization;
                     return;
                 }
 
+                if (!await IsAdminAsync() && !await HasPermissionAsync("sales.view"))
+                {
+                    Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
                 await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                     HttpContext,
-                    _realtimeEventBus.SubscribeAsync("ticket-sales", cancellationToken),
+                    AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("ticket-sales", cancellationToken), "sales.view", cancellationToken),
                     HandleRealtimeCrudAsync,
                     _logger,
                     cancellationToken);
@@ -94,22 +102,23 @@ using Microsoft.AspNetCore.Authorization;
             /// - For "read_all": { sales = List of sale snapshots }.
             /// - For "read": { sale = single sale view }.
             /// - For "create": result from the create handler (operation, success, entity, snapshot).
-            /// - For "update" / "delete": an operation result indicating not implemented.
+            /// - For "update" / "delete": the committed operation result.
             /// </returns>
             /// <exception cref="InvalidOperationException">
             /// Thrown when the command is unsupported or when "read" is requested without an <c>Id</c>.
             /// </exception>
             private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
             {
+            await RequireRealtimeCommandAsync("sales", request.Command ?? "");
                 var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
                 return command switch
                 {
-                    "read_all" => new { sales = BuildSalesSnapshot() },
-                    "read" => new { sale = BuildSaleById(_spacetimeService.GetConnection(), request.Id ?? throw new InvalidOperationException("id is required for read")) },
+                    "read_all" => await ReadSalesPageAsync(request, cancellationToken),
+                    "read" => new { sale = await _spacetimeService.ReadAsync(c => BuildSaleById(c, request.Id ?? throw new ArgumentException("id is required")), cancellationToken) },
                     "create" => await HandleCreateCommandAsync(request),
-                    "update" => new { operation = "update", success = false, message = "Update operation is not implemented in SpacetimeDB module" },
-                    "delete" => new { operation = "delete", success = false, message = "Delete operation is not implemented in SpacetimeDB module" },
+                    "update" => await UpdateSaleCommandAsync(request, cancellationToken),
+                    "delete" => await DeleteSaleCommandAsync(request, cancellationToken),
                     _ => throw new InvalidOperationException($"Unsupported command '{request.Command}'")
                 };
             }
@@ -128,11 +137,11 @@ using Microsoft.AspNetCore.Authorization;
             /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateTicketSaleModel"/>.</exception>
             private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
             {
-                if (!await IsAdminAsync()) throw new UnauthorizedAccessException("Admin role required");
+                if (!await HasPermissionAsync("sales.create")) throw new UnauthorizedAccessException("Sales create permission required");
                 var model = request.Payload?.Deserialize<CreateTicketSaleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? throw new InvalidOperationException("payload is required for create");
 
-                var created = ExecuteCreateSale(model);
+                var created = await ExecuteCreateSale(model, ApplicationOperationId(request));
                 var result = new { operation = "create", success = created is not null, entity = created };
 
                 if (created is not null)
@@ -176,41 +185,62 @@ using Microsoft.AspNetCore.Authorization;
             private object? BuildSaleById(DbConnection conn, uint saleId)
             {
                 var sale = conn.Db.Sale.SaleId.Find(saleId);
-                if (sale == null) return null;
-
-                var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-
-                return new
-                {
-                    SaleId = sale.SaleId,
-                    SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sale.SaleDate).DateTime,
-                    TicketId = sale.TicketId,
-                    TicketSoldToUser = sale.TicketSoldToUser,
-                    TicketSoldToUserPhone = sale.TicketSoldToUserPhone,
-                    SellerId = sale.SellerId?.ToString(),
-                    Ticket = ticket != null ? new
-                    {
-                        TicketId = ticket.TicketId,
-                        RouteId = ticket.RouteId,
-                        TicketPrice = ticket.TicketPrice,
-                        Route = route != null ? new { route.RouteId, route.StartPoint, route.EndPoint } : null
-                    } : null
-                };
+                return sale == null ? null : SalePresentation.Map(conn, sale);
             }
 
             /// <summary>
             /// Builds a snapshot list of all ticket sales with their detailed sale, ticket, and route information.
             /// </summary>
             /// <returns>A list of objects where each item represents a sale with related ticket and route details; sales that cannot be resolved are omitted.</returns>
-            private List<object> BuildSalesSnapshot()
+            private async Task<object> ReadSalesPageAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
             {
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter()
-                    .Select(s => BuildSaleById(conn, s.SaleId))
-                    .Where(s => s != null)
-                    .Cast<object>()
-                    .ToList();
+                var page = request.Page ?? 1;
+                var size = request.PageSize ?? 100;
+                if (page < 1 || size < 1 || size > 1000 || (long)(page - 1) * size > int.MaxValue)
+                    throw new ArgumentException("Invalid page or page size");
+                return await _spacetimeService.ReadAsync(c =>
+                {
+                    var rows = c.Db.Sale.Iter().OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).ToArray();
+                    return new { sales = rows.Skip((page - 1) * size).Take(size).Select(row => SalePresentation.Map(c, row)).ToArray(),
+                        page, pageSize = size, totalCount = rows.Length };
+                }, cancellationToken);
+            }
+
+            private async Task<object> UpdateSaleCommandAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+            {
+                var id = request.Id ?? throw new ArgumentException("id is required");
+                var model = request.Payload?.Deserialize<UpdateTicketSaleModel>(new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                    ?? throw new ArgumentException("payload is required");
+                var existing = await _ticketSalesService.GetSaleByIdAsync(id) ?? throw new KeyNotFoundException("Sale not found");
+                if (model.SaleDate.HasValue) throw new ArgumentException("Sale date cannot be changed", "SaleDate");
+                if (model.TicketId.HasValue && model.TicketId != existing.TicketId) throw new ArgumentException("Original ticket cannot be changed");
+                await ExecuteSaleOperationAsync("sales.update", await ResolveActorAsync(),
+                    new UpdateSaleCommand(id, request.ExpectedRevision ?? model.ExpectedRevision, model.TicketSoldToUser, model.TicketSoldToUserPhone),
+                    ApplicationOperationId(request), cancellationToken);
+                await PublishSaleMutationAsync("update", id);
+                return new { operation = "update", success = true, entity = await _spacetimeService.ReadAsync(c => BuildSaleById(c, id), cancellationToken) };
+            }
+
+            private async Task<object> DeleteSaleCommandAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
+            {
+                var id = request.Id ?? throw new ArgumentException("id is required");
+                await ExecuteSaleOperationAsync("sales.delete", await ResolveActorAsync(), new DeleteSaleCommand(id, request.ExpectedRevision),
+                    ApplicationOperationId(request), cancellationToken);
+                await PublishSaleMutationAsync("delete", id);
+                return new { operation = "delete", success = true, id };
+            }
+
+            private async Task PublishSaleMutationAsync(string operation, uint id)
+            {
+                try
+                {
+                    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await _realtimeEventBus.PublishAsync(new ApiDomainEvent($"ticket-sale.{(operation == "update" ? "updated" : "deleted")}",
+                        "ticket-sales", operation == "update" ? "PUT" : "DELETE", 200, DateTimeOffset.UtcNow,
+                        HttpContext.TraceIdentifier, await GetUserIdAsync(), await GetUserNameAsync(), null, GetClientIp(),
+                        new Dictionary<string, string> { ["operation"] = operation, ["saleId"] = id.ToString() }), deadline.Token);
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to publish committed sale mutation"); }
             }
 
             /// <summary>
@@ -220,56 +250,31 @@ using Microsoft.AspNetCore.Authorization;
             /// <returns>The created sale view object produced by BuildSaleById, or null if the newly created sale could not be retrieved.</returns>
             /// <exception cref="InvalidOperationException">Thrown if the ticket does not exist, the ticket is already sold, or the seller profile cannot be found.</exception>
             /// <exception cref="UnauthorizedAccessException">Thrown if the caller's identity claim is missing.</exception>
-            private object? ExecuteCreateSale(CreateTicketSaleModel model)
+            private async Task<Identity> ResolveActorAsync()
             {
-                var conn = _spacetimeService.GetConnection();
+                var value = await GetSpacetimeIdentityAsync() ?? await GetUserIdAsync();
+                if (string.IsNullOrWhiteSpace(value)) throw new UnauthorizedAccessException("Authenticated actor required.");
+                return await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.IsActive && (u.UserId.ToString() == value || u.Login == value))?.UserId
+                    ?? throw new UnauthorizedAccessException("Active application account required."), HttpContext.RequestAborted);
+            }
 
-                // Validate TicketId is within valid uint range
-                if (model.TicketId < 0 || model.TicketId > uint.MaxValue)
-                {
-                    throw new ArgumentException($"TicketId must be between 0 and {uint.MaxValue}", nameof(model.TicketId));
-                }
+            private async Task<object?> ExecuteCreateSale(CreateTicketSaleModel model, string? operationId = null)
+            {
+                if (model.TicketId <= 0 || model.TicketId > uint.MaxValue) throw new ArgumentException("Invalid ticket ID.");
+                var actor = await ResolveActorAsync();
+                var receipt = await ExecuteSaleOperationAsync("sales.create", actor,
+                    new CreateSaleCommand((uint)model.TicketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? "", "POS"),
+                    operationId ?? ApplicationOperationId(), HttpContext.RequestAborted);
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.SaleId.Find(receipt.EntityId) is { } row
+                    ? SalePresentation.Map(c, row) : null, HttpContext.RequestAborted);
+            }
 
-                var ticketId = (uint)model.TicketId;
-                var ticket = conn.Db.Ticket.TicketId.Find(ticketId);
-                if (ticket == null)
-                {
-                    throw new InvalidOperationException($"Ticket {ticketId} does not exist");
-                }
-
-                var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == ticketId).ToList();
-                if (existingSales.Any())
-                {
-                    throw new InvalidOperationException($"Ticket {ticketId} already sold");
-                }
-
-                // Extract identity from already-validated User claims (no raw token parsing)
-                string? identityClaim = null;
-                if (User?.Identity?.IsAuthenticated == true)
-                {
-                    identityClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                                 ?? User.FindFirst("sub")?.Value
-                                 ?? User.FindFirst(ClaimTypes.Name)?.Value
-                                 ?? User.FindFirst("name")?.Value
-                                 ?? User.FindFirst("login")?.Value;
-                }
-
-                if (string.IsNullOrWhiteSpace(identityClaim))
-                {
-                    throw new UnauthorizedAccessException("Identity claim missing");
-                }
-
-                // Validate authenticated user exists in UserProfile (used for validation only)
-                var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == identityClaim || u.Login == identityClaim);
-                if (seller == null)
-                {
-                    throw new InvalidOperationException("Seller not found");
-                }
-
-                conn.Reducers.CreateSale(ticketId, model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА", model.TicketSoldToUserPhone ?? string.Empty, "POS", null);
-
-                var newSale = conn.Db.Sale.Iter().Where(s => s.TicketId == ticketId).OrderByDescending(s => s.SaleId).FirstOrDefault();
-                return newSale == null ? null : BuildSaleById(conn, newSale.SaleId);
+            private async Task<MutationResult> ExecuteSaleOperationAsync<T>(string name, Identity actor, T payload, string? operationId, CancellationToken ct)
+            {
+                var operations = HttpContext.RequestServices.GetRequiredService<ApplicationOperations>();
+                return (MutationResult)(await operations.ExecuteAsync(name, actor, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json),
+                    operationId ?? ApplicationOperationId(), ct))!;
             }
 
             /// <summary>
@@ -282,366 +287,93 @@ using Microsoft.AspNetCore.Authorization;
             /// Returns a 500 status with an error message if an exception occurs.
             /// </returns>
             [HttpGet]
-            public ActionResult<IEnumerable<dynamic>> GetTicketSales()
+            public async Task<IActionResult> GetTicketSales()
             {
-                try
-                {
-                    Log.Information("Fetching all ticket sales");
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully");
-                    
-                    // Get all sales from SpacetimeDB
-                    var sales = conn.Db.Sale.Iter().ToList();
-                    Log.Information("Retrieved {Count} sales from database", sales.Count);
-                    
-                    // Convert to a list of dynamic objects with necessary properties
-                    var result = sales.Select(s => {
-                        var ticket = conn.Db.Ticket.TicketId.Find(s.TicketId);
-                        Log.Debug("Found ticket for sale {SaleId}", s.SaleId);
-                        
-                        var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-                        Log.Debug("Found route for ticket {TicketId}", ticket?.TicketId);
-                        
-                        return new {
-                            SaleId = s.SaleId,
-                            SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)s.SaleDate).DateTime,
-                            TicketId = s.TicketId,
-                            TicketSoldToUser = s.TicketSoldToUser,
-                            TicketSoldToUserPhone = s.TicketSoldToUserPhone,
-                            SellerId = s.SellerId?.ToString(),
-                            Ticket = ticket != null ? new {
-                                TicketId = ticket.TicketId,
-                                RouteId = ticket.RouteId,
-                                TicketPrice = ticket.TicketPrice,
-                                Route = route != null ? new {
-                                    RouteId = route.RouteId,
-                                    StartPoint = route.StartPoint,
-                                    EndPoint = route.EndPoint
-                                } : null
-                            } : null
-                        };
-                    }).ToList();
-                    
-                    Log.Debug("Retrieved {SalesCount} ticket sales with full details", result.Count);
-                    return Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error retrieving ticket sales: {ErrorMessage}", ex.Message);
-                    return StatusCode(500, new { message = "An error occurred while retrieving ticket sales" });
-                }
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                return Ok(await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
+                    .OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).Select(s => SalePresentation.Map(c, s)).ToArray(), HttpContext.RequestAborted));
             }
 
             [HttpGet("{id}")]
-            public ActionResult<dynamic> GetTicketSale(long id)
+            public async Task<IActionResult> GetTicketSale(long id)
             {
-                try
-                {
-                    // Validate id is within valid uint range
-                    if (id < 0 || id > uint.MaxValue)
-                    {
-                        Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
-                        return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
-                    }
-                    
-                    Log.Information("Fetching ticket sale with ID {SaleId}", id);
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully for fetching sale {SaleId}", id);
-                    
-                    // Find sale by ID
-                    var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    // Log without PII - don't log full sale object
-                    Log.Information("Retrieved sale data for ID {SaleId}", id);
-                    
-                    if (sale == null)
-                    {
-                        Log.Warning("Ticket sale with ID {SaleId} not found", id);
-                        return NotFound();
-                    }
-                    
-                    // Get related ticket and route
-                    var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                    Log.Information("Retrieved ticket data for sale {SaleId}", id);
-                    
-                    var route = ticket != null ? conn.Db.Route.RouteId.Find(ticket.RouteId) : null;
-                    Log.Information("Retrieved route data for ticket {TicketId}", ticket?.TicketId);
-                    
-                    // Create response object
-                    var result = new {
-                        SaleId = sale.SaleId,
-                        SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sale.SaleDate).DateTime,
-                        TicketId = sale.TicketId,
-                        TicketSoldToUser = sale.TicketSoldToUser,
-                        TicketSoldToUserPhone = sale.TicketSoldToUserPhone,
-                        SellerId = sale.SellerId?.ToString(),
-                        Ticket = ticket != null ? new {
-                            TicketId = ticket.TicketId,
-                            RouteId = ticket.RouteId,
-                            TicketPrice = ticket.TicketPrice,
-                            Route = route != null ? new {
-                                RouteId = route.RouteId,
-                                StartPoint = route.StartPoint,
-                                EndPoint = route.EndPoint
-                            } : null
-                        } : null
-                    };
-                    
-                    Log.Information("Returning ticket sale response for ID {SaleId}", id);
-                    Log.Debug("Successfully retrieved ticket sale with ID {SaleId}", id);
-                    return Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error retrieving ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
-                    return StatusCode(500, new { message = $"An error occurred while retrieving ticket sale with ID {id}" });
-                }
+                if (id <= 0 || id > uint.MaxValue) return BadRequest(new { message = "Invalid sale ID" });
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                var sale = await _spacetimeService.ReadAsync(c => c.Db.Sale.SaleId.Find((uint)id) is { } row
+                    ? SalePresentation.Map(c, row) : null, HttpContext.RequestAborted);
+                return sale == null ? NotFound() : Ok(sale);
             }
 
             [HttpPost]
-            public ActionResult<dynamic> CreateTicketSale([FromBody] CreateTicketSaleModel model)
+            public async Task<ActionResult<dynamic>> CreateTicketSale([FromBody] CreateTicketSaleModel model)
             {
-                Log.Information("Create ticket sale request received with data: {@Model}", model);
-                
-                if (!IsAdmin())
-                {
-                    Log.Warning("Unauthorized attempt to create ticket sale by non-admin user");
-                    return Forbid();
-                }
-
+                if (!await HasPermissionAsync("sales.create")) return Forbid();
                 try
                 {
-                    Log.Information("Creating new ticket sale for ticket ID {TicketId}", model.TicketId);
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully for creating sale");
-                    
-                    // Validate TicketId is within valid uint range
-                    if (model.TicketId < 0 || model.TicketId > uint.MaxValue)
-                    {
-                        Log.Warning("Invalid ticket ID {TicketId} - must be between 0 and {MaxValue}", model.TicketId, uint.MaxValue);
-                        return BadRequest(new { message = $"Ticket ID must be between 0 and {uint.MaxValue}" });
-                    }
-                    
-                    // Check if ticket exists
-                    var ticket = conn.Db.Ticket.TicketId.Find((uint)model.TicketId);
-                    Log.Information("Ticket lookup result for ID {TicketId}", model.TicketId);
-                    
-                    if (ticket == null)
-                    {
-                        Log.Warning("Invalid ticket ID {TicketId} provided for sale creation", model.TicketId);
-                        return BadRequest("Invalid ticket ID");
-                    }
-                    
-                    // Check if ticket is already sold
-                    var existingSales = conn.Db.Sale.Iter().Where(s => s.TicketId == (uint)model.TicketId).ToList();
-                    Log.Information("Existing sales count for ticket {TicketId}: {Count}", model.TicketId, existingSales.Count);
-                    
-                    if (existingSales.Any())
-                    {
-                        Log.Warning("Ticket with ID {TicketId} is already sold", model.TicketId);
-                        return BadRequest("Ticket is already sold");
-                    }
-                    
-                    // Get seller identity from token
-                    var authHeader = Request.Headers["Authorization"].ToString();
-                    Log.Debug("Authorization header: {AuthHeader}", authHeader);
-                    
-                    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                    {
-                        Log.Warning("Missing or invalid Authorization header: {AuthHeader}", authHeader);
-                        return Unauthorized(new { message = "Missing or invalid Authorization header" });
-                    }
-                    
-                    var token = authHeader.Substring("Bearer ".Length);
-                    var tokenHandler = new JwtSecurityTokenHandler();
-                    
-                    if (!tokenHandler.CanReadToken(token))
-                    {
-                        Log.Warning("Invalid JWT token format: {Token}", token);
-                        return Unauthorized(new { message = "Invalid token format" });
-                    }
-                    
-                    var jwtToken = tokenHandler.ReadJwtToken(token);
-                    Log.Debug("JWT token claims: {@Claims}", jwtToken.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
-                    
-                    var usernameClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name" || c.Type == "name");
-                    
-                    if (usernameClaim == null)
-                    {
-                        Log.Warning("No username claim found in validated token. All claims: {@Claims}", 
-                            jwtToken.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
-                        return Unauthorized(new { message = "Invalid token: no username claim found" });
-                    }
-
-                    // Find user by login or UserId
-                    var seller = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.UserId.ToString() == usernameClaim.Value || u.Login == usernameClaim.Value);
-                    Log.Information("Seller lookup result for username {Username}: {Found}", usernameClaim.Value, seller != null);
-                    
-                    if (seller == null)
-                    {
-                        Log.Warning("User from token not found in database: {Username}", usernameClaim.Value);
-                        return NotFound(new { message = $"User '{usernameClaim.Value}' not found" });
-                    }
-                    
-                    // Create sale using reducer
-                    var buyerName = model.TicketSoldToUser ?? "ФИЗ.ПРОДАЖА";
-                    var buyerPhone = model.TicketSoldToUserPhone ?? "";
-                    
-                    Log.Information("Calling CreateSale reducer with parameters: TicketId={TicketId}, BuyerName={BuyerName}, BuyerPhone={BuyerPhone}, Location=POS", 
-                        model.TicketId, buyerName, buyerPhone);
-                    
-                    // Call the CreateSale reducer
-                    conn.Reducers.CreateSale(
-                        (uint)model.TicketId, 
-                        buyerName, 
-                        buyerPhone,
-                        "POS", // Default sale location
-                        null // No notes
-                    );
-                    
-                    // Find the newly created sale
-                    var newSale = conn.Db.Sale.Iter()
-                        .Where(s => s.TicketId == (uint)model.TicketId)
-                        .OrderByDescending(s => s.SaleId)
-                        .FirstOrDefault();
-                    
-                    Log.Information("Newly created sale ID: {SaleId}", newSale?.SaleId);
-                    
-                    if (newSale == null)
-                    {
-                        Log.Warning("Sale was not created properly. No sale found for ticket {TicketId}", model.TicketId);
-                        return StatusCode(500, new { message = "Failed to create sale" });
-                    }
-                    
-                    // Create response object
-                    var result = new {
-                        SaleId = newSale.SaleId,
-                        SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)newSale.SaleDate).DateTime,
-                        TicketId = newSale.TicketId,
-                        TicketSoldToUser = newSale.TicketSoldToUser,
-                        TicketSoldToUserPhone = newSale.TicketSoldToUserPhone,
-                        SellerId = newSale.SellerId?.ToString()
-                    };
-                    
-                    // Log without PII - mask phone number
-                    var maskedPhone = string.IsNullOrEmpty(newSale.TicketSoldToUserPhone) 
-                        ? "none" 
-                        : newSale.TicketSoldToUserPhone.Length > 4 
-                            ? "***" + newSale.TicketSoldToUserPhone.Substring(newSale.TicketSoldToUserPhone.Length - 4) 
-                            : "***";
-                    Log.Information("Successfully created ticket sale with ID {SaleId} for user {User} with phone {MaskedPhone}", 
-                        newSale.SaleId, newSale.TicketSoldToUser, maskedPhone);
-                    
-                    return CreatedAtAction(nameof(GetTicketSale), new { id = newSale.SaleId }, result);
+                    var created = await ExecuteCreateSale(model);
+                    return created == null ? StatusCode(503) : Ok(created);
                 }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error creating ticket sale: {ErrorMessage}", ex.Message);
-                    return StatusCode(500, new { message = "An error occurred while creating the ticket sale" });
-                }
+                catch (ArgumentException) { return BadRequest(new { message = "Invalid sale request" }); }
+                catch (UnauthorizedAccessException) { return Unauthorized(); }
+                catch (OperationException ex) { return StatusCode(ex.Code == "forbidden" ? 403 : 400, new { code = ex.Code }); }
+                catch (ReducerRejectedException) { return Conflict(new { message = "Sale was rejected; refresh ticket availability and permissions" }); }
+                catch (CommitOutcomeUnknownException) { return StatusCode(503, new { code = "commit_outcome_unknown", message = "Reconcile the operation before retrying" }); }
+                catch (DatabaseUnavailableException) { return StatusCode(503, new { code = "database_unavailable" }); }
             }
 
             [HttpPut("{id}")]
-            public IActionResult UpdateTicketSale(long id, [FromBody] UpdateTicketSaleModel model)
+            public async Task<IActionResult> UpdateTicketSale(long id, [FromBody] UpdateTicketSaleModel model)
             {
-                // Validate id is within valid uint range
-                if (id < 0 || id > uint.MaxValue)
-                {
-                    Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
-                    return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
-                }
-                
-                Log.Information("Update ticket sale request received for ID {SaleId}", id);
-                
-                if (!IsAdmin())
-                {
-                    Log.Warning("Unauthorized attempt to update ticket sale by non-admin user");
-                    return Forbid();
-                }
-
+                if (id <= 0 || id > uint.MaxValue) return BadRequest(new { message = "Invalid sale ID" });
+                if (!await HasPermissionAsync("sales.edit")) return Forbid();
+                if (model.SaleDate.HasValue) return BadRequest(new { code = "validation_failed", message = "Sale date cannot be changed" });
+                var sale = await _ticketSalesService.GetSaleByIdAsync((uint)id);
+                if (sale == null) return NotFound();
+                if (model.TicketId.HasValue && model.TicketId != sale.TicketId)
+                    return BadRequest(new { message = "The original ticket cannot be changed" });
                 try
                 {
-                    Log.Information("Updating ticket sale with ID {SaleId}", id);
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully for updating sale {SaleId}", id);
-                    
-                    // Find sale by ID
-                    var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    Log.Information("Existing sale data for ID {SaleId}: {Found}", id, sale != null);
-                    
-                    if (sale == null)
-                    {
-                        Log.Warning("Ticket sale with ID {SaleId} not found for update", id);
-                        return NotFound();
-                    }
-                    
-                    // Note: SpacetimeDB doesn't have an UpdateSale reducer yet
-                    // This would need to be implemented in the SpacetimeDB module
-                    
-                    Log.Warning("UpdateTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}", id);
-                    return StatusCode(501, new { message = "Update operation is not implemented" });
+                    await ExecuteSaleOperationAsync("sales.update", await ResolveActorAsync(),
+                        new UpdateSaleCommand((uint)id, model.ExpectedRevision, model.TicketSoldToUser, model.TicketSoldToUserPhone),
+                        ApplicationOperationId(), HttpContext.RequestAborted);
+                    return NoContent();
                 }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error updating ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
-                    return StatusCode(500, new { message = $"An error occurred while updating ticket sale with ID {id}" });
-                }
+                catch (OperationException ex) { return StatusCode(ex.Code == "forbidden" ? 403 : 400, new { code = ex.Code }); }
+                catch (ReducerRejectedException) { return Conflict(new { code = "conflict", message = "Reload the sale and review your changes" }); }
+                catch (CommitOutcomeUnknownException) { return StatusCode(503, new { code = "commit_outcome_unknown" }); }
+                catch (DatabaseUnavailableException) { return StatusCode(503, new { code = "database_unavailable" }); }
             }
 
             [HttpDelete("{id}")]
-            public IActionResult DeleteTicketSale(long id)
+            public async Task<IActionResult> DeleteTicketSale(long id)
             {
-                // Validate id is within valid uint range
-                if (id < 0 || id > uint.MaxValue)
-                {
-                    Log.Warning("Invalid sale ID {SaleId} - must be between 0 and {MaxValue}", id, uint.MaxValue);
-                    return BadRequest(new { message = $"Sale ID must be between 0 and {uint.MaxValue}" });
-                }
-                
-                Log.Information("Delete ticket sale request received for ID {SaleId}", id);
-                
-                if (!IsAdmin())
-                {
-                    Log.Warning("Unauthorized attempt to delete ticket sale by non-admin user");
-                    return Forbid();
-                }
-
+                if (id <= 0 || id > uint.MaxValue) return BadRequest(new { message = "Invalid sale ID" });
+                if (!await HasPermissionAsync("sales.delete")) return Forbid();
                 try
                 {
-                    Log.Information("Deleting ticket sale with ID {SaleId}", id);
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully for deleting sale {SaleId}", id);
-                    
-                    // Find sale by ID
-                    var sale = conn.Db.Sale.SaleId.Find((uint)id);
-                    Log.Information("Sale to be deleted with ID {SaleId}: {Found}", id, sale != null);
-                    
-                    if (sale == null)
-                    {
-                        Log.Warning("Ticket sale with ID {SaleId} not found for deletion", id);
-                        return NotFound();
-                    }
-                    
-                    // Note: SpacetimeDB doesn't have a DeleteSale reducer yet
-                    // This would need to be implemented in the SpacetimeDB module
-                    
-                    Log.Warning("DeleteTicketSale is not implemented in the SpacetimeDB module. Sale ID: {SaleId}", id);
-                    return StatusCode(501, new { message = "Delete operation is not implemented" });
+                    await ExecuteSaleOperationAsync("sales.delete", await ResolveActorAsync(), new DeleteSaleCommand((uint)id),
+                        ApplicationOperationId(), HttpContext.RequestAborted);
+                    return NoContent();
                 }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error deleting ticket sale with ID {SaleId}: {ErrorMessage}", id, ex.Message);
-                    return StatusCode(500, new { message = $"An error occurred while deleting ticket sale with ID {id}" });
-                }
+                catch (OperationException ex) { return StatusCode(ex.Code == "forbidden" ? 403 : 400, new { code = ex.Code }); }
+                catch (ReducerRejectedException) { return Conflict(new { code = "conflict" }); }
+                catch (CommitOutcomeUnknownException) { return StatusCode(503, new { code = "commit_outcome_unknown" }); }
+                catch (DatabaseUnavailableException) { return StatusCode(503, new { code = "database_unavailable" }); }
+            }
+
+            [HttpGet("statistics/income-summary")]
+            public async Task<IActionResult> GetIncomeSummary(int year, int month, CancellationToken cancellationToken)
+            {
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                if (year < 1970 || year > 9998 || month < 1 || month > 12) return BadRequest();
+                return Ok(await _ticketSalesService.GetIncomeSummaryAsync(year, month, cancellationToken));
             }
 
             [HttpGet("statistics/income")]
             public async Task<ActionResult<decimal>> GetTotalIncome(int year, int month)
             {
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                if (year < 1970 || year > 9998 || month < 1 || month > 12) return BadRequest();
                 Log.Information("Fetching total income for {Year}-{Month}", year, month);
                 
                 try
@@ -649,6 +381,10 @@ using Microsoft.AspNetCore.Authorization;
                     var income = await _ticketSalesService.GetTotalIncomeAsync(year, month);
                     Log.Information("Total income for {Year}-{Month}: {Income}", year, month, income);
                     return income;
+                }
+                catch (HistoricalAmountUnknownException)
+                {
+                    return Conflict(new { code = "historical_amount_unknown", message = "Use the income summary to view known totals and the unknown amount count" });
                 }
                 catch (Exception ex)
                 {
@@ -660,6 +396,8 @@ using Microsoft.AspNetCore.Authorization;
             [HttpGet("statistics/top-transports")]
             public async Task<ActionResult<List<TransportStatistic>>> GetTopTransports(int year, int month)
             {
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                if (year < 1970 || year > 9998 || month < 1 || month > 12) return BadRequest();
                 Log.Information("Fetching top transports for {Year}-{Month}", year, month);
                 
                 try
@@ -676,119 +414,20 @@ using Microsoft.AspNetCore.Authorization;
             }
 
             [HttpGet("search")]
-            public ActionResult<IEnumerable<dynamic>> SearchSales(
-                [FromQuery] DateTime? startDate = null,
-                [FromQuery] DateTime? endDate = null,
-                [FromQuery] decimal? minPrice = null,
-                [FromQuery] decimal? maxPrice = null,
-                [FromQuery] string? soldToUser = null)
+            public async Task<IActionResult> SearchSales([FromQuery] DateTime? startDate = null,
+                [FromQuery] DateTime? endDate = null, [FromQuery] decimal? minPrice = null,
+                [FromQuery] decimal? maxPrice = null, [FromQuery] string? soldToUser = null)
             {
-                try
-                {
-                    Log.Information("Searching sales with parameters: StartDate={StartDate}, EndDate={EndDate}, MinPrice={MinPrice}, MaxPrice={MaxPrice}, SoldToUser={SoldToUser}",
-                        startDate, endDate, minPrice, maxPrice, soldToUser);
-                    
-                    var conn = _spacetimeService.GetConnection();
-                    Log.Debug("Database connection established successfully for searching sales");
-                    
-                    // Get all sales
-                    var allSales = conn.Db.Sale.Iter().ToList();
-                    Log.Debug("All sales retrieved from database: {Count}", allSales.Count);
-                    
-                    var query = allSales.AsEnumerable();
-                    
-                    // Apply filters
-                    if (startDate.HasValue)
-                    {
-                        var startTimestamp = startDate.Value.ToUnixTimeMilliseconds();
-                        Log.Debug("Filtering sales by start date: {StartDate} (timestamp: {StartTimestamp})", startDate, startTimestamp);
-                        query = query.Where(s => s.SaleDate >= startTimestamp);
-                    }
-                    
-                    if (endDate.HasValue)
-                    {
-                        var endTimestamp = endDate.Value.ToUnixTimeMilliseconds();
-                        Log.Debug("Filtering sales by end date: {EndDate} (timestamp: {EndTimestamp})", endDate, endTimestamp);
-                        query = query.Where(s => s.SaleDate <= endTimestamp);
-                    }
-                    
-                    if (!string.IsNullOrEmpty(soldToUser))
-                    {
-                        Log.Debug("Filtering sales by sold to user: {SoldToUser}", soldToUser);
-                        query = query.Where(s => s.TicketSoldToUser.Contains(soldToUser, StringComparison.OrdinalIgnoreCase));
-                    }
-                    
-                    // Apply price filters (need to join with tickets)
-                    var filteredSales = query.ToList();
-                    Log.Information("Sales after date and user filtering: {Count}", filteredSales.Count);
-                    
-                    var result = new List<dynamic>();
-                    
-                    foreach (var sale in filteredSales)
-                    {
-                        var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                        Log.Debug("Ticket for sale {SaleId}", sale.SaleId);
-                        
-                        if (ticket == null) continue;
-                        
-                        // Apply price filters
-                        if (minPrice.HasValue && ticket.TicketPrice < (double)minPrice.Value)
-                        {
-                            Log.Debug("Sale {SaleId} filtered out due to ticket price {TicketPrice} being less than minimum price {MinPrice}", 
-                                sale.SaleId, ticket.TicketPrice, minPrice.Value);
-                            continue;
-                        }
-                        
-                        if (maxPrice.HasValue && ticket.TicketPrice > (double)maxPrice.Value)
-                        {
-                            Log.Debug("Sale {SaleId} filtered out due to ticket price {TicketPrice} being greater than maximum price {MaxPrice}", 
-                                sale.SaleId, ticket.TicketPrice, maxPrice.Value);
-                            continue;
-                        }
-                        
-                        var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
-                        Log.Debug("Route for ticket {TicketId}", ticket.TicketId);
-                        
-                        result.Add(new {
-                            SaleId = sale.SaleId,
-                            SaleDate = DateTimeOffset.FromUnixTimeMilliseconds((long)sale.SaleDate).DateTime,
-                            TicketId = sale.TicketId,
-                            TicketSoldToUser = sale.TicketSoldToUser,
-                            TicketSoldToUserPhone = sale.TicketSoldToUserPhone,
-                            SellerId = sale.SellerId?.ToString(),
-                            Ticket = new {
-                                TicketId = ticket.TicketId,
-                                RouteId = ticket.RouteId,
-                                TicketPrice = ticket.TicketPrice,
-                                Route = route != null ? new {
-                                    RouteId = route.RouteId,
-                                    StartPoint = route.StartPoint,
-                                    EndPoint = route.EndPoint
-                                } : null
-                            }
-                        });
-                    }
-                    
-                    // Order by sale date descending
-                    result = result.OrderByDescending(s => ((DateTime)s.SaleDate)).ToList();
-                    
-                    Log.Information("Search results count: {Count}", result.Count);
-                    Log.Debug("Found {SalesCount} sales matching search criteria", result.Count);
-                    return Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error searching sales: {ErrorMessage}", ex.Message);
-                    return StatusCode(500, new { message = "An error occurred while searching sales" });
-                }
-            }
-
-            private bool TicketSaleExists(long id)
-            {
-                var conn = _spacetimeService.GetConnection();
-                var exists = conn.Db.Sale.SaleId.Find((uint)id) != null;
-                Log.Debug("Checking if ticket sale {SaleId} exists: {Exists}", id, exists);
-                return exists;
+                if (!await HasPermissionAsync("sales.view")) return Forbid();
+                if (endDate < startDate || minPrice < 0 || maxPrice < minPrice || soldToUser?.Length > 200)
+                    return BadRequest(new { message = "Invalid sale search filters" });
+                var start = startDate?.ToUniversalTime();
+                var end = endDate?.ToUniversalTime();
+                var rows = await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
+                    .OrderBy(s => s.SaleDate).ThenBy(s => s.SaleId).Select(s => SalePresentation.Map(c, s))
+                    .Where(s => SalePresentation.MatchesFilters(s, start, end, minPrice, maxPrice, soldToUser))
+                    .ToArray(), HttpContext.RequestAborted);
+                return Ok(rows);
             }
         }
 
@@ -802,9 +441,10 @@ using Microsoft.AspNetCore.Authorization;
 
         public class UpdateTicketSaleModel
         {
+            public ulong? ExpectedRevision { get; set; }
             public long? TicketId { get; set; }
             public DateTimeOffset? SaleDate { get; set; }
             public string? TicketSoldToUser { get; set; } = "ФИЗ.ПРОДАЖА";
             public string? TicketSoldToUserPhone { get; set; }
         }
-    } 
+    }

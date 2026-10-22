@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.QrApproveWindow"
+        Title="Подтвердить вход по QR" AutomationProperties.Name="Подтвердить вход по QR"
+        Width="510" Height="660" MinWidth="350" MinHeight="480" WindowStartupLocation="CenterOwner">
+    <ScrollViewer AutomationProperties.Name="Содержимое подтверждения QR-входа">
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="Подтвердить вход по QR" FontSize="22" AutomationProperties.Name="Заголовок подтверждения QR-входа" />
+            <TextBlock Text="Подтверждайте только свой вход. Сравните имя устройства, адрес и сервер." TextWrapping="Wrap" AutomationProperties.Name="Предупреждение о безопасности QR-входа" />
+            <TextBox Text="{Binding ScannedText}" Watermark="Вставьте QR-текст bruqr://…" MaxLength="2048" AutomationProperties.Name="QR-текст для проверки" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Сканировать" Command="{Binding ScanCommand}" AutomationProperties.Name="Сканировать или ввести QR-код" />
+                <Button Content="Проверить QR" Command="{Binding PeekCommand}" AutomationProperties.Name="Проверить сервер и открыть сведения QR-кода" />
+            </StackPanel>
+            <TextBlock Text="{Binding Details}" TextWrapping="Wrap" AutomationProperties.Name="Устройство, платформа, адрес, сервер и пользователь подтверждаемого входа" />
+            <TextBlock Text="{Binding Countdown}" AutomationProperties.Name="Оставшееся время подтверждения" AutomationProperties.LiveSetting="Polite" />
+            <TextBox Text="{Binding VerificationCode}" Watermark="6 цифр с экрана входа" MaxLength="6" IsEnabled="{Binding HasRequest}" AutomationProperties.Name="Шестизначный код с экрана входа" />
+            <TextBlock Text="{Binding AttemptsRemaining, StringFormat='Осталось попыток: {0}'}" AutomationProperties.Name="Число оставшихся попыток" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.Name="Состояние подтверждения QR-входа" AutomationProperties.LiveSetting="Polite" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Подтвердить" Command="{Binding ApproveCommand}" IsEnabled="{Binding HasRequest}" IsDefault="True" AutomationProperties.Name="Подтвердить вход на указанном устройстве" />
+                <Button Content="Отклонить" Command="{Binding DenyCommand}" IsEnabled="{Binding HasRequest}" AutomationProperties.Name="Отклонить указанный вход" />
+                <Button Content="Закрыть" Click="Close_Click" IsCancel="True" AutomationProperties.Name="Закрыть подтверждение QR-входа" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

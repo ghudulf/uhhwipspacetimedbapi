@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -19,7 +22,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class TicketsController : BaseController
@@ -62,15 +65,18 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            if (!await IsAuthenticatedAsync())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
+            var events = await HasPermissionAsync("tickets.view")
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("tickets", cancellationToken), "tickets.view", cancellationToken)
+                : AdminEmptyEventsAsync();
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("tickets", cancellationToken),
+                events,
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -94,6 +100,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("tickets", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch
@@ -113,12 +120,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>An object with a `tickets` property containing all projected tickets.</returns>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            var conn = _spacetimeService.GetConnection();
-            var tickets = conn.Db.Ticket.Iter().ToList();
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
+            var tickets = conn.Tickets.Values.ToList();
 
             // Map to anonymous type matching REST endpoint projection
             var result = tickets.Select(t => {
-                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                var route = conn.Routes.GetValueOrDefault(t.RouteId);
                 return new {
                     t.TicketId,
                     t.RouteId,
@@ -149,15 +156,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
             var id = request.Id ?? throw new InvalidOperationException("id is required for read");
-            var conn = _spacetimeService.GetConnection();
-            var ticket = conn.Db.Ticket.TicketId.Find(id);
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
+            var ticket = conn.Tickets.GetValueOrDefault(id);
 
             if (ticket == null)
             {
                 return new { ticket = (object?)null };
             }
 
-            var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+            var route = conn.Routes.GetValueOrDefault(ticket.RouteId);
 
             // Map to anonymous type matching REST endpoint projection
             var result = new {
@@ -189,7 +196,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a <see cref="CreateTicketModel"/>.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("tickets.create"))
             {
                 throw new UnauthorizedAccessException("Admin role required");
             }
@@ -197,36 +204,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateTicketModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
-                ?? User.Claims.FirstOrDefault(c => c.Type == "login" || c.Type == "preferred_username" || c.Type == "sub")?.Value;
-
-            // If claims lookup returns null, fall back to validated-token path from BaseController
-            if (string.IsNullOrWhiteSpace(userLogin))
-            {
-                // Use BaseController's GetUserNameAsync for fallback
-                userLogin = await GetUserNameAsync();
-                if (string.IsNullOrWhiteSpace(userLogin))
-                {
-                    throw new UnauthorizedAccessException("User identity could not be determined");
-                }
-            }
-
-            var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin)
-                ?? throw new UnauthorizedAccessException("Unable to resolve user identity");
-
-            var success = await _ticketService.CreateTicketAsync(
-                model.RouteId,
-                model.SeatNumber,
-                model.TicketPrice,
-                model.PaymentMethod,
-                (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                userIdentity);
+            var success = await AdminBooleanAsync("tickets.create", new CreateTicketCommand(model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "create", success };
 
             // Get projected snapshot matching REST endpoint shape
-            var conn = _spacetimeService.GetConnection();
-            var tickets = conn.Db.Ticket.Iter().ToList();
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
+            var tickets = conn.Tickets.Values.ToList();
             var snapshot = tickets.Select(t => {
-                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                var route = conn.Routes.GetValueOrDefault(t.RouteId);
                 return new {
                     t.TicketId,
                     t.RouteId,
@@ -263,7 +248,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("tickets.edit"))
             {
                 throw new UnauthorizedAccessException("Admin role required");
             }
@@ -272,16 +257,17 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateTicketModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await _ticketService.UpdateTicketAsync(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive);
+            var success = await AdminBooleanAsync("tickets.update", new UpdateTicketCommand(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive, model.ExpectedRevision ?? AdminExpectedRevision(request)), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "update", success, entity = (object?)null };
 
-            var conn = _spacetimeService.GetConnection();
-            var ticket = conn.Db.Ticket.TicketId.Find(id);
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
+            var ticket = conn.Tickets.GetValueOrDefault(id);
 
             // Project entity to match REST endpoint shape
             object? projectedEntity = null;
             if (ticket != null)
             {
-                var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+                var route = conn.Routes.GetValueOrDefault(ticket.RouteId);
                 projectedEntity = new {
                     ticket.TicketId,
                     ticket.RouteId,
@@ -301,9 +287,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Get projected snapshot matching REST endpoint shape
-            var tickets = conn.Db.Ticket.Iter().ToList();
+            var tickets = conn.Tickets.Values.ToList();
             var snapshot = tickets.Select(t => {
-                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                var route = conn.Routes.GetValueOrDefault(t.RouteId);
                 return new {
                     t.TicketId,
                     t.RouteId,
@@ -334,19 +320,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not specify an Id for deletion.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin())
+            if (!await HasPermissionAsync("tickets.delete"))
             {
                 throw new UnauthorizedAccessException("Admin role required");
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
-            var success = await _ticketService.DeleteTicketAsync(id);
+            var success = await AdminBooleanAsync("tickets.delete", new DeleteTicketCommand(id, AdminExpectedRevision(request)), request);
+            if (!await HasPermissionAsync("tickets.view")) return new { operation = "delete", success, deletedId = id };
 
             // Get projected snapshot matching REST endpoint shape
-            var conn = _spacetimeService.GetConnection();
-            var tickets = conn.Db.Ticket.Iter().ToList();
+            var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
+            var tickets = conn.Tickets.Values.ToList();
             var snapshot = tickets.Select(t => {
-                var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                var route = conn.Routes.GetValueOrDefault(t.RouteId);
                 return new {
                     t.TicketId,
                     t.RouteId,
@@ -388,14 +375,14 @@ namespace TicketSalesApp.AdminServer.Controllers
             _logger.LogInformation("GET /api/Tickets - Fetching all tickets with route information");
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
                 _logger.LogDebug("Database connection established successfully");
                 
-                var tickets = conn.Db.Ticket.Iter().ToList();
+                var tickets = conn.Tickets.Values.ToList();
                 
                 // Map to anonymous type with Route details
                 var result = tickets.Select(t => {
-                    var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                    var route = conn.Routes.GetValueOrDefault(t.RouteId);
                     return new {
                         t.TicketId,
                         t.RouteId,
@@ -419,7 +406,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL TICKET DATA: {TicketsData}", JsonSerializer.Serialize(result)); // Added JSON logging
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving tickets: {ErrorMessage}", ex.Message);
                 return StatusCode(500, "An error occurred while retrieving tickets");
@@ -429,13 +416,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetTicket(uint id)
         {
-            _logger.LogInformation("GET /api/Tickets/{TicketId} - Fetching ticket with ID: {TicketId}", id);
+            _logger.LogInformation("GET /api/Tickets/{TicketId} - Fetching ticket", id);
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
                 _logger.LogDebug("Database connection established successfully for ticket ID: {TicketId}", id);
                 
-                var ticket = conn.Db.Ticket.TicketId.Find(id);
+                var ticket = conn.Tickets.GetValueOrDefault(id);
                 _logger.LogInformation("Ticket lookup result: {@Ticket}", ticket);
 
                 if (ticket == null)
@@ -444,7 +431,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
 
-                var route = conn.Db.Route.RouteId.Find(ticket.RouteId);
+                var route = conn.Routes.GetValueOrDefault(ticket.RouteId);
 
                 // Map to anonymous type with Route details
                 var result = new {
@@ -469,7 +456,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL TICKET DATA: {TicketData}", JsonSerializer.Serialize(result)); // Added JSON logging
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving ticket {TicketId}: {ErrorMessage}", id, ex.Message);
                 return StatusCode(500, "An error occurred while retrieving the ticket");
@@ -479,280 +466,23 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Ticket>> CreateTicket([FromBody] CreateTicketModel model)
         {
-            _logger.LogInformation("POST /api/Tickets - Create ticket request received with data: {@TicketModel}", model);
-            
-            if (!IsAdmin())
-            {
-                _logger.LogWarning("Unauthorized attempt to create ticket by non-admin user");
-                return Forbid();
-            }
-
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-                _logger.LogDebug("Database connection established successfully for ticket creation");
-                
-                var route = conn.Db.Route.RouteId.Find(model.RouteId);
-                _logger.LogInformation("Route lookup result for ID {RouteId}: {@Route}", model.RouteId, route);
-                
-                if (route == null)
-                {
-                    _logger.LogWarning("Invalid route ID {RouteId} provided for ticket creation", model.RouteId);
-                    return BadRequest("Invalid route ID");
-                }
-
-                // Check if the seat is already taken
-                var existingTicket = conn.Db.Ticket.Iter()
-                    .FirstOrDefault(t => t.RouteId == model.RouteId && t.SeatNumber == model.SeatNumber);
-                _logger.LogInformation("Existing ticket check for route {RouteId} and seat {SeatNumber}: {@ExistingTicket}", 
-                    model.RouteId, model.SeatNumber, existingTicket);
-                
-                if (existingTicket != null)
-                {
-                    _logger.LogWarning("Seat {SeatNumber} on route {RouteId} is already taken by ticket {TicketId}", 
-                        model.SeatNumber, model.RouteId, existingTicket.TicketId);
-                    return BadRequest("Seat is already taken");
-                }
-                
-                // Get user login from JWT token claims
-                _logger.LogDebug("JWT claims: {@Claims}", User.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
-                var userLogin = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-                if (string.IsNullOrEmpty(userLogin))
-                {
-                    // Try alternative claim types if the standard one isn't found
-                    userLogin = User.Claims.FirstOrDefault(c => c.Type == "login" || 
-                                                               c.Type == "preferred_username" || 
-                                                               c.Type == "sub")?.Value;
-                }
-                _logger.LogInformation("User login extracted from token: {UserLogin}", userLogin);
-                
-                if (string.IsNullOrEmpty(userLogin))
-                {
-                    _logger.LogWarning("User login not found in JWT token. All claims: {@Claims}", 
-                        User.Claims.Select(c => new { Type = c.Type, Value = c.Value }));
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                // Get user identity from login
-                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
-                _logger.LogInformation("User identity lookup result for login {UserLogin}: {UserIdentity}", userLogin, userIdentity);
-                
-                if (userIdentity == null)
-                {
-                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                _logger.LogInformation("Creating ticket with parameters: RouteId={RouteId}, Price={Price}, Seat={Seat}, Payment={Payment}, UserIdentity={UserIdentity}", 
-                    model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, userIdentity);
-
-                // Call the CreateTicket reducer with the user identity
-                var timestamp = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                conn.Reducers.CreateTicket(
-                    model.RouteId, 
-                    model.TicketPrice, 
-                    model.SeatNumber, 
-                    model.PaymentMethod, 
-                    timestamp, 
-                    userIdentity);
-                
-                _logger.LogInformation("CreateTicket reducer called with timestamp: {Timestamp}", timestamp);
-                
-                // Wait a moment for the reducer to complete and the subscription to update
-                await Task.Delay(100);
-                _logger.LogDebug("Waited 100ms for reducer to complete");
-                
-                // Find the newly created ticket
-                var ticket = conn.Db.Ticket.Iter()
-                    .OrderByDescending(t => t.TicketId)
-                    .FirstOrDefault();
-                _logger.LogInformation("Newly created ticket lookup result: {@Ticket}", ticket);
-
-                if (ticket == null)
-                {
-                    _logger.LogError("Failed to find newly created ticket after reducer call");
-                    return StatusCode(500, "Failed to create ticket");
-                }
-
-                _logger.LogInformation("Successfully created ticket: {@Ticket}", ticket);
-                return CreatedAtAction(nameof(GetTicket), new { id = ticket.TicketId }, ticket);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating ticket: {ErrorMessage}, Stack trace: {StackTrace}", ex.Message, ex.StackTrace);
-                return StatusCode(500, "An error occurred while creating the ticket");
-            }
+            var result = await AdminMutationAsync("tickets.create", new CreateTicketCommand(model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod));
+            var ticket = await _spacetimeService.ReadAsync(c => c.Db.Ticket.TicketId.Find(result.EntityId), HttpContext.RequestAborted);
+            return CreatedAtAction(nameof(GetTicket), new { id = result.EntityId }, ticket);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTicket(uint id, [FromBody] UpdateTicketModel model)
         {
-            _logger.LogInformation("PUT /api/Tickets/{TicketId} - Update ticket request received for ID {TicketId} with data: {@UpdateModel}", 
-                id, model);
-            
-            if (!IsAdmin())
-            {
-                _logger.LogWarning("Unauthorized attempt to update ticket {TicketId} by non-admin user", id);
-                return Forbid();
-            }
-
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-                _logger.LogDebug("Database connection established successfully for updating ticket {TicketId}", id);
-                
-                var ticket = conn.Db.Ticket.TicketId.Find(id);
-                _logger.LogInformation("Existing ticket lookup result for ID {TicketId}: {@Ticket}", id, ticket);
-                
-                if (ticket == null)
-                {
-                    _logger.LogWarning("Ticket {TicketId} not found for update operation", id);
-                    return NotFound();
-                }
-
-                if (model.RouteId.HasValue)
-                {
-                    var route = conn.Db.Route.RouteId.Find(model.RouteId.Value);
-                    _logger.LogInformation("Route lookup result for ID {RouteId}: {@Route}", model.RouteId.Value, route);
-                    
-                    if (route == null)
-                    {
-                        _logger.LogWarning("Invalid route ID {RouteId} provided for ticket update", model.RouteId.Value);
-                        return BadRequest("Invalid route ID");
-                    }
-                }
-                
-                // Check if the new seat number is already taken, if provided
-                if (model.SeatNumber.HasValue && model.SeatNumber.Value != ticket.SeatNumber)
-                {
-                    var existingTicket = conn.Db.Ticket.Iter()
-                        .FirstOrDefault(t => t.RouteId == (model.RouteId ?? ticket.RouteId) && t.SeatNumber == model.SeatNumber.Value);
-                    _logger.LogInformation("Seat availability check for route {RouteId} and seat {SeatNumber}: {@ExistingTicket}", 
-                        model.RouteId ?? ticket.RouteId, model.SeatNumber.Value, existingTicket);
-                    
-                    if (existingTicket != null)
-                    {
-                        _logger.LogWarning("Seat {SeatNumber} on route {RouteId} is already taken by ticket {TicketId}", 
-                            model.SeatNumber.Value, model.RouteId ?? ticket.RouteId, existingTicket.TicketId);
-                        return BadRequest("Seat is already taken");
-                    }
-                }
-
-                // Get user login from JWT token
-                _logger.LogDebug("JWT identity name: {IdentityName}", User.Identity?.Name);
-                var userLogin = User.Identity?.Name;
-                if (string.IsNullOrEmpty(userLogin))
-                {
-                    _logger.LogWarning("User login not found in JWT token. Identity: {@Identity}", 
-                        new { IsAuthenticated = User.Identity?.IsAuthenticated, AuthType = User.Identity?.AuthenticationType });
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                // Get user identity from login
-                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
-                _logger.LogInformation("User identity lookup result for login {UserLogin}: {UserIdentity}", userLogin, userIdentity);
-                
-                if (userIdentity == null)
-                {
-                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                _logger.LogInformation("Updating ticket {TicketId} with parameters: RouteId={RouteId}, Seat={Seat}, Price={Price}, Payment={Payment}, IsActive={IsActive}, UserIdentity={UserIdentity}", 
-                    id, model.RouteId ?? ticket.RouteId, model.SeatNumber ?? ticket.SeatNumber, 
-                    model.TicketPrice ?? ticket.TicketPrice, model.PaymentMethod ?? ticket.PaymentMethod, 
-                    model.IsActive ?? ticket.IsActive, userIdentity);
-
-                // Call the UpdateTicket reducer with the user identity
-                conn.Reducers.UpdateTicket(
-                    id, 
-                    model.RouteId ?? ticket.RouteId, 
-                    model.SeatNumber ?? ticket.SeatNumber, 
-                    model.TicketPrice ?? ticket.TicketPrice, 
-                    model.PaymentMethod ?? ticket.PaymentMethod, 
-                    model.IsActive ?? ticket.IsActive,
-                    userIdentity);
-
-                _logger.LogInformation("Successfully called UpdateTicket reducer for ticket {TicketId}", id);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating ticket {TicketId}: {ErrorMessage}, Stack trace: {StackTrace}", 
-                    id, ex.Message, ex.StackTrace);
-                return StatusCode(500, "An error occurred while updating the ticket");
-            }
+            await AdminMutationAsync("tickets.update", new UpdateTicketCommand(id, model.RouteId, model.TicketPrice, model.SeatNumber, model.PaymentMethod, model.IsActive, model.ExpectedRevision ?? AdminExpectedRevision()));
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTicket(uint id)
         {
-            _logger.LogInformation("DELETE /api/Tickets/{TicketId} - Delete ticket request received for ID: {TicketId}", id);
-            
-            if (!IsAdmin())
-            {
-                _logger.LogWarning("Unauthorized attempt to delete ticket {TicketId} by non-admin user", id);
-                return Forbid();
-            }
-
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-                _logger.LogDebug("Database connection established successfully for deleting ticket {TicketId}", id);
-                
-                var ticket = conn.Db.Ticket.TicketId.Find(id);
-                _logger.LogInformation("Ticket lookup result for ID {TicketId}: {@Ticket}", id, ticket);
-                
-                if (ticket == null)
-                {
-                    _logger.LogWarning("Ticket {TicketId} not found for delete operation", id);
-                    return NotFound();
-                }
-
-                // Check if ticket is sold
-                var sale = conn.Db.Sale.Iter().FirstOrDefault(s => s.TicketId == id);
-                _logger.LogInformation("Sale lookup result for ticket {TicketId}: {@Sale}", id, sale);
-                
-                if (sale != null)
-                {
-                    _logger.LogWarning("Cannot delete ticket {TicketId} as it is already sold. Sale details: {@Sale}", id, sale);
-                    return BadRequest("Cannot delete a sold ticket");
-                }
-
-                // Get user login from JWT token
-                _logger.LogDebug("JWT identity name: {IdentityName}", User.Identity?.Name);
-                var userLogin = User.Identity?.Name;
-                if (string.IsNullOrEmpty(userLogin))
-                {
-                    _logger.LogWarning("User login not found in JWT token. Identity: {@Identity}", 
-                        new { IsAuthenticated = User.Identity?.IsAuthenticated, AuthType = User.Identity?.AuthenticationType });
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                // Get user identity from login
-                var userIdentity = await _authService.GetUserIdentityByLoginAsync(userLogin);
-                _logger.LogInformation("User identity lookup result for login {UserLogin}: {UserIdentity}", userLogin, userIdentity);
-                
-                if (userIdentity == null)
-                {
-                    _logger.LogWarning("User identity not found for login: {Login}", userLogin);
-                    return Unauthorized("User identity could not be determined");
-                }
-                
-                _logger.LogInformation("Deleting ticket {TicketId} with user identity: {UserIdentity}", id, userIdentity);
-
-                // Call the DeleteTicket reducer with the user identity
-                conn.Reducers.DeleteTicket(id, userIdentity);
-
-                _logger.LogInformation("Successfully called DeleteTicket reducer for ticket {TicketId}", id);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting ticket {TicketId}: {ErrorMessage}, Stack trace: {StackTrace}", 
-                    id, ex.Message, ex.StackTrace);
-                return StatusCode(500, "An error occurred while deleting the ticket");
-            }
+            await AdminMutationAsync("tickets.delete", new DeleteTicketCommand(id, AdminExpectedRevision()));
+            return NoContent();
         }
 
         [HttpGet("search")]
@@ -767,11 +497,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
                 _logger.LogDebug("Database connection established successfully for ticket search");
                 
-                var query = conn.Db.Ticket.Iter().AsEnumerable();
-                _logger.LogDebug("Initial ticket count before filtering: {Count}", conn.Db.Ticket.Iter().Count());
+                var query = conn.Tickets.Values.AsEnumerable();
+                _logger.LogDebug("Initial ticket count before filtering: {Count}", conn.Tickets.Values.Count());
 
                 if (routeId.HasValue)
                 {
@@ -794,7 +524,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 HashSet<uint>? soldTicketIds = null;
                 if (isSold.HasValue)
                 {
-                    soldTicketIds = conn.Db.Sale.Iter().Select(s => s.TicketId).ToHashSet();
+                    soldTicketIds = conn.Sales.Select(s => s.TicketId).ToHashSet();
                     _logger.LogDebug("Sold ticket IDs: {@SoldTicketIds}", soldTicketIds);
                     
                     query = isSold.Value
@@ -805,7 +535,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 // Map results to anonymous type with Route details
                 var result = query.Select(t => {
-                    var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                    var route = conn.Routes.GetValueOrDefault(t.RouteId);
                     return new {
                         t.TicketId,
                         t.RouteId,
@@ -829,7 +559,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL SEARCH RESULTS DATA: {TicketsData}", JsonSerializer.Serialize(result)); // Added JSON logging
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error searching tickets: {ErrorMessage}, Stack trace: {StackTrace}", 
                     ex.Message, ex.StackTrace);
@@ -840,15 +570,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("route/{routeId}")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetTicketsByRoute(uint routeId)
         {
-            _logger.LogInformation("GET /api/Tickets/route/{RouteId} - Fetching tickets for route ID: {RouteId}", routeId);
+            _logger.LogInformation("GET /api/Tickets/route/{RouteId} - Fetching tickets for route", routeId);
 
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
                 _logger.LogDebug("Database connection established successfully for route {RouteId}", routeId);
                 
                 // First verify route exists
-                var route = conn.Db.Route.RouteId.Find(routeId);
+                var route = conn.Routes.GetValueOrDefault(routeId);
                 _logger.LogInformation("Route lookup result for ID {RouteId}: {@Route}", routeId, route);
                 
                 if (route == null)
@@ -857,7 +587,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound($"Route {routeId} not found");
                 }
 
-                var tickets = conn.Db.Ticket.Iter()
+                var tickets = conn.Tickets.Values
                     .Where(t => t.RouteId == routeId)
                     .ToList();
 
@@ -884,7 +614,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL ROUTE TICKETS DATA: {TicketsData}", JsonSerializer.Serialize(result)); // Added JSON logging
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving tickets for route {RouteId}: {ErrorMessage}, Stack trace: {StackTrace}", 
                     routeId, ex.Message, ex.StackTrace);
@@ -899,19 +629,19 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                var conn = await new AdminLookupService(_spacetimeService).ReadAsync(true, HttpContext.RequestAborted);
                 _logger.LogDebug("Database connection established successfully for available tickets query");
                 
-                var soldTicketIds = conn.Db.Sale.Iter().Select(s => s.TicketId).ToHashSet();
+                var soldTicketIds = conn.Sales.Select(s => s.TicketId).ToHashSet();
                 _logger.LogInformation("Sold ticket IDs: {@SoldTicketIds}", soldTicketIds);
                 
-                var availableTickets = conn.Db.Ticket.Iter()
+                var availableTickets = conn.Tickets.Values
                     .Where(t => !soldTicketIds.Contains(t.TicketId))
                     .ToList();
 
                 // Map to anonymous type with Route details
                 var result = availableTickets.Select(t => {
-                    var route = conn.Db.Route.RouteId.Find(t.RouteId);
+                    var route = conn.Routes.GetValueOrDefault(t.RouteId);
                     return new {
                         t.TicketId,
                         t.RouteId,
@@ -934,7 +664,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL AVAILABLE TICKET DATA: {TicketsData}", JsonSerializer.Serialize(result)); // Added JSON logging
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving available tickets: {ErrorMessage}, Stack trace: {StackTrace}", 
                     ex.Message, ex.StackTrace);
@@ -953,10 +683,11 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdateTicketModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public uint? RouteId { get; set; }
         public double? TicketPrice { get; set; }
         public uint? SeatNumber { get; set; }
         public string? PaymentMethod { get; set; }
         public bool? IsActive { get; set; }
     }
-} 
+}

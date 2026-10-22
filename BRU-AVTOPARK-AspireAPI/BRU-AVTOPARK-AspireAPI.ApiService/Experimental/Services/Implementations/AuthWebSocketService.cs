@@ -101,6 +101,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
                     continue;
 
                 var json = Encoding.UTF8.GetString(ms.ToArray());
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "RECEIVED RAW", json);
                 await HandleMessageAsync(webSocket, json, sendLock, connectionId,
                     claimsHolder, qrSubscriptions, qrPollerTasks, sourceIp, cts);
             }
@@ -138,7 +139,8 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             }
 
             sendLock.Dispose();
-            _logger.LogInformation("[AuthWS:{ConnId}] Session closed", connectionId);
+            _logger.LogInformation("[AuthWS:{ConnId}] Session closed Status={CloseStatus} Reason={Reason}", connectionId, webSocket.CloseStatus,
+                TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(webSocket.CloseStatusDescription));
         }
     }
 
@@ -179,12 +181,21 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             {
                 case "auth:validate":
                     await HandleValidateAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
                 case "auth:refresh":
                     await HandleRefreshAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder.Claims, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
+                    break;
+
+                case "auth:logout":
+                    var logoutProof = ReadOptionalString(root, "refreshToken");
+                    var logout = logoutProof == null ? LogoutResult.Successful() : await _orchestration.LogoutAsync(default, logoutProof);
+                    CancelQrSubscriptions(qrSubscriptions);
+                    claimsHolder.Claims = null;
+                    await WsSendAsync(webSocket, new { type = "auth:logged-out", requestId, success = logout.Success,
+                        error = logout.Success ? null : "invalid_refresh_token" }, sendLock, cts.Token);
                     break;
 
                 case "auth:qr-status":
@@ -199,7 +210,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
                 case "auth:login":
                     await HandleLoginAsync(webSocket, root, requestId, sendLock,
-                        connectionId, claimsHolder, sourceIp, cts.Token);
+                        connectionId, claimsHolder, qrSubscriptions, sourceIp, cts.Token);
                     break;
 
                 case "auth:ping":
@@ -224,6 +235,12 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
     // ── auth:login ────────────────────────────────────────────────────────────
 
+    private static void CancelQrSubscriptions(ConcurrentDictionary<string, CancellationTokenSource> subscriptions)
+    {
+        foreach (var subscription in subscriptions.Values) subscription.Cancel();
+        subscriptions.Clear();
+    }
+
     private async Task HandleLoginAsync(
         WebSocket webSocket,
         JsonElement root,
@@ -231,11 +248,12 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         SemaphoreSlim sendLock,
         string connectionId,
         WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        var username = root.TryGetProperty("username", out var u) ? u.GetString() : null;
-        var password = root.TryGetProperty("password", out var p) ? p.GetString() : null;
+        var username = ReadOptionalString(root, "username");
+        var password = ReadOptionalString(root, "password");
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
@@ -274,7 +292,10 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
         // Upgrade the connection's auth state with the new claims
         if (result.Claims != null)
+        {
+            CancelQrSubscriptions(qrSubscriptions);
             claimsHolder.Claims = result.Claims;
+        }
 
         await PublishAuthEventAsync("auth.login.websocket",
             result.User?.Id.ToString(),
@@ -290,6 +311,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             requestId,
             success = true,
             token = result.Token,
+            refreshToken = result.RefreshToken,
             user = result.User == null ? null : new
             {
                 id = result.User.Id,
@@ -310,10 +332,11 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         SemaphoreSlim sendLock,
         string connectionId,
         WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        string? inlineToken = root.TryGetProperty("token", out var tok) ? tok.GetString() : null;
+        string? inlineToken = ReadOptionalString(root, "token");
 
         Dictionary<string, object>? claims = null;
 
@@ -331,6 +354,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
 
         if (!string.IsNullOrWhiteSpace(inlineToken))
         {
+            CancelQrSubscriptions(qrSubscriptions);
             claimsHolder.Claims = claims;
             _logger.LogInformation("[AuthWS:{ConnId}] Connection upgraded to authenticated via auth:validate", connectionId);
         }
@@ -352,11 +376,12 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? requestId,
         SemaphoreSlim sendLock,
         string connectionId,
-        Dictionary<string, object>? validatedClaims,
+        WsClaimsHolder claimsHolder,
+        ConcurrentDictionary<string, CancellationTokenSource> qrSubscriptions,
         string? sourceIp,
         CancellationToken cancellationToken)
     {
-        var refreshToken = root.TryGetProperty("refreshToken", out var rt) ? rt.GetString() : null;
+        var refreshToken = ReadOptionalString(root, "refreshToken");
 
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
@@ -372,6 +397,15 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
             return;
         }
 
+        var validatedClaims = string.IsNullOrEmpty(result.Token) ? null
+            : await _tokenValidator.ValidateTokenDirectAsync(result.Token, cancellationToken);
+        if (validatedClaims == null)
+        {
+            await WsSendAsync(webSocket, new { type = "auth:refreshed", requestId, success = false, error = "Refreshed token validation failed" }, sendLock, cancellationToken);
+            return;
+        }
+        CancelQrSubscriptions(qrSubscriptions);
+        claimsHolder.Claims = validatedClaims;
         await PublishAuthEventAsync("auth.token.refreshed",
             validatedClaims?.TryGetValue("sub", out var sub) == true ? sub?.ToString() : null,
             validatedClaims?.TryGetValue("unique_name", out var name) == true ? name?.ToString() : null,
@@ -403,7 +437,7 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         string? sourceIp,
         CancellationTokenSource connectionCts)
     {
-        var deviceId = root.TryGetProperty("deviceId", out var did) ? did.GetString() : null;
+        var deviceId = ReadOptionalString(root, "deviceId");
 
         if (string.IsNullOrWhiteSpace(deviceId))
         {
@@ -578,12 +612,20 @@ public sealed class AuthWebSocketService : IAuthWebSocketService
         return sanitized.Length > maxLength ? sanitized[..maxLength] + "…" : sanitized;
     }
 
+    private static string? ReadOptionalString(JsonElement root, string property)
+    {
+        if (!root.TryGetProperty(property, out var value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.String) throw new JsonException($"'{property}' must be a string.");
+        return value.GetString();
+    }
+
     private async Task WsSendAsync(WebSocket webSocket, object payload, SemaphoreSlim sendLock, CancellationToken cancellationToken)
     {
         if (webSocket.State != WebSocketState.Open)
             return;
 
         var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, WsJsonOptions);
+        TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Frame(_logger, "SENDING", Encoding.UTF8.GetString(bytes));
 
         await sendLock.WaitAsync(cancellationToken);
         try

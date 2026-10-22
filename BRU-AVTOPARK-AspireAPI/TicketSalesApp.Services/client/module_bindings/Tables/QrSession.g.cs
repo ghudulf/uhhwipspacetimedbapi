@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "qr_session";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(QrSession row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(QrSessionHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class SessionIdUniqueIndex : UniqueIndexBase<string>
             {
                 protected override string GetKey(QrSession row) => row.SessionId;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal QrSessionHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 SessionId = new(this);
             }
 
@@ -45,6 +55,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<QrSession, ulong> ExpiryTime { get; }
         public global::SpacetimeDB.Col<QrSession, string> InitiatingDevice { get; }
         public global::SpacetimeDB.Col<QrSession, bool> IsUsed { get; }
+        public global::SpacetimeDB.Col<QrSession, uint> ApiAccessPartition { get; }
 
         public QrSessionCols(string tableName)
         {
@@ -54,16 +65,19 @@ namespace SpacetimeDB.Types
             ExpiryTime = new global::SpacetimeDB.Col<QrSession, ulong>(tableName, "expiry_time");
             InitiatingDevice = new global::SpacetimeDB.Col<QrSession, string>(tableName, "initiating_device");
             IsUsed = new global::SpacetimeDB.Col<QrSession, bool>(tableName, "is_used");
+            ApiAccessPartition = new global::SpacetimeDB.Col<QrSession, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class QrSessionIxCols
     {
         public global::SpacetimeDB.IxCol<QrSession, string> SessionId { get; }
+        public global::SpacetimeDB.IxCol<QrSession, uint> ApiAccessPartition { get; }
 
         public QrSessionIxCols(string tableName)
         {
             SessionId = new global::SpacetimeDB.IxCol<QrSession, string>(tableName, "session_id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<QrSession, uint>(tableName, "api_access_partition");
         }
     }
 }

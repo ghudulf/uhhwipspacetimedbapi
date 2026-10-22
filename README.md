@@ -2,6 +2,16 @@
 
 A comprehensive multi-tenant SaaS application for managing bus fleet operations, ticket sales, employee management, and maintenance scheduling. Built with SpacetimeDB 2.0, .NET 9, and Avalonia UI.
 
+Local development and LAN HTTP/WS are enabled by the shared **`lan` plaintext policy**.
+Set API `Network__PlaintextPolicy` and client `BRU_PLAINTEXT_POLICY` to `never`,
+`loopback`, `lan` (default), or `any`. See [network policy](docs/architecture/network-policy.md)
+for address/name scope, discovery ports, security risks and HTTPS-only platform exceptions.
+
+Debug traffic defaults to **`redacted`**: raw HTTP/WebSocket JSON and bound DataGrid
+rows preserve business data while masking credential values. See
+[diagnostics](docs/architecture/diagnostics.md) for configuration, log locations,
+blank-grid debugging and the explicitly unsafe `full` level.
+
 ## 🏗️ Architecture Overview
 
 ### Technology Stack
@@ -10,6 +20,16 @@ A comprehensive multi-tenant SaaS application for managing bus fleet operations,
 - **API Layer**: ASP.NET Core 9.0 with .NET Aspire orchestration
 - **Desktop Client**: Avalonia UI 11.2 (cross-platform XAML framework)
 - **Authentication**: OpenID Connect with OAuth 2.0, WebAuthn, TOTP
+
+Provider rollout checkpoint: [Microsoft Entra system-browser login and secure
+account linking](docs/architecture/provider-authentication.md) and system-browser
+passkey registration/login/key management are implemented behind default-off
+flags. Windows Hello depends on browser/platform WebAuthn support; real platform
+validation remains outstanding. Native refresh rotation and shared read/subscription
+recovery are implemented; see [session synchronization and deployment](docs/architecture/session-synchronization.md)
+for strict reuse/concurrency semantics, native-only opt-in and storage limitations.
+Local security checks, retained findings, deployment changes and the unresolved
+AppHost dependency advisory are recorded in [security validation](docs/architecture/security-validation.md).
 - **Real-time Sync**: SpacetimeDB client SDK with automatic data synchronization
 
 ### Project Structure
@@ -1102,3 +1122,14 @@ Eclipse Public License - v 2.0
 - **OpenIddict** - OAuth 2.0 framework inspiration
 
  
+
+### Initial administrator and API database identity
+
+Use [database bootstrap](docs/architecture/database-bootstrap.md) after publishing the module. The tool generates and persists the API identity through a first connection, provisions trust as the deployment owner, and sets the initial administrator password from a masked prompt. No manual password hashing or database-row editing is needed.
+# Secret storage and rotation
+
+See [secret configuration, committed-key inventory and rotation](docs/architecture/secrets.md).
+Administrative v2 operations now cover tickets, route schedules, users, roles and
+permissions, including receipts, revisions and query subscriptions. See the
+[operation table](docs/architecture/realtime-v2.md#implemented-operations) and
+[truthful endpoint coverage ledger](docs/architecture/operation-coverage.md).

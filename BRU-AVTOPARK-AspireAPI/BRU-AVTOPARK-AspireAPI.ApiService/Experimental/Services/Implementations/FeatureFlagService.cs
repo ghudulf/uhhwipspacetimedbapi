@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SpacetimeDB;
 using SpacetimeDB.Types;
@@ -12,246 +6,73 @@ using TicketSalesApp.AdminServer.Configuration;
 using TicketSalesApp.AdminServer.Experimental.Services.Interfaces;
 using TicketSalesApp.Services.Interfaces;
 
-namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations
+namespace TicketSalesApp.AdminServer.Experimental.Services.Implementations;
+
+/// <summary>Committed database overrides take precedence over current configuration. No process-only override cache.</summary>
+public sealed class FeatureFlagService(IOptionsMonitor<FeatureFlagOptions> options, ISpacetimeDBService database,
+    ILogger<FeatureFlagService> logger) : IFeatureFlagService
 {
-    /// <summary>
-    /// Service for managing feature flags with runtime configuration support.
-    /// Implements priority: runtime overrides (database) > appsettings.json > default (true)
-    /// Uses in-memory cache for hot reload (immediate effect without restart).
-    /// After legacy AuthController removal, flags control endpoint availability (false = 503).
-    /// </summary>
-    public class FeatureFlagService : IFeatureFlagService
+    // Only declared boolean configuration properties are eligible; no arbitrary property/service invocation.
+    private static readonly IReadOnlyDictionary<string, PropertyInfo> Flags = typeof(FeatureFlagOptions)
+        .GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => (p.PropertyType == typeof(bool) || p.PropertyType == typeof(bool?)) && p.Name != nameof(FeatureFlagOptions.LegacyAvailabilityCompatibility))
+        .ToDictionary(p => p.Name, StringComparer.Ordinal);
+
+    public Task<Dictionary<string, bool>> GetAllFlagsAsync() => database.ReadAsync(c =>
     {
-        private readonly IOptionsMonitor<FeatureFlagOptions> _options;
-        private readonly ISpacetimeDBService _spacetimeService;
-        private readonly ILogger<FeatureFlagService> _logger;
+        var configuration = options.CurrentValue;
+        var overrides = c.Db.FeatureFlagOverride.Iter().ToDictionary(row => row.FlagName, row => row.Enabled, StringComparer.Ordinal);
+        bool? Find(string name) => overrides.TryGetValue(name, out var value) ? value : null;
+        return Flags.ToDictionary(p => p.Key, p => EndpointAvailability.IsAvailabilityFlag(p.Key)
+            ? EndpointAvailability.Resolve(configuration, p.Key, Find)
+            : Find(p.Key) ?? (bool)p.Value.GetValue(configuration)!, StringComparer.Ordinal);
+    });
 
-        // In-memory cache for runtime overrides (hot reload)
-        // Key: flag name, Value: enabled state
-        private static readonly ConcurrentDictionary<string, bool> _runtimeOverrides = new();
+    public async Task<bool> GetFlagAsync(string flagName)
+    {
+        if (string.IsNullOrEmpty(flagName) || !Flags.TryGetValue(flagName, out var property)) return false;
+        var configuration = options.CurrentValue;
+        var result = await database.ReadAsync(c => EndpointAvailability.IsAvailabilityFlag(flagName)
+            ? EndpointAvailability.Resolve(configuration, flagName, name => c.Db.FeatureFlagOverride.FlagName.Find(name)?.Enabled)
+            : c.Db.FeatureFlagOverride.FlagName.Find(flagName)?.Enabled ?? (bool)property.GetValue(configuration)!);
+        logger.LogDebug("Endpoint flag {FlagName}: {Enabled}", flagName, result);
+        return result;
+    }
 
-        public FeatureFlagService(
-            IOptionsMonitor<FeatureFlagOptions> options,
-            ISpacetimeDBService spacetimeService,
-            ILogger<FeatureFlagService> logger)
-        {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
-            _spacetimeService = spacetimeService ?? throw new ArgumentNullException(nameof(spacetimeService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    public async Task UpdateFlagAsync(string flagName, bool enabled, Identity updatedBy)
+    {
+        Validate(flagName);
+        await database.ExecuteReducerAsync(new Reducer.UpdateFeatureFlag(flagName, enabled, updatedBy), _ => true);
+        logger.LogInformation("Endpoint flag {FlagName} committed: {Enabled}", flagName, enabled);
+    }
 
-            // Load runtime overrides from database on startup
-            _ = LoadRuntimeOverridesAsync();
-        }
+    public async Task BulkUpdateFlagsAsync(Dictionary<string, bool> flags, Identity updatedBy)
+    {
+        if (flags == null || flags.Count == 0 || flags.Count > Flags.Count) throw new ArgumentException("Invalid flag count.");
+        foreach (var name in flags.Keys) Validate(name);
+        // Existing reducer contract is per-flag: stop and report failure, never report an uncommitted override as active.
+        foreach (var flag in flags.OrderBy(p => p.Key, StringComparer.Ordinal)) await UpdateFlagAsync(flag.Key, flag.Value, updatedBy);
+    }
 
-        /// <summary>
-        /// Load runtime overrides from SpacetimeDB into in-memory cache.
-        /// Called on service initialization.
-        /// </summary>
-        private async Task LoadRuntimeOverridesAsync()
-        {
-            try
+    public async Task ResetToDefaultsAsync(Identity actingUserId)
+    {
+        await database.ExecuteReducerAsync(new Reducer.ClearFeatureFlagOverrides(actingUserId), _ => true);
+        logger.LogInformation("Endpoint flag overrides cleared after commit");
+    }
+
+    public Task<List<FeatureFlagAuditLog>> GetAuditLogAsync(int limit = 100)
+    {
+        if (limit is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(limit));
+        // Preserves the existing endpoint's latest-change projection; durable historical audit events are separate.
+        return database.ReadAsync(c => c.Db.FeatureFlagOverride.Iter().OrderByDescending(f => f.UpdatedAt).ThenBy(f => f.FlagName)
+            .Take(limit).Select(f => new FeatureFlagAuditLog
             {
-                var conn = _spacetimeService.GetConnection();
-                var overrides = conn.Db.FeatureFlagOverride.Iter().ToList();
-
-                foreach (var @override in overrides)
-                {
-                    _runtimeOverrides[@override.FlagName] = @override.Enabled;
-                }
-
-                _logger.LogInformation("Loaded {Count} feature flag runtime overrides from database", overrides.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to load feature flag runtime overrides from database. Using appsettings.json defaults.");
-            }
-        }
-
-        public async Task<Dictionary<string, bool>> GetAllFlagsAsync()
-        {
-            var flags = new Dictionary<string, bool>();
-
-            // Get all properties from FeatureFlagOptions
-            var properties = typeof(FeatureFlagOptions)
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.PropertyType == typeof(bool));
-
-            foreach (var property in properties)
-            {
-                var flagName = property.Name;
-                var flagValue = await GetFlagAsync(flagName);
-                flags[flagName] = flagValue;
-            }
-
-            return flags;
-        }
-
-        public async Task<bool> GetFlagAsync(string flagName)
-        {
-            if (string.IsNullOrWhiteSpace(flagName))
-            {
-                _logger.LogWarning("GetFlagAsync called with null or empty flag name");
-                return false;
-            }
-
-            // Priority 1: Check runtime override (database cache)
-            if (_runtimeOverrides.TryGetValue(flagName, out bool cachedValue))
-            {
-                _logger.LogDebug("Feature flag {FlagName} found in runtime overrides: {Enabled}", flagName, cachedValue);
-                return cachedValue;
-            }
-
-            // Priority 2: Fall back to appsettings.json configuration
-            var property = typeof(FeatureFlagOptions).GetProperty(flagName);
-            if (property != null && property.PropertyType == typeof(bool))
-            {
-                var value = (bool)property.GetValue(_options.CurrentValue);
-                _logger.LogDebug("Feature flag {FlagName} found in appsettings.json: {Enabled}", flagName, value);
-                return value;
-            }
-
-            // Priority 3: Default to true (enabled) - all endpoints active after legacy removal
-            _logger.LogDebug("Feature flag {FlagName} not found, defaulting to true", flagName);
-            return true;
-        }
-
-        public async Task UpdateFlagAsync(string flagName, bool enabled, Identity updatedBy)
-        {
-            if (string.IsNullOrWhiteSpace(flagName))
-            {
-                throw new ArgumentException("Flag name cannot be null or empty", nameof(flagName));
-            }
-
-            // Validate flag name exists in FeatureFlagOptions
-            var property = typeof(FeatureFlagOptions).GetProperty(flagName);
-            if (property == null || property.PropertyType != typeof(bool))
-            {
-                throw new ArgumentException($"Invalid feature flag name: {flagName}", nameof(flagName));
-            }
-
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-
-                // Update in database for persistence
-                conn.Reducers.UpdateFeatureFlag(flagName, enabled, updatedBy);
-
-                // Update in-memory cache for immediate effect (hot reload)
-                _runtimeOverrides[flagName] = enabled;
-
-                _logger.LogInformation(
-                    "Feature flag {FlagName} updated to {Enabled} by {UpdatedBy}",
-                    flagName,
-                    enabled,
-                    updatedBy);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update feature flag {FlagName}", flagName);
-                throw;
-            }
-        }
-
-        public async Task BulkUpdateFlagsAsync(Dictionary<string, bool> flags, Identity updatedBy)
-        {
-            if (flags == null || flags.Count == 0)
-            {
-                throw new ArgumentException("Flags dictionary cannot be null or empty", nameof(flags));
-            }
-
-            var successCount = 0;
-            var failureCount = 0;
-
-            foreach (var kvp in flags)
-            {
-                try
-                {
-                    await UpdateFlagAsync(kvp.Key, kvp.Value, updatedBy);
-                    successCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to update feature flag {FlagName} during bulk update", kvp.Key);
-                    failureCount++;
-                }
-            }
-
-            _logger.LogInformation(
-                "Bulk feature flag update completed: {SuccessCount} succeeded, {FailureCount} failed",
-                successCount,
-                failureCount);
-
-            if (failureCount > 0)
-            {
-                throw new InvalidOperationException($"Bulk update partially failed: {failureCount} flags failed to update");
-            }
-        }
-
-        public async Task ResetToDefaultsAsync(Identity actingUserId)
-        {
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-
-                // Clear all runtime overrides from database
-                conn.Reducers.ClearFeatureFlagOverrides(actingUserId);
-
-                // Clear in-memory cache
-                _runtimeOverrides.Clear();
-
-                _logger.LogInformation("All feature flag runtime overrides cleared by {UserId}. Using appsettings.json defaults.", actingUserId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to reset feature flags to defaults");
-                throw;
-            }
-        }
-
-        public async Task<List<FeatureFlagAuditLog>> GetAuditLogAsync(int limit = 100)
-        {
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-
-                var auditLogs = conn.Db.FeatureFlagOverride.Iter()
-                    .OrderByDescending(f => f.UpdatedAt)
-                    .Take(limit)
-                    .Select(f => new FeatureFlagAuditLog
-                    {
-                        FlagName = f.FlagName,
-                        Enabled = f.Enabled,
-                        UpdatedBy = f.UpdatedBy,
-                        UpdatedByUsername = GetUsernameForIdentity(conn, f.UpdatedBy),
-                        UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)f.UpdatedAt).DateTime
-                    })
-                    .ToList();
-
-                return auditLogs;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to retrieve feature flag audit log");
-                return new List<FeatureFlagAuditLog>();
-            }
-        }
-
-        /// <summary>
-        /// Helper method to get username for an identity (for audit log display).
-        /// </summary>
-        private string GetUsernameForIdentity(DbConnection conn, Identity identity)
-        {
-            try
-            {
-                var user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.UserId.Equals(identity));
-
-                return user?.Login ?? identity.ToString();
-            }
-            catch
-            {
-                return identity.ToString();
-            }
-        }
+                FlagName = f.FlagName, Enabled = f.Enabled, UpdatedBy = f.UpdatedBy,
+                UpdatedByUsername = c.Db.UserProfile.UserId.Find(f.UpdatedBy)?.Login ?? f.UpdatedBy.ToString(),
+                UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(checked((long)f.UpdatedAt)).UtcDateTime
+            }).ToList());
+    }
+    private static void Validate(string flagName)
+    {
+        if (string.IsNullOrEmpty(flagName) || !Flags.ContainsKey(flagName)) throw new ArgumentException("Unknown endpoint flag.", nameof(flagName));
     }
 }

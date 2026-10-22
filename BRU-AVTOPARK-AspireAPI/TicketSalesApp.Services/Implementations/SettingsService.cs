@@ -33,11 +33,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Getting or creating user settings for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Try to find existing settings
-                var existingSettings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var existingSettings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (existingSettings != null)
                 {
@@ -47,45 +44,15 @@ namespace TicketSalesApp.Services.Implementations
 
                 // Create default settings if none exist
                 _logger.LogInformation("Creating default user settings for user: {UserId}", userId);
-                conn.Reducers.CreateUserSettings(userId);
-
-                // Wait for the reducer to complete (with retries)
-                UserSettings? newSettings = null;
-                for (int i = 0; i < 5; i++)
-                {
-                    await Task.Delay(100);
-                    newSettings = conn.Db.UserSettings.Iter()
-                        .FirstOrDefault(s => s.UserId.Equals(userId));
-                    
-                    if (newSettings != null)
-                    {
-                        _logger.LogInformation("Successfully created default user settings for user: {UserId}", userId);
-                        return newSettings;
-                    }
-                }
-
-                // If still null after retries, return default settings object
-                // This allows login to proceed without 2FA
-                _logger.LogWarning("Failed to create user settings in database for user: {UserId}, returning default settings", userId);
-                return new UserSettings
-                {
-                    UserId = userId,
-                    TotpEnabled = false,
-                    WebAuthnEnabled = false
-                };
+                return await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateUserSettings(userId),
+                    c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId) ?? throw new InvalidOperationException("Committed settings missing."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting or creating user settings for user: {UserId}", userId);
                 
-                // Return default settings to allow login to proceed
-                _logger.LogWarning("Returning default settings due to error for user: {UserId}", userId);
-                return new UserSettings
-                {
-                    UserId = userId,
-                    TotpEnabled = false,
-                    WebAuthnEnabled = false
-                };
+                // Settings failure must not silently disable required second factors.
+                throw;
             }
         }
 
@@ -98,11 +65,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Enabling TOTP for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Verify settings exist
-                var settings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var settings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (settings == null)
                 {
@@ -111,7 +75,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the reducer to enable TOTP
-                conn.Reducers.EnableTotp(userId);
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.EnableTotp(userId), _ => true);
 
                 _logger.LogInformation("Successfully enabled TOTP for user: {UserId}", userId);
                 return true;
@@ -132,11 +96,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Disabling TOTP for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Verify settings exist
-                var settings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var settings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (settings == null)
                 {
@@ -145,7 +106,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the reducer to disable TOTP
-                conn.Reducers.DisableTotp(userId);
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.DisableTotp(userId), _ => true);
 
                 _logger.LogInformation("Successfully disabled TOTP for user: {UserId}", userId);
                 return true;
@@ -166,11 +127,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Enabling WebAuthn for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Verify settings exist
-                var settings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var settings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (settings == null)
                 {
@@ -179,7 +137,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the reducer to enable WebAuthn
-                conn.Reducers.EnableWebAuthn(userId);
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.EnableWebAuthn(userId), _ => true);
 
                 _logger.LogInformation("Successfully enabled WebAuthn for user: {UserId}", userId);
                 return true;
@@ -200,11 +158,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Disabling WebAuthn for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Verify settings exist
-                var settings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var settings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (settings == null)
                 {
@@ -213,7 +168,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the reducer to disable WebAuthn
-                conn.Reducers.DisableWebAuthn(userId);
+                await _spacetimeService.ExecuteReducerAsync(new Reducer.DisableWebAuthn(userId), _ => true);
 
                 _logger.LogInformation("Successfully disabled WebAuthn for user: {UserId}", userId);
                 return true;
@@ -236,11 +191,8 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Updating user settings for user: {UserId}", userId);
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Verify settings exist
-                var existingSettings = conn.Db.UserSettings.Iter()
-                    .FirstOrDefault(s => s.UserId.Equals(userId));
+                var existingSettings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
 
                 if (existingSettings == null)
                 {

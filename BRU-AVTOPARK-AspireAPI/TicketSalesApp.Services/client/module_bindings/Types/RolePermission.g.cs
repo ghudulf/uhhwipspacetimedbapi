@@ -23,13 +23,16 @@ namespace SpacetimeDB.Types
         public ulong GrantedAt;
         [DataMember(Name = "granted_by")]
         public string? GrantedBy;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public RolePermission(
             uint Id,
             uint RoleId,
             uint PermissionId,
             ulong GrantedAt,
-            string? GrantedBy
+            string? GrantedBy,
+            uint ApiAccessPartition
         )
         {
             this.Id = Id;
@@ -37,6 +40,7 @@ namespace SpacetimeDB.Types
             this.PermissionId = PermissionId;
             this.GrantedAt = GrantedAt;
             this.GrantedBy = GrantedBy;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public RolePermission()

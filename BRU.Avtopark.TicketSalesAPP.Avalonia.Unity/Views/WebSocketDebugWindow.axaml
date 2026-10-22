@@ -71,7 +71,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Ellipse Width="12" Height="12"
                                      Fill="{Binding IsAnyConnected, Converter={StaticResource BoolToColorConverter}}"/>
-                            <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontWeight="SemiBold"/>
+                            <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding StatusMessage}" Foreground="White" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -89,21 +89,21 @@
                             <TextBlock Text="Connection Settings" Classes="header"/>
                             
                             <TextBlock Text="Server URL:" Foreground="#CCCCCC" FontSize="12"/>
-                            <TextBox Text="{Binding ServerUrl}" 
+                            <TextBox AutomationProperties.Name="Адрес сервера" Text="{Binding ServerUrl}"
                                      PlaceholderText="http://localhost:5000"
                                      Background="#3E3E42" 
                                      Foreground="White"
                                      BorderBrush="#555555"/>
 
                             <TextBlock Text="Access Token (Optional):" Foreground="#CCCCCC" FontSize="12" Margin="0,8,0,0"/>
-                            <TextBox Text="{Binding AccessToken}" 
+                            <TextBox AutomationProperties.Name="Токен доступа" Text="{Binding AccessToken}"
                                      PlaceholderText="Bearer token..."
                                      PasswordChar="•"
                                      Background="#3E3E42" 
                                      Foreground="White"
                                      BorderBrush="#555555"/>
 
-                            <Button Command="{Binding ConnectWebSocketCommand}"
+                            <Button AutomationProperties.Name="Подключить или отключить WebSocket" Command="{Binding ConnectWebSocketCommand}"
                                     Classes="primary"
                                     HorizontalAlignment="Stretch"
                                     Margin="0,8,0,0">
@@ -118,7 +118,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="Test Controls" Classes="header"/>
                             
-                            <Button Command="{Binding TestAllControllersCommand}"
+                            <Button AutomationProperties.Name="Проверить все контроллеры" Command="{Binding TestAllControllersCommand}"
                                     Classes="primary"
                                     HorizontalAlignment="Stretch">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -127,7 +127,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <Button Command="{Binding SendBroadcastTestCommand}"
+                            <Button AutomationProperties.Name="Проверить широковещательную отправку" Command="{Binding SendBroadcastTestCommand}"
                                     Classes="secondary"
                                     HorizontalAlignment="Stretch"
                                     IsEnabled="{Binding IsConnected}">
@@ -137,7 +137,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <Button Command="{Binding TestInteractiveEndpointCommand}"
+                            <Button AutomationProperties.Name="Проверить интерактивное подключение" Command="{Binding TestInteractiveEndpointCommand}"
                                     Classes="primary"
                                     HorizontalAlignment="Stretch">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -146,12 +146,12 @@
                                 </StackPanel>
                             </Button>
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                                <Button Command="{Binding ResetTestsCommand}"
+                                <Button AutomationProperties.Name="Сбросить проверки" Command="{Binding ResetTestsCommand}"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch">
                                     <TextBlock Text="🔄 Reset"/>
                                 </Button>
-                                <Button Command="{Binding ClearLogCommand}"
+                                <Button AutomationProperties.Name="Очистить журнал" Command="{Binding ClearLogCommand}"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch">
                                     <TextBlock Text="🗑️ Clear Log"/>
@@ -168,7 +168,7 @@
                                        Foreground="#999999" FontSize="11" Margin="0,0,0,4"/>
                             
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                                <Button Grid.Row="0" Grid.Column="0"
+                                <Button AutomationProperties.Name="Эхо" Grid.Row="0" Grid.Column="0"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="echo"
                                         Classes="secondary"
@@ -177,7 +177,7 @@
                                     <TextBlock Text="💬 Echo"/>
                                 </Button>
                                 
-                                <Button Grid.Row="0" Grid.Column="1"
+                                <Button AutomationProperties.Name="Время" Grid.Row="0" Grid.Column="1"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="time"
                                         Classes="secondary"
@@ -186,7 +186,7 @@
                                     <TextBlock Text="🕐 Time"/>
                                 </Button>
                                 
-                                <Button Grid.Row="1" Grid.Column="0"
+                                <Button AutomationProperties.Name="Статистика" Grid.Row="1" Grid.Column="0"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="stats"
                                         Classes="secondary"
@@ -195,7 +195,7 @@
                                     <TextBlock Text="📊 Stats"/>
                                 </Button>
                                 
-                                <Button Grid.Row="1" Grid.Column="1"
+                                <Button AutomationProperties.Name="Проверить соединение" Grid.Row="1" Grid.Column="1"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="ping"
                                         Classes="secondary"
@@ -204,7 +204,7 @@
                                     <TextBlock Text="🏓 Ping"/>
                                 </Button>
                                 
-                                <Button Grid.Row="2" Grid.Column="0"
+                                <Button AutomationProperties.Name="Вычислить" Grid.Row="2" Grid.Column="0"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="calculate"
                                         Classes="secondary"
@@ -213,7 +213,7 @@
                                     <TextBlock Text="🔢 Calculate"/>
                                 </Button>
                                 
-                                <Button Grid.Row="2" Grid.Column="1"
+                                <Button AutomationProperties.Name="Справка" Grid.Row="2" Grid.Column="1"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="help"
                                         Classes="secondary"
@@ -222,7 +222,7 @@
                                     <TextBlock Text="❓ Help"/>
                                 </Button>
                                 
-                                <Button Grid.Row="3" Grid.Column="0"
+                                <Button AutomationProperties.Name="Поток автобусов" Grid.Row="3" Grid.Column="0"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="stream:buses"
                                         Classes="secondary"
@@ -231,7 +231,7 @@
                                     <TextBlock Text="🚌 Stream Buses"/>
                                 </Button>
                                 
-                                <Button Grid.Row="3" Grid.Column="1"
+                                <Button AutomationProperties.Name="Поток маршрутов" Grid.Row="3" Grid.Column="1"
                                         Command="{Binding SendInteractiveCommandCommand}"
                                         CommandParameter="stream:routes"
                                         Classes="secondary"
@@ -242,7 +242,7 @@
                             </Grid>
 
                             <!-- Stop all active streams -->
-                            <Button Command="{Binding StopAllStreamsCommand}"
+                            <Button AutomationProperties.Name="Остановить все потоки" Command="{Binding StopAllStreamsCommand}"
                                     Classes="danger"
                                     HorizontalAlignment="Stretch"
                                     Margin="0,6,0,0"
@@ -264,14 +264,14 @@
 
                             <TextBlock Text="Test Token (paste or load):" Foreground="#CCCCCC" FontSize="12"/>
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Grid.Column="0"
+                                <TextBox AutomationProperties.Name="Токен тестового сеанса" Grid.Column="0"
                                          Text="{Binding AuthWsTestToken}"
                                          PlaceholderText="Access token for auth WS test..."
                                          PasswordChar="•"
                                          Background="#3E3E42"
                                          Foreground="White"
                                          BorderBrush="#555555"/>
-                                <Button Grid.Column="1"
+                                <Button AutomationProperties.Name="Загрузить токен из хранилища" Grid.Column="1"
                                         Command="{Binding LoadAuthWsTokenFromStorageCommand}"
                                         Classes="secondary"
                                         Margin="4,0,0,0"
@@ -282,14 +282,14 @@
                             </Grid>
 
                             <TextBlock Text="Refresh Token:" Foreground="#CCCCCC" FontSize="12" Margin="0,4,0,0"/>
-                            <TextBox Text="{Binding AuthWsRefreshToken}"
+                            <TextBox AutomationProperties.Name="Токен обновления" Text="{Binding AuthWsRefreshToken}"
                                      PlaceholderText="Refresh token (for auth:refresh)..."
                                      PasswordChar="•"
                                      Background="#3E3E42"
                                      Foreground="White"
                                      BorderBrush="#555555"/>
 
-                            <Button Command="{Binding ConnectAuthWsCommand}"
+                            <Button AutomationProperties.Name="Подключить или отключить сеанс авторизации" Command="{Binding ConnectAuthWsCommand}"
                                     Classes="primary"
                                     HorizontalAlignment="Stretch"
                                     Margin="0,8,0,0">
@@ -298,21 +298,21 @@
                             </Button>
 
                             <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
-                                <Button Grid.Column="0"
+                                <Button AutomationProperties.Name="Проверить токен" Grid.Column="0"
                                         Command="{Binding SendAuthWsValidateCommand}"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
                                         Margin="0,0,2,0">
                                     <TextBlock Text="✔ Validate" FontSize="11"/>
                                 </Button>
-                                <Button Grid.Column="1"
+                                <Button AutomationProperties.Name="Обновить токен" Grid.Column="1"
                                         Command="{Binding SendAuthWsRefreshCommand}"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
                                         Margin="2,0,2,0">
                                     <TextBlock Text="🔄 Refresh" FontSize="11"/>
                                 </Button>
-                                <Button Grid.Column="2"
+                                <Button AutomationProperties.Name="Проверить сеанс" Grid.Column="2"
                                         Command="{Binding SendAuthWsPingCommand}"
                                         Classes="secondary"
                                         HorizontalAlignment="Stretch"
@@ -323,18 +323,18 @@
 
                             <!-- Login via username/password over WS -->
                             <TextBlock Text="Login (username + password):" Foreground="#CCCCCC" FontSize="12" Margin="0,10,0,0"/>
-                            <TextBox Text="{Binding AuthWsUsername}"
+                            <TextBox AutomationProperties.Name="Имя пользователя" Text="{Binding AuthWsUsername}"
                                      PlaceholderText="Username..."
                                      Background="#3E3E42"
                                      Foreground="White"
                                      BorderBrush="#555555"/>
-                            <TextBox Text="{Binding AuthWsPassword}"
+                            <TextBox AutomationProperties.Name="Пароль" Text="{Binding AuthWsPassword}"
                                      PlaceholderText="Password..."
                                      PasswordChar="•"
                                      Background="#3E3E42"
                                      Foreground="White"
                                      BorderBrush="#555555"/>
-                            <Button Command="{Binding SendAuthWsLoginCommand}"
+                            <Button AutomationProperties.Name="Войти в тестовый сеанс" Command="{Binding SendAuthWsLoginCommand}"
                                     Classes="primary"
                                     HorizontalAlignment="Stretch">
                                 <TextBlock Text="🔑 auth:login" FontSize="11" FontWeight="SemiBold"/>
@@ -362,7 +362,7 @@
                                                                FontWeight="Bold" 
                                                                Foreground="White"
                                                                FontSize="13"/>
-                                                    <TextBlock Text="{Binding Message}" 
+                                                    <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding Message}"
                                                                Foreground="#CCCCCC" 
                                                                FontSize="11"
                                                                Margin="0,2,0,0"/>
@@ -372,7 +372,7 @@
                                                                Margin="0,2,0,0"
                                                                IsVisible="{Binding LastTested, Converter={StaticResource NullToVisibilityConverter}}"/>
                                                 </StackPanel>
-                                                <Button Grid.Column="1" 
+                                                <Button AutomationProperties.Name="Проверить контроллер" Grid.Column="1"
                                                         Command="{Binding DataContext.TestSingleControllerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
                                                         Classes="secondary"

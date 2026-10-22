@@ -32,8 +32,8 @@ public record RegisterRequest
     [StringLength(256, MinimumLength = 8)]
     public required string Password { get; init; }
 
-    /// <summary>Role ID: 0=User, 1=Admin, 2=Manager, 3=Driver, 4=Conductor, 5=Dispatcher.</summary>
-    [Range(0, 5)]
+    /// <summary>Legacy role ID: 0=User, 1=Administrator, 2=Manager, 3=Dispatcher, 4=Cashier, 5=Driver, 6=Conductor.</summary>
+    [Range(0, 6)]
     public int Role { get; init; }
 
     [EmailAddress]

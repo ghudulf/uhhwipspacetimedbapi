@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using System;
@@ -34,8 +34,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving all sales");
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter().ToList();
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter().ToList());
             }
             catch (Exception ex)
             {
@@ -51,7 +50,8 @@ namespace TicketSalesApp.Services.Implementations
                 page = Math.Max(1, page);
                 pageSize = Math.Clamp(pageSize, 1, 1000);
                 _logger.LogInformation("Retrieving sales page {Page} (size {PageSize})", page, pageSize);
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
 
                 // Single-pass scan: count total and collect only the requested page slice.
                 // Use safe long calculation to avoid overflow
@@ -76,6 +76,7 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 return (items, totalCount);
+                });
             }
             catch (Exception ex)
             {
@@ -89,8 +90,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving sale by ID: {SaleId}", saleId);
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.SaleId.Find(saleId);
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.SaleId.Find(saleId));
             }
             catch (Exception ex)
             {
@@ -104,10 +104,9 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogInformation("Retrieving sales for ticket: {TicketId}", ticketId);
-                var conn = _spacetimeService.GetConnection();
-                return conn.Db.Sale.Iter()
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
                     .Where(s => s.TicketId == ticketId)
-                    .ToList();
+                    .ToList());
             }
             catch (Exception ex)
             {
@@ -127,16 +126,15 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 _logger.LogInformation("Retrieving sales between {StartDate} and {EndDate}", startDate, endDate);
-                var conn = _spacetimeService.GetConnection();
 
                 // Convert to UTC before creating DateTimeOffset to avoid relabeling local time as UTC.
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate.ToUniversalTime()).ToUnixTimeMilliseconds();
                 ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1).ToUniversalTime()).ToUnixTimeMilliseconds();
                 
-                return conn.Db.Sale.Iter()
+                return await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
                     .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
                     .OrderBy(s => s.SaleDate)
-                    .ToList();
+                    .ToList());
             }
             catch (Exception ex)
             {
@@ -145,230 +143,69 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null)
+        public async Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone,
+            string? saleLocation = null, string? saleNotes = null, Identity? actingUser = null,
+            string? operationId = null, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                _logger.LogInformation("Creating sale for ticket: {TicketId}", ticketId);
-                var conn = _spacetimeService.GetConnection();
-
-                // Verify ticket exists
-                var ticket = conn.Db.Ticket.TicketId.Find(ticketId);
-                if (ticket == null)
-                {
-                    _logger.LogWarning("Ticket not found: {TicketId}", ticketId);
-                    return null;
-                }
-
-                // Store pre-call count for out-of-band correlation
-                var preCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
-                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-                // Call the CreateSale reducer with actual parameters (no correlation in notes)
-                conn.Reducers.CreateSale(
-                    ticketId,
-                    buyerName,
-                    buyerPhone,
-                    saleLocation,
-                    saleNotes
-                );
-
-                // Flush pending reducer responses
-                conn.FrameTick();
-
-                // WORKAROUND: SpacetimeDB reducers don't return created IDs, forcing timestamp-based correlation.
-                // This is racy - concurrent creates for the same ticket can return wrong sale.
-                // TODO: Add correlation token to Sale table or use SpacetimeDB transaction support when available.
-                // Find the newly created sale using timestamp correlation
-                var newSale = conn.Db.Sale.Iter()
-                    .Where(s => s.TicketId == ticketId && s.SaleDate >= (ulong)preCallTimestamp)
-                    .OrderByDescending(s => s.SaleDate)
-                    .FirstOrDefault();
-
-                // Verify we got a new sale (count increased)
-                var postCallCount = conn.Db.Sale.Iter().Count(s => s.TicketId == ticketId);
-                if (newSale != null && postCallCount > preCallCount)
-                {
-                    _logger.LogInformation("Successfully created sale with ID: {SaleId}", newSale.SaleId);
-                }
-                else
-                {
-                    _logger.LogWarning("Could not reliably identify created sale for ticket: {TicketId}", ticketId);
-                    return null;
-                }
-
-                return newSale?.SaleId;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating sale for ticket: {TicketId}", ticketId);
-                throw;
-            }
+            var actor = actingUser ?? throw new UnauthorizedAccessException("Authenticated seller is required.");
+            var operation = operationId ?? Guid.NewGuid().ToString("N");
+            _logger.LogInformation("Creating sale {OperationId}, ticket {TicketId}, actor {Actor}", operation, ticketId, actor);
+            return await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateSaleV2(operation, actor,
+                ticketId, buyerName, buyerPhone, saleLocation, saleNotes),
+                c => c.Db.MutationReceipt.Key.Find(actor.ToString() + ":" + operation)?.EntityId
+                    ?? throw new InvalidOperationException("Committed sale receipt missing."), cancellationToken);
         }
 
-        public async Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null, string? saleLocation = null, string? saleNotes = null)
+        public async Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null,
+            string? saleLocation = null, string? saleNotes = null, Identity? actingUser = null,
+            string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                _logger.LogInformation("Updating sale: {SaleId}", saleId);
-                var conn = _spacetimeService.GetConnection();
-
-                var sale = conn.Db.Sale.SaleId.Find(saleId);
-                if (sale == null)
-                {
-                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
-                    return false;
-                }
-
-                // UpdateSale reducer is not yet implemented in SpacetimeDB schema
-                // Use create+delete workaround pattern (create first to avoid data loss)
-                _logger.LogInformation("Using create+delete workaround for sale update: {SaleId}", saleId);
-
-                // Clean notes (no correlation tokens)
-                var cleanedNotes = saleNotes ?? sale.SaleNotes;
-                if (!string.IsNullOrEmpty(cleanedNotes) && cleanedNotes.Contains("[CORRELATION:"))
-                {
-                    var startIdx = cleanedNotes.IndexOf("[CORRELATION:");
-                    var endIdx = cleanedNotes.IndexOf(']', startIdx);
-                    if (endIdx > startIdx)
-                    {
-                        cleanedNotes = cleanedNotes.Remove(startIdx, endIdx - startIdx + 1).Trim();
-                        _logger.LogWarning("Stripped existing correlation marker from sale notes");
-                    }
-                }
-
-                // Store pre-call timestamp for correlation
-                var preCallTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-                // Create new sale FIRST with updated values (no correlation in notes)
-                conn.Reducers.CreateSale(
-                    sale.TicketId,
-                    buyerName ?? sale.TicketSoldToUser,
-                    buyerPhone ?? sale.TicketSoldToUserPhone,
-                    saleLocation ?? sale.SaleLocation,
-                    cleanedNotes
-                );
-                conn.FrameTick();
-
-                // Find the newly created sale using timestamp
-                var newSale = conn.Db.Sale.Iter()
-                    .Where(s => s.TicketId == sale.TicketId &&
-                               s.SaleDate >= (ulong)preCallTimestamp &&
-                               s.SaleId != saleId)
-                    .OrderByDescending(s => s.SaleDate)
-                    .FirstOrDefault();
-
-                if (newSale == null)
-                {
-                    _logger.LogError("Failed to create new sale during update for original SaleId: {SaleId}", saleId);
-                    return false;
-                }
-
-                _logger.LogInformation("Created new sale {NewSaleId}, now deleting old sale {OldSaleId}", newSale.SaleId, saleId);
-
-                // Now delete the old sale (data is safe in new sale)
-                conn.Reducers.DeleteSale(saleId, null);
-                conn.FrameTick();
-
-                // Verify deletion
-                var oldSaleStillExists = conn.Db.Sale.SaleId.Find(saleId);
-                if (oldSaleStillExists != null)
-                {
-                    _logger.LogError("Old sale {SaleId} still exists after delete attempt - update failed", saleId);
-                    return false;
-                }
-
-                _logger.LogInformation("Sale updated via create+delete: old SaleId={OldSaleId}, new SaleId={NewSaleId}", saleId, newSale.SaleId);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating sale: {SaleId}", saleId);
-                throw;
-            }
+            var actor = actingUser ?? throw new UnauthorizedAccessException("Authenticated actor is required.");
+            var operation = operationId ?? Guid.NewGuid().ToString("N");
+            _logger.LogInformation("Updating sale {SaleId}, operation {OperationId}, expected revision {Revision}", saleId, operation, expectedRevision);
+            return await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateSaleV2(operation, actor,
+                saleId, expectedRevision, buyerName, buyerPhone, saleLocation, saleNotes),
+                c => c.Db.MutationReceipt.Key.Find(actor.ToString() + ":" + operation) != null, cancellationToken);
         }
 
-        public async Task<bool> DeleteSaleAsync(uint saleId)
+        public async Task<bool> DeleteSaleAsync(uint saleId, Identity? actingUser = null,
+            string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default)
         {
-            try
+            var actor = actingUser ?? throw new UnauthorizedAccessException("Authenticated actor is required.");
+            var operation = operationId ?? Guid.NewGuid().ToString("N");
+            return await _spacetimeService.ExecuteReducerAsync(new Reducer.DeleteSaleV2(operation, actor, saleId, expectedRevision),
+                c => c.Db.MutationReceipt.Key.Find(actor.ToString() + ":" + operation) != null, cancellationToken);
+        }
+
+        private static decimal RequireRecordedAmount(DbConnection connection, Sale sale) =>
+            SalePresentation.Amount(connection, sale) ?? throw new HistoricalAmountUnknownException(sale.SaleId);
+
+        public Task<IncomeSummary> GetIncomeSummaryAsync(int year, int month, CancellationToken cancellationToken = default)
+        {
+            var start = new DateTimeOffset(year, month, 1, 0, 0, 0, TimeSpan.Zero);
+            var end = start.AddMonths(1);
+            return _spacetimeService.ReadAsync(c =>
             {
-                _logger.LogInformation("Deleting sale: {SaleId}", saleId);
-                var conn = _spacetimeService.GetConnection();
-
-                var sale = conn.Db.Sale.SaleId.Find(saleId);
-                if (sale == null)
-                {
-                    _logger.LogWarning("Sale not found: {SaleId}", saleId);
-                    return false;
-                }
-
-                // Call the DeleteSale reducer
-                conn.Reducers.DeleteSale(saleId, null);
-
-                // Wait for confirmation using FrameTick
-                conn.FrameTick();
-
-                // Verify deletion
-                var deletedSale = conn.Db.Sale.SaleId.Find(saleId);
-                if (deletedSale != null)
-                {
-                    _logger.LogWarning("Sale {SaleId} still exists after delete attempt", saleId);
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting sale: {SaleId}", saleId);
-                throw;
-            }
+                var amounts = c.Db.Sale.Iter().Where(s => s.SaleDate >= (ulong)start.ToUnixTimeMilliseconds()
+                    && s.SaleDate < (ulong)end.ToUnixTimeMilliseconds()).Select(s => SalePresentation.Amount(c, s)).ToList();
+                return new IncomeSummary(amounts.Where(a => a.HasValue).Sum(a => a!.Value), amounts.Count,
+                    amounts.Count(a => !a.HasValue));
+            }, cancellationToken);
         }
 
         public async Task<decimal> GetTotalIncomeAsync(int year, int month)
         {
-            try
-            {
-                var conn = _spacetimeService.GetConnection();
-                
-                // Calculate start and end timestamps for the month
-                var startDate = new DateTime(year, month, 1);
-                var endDate = startDate.AddMonths(1).AddDays(-1);
-                
-                ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
-                ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1)).ToUnixTimeMilliseconds();
-                
-                // Get all sales for the month
-                var sales = conn.Db.Sale.Iter()
-                    .Where(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp)
-                    .ToList();
-                
-                // Calculate total income
-                decimal totalIncome = 0;
-                foreach (var sale in sales)
-                {
-                    var ticket = conn.Db.Ticket.TicketId.Find(sale.TicketId);
-                    if (ticket != null)
-                    {
-                        totalIncome += (decimal)ticket.TicketPrice;
-                    }
-                }
-                
-                return totalIncome;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting total income for {Year}-{Month}", year, month);
-                throw;
-            }
+            var summary = await GetIncomeSummaryAsync(year, month);
+            if (summary.UnknownAmountCount > 0) throw new HistoricalAmountUnknownException(null);
+            return summary.KnownTotal;
         }
 
         public async Task<List<TransportStatistic>> GetTopTransportsAsync(int year, int month)
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps for the month
                 var startDate = new DateTime(year, month, 1);
@@ -421,6 +258,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {
@@ -440,15 +278,14 @@ namespace TicketSalesApp.Services.Implementations
                 var routePerformance = await GetRoutePerformanceAsync(startDate, endDate);
                 var transportStats = await GetTransportUtilizationAsync(startDate, endDate);
                 
-                var conn = _spacetimeService.GetConnection();
                 
                 // Calculate start and end timestamps for the month
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
                 ulong endTimestamp = (ulong)new DateTimeOffset(endDate.AddDays(1).AddTicks(-1)).ToUnixTimeMilliseconds();
                 
                 // Get total tickets sold
-                var totalTicketsSold = conn.Db.Sale.Iter()
-                    .Count(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp);
+                var totalTicketsSold = await _spacetimeService.ReadAsync(c => c.Db.Sale.Iter()
+                    .Count(s => s.SaleDate >= startTimestamp && s.SaleDate <= endTimestamp));
                 
                 // Calculate average ticket price
                 decimal averageTicketPrice = totalTicketsSold > 0 ? totalIncome / totalTicketsSold : 0;
@@ -486,7 +323,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
@@ -518,14 +356,14 @@ namespace TicketSalesApp.Services.Implementations
                                     StartPoint = route.StartPoint,
                                     EndPoint = route.EndPoint,
                                     TicketsSold = 1,
-                                    TotalIncome = (decimal)ticket.TicketPrice
+                                    TotalIncome = RequireRecordedAmount(conn, sale)
                                 };
                             }
                         }
                         else
                         {
                             routePerformance[routeId].TicketsSold++;
-                            routePerformance[routeId].TotalIncome += (decimal)ticket.TicketPrice;
+                            routePerformance[routeId].TotalIncome += RequireRecordedAmount(conn, sale);
                         }
                     }
                 }
@@ -560,6 +398,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {
@@ -572,7 +411,8 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
                 
                 // Calculate start and end timestamps
                 ulong startTimestamp = (ulong)new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
@@ -608,14 +448,14 @@ namespace TicketSalesApp.Services.Implementations
                                         Model = bus.Model,
                                         TotalRoutes = totalRoutes,
                                         TicketsSold = 1,
-                                        TotalIncome = (decimal)ticket.TicketPrice,
+                                        TotalIncome = RequireRecordedAmount(conn, sale),
                                         BusIds = new HashSet<uint> { bus.BusId }
                                     };
                                 }
                                 else
                                 {
                                     transportUtilization[bus.Model].TicketsSold++;
-                                    transportUtilization[bus.Model].TotalIncome += (decimal)ticket.TicketPrice;
+                                    transportUtilization[bus.Model].TotalIncome += RequireRecordedAmount(conn, sale);
                                     transportUtilization[bus.Model].BusIds.Add(bus.BusId);
                                 }
                             }
@@ -662,6 +502,7 @@ namespace TicketSalesApp.Services.Implementations
                     .ToList();
                 
                 return result;
+                });
             }
             catch (Exception ex)
             {

@@ -6,7 +6,7 @@
              d:DesignHeight="450"
              d:DesignWidth="800"
              mc:Ignorable="d">
-    <TabControl>
+    <TabControl AutomationProperties.Name="Область проблем">
         <TabControl.Resources>
             <x:Double x:Key="TabItemHeaderFontSize">14</x:Double>
             <x:Double x:Key="TabItemMinHeight">32</x:Double>

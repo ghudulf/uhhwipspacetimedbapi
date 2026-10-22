@@ -263,10 +263,7 @@ public partial class MainWindow : Window
 
             // Strip /api/ suffix to get the server root (connect/tokeninfo and debug/tokentest
             // are registered as absolute routes at the root, NOT under /api/)
-            var serverRoot = baseUrl.TrimEnd('/');
-            if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
-                serverRoot = serverRoot[..^4];
-            serverRoot = serverRoot.TrimEnd('/') + "/";
+            var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri;
 
             Serilog.Log.Information("Token test: base URL = {BaseUrl}, server root = {Root}, token present = {HasToken}, token length = {Length}",
                 baseUrl, serverRoot, token != null, token?.Length ?? 0);
@@ -275,7 +272,7 @@ public partial class MainWindow : Window
                 Serilog.Log.Warning("Token test: no auth token set in ApiClientService");
 
             // Build a root-level client (no /api/ prefix) with the Bearer token
-            using var rootClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+            using var rootClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { BaseAddress = new Uri(serverRoot) };
             if (!string.IsNullOrEmpty(token))
                 rootClient.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);

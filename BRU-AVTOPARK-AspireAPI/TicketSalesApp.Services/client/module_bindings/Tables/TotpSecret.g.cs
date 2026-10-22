@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "totp_secret";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(TotpSecret row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(TotpSecretHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class IdUniqueIndex : UniqueIndexBase<uint>
             {
                 protected override uint GetKey(TotpSecret row) => row.Id;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal TotpSecretHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Id = new(this);
             }
 
@@ -44,6 +54,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<TotpSecret, string> Secret { get; }
         public global::SpacetimeDB.Col<TotpSecret, ulong> CreatedAt { get; }
         public global::SpacetimeDB.Col<TotpSecret, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<TotpSecret, uint> ApiAccessPartition { get; }
 
         public TotpSecretCols(string tableName)
         {
@@ -52,16 +63,19 @@ namespace SpacetimeDB.Types
             Secret = new global::SpacetimeDB.Col<TotpSecret, string>(tableName, "secret");
             CreatedAt = new global::SpacetimeDB.Col<TotpSecret, ulong>(tableName, "created_at");
             IsActive = new global::SpacetimeDB.Col<TotpSecret, bool>(tableName, "is_active");
+            ApiAccessPartition = new global::SpacetimeDB.Col<TotpSecret, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class TotpSecretIxCols
     {
         public global::SpacetimeDB.IxCol<TotpSecret, uint> Id { get; }
+        public global::SpacetimeDB.IxCol<TotpSecret, uint> ApiAccessPartition { get; }
 
         public TotpSecretIxCols(string tableName)
         {
             Id = new global::SpacetimeDB.IxCol<TotpSecret, uint>(tableName, "id");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<TotpSecret, uint>(tableName, "api_access_partition");
         }
     }
 }

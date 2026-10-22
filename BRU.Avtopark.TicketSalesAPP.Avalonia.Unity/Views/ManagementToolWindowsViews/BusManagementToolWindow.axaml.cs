@@ -10,6 +10,8 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views
         {
             InitializeComponent();
             DataContext = new BusManagementViewModel();
+            AttachedToVisualTree += async (_, _) => { if (DataContext is BusManagementViewModel viewModel) await viewModel.ActivateAsync(); };
+            DetachedFromVisualTree += (_, _) => { if (DataContext is BusManagementViewModel viewModel) viewModel.Deactivate(); };
         }
 
         private void InitializeComponent()

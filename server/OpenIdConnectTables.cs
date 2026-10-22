@@ -15,6 +15,9 @@ public static partial class Module
         public bool IsUsed;
         public string? DeviceInfo;
         public string? IpAddress;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
 
@@ -27,6 +30,9 @@ public static partial class Module
         public string Secret;
         public ulong CreatedAt;
         public bool IsActive;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -41,6 +47,9 @@ public static partial class Module
         public ulong CreatedAt;
         public bool IsActive;
         public string? DeviceName;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -52,6 +61,9 @@ public static partial class Module
         public string Challenge;
         public ulong ExpiresAt;
         public ulong CreatedAt;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -64,6 +76,9 @@ public static partial class Module
         public bool IsUsed;
         public string? DeviceInfo;
         public string? IpAddress;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     // ----- Authorization Store Tables -----
@@ -83,6 +98,9 @@ public static partial class Module
         public string? Status;
         public string? Subject; // User's SpacetimeDB Identity string
         public string? Type; // authorization_code, refresh_token, device_code, user_code
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table]
@@ -109,6 +127,9 @@ public static partial class Module
         public string? Status;
         public string? Subject; // User's SpacetimeDB Identity string
         public string? Type; // access_token, refresh_token, authorization_code, identity_token, user_code, device_code
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table]
@@ -154,6 +175,9 @@ public static partial class Module
         public ulong CreatedAt;
         public string? CreatedBy;
         public bool RequireConsent;  // bool for whether it needs consent to access resources - true or false
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     [SpacetimeDB.Table(Public = true)]
@@ -168,6 +192,9 @@ public static partial class Module
         public ulong CreatedAt;
         public ulong ExpiresAt;
         public bool IsRevoked;
+        // Constant partition enables indexed RLS subscriptions in SDK 2.1.0.
+        [SpacetimeDB.Default(0u), SpacetimeDB.Index.BTree]
+        public uint ApiAccessPartition;
     }
 
     // Add new reducers for auth features
@@ -175,6 +202,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateUserSettings(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[CreateUserSettings] Starting for user: {userId}");
         var userSettings = new UserSettings
         {
@@ -195,6 +223,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void StoreTotpSecret(ReducerContext ctx, Identity userId, string secret)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[StoreTotpSecret] Starting for user: {userId}");
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
@@ -218,6 +247,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void EnableTotp(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[EnableTotp] Starting for user: {userId}");
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
@@ -234,6 +264,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DisableTotp(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[DisableTotp] Starting for user: {userId}");
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
@@ -250,6 +281,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void EnableWebAuthn(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[EnableWebAuthn] Starting for user: {userId}");
         var userSettings = ctx.Db.UserSettings.Iter()
             .FirstOrDefault(u => u.UserId == userId);
@@ -271,6 +303,12 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateTwoFactorToken(ReducerContext ctx, Identity userId, string token, bool isUsed, ulong expiresAt, string? deviceInfo = null, string? ipAddress = null)
     {
+        RequireTrustedApi(ctx);
+        var now = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
+        if (ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true || isUsed || string.IsNullOrWhiteSpace(token)
+            || token.Length > 128 || expiresAt <= now || expiresAt - now > 600_000)
+            throw new Exception("Invalid second-factor challenge.");
+        if (ctx.Db.TwoFactorToken.Iter().Any(t => t.Token == token)) throw new Exception("Challenge already exists.");
         Log.Info($"[CreateTwoFactorToken] Starting for user: {userId}, expiresAt: {expiresAt}");
         var twoFactorToken = new TwoFactorToken
         {
@@ -289,6 +327,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DeleteTwoFactorToken(ReducerContext ctx, uint id)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[DeleteTwoFactorToken] Starting for token ID: {id}");
         var token = ctx.Db.TwoFactorToken.Id.Find(id);
         if (token == null)
@@ -303,6 +342,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void GenerateTotpSecret(ReducerContext ctx, Identity userId, string secret)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[GenerateTotpSecret] Starting for user: {userId}");
         var totpSecret = new TotpSecret
         {
@@ -319,7 +359,11 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RegisterWebAuthnCredential(ReducerContext ctx, Identity userId, byte[] credentialId, string publicKey, uint counter, string? deviceName = null)
     {
-        Log.Info($"[RegisterWebAuthnCredential] Starting for user: {userId}, device: {deviceName ?? "unnamed"}");
+        RequireTrustedApi(ctx);
+        if (ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true) throw new Exception("Active account required.");
+        if (credentialId.Length is < 1 or > 1024 || string.IsNullOrWhiteSpace(publicKey) || publicKey.Length > 8192)
+            throw new Exception("Invalid WebAuthn credential.");
+        if (ctx.Db.WebAuthnCredential.Iter().Any(c => c.CredentialId.SequenceEqual(credentialId))) throw new Exception("Credential already registered.");
         var webAuthnCredential = new WebAuthnCredential
         {
             Id = GetNextId(ctx, "webAuthnCredentialId"),
@@ -332,28 +376,21 @@ public static partial class Module
             DeviceName = deviceName
         };
         ctx.Db.WebAuthnCredential.Insert(webAuthnCredential);
-        Log.Info($"[RegisterWebAuthnCredential] Successfully registered WebAuthn credential for user: {userId}");
+        Log.Info("WebAuthn credential registration committed.");
     }
 
     [SpacetimeDB.Reducer]
-    public static void DeactivateWebAuthnCredential(ReducerContext ctx, uint id)
+    public static void DeactivateWebAuthnCredential(ReducerContext ctx, uint id, Identity? actingUser = null)
     {
-        Log.Info($"[DeactivateWebAuthnCredential] Starting for credential ID: {id}");
-        var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
-        if (credential == null)
-        {
-            Log.Error($"[DeactivateWebAuthnCredential] Credential not found: {id}");
-            throw new Exception("WebAuthn credential not found");
-        }
-        credential.IsActive = false;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[DeactivateWebAuthnCredential] Successfully deactivated credential: {id}");
+        RequireTrustedApi(ctx);
+        RemoveOwnWebAuthnCredential(ctx, id, ResolveEffectiveUser(ctx, actingUser));
     }
 
 
     [SpacetimeDB.Reducer]
     public static void CreateMagicLinkToken(ReducerContext ctx, Identity userId, string token, ulong expiresAt, string? deviceInfo = null, string? ipAddress = null)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[CreateMagicLinkToken] Starting for user: {userId}, expiresAt: {expiresAt}");
         var magicLinkToken = new MagicLinkToken
         {
@@ -373,6 +410,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RegisterOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType, string clientType)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[RegisterOpenIdClient] ========================================");
         Log.Info($"[RegisterOpenIdClient] Starting registration for client: {clientId}");
         Log.Info($"[RegisterOpenIdClient] Display name: {displayName}, Type: {clientType}, Consent: {consentType}");
@@ -434,6 +472,7 @@ public static partial class Module
             }
             
             ctx.Db.OpenIdConnect.ClientId.Update(existing);
+            AdvanceLegacyApplicationRevision(ctx, clientId);
             Log.Info($"[RegisterOpenIdClient] Successfully updated and reactivated client {clientId}");
             
             // Verify update
@@ -511,6 +550,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateOpenIdClient(ReducerContext ctx, string clientId, string clientSecret, string displayName, string[] redirectUris, string[] postLogoutRedirectUris, string[] allowedScopes, string consentType)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[UpdateOpenIdClient] ========================================");
         Log.Info($"[UpdateOpenIdClient] Updating client: {clientId}");
         Log.Info($"[UpdateOpenIdClient] Display name: {displayName}, Consent: {consentType}");
@@ -562,6 +602,7 @@ public static partial class Module
         }
 
         ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
+        AdvanceLegacyApplicationRevision(ctx, clientId);
         Log.Info($"[UpdateOpenIdClient] Successfully updated client {clientId}");
         
         // Verify update
@@ -584,6 +625,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RevokeOpenIdClient(ReducerContext ctx, string clientId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[RevokeOpenIdClient] Revoking client: {clientId}");
         
         var openIdConnect = ctx.Db.OpenIdConnect.ClientId.Find(clientId);
@@ -596,6 +638,7 @@ public static partial class Module
         Log.Info($"[RevokeOpenIdClient] Found client {clientId}, setting IsActive = false");
         openIdConnect.IsActive = false;
         ctx.Db.OpenIdConnect.ClientId.Update(openIdConnect);
+        AdvanceLegacyApplicationRevision(ctx, clientId);
         Log.Info($"[RevokeOpenIdClient] Successfully revoked client {clientId}");
     }
 
@@ -603,6 +646,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateOpenIdGrant(ReducerContext ctx, string grantId, string clientId, Identity userId, string type, string[] scopes, ulong expiresAt)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[CreateOpenIdGrant] Starting for client: {clientId}, user: {userId}, type: {type}");
         var openIdConnectGrant = new OpenIdConnectGrant
         {
@@ -622,6 +666,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void RevokeOpenIdGrant(ReducerContext ctx, string grantId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[RevokeOpenIdGrant] Starting for grant: {grantId}");
         var grant = ctx.Db.OpenIdConnectGrant.GrantId.Find(grantId);
         if (grant != null)
@@ -639,6 +684,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateWebAuthnCounter(ReducerContext ctx, byte[] credentialId, uint counter)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[UpdateWebAuthnCounter] Starting with counter: {counter}");
         var credential = ctx.Db.WebAuthnCredential.Iter()
             .FirstOrDefault(c => c.CredentialId.SequenceEqual(credentialId));
@@ -649,14 +695,13 @@ public static partial class Module
             throw new Exception("WebAuthn credential not found");
         }
 
-        credential.Counter = counter;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[UpdateWebAuthnCounter] Successfully updated counter to: {counter}");
+        AdvanceWebAuthnCounter(ctx, credential, counter);
     }
 
     [SpacetimeDB.Reducer]
     public static void ApproveQrSession(ReducerContext ctx, string sessionId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"Approving QR session {sessionId}");
 
         // Validate input
@@ -699,6 +744,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UseMagicLinkToken(ReducerContext ctx, string token)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[UseMagicLinkToken] Starting for token");
         var magicLinkToken = ctx.Db.MagicLinkToken.Token.Find(token);
         if (magicLinkToken == null)
@@ -716,6 +762,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void StoreWebAuthnChallenge(ReducerContext ctx, Identity userId, string challenge, ulong expiresAt)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[StoreWebAuthnChallenge] Starting for user: {userId}, expiresAt: {expiresAt}");
         var webAuthnChallenge = new WebAuthnChallenge
         {
@@ -732,6 +779,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DeleteWebAuthnChallenge(ReducerContext ctx, uint id)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[DeleteWebAuthnChallenge] Starting for challenge ID: {id}");
         var challenge = ctx.Db.WebAuthnChallenge.Id.Find(id);
         if (challenge == null)
@@ -746,6 +794,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateWebAuthnCredentialCounter(ReducerContext ctx, uint id, uint counter)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[UpdateWebAuthnCredentialCounter] Starting for credential ID: {id}, counter: {counter}");
         var credential = ctx.Db.WebAuthnCredential.Id.Find(id);
         if (credential == null)
@@ -753,14 +802,13 @@ public static partial class Module
             Log.Error($"[UpdateWebAuthnCredentialCounter] Credential not found: {id}");
             throw new Exception("WebAuthn credential not found");
         }
-        credential.Counter = counter;
-        ctx.Db.WebAuthnCredential.Id.Update(credential);
-        Log.Info($"[UpdateWebAuthnCredentialCounter] Successfully updated counter for credential: {id}");
+        AdvanceWebAuthnCounter(ctx, credential, counter);
     }
 
     [SpacetimeDB.Reducer]
     public static void DeactivateTotpSecret(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[DeactivateTotpSecret] Starting for user: {userId}");
         var totpSecret = ctx.Db.TotpSecret.Iter()
             .FirstOrDefault(t => t.UserId == userId);
@@ -777,6 +825,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DisableWebAuthn(ReducerContext ctx, Identity userId)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[DisableWebAuthn] Starting for user: {userId}");
         //should disable webauthn in usersettings and purge credentials at same time - so first modify user settings then delete stored webauthn creds
         /*so reverse of
@@ -815,6 +864,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateTwoFactorToken(ReducerContext ctx, uint id, Identity userId, string token, bool isUsed, ulong expiresAt)
     {
+        RequireTrustedApi(ctx);
         Log.Info($"[UpdateTwoFactorToken] Starting for token ID: {id}, user: {userId}");
         var twoFactorToken = ctx.Db.TwoFactorToken.Id.Find(id);
         if (twoFactorToken == null)
@@ -822,10 +872,13 @@ public static partial class Module
             Log.Error($"[UpdateTwoFactorToken] Token not found: {id}");
             throw new Exception("Two-factor token not found");
         }
-        twoFactorToken.UserId = userId;
-        twoFactorToken.Token = token;
-        twoFactorToken.IsUsed = isUsed;
-        twoFactorToken.ExpiresAt = expiresAt;
+        // Legacy update route now implements a single-use compare-and-consume operation.
+        var now = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
+        if (twoFactorToken.IsUsed || !isUsed || twoFactorToken.ExpiresAt <= now
+            || twoFactorToken.UserId != userId || twoFactorToken.Token != token || twoFactorToken.ExpiresAt != expiresAt
+            || ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true)
+            throw new Exception("Challenge expired, consumed or mismatched.");
+        twoFactorToken.IsUsed = true;
         ctx.Db.TwoFactorToken.Id.Update(twoFactorToken);
         Log.Info($"[UpdateTwoFactorToken] Successfully updated token: {id}");
     }
@@ -834,9 +887,10 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateOidcAuthorization(ReducerContext ctx, string oidcAuthId, string? appClientId, ulong? creationDate, string? propertiesJson, string? scopesJson, string? status, string? subject, string? type)
     {
+        RequireTrustedApi(ctx);
         if (ctx.Db.OpenIddictSpacetimeAuthorization.Iter().Any(a => a.OpenIddictAuthorizationId == oidcAuthId)) {
             Log.Error($"Reducer: OIDC Authorization with OIDC ID {oidcAuthId} already exists.");
-            return; // Or throw
+            throw new Exception("OIDC token ID already exists.");
         }
         uint internalId = GetNextId(ctx, "oidcAuthId");
         var newAuth = new OpenIddictSpacetimeAuthorization {
@@ -851,6 +905,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DeleteOidcAuthorization(ReducerContext ctx, uint internalId)
     {
+        RequireTrustedApi(ctx);
         var auth = ctx.Db.OpenIddictSpacetimeAuthorization.Id.Find(internalId);
         if (auth != null) {
              ctx.Db.OpenIddictSpacetimeAuthorization.Id.Delete(internalId);
@@ -859,6 +914,7 @@ public static partial class Module
              var tokensToDelete = ctx.Db.OpenIddictSpacetimeToken.Iter().Where(t => t.AuthorizationId == internalId).ToList();
              foreach(var token in tokensToDelete) {
                   ctx.Db.OpenIddictSpacetimeToken.Id.Delete(token.Id);
+                  ctx.Db.OidcTokenRevision.TokenId.Delete(token.Id);
                   Log.Debug($"Reducer: Deleted associated token internal ID {token.Id}");
              }
         } else {
@@ -869,6 +925,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateOidcAuthorization(ReducerContext ctx, uint internalId, string? propertiesJson, string? scopesJson, string? status)
     {
+        RequireTrustedApi(ctx);
         var auth = ctx.Db.OpenIddictSpacetimeAuthorization.Id.Find(internalId);
          if (auth != null) {
              if(propertiesJson != null) auth.Properties = propertiesJson;
@@ -884,6 +941,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void PruneOidcAuthorizations(ReducerContext ctx, ulong thresholdDate)
     {
+        RequireTrustedApi(ctx);
          Log.Info($"Reducer: Pruning OIDC authorizations created before {thresholdDate}");
          // Find authorizations that are inactive/revoked and older than the threshold
          var authorizationsToPrune = ctx.Db.OpenIddictSpacetimeAuthorization.Iter()
@@ -904,10 +962,13 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateOidcToken(ReducerContext ctx, string oidcTokenId, uint? authInternalId, string? appClientId, ulong? creationDate, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? referenceId, string? status, string? subject, string? type)
     {
+        RequireTrustedApi(ctx);
          if (ctx.Db.OpenIddictSpacetimeToken.Iter().Any(t => t.OpenIddictTokenId == oidcTokenId)) {
             Log.Error($"Reducer: OIDC Token with OIDC ID {oidcTokenId} already exists.");
-            return; // Or throw
+            throw new Exception("OIDC token ID already exists.");
         }
+        if (referenceId != null && ctx.Db.OpenIddictSpacetimeToken.Iter().Any(t => t.ReferenceId == referenceId))
+            throw new Exception("OIDC reference already exists.");
         uint internalId = GetNextId(ctx, "oidcTokenId");
         var newToken = new OpenIddictSpacetimeToken {
             Id = internalId, OpenIddictTokenId = oidcTokenId, AuthorizationId = authInternalId, ApplicationClientId = appClientId,
@@ -921,9 +982,11 @@ public static partial class Module
      [SpacetimeDB.Reducer]
     public static void DeleteOidcToken(ReducerContext ctx, uint internalId)
     {
+        RequireTrustedApi(ctx);
         var token = ctx.Db.OpenIddictSpacetimeToken.Id.Find(internalId);
         if (token != null) {
             ctx.Db.OpenIddictSpacetimeToken.Id.Delete(internalId);
+            ctx.Db.OidcTokenRevision.TokenId.Delete(internalId);
             Log.Info($"Reducer: Deleted OIDC Token internal ID {internalId} (OIDC ID: {token.OpenIddictTokenId})");
         } else {
             Log.Warn($"Reducer: Could not delete OIDC Token, internal ID {internalId} not found.");
@@ -933,6 +996,7 @@ public static partial class Module
      [SpacetimeDB.Reducer]
      public static void UpdateOidcToken(ReducerContext ctx, uint internalId, ulong? expirationDate, string? payload, string? propertiesJson, ulong? redemptionDate, string? status, string? referenceId)
      {
+        RequireTrustedApi(ctx);
           var token = ctx.Db.OpenIddictSpacetimeToken.Id.Find(internalId);
           if (token != null) {
                if(expirationDate.HasValue) token.ExpirationDate = expirationDate;
@@ -942,7 +1006,8 @@ public static partial class Module
                if(status != null) token.Status = status;
                if(referenceId != null) token.ReferenceId = referenceId;
                ctx.Db.OpenIddictSpacetimeToken.Id.Update(token);
-               Log.Info($"Reducer: Updated OIDC Token internal ID {internalId}, ReferenceId: {referenceId ?? "(unchanged)"}");
+               AdvanceTokenRevision(ctx, internalId);
+               Log.Info($"Reducer: Updated OIDC Token internal ID {internalId}");
           } else {
                Log.Warn($"Reducer: Could not update OIDC Token, internal ID {internalId} not found.");
           }
@@ -951,6 +1016,7 @@ public static partial class Module
      [SpacetimeDB.Reducer]
      public static void PruneOidcTokens(ReducerContext ctx, ulong thresholdDate)
      {
+        RequireTrustedApi(ctx);
           Log.Info($"Reducer: Pruning OIDC tokens created before {thresholdDate}");
            // Find tokens that are inactive/revoked/redeemed/expired and older than the threshold
           var tokensToPrune = ctx.Db.OpenIddictSpacetimeToken.Iter()
@@ -962,6 +1028,7 @@ public static partial class Module
           foreach (var token in tokensToPrune)
           {
                ctx.Db.OpenIddictSpacetimeToken.Id.Delete(token.Id);
+                  ctx.Db.OidcTokenRevision.TokenId.Delete(token.Id);
                count++;
           }
           Log.Info($"Reducer: Pruned {count} OIDC tokens.");
@@ -972,9 +1039,10 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void CreateOidcScope(ReducerContext ctx, string oidcScopeId, string name, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
     {
+        RequireTrustedApi(ctx);
          if (ctx.Db.OpenIddictSpacetimeScope.Iter().Any(s => s.OpenIddictScopeId == oidcScopeId || s.Name == name)) {
             Log.Error($"Reducer: OIDC Scope with OIDC ID {oidcScopeId} or Name {name} already exists.");
-            return; // Or throw
+            throw new Exception("OIDC token ID already exists.");
         }
         uint internalId = GetNextId(ctx, "oidcScopeId");
         var newScope = new OpenIddictSpacetimeScope {
@@ -988,9 +1056,11 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void DeleteOidcScope(ReducerContext ctx, uint internalId)
     {
+        RequireTrustedApi(ctx);
         var scope = ctx.Db.OpenIddictSpacetimeScope.Id.Find(internalId);
         if (scope != null) {
             ctx.Db.OpenIddictSpacetimeScope.Id.Delete(internalId);
+            ctx.Db.OidcScopeRevision.ScopeId.Delete(internalId);
             Log.Info($"Reducer: Deleted OIDC Scope internal ID {internalId} (Name: {scope.Name})");
         } else {
             Log.Warn($"Reducer: Could not delete OIDC Scope, internal ID {internalId} not found.");
@@ -1000,6 +1070,7 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void UpdateOidcScope(ReducerContext ctx, uint internalId, string? description, string? descriptionsJson, string? displayName, string? displayNamesJson, string? propertiesJson, string? resourcesJson)
     {
+        RequireTrustedApi(ctx);
          var scope = ctx.Db.OpenIddictSpacetimeScope.Id.Find(internalId);
          if (scope != null) {
              if(description != null) scope.Description = description;
@@ -1009,6 +1080,7 @@ public static partial class Module
              if(propertiesJson != null) scope.Properties = propertiesJson;
              if(resourcesJson != null) scope.Resources = resourcesJson;
              ctx.Db.OpenIddictSpacetimeScope.Id.Update(scope);
+             AdvanceLegacyScopeRevision(ctx, internalId);
              Log.Info($"Reducer: Updated OIDC Scope internal ID {internalId}");
          } else {
              Log.Warn($"Reducer: Could not update OIDC Scope, internal ID {internalId} not found.");

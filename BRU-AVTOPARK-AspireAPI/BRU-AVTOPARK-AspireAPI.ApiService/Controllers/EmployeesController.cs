@@ -1,3 +1,5 @@
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -18,7 +20,7 @@ using System.Threading;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class EmployeesController : BaseController
@@ -29,6 +31,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         private readonly ILogger<EmployeesController> _logger;
         private readonly IAdminActionLogger _adminLogger;
         private readonly ISpacetimeDBService _spacetimeService;
+        private readonly CatalogLookupService _catalog;
         private readonly IRealtimeEventBus _realtimeEventBus;
 
         /// <summary>
@@ -40,8 +43,9 @@ namespace TicketSalesApp.AdminServer.Controllers
             ILogger<EmployeesController> logger,
             IAdminActionLogger adminLogger,
             ISpacetimeDBService spacetimeService,
-            IRealtimeEventBus realtimeEventBus)
+            IRealtimeEventBus realtimeEventBus, CatalogLookupService catalog)
         {
+            _catalog = catalog;
             _employeeService = employeeService ?? throw new ArgumentNullException(nameof(employeeService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _adminLogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
@@ -64,11 +68,10 @@ namespace TicketSalesApp.AdminServer.Controllers
             }
 
             // Allow connection for mutation-only users; permission checks enforced per-command
-            // Use pre-validated claims instead of re-calling IsAdminAsync()/HasPermissionAsync()
-            var isAdmin = claims.ContainsKey("primary_role") && claims["primary_role"]?.ToString() == "admin";
+            var isAdmin = await IsAdminAsync();
 
-            var eventsSource = (isAdmin || HasPermission("employees.view", claims))
-                ? _realtimeEventBus.SubscribeAsync("employees", cancellationToken)
+            var eventsSource = (isAdmin || await HasPermissionAsync("employees.view", claims))
+                ? AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("employees", cancellationToken), "employees.view", cancellationToken)
                 : EmptyAsyncEnumerable();
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
@@ -102,6 +105,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request.Command is not supported.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("employees", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
 
             return command switch
@@ -122,7 +126,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an admin and does not have the "employees.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
+            if (!await HasPermissionAsync("employees.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.view");
             }
@@ -139,7 +143,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is null.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
+            if (!await HasPermissionAsync("employees.view")) throw new UnauthorizedAccessException("View permission required.");
+            if (!await HasPermissionAsync("employees.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.view");
             }
@@ -157,7 +162,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized into a create model.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.create"))
+            if (!await HasPermissionAsync("employees.create"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.create");
             }
@@ -165,7 +170,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<CreateEmployeeModel>(CaseInsensitiveJsonOptions)
                 ?? throw new InvalidOperationException("payload is required for create");
 
-            var newEmployee = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId);
+            var newEmployee = await _employeeService.CreateEmployeeAsync(model.Name, model.Surname, model.Patronym ?? string.Empty, model.JobId,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
             var success = newEmployee != null;
 
             if (success)
@@ -189,8 +195,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 200,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
-                    UserId: GetUserId(),
-                    UserName: GetUserName(),
+                    UserId: await GetUserIdAsync(),
+                    UserName: await GetUserNameAsync(),
                     Tenant: null,
                     SourceIp: GetClientIp(),
                     Metadata: metadata
@@ -199,13 +205,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     await _realtimeEventBus.PublishAsync(domainEvent);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for employee.created, but write succeeded");
                 }
 
                 // Log action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 var employeeId = newEmployee?.EmployeeId;
                 try
                 {
@@ -218,7 +224,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error logging admin action for create");
                 }
@@ -236,7 +242,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>Id</c> or <c>Payload</c> is missing from the request.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.update"))
+            if (!await HasPermissionAsync("employees.edit"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.update");
             }
@@ -245,7 +251,8 @@ namespace TicketSalesApp.AdminServer.Controllers
             var model = request.Payload?.Deserialize<UpdateEmployeeModel>(CaseInsensitiveJsonOptions)
                 ?? throw new InvalidOperationException("payload is required for update");
 
-            var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId);
+            var success = await _employeeService.UpdateEmployeeAsync(id, model.Name, model.Surname, model.Patronym, model.JobId,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
 
             if (success)
             {
@@ -278,8 +285,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 200,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
-                    UserId: GetUserId(),
-                    UserName: GetUserName(),
+                    UserId: await GetUserIdAsync(),
+                    UserName: await GetUserNameAsync(),
                     Tenant: null,
                     SourceIp: GetClientIp(),
                     Metadata: metadata
@@ -288,13 +295,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     await _realtimeEventBus.PublishAsync(domainEvent);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for employee.updated, but write succeeded");
                 }
 
                 // Log action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 try
                 {
                     var entity = await _employeeService.GetEmployeeByIdAsync(id);
@@ -307,7 +314,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error logging admin action for update");
                 }
@@ -325,14 +332,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <returns>An object with fields: <c>operation</c> ("delete"), <c>success</c> (deletion result), and <c>deletedId</c> (the employee id attempted).</returns>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!await IsAdminAsync() && !await HasPermissionAsync("employees.delete"))
+            if (!await HasPermissionAsync("employees.delete"))
             {
                 throw new UnauthorizedAccessException("Not authorized for employees.delete");
             }
 
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
             var employeeBeforeDelete = await _employeeService.GetEmployeeByIdAsync(id);
-            var success = await _employeeService.DeleteEmployeeAsync(id);
+            var success = await _employeeService.DeleteEmployeeAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(request), cancellationToken: HttpContext.RequestAborted);
 
             if (success)
             {
@@ -355,8 +363,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     StatusCode: 200,
                     OccurredAt: DateTimeOffset.UtcNow,
                     CorrelationId: request.RequestId ?? Guid.NewGuid().ToString(),
-                    UserId: GetUserId(),
-                    UserName: GetUserName(),
+                    UserId: await GetUserIdAsync(),
+                    UserName: await GetUserNameAsync(),
                     Tenant: null,
                     SourceIp: GetClientIp(),
                     Metadata: metadata
@@ -365,13 +373,13 @@ namespace TicketSalesApp.AdminServer.Controllers
                 {
                     await _realtimeEventBus.PublishAsync(domainEvent);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Failed to publish realtime event for employee.deleted, but write succeeded");
                 }
 
                 // Log action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 var deletedEmployee = employeeBeforeDelete;
                 try
                 {
@@ -388,7 +396,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error logging admin action for delete");
                 }
@@ -407,11 +415,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         //all view operations are fine to not need admin - this applies to all get type
         public async Task<ActionResult<IEnumerable<dynamic>>> GetEmployees()
         {
+            if (!await HasPermissionAsync("employees.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetEmployees");
             
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
+                if (!await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employees");
                     return Forbid();
@@ -419,13 +428,13 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE OPERATION: GetAllEmployees");
                 var employees = await _employeeService.GetAllEmployeesAsync();
-                var conn = _spacetimeService.GetConnection();
+                var lookup = await _catalog.ReadAsync(CatalogLookups.Jobs, HttpContext.RequestAborted);
                 
                 _logger.LogInformation("DATABASE RESULT: GetAllEmployees - Retrieved {EmployeeCount} employees", employees.Count());
                 
                 // Map to anonymous type with Job details
                 var result = employees.Select(e => {
-                    var job = conn.Db.Job.JobId.Find(e.JobId);
+                    var job = lookup.Jobs.GetValueOrDefault(e.JobId);
                     return new {
                         e.EmployeeId,
                         e.Name,
@@ -447,7 +456,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {EmployeeCount} employees to client", result.Count());
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving employees");
                 return StatusCode(500, "An error occurred while retrieving employees");
@@ -457,11 +466,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<dynamic>> GetEmployee(uint id)
         {
+            if (!await HasPermissionAsync("employees.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetEmployee with ID {EmployeeId}", id);
             
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
+                if (!await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employee {EmployeeId}", id);
                     return Forbid();
@@ -476,8 +486,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     return NotFound();
                 }
                 
-                var conn = _spacetimeService.GetConnection();
-                var job = conn.Db.Job.JobId.Find(employee.JobId);
+                var lookup = await _catalog.ReadAsync(CatalogLookups.Jobs, HttpContext.RequestAborted);
+                var job = lookup.Jobs.GetValueOrDefault(employee.JobId);
 
                 // Map to anonymous type with Job details
                 var result = new {
@@ -496,7 +506,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving employee {EmployeeId}", id);
                 return StatusCode(500, "An error occurred while retrieving the employee");
@@ -516,7 +526,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.create"))
+                if (!await HasPermissionAsync("employees.create"))
                 {
                     _logger.LogWarning("Unauthorized attempt to create employee");
                     return Forbid();
@@ -528,8 +538,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     model.Name,
                     model.Surname,
                     model.Patronym ?? string.Empty,
-                    model.JobId
-                );
+                    model.JobId,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
                 if (employee == null)
                 {
@@ -541,7 +551,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL EMPLOYEE DATA: {EmployeeData}", JsonSerializer.Serialize(employee));
 
                 // Log the admin action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 var createdEmployee = employee;
                 try
                 {
@@ -554,7 +564,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error logging admin action for create");
                 }
@@ -562,7 +572,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Created employee with ID {EmployeeId}", employee.EmployeeId);
                 return CreatedAtAction(nameof(GetEmployee), new { id = employee.EmployeeId }, employee);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error creating employee");
                 return StatusCode(500, "An error occurred while creating the employee");
@@ -584,7 +594,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.update"))
+                if (!await HasPermissionAsync("employees.edit"))
                 {
                     _logger.LogWarning("Unauthorized attempt to update employee {EmployeeId}", id);
                     return Forbid();
@@ -604,8 +614,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                     model.Name,
                     model.Surname,
                     model.Patronym,
-                    model.JobId
-                );
+                    model.JobId,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
 
                 if (!success)
                 {
@@ -616,7 +626,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully updated employee {EmployeeId}", id);
 
                 // Get employee after update and log admin action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 try
                 {
                     var employeeAfterUpdate = await _employeeService.GetEmployeeByIdAsync(id);
@@ -634,7 +644,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error in enrichment/logging for update");
                 }
@@ -642,7 +652,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Updated employee with ID {EmployeeId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error updating employee {EmployeeId}", id);
                 return StatusCode(500, "An error occurred while updating the employee");
@@ -662,7 +672,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.delete"))
+                if (!await HasPermissionAsync("employees.delete"))
                 {
                     _logger.LogWarning("Unauthorized attempt to delete employee {EmployeeId}", id);
                     return Forbid();
@@ -677,7 +687,8 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 _logger.LogInformation("DATABASE OPERATION: Deleting employee {EmployeeId}", id);
-                var success = await _employeeService.DeleteEmployeeAsync(id);
+                var success = await _employeeService.DeleteEmployeeAsync(id,
+                actingUser: await RequireApplicationActorAsync(), operationId: ApplicationOperationId(), cancellationToken: HttpContext.RequestAborted);
                 if (!success)
                 {
                     _logger.LogWarning("DATABASE RESULT: Employee {EmployeeId} not found for deletion", id);
@@ -687,7 +698,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("DATABASE RESULT: Successfully deleted employee {EmployeeId}", id);
 
                 // Log the admin action synchronously to avoid disposed scope issues
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 try
                 {
                     if (userId != null)
@@ -699,7 +710,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                         );
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
                 {
                     _logger.LogError(ex, "Error logging admin action for delete");
                 }
@@ -707,7 +718,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Deleted employee with ID {EmployeeId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error deleting employee {EmployeeId}", id);
                 return StatusCode(500, "An error occurred while deleting the employee");
@@ -717,11 +728,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("by-job/{jobId}")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetEmployeesByJob(uint jobId)
         {
+            if (!await HasPermissionAsync("employees.view")) return Forbid();
             _logger.LogInformation("REQUEST RECEIVED: GetEmployeesByJob with JobID {JobId}", jobId);
             
             try
             {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
+                if (!await HasPermissionAsync("employees.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view employees by job {JobId}", jobId);
                     return Forbid();
@@ -729,8 +741,8 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 _logger.LogInformation("DATABASE OPERATION: Fetching employees for job {JobId}", jobId);
                 var employees = await _employeeService.GetEmployeesByJobIdAsync(jobId);
-                var conn = _spacetimeService.GetConnection();
-                var job = conn.Db.Job.JobId.Find(jobId);
+                var lookup = await _catalog.ReadAsync(CatalogLookups.Jobs, HttpContext.RequestAborted);
+                var job = lookup.Jobs.GetValueOrDefault(jobId);
                 
                 // Map to anonymous type
                 var result = employees.Select(e => new {
@@ -754,7 +766,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("RESPONSE SENT: Returning {Count} employees for job {JobId}", result.Count, jobId);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ApplicationErrorFilterAttribute.Handles(ex))
             {
                 _logger.LogError(ex, "Error retrieving employees for job {JobId}", jobId);
                 return StatusCode(500, "An error occurred while retrieving employees");
@@ -764,59 +776,12 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("drivers")]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetDrivers()
         {
-            _logger.LogInformation("REQUEST RECEIVED: GetDrivers");
-            
-            try
-            {
-                if (!await IsAdminAsync() && !await HasPermissionAsync("employees.view"))
-                {
-                    _logger.LogWarning("Unauthorized attempt to view drivers");
-                    return Forbid();
-                }
-
-                _logger.LogInformation("DATABASE OPERATION: Fetching all jobs to identify driver job");
-                var jobs = await _employeeService.GetAllJobsAsync();
-                _logger.LogInformation("FULL JOBS DATA: {JobsData}", JsonSerializer.Serialize(jobs));
-                
-                var driverJob = jobs.FirstOrDefault(j => j.JobTitle.Contains("Driver", StringComparison.OrdinalIgnoreCase));
-
-                if (driverJob == null)
-                {
-                    _logger.LogWarning("DATABASE RESULT: Driver job not found in jobs list");
-                    _logger.LogInformation("RESPONSE SENT: Empty array - no driver job found");
-                    return Ok(Array.Empty<dynamic>());
-                }
-
-                _logger.LogInformation("DATABASE OPERATION: Fetching employees with driver job ID {JobId}", driverJob.JobId);
-                var drivers = await _employeeService.GetEmployeesByJobIdAsync(driverJob.JobId);
-                
-                // Map to anonymous type
-                var result = drivers.Select(d => new {
-                    d.EmployeeId,
-                    d.Name,
-                    d.Surname,
-                    d.Patronym,
-                    d.JobId,
-                    Job = new { driverJob.JobId, driverJob.JobTitle, driverJob.Internship }
-                }).ToList();
-                
-                _logger.LogInformation("DATABASE RESULT: Retrieved {Count} drivers", result.Count);
-                _logger.LogInformation("FULL DRIVERS DATA: {DriversData}", JsonSerializer.Serialize(result));
-                
-                foreach (var driver in result)
-                {
-                    _logger.LogDebug("Driver ID: {EmployeeId}, Name: {Name}, Surname: {Surname}", 
-                        driver.EmployeeId, driver.Name, driver.Surname);
-                }
-                
-                _logger.LogInformation("RESPONSE SENT: Returning {Count} drivers to client", result.Count);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving drivers");
-                return StatusCode(500, "An error occurred while retrieving drivers");
-            }
+            var actor = await RequireApplicationActorAsync();
+            var result = (BRU.Avtopark.Contracts.DriverLookupResult)(await HttpContext.RequestServices.GetRequiredService<ApplicationOperations>()
+                .ExecuteAsync("employees.drivers", actor, JsonSerializer.SerializeToElement(new BRU.Avtopark.Contracts.DriverLookupRequest(), BRU.Avtopark.Contracts.ApiProtocol.Json), null, HttpContext.RequestAborted))!;
+            _logger.LogInformation("Driver lookup returned {Count} rows, truncated={Truncated}", result.Items.Length, result.Truncated);
+            return Ok(result.Items.Select(d => new { d.EmployeeId, d.Name, d.Surname, d.Patronym, d.JobId,
+                Job = new { d.JobId, d.JobTitle, d.Internship } }).ToArray());
         }
     }
 

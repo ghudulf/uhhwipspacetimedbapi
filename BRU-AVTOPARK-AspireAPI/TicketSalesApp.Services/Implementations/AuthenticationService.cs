@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Security.Cryptography;
 using System.Text;
@@ -29,55 +29,24 @@ namespace TicketSalesApp.Services.Implementations
 
         public async Task<UserProfile?> AuthenticateAsync(string login, string password)
         {
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrEmpty(password)) return null;
             try
             {
-                _logger.LogInformation("Attempting to authenticate user: {Login}", login);
-
-                if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
-                {
-                    _logger.LogWarning("Authentication attempt with empty login or password");
-                    return null;
-                }
-
-                var conn = _spacetimeService.GetConnection();
-                _logger.LogDebug("Retrieved SpacetimeDB connection for authentication");
-
-                // Debug iteration through all profiles
-                _logger.LogDebug("Starting debug iteration of all user profiles");
-                var allProfiles = conn.Db.UserProfile.Iter();
-                foreach (var profile in allProfiles)
-                {
-                    _logger.LogDebug("Found profile - Login: {Login}, IsActive: {IsActive}, Identity: {Identity}",
-                        profile.Login,
-                        profile.IsActive,
-                        profile.UserId);
-                }
-
-                // Use both methods for comparison
-                var userProfileByFind = conn.Db.UserProfile.Login.Find(login);
-                var userProfileByIter = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
-
-                _logger.LogDebug("Find method result - Found: {Found}", userProfileByFind != null);
-                _logger.LogDebug("Iter method result - Found: {Found}", userProfileByIter != null);
-
-                // Use Find for actual authentication
-                var userProfile = userProfileByFind;
-                if (userProfile == null || !userProfile.IsActive)
-                {
-                    _logger.LogWarning("Authentication failed: User not found or inactive for login: {Login}", login);
-                    return null;
-                }
-
-                conn.Reducers.AuthenticateUser(login, password);
-
-                _logger.LogInformation("User {Login} authenticated successfully", login);
-                return userProfile;
+                var user = await _spacetimeService.ExecuteReducerAsync(new Reducer.AuthenticateUserChecked(login, password),
+                    connection => connection.Db.UserProfile.Login.Find(login));
+                _logger.LogInformation("Password authentication committed for account {UserId}", user?.UserId);
+                return user;
             }
-            catch (Exception ex)
+            catch (ReducerRejectedException)
             {
-                _logger.LogError(ex, "Error occurred while authenticating user: {Login}", login);
-                throw;
+                _logger.LogInformation("Password authentication rejected; credential values omitted");
+                try
+                {
+                    using var deadline = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.RecordAuthenticationFailure(login, password), _ => true, deadline.Token);
+                }
+                catch (Exception ex) { _logger.LogWarning("Failed authentication audit unavailable: {ErrorType}; credentials omitted", ex.GetType().Name); }
+                return null;
             }
         }
 
@@ -93,11 +62,8 @@ namespace TicketSalesApp.Services.Implementations
                     return false;
                 }
 
-                var conn = _spacetimeService.GetConnection();
-
                 // Check if user already exists
-                var existingUser = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login);
+                var existingUser = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(login));
 
                 if (existingUser != null)
                 {
@@ -106,27 +72,17 @@ namespace TicketSalesApp.Services.Implementations
                 }
 
                 // Call the RegisterUser reducer
-                conn.Reducers.RegisterUser(login, password, email, phoneNumber, (uint?)role, null, actingUser, newUserIdentity);
-
-                // Check repeatedly for a short time if the user was created
-                int attempts = 0;
-                const int maxAttempts = 10;
-                const int delayMs = 50;
-
-                while (attempts < maxAttempts)
+                if (newUserIdentity != null)
                 {
-                    var newUser = conn.Db.UserProfile.Login.Find(login);
-                    if (newUser != null)
-                    {
-                        _logger.LogInformation("Successfully registered new user with login: {Login}", login);
-                        return true;
-                    }
-                    await Task.Delay(delayMs);
-                    attempts++;
+                    return await _spacetimeService.ExecuteReducerAsync(new Reducer.RegisterUser(login, password, email ?? "", phoneNumber ?? "",
+                        null, RegistrationRoleName(role), actingUser, newUserIdentity), c => c.Db.UserProfile.Login.Find(login) != null);
                 }
-
-                _logger.LogError("Registration failed: User was not created within timeout period");
-                return false;
+                var roleName = RegistrationRoleName(role);
+                var roleId = await _spacetimeService.ReadAsync(c => c.Db.Role.Iter().FirstOrDefault(r => r.Name == roleName)?.RoleId);
+                if (roleId == null) return false;
+                var actor = actingUser ?? _spacetimeService.GetLocalIdentity() ?? throw new DatabaseUnavailableException("Database identity unavailable.");
+                return await _spacetimeService.ExecuteReducerAsync(new Reducer.CreateUserV2(Guid.NewGuid().ToString("N"), actor,
+                    login, password, email ?? "", phoneNumber ?? "", roleId), c => c.Db.UserProfile.Login.Find(login) != null);
             }
             catch (Exception ex)
             {
@@ -135,53 +91,30 @@ namespace TicketSalesApp.Services.Implementations
             }
         }
 
-        public async Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken)
+        public static string RegistrationRoleName(int role) => role switch
         {
-            try
-            {
-                _logger.LogInformation("Attempting direct QR authentication for user: {Login}", login);
+            0 => "User", 1 => "Administrator", 2 => "Manager", 3 => "Dispatcher",
+            4 => "Cashier", 5 => "Driver", 6 => "Conductor",
+            _ => throw new ArgumentOutOfRangeException(nameof(role))
+        };
 
-                if (string.IsNullOrEmpty(login))
-                {
-                    _logger.LogWarning("Direct QR authentication attempt with empty login");
-                    return null;
-                }
-
-                var conn = _spacetimeService.GetConnection();
-
-                // Find user by login
-                var userProfile = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == login && u.IsActive);
-
-                if (userProfile == null)
-                {
-                    _logger.LogWarning("Direct QR authentication failed: User not found or inactive for login: {Login}", login);
-                    return null;
-                }
-
-                // In a real implementation, you would validate the QR token here
-                // For now, we'll just update the last login time
-                conn.Reducers.AuthenticateUser(login, "");
-
-                _logger.LogInformation("User {Login} authenticated successfully via direct QR", login);
-                return userProfile;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while authenticating user via direct QR: {Login}", login);
-                throw;
-            }
+        public Task<UserProfile?> AuthenticateDirectQRAsync(string login, string validationToken)
+        {
+            // Legacy interface has no bound QR session/challenge proof. The production QR
+            // session service owns that verification; a username alone must never log in.
+            _logger.LogWarning("Unbound direct QR authentication rejected; use the verified QR session flow");
+            return Task.FromResult<UserProfile?>(null);
         }
 
-        public int GetUserRole(Identity userId)
+        public async Task<int> GetUserRoleAsync(Identity userId)
         {
             try
             {
-                var conn = _spacetimeService.GetConnection();
+                return await _spacetimeService.ReadAsync(conn =>
+                {
 
                 // Find user roles
-                var userRoles = conn.Db.UserRole.Iter()
-                    .Where(ur => ur.UserId.Equals(userId))
+                var userRoles = conn.Db.UserRole.UserId.Filter(userId)
                     .ToList();
 
                 if (userRoles.Count == 0)
@@ -204,6 +137,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Get the legacy role ID for compatibility
                 var highestRole = conn.Db.Role.RoleId.Find(highestPriorityRoleId);
                 return highestRole?.LegacyRoleId ?? 0;
+                });
             }
             catch (Exception ex)
             {
@@ -236,8 +170,7 @@ namespace TicketSalesApp.Services.Implementations
                 else
                 {
                     salt = new byte[SaltSize];
-                    Random r = new Random((int)DateTime.Now.Ticks); // NOT cryptographically secure!But its the only fucking way webassembly wont bitch and fail compile
-                    r.NextBytes(salt);
+                    RandomNumberGenerator.Fill(salt);
                     Log.Debug("Using random salt for password hashing");
                 }
 
@@ -589,12 +522,9 @@ namespace TicketSalesApp.Services.Implementations
                 // Normalize the login for case-insensitive comparison
                 string normalizedLogin = login.ToUpperInvariant();
 
-                // Get connection to SpacetimeDB
-                var conn = _spacetimeService.GetConnection();
-
                 // Find the user by normalized login
-                var user = conn.Db.UserProfile.Iter()
-                    .FirstOrDefault(u => u.Login == normalizedLogin);
+                var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                    .FirstOrDefault(u => u.Login == normalizedLogin));
 
                 if (user == null)
                 {

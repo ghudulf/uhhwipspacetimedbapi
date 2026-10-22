@@ -195,13 +195,13 @@
 
             <!-- Window chrome buttons -->
             <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <Button x:Name="MinimizeBtn" Classes="WinBtn" Click="MinimizeButton_Click">
+                <Button AutomationProperties.Name="Свернуть" x:Name="MinimizeBtn" Classes="WinBtn" Click="MinimizeButton_Click">
                     <icons:MaterialIcon Kind="WindowMinimize"/>
                 </Button>
-                <Button x:Name="MaximizeBtn" Classes="WinBtn" Click="MaximizeButton_Click">
+                <Button AutomationProperties.Name="Развернуть" x:Name="MaximizeBtn" Classes="WinBtn" Click="MaximizeButton_Click">
                     <icons:MaterialIcon Kind="WindowMaximize"/>
                 </Button>
-                <Button x:Name="CloseBtn" Classes="WinBtn" Click="CloseButton_Click">
+                <Button AutomationProperties.Name="Закрыть" x:Name="CloseBtn" Classes="WinBtn" Click="CloseButton_Click">
                     <icons:MaterialIcon Kind="WindowClose"/>
                 </Button>
             </StackPanel>
@@ -222,7 +222,7 @@
                     <!-- FAB at top -->
                     <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,2,0,14">
                         <Button Classes="FabBtn" Command="{Binding ToggleNavPaneCommand}"
-                                ToolTip.Tip="Меню" ToolTip.Placement="Right">
+                                AutomationProperties.Name="Меню" ToolTip.Tip="Меню" ToolTip.Placement="Right">
                             <Panel>
                                 <icons:MaterialIcon Kind="PencilOutline" Width="18" Height="18" Foreground="White"/>
                             </Panel>
@@ -234,7 +234,7 @@
                         <Border Width="36" Height="36" CornerRadius="18"
                                 Background="#2E7D32" Cursor="Hand"
                                 IsVisible="{Binding UserInitials, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                ToolTip.Tip="Профиль" ToolTip.Placement="Right">
+                                AutomationProperties.Name="Профиль" ToolTip.Tip="Профиль" ToolTip.Placement="Right">
                             <TextBlock Text="{Binding UserInitials, FallbackValue='?'}" FontSize="11" FontWeight="Bold" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -247,12 +247,12 @@
                             <TextBlock Text="МЕНЮ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
                                        HorizontalAlignment="Center" Margin="0,0,0,4"
                                        LetterSpacing="1"/>
-                            <Button Classes="RailBtn" Command="{Binding ShowBusManagementCommand}"
-                                    ToolTip.Tip="Автобусы" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowBusManagementCommand}" IsVisible="{Binding CanShowBusManagement}"
+                                    AutomationProperties.Name="Автобусы" ToolTip.Tip="Автобусы" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="Bus" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
-                            <Button Classes="RailBtn" Command="{Binding ShowSalesStatisticsCommand}"
-                                    ToolTip.Tip="Статистика" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowSalesStatisticsCommand}" IsVisible="{Binding CanShowSalesStatistics}"
+                                    AutomationProperties.Name="Статистика" ToolTip.Tip="Статистика" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="ChartBar" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
 
@@ -261,16 +261,16 @@
                             <TextBlock Text="ГРУППЫ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
                                        HorizontalAlignment="Center" Margin="0,4,0,4"
                                        LetterSpacing="1"/>
-                            <Button Classes="RailBtn" Command="{Binding ShowEmployeeManagementCommand}"
-                                    ToolTip.Tip="Сотрудники" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowEmployeeManagementCommand}" IsVisible="{Binding CanShowEmployeeManagement}"
+                                    AutomationProperties.Name="Сотрудники" ToolTip.Tip="Сотрудники" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="AccountGroup" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
-                            <Button Classes="RailBtn" Command="{Binding ShowRouteManagementCommand}"
-                                    ToolTip.Tip="Маршруты" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowRouteManagementCommand}" IsVisible="{Binding CanShowRouteManagement}"
+                                    AutomationProperties.Name="Маршруты" ToolTip.Tip="Маршруты" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="MapMarkerPath" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
-                            <Button Classes="RailBtn" Command="{Binding ShowJobManagementCommand}"
-                                    ToolTip.Tip="Должности" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowJobManagementCommand}" IsVisible="{Binding CanShowJobManagement}"
+                                    AutomationProperties.Name="Должности" ToolTip.Tip="Должности" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="Briefcase" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
 
@@ -279,16 +279,16 @@
                             <TextBlock Text="ПРИЛОЖЕНИЕ" FontSize="7" FontWeight="Medium" Foreground="#2A2A35"
                                        HorizontalAlignment="Center" Margin="0,4,0,4"
                                        LetterSpacing="1"/>
-                            <Button Classes="RailBtn" Command="{Binding ShowTicketManagementCommand}"
-                                    ToolTip.Tip="Билеты" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowTicketManagementCommand}" IsVisible="{Binding CanShowTicketManagement}"
+                                    AutomationProperties.Name="Билеты" ToolTip.Tip="Билеты" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="Ticket" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
-                            <Button Classes="RailBtn" Command="{Binding ShowUserManagementCommand}"
-                                    ToolTip.Tip="Пользователи" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowUserManagementCommand}" IsVisible="{Binding CanShowUserManagement}"
+                                    AutomationProperties.Name="Пользователи" ToolTip.Tip="Пользователи" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="AppsBox" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
-                            <Button Classes="RailBtn" Command="{Binding ShowWebSocketDebugCommand}"
-                                    ToolTip.Tip="WebSocket Debug" ToolTip.Placement="Right">
+                            <Button Classes="RailBtn" Command="{Binding ShowWebSocketDebugCommand}" IsVisible="{Binding CanShowWebSocketDebug}"
+                                    AutomationProperties.Name="WebSocket Debug" ToolTip.Tip="WebSocket Debug" ToolTip.Placement="Right">
                                 <icons:MaterialIcon Kind="Bug" Width="20" Height="20" Foreground="#8E8E9A"/>
                             </Button>
 
@@ -314,7 +314,7 @@
                             <icons:MaterialIcon Grid.Column="0" Kind="Magnify"
                                                Width="16" Height="16" Foreground="#4A4A58"
                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBox Grid.Column="1"
+                            <TextBox AutomationProperties.Name="Поиск разделов" Grid.Column="1"
                                      PlaceholderText="Поиск..."
                                      Background="Transparent" BorderThickness="0"
                                      Foreground="#8E8E9A" FontSize="13"
@@ -325,13 +325,13 @@
                     <!-- Section tabs -->
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
                                 Margin="14,0,14,0" Spacing="2">
-                        <Button Classes="TabBtn">
+                        <Button AutomationProperties.Name="Все разделы" Classes="TabBtn">
                             <TextBlock Text="Все разделы" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBF5"/>
                         </Button>
-                        <Button Classes="TabBtn">
+                        <Button AutomationProperties.Name="Транспорт" Classes="TabBtn">
                             <TextBlock Text="Транспорт" FontSize="12" Foreground="#636370"/>
                         </Button>
-                        <Button Classes="TabBtn">
+                        <Button AutomationProperties.Name="Продажи" Classes="TabBtn">
                             <TextBlock Text="Продажи" FontSize="12" Foreground="#636370"/>
                         </Button>
                     </StackPanel>
@@ -349,7 +349,7 @@
                             <TextBlock Text="ТРАНСПОРТ" FontSize="10" FontWeight="Medium"
                                        Foreground="#3A3A48" Margin="24,6,0,6" LetterSpacing="1"/>
 
-                            <Button Classes="NavItem" Command="{Binding ShowBusManagementCommand}">
+                            <Button AutomationProperties.Name="Автобусы" Classes="NavItem" Command="{Binding ShowBusManagementCommand}" IsVisible="{Binding CanShowBusManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A2A3C" VerticalAlignment="Center">
@@ -368,7 +368,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowRouteManagementCommand}">
+                            <Button AutomationProperties.Name="Маршруты" Classes="NavItem" Command="{Binding ShowRouteManagementCommand}" IsVisible="{Binding CanShowRouteManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A3A2A" VerticalAlignment="Center">
@@ -387,7 +387,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowRouteSchedulesCommand}">
+                            <Button AutomationProperties.Name="Расписание" Classes="NavItem" Command="{Binding ShowRouteSchedulesCommand}" IsVisible="{Binding CanShowRouteSchedules}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#2A2A1A" VerticalAlignment="Center">
@@ -406,7 +406,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowMaintenanceManagementCommand}">
+                            <Button AutomationProperties.Name="Обслуживание" Classes="NavItem" Command="{Binding ShowMaintenanceManagementCommand}" IsVisible="{Binding CanShowMaintenanceManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#2A1A1A" VerticalAlignment="Center">
@@ -429,7 +429,7 @@
                             <TextBlock Text="ПРОДАЖИ" FontSize="10" FontWeight="Medium"
                                        Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
-                            <Button Classes="NavItem" Command="{Binding ShowTicketManagementCommand}">
+                            <Button AutomationProperties.Name="Билеты" Classes="NavItem" Command="{Binding ShowTicketManagementCommand}" IsVisible="{Binding CanShowTicketManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#2A1A3A" VerticalAlignment="Center">
@@ -448,7 +448,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowSalesManagementCommand}">
+                            <Button AutomationProperties.Name="Продажи" Classes="NavItem" Command="{Binding ShowSalesManagementCommand}" IsVisible="{Binding CanShowSalesManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A2A1A" VerticalAlignment="Center">
@@ -467,7 +467,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowSalesStatisticsCommand}">
+                            <Button AutomationProperties.Name="Статистика" Classes="NavItem" Command="{Binding ShowSalesStatisticsCommand}" IsVisible="{Binding CanShowSalesStatistics}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A1A3A" VerticalAlignment="Center">
@@ -486,7 +486,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowIncomeReportCommand}">
+                            <Button AutomationProperties.Name="Доходы" Classes="NavItem" Command="{Binding ShowIncomeReportCommand}" IsVisible="{Binding CanShowIncomeReport}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A2A2A" VerticalAlignment="Center">
@@ -509,7 +509,7 @@
                             <TextBlock Text="ПЕРСОНАЛ" FontSize="10" FontWeight="Medium"
                                        Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
-                            <Button Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}">
+                            <Button AutomationProperties.Name="Сотрудники" Classes="NavItem" Command="{Binding ShowEmployeeManagementCommand}" IsVisible="{Binding CanShowEmployeeManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#2A1A2A" VerticalAlignment="Center">
@@ -528,7 +528,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowJobManagementCommand}">
+                            <Button AutomationProperties.Name="Должности" Classes="NavItem" Command="{Binding ShowJobManagementCommand}" IsVisible="{Binding CanShowJobManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#2A2A1A" VerticalAlignment="Center">
@@ -547,7 +547,7 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding ShowUserManagementCommand}">
+                            <Button AutomationProperties.Name="Пользователи" Classes="NavItem" Command="{Binding ShowUserManagementCommand}" IsVisible="{Binding CanShowUserManagement}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A2A3A" VerticalAlignment="Center">
@@ -570,7 +570,7 @@
                             <TextBlock Text="СИСТЕМА" FontSize="10" FontWeight="Medium"
                                        Foreground="#3A3A48" Margin="24,16,0,6" LetterSpacing="1"/>
 
-                            <Button Classes="NavItem" Command="{Binding ShowWebSocketDebugCommand}">
+                            <Button AutomationProperties.Name="Отладка WebSocket" Classes="NavItem" Command="{Binding ShowWebSocketDebugCommand}" IsVisible="{Binding CanShowWebSocketDebug}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1A2A1A" VerticalAlignment="Center">
@@ -589,7 +589,29 @@
                                 </Grid>
                             </Button>
 
-                            <Button Classes="NavItem" Command="{Binding OpenAboutCommand}">
+                            <Button Classes="NavItem" Command="{Binding LinkWindowsAccountCommand}"
+                                    IsVisible="{Binding CanLinkWindowsAccount}" AutomationProperties.Name="Связать учётную запись Windows">
+                                <TextBlock Text="Связать учётную запись Windows" TextWrapping="Wrap" Margin="12" />
+                            </Button>
+
+                            <Button Classes="NavItem" Command="{Binding ApproveQrLoginCommand}"
+                                    IsVisible="{Binding CanUseQr}" AutomationProperties.Name="Подтвердить вход по QR">
+                                <TextBlock Text="Подтвердить вход по QR" TextWrapping="Wrap" Margin="12" AutomationProperties.Name="Открыть подтверждение входа по QR" />
+                            </Button>
+                            <Button Classes="NavItem" Command="{Binding LinkEntraAccountCommand}"
+                                    IsVisible="{Binding CanLinkEntraAccount}" AutomationProperties.Name="Связать учётную запись Microsoft">
+                                <TextBlock Text="Связать учётную запись Microsoft" TextWrapping="Wrap" Margin="12" />
+                            </Button>
+                            <Button Classes="NavItem" Command="{Binding ManagePasskeysCommand}"
+                                    IsVisible="{Binding CanManagePasskeys}" AutomationProperties.Name="Ключи доступа">
+                                <TextBlock Text="Ключи доступа" TextWrapping="Wrap" Margin="12" />
+                            </Button>
+                            <Button Classes="NavItem" Command="{Binding ManageQrDevicesCommand}"
+                                    IsVisible="{Binding CanUseQr}" AutomationProperties.Name="QR-вход на этом устройстве">
+                                <TextBlock Text="QR-вход на этом устройстве" TextWrapping="Wrap" Margin="12" AutomationProperties.Name="Открыть управление ключами QR-входа" />
+                            </Button>
+
+                            <Button AutomationProperties.Name="О программе" Classes="NavItem" Command="{Binding OpenAboutCommand}">
                                 <Grid ColumnDefinitions="38,*,Auto">
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="10"
                                             Background="#1C1C24" VerticalAlignment="Center">
@@ -643,7 +665,7 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                             <Button Classes="ActionPill"
                                     Command="{Binding RefreshCommand}"
-                                    ToolTip.Tip="Обновить">
+                                    AutomationProperties.Name="Обновить" ToolTip.Tip="Обновить">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <icons:MaterialIcon Kind="Refresh" Width="14" Height="14" Foreground="#8E8E9A"/>
                                     <TextBlock Text="Обновить" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
@@ -651,7 +673,7 @@
                             </Button>
                             <Button Classes="ActionPill"
                                     Command="{Binding OpenHelpCommand}"
-                                    ToolTip.Tip="Справка">
+                                    AutomationProperties.Name="Справка" ToolTip.Tip="Справка">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <icons:MaterialIcon Kind="HelpCircleOutline" Width="14" Height="14" Foreground="#8E8E9A"/>
                                     <TextBlock Text="Справка" FontSize="12" Foreground="#8E8E9A" VerticalAlignment="Center"/>
@@ -659,12 +681,12 @@
                             </Button>
                             <Button Classes="RailBtn" Width="34" Height="34"
                                     Command="{Binding OpenAboutCommand}"
-                                    ToolTip.Tip="О программе">
+                                    AutomationProperties.Name="О программе" ToolTip.Tip="О программе">
                                 <icons:MaterialIcon Kind="InformationOutline" Width="16" Height="16" Foreground="#636370"/>
                             </Button>
                             <Button Classes="RailBtn" Width="34" Height="34"
                                     Command="{Binding ToggleNavPaneCommand}"
-                                    ToolTip.Tip="Настройки">
+                                    AutomationProperties.Name="Настройки" ToolTip.Tip="Настройки">
                                 <icons:MaterialIcon Kind="CogOutline" Width="16" Height="16" Foreground="#636370"/>
                             </Button>
                         </StackPanel>
@@ -684,7 +706,7 @@
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <Border Width="8" Height="8" CornerRadius="4" Background="{Binding IsConnected, Converter={StaticResource BoolToBrushConverter}}"/>
-                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="11" Foreground="#4A4A58"/>
+                            <TextBlock AutomationProperties.LiveSetting="Polite" Text="{Binding ConnectionStatus}" FontSize="11" Foreground="#4A4A58"/>
                         </StackPanel>
                         <TextBlock Grid.Column="2" Text="БРУ Автопарк v3.0"
                                    FontSize="11" Foreground="#2A2A35"

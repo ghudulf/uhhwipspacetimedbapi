@@ -1,3 +1,4 @@
+using TicketSalesApp.AdminServer.Experimental.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -45,6 +46,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         private readonly IHtmlRenderingService _htmlRenderingService;
         private readonly IRequestDetector _requestDetector;
         private readonly IOptions<FeatureFlagOptions> _featureFlags;
+        private readonly IFeatureFlagService? _runtimeFlags;
         private readonly ILogger<AuthController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IOidcHelperService _oidcHelperService;
@@ -64,11 +66,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             IOpenIdConnectService openIdConnectService,
             ISpacetimeDBService spacetimeService,
             IRealtimeEventBus realtimeEventBus,
-            IAuthWebSocketService authWebSocketService)
+            IAuthWebSocketService authWebSocketService,
+            IFeatureFlagService? runtimeFlags = null)
         {
             _authOrchestrationService = authOrchestrationService ?? throw new ArgumentNullException(nameof(authOrchestrationService));
             _htmlRenderingService = htmlRenderingService ?? throw new ArgumentNullException(nameof(htmlRenderingService));
             _requestDetector = requestDetector ?? throw new ArgumentNullException(nameof(requestDetector));
+            _runtimeFlags = runtimeFlags;
             _featureFlags = featureFlags ?? throw new ArgumentNullException(nameof(featureFlags));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
@@ -79,14 +83,27 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _authWebSocketService = authWebSocketService ?? throw new ArgumentNullException(nameof(authWebSocketService));
         }
 
+        private async Task<bool> IsEndpointEnabledAsync(string flag, bool configured)
+        {
+            flag = EndpointAvailability.CanonicalName(flag);
+            configured = EndpointAvailability.Resolve(_featureFlags.Value, flag, _ => null);
+            if (_runtimeFlags == null) return configured;
+            try { return await _runtimeFlags.GetFlagAsync(flag); }
+            catch (Exception ex) when (ex is DatabaseUnavailableException or TimeoutException)
+            {
+                _logger.LogWarning("Endpoint flag unavailable: {Flag}; {FailureType}", flag, ex.GetType().Name);
+                return false;
+            }
+        }
+
         #region Traditional Authentication (2 endpoints)
 
         /// <summary>
         /// GET /api/auth/login - Show login page (HTML) or return login info (JSON)
-        /// Enabled by: EnableLoginRefactoring feature flag
+        /// Enabled by: LoginEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLoginRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LoginEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -95,9 +112,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-        public IActionResult LoginPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public async Task<IActionResult> LoginPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
-            if (!_featureFlags.Value.EnableLoginRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableLoginRefactoring), _featureFlags.Value.EnableLoginRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -108,7 +125,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderLoginForm(error, message);
+                var html = await _htmlRenderingService.RenderLoginForm(error, message);
                 return Content(html, "text/html");
             }
 
@@ -127,10 +144,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/login - Login with username/password
-        /// Enabled by: EnableLoginRefactoring feature flag
+        /// Enabled by: LoginEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLoginRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LoginEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -144,7 +161,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            if (!_featureFlags.Value.EnableLoginRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableLoginRefactoring), _featureFlags.Value.EnableLoginRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -165,7 +182,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             var result = await _authOrchestrationService.LoginAsync(request.Username, request.Password);
 
-            if (!result.Success)
+            if (!result.Success && !result.RequiresTwoFactor)
             {
                 return Unauthorized(new ApiResponse<object>
                 {
@@ -195,7 +212,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "Authentication successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -242,10 +259,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/register - Show registration page (HTML) or return registration info (JSON)
-        /// Enabled by: EnableRegisterRefactoring feature flag
+        /// Enabled by: RegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -254,9 +271,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-        public IActionResult RegisterPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public async Task<IActionResult> RegisterPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
-            if (!_featureFlags.Value.EnableRegisterRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableRegisterRefactoring), _featureFlags.Value.EnableRegisterRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -267,7 +284,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderRegisterForm(error, message);
+                var html = await _htmlRenderingService.RenderRegisterForm(error, message);
                 return Content(html, "text/html");
             }
 
@@ -286,10 +303,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/register - Register new user account
-        /// Enabled by: EnableRegisterRefactoring feature flag
+        /// Enabled by: RegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -302,7 +319,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (!_featureFlags.Value.EnableRegisterRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableRegisterRefactoring), _featureFlags.Value.EnableRegisterRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -380,10 +397,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/totp/setup - Setup TOTP for user
-        /// Enabled by: EnableTotpSetupRefactoring feature flag
+        /// Enabled by: TotpSetupEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpSetupRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpSetupEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -395,7 +412,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpSetup()
         {
-            if (!_featureFlags.Value.EnableTotpSetupRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableTotpSetupRefactoring), _featureFlags.Value.EnableTotpSetupRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -442,10 +459,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/verify - Verify TOTP code during setup
-        /// Enabled by: EnableTotpVerifyRefactoring feature flag
+        /// Enabled by: TotpVerifyEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpVerifyRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpVerifyEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -458,7 +475,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpVerify([FromBody] VerifyTotpRequest request)
         {
-            if (!_featureFlags.Value.EnableTotpVerifyRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableTotpVerifyRefactoring), _featureFlags.Value.EnableTotpVerifyRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -500,10 +517,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/disable - Disable TOTP for user
-        /// Enabled by: EnableTotpDisableRefactoring feature flag
+        /// Enabled by: TotpDisableEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpDisableRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpDisableEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -516,7 +533,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpDisable()
         {
-            if (!_featureFlags.Value.EnableTotpDisableRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableTotpDisableRefactoring), _featureFlags.Value.EnableTotpDisableRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -557,10 +574,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/totp/validate - Validate TOTP code during login
-        /// Enabled by: EnableTotpValidateRefactoring feature flag
+        /// Enabled by: TotpValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableTotpValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>TotpValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -573,7 +590,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> TotpValidate([FromBody] ValidateTotpRequest request)
         {
-            if (!_featureFlags.Value.EnableTotpValidateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableTotpValidateRefactoring), _featureFlags.Value.EnableTotpValidateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -608,7 +625,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "TOTP validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -654,10 +671,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/register/options - Get WebAuthn registration options
-        /// Enabled by: EnableWebAuthnRegisterOptionsRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterOptionsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterOptionsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterOptionsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -670,7 +687,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnRegisterOptions()
         {
-            if (!_featureFlags.Value.EnableWebAuthnRegisterOptionsRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnRegisterOptionsRefactoring), _featureFlags.Value.EnableWebAuthnRegisterOptionsRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -711,10 +728,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/register/complete - Complete WebAuthn registration
-        /// Enabled by: EnableWebAuthnRegisterCompleteRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterCompleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterCompleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterCompleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -727,7 +744,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnRegisterComplete([FromBody] WebAuthnRegisterCompleteRequest request)
         {
-            if (!_featureFlags.Value.EnableWebAuthnRegisterCompleteRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnRegisterCompleteRefactoring), _featureFlags.Value.EnableWebAuthnRegisterCompleteRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -770,10 +787,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/login/options - Get WebAuthn login options
-        /// Enabled by: EnableWebAuthnLoginOptionsRefactoring feature flag
+        /// Enabled by: WebAuthnLoginOptionsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnLoginOptionsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnLoginOptionsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -785,7 +802,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnLoginOptions([FromBody] WebAuthnLoginOptionsRequest request)
         {
-            if (!_featureFlags.Value.EnableWebAuthnLoginOptionsRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnLoginOptionsRefactoring), _featureFlags.Value.EnableWebAuthnLoginOptionsRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -815,10 +832,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/login/complete - Complete WebAuthn login
-        /// Enabled by: EnableWebAuthnLoginCompleteRefactoring feature flag
+        /// Enabled by: WebAuthnLoginCompleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnLoginCompleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnLoginCompleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -831,7 +848,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnLoginComplete([FromBody] WebAuthnLoginCompleteRequest request)
         {
-            if (!_featureFlags.Value.EnableWebAuthnLoginCompleteRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnLoginCompleteRefactoring), _featureFlags.Value.EnableWebAuthnLoginCompleteRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -857,7 +874,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "WebAuthn login successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -899,10 +916,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/webauthn/validate - Validate WebAuthn assertion during 2FA
-        /// Enabled by: EnableWebAuthnValidateRefactoring feature flag
+        /// Enabled by: WebAuthnValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -915,7 +932,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnValidate([FromBody] WebAuthnValidateRequest request)
         {
-            if (!_featureFlags.Value.EnableWebAuthnValidateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnValidateRefactoring), _featureFlags.Value.EnableWebAuthnValidateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -950,7 +967,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "WebAuthn validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -992,14 +1009,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/webauthn/credentials - Get user's WebAuthn credentials
-        /// Enabled by: EnableWebAuthnCredentialsRefactoring feature flag
+        /// Enabled by: WebAuthnCredentialsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnCredentialsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnCredentialsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("webauthn/credentials")]
+        [Microsoft.AspNetCore.Cors.DisableCors]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [Authorize]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<List<object>>), StatusCodes.Status200OK)]
@@ -1007,11 +1026,9 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnCredentials()
         {
-            if (!_featureFlags.Value.EnableWebAuthnCredentialsRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnCredentialsRefactoring), _featureFlags.Value.EnableWebAuthnCredentialsRefactoring))
             {
-                var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
-                _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
-                    "GET /api/auth/webauthn/credentials", userIdentity, DateTime.UtcNow);
+                _logger.LogWarning("WebAuthn credentials endpoint disabled");
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/webauthn/credentials" });
             }
             _logger.LogInformation("Refactored WebAuthn Credentials endpoint called");
@@ -1052,14 +1069,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// DELETE /api/auth/webauthn/credentials/{id} - Remove WebAuthn credential
-        /// Enabled by: EnableWebAuthnCredentialDeleteRefactoring feature flag
+        /// Enabled by: WebAuthnCredentialDeleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnCredentialDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnCredentialDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpDelete("webauthn/credentials/{id}")]
+        [Microsoft.AspNetCore.Cors.DisableCors]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [Authorize]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -1068,14 +1087,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> WebAuthnCredentialDelete(string id)
         {
-            if (!_featureFlags.Value.EnableWebAuthnCredentialDeleteRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnCredentialDeleteRefactoring), _featureFlags.Value.EnableWebAuthnCredentialDeleteRefactoring))
             {
-                var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
-                _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
-                    "DELETE /api/auth/webauthn/credentials/{id}", userIdentity, DateTime.UtcNow);
+                _logger.LogWarning("WebAuthn credential deletion endpoint disabled");
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "DELETE /api/auth/webauthn/credentials/{id}" });
             }
-            _logger.LogInformation("Refactored WebAuthn Credential Delete endpoint called for credential: {CredentialId}", id);
+            _logger.LogInformation("WebAuthn credential removal requested; credential {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(id));
 
             var userId = User.FindFirst("identity")?.Value;
 
@@ -1113,10 +1130,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/magic-link/send - Send magic link email
-        /// Enabled by: EnableMagicLinkSendRefactoring feature flag
+        /// Enabled by: MagicLinkSendEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkSendRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkSendEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1128,7 +1145,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> MagicLinkSend([FromBody] MagicLinkRequest request)
         {
-            if (!_featureFlags.Value.EnableMagicLinkSendRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableMagicLinkSendRefactoring), _featureFlags.Value.EnableMagicLinkSendRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -1169,10 +1186,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/validate-magic-link - Validate magic link token
-        /// Enabled by: EnableMagicLinkValidateRefactoring feature flag
+        /// Enabled by: MagicLinkValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1185,7 +1202,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> MagicLinkValidate([FromBody] MagicLinkValidateRequest request)
         {
-            if (!_featureFlags.Value.EnableMagicLinkValidateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableMagicLinkValidateRefactoring), _featureFlags.Value.EnableMagicLinkValidateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -1220,7 +1237,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "Magic link validation successful",
                 Data = new LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = result.Claims,
                     User = new UserDto
                     {
@@ -1262,10 +1279,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/magic-link - Show magic link login page
-        /// Enabled by: EnableMagicLinkPageRefactoring feature flag
+        /// Enabled by: MagicLinkPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableMagicLinkPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>MagicLinkPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1274,19 +1291,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-        public Task<IActionResult> MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public async Task<IActionResult> MagicLinkPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
-            if (!_featureFlags.Value.EnableMagicLinkPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableMagicLinkPageRefactoring), _featureFlags.Value.EnableMagicLinkPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/magic-link", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/magic-link" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/magic-link" });
             }
             _logger.LogInformation("Refactored Magic Link Page endpoint called");
 
-            var html = _htmlRenderingService.RenderMagicLinkForm(error, message);
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderMagicLinkForm(error, message);
+            return Content(html, "text/html");
         }
 
         #endregion
@@ -1295,10 +1312,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/qr-login - Show QR login page
-        /// Enabled by: EnableQRLoginPageRefactoring feature flag
+        /// Enabled by: QRLoginPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1307,28 +1324,28 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-        public Task<IActionResult> QRLoginPage()
+        public async Task<IActionResult> QRLoginPage()
         {
-            if (!_featureFlags.Value.EnableQRLoginPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginPageRefactoring), _featureFlags.Value.EnableQRLoginPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/qr-login", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/qr-login" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/qr-login" });
             }
             _logger.LogInformation("Refactored QR Login Page endpoint called");
 
             // Generate a placeholder QR code for the page
-            var html = _htmlRenderingService.RenderQrLogin("placeholder-qr-code");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderQrLogin("placeholder-qr-code");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// POST /api/auth/qr-login/generate - Generate QR login token
-        /// Enabled by: EnableQRLoginGenerateRefactoring feature flag
+        /// Enabled by: QRLoginGenerateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginGenerateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginGenerateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1341,7 +1358,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginGenerate()
         {
-            if (!_featureFlags.Value.EnableQRLoginGenerateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginGenerateRefactoring), _featureFlags.Value.EnableQRLoginGenerateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -1388,10 +1405,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/validate - Validate QR login token
-        /// Enabled by: EnableQRLoginValidateRefactoring feature flag
+        /// Enabled by: QRLoginValidateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginValidateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginValidateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1404,7 +1421,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginValidate([FromBody] QRLoginValidateRequest request)
         {
-            if (!_featureFlags.Value.EnableQRLoginValidateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginValidateRefactoring), _featureFlags.Value.EnableQRLoginValidateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -1439,7 +1456,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 Message = "QR login successful",
                 Data = new BRU_AVTOPARK.Models.Responses.LoginResponse
                 {
-                    Token = result.Token!,
+                    Token = result.Token!, RefreshToken = result.RefreshToken,
                     Claims = new Dictionary<string, object>(),
                     User = new BRU_AVTOPARK.Models.Responses.UserDto
                     {
@@ -1455,10 +1472,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/qr-login/direct - Direct QR login (no 2FA)
-        /// Enabled by: EnableQRLoginDirectRefactoring feature flag
+        /// Enabled by: QRLoginDirectEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginDirectRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginDirectEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1471,54 +1488,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginDirect([FromBody] QRLoginDirectRequest request)
         {
-            if (!_featureFlags.Value.EnableQRLoginDirectRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginDirectRefactoring), _featureFlags.Value.EnableQRLoginDirectRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "POST /api/auth/qr-login/direct", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/direct" });
             }
-            _logger.LogInformation("Refactored QR Login Direct endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.DirectQRLoginAsync(request.Username, request.DeviceType);
-
-            if (!result.Success)
-            {
-                return Unauthorized(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Direct QR login failed"
-                });
-            }
-
-            return Ok(new ApiResponse<QRLoginResponse>
-            {
-                Success = true,
-                Message = "Direct QR login successful",
-                Data = new QRLoginResponse
-                {
-                    Token = result.QrCode!,
-                    QrCodeData = result.RawData!,
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(5)
-                }
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions" });
         }
 
         /// <summary>
         /// GET /api/auth/qr-login/status - Check QR login status
-        /// Enabled by: EnableQRLoginStatusRefactoring feature flag
+        /// Enabled by: QRLoginStatusEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginStatusRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginStatusEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1530,53 +1515,22 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginStatus([FromQuery] string deviceId)
         {
-            if (!_featureFlags.Value.EnableQRLoginStatusRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginStatusRefactoring), _featureFlags.Value.EnableQRLoginStatusRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/qr-login/status", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/qr-login/status" });
             }
-            _logger.LogInformation("Refactored QR Login Status endpoint called for device: {DeviceId}", deviceId);
-
-            if (string.IsNullOrEmpty(deviceId))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Device ID is required"
-                });
-            }
-
-            var result = await _authOrchestrationService.CheckQRLoginStatusAsync(deviceId);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to check QR login status"
-                });
-            }
-
-            return Ok(new ApiResponse<QRLoginStatusResponse>
-            {
-                Success = true,
-                Message = "QR login status retrieved",
-                Data = new QRLoginStatusResponse
-                {
-                    Status = result.Status!,
-                    Token = result.Token
-                }
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/status" });
         }
 
         /// <summary>
         /// POST /api/auth/qr-login/cancel - Cancel QR login attempt
-        /// Enabled by: EnableQRLoginCancelRefactoring feature flag
+        /// Enabled by: QRLoginCancelEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginCancelRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginCancelEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1588,53 +1542,27 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginCancel([FromBody] QRLoginCancelRequest request)
         {
-            if (!_featureFlags.Value.EnableQRLoginCancelRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginCancelRefactoring), _featureFlags.Value.EnableQRLoginCancelRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "POST /api/auth/qr-login/cancel", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/cancel" });
             }
-            _logger.LogInformation("Refactored QR Login Cancel endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.CancelQRLoginAsync(request.Token);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to cancel QR login"
-                });
-            }
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "QR login cancelled successfully"
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/cancel" });
         }
 
         /// <summary>
         /// POST /api/auth/qr-login/notify - Notify device of successful login
-        /// Enabled by: EnableQRLoginNotifyRefactoring feature flag
+        /// Enabled by: QRLoginNotifyEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableQRLoginNotifyRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>QRLoginNotifyEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("qr-login/notify")]
-        [Authorize]
+        [AllowAnonymous]
         [Produces("application/json")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -1642,40 +1570,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> QRLoginNotify([FromBody] QRLoginNotifyRequest request)
         {
-            if (!_featureFlags.Value.EnableQRLoginNotifyRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableQRLoginNotifyRefactoring), _featureFlags.Value.EnableQRLoginNotifyRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "POST /api/auth/qr-login/notify", userIdentity, DateTime.UtcNow);
                 return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "POST /api/auth/qr-login/notify" });
             }
-            _logger.LogInformation("Refactored QR Login Notify endpoint called");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid request data"
-                });
-            }
-
-            var result = await _authOrchestrationService.NotifyQRLoginAsync(request.DeviceId, request.Token);
-
-            if (!result.Success)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = result.ErrorMessage ?? "Failed to notify device"
-                });
-            }
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "Device notified successfully"
-            });
+            return StatusCode(410, new { code = "qr_login_moved", replacement = "/api/auth/qr/sessions/{id}/approve" });
         }
 
         #endregion
@@ -1684,7 +1586,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET/POST ~/connect/authorize - OAuth authorization endpoint
-        /// Enabled by: EnableOAuthAuthorizeRefactoring feature flag
+        /// Enabled by: OAuthAuthorizeEndpointEnabled feature flag
         /// 
         /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
         /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
@@ -1696,7 +1598,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// Reference: CRITICAL_OIDC_CONTROLLER_REQUIREMENTS.md
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizeRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizeEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1710,7 +1612,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Authorize()
         {
-            if (!_featureFlags.Value.EnableOAuthAuthorizeRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthAuthorizeRefactoring), _featureFlags.Value.EnableOAuthAuthorizeRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -1792,7 +1694,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    return Content(_htmlRenderingService.RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
+                    return Content(await _htmlRenderingService.RenderOAuthLoginForm(requestId, clientName, scopes), "text/html");
                 }
 
                 // JSON response for headless clients: return all info needed to render their own login UI
@@ -1849,7 +1751,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST ~/connect/token - OAuth token exchange endpoint
-        /// Enabled by: EnableOAuthTokenRefactoring feature flag
+        /// Enabled by: OAuthTokenEndpointEnabled feature flag
         ///
         /// CRITICAL: This endpoint follows OpenIddict's architecture requirements.
         /// - HttpContext.GetOpenIddictServerRequest() MUST stay in controller
@@ -1870,7 +1772,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// }
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokenRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokenEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -1883,7 +1785,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> Exchange()
         {
-            if (!_featureFlags.Value.EnableOAuthTokenRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthTokenRefactoring), _featureFlags.Value.EnableOAuthTokenRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2068,10 +1970,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/connect/userinfo - OAuth user info endpoint
-        /// Enabled by: EnableOAuthUserInfoRefactoring feature flag
+        /// Enabled by: OAuthUserInfoEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthUserInfoRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthUserInfoEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2083,7 +1985,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthUserInfo()
         {
-            if (!_featureFlags.Value.EnableOAuthUserInfoRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthUserInfoRefactoring), _featureFlags.Value.EnableOAuthUserInfoRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2119,7 +2021,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/oauth/authorize - Backchannel OAuth authorize endpoint for headless/native clients.
-        /// Enabled by: EnableOAuthBackchannelAuthorizeRefactoring feature flag
+        /// Enabled by: OAuthBackchannelAuthorizeEndpointEnabled feature flag
         ///
         /// Allows non-browser clients (desktop apps, mobile apps, CLI tools) to complete the full
         /// OAuth 2.0 authorization code flow without browser redirects. The client authenticates
@@ -2134,7 +2036,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// /api/auth/totp/validate or /api/auth/webauthn/validate before retrying.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthBackchannelAuthorizeRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthBackchannelAuthorizeEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2147,7 +2049,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthBackchannelAuthorize([FromBody] OAuthBackchannelAuthorizeRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthBackchannelAuthorizeRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthBackchannelAuthorizeRefactoring), _featureFlags.Value.EnableOAuthBackchannelAuthorizeRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2275,8 +2177,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             _cache.Set($"oidc_request_params_{requestId}", requestParams, TimeSpan.FromMinutes(10));
 
             // Create a cookie session for the user so ~/connect/authorize can authenticate them
-            var conn = _spacetimeService.GetConnection();
-            var userProfile = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == authenticatedUsername);
+            var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(authenticatedUsername), HttpContext.RequestAborted);
             if (userProfile == null)
             {
                 _logger.LogError("OAuthBackchannelAuthorize: User profile not found for {Username}", authenticatedUsername);
@@ -2322,12 +2223,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/connect/clients - Register new OAuth client.
-        /// Enabled by: EnableOAuthClientRegisterRefactoring feature flag.
+        /// Enabled by: OAuthClientRegisterEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ clientId, clientSecret, clientName }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2340,7 +2241,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientRegister([FromBody] RegisterClientRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthClientRegisterRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring), _featureFlags.Value.EnableOAuthClientRegisterRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2387,13 +2288,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/connect/clients - List all OAuth clients.
-        /// Enabled by: EnableOAuthClientListRefactoring OR EnableOAuthClientsPageRefactoring feature flags.
+        /// Enabled by: OAuthClientListEndpointEnabled OR OAuthClientsPageEndpointEnabled feature flags.
         ///
         /// Returns JSON array for API requests: <c>[{ clientId, clientName, redirectUris, scopes, createdAt }]</c>
         /// Returns HTML page for browser requests.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientListRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientListEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2405,7 +2306,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientList([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthClientListRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientListRefactoring), _featureFlags.Value.EnableOAuthClientListRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2434,7 +2335,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             // Check if browser request - return HTML
             if (_requestDetector.IsBrowserRequest())
             {
-                var html = _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
+                var html = await _htmlRenderingService.RenderOidcClientsList(result.Clients.Select(c => new BRU_AVTOPARK.Models.Responses.ClientDto
                 {
                     ClientId = c.ClientId,
                     DisplayName = c.DisplayName
@@ -2454,13 +2355,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/connect/clients/{id} - Get OAuth client details.
-        /// Enabled by: EnableOAuthClientDetailsRefactoring OR EnableOAuthClientDetailsPageRefactoring feature flags.
+        /// Enabled by: OAuthClientDetailsEndpointEnabled OR OAuthClientDetailsPageEndpointEnabled feature flags.
         ///
         /// Returns JSON for API requests: <c>{ clientId, clientName, redirectUris, scopes }</c>
         /// Returns HTML page for browser requests.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDetailsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDetailsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2472,7 +2373,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientDetails(string id, [FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthClientDetailsRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientDetailsRefactoring), _featureFlags.Value.EnableOAuthClientDetailsRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2511,7 +2412,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     RequireConsent = result.Client.RequireConsent
                 };
 
-                var html = _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
+                var html = await _htmlRenderingService.RenderOidcClientDetails(clientResponse, token);
                 return Content(html, "text/html");
             }
 
@@ -2534,12 +2435,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/connect/clients/{id} - Update OAuth client.
-        /// Enabled by: EnableOAuthClientUpdateRefactoring feature flag.
+        /// Enabled by: OAuthClientUpdateEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ success, message }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2548,7 +2449,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json")]
         public async Task<IActionResult> OAuthClientUpdate(string id, [FromBody] UpdateClientRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthClientUpdateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring), _featureFlags.Value.EnableOAuthClientUpdateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2595,12 +2496,12 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// DELETE /api/auth/connect/clients/{id} - Delete OAuth client.
-        /// Enabled by: EnableOAuthClientDeleteRefactoring feature flag.
+        /// Enabled by: OAuthClientDeleteEndpointEnabled feature flag.
         ///
         /// Returns JSON: <c>{ success, message }</c>
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2609,7 +2510,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json")]
         public async Task<IActionResult> OAuthClientDelete(string id)
         {
-            if (!_featureFlags.Value.EnableOAuthClientDeleteRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring), _featureFlags.Value.EnableOAuthClientDeleteRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2638,19 +2539,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/connect/scopes - List available OAuth scopes
-        /// Enabled by: EnableOAuthScopesRefactoring feature flag
+        /// Enabled by: OAuthScopesEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthScopesRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthScopesEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/scopes")]
         [Authorize(Roles = "Administrator")]
-        [Produces("application/json")]
+        [Produces("application/json", "text/html")]
         public async Task<IActionResult> OAuthScopes()
         {
-            if (!_featureFlags.Value.EnableOAuthScopesRefactoring)
+            if (_requestDetector.IsBrowserRequest()) return await OAuthScopesPage();
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthScopesRefactoring), _featureFlags.Value.EnableOAuthScopesRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2680,10 +2582,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/oauth/clients/{id}/regenerate-secret - Regenerate client secret
-        /// Enabled by: EnableOAuthClientRegenerateSecretRefactoring feature flag
+        /// Enabled by: OAuthClientRegenerateSecretEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegenerateSecretRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegenerateSecretEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2696,7 +2598,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> OAuthClientRegenerateSecret(string id)
         {
-            if (!_featureFlags.Value.EnableOAuthClientRegenerateSecretRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientRegenerateSecretRefactoring), _featureFlags.Value.EnableOAuthClientRegenerateSecretRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2734,42 +2636,42 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /oauth/clients/new - New OAuth client form page
-        /// Enabled by: EnableOAuthClientNewPageRefactoring feature flag
+        /// Enabled by: OAuthClientNewPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientNewPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientNewPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/clients/new")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthClientNewPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthClientNewPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthClientNewPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientNewPageRefactoring), _featureFlags.Value.EnableOAuthClientNewPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/clients/new", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/clients/new" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/clients/new" });
             }
             _logger.LogInformation("Refactored OAuth Client New Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { form = "new_client", fields = new[] { "clientId", "clientSecret", "displayName", "redirectUris", "allowedScopes", "requireConsent" } }));
+                return Ok(new { form = "new_client", fields = new[] { "clientId", "clientSecret", "displayName", "redirectUris", "allowedScopes", "requireConsent" } });
             }
 
-            var html = _htmlRenderingService.RenderOidcClientForm(null, null, token);
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderOidcClientForm(null, null, token);
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/clients/{id}/edit - Edit OAuth client form page
-        /// Enabled by: EnableOAuthClientEditPageRefactoring feature flag
+        /// Enabled by: OAuthClientEditPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientEditPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientEditPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -2778,7 +2680,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         public async Task<IActionResult> OAuthClientEditPage(string id, [FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthClientEditPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientEditPageRefactoring), _featureFlags.Value.EnableOAuthClientEditPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2819,25 +2721,23 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var html = _htmlRenderingService.RenderOidcClientForm(id, clientResponse, token);
+            var html = await _htmlRenderingService.RenderOidcClientForm(id, clientResponse, token);
             return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /connect/scopes - OAuth scopes list page
-        /// Enabled by: EnableOAuthScopesPageRefactoring feature flag
+        /// Enabled by: OAuthScopesPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthScopesPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthScopesPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
-        [HttpGet("connect/scopes")]
-        [AllowAnonymous]
-        [Produces("application/json", "text/html")]
+        [NonAction]
         public async Task<IActionResult> OAuthScopesPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthScopesPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthScopesPageRefactoring), _featureFlags.Value.EnableOAuthScopesPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -2871,274 +2771,274 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 OidcId = s
             }).ToList();
 
-            var html = _htmlRenderingService.RenderOidcScopesList(scopeDtos, token);
+            var html = await _htmlRenderingService.RenderOidcScopesList(scopeDtos, token);
             return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/authorizations - OAuth authorizations list page
-        /// Enabled by: EnableOAuthAuthorizationsPageRefactoring feature flag
+        /// Enabled by: OAuthAuthorizationsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizationsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizationsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("oauth/authorizations")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthAuthorizationsPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthAuthorizationsPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthAuthorizationsPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthAuthorizationsPageRefactoring), _featureFlags.Value.EnableOAuthAuthorizationsPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/oauth/authorizations", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/oauth/authorizations" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/oauth/authorizations" });
             }
             _logger.LogInformation("Refactored OAuth Authorizations Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { authorizations = Array.Empty<object>(), message = "OAuth authorizations page not yet fully implemented" }));
+                return Ok(new { authorizations = Array.Empty<object>(), message = "OAuth authorizations page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth authorizations page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth authorizations page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/tokens - OAuth tokens list page
-        /// Enabled by: EnableOAuthTokensPageRefactoring feature flag
+        /// Enabled by: OAuthTokensPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokensPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokensPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/tokens")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthTokensPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthTokensPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthTokensPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthTokensPageRefactoring), _featureFlags.Value.EnableOAuthTokensPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/tokens", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/tokens" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/tokens" });
             }
             _logger.LogInformation("Refactored OAuth Tokens Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { tokens = Array.Empty<object>(), message = "OAuth tokens page not yet fully implemented" }));
+                return Ok(new { tokens = Array.Empty<object>(), message = "OAuth tokens page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth tokens page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth tokens page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/dashboard - OAuth admin dashboard page
-        /// Enabled by: EnableOAuthDashboardPageRefactoring feature flag
+        /// Enabled by: OAuthDashboardPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthDashboardPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthDashboardPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("oauth/dashboard")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthDashboardPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthDashboardPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthDashboardPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthDashboardPageRefactoring), _featureFlags.Value.EnableOAuthDashboardPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/oauth/dashboard", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/oauth/dashboard" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/oauth/dashboard" });
             }
             _logger.LogInformation("Refactored OAuth Dashboard Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { dashboard = "oauth_admin", message = "OAuth dashboard page not yet fully implemented" }));
+                return Ok(new { dashboard = "oauth_admin", message = "OAuth dashboard page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth dashboard page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth dashboard page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/settings - OAuth settings page
-        /// Enabled by: EnableOAuthSettingsPageRefactoring feature flag
+        /// Enabled by: OAuthSettingsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthSettingsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthSettingsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/settings")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthSettingsPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthSettingsPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthSettingsPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthSettingsPageRefactoring), _featureFlags.Value.EnableOAuthSettingsPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/settings", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/settings" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/settings" });
             }
             _logger.LogInformation("Refactored OAuth Settings Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { settings = new object(), message = "OAuth settings page not yet fully implemented" }));
+                return Ok(new { settings = new object(), message = "OAuth settings page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth settings page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth settings page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/logs - OAuth audit logs page
-        /// Enabled by: EnableOAuthLogsPageRefactoring feature flag
+        /// Enabled by: OAuthLogsPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthLogsPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthLogsPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/logs")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthLogsPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthLogsPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthLogsPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthLogsPageRefactoring), _featureFlags.Value.EnableOAuthLogsPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/logs", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/logs" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/logs" });
             }
             _logger.LogInformation("Refactored OAuth Logs Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { logs = Array.Empty<object>(), message = "OAuth logs page not yet fully implemented" }));
+                return Ok(new { logs = Array.Empty<object>(), message = "OAuth logs page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth logs page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth logs page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/help - OAuth help/documentation page
-        /// Enabled by: EnableOAuthHelpPageRefactoring feature flag
+        /// Enabled by: OAuthHelpPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthHelpPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthHelpPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/help")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthHelpPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthHelpPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthHelpPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthHelpPageRefactoring), _featureFlags.Value.EnableOAuthHelpPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/help", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/help" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/help" });
             }
             _logger.LogInformation("Refactored OAuth Help Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { help = "oauth_help", message = "OAuth help page not yet fully implemented" }));
+                return Ok(new { help = "oauth_help", message = "OAuth help page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth help page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth help page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/test - OAuth test/playground page
-        /// Enabled by: EnableOAuthTestPageRefactoring feature flag
+        /// Enabled by: OAuthTestPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTestPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTestPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/test")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthTestPage([FromQuery] string? token = null)
+        public async Task<IActionResult> OAuthTestPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableOAuthTestPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthTestPageRefactoring), _featureFlags.Value.EnableOAuthTestPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/test", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/test" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/test" });
             }
             _logger.LogInformation("Refactored OAuth Test Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
-                return Task.FromResult<IActionResult>(Ok(new { test = "oauth_playground", message = "OAuth test page not yet fully implemented" }));
+                return Ok(new { test = "oauth_playground", message = "OAuth test page not yet fully implemented" });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage("OAuth test page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage("OAuth test page not yet implemented");
+            return Content(html, "text/html");
         }
 
         /// <summary>
         /// GET /oauth/callback - OAuth callback page
-        /// Enabled by: EnableOAuthCallbackPageRefactoring feature flag
+        /// Enabled by: OAuthCallbackPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthCallbackPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthCallbackPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("connect/callback")]
         [AllowAnonymous]
         [Produces("application/json", "text/html")]
-        public Task<IActionResult> OAuthCallbackPage([FromQuery] string? code = null, [FromQuery] string? error = null)
+        public async Task<IActionResult> OAuthCallbackPage([FromQuery] string? code = null, [FromQuery] string? error = null)
         {
-            if (!_featureFlags.Value.EnableOAuthCallbackPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthCallbackPageRefactoring), _featureFlags.Value.EnableOAuthCallbackPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
                     "GET /api/auth/connect/callback", userIdentity, DateTime.UtcNow);
-                return Task.FromResult<IActionResult>(StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/callback" }));
+                return StatusCode(503, new { error = "This endpoint is temporarily unavailable", endpoint = "GET /api/auth/connect/callback" });
             }
             _logger.LogInformation("Refactored OAuth Callback Page endpoint called");
 
             if (!_requestDetector.IsBrowserRequest())
             {
                 if (!string.IsNullOrEmpty(error))
-                    return Task.FromResult<IActionResult>(BadRequest(new { error, code = (string?)null }));
-                return Task.FromResult<IActionResult>(Ok(new { code, error = (string?)null }));
+                    return BadRequest(new { error, code = (string?)null });
+                return Ok(new { code, error = (string?)null });
             }
 
             // Placeholder: This page is not yet implemented in IHtmlRenderingService
-            var html = _htmlRenderingService.RenderErrorPage(error ?? "OAuth callback page not yet implemented");
-            return Task.FromResult<IActionResult>(Content(html, "text/html"));
+            var html = await _htmlRenderingService.RenderErrorPage(error ?? "OAuth callback page not yet implemented");
+            return Content(html, "text/html");
         }
 
         #endregion
@@ -3147,11 +3047,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/profile - Get user profile
-        /// Enabled by: EnableProfileRefactoring feature flag
+        /// Enabled by: ProfileEndpointEnabled feature flag
         /// Accepts token from Authorization header OR query string parameter
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableProfileRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ProfileEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3160,7 +3060,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json", "text/html")]
         public async Task<IActionResult> Profile([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableProfileRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableProfileRefactoring), _featureFlags.Value.EnableProfileRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3243,7 +3143,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
 
                 // Render HTML using HtmlRenderingService
-                var html = _htmlRenderingService.RenderProfilePage(
+                var html = await _htmlRenderingService.RenderProfilePage(
                     profileRenderData.User,
                     profileRenderData.TotpEnabled,
                     profileRenderData.WebAuthnCredentials,
@@ -3276,10 +3176,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/profile - Update user profile
-        /// Enabled by: EnableProfileUpdateRefactoring feature flag
+        /// Enabled by: ProfileUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableProfileUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ProfileUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3287,7 +3187,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize]
         public async Task<IActionResult> ProfileUpdate([FromBody] UpdateProfileRequest request)
         {
-            if (!_featureFlags.Value.EnableProfileUpdateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableProfileUpdateRefactoring), _featureFlags.Value.EnableProfileUpdateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3342,10 +3242,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/change-password - Change user password
-        /// Enabled by: EnableChangePasswordRefactoring feature flag
+        /// Enabled by: ChangePasswordEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableChangePasswordRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ChangePasswordEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3353,7 +3253,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            if (!_featureFlags.Value.EnableChangePasswordRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableChangePasswordRefactoring), _featureFlags.Value.EnableChangePasswordRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3403,18 +3303,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/logout - Show logout confirmation page
-        /// Enabled by: EnableLogoutRefactoring feature flag
+        /// Enabled by: LogoutEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLogoutRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LogoutEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("logout")]
         [AllowAnonymous]
-        public IActionResult LogoutPage()
+        public async Task<IActionResult> LogoutPage()
         {
-            if (!_featureFlags.Value.EnableLogoutRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableLogoutRefactoring), _featureFlags.Value.EnableLogoutRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3425,7 +3325,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderLogoutPage(), "text/html");
+                return Content(await _htmlRenderingService.RenderLogoutPage(), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3437,18 +3337,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/logout - Logout user
-        /// Enabled by: EnableLogoutRefactoring feature flag
+        /// Enabled by: LogoutEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableLogoutRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>LogoutEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("logout")]
-        [Authorize]
-        public async Task<IActionResult> Logout()
+        [AllowAnonymous]
+        [Microsoft.AspNetCore.Cors.DisableCors, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Logout([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] NativeLogoutRequest? request = null)
         {
-            if (!_featureFlags.Value.EnableLogoutRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableLogoutRefactoring), _featureFlags.Value.EnableLogoutRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3460,7 +3361,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
             var userId = User.FindFirst("identity")?.Value;
             var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(request?.RefreshToken))
             {
                 return Unauthorized(new ApiResponse<object>
                 {
@@ -3469,8 +3370,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 });
             }
 
-            var identity = new SpacetimeDB.Identity(Convert.FromHexString(userId));
-            var result = await _authOrchestrationService.LogoutAsync(identity);
+            var identity = string.IsNullOrEmpty(userId) ? default : new SpacetimeDB.Identity(Convert.FromHexString(userId));
+            var result = await _authOrchestrationService.LogoutAsync(identity, request?.RefreshToken);
 
             if (!result.Success)
             {
@@ -3490,18 +3391,19 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/refresh - Refresh JWT token
-        /// Enabled by: EnableRefreshTokenRefactoring feature flag
+        /// Enabled by: RefreshTokenEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableRefreshTokenRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>RefreshTokenEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("refresh")]
         [AllowAnonymous]
+        [Microsoft.AspNetCore.Cors.DisableCors, ResponseCache(NoStore = true, Location = ResponseCacheLocation.None), RequestSizeLimit(4096)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            if (!_featureFlags.Value.EnableRefreshTokenRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableRefreshTokenRefactoring), _featureFlags.Value.EnableRefreshTokenRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3542,13 +3444,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
             });
         }
+        public sealed record NativeLogoutRequest(string? RefreshToken);
 
         /// <summary>
         /// GET /api/auth/settings - Get user authentication settings
-        /// Enabled by: EnableSettingsRefactoring feature flag
+        /// Enabled by: SettingsEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSettingsRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SettingsEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3556,7 +3459,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize]
         public async Task<IActionResult> Settings()
         {
-            if (!_featureFlags.Value.EnableSettingsRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableSettingsRefactoring), _featureFlags.Value.EnableSettingsRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3604,10 +3507,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// PUT /api/auth/settings - Update user authentication settings
-        /// Enabled by: EnableSettingsUpdateRefactoring feature flag
+        /// Enabled by: SettingsUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSettingsUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SettingsUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3615,7 +3518,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize]
         public async Task<IActionResult> SettingsUpdate([FromBody] UpdateSettingsRequest request)
         {
-            if (!_featureFlags.Value.EnableSettingsUpdateRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableSettingsUpdateRefactoring), _featureFlags.Value.EnableSettingsUpdateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3670,10 +3573,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/status - Check authentication status
-        /// Enabled by: EnableStatusRefactoring feature flag
+        /// Enabled by: StatusEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableStatusRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>StatusEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3681,7 +3584,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Status()
         {
-            if (!_featureFlags.Value.EnableStatusRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableStatusRefactoring), _featureFlags.Value.EnableStatusRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3730,18 +3633,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/success - Show success page after authentication
-        /// Enabled by: EnableSuccessPageRefactoring feature flag
+        /// Enabled by: SuccessPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableSuccessPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>SuccessPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("success")]
         [AllowAnonymous]
-        public IActionResult SuccessPage([FromQuery] string? token = null)
+        public async Task<IActionResult> SuccessPage([FromQuery] string? token = null)
         {
-            if (!_featureFlags.Value.EnableSuccessPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableSuccessPageRefactoring), _featureFlags.Value.EnableSuccessPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3752,7 +3655,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderSuccessPage(token ?? ""), "text/html");
+                return Content(await _htmlRenderingService.RenderSuccessPage(token ?? ""), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3765,18 +3668,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/error - Show error page
-        /// Enabled by: EnableErrorPageRefactoring feature flag
+        /// Enabled by: ErrorPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableErrorPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ErrorPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("error")]
         [AllowAnonymous]
-        public IActionResult ErrorPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public async Task<IActionResult> ErrorPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
-            if (!_featureFlags.Value.EnableErrorPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableErrorPageRefactoring), _featureFlags.Value.EnableErrorPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3789,7 +3692,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderErrorPage(errorMessage), "text/html");
+                return Content(await _htmlRenderingService.RenderErrorPage(errorMessage), "text/html");
             }
 
             return BadRequest(new ApiResponse<object>
@@ -3801,18 +3704,18 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/claim-account - Show claim account page
-        /// Enabled by: EnableClaimAccountPageRefactoring feature flag
+        /// Enabled by: ClaimAccountPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableClaimAccountPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>ClaimAccountPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpGet("claim-account")]
         [AllowAnonymous]
-        public IActionResult ClaimAccountPage([FromQuery] string? error = null, [FromQuery] string? message = null)
+        public async Task<IActionResult> ClaimAccountPage([FromQuery] string? error = null, [FromQuery] string? message = null)
         {
-            if (!_featureFlags.Value.EnableClaimAccountPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableClaimAccountPageRefactoring), _featureFlags.Value.EnableClaimAccountPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3823,7 +3726,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
             if (_requestDetector.IsBrowserRequest())
             {
-                return Content(_htmlRenderingService.RenderClaimAccountForm(error, message), "text/html");
+                return Content(await _htmlRenderingService.RenderClaimAccountForm(error, message), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3835,10 +3738,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/webauthn/register - Show WebAuthn registration page
-        /// Enabled by: EnableWebAuthnRegisterPageRefactoring feature flag
+        /// Enabled by: WebAuthnRegisterPageEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebAuthnRegisterPageRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebAuthnRegisterPageEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3846,7 +3749,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Authorize]
         public async Task<IActionResult> WebAuthnRegisterPage()
         {
-            if (!_featureFlags.Value.EnableWebAuthnRegisterPageRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebAuthnRegisterPageRefactoring), _featureFlags.Value.EnableWebAuthnRegisterPageRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3868,11 +3771,11 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 
                 if (!result.Success)
                 {
-                    return Content(_htmlRenderingService.RenderErrorPage(result.ErrorMessage ?? "Failed to generate WebAuthn options"), "text/html");
+                    return Content(await _htmlRenderingService.RenderErrorPage(result.ErrorMessage ?? "Failed to generate WebAuthn options"), "text/html");
                 }
 
                 var optionsJson = System.Text.Json.JsonSerializer.Serialize(result.Options);
-                return Content(_htmlRenderingService.RenderWebAuthnRegistration(optionsJson), "text/html");
+                return Content(await _htmlRenderingService.RenderWebAuthnRegistration(optionsJson), "text/html");
             }
 
             return Ok(new ApiResponse<object>
@@ -3888,10 +3791,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/debug/tokentest - Debug token test endpoint
-        /// Enabled by: EnableDebugTokenTestRefactoring feature flag
+        /// Enabled by: DebugTokenTestEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableDebugTokenTestRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>DebugTokenTestEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3899,7 +3802,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> TokenTest()
         {
-            if (!_featureFlags.Value.EnableDebugTokenTestRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableDebugTokenTestRefactoring), _featureFlags.Value.EnableDebugTokenTestRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -3916,8 +3819,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     return Ok(new { error = "No Bearer token found", hint = "Send Authorization: Bearer <token>" });
 
                 var token = authHeader.Substring("Bearer ".Length).Trim();
-                _logger.LogInformation("TokenTest - Token length: {Length}, starts with: {Start}",
-                    token.Length, token.Substring(0, Math.Min(20, token.Length)));
+                _logger.LogInformation("TokenTest - Bearer fingerprint: {Fingerprint}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Fingerprint(token));
 
                 // Detect JWE (5 parts) vs JWT (3 parts)
                 var parts = token.Split('.');
@@ -3972,10 +3874,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET ~/connect/tokeninfo - Token validation endpoint used by BaseController for OAuth token validation
-        /// Enabled by: EnableOAuthTokenInfoRefactoring feature flag
+        /// Enabled by: OAuthTokenInfoEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthTokenInfoRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthTokenInfoEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -3984,7 +3886,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> TokenInfo()
         {
-            if (!_featureFlags.Value.EnableOAuthTokenInfoRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthTokenInfoRefactoring), _featureFlags.Value.EnableOAuthTokenInfoRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4031,7 +3933,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 }
                 
                 _logger.LogInformation("TokenInfo - Returning {ClaimCount} claims from token", claimsDict.Count);
-                _logger.LogDebug("TokenInfo - Claims: {Claims}", string.Join(", ", claimsDict.Keys));
+                _logger.LogDebug("TokenInfo - Claim values omitted");
                 
                 return Ok(new
                 {
@@ -4051,10 +3953,10 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// <summary>
         /// POST ~/connect/authorize/callback - OAuth authorization callback form handler
         /// Processes user login during OAuth authorization flow
-        /// Enabled by: EnableOAuthAuthorizeCallbackRefactoring feature flag
+        /// Enabled by: OAuthAuthorizeCallbackEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthAuthorizeCallbackRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthAuthorizeCallbackEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4062,7 +3964,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> AuthorizeCallback([FromForm] AuthorizeCallbackRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthAuthorizeCallbackRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthAuthorizeCallbackRefactoring), _featureFlags.Value.EnableOAuthAuthorizeCallbackRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4081,7 +3983,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     _logger.LogWarning("Invalid or expired request ID: {RequestId}", request.RequestId);
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(), 
+                        return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId, "Unknown", Array.Empty<string>(),
                             "Invalid or expired request. Please try again."), "text/html");
                     }
                     return BadRequest(new { error = "invalid_request", error_description = "Invalid or expired request ID" });
@@ -4107,15 +4009,14 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                     
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId, clientName, scopes, 
+                        return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId, clientName, scopes,
                             "Invalid username or password. Please try again."), "text/html");
                     }
                     return Unauthorized(new { error = "invalid_credentials", error_description = "Invalid username or password" });
                 }
 
                 // Get the actual SpacetimeDB Identity from the database
-                var conn = _spacetimeService.GetConnection();
-                var userProfile = conn.Db.UserProfile.Iter().FirstOrDefault(u => u.Login == request.Username);
+                var userProfile = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Login.Find(request.Username), HttpContext.RequestAborted);
                 if (userProfile == null)
                 {
                     _logger.LogError("User profile not found for authenticated user: {Username}", request.Username);
@@ -4208,7 +4109,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 _logger.LogError(ex, "Error processing authorization callback for RequestId: {RequestId}", request.RequestId);
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    return Content(_htmlRenderingService.RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(), 
+                    return Content(await _htmlRenderingService.RenderOAuthLoginForm(request.RequestId ?? "", "Unknown", Array.Empty<string>(),
                         "An error occurred while processing your request. Please try again."), "text/html");
                 }
                 return StatusCode(500, new { error = "server_error", 
@@ -4218,18 +4119,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/register-client - Form-based client registration
-        /// Enabled by: EnableOAuthClientRegisterRefactoring feature flag
+        /// Enabled by: OAuthClientRegisterEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientRegisterRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientRegisterEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/register-client")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> RegisterClientSubmit([FromForm] RegisterClientFormRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthClientRegisterRefactoring)
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientRegisterRefactoring), _featureFlags.Value.EnableOAuthClientRegisterRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4286,7 +4189,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
                             RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOidcClientForm(null, clientData, request.Token), "text/html");
+                        return Content(await _htmlRenderingService.RenderOidcClientForm(null, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4312,7 +4215,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to register client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to register client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4324,8 +4227,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<OAuthClientDto>
@@ -4357,18 +4259,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/update-client/{clientId} - Form-based client update
-        /// Enabled by: EnableOAuthClientUpdateRefactoring feature flag
+        /// Enabled by: OAuthClientUpdateEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientUpdateRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientUpdateEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/update-client/{clientId}")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> UpdateClientSubmit(string clientId, [FromForm] UpdateClientFormRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthClientUpdateRefactoring)
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientUpdateRefactoring), _featureFlags.Value.EnableOAuthClientUpdateRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4425,7 +4329,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                             AllowedScopes = _oidcHelperService.SplitTextareaInput(request.AllowedScopes),
                             RequireConsent = request.RequireConsent
                         };
-                        return Content(_htmlRenderingService.RenderOidcClientForm(clientId, clientData, request.Token), "text/html");
+                        return Content(await _htmlRenderingService.RenderOidcClientForm(clientId, clientData, request.Token), "text/html");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4451,7 +4355,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to update client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to update client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4463,8 +4367,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(request.Token) ? $"?token={Uri.EscapeDataString(request.Token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<OAuthClientDto>
@@ -4496,18 +4399,20 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /connect/clients/{clientId}/delete - Form-based client deletion
-        /// Enabled by: EnableOAuthClientDeleteRefactoring feature flag
+        /// Enabled by: OAuthClientDeleteEndpointEnabled feature flag
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthClientDeleteRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthClientDeleteEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
         [HttpPost("connect/clients/{clientId}/delete")]
-        [AllowAnonymous]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Administrator")]
         public async Task<IActionResult> DeleteClientSubmit(string clientId, [FromForm] string? token)
         {
-            if (!_featureFlags.Value.EnableOAuthClientDeleteRefactoring)
+            if (User.Identity?.IsAuthenticated != true) return Unauthorized();
+            if (!User.IsInRole("Administrator")) return Forbid("Bearer");
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthClientDeleteRefactoring), _featureFlags.Value.EnableOAuthClientDeleteRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4557,7 +4462,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
                 {
                     if (_requestDetector.IsBrowserRequest())
                     {
-                        return Redirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to delete client application")}");
+                        return LocalRedirect($"/api/auth/error?message={Uri.EscapeDataString(result.ErrorMessage ?? "Failed to delete client application")}");
                     }
 
                     return BadRequest(new ApiResponse<object>
@@ -4569,8 +4474,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
                 if (_requestDetector.IsBrowserRequest())
                 {
-                    var tokenParam = !string.IsNullOrEmpty(token) ? $"?token={Uri.EscapeDataString(token)}" : "";
-                    return Redirect($"/api/auth/connect/clients{tokenParam}");
+                    return LocalRedirect("/api/auth/connect/clients");
                 }
 
                 return Ok(new ApiResponse<object>
@@ -4601,7 +4505,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// GET /api/auth/ws - Real-time authentication over WebSocket.
-        /// Enabled by: EnableWebSocketAuthRefactoring feature flag.
+        /// Enabled by: WebSocketAuthEndpointEnabled feature flag.
         ///
         /// Supported client→server message types:
         ///   auth:validate   – validate a bearer token and receive claims back
@@ -4627,7 +4531,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         /// until a valid token is confirmed.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableWebSocketAuthRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>WebSocketAuthEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4635,7 +4539,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [AllowAnonymous]
         public async Task AuthWebSocket()
         {
-            if (!_featureFlags.Value.EnableWebSocketAuthRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableWebSocketAuthRefactoring), _featureFlags.Value.EnableWebSocketAuthRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",
@@ -4672,13 +4576,13 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
 
         /// <summary>
         /// POST /api/auth/oauth/consent - JSON endpoint for headless OAuth consent
-        /// Enabled by: EnableOAuthConsentRefactoring feature flag
+        /// Enabled by: OAuthConsentEndpointEnabled feature flag
         ///
         /// Allows non-browser (headless) clients to programmatically complete the OAuth consent step.
         /// The browser HTML form POST flow via ~/connect/authorize remains unchanged.
         /// </summary>
         /// <remarks>
-        /// This endpoint's availability is controlled by the <c>EnableOAuthConsentRefactoring</c> feature flag in <c>FeatureFlagOptions</c>.
+        /// This endpoint's availability is controlled by the <c>OAuthConsentEndpointEnabled</c> feature flag in <c>FeatureFlagOptions</c>.
         /// When the flag is false, the endpoint returns 503 Service Unavailable.
         /// Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment.
         /// </remarks>
@@ -4687,7 +4591,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Controllers
         [Produces("application/json")]
         public async Task<IActionResult> OAuthConsent([FromBody] OAuthConsentRequest request)
         {
-            if (!_featureFlags.Value.EnableOAuthConsentRefactoring)
+            if (!await IsEndpointEnabledAsync(nameof(FeatureFlagOptions.EnableOAuthConsentRefactoring), _featureFlags.Value.EnableOAuthConsentRefactoring))
             {
                 var userIdentity = User.FindFirst("unique_name")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "anonymous";
                 _logger.LogWarning("Endpoint {EndpointName} is disabled via feature flag. Request from {UserIdentity} at {Timestamp}",

@@ -20,10 +20,14 @@ public static partial class Module
     /// </remarks>
     [SpacetimeDB.Reducer]
     public static void CreateRoleReducer(ReducerContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority, Identity? actingUserId = null)
+        => CreateRoleCore(ctx, legacyRoleId, name, description, isSystem, priority, actingUserId);
+
+    private static uint CreateRoleCore(ReducerContext ctx, int legacyRoleId, string name, string description, bool isSystem, uint priority, Identity? actingUserId)
     {
+        ValidateText(name, 200, true); ValidateText(description, 2000);
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission (e.g., "roles.create")
         if (!HasPermission(ctx, effectiveUser, "roles.create")) // CreateRoleReducer PERM CHECK
@@ -52,10 +56,12 @@ public static partial class Module
             UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,
             CreatedBy = effectiveUser.ToString(),
             UpdatedBy = effectiveUser.ToString(),
-            NormalizedName = name.ToUpperInvariant()
+            NormalizedName = NormalizeRoleName(name)
         };
         ctx.Db.Role.Insert(role);
         Log.Info($"Created new role: {role.Name} ({role.RoleId}) by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "roles", roleId);
+        return roleId;
     }
 
     /// <summary>
@@ -71,9 +77,13 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to edit roles.</exception>
     [SpacetimeDB.Reducer]
     public static void UpdateRoleReducer(ReducerContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, Identity? actingUserId = null)
+        => UpdateRoleCore(ctx, roleId, name, description, legacyRoleId, priority, actingUserId);
+
+    private static void UpdateRoleCore(ReducerContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, Identity? actingUserId)
     {
+        ValidateText(name, 200, true); ValidateText(description, 2000);
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.edit")) // UpdateRoleReducer PERM CHECK
         {
@@ -85,7 +95,7 @@ public static partial class Module
             throw new Exception("Role not found");
         }
         // prevent from editing system roles
-        if (role.IsSystem)
+        if (role.IsSystem || role.Name == "Administrator")
         {
             throw new Exception("Cannot modify a system role");
         }
@@ -97,7 +107,7 @@ public static partial class Module
                 throw new Exception("Another role with this name already exists");
             }
             role.Name = name;
-            role.NormalizedName = name.ToUpperInvariant();
+            role.NormalizedName = NormalizeRoleName(name);
         }
         if (description != null)
         {
@@ -115,6 +125,7 @@ public static partial class Module
         role.UpdatedBy = effectiveUser.ToString(); // Set the updater
         ctx.Db.Role.RoleId.Update(role);
         Log.Info($"Role {roleId} updated by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "roles", roleId);
     }
 
     /// <summary>
@@ -126,9 +137,13 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to delete roles.</exception>
     [SpacetimeDB.Reducer]
     public static void DeleteRoleReducer(ReducerContext ctx, uint roleId, Identity? actingUserId = null)
+        => DeleteRoleCore(ctx, roleId, actingUserId);
+
+    private static void DeleteRoleCore(ReducerContext ctx, uint roleId, Identity? actingUserId)
     {
+        if (ctx.Db.UserRole.Iter().Any(r => r.RoleId == roleId)) throw new Exception("Role is assigned to users.");
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "roles.delete")) // DeleteRoleReducer PERM CHECK
         {
@@ -140,7 +155,7 @@ public static partial class Module
         {
             throw new Exception("Role not found");
         }
-        if (role.IsSystem)
+        if (role.IsSystem || role.Name == "Administrator")
         {
             throw new Exception("Cannot delete a system role");
         }
@@ -159,6 +174,7 @@ public static partial class Module
         }
         ctx.Db.Role.RoleId.Delete(roleId);
         Log.Info($"Role {roleId} has been deleted by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "roles", roleId);
     }
 
     /// <summary>
@@ -174,40 +190,7 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to edit roles.</exception>
     [SpacetimeDB.Reducer]
     public static void UpdateRole(ReducerContext ctx, uint roleId, string? name, string? description, int? legacyRoleId, uint? priority, Identity? actingUserId = null)
-    {
-        // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
-        
-        if (!HasPermission(ctx, effectiveUser, "roles.edit")) // UpdateRole PERM CHECK
-        {
-            throw new Exception("Unauthorized: You do not have permission to edit roles.");
-        }
-        var role = ctx.Db.Role.RoleId.Find(roleId);
-        if (role == null)
-        {
-            throw new Exception("Role not found");
-        }
-
-        if (name != null)
-        {
-            role.Name = name;
-        }
-        if (description != null)
-        {
-            role.Description = description;
-        }
-        if (legacyRoleId.HasValue)
-        {
-            role.LegacyRoleId = legacyRoleId.Value;
-        }
-        if (priority.HasValue)
-        {
-            role.Priority = priority.Value;
-        }
-        role.UpdatedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000;
-        ctx.Db.Role.RoleId.Update(role);
-        Log.Info($"Role {roleId} updated by {effectiveUser}");
-    }
+        => UpdateRoleCore(ctx, roleId, name, description, legacyRoleId, priority, actingUserId);
 
     /// <summary>
     /// Deletes a role from the system.
@@ -218,40 +201,7 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to delete roles.</exception>
     [SpacetimeDB.Reducer]
     public static void DeleteRole(ReducerContext ctx, uint roleId, Identity? actingUserId = null)
-    {
-        // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
-        
-        if (!HasPermission(ctx, effectiveUser, "roles.delete")) // DeleteRole PERM CHECK
-        {
-            throw new Exception("Unauthorized: Missing roles.delete permission");
-        }
-        // Prevent deleting system roles
-        var role = ctx.Db.Role.RoleId.Find(roleId);
-        if (role == null)
-        {
-            throw new Exception("Role not found");
-        }
-        if (role.IsSystem)
-        {
-            throw new Exception("Cannot delete a system role");
-        }
-        // Remove role assignments (UserRole entries)
-        var userRoles = ctx.Db.UserRole.Iter().Where(ur => ur.RoleId == roleId).ToList();
-        foreach (var userRole in userRoles)
-        {
-            ctx.Db.UserRole.Id.Delete(userRole.Id); // Delete by unique ID
-        }
-
-        // Remove role permissions (RolePermission entries)
-        var rolePermissions = ctx.Db.RolePermission.Iter().Where(rp => rp.RoleId == roleId).ToList();
-        foreach (var rolePermission in rolePermissions)
-        {
-            ctx.Db.RolePermission.Id.Delete(rolePermission.Id); // Delete by unique ID
-        }
-        ctx.Db.Role.RoleId.Delete(roleId);
-        Log.Info($"Role {roleId} has been deleted by {effectiveUser}");
-    }
+        => DeleteRoleCore(ctx, roleId, actingUserId);
 
     /// <summary>
     /// Updates an existing permission in the system.
@@ -266,9 +216,13 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to edit permissions.</exception>
     [SpacetimeDB.Reducer]
     public static void UpdatePermission(ReducerContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive, Identity? actingUserId = null)
+        => UpdatePermissionCore(ctx, permissionId, name, description, category, isActive, actingUserId);
+
+    private static void UpdatePermissionCore(ReducerContext ctx, uint permissionId, string? name, string? description, string? category, bool? isActive, Identity? actingUserId)
     {
+        ValidateText(name, 200, true); ValidateText(description, 2000); ValidateText(category, 200);
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "permissions.edit")) // UpdatePermission PERM CHECK Assuming you have a permission for this
         {
@@ -285,6 +239,8 @@ public static partial class Module
         if (name != null)
         {
             // Check for name uniqueness
+            if (name != permission.Name && !IsAdministrator(ctx, effectiveUser) && !HasPermission(ctx, effectiveUser, name))
+                throw new Exception("Cannot rename a permission to a privilege the actor does not hold.");
             if (ctx.Db.Permission.Iter().Any(p => p.Name == name && p.PermissionId != permissionId))
             {
                 throw new Exception("A permission with this name already exists.");
@@ -297,6 +253,7 @@ public static partial class Module
 
         ctx.Db.Permission.PermissionId.Update(permission); // Use the generated Update method.
         Log.Info($"Updated permission {permissionId} by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "permissions", permissionId);
     }
 
     /// <summary>
@@ -308,9 +265,12 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to delete permissions.</exception>
     [SpacetimeDB.Reducer]
     public static void DeletePermission(ReducerContext ctx, uint permissionId, Identity? actingUserId = null)
+        => DeletePermissionCore(ctx, permissionId, actingUserId);
+
+    private static void DeletePermissionCore(ReducerContext ctx, uint permissionId, Identity? actingUserId)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         if (!HasPermission(ctx, effectiveUser, "permissions.delete")) // DeletePermission PERM CHECK
         {
@@ -328,6 +288,7 @@ public static partial class Module
         }
         ctx.Db.Permission.PermissionId.Delete(permissionId);
         Log.Info($"Permission {permissionId} has been deleted by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "permissions", permissionId);
     }
 
     /// <summary>
@@ -340,9 +301,14 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to assign roles.</exception>
     [SpacetimeDB.Reducer]
     public static void AssignRole(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId = null)
+        => AssignRoleCore(ctx, userId, roleId, actingUserId);
+
+    private static void AssignRoleCore(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
+        var assignedRole = ctx.Db.Role.RoleId.Find(roleId) ?? throw new Exception("Role not found.");
+        if (assignedRole.Name == "Administrator" && !IsAdministrator(ctx, effectiveUser)) throw new Exception("Only an administrator may assign Administrator.");
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "assign_roles")) // AssignRole PERM CHECK
@@ -371,6 +337,7 @@ public static partial class Module
         // Insert the new assignment into the database
         ctx.Db.UserRole.Insert(userRole);
         Log.Info($"Role {roleId} assigned to user {userId} by {effectiveUser}");
+        AdvanceUserRevision(ctx, userId);
     }
 
     /// <summary>
@@ -383,9 +350,14 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to grant permissions.</exception>
     [SpacetimeDB.Reducer]
     public static void GrantPermissionToRole(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId = null)
+        => GrantPermissionToRoleCore(ctx, roleId, permissionId, actingUserId);
+
+    private static void GrantPermissionToRoleCore(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
+        var grant = ctx.Db.Permission.PermissionId.Find(permissionId) ?? throw new Exception("Permission not found.");
+        if (!IsAdministrator(ctx, effectiveUser) && !HasPermission(ctx, effectiveUser, grant.Name)) throw new Exception("Cannot grant a permission the actor does not hold.");
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "grant_permissions")) // GrantPermissionToRole PERM CHECK
@@ -407,7 +379,7 @@ public static partial class Module
         // Create a new role-permission assignment
         var rolePermission = new RolePermission
         {
-            Id = 0, // Auto-increment will assign this
+            Id = GetNextId(ctx, "rolePermissionId"), // Shared with explicit bootstrap grants.
             RoleId = roleId,  // Set the role ID
             PermissionId = permissionId,  // Set the permission ID
             GrantedAt = (ulong)ctx.Timestamp.MicrosecondsSinceUnixEpoch / 1000,  // Set grant time
@@ -416,6 +388,7 @@ public static partial class Module
         // Insert the new assignment into the database
         ctx.Db.RolePermission.Insert(rolePermission);
         Log.Info($"Permission {permissionId} granted to role {roleId} by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "roles", roleId);
     }
 
     /// <summary>
@@ -428,9 +401,13 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to revoke permissions.</exception>
     [SpacetimeDB.Reducer]
     public static void RevokePermissionFromRole(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId = null)
+        => RevokePermissionFromRoleCore(ctx, roleId, permissionId, actingUserId);
+
+    private static void RevokePermissionFromRoleCore(ReducerContext ctx, uint roleId, uint permissionId, Identity? actingUserId)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
+        if (ctx.Db.Role.RoleId.Find(roleId)?.Name == "Administrator") throw new Exception("Administrator permissions cannot be revoked.");
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "grant_permissions")) // RevokePermissionFromRole PERM CHECK
@@ -457,6 +434,7 @@ public static partial class Module
         ctx.Db.RolePermission.Id.Delete(rolePermission.Id);
         // Log the revocation
         Log.Info($"Permission {permissionId} revoked from role {roleId} by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "roles", roleId);
     }
 
     /// <summary>
@@ -469,9 +447,13 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to remove roles.</exception>
     [SpacetimeDB.Reducer]
     public static void RemoveRole(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId = null)
+        => RemoveRoleCore(ctx, userId, roleId, actingUserId);
+
+    private static void RemoveRoleCore(ReducerContext ctx, Identity userId, uint roleId, Identity? actingUserId)
     {
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
+        if (ctx.Db.Role.RoleId.Find(roleId)?.Name == "Administrator") EnsureAdministratorRemains(ctx, userId);
         
         // Authorization check - verify the sender has the required permission
         if (!HasPermission(ctx, effectiveUser, "assign_roles")) // RemoveRole PERM CHECK
@@ -521,6 +503,7 @@ public static partial class Module
         ctx.Db.UserRole.Id.Delete(userRole.Id);
         // Log the removal
         Log.Info($"Role {roleId} removed from user {userId} by {effectiveUser}");
+        AdvanceUserRevision(ctx, userId);
     }
 
     // Helper method to check if a user has a specific permission
@@ -533,19 +516,19 @@ public static partial class Module
     /// <returns>True if the user has the specified permission; otherwise, false.</returns>
     private static bool HasPermission(ReducerContext ctx, Identity userId, string permissionName)
     {
+        if (ctx.Db.UserProfile.UserId.Find(userId)?.IsActive != true) return false;
         Log.Debug($"Checking permission '{permissionName}' for user {userId}");
         
         // Get all roles for the user
-        var roleIds = ctx.Db.UserRole.Iter()
-                           .Where(ur => ur.UserId == userId)  // Find all role assignments for this user
+        var roleIds = ctx.Db.UserRole.UserId.Filter(userId)
+                           .Where(ur => ctx.Db.Role.RoleId.Find(ur.RoleId)?.IsActive == true)
                            .Select(ur => ur.RoleId)           // Get the role IDs
                            .ToList();                         // Convert to list
         
         Log.Debug($"User has {roleIds.Count} roles: {string.Join(", ", roleIds)}");
         
         // Check if any of the user's roles have the specified permission
-        var permissionIds = ctx.Db.RolePermission.Iter()
-                                .Where(rp => roleIds.Contains(rp.RoleId))  // Find permissions for user's roles
+        var permissionIds = roleIds.SelectMany(id => ctx.Db.RolePermission.RoleId.Filter(id))
                                 .Select(rp => rp.PermissionId)             // Get the permission IDs
                                 .ToList();                                 // Convert to list
         
@@ -562,7 +545,7 @@ public static partial class Module
         // Final permission check - look for the specific permission name among the user's permissions
         bool hasPermission = ctx.Db.Permission.Iter()
                     .Where(p => permissionIds.Contains(p.PermissionId))  // Filter to user's permissions
-                    .Any(p => p.Name == permissionName && p.IsActive);   // Check for matching name and active status
+                    .Any(p => p.IsActive && BRU.Avtopark.Security.PermissionNames.Canonical(p.Name) == BRU.Avtopark.Security.PermissionNames.Canonical(permissionName));   // Check for matching name and active status
         
         Log.Debug($"Permission check result for '{permissionName}': {hasPermission}");
         return hasPermission;
@@ -579,10 +562,14 @@ public static partial class Module
     /// <exception cref="Exception">Thrown when the user does not have permission to create permissions.</exception>
     [SpacetimeDB.Reducer]
     public static void AddNewPermission(ReducerContext ctx, string name, string description, string category, Identity? actingUserId = null)
+        => CreatePermissionCore(ctx, name, description, category, actingUserId);
+
+    private static uint CreatePermissionCore(ReducerContext ctx, string name, string description, string category, Identity? actingUserId)
     {
+        ValidateText(name, 200, true); ValidateText(description, 2000); ValidateText(category, 200);
         // Use the provided actingUserId if available, otherwise fall back to ctx.Sender
         // This is a workaround because ctx.Sender will return the API server identity, not the actual user
-        Identity effectiveUser = actingUserId ?? ctx.Sender;
+        Identity effectiveUser = ResolveEffectiveUser(ctx, actingUserId);
         
         // Check if the caller has the necessary permission (e.g., "permissions.create")
         if (!HasPermission(ctx, effectiveUser, "permissions.create")) // AddNewPermission PERM CHECK
@@ -608,5 +595,7 @@ public static partial class Module
         };
         ctx.Db.Permission.Insert(permission);
         Log.Info($"Created new permission: {permission.Name} ({permission.PermissionId}) by {effectiveUser}");
+        AdvanceEntityRevision(ctx, "permissions", permissionId);
+        return permissionId;
     }
 }

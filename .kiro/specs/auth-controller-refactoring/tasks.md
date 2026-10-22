@@ -475,7 +475,7 @@ This implementation plan refactors the AuthController from a monolithic 8,293-li
     - _Requirements: 6.1.5, 6.1.9, 6.1.10_
   
   - [x] 9.6 Create admin web UI for feature flag management
-    - Create HTML page at /admin/feature-flags with toggle switches
+    - Create HTML page at /api/admin/feature-flags-ui with toggle switches
     - Display real-time status (enabled/disabled) for each flag
     - Add bulk enable/disable buttons (e.g., "Enable All TOTP Endpoints")
     - Add confirmation dialogs for critical flags (OAuth endpoints)
@@ -743,7 +743,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
 5. **Rollback if needed** - Set flags back to `false` and restart
 
 **Alternative: Runtime Flag Management** (Optional):
-- Use admin UI at `/admin/feature-flags-ui` (requires Admin role)
+- Use admin UI at `/api/admin/feature-flags-ui` (requires Admin role)
 - Use admin API: `PUT /api/admin/feature-flags/{flagName}` with `{"enabled": true}`
 - Runtime changes are stored in SpacetimeDB and take effect immediately (no restart needed)
 
@@ -949,7 +949,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - _Requirements: 6.1.3, 6.1.4, 6.1.6, 6.1.7, 6.1.8_
   
   - [x] 26.4 Update admin feature flag UI text and documentation
-    - Update the `/admin/feature-flags` page title and description to reflect new purpose: "Endpoint Availability Control" instead of "Refactoring Rollout"
+    - Update the `/api/admin/feature-flags-ui` page title and description to reflect new purpose: "Endpoint Availability Control" instead of "Refactoring Rollout"
     - Update toggle labels from "Enable refactored implementation" to "Endpoint enabled"
     - Update the confirmation dialog for disabling a flag to warn: "Disabling this flag will return 503 to all callers of this endpoint. There is no legacy fallback. Are you sure?"
     - Update the audit log display to show "Endpoint disabled/enabled" instead of "Refactoring enabled/disabled"
@@ -984,7 +984,7 @@ This phase enables the refactored endpoints by setting feature flags in `appsett
     - _Requirements: 6.5, 12.5_
   
   - [x] 27.3 Add XML documentation comments to each endpoint explaining feature flag behavior
-    - Add `<remarks>` XML doc block to each action method explaining: "This endpoint's availability is controlled by the `<flag name>` feature flag in `FeatureFlagOptions`. When the flag is false, the endpoint returns 503 Service Unavailable. Use the admin UI at /admin/feature-flags or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment."
+    - Add `<remarks>` XML doc block to each action method explaining: "This endpoint's availability is controlled by the `<flag name>` feature flag in `FeatureFlagOptions`. When the flag is false, the endpoint returns 503 Service Unavailable. Use the admin UI at /api/admin/feature-flags-ui or the API at /api/admin/feature-flags to toggle availability at runtime without a deployment."
     - This makes the operational behavior discoverable to future developers reading the code
     - _Requirements: 11.1, 11.2_
 

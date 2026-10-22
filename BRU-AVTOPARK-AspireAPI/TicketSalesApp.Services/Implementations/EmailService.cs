@@ -46,9 +46,9 @@ namespace TicketSalesApp.Services.Implementations
         {
             try
             {
-                _logger.LogInformation("Sending email to: {To}, Subject: {Subject}", to, subject);
+                _logger.LogInformation("Sending transactional email; recipient and subject omitted");
 
-                var message = new MailMessage
+                using var message = new MailMessage
                 {
                     From = new MailAddress(_fromEmail, _fromName),
                     Subject = subject,
@@ -66,14 +66,13 @@ namespace TicketSalesApp.Services.Implementations
                     await client.SendMailAsync(message);
                 }
 
-                _logger.LogInformation("Email sent successfully to: {To}", to);
+                _logger.LogInformation("Transactional email sent; recipient omitted");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending email to: {To}", to);
+                _logger.LogError("Transactional email failed: {ErrorType}; recipient omitted", ex.GetType().Name);
                 throw;
             }
         }
     }
 }
-

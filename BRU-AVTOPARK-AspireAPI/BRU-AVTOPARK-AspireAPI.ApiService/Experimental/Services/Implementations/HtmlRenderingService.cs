@@ -272,7 +272,7 @@ public class HtmlRenderingService : IHtmlRenderingService
     }
 
     // Authentication view rendering methods
-    public string RenderLoginForm(string? error = null, string? message = null)
+    public Task<string> RenderLoginForm(string? error = null, string? message = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -282,10 +282,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Error = error,
             Message = message
         };
-        return RenderViewToStringAsync("Auth/Login", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/Login", viewModel, httpContext);
     }
 
-    public string RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false)
+    public Task<string> RenderRegisterForm(string? error = null, string? message = null, int? adminCheckAttempt = null, bool isAdmin = false)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -297,10 +297,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             AdminCheckAttempt = adminCheckAttempt,
             IsAdmin = isAdmin
         };
-        return RenderViewToStringAsync("Auth/Register", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/Register", viewModel, httpContext);
     }
 
-    public string RenderTotpSetup(string qrCodeUri, string secretKey)
+    public Task<string> RenderTotpSetup(string qrCodeUri, string secretKey)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -310,10 +310,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             QrCodeUri = qrCodeUri,
             SecretKey = secretKey
         };
-        return RenderViewToStringAsync("Auth/TotpSetup", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/TotpSetup", viewModel, httpContext);
     }
 
-    public string RenderWebAuthnRegistration(string options)
+    public Task<string> RenderWebAuthnRegistration(string options)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -322,10 +322,10 @@ public class HtmlRenderingService : IHtmlRenderingService
         {
             OptionsJson = options
         };
-        return RenderViewToStringAsync("Auth/WebAuthnRegister", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/WebAuthnRegister", viewModel, httpContext);
     }
 
-    public string RenderMagicLinkForm(string? error = null, string? message = null)
+    public Task<string> RenderMagicLinkForm(string? error = null, string? message = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -335,10 +335,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Error = error,
             Message = message
         };
-        return RenderViewToStringAsync("Auth/MagicLink", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/MagicLink", viewModel, httpContext);
     }
 
-    public string RenderQrLogin(string qrCode)
+    public Task<string> RenderQrLogin(string qrCode)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -348,10 +348,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             QrCodeBase64 = qrCode,
             DeviceId = Guid.NewGuid().ToString()
         };
-        return RenderViewToStringAsync("Auth/QrLogin", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/QrLogin", viewModel, httpContext);
     }
 
-    public string RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null)
+    public Task<string> RenderOAuthLoginForm(string requestId, string clientName, string[] scopes, string? error = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -363,10 +363,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Scopes = scopes,
             Error = error
         };
-        return RenderViewToStringAsync("Auth/OAuthLogin", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/OAuthLogin", viewModel, httpContext);
     }
 
-    public string RenderClaimAccountForm(string? error = null, string? message = null)
+    public Task<string> RenderClaimAccountForm(string? error = null, string? message = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -376,10 +376,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Error = error,
             Message = message
         };
-        return RenderViewToStringAsync("Auth/ClaimAccount", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/ClaimAccount", viewModel, httpContext);
     }
 
-    public string RenderSuccessPage(string token)
+    public Task<string> RenderSuccessPage(string token)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -389,10 +389,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Token = token,
             Message = "Login successful!"
         };
-        return RenderViewToStringAsync("Auth/Success", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/Success", viewModel, httpContext);
     }
 
-    public string RenderErrorPage(string error)
+    public Task<string> RenderErrorPage(string error)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -401,18 +401,18 @@ public class HtmlRenderingService : IHtmlRenderingService
         {
             Error = error
         };
-        return RenderViewToStringAsync("Auth/Error", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Auth/Error", viewModel, httpContext);
     }
 
-    public string RenderLogoutPage()
+    public Task<string> RenderLogoutPage()
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
         
-        return RenderViewToStringAsync<object>("Auth/Logout", null, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync<object>("Auth/Logout", null, httpContext);
     }
 
-    public string RenderProfilePage(
+    public Task<string> RenderProfilePage(
         SpacetimeDB.Types.UserProfile user,
         bool totpEnabled,
         List<BRU_AVTOPARK.Models.Responses.WebAuthnCredentialDto> webAuthnCredentials,
@@ -470,10 +470,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Permissions = permissionViewModels
         };
 
-        return RenderViewToStringAsync("Profile/Index", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("Profile/Index", viewModel, httpContext);
     }
 
-    public string RenderOidcClientsList(List<BRU_AVTOPARK.Models.Responses.ClientDto> clients, string? token = null)
+    public Task<string> RenderOidcClientsList(List<BRU_AVTOPARK.Models.Responses.ClientDto> clients, string? token = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -491,10 +491,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Token = token
         };
 
-        return RenderViewToStringAsync("OAuth/ClientsList", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("OAuth/ClientsList", viewModel, httpContext);
     }
 
-    public string RenderOidcScopesList(List<BRU_AVTOPARK.Models.Responses.ScopeDto> scopes, string? token = null)
+    public Task<string> RenderOidcScopesList(List<BRU_AVTOPARK.Models.Responses.ScopeDto> scopes, string? token = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -514,10 +514,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Token = token
         };
 
-        return RenderViewToStringAsync("OAuth/ScopesList", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("OAuth/ScopesList", viewModel, httpContext);
     }
 
-    public string RenderOidcClientDetails(BRU_AVTOPARK.Models.Responses.GetClientResponse client, string? token = null)
+    public Task<string> RenderOidcClientDetails(BRU_AVTOPARK.Models.Responses.GetClientResponse client, string? token = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -533,10 +533,10 @@ public class HtmlRenderingService : IHtmlRenderingService
             Token = token
         };
 
-        return RenderViewToStringAsync("OAuth/ClientDetails", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("OAuth/ClientDetails", viewModel, httpContext);
     }
 
-    public string RenderOidcClientForm(string? clientId = null, BRU_AVTOPARK.Models.Responses.GetClientResponse? client = null, string? token = null)
+    public Task<string> RenderOidcClientForm(string? clientId = null, BRU_AVTOPARK.Models.Responses.GetClientResponse? client = null, string? token = null)
     {
         var httpContext = _httpContextAccessor.HttpContext 
             ?? throw new InvalidOperationException("HttpContext is not available");
@@ -552,6 +552,6 @@ public class HtmlRenderingService : IHtmlRenderingService
             Token = token
         };
 
-        return RenderViewToStringAsync("OAuth/ClientForm", viewModel, httpContext).GetAwaiter().GetResult();
+        return RenderViewToStringAsync("OAuth/ClientForm", viewModel, httpContext);
     }
 }

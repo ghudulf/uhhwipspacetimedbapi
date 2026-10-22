@@ -11,9 +11,8 @@ using System.Collections.Generic;
 namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
 {
     /// <summary>
-    /// Middleware that intercepts requests and dynamically routes them to legacy or refactored
-    /// controllers based on feature flags. This runs BEFORE endpoint routing to prevent
-    /// ambiguous match exceptions.
+    /// Records feature-flag routing diagnostics before endpoint execution.
+    /// Controller availability is enforced by the action/application boundary.
     /// </summary>
     public class FeatureFlagRoutingMiddleware
     {
@@ -65,8 +64,8 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
         {
             try
             {
-                var path = context.Request.Path.Value?.ToLower() ?? "";
-                var method = context.Request.Method.ToUpper();
+                var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+                var method = context.Request.Method.ToUpperInvariant();
                 var routeKey = $"{method}:{path}";
 
                 _logger.LogDebug("FeatureFlagRoutingMiddleware: Processing {Method} {Path}", method, path);
@@ -107,7 +106,7 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
                             
                             _logger.LogInformation(
                                 "FeatureFlagRoutingMiddleware: Route {Method} {Path} -> FeatureFlag {Flag} = {Value} -> Controller: {Controller}",
-                                method, path, featureFlagProperty, flagValue, flagValue ? "Refactored" : "Legacy");
+                                method, path, featureFlagProperty, flagValue, "AuthController");
 
                             // Store the routing decision in HttpContext.Items for logging/debugging
                             context.Items["FeatureFlagRouting_Flag"] = featureFlagProperty;
@@ -126,17 +125,16 @@ namespace BRU_AVTOPARK_AspireAPI.ApiService.Middleware
                     }
                 }
 
-                // Continue to next middleware
-                await _next(context);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "FeatureFlagRoutingMiddleware: Unhandled exception processing request {Method} {Path}", 
                     context.Request.Method, context.Request.Path);
                 
-                // Always continue to next middleware even on error
-                await _next(context);
             }
+            // Diagnostics may fail independently. A downstream exception must propagate once;
+            // invoking the pipeline again could repeat an already committed mutation.
+            await _next(context);
         }
 
         /// <summary>

@@ -1,0 +1,261 @@
+using System.Net.Http.Headers;
+using System.Text;
+using SpacetimeDB;
+using SpacetimeDB.Types;
+using TicketSalesApp.Services.Implementations;
+using TicketSalesApp.Services.Interfaces;
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
+
+internal static class AdminOperationTests
+{
+    public static async Task RunAsync(SpacetimeDBService db, Identity actor, string ownerToken)
+    {
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        using var content = new StringContent("[]", Encoding.UTF8);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        using var response = await http.PostAsync("http://127.0.0.1:3000/v1/database/bru-architecture-integration/call/prepare_admin_operations_test", content);
+        response.EnsureSuccessStatusCode();
+        var operations = new ApplicationOperations(db, new TicketSalesService(db, NullLogger<TicketSalesService>.Instance),
+            new BusService(db, NullLogger<BusService>.Instance), NullLogger<ApplicationOperations>.Instance);
+        const uint route = 3000000000;
+        string Id() => Guid.NewGuid().ToString("N");
+        async Task<MutationReceipt> Send<T>(T reducer, string id) where T : Reducer, IReducerArgs, new() =>
+            await db.ExecuteReducerAsync(reducer, c => c.Db.MutationReceipt.Key.Find(actor + ":" + id) ?? throw new Exception("Receipt missing."));
+        async Task Reject(Func<Task> action)
+        {
+            try { await action(); } catch (ReducerRejectedException) { return; }
+            throw new Exception("Invalid or unauthorized administrative mutation committed.");
+        }
+        async Task Crud<TCreate, TUpdate, TDelete>(string resource, Func<string, string, TCreate> create,
+            Func<string, uint, ulong?, TUpdate> update, Func<string, uint, ulong?, TDelete> delete, Func<uint, Task> legacy)
+            where TCreate : Reducer, IReducerArgs, new() where TUpdate : Reducer, IReducerArgs, new() where TDelete : Reducer, IReducerArgs, new()
+        {
+            var operation = Id(); var label = "synthetic-" + Id();
+            var concurrent = await Task.WhenAll(Send(create(operation, label), operation), Send(create(operation, label), operation));
+            Check(concurrent[0].EntityId == concurrent[1].EntityId, resource + " concurrent replay returned another identity");
+            var first = concurrent[0];
+            await CatalogReadAssertions.MatchesListAsync(operations, actor, resource, first.EntityId, first.Revision);
+            await Reject(() => Send(create(operation, label + "-different"), operation));
+            var edit = Id();
+            var changed = await Send(update(edit, first.EntityId, first.Revision), edit);
+            Check(changed.Revision > first.Revision, resource + " update did not bump revision");
+            await CatalogReadAssertions.MatchesListAsync(operations, actor, resource, first.EntityId, changed.Revision);
+            await Send(update(edit, first.EntityId, first.Revision), edit);
+            await Reject(() => Send(update(Id(), first.EntityId, first.Revision), Id()));
+            await legacy(first.EntityId);
+            await Reject(() => Send(update(Id(), first.EntityId, changed.Revision), Id()));
+            var removal = Id(); var removed = await Send(delete(removal, first.EntityId, null), removal);
+            var replay = await Send(delete(removal, first.EntityId, null), removal);
+            Check(removed.EntityId == replay.EntityId && removed.Revision > changed.Revision, resource + " delete/replay receipt invalid");
+            await CatalogReadAssertions.MissingAsync(operations, actor, resource, first.EntityId);
+            Console.WriteLine("PASS " + resource + " create/update/delete actor receipts, concurrent replay, mismatch, stale revision and legacy-writer conflicts");
+        }
+        await Crud<Reducer.CreateTicketV2, Reducer.UpdateTicketV2, Reducer.DeleteTicketV2>("tickets",
+            (id, label) => new(id, actor, route, 12.5, 123, label, null),
+            (id, entity, version) => new(id, actor, entity, version, null, null, 20, null, null),
+            (id, entity, version) => new(id, actor, entity, version),
+            entity => db.ExecuteReducerAsync(new Reducer.UpdateTicket(entity, null, null, 21, null, null, actor), _ => true));
+        async Task<MutationResult> ScheduleOperation(string name, object payload) => (MutationResult)(await operations.ExecuteAsync(name, actor, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), Id(), default))!;
+        var departure = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var nextDay = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateScheduleV2(Id(), actor, route, departure, 2, 20, new() { "1" }, "A", "B", new() { "A", "B" }, departure + 3600000, 5, true, null, null, null, null, true), _ => true));
+        var metadata = await ScheduleOperation("schedules.create", new CreateScheduleCommand(route, departure, 2, 20, [nextDay.DayOfWeek.ToString()], "A", "B", ["A", "B"], departure + 3600000, 5, true, ["08:00", "09:00"], [0, 12], "Notes", ["Regular"], false));
+        var metadataRow = (ScheduleRow)(await operations.ExecuteAsync("schedules.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(metadata.EntityId)), null, default))!;
+        Check(!metadataRow.IsActive && metadataRow.IsRecurring && metadataRow.RouteStops!.SequenceEqual(["A", "B"]) && metadataRow.DaysOfWeek!.Single() == nextDay.DayOfWeek.ToString() && metadataRow.EstimatedStopTimes!.Length == 2 && metadataRow.StopDistances![1] == 12 && metadataRow.StopDurationMinutes == 5 && metadataRow.Notes == "Notes" && metadataRow.BusTypes!.Single() == "Regular", "schedule metadata/initial active flag lost");
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "schedules", metadata.EntityId, metadata.Revision);
+        var filtered = (CatalogPageResult<ScheduleRow>)(await operations.ExecuteAsync("schedules.list", actor, JsonSerializer.SerializeToElement(new PageRequest(RouteId: route, Date: nextDay)), null, default))!;
+        Check(filtered.Items.Any(s => s.Id == metadata.EntityId), "recurring schedule date/route filter lost matching row");
+        var atomic = await ScheduleOperation("schedules.update", new UpdateScheduleCommand(metadata.EntityId, Price: 3, Notes: "", ExpectedRevision: metadata.Revision, IsActive: true));
+        Check(atomic.Revision == metadata.Revision + 1, "schedule activation used more than one mutation/revision");
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "schedules", metadata.EntityId, atomic.Revision);
+        await db.ExecuteReducerAsync(new Reducer.UpdateRouteSchedule(metadata.EntityId, null, null, null, null, null, null, 4, null, null, null, null, null, null, null, null, actor), _ => true);
+        await Reject(() => ScheduleOperation("schedules.update", new UpdateScheduleCommand(metadata.EntityId, Price: 5, ExpectedRevision: atomic.Revision)));
+        await ScheduleOperation("schedules.delete", new DeleteScheduleCommand(metadata.EntityId, atomic.Revision + 1));
+        Console.WriteLine("PASS schedule metadata/current-list equality, recurring route/date filter, atomic activation, empty-note clearing and legacy-update/V2 revision conflict");
+        await Crud<Reducer.CreateScheduleV2, Reducer.UpdateScheduleV2, Reducer.DeleteScheduleV2>("schedules",
+            (id, label) => new(id, actor, route, 1000, 12.5, 10, null, null, null, null, 2000, null, null, null, null, label, null, true),
+            (id, entity, version) => new(id, actor, entity, version, null, null, null, null, null, null, 20, null, null, null, null, null, null, null, "edited", null),
+            (id, entity, version) => new(id, actor, entity, version),
+            entity => db.ExecuteReducerAsync(new Reducer.UpdateRouteSchedule(entity, null, null, null, null, null, null, 21, null, null, null, null, null, null, null, "legacy", actor), _ => true));
+        await Crud<Reducer.CreateUserV2, Reducer.UpdateUserV2, Reducer.DeleteUserV2>("users",
+            (id, label) => new(id, actor, label, "synthetic-initial-credential", "", "", null),
+            (id, entity, version) => new(id, actor, entity, version, "updated@example.invalid", null),
+            (id, entity, version) => new(id, actor, entity, version),
+            async entity => { var identity = await db.ReadAsync(c => c.Db.UserProfile.LegacyUserId.Find(entity)!.UserId); await db.ExecuteReducerAsync(new Reducer.UpdateUser(identity, null, null, null, null, "legacy@example.invalid", null, actor), _ => true); });
+        await Crud<Reducer.CreateRoleV2, Reducer.UpdateRoleV2, Reducer.DeleteRoleV2>("roles",
+            (id, label) => new(id, actor, 0, label, "", false, 0, null),
+            (id, entity, version) => new(id, actor, entity, version, null, "updated", null, null, null),
+            (id, entity, version) => new(id, actor, entity, version),
+            entity => db.ExecuteReducerAsync(new Reducer.UpdateRole(entity, null, "legacy", null, null, actor), _ => true));
+        await Crud<Reducer.CreatePermissionV2, Reducer.UpdatePermissionV2, Reducer.DeletePermissionV2>("permissions",
+            (id, label) => new(id, actor, label, "", "Synthetic"),
+            (id, entity, version) => new(id, actor, entity, version, null, "updated", null, null),
+            (id, entity, version) => new(id, actor, entity, version),
+            entity => db.ExecuteReducerAsync(new Reducer.UpdatePermission(entity, null, "legacy", null, null, actor), _ => true));
+
+        var userOp = Id(); var user = await Send(new Reducer.CreateUserV2(userOp, actor, "synthetic-limited-" + Id(), "synthetic-initial-credential", "", "", null), userOp);
+        var userIdentity = await db.ReadAsync(c => c.Db.UserProfile.LegacyUserId.Find(user.EntityId)!.UserId);
+        var existingLogin = await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(userIdentity)!.Login);
+        var duplicateId = Id();
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateUserV2(duplicateId, actor, existingLogin, "synthetic-initial-credential", "", "", null), _ => true));
+        Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().Count(u => u.Login == existingLogin) == 1 && c.Db.MutationReceipt.Key.Find(actor + ":" + duplicateId) == null), "duplicate user create left another user or receipt");
+        var inactive = Id(); var inactiveReceipt = await Send(new Reducer.SetUserActiveV2(inactive, actor, user.EntityId, null, false), inactive);
+        Check(!await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(userIdentity)!.IsActive), "user deactivation did not commit");
+        var active = Id(); await Send(new Reducer.SetUserActiveV2(active, actor, user.EntityId, inactiveReceipt.Revision, true), active);
+        var roleOp = Id(); var role = await Send(new Reducer.CreateRoleV2(roleOp, actor, 0, "synthetic-limited-" + Id(), "", false, 0, null), roleOp);
+        var accessBefore = db.Changes.Current;
+        foreach (var permission in new[] { "assign_roles", "grant_permissions", "roles.create" })
+        {
+            var permissionId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == permission).PermissionId);
+            var id = Id(); await Send(new Reducer.GrantRolePermissionV2(id, actor, role.EntityId, null, permissionId), id);
+        }
+        var assign = Id(); await Send(new Reducer.AssignUserRoleV2(assign, actor, user.EntityId, null, role.EntityId), assign);
+        var accessChanges = db.Changes.Read(accessBefore).Changes.Select(c => c.Resource).ToHashSet();
+        Check(new[] { "users", "roles", "permissions", "access" }.All(accessChanges.Contains), "role/user/permission/access change journal mapping incomplete");
+        foreach (var resource in new[] { "tickets", "schedules", "users", "roles", "permissions" })
+        {
+            var permissionId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == resource + ".view").PermissionId);
+            var grantView = Id(); await Send(new Reducer.GrantRolePermissionV2(grantView, actor, role.EntityId, null, permissionId), grantView);
+            var payload = JsonSerializer.SerializeToElement(new PageRequest(), ApiProtocol.Json);
+            var limited = JsonSerializer.SerializeToElement(await operations.ExecuteAsync(resource + ".list", userIdentity, payload, null, default), ApiProtocol.Json);
+            Check(limited.GetProperty("canCreate").GetBoolean() == (resource == "roles") && !limited.GetProperty("canEdit").GetBoolean() && !limited.GetProperty("canDelete").GetBoolean(), resource + " page permission flags do not reflect limited actor grants");
+            var full = JsonSerializer.SerializeToElement(await operations.ExecuteAsync(resource + ".list", actor, payload, null, default), ApiProtocol.Json);
+            Check(full.GetProperty("canCreate").GetBoolean() && full.GetProperty("canEdit").GetBoolean() && full.GetProperty("canDelete").GetBoolean(), resource + " owner page permission flags missing");
+            if (resource is "users" or "roles" or "permissions")
+                Check(limited.GetProperty("access").GetProperty("permissions").EnumerateArray().Any(p => p.GetString() == "assign_roles") && !limited.GetProperty("access").GetProperty("isAdministrator").GetBoolean(), "administrative access projection used cached claims or lost current permissions");
+            if (resource == "users")
+            {
+                var limitedUser = (UserRow)(await operations.ExecuteAsync("users.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+                Check(limitedUser.RoleIds == null && limitedUser.PermissionDetails == null, "users.view exposed separately protected role IDs or permission details");
+                foreach (var detailPermission in new[] { "users.view.roles", "users.view.permissions" })
+                {
+                    var detailId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == detailPermission).PermissionId);
+                    var grantDetails = Id(); await Send(new Reducer.GrantRolePermissionV2(grantDetails, actor, role.EntityId, null, detailId), grantDetails);
+                }
+                var detailedUser = (UserRow)(await operations.ExecuteAsync("users.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+                Check(detailedUser.RoleIds!.Contains(role.EntityId) && detailedUser.PermissionDetails!.Any(p => p.Name == "assign_roles"), "authorized user role/permission details lost existing displayed fields");
+                await CatalogReadAssertions.MatchesListAsync(operations, actor, "users", user.EntityId, detailedUser.Revision);
+            }
+            if (resource == "roles")
+            {
+                var limitedRole = (RoleRow)(await operations.ExecuteAsync("roles.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(role.EntityId)), null, default))!;
+                Check(limitedRole.PermissionDetails == null, "roles.view exposed separately protected permission details");
+                var detailId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "roles.view.permissions").PermissionId);
+                var grantDetails = Id(); await Send(new Reducer.GrantRolePermissionV2(grantDetails, actor, role.EntityId, null, detailId), grantDetails);
+                var detailedRole = (RoleRow)(await operations.ExecuteAsync("roles.get", userIdentity, JsonSerializer.SerializeToElement(new EntityRequest(role.EntityId)), null, default))!;
+                Check(detailedRole.PermissionDetails!.Any(p => p.Name == "assign_roles"), "authorized role permission details missing");
+            }
+            var revokeView = Id(); await Send(new Reducer.RevokeRolePermissionV2(revokeView, actor, role.EntityId, null, permissionId), revokeView);
+            try { await operations.ExecuteAsync(resource + ".list", userIdentity, payload, null, default); throw new Exception("revoked list remained readable"); }
+            catch (OperationException ex) when (ex.Code == "forbidden") { }
+        }
+        Console.WriteLine("PASS editable administrative pages carry current per-resource create/edit/delete flags for owner/limited actors and honor view revocation");
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, role.EntityId, null), _ => true));
+        var adminId = await db.ReadAsync(c => c.Db.Role.Iter().Single(r => r.Name == "Administrator").RoleId);
+        var elevated = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "users.delete").PermissionId);
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.AssignUserRoleV2(Id(), userIdentity, user.EntityId, null, adminId), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.GrantRolePermissionV2(Id(), userIdentity, role.EntityId, null, elevated), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateTicketV2(Id(), userIdentity, 1, null, null, null, 1, null, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateScheduleV2(Id(), userIdentity, 1, null, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateUserV2(Id(), userIdentity, user.EntityId, null, "x@example.invalid", null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), userIdentity, role.EntityId, null, null, "x", null, null, null), _ => true));
+        var compoundOp = Id();
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateRoleV2(compoundOp, userIdentity, 0, "synthetic-compound-denied-" + compoundOp, "", false, 0, new() { elevated }), _ => true));
+        Check(!await db.ReadAsync(c => c.Db.Role.Iter().Any(r => r.Name == "synthetic-compound-denied-" + compoundOp)), "composite privilege denial left a partial role");
+        var roleEditPermission = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == "roles.edit").PermissionId);
+        var allowEdit = Id(); await Send(new Reducer.GrantRolePermissionV2(allowEdit, actor, role.EntityId, null, roleEditPermission), allowEdit);
+        var previousDescription = await db.ReadAsync(c => c.Db.Role.RoleId.Find(role.EntityId)!.Description);
+        var previousPermissionIds = await db.ReadAsync(c => c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Order().ToArray());
+        var attemptedPermissions = await db.ReadAsync(c => c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Append(elevated).ToList());
+        var compoundUpdate = Id();
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(compoundUpdate, userIdentity, role.EntityId, null, null, "must-rollback", null, null, attemptedPermissions), _ => true));
+        Check(await db.ReadAsync(c => c.Db.Role.RoleId.Find(role.EntityId)!.Description == previousDescription && c.Db.MutationReceipt.Key.Find(userIdentity + ":" + compoundUpdate) == null && c.Db.RolePermission.RoleId.Filter(role.EntityId).Select(p => p.PermissionId).Order().SequenceEqual(previousPermissionIds)), "failed composite role update committed metadata, partial permission replacement or a receipt");
+        var atomicCreate = Id(); var atomicRole = await Send(new Reducer.CreateRoleV2(atomicCreate, actor, 0, "synthetic-atomic-" + atomicCreate, "before", false, 0, new() { roleEditPermission }), atomicCreate);
+        var atomicUpdate = Id(); var replaced = await Send(new Reducer.UpdateRoleV2(atomicUpdate, actor, atomicRole.EntityId, atomicRole.Revision, null, "after", null, null, new() { elevated }), atomicUpdate);
+        // The shared legacy cores each advance the revision inside this one reducer transaction.
+        Check(replaced.Revision > atomicRole.Revision && await db.ReadAsync(c => c.Db.EntityRevision.Key.Find("roles:" + atomicRole.EntityId)!.Revision == replaced.Revision && c.Db.Role.RoleId.Find(atomicRole.EntityId)!.Description == "after" && c.Db.RolePermission.RoleId.Filter(atomicRole.EntityId).Select(p => p.PermissionId).SequenceEqual(new[] { elevated })), "role permission-set replacement was not exact/atomic or receipt revision differed from the committed row");
+        var atomicDelete = Id(); await Send(new Reducer.DeleteRoleV2(atomicDelete, actor, atomicRole.EntityId, replaced.Revision), atomicDelete);
+        Console.WriteLine("PASS administration client foundation: duplicate login leaves no user/receipt, current page access, detail-permission degradation, exact atomic role permission replacement and rejected compound update preserves metadata/set/receipt");
+        var scopedId = Id();
+        var ownerScoped = await Send(new Reducer.CreateRoleV2(scopedId, actor, 0, "synthetic-owner-scoped-" + scopedId, "", false, 0, null), scopedId);
+        var userScoped = await db.ExecuteReducerAsync(new Reducer.CreateRoleV2(scopedId, userIdentity, 0, "synthetic-user-scoped-" + scopedId, "", false, 0, null), c => c.Db.MutationReceipt.Key.Find(userIdentity + ":" + scopedId)!);
+        Check(userScoped.Actor == userIdentity && ownerScoped.Actor == actor && userScoped.EntityId != ownerScoped.EntityId, "receipt key was not actor-scoped");
+        foreach (var scopedRole in new[] { ownerScoped.EntityId, userScoped.EntityId })
+        { var cleanup = Id(); await Send(new Reducer.DeleteRoleV2(cleanup, actor, scopedRole, null), cleanup); }
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreatePermissionV2(Id(), userIdentity, "synthetic-denied-" + Id(), "", ""), _ => true));
+        var ownerLegacy = await db.ReadAsync(c => c.Db.UserProfile.UserId.Find(actor)!.LegacyUserId);
+        foreach (var name in new[] { "users.edit", "users.delete" })
+        {
+            var permissionId = await db.ReadAsync(c => c.Db.Permission.Iter().Single(p => p.Name == name).PermissionId);
+            var grant = Id(); await Send(new Reducer.GrantRolePermissionV2(grant, actor, role.EntityId, null, permissionId), grant);
+        }
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.SetUserActiveV2(Id(), userIdentity, ownerLegacy, null, false), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteUserV2(Id(), userIdentity, ownerLegacy, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.RemoveUserRoleV2(Id(), userIdentity, ownerLegacy, null, adminId), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.SetUserActiveV2(Id(), userIdentity, user.EntityId, null, false), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.SetUserActiveV2(Id(), actor, ownerLegacy, null, false), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteUserV2(Id(), actor, ownerLegacy, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.RemoveUserRoleV2(Id(), actor, ownerLegacy, null, adminId), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.RevokeRolePermissionV2(Id(), actor, adminId, null, elevated), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRoleV2(Id(), actor, adminId, null, "renamed-admin", null, null, null, null), _ => true));
+        var systemOp = Id(); var system = await Send(new Reducer.CreateRoleV2(systemOp, actor, 0, "synthetic-system-" + Id(), "", true, 0, null), systemOp);
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoleV2(Id(), actor, system.EntityId, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.UpdateRole(system.EntityId, "renamed-system", null, null, null, actor), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeletePermissionV2(Id(), actor, elevated, null), _ => true));
+        var scheduleOp = Id(); var schedule = await Send(new Reducer.CreateScheduleV2(scheduleOp, actor, route, 1000, 0, 10, null, null, null, new() { "A", "B" }, 2000, null, null, null, null, null, null, true), scheduleOp);
+        Check(await db.ReadAsync(c => c.Db.RouteSchedule.ScheduleId.Find(schedule.EntityId) is { StartPoint: "Synthetic admin start", EndPoint: "Synthetic admin end", EstimatedStopTimes.Count: 0, StopDistances.Count: 0 }), "schedule creation lost legacy label/empty-metadata defaults");
+        var scheduleEdit = Id(); schedule = await Send(new Reducer.UpdateScheduleV2(scheduleEdit, actor, schedule.EntityId, schedule.Revision, null, null, null, null, null, null, 1, null, null, null, null, null, null, null, null, null), scheduleEdit);
+        var stop = Id(); var stopped = await Send(new Reducer.SetScheduleActiveV2(stop, actor, schedule.EntityId, schedule.Revision, false), stop);
+        var start = Id(); await Send(new Reducer.SetScheduleActiveV2(start, actor, schedule.EntityId, stopped.Revision, true), start);
+        await Send(new Reducer.SetScheduleActiveV2(stop, actor, schedule.EntityId, schedule.Revision, false), stop);
+        Check(await db.ReadAsync(c => c.Db.RouteSchedule.ScheduleId.Find(schedule.EntityId)!.IsActive), "activation replay re-applied an older state");
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteRoute(route, actor), _ => true));
+        var ticketOp = Id(); var ticket = await Send(new Reducer.CreateTicketV2(ticketOp, actor, route, 10, (uint)Random.Shared.Next(1000, int.MaxValue), "Cash", null), ticketOp);
+        var saleOp = Id(); var sale = await Send(new Reducer.CreateSaleV2(saleOp, actor, ticket.EntityId, "Synthetic buyer", "", null, null), saleOp);
+        await CatalogReadAssertions.MatchesListAsync(operations, actor, "sales", sale.EntityId, sale.Revision);
+        await db.ExecuteReducerAsync(new Reducer.UpdateTicket(ticket.EntityId, null, null, 37, null, null, actor), _ => true);
+        var saleQuery = new PageRequest(1, 1, BuyerName: "Synthetic buyer", MinPrice: 36, MaxPrice: 38, StartDate: DateTimeOffset.UtcNow.AddDays(-1), EndDate: DateTimeOffset.UtcNow.AddDays(1));
+        var salePage = (CatalogPageResult<SaleRow>)(await operations.ExecuteAsync("sales.list", actor, JsonSerializer.SerializeToElement(saleQuery, ApiProtocol.Json), null, default))!;
+        Check(salePage.Items.Single().SaleId == sale.EntityId && salePage.Items.Single().RecordedAmount == 10m && salePage.Items.Single().SellerLabel == "synthetic-owner" && salePage.KnownTotal == 10m && salePage.UnknownAmountCount == 0 && salePage.CanEdit,
+            "sale ticket-price filters/recorded amount/seller/page permissions or full-query totals differ");
+        var excluded = (CatalogPageResult<SaleRow>)(await operations.ExecuteAsync("sales.list", actor, JsonSerializer.SerializeToElement(saleQuery with { MinPrice = 9, MaxPrice = 11 }, ApiProtocol.Json), null, default))!;
+        Check(excluded.TotalCount == 0, "sale search incorrectly filtered recorded amount instead of current ticket price");
+        var details = await db.ReadAsync(c => SalePresentation.Map(c, c.Db.Sale.SaleId.Find(sale.EntityId)!));
+        Check(SalePresentation.MatchesFilters(details, saleQuery.StartDate?.UtcDateTime, saleQuery.EndDate?.UtcDateTime, saleQuery.MinPrice, saleQuery.MaxPrice, saleQuery.BuyerName), "legacy HTTP filter helper disagrees with shared sale query");
+        try { await operations.ExecuteAsync("sales.update", actor, JsonSerializer.SerializeToElement(new { id = sale.EntityId, saleDate = DateTimeOffset.UtcNow, buyerName = "Changed" }, ApiProtocol.Json), Id(), default); throw new Exception("sale date mutation accepted"); }
+        catch (OperationException ex) when (ex.Code == "validation_failed") { }
+        var beforeSaleEdit = (SaleRow)(await operations.ExecuteAsync("sales.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(sale.EntityId)), null, default))!;
+        await operations.ExecuteAsync("sales.update", actor, JsonSerializer.SerializeToElement(new UpdateSaleCommand(sale.EntityId, sale.Revision, BuyerPhone: ""), ApiProtocol.Json), Id(), default);
+        var afterSaleEdit = (SaleRow)(await operations.ExecuteAsync("sales.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(sale.EntityId)), null, default))!;
+        Check(afterSaleEdit.SaleDate == beforeSaleEdit.SaleDate && afterSaleEdit.TicketId == beforeSaleEdit.TicketId && afterSaleEdit.BuyerPhone == "" && afterSaleEdit.Revision > beforeSaleEdit.Revision, "buyer-only sale edit changed immutable fields or rejected empty phone");
+        Console.WriteLine("PASS real sale paged ticket-price/date/buyer filters match legacy semantics, recorded amounts/totals and seller labels retained, sale-date mutation rejected, buyer-only empty-phone update preserves date/ticket/revisions");
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.DeleteTicketV2(Id(), actor, ticket.EntityId, null), _ => true));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.SetScheduleActiveV2(Id(), actor, schedule.EntityId, null, false), _ => true));
+        Check(await db.ReadAsync(c => c.Db.UserProfile.Iter().All(u => string.IsNullOrEmpty(u.PasswordHash))), "administration exposed credentials in profiles");
+        foreach (var query in new[] { "tickets.list", "schedules.list", "users.list", "roles.list", "permissions.list" })
+        {
+            var projected = await operations.ExecuteAsync(query, actor, JsonSerializer.SerializeToElement(new PageRequest()), null, default);
+            var serialized = JsonSerializer.Serialize(projected, ApiProtocol.Json);
+            Check(!new[] { "PasswordHash", "Password", "Secret", "Token" }.Any(term => serialized.Contains('"' + term + '"', StringComparison.OrdinalIgnoreCase)), "administrative query exposed a credential member");
+        }
+        var detail = (UserRow)(await operations.ExecuteAsync("users.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(user.EntityId)), null, default))!;
+        var ticketDetail = (TicketRow)(await operations.ExecuteAsync("tickets.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(ticket.EntityId)), null, default))!;
+        var ticketRoute = await db.ReadAsync(c => c.Db.Route.RouteId.Find(route)!);
+        Check(ticketDetail.RouteStartPoint == ticketRoute.StartPoint && ticketDetail.RouteEndPoint == ticketRoute.EndPoint && ticketDetail.RouteTravelTime == ticketRoute.TravelTime, "typed ticket projection lost route endpoint/duration fields");
+        Check(detail.Identity == userIdentity.ToString() && detail.Roles.Length > 0, "real administrative user projection lost identity/roles");
+        Console.WriteLine("PASS real five-resource paged projections, credential-free users.get and role/permission/user changes invalidate access resources");
+        Console.WriteLine("PASS real tickets/schedules/roles/permissions get: typed list-row equality, revision advances after update and deleted entities return not_found; users.get retained");
+        var remove = Id(); await Send(new Reducer.RemoveUserRoleV2(remove, actor, user.EntityId, null, role.EntityId), remove);
+        var deleteSale = Id(); await Send(new Reducer.DeleteSaleV2(deleteSale, actor, sale.EntityId, null), deleteSale);
+        var deleteTicket = Id(); await Send(new Reducer.DeleteTicketV2(deleteTicket, actor, ticket.EntityId, null), deleteTicket);
+        var deleteSchedule = Id(); await Send(new Reducer.DeleteScheduleV2(deleteSchedule, actor, schedule.EntityId, null), deleteSchedule);
+        var deleteRole = Id(); await Send(new Reducer.DeleteRoleV2(deleteRole, actor, role.EntityId, null), deleteRole);
+        var deleteUser = Id(); await Send(new Reducer.DeleteUserV2(deleteUser, actor, user.EntityId, null), deleteUser);
+        Console.WriteLine("PASS admin integrity: assigned/system roles, Administrator invariants, self-deactivation/deletion, route/sale references, recent-sale schedule semantics, permission denials and privilege escalation refusals");
+    }
+    private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+}

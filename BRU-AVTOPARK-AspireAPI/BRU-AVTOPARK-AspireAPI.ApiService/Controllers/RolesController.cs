@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -18,7 +21,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class RolesController : BaseController
@@ -60,15 +63,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            if (!await IsAuthenticatedAsync())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("roles", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("roles", cancellationToken), "roles.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -83,6 +91,8 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request contains an unsupported command.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            if (IsAdministrativeCommand("roles", request.Command)) return await AdminSpecialRealtimeAsync("roles", request);
+            await RequireRealtimeCommandAsync("roles", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
@@ -102,7 +112,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and does not have the "roles.view" permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!IsAdmin() && !HasPermission("roles.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for roles.view");
             }
@@ -119,7 +129,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not include an `Id`.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("roles.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for roles.view");
             }
@@ -143,20 +153,20 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to <see cref="CreateRoleModel"/>.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("roles.create")) throw new UnauthorizedAccessException("Not authorized for roles.create");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.create")) throw new UnauthorizedAccessException("Not authorized for roles.create");
             var model = request.Payload?.Deserialize<CreateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var created = await _roleService.CreateRoleAsync(model.Name, model.Description, model.LegacyRoleId, model.Priority, model.PermissionIds);
+            var created = await AdminCreateRoleAsync(model, request);
 
             object result;
-            if (IsAdmin() || HasPermission("roles.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("roles.view"))
             {
                 try
                 {
                     var snapshot = await _roleService.GetAllRolesAsync();
                     result = new { operation = "create", success = created is not null, entity = created, snapshot };
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to fetch roles snapshot after create, returning without snapshot");
                     result = new { operation = "create", success = created is not null, entity = created };
@@ -169,7 +179,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (created is not null)
             {
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null)
                 {
                     await _adminLogger.LogActionAsync(
@@ -200,7 +210,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// </exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("roles.edit")) throw new UnauthorizedAccessException("Not authorized for roles.edit");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.edit")) throw new UnauthorizedAccessException("Not authorized for roles.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
 
             var existingRole = await _roleService.GetRoleByIdAsync(id);
@@ -215,18 +225,18 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             var model = request.Payload?.Deserialize<UpdateRoleModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _roleService.UpdateRoleAsync(id, model.Name, model.Description, model.Priority, model.PermissionIds);
+            var success = await AdminUpdateRoleAsync(id, model, request);
             var entity = await _roleService.GetRoleByIdAsync(id);
 
             object result;
-            if (IsAdmin() || HasPermission("roles.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("roles.view"))
             {
                 try
                 {
                     var snapshot = await _roleService.GetAllRolesAsync();
                     result = new { operation = "update", success, entity, snapshot };
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to fetch roles snapshot after update, returning without snapshot");
                     result = new { operation = "update", success, entity };
@@ -239,7 +249,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null && entity != null)
                 {
                     await _adminLogger.LogActionAsync(
@@ -262,7 +272,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request does not contain an Id or when attempting to delete a system role.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("roles.delete")) throw new UnauthorizedAccessException("Not authorized for roles.delete");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.delete")) throw new UnauthorizedAccessException("Not authorized for roles.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
 
             var existingRole = await _roleService.GetRoleByIdAsync(id);
@@ -275,17 +285,17 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new InvalidOperationException("System roles cannot be deleted");
             }
 
-            var success = await _roleService.DeleteRoleAsync(id);
+            var success = await AdminBooleanAsync("roles.delete", new DeleteRoleCommand(id, AdminExpectedRevision(request)), request);
 
             object result;
-            if (IsAdmin() || HasPermission("roles.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("roles.view"))
             {
                 try
                 {
                     var snapshot = await _roleService.GetAllRolesAsync();
                     result = new { operation = "delete", success, deletedId = id, snapshot };
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!IsApplicationFailure(ex))
                 {
                     _logger.LogError(ex, "Failed to fetch roles snapshot after delete, returning without snapshot");
                     result = new { operation = "delete", success, deletedId = id };
@@ -298,7 +308,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             if (success)
             {
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null)
                 {
                     var details = existingRole != null
@@ -326,7 +336,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("roles.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view roles");
                     return Forbid();
@@ -349,7 +359,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL ROLES DATA: {RolesData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving roles");
                 return StatusCode(500, new { message = "Error retrieving roles", error = ex.Message });
@@ -361,7 +371,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("roles.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view role {RoleId}", id);
                     return Forbid();
@@ -390,7 +400,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL ROLE DATA: {RoleData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving role {RoleId}", id);
                 return StatusCode(500, new { message = $"Error retrieving role {id}", error = ex.Message });
@@ -402,7 +412,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("roles.view.permissions"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("roles.view.permissions"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view role permissions for role {RoleId}", id);
                     return Forbid();
@@ -423,7 +433,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("FULL ROLE PERMISSIONS DATA: {PermissionsData}", JsonSerializer.Serialize(result));
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permissions for role {RoleId}", id);
                 return StatusCode(500, new { message = $"Error retrieving permissions for role {id}", error = ex.Message });
@@ -433,7 +443,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Role>> CreateRole([FromBody] CreateRoleModel model)
         {
-            if (!IsAdmin() && !HasPermission("roles.create"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create role");
                 return Forbid();
@@ -444,7 +454,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Creating new role: {RoleName}", model.Name);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -452,14 +462,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 
                 // Call the CreateRole reducer through the service
-                var role = await _roleService.CreateRoleAsync(
-                    model.Name,
-                    model.Description,
-                    model.LegacyRoleId,
-                    model.Priority,
-                    model.PermissionIds,
-                    userId
-                );
+                var role = await AdminCreateRoleAsync(model);
 
                 if (role == null)
                 {
@@ -477,7 +480,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully created role {RoleName} with ID {RoleId}", role.Name, role.RoleId);
                 return CreatedAtAction(nameof(GetRole), new { id = role.RoleId }, role);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error creating role {RoleName}", model.Name);
                 return StatusCode(500, new { message = $"Error creating role {model.Name}", error = ex.Message });
@@ -487,7 +490,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRole(uint id, [FromBody] UpdateRoleModel model)
         {
-            if (!IsAdmin() && !HasPermission("roles.edit"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update role");
                 return Forbid();
@@ -498,7 +501,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Updating role {RoleId}", id);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -520,14 +523,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the UpdateRole reducer through the service
-                var success = await _roleService.UpdateRoleAsync(
-                    id,
-                    model.Name,
-                    model.Description,
-                    model.Priority,
-                    model.PermissionIds,
-                    userId
-                );
+                var success = await AdminUpdateRoleAsync(id, model);
 
                 if (!success)
                 {
@@ -545,7 +541,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully updated role {RoleId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error updating role {RoleId}", id);
                 return StatusCode(500, new { message = $"Error updating role {id}", error = ex.Message });
@@ -555,7 +551,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRole(uint id)
         {
-            if (!IsAdmin() && !HasPermission("roles.delete"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("roles.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete role");
                 return Forbid();
@@ -566,7 +562,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Attempting to delete role {RoleId}", id);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -588,7 +584,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the DeleteRole reducer through the service
-                var success = await _roleService.DeleteRoleAsync(id);
+                var success = await AdminBooleanAsync("roles.delete", new DeleteRoleCommand(id, AdminExpectedRevision()));
 
                 if (!success)
                 {
@@ -606,7 +602,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully deleted role {RoleId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error deleting role {RoleId}", id);
                 return StatusCode(500, new { message = $"Error deleting role {id}", error = ex.Message });
@@ -625,9 +621,10 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdateRoleModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
         public uint? Priority { get; set; }
         public List<uint>? PermissionIds { get; set; }
     }
-} 
+}

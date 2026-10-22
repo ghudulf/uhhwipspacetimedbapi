@@ -25,6 +25,8 @@ namespace SpacetimeDB.Types
         public string InitiatingDevice;
         [DataMember(Name = "is_used")]
         public bool IsUsed;
+        [DataMember(Name = "api_access_partition")]
+        public uint ApiAccessPartition;
 
         public QrSession(
             string SessionId,
@@ -32,7 +34,8 @@ namespace SpacetimeDB.Types
             string ValidationCode,
             ulong ExpiryTime,
             string InitiatingDevice,
-            bool IsUsed
+            bool IsUsed,
+            uint ApiAccessPartition
         )
         {
             this.SessionId = SessionId;
@@ -41,6 +44,7 @@ namespace SpacetimeDB.Types
             this.ExpiryTime = ExpiryTime;
             this.InitiatingDevice = InitiatingDevice;
             this.IsUsed = IsUsed;
+            this.ApiAccessPartition = ApiAccessPartition;
         }
 
         public QrSession()

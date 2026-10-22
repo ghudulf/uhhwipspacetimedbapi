@@ -21,9 +21,13 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     private readonly IHubContext<SystemEventsHub> _hubContext;
     private readonly ILogger<SignalRRealtimeEventBus> _logger;
     private readonly RealtimeEventOptions _options;
-    private readonly SemaphoreSlim _disposalLock = new(1, 1);
+    private readonly object _disposalGate = new();
     private int _disposed;
     private bool _stopping;
+    private int _gapPending;
+    private long _gapCount;
+    private readonly ConcurrentDictionary<string, byte> _gapResources = new(StringComparer.Ordinal);
+    public long GapCount => Interlocked.Read(ref _gapCount);
 
     /// <summary>
     /// Initializes a SignalRRealtimeEventBus with the provided SignalR hub context, configuration options, and logger.
@@ -40,7 +44,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         _logger = logger;
         _options = options.Value;
 
-        _eventChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(Math.Max(128, _options.BufferCapacity))
+        _eventChannel = Channel.CreateBounded<ApiDomainEvent>(new BoundedChannelOptions(Math.Max(1, _options.BufferCapacity))
         {
             SingleReader = true,
             SingleWriter = false,
@@ -73,8 +77,18 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
             sanitizedResource,
             sanitizedCorrelationId);
         
-        await _eventChannel.Writer.WriteAsync(domainEvent, cancellationToken);
+        using var publishTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        publishTimeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(_options.PublishTimeoutMs, 1, 30000)));
         EnqueueForHistory(domainEvent);
+        try { await _eventChannel.Writer.WriteAsync(domainEvent, publishTimeout.Token); }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Interlocked.Increment(ref _gapCount);
+            _gapResources[normalizedResource] = 0;
+            Interlocked.Exchange(ref _gapPending, 1);
+            _logger.LogWarning("Realtime publish buffer timed out; subscribers must resynchronize");
+            throw;
+        }
         
         // Use sanitized event name to avoid log forging in debug logs as well
         _logger.LogDebug("[EventBus] Event queued successfully: {EventName}", sanitizedEventName);
@@ -108,7 +122,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         {
             SingleReader = true,
             SingleWriter = false,
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.Wait,
             AllowSynchronousContinuations = false
         });
 
@@ -117,18 +131,14 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         // Atomically check the shutdown gate and register the subscriber so that
         // a concurrent StopAsync/DisposeAsync cannot miss this subscriber between
         // the check and the add (TOCTOU).
-        await _disposalLock.WaitAsync(cancellationToken);
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_disposalGate)
         {
             if (_stopping || _disposed != 0)
             {
                 throw new ObjectDisposedException(nameof(SignalRRealtimeEventBus), "Event bus is stopping or disposed");
             }
             _subscribers[subscriberId] = new EventSubscriber(normalizedResource, subscriptionChannel);
-        }
-        finally
-        {
-            _disposalLock.Release();
         }
 
         _logger.LogInformation("[EventBus] New subscription created: {SubscriberId} for resource: {Resource}", 
@@ -167,33 +177,16 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         {
             await foreach (var domainEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
             {
-                DispatchToLocalSubscribers(domainEvent);
-
-                using var timeoutCts = new CancellationTokenSource(Math.Max(25, _options.PublishTimeoutMs));
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
-
-                try
+                await DispatchAsync(domainEvent, stoppingToken);
+                if (Interlocked.Exchange(ref _gapPending, 0) != 0)
                 {
-                    var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
-                    await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
-                    await _hubContext.Clients.Group($"resource:{normalizedResource}")
-                        .SendAsync("resourceEvent", domainEvent, linkedCts.Token);
-                }
-                catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
-                {
-                    if (timeoutCts.IsCancellationRequested)
-                    {
-                        _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
-                            LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
-                            LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
-                    }
-                    // else: shutdown cancellation – swallow silently
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
-                        LogSanitizer.SanitizeLogField(domainEvent.EventName, 100),
-                        LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
+                    var resources = _gapResources.Keys.ToArray();
+                    foreach (var resource in resources) _gapResources.TryRemove(resource, out _);
+                    var gap = new ApiDomainEvent("system.resync_required", "system", "SYSTEM", 200, DateTimeOffset.UtcNow,
+                        Guid.NewGuid().ToString("N"), null, null, null, "local", new Dictionary<string, string>
+                        { ["gapCount"] = GapCount.ToString(), ["resources"] = string.Join(',', resources) });
+                    EnqueueForHistory(gap);
+                    await DispatchAsync(gap, stoppingToken);
                 }
             }
         }
@@ -204,6 +197,33 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         finally
         {
             _logger.LogInformation("[EventBus] Background event processing stopped");
+        }
+    }
+
+    private async Task DispatchAsync(ApiDomainEvent domainEvent, CancellationToken stoppingToken)
+    {
+        DispatchToLocalSubscribers(domainEvent);
+        using var timeoutCts = new CancellationTokenSource(Math.Max(25, _options.PublishTimeoutMs));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
+        try
+        {
+            var normalizedResource = ResourceNormalization.Normalize(domainEvent.Resource);
+            await _hubContext.Clients.Group("system-events").SendAsync("domainEvent", domainEvent, linkedCts.Token);
+            await _hubContext.Clients.Group($"resource:{normalizedResource}").SendAsync("resourceEvent", domainEvent, linkedCts.Token);
+            if (domainEvent.EventName == "system.resync_required")
+                foreach (var resource in domainEvent.Metadata.GetValueOrDefault("resources", "").Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct())
+                    await _hubContext.Clients.Group($"resource:{resource}").SendAsync("resourceEvent", domainEvent, linkedCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            if (timeoutCts.IsCancellationRequested)
+                _logger.LogWarning("Realtime event dispatch timed out for event {EventName} ({CorrelationId})",
+                    LogSanitizer.SanitizeLogField(domainEvent.EventName, 100), LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Realtime event dispatch failed for {EventName} ({CorrelationId})",
+                LogSanitizer.SanitizeLogField(domainEvent.EventName, 100), LogSanitizer.SanitizeLogField(domainEvent.CorrelationId, 100));
         }
     }
 
@@ -228,7 +248,7 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
         finally
         {
             // Dispose all active subscriptions even if base.StopAsync throws or is canceled
-            await DisposeAllSubscriptionsAsync();
+            lock (_disposalGate) DisposeAllSubscriptionsCore();
         }
 
         _logger.LogInformation("[EventBus] Event bus stopped successfully");
@@ -244,12 +264,16 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
 
         foreach (var (_, subscriber) in _subscribers)
         {
-            if (subscriber.Resource != "all" && subscriber.Resource != normalized)
+            if (domainEvent.EventName != "system.resync_required" && subscriber.Resource != "all" && subscriber.Resource != normalized)
             {
                 continue;
             }
 
-            subscriber.Channel.Writer.TryWrite(domainEvent);
+            if (!subscriber.Channel.Writer.TryWrite(domainEvent))
+            {
+                subscriber.Channel.Writer.TryComplete(new RealtimeResynchronizationRequiredException());
+                _logger.LogWarning("Realtime subscriber overflow; authoritative resynchronization required for {Resource}", subscriber.Resource);
+            }
         }
     }
 
@@ -289,22 +313,6 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     }
 
     /// <summary>
-    /// Disposes all active subscriptions with lock acquisition.
-    /// </summary>
-    private async Task DisposeAllSubscriptionsAsync()
-    {
-        await _disposalLock.WaitAsync();
-        try
-        {
-            DisposeAllSubscriptionsCore();
-        }
-        finally
-        {
-            _disposalLock.Release();
-        }
-    }
-
-    /// <summary>
     /// Core teardown logic shared by both DisposeAsync and Dispose.
     /// </summary>
     private void DisposeCoreLogic()
@@ -326,52 +334,27 @@ public sealed class SignalRRealtimeEventBus : BackgroundService, IRealtimeEventB
     /// <summary>
     /// Asynchronously disposes the event bus and all its resources.
     /// </summary>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        // Use Interlocked.CompareExchange to ensure only one thread disposes
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
-        {
-            return;
-        }
-
-        await _disposalLock.WaitAsync();
-        try
-        {
-            // Shared core teardown logic
-            DisposeCoreLogic();
-
-            // Dispose all subscriptions (call core method directly since we already hold the lock)
-            DisposeAllSubscriptionsCore();
-        }
-        finally
-        {
-            _disposalLock.Release();
-            _disposalLock.Dispose();
-        }
-
-        base.Dispose();
-        GC.SuppressFinalize(this);
+        Dispose();
+        return default;
     }
 
     public override void Dispose()
     {
         if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            // Synchronous disposal follows same teardown path
-            _disposalLock.Wait();
-            try
+            // All guarded operations are synchronous channel/dictionary updates. A monitor
+            // avoids a disposable semaphore racing late StopAsync/subscriber teardown.
+            lock (_disposalGate)
             {
                 DisposeCoreLogic();
                 DisposeAllSubscriptionsCore();
             }
-            finally
-            {
-                _disposalLock.Release();
-                _disposalLock.Dispose();
-            }
-
             base.Dispose();
             GC.SuppressFinalize(this);
         }
     }
 }
+public sealed class RealtimeResynchronizationRequiredException()
+    : Exception("Event buffer overflow; obtain a fresh snapshot before applying further events.");

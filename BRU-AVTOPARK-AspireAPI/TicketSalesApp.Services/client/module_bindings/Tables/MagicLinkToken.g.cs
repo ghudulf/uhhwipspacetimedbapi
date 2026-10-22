@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             protected override string RemoteTableName => "magic_link_token";
 
+            public sealed class ApiAccessPartitionIndex : BTreeIndexBase<uint>
+            {
+                protected override uint GetKey(MagicLinkToken row) => row.ApiAccessPartition;
+
+                public ApiAccessPartitionIndex(MagicLinkTokenHandle table) : base(table) { }
+            }
+
+            public readonly ApiAccessPartitionIndex ApiAccessPartition;
+
             public sealed class TokenUniqueIndex : UniqueIndexBase<string>
             {
                 protected override string GetKey(MagicLinkToken row) => row.Token;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal MagicLinkTokenHandle(DbConnection conn) : base(conn)
             {
+                ApiAccessPartition = new(this);
                 Token = new(this);
             }
 
@@ -45,6 +55,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<MagicLinkToken, bool> IsUsed { get; }
         public global::SpacetimeDB.Col<MagicLinkToken, string> DeviceInfo { get; }
         public global::SpacetimeDB.Col<MagicLinkToken, string> IpAddress { get; }
+        public global::SpacetimeDB.Col<MagicLinkToken, uint> ApiAccessPartition { get; }
 
         public MagicLinkTokenCols(string tableName)
         {
@@ -54,16 +65,19 @@ namespace SpacetimeDB.Types
             IsUsed = new global::SpacetimeDB.Col<MagicLinkToken, bool>(tableName, "is_used");
             DeviceInfo = new global::SpacetimeDB.Col<MagicLinkToken, string>(tableName, "device_info");
             IpAddress = new global::SpacetimeDB.Col<MagicLinkToken, string>(tableName, "ip_address");
+            ApiAccessPartition = new global::SpacetimeDB.Col<MagicLinkToken, uint>(tableName, "api_access_partition");
         }
     }
 
     public sealed class MagicLinkTokenIxCols
     {
         public global::SpacetimeDB.IxCol<MagicLinkToken, string> Token { get; }
+        public global::SpacetimeDB.IxCol<MagicLinkToken, uint> ApiAccessPartition { get; }
 
         public MagicLinkTokenIxCols(string tableName)
         {
             Token = new global::SpacetimeDB.IxCol<MagicLinkToken, string>(tableName, "token");
+            ApiAccessPartition = new global::SpacetimeDB.IxCol<MagicLinkToken, uint>(tableName, "api_access_partition");
         }
     }
 }

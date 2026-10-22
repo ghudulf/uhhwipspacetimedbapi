@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
@@ -16,6 +16,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity;
 public partial class App : Application
 {
     private Window? _mainWindow;
+    private static int _expiredLoginOpen;
 
     /// <summary>
     /// When true the app starts without any visible window — only the tray icon.
@@ -26,6 +27,23 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        ApplicationClientCoordinator.ConfigureSessionRefresher(new NativeSessionRefresher());
+        ApplicationClientCoordinator.SessionExpired += OnSessionExpired;
+    }
+    private static void OnSessionExpired()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _expiredLoginOpen, 1) != 0) return;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                ApiClientService.Instance.AuthToken = null;
+                var owner = (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                await RunLoginSelectorAsync(owner);
+            }
+            catch { Log.Warning("Expired session login UI unavailable"); }
+            finally { System.Threading.Interlocked.Exchange(ref _expiredLoginOpen, 0); }
+        });
     }
 
     public override void RegisterServices()
@@ -143,7 +161,7 @@ public partial class App : Application
             Log.Debug("Headless: splash screen closed");
 
             // Silently restore a cached token if one exists — no UI shown
-            var tokenStorage = new TokenStorageService();
+            var tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
             var existingTokens = await tokenStorage.GetTokensAsync();
 
             if (existingTokens != null && !string.IsNullOrEmpty(existingTokens.AccessToken)
@@ -206,6 +224,56 @@ public partial class App : Application
             return false;
         }
 
+        if (method.Value == LoginMethod.WindowsAccount)
+        {
+            using var lifetime = new System.Threading.CancellationTokenSource();
+            var vm = new AuthViewModel();
+            var window = new AuthWindow(vm);
+            var completed = new TaskCompletionSource<bool>();
+            window.Opened += async (_, _) => await vm.LoginWithWindowsAccountAsync(lifetime.Token);
+            window.Closed += (_, _) => { lifetime.Cancel(); completed.TrySetResult(vm.IsAuthenticated); };
+            window.Show();
+            return await completed.Task;
+        }
+
+        if (method.Value is LoginMethod.QrCode or LoginMethod.QrDevice or LoginMethod.Entra or LoginMethod.Passkey)
+        {
+            try
+            {
+                Window qr = method.Value switch
+                {
+                    LoginMethod.QrCode => new QrLoginWindow(), LoginMethod.QrDevice => new QrDeviceLoginWindow(),
+                    LoginMethod.Entra => new ProviderLoginWindow("entra"), _ => new ProviderLoginWindow("passkey")
+                };
+                var qrClosed = new TaskCompletionSource();
+                qr.Closed += (_, _) => qrClosed.TrySetResult();
+                if (owner != null) qr.Show(owner); else qr.Show();
+                await qrClosed.Task;
+                var json = qr switch { QrLoginWindow display => display.LoginJson, QrDeviceLoginWindow device => device.LoginJson, ProviderLoginWindow provider => provider.LoginJson, _ => null };
+                if (json == null) return false;
+                using var lifetime = new System.Threading.CancellationTokenSource();
+                var vm = new AuthViewModel();
+                var window = new AuthWindow(vm);
+                var completed = new TaskCompletionSource<bool>();
+                window.Opened += async (_, _) =>
+                {
+                    try { await vm.ApplyExternalLoginAsync(json, lifetime.Token, method.Value switch
+                        { LoginMethod.Entra => "Вход с учётной записью Microsoft", LoginMethod.Passkey => "Вход с ключом доступа через браузер", _ => "Вход по QR" }); }
+                    catch (OperationCanceledException) { }
+                    catch { vm.ErrorMessage = "Не удалось обработать результат внешнего входа."; }
+                    finally { vm.RecalculateButtonStates(); }
+                };
+                window.Closed += (_, _) => { lifetime.Cancel(); completed.TrySetResult(vm.IsAuthenticated); };
+                window.Show();
+                return await completed.Task;
+            }
+            catch
+            {
+                Log.Warning("External login UI failed");
+                return false;
+            }
+        }
+
         if (method.Value == LoginMethod.OAuth)
         {
             Log.Information("Login selector: OAuth chosen");
@@ -224,7 +292,7 @@ public partial class App : Application
         else
         {
             Log.Information("Login selector: Traditional chosen");
-            var authWindow = new AuthWindow { DataContext = new AuthViewModel() };
+            var authWindow = new AuthWindow();
             var tcs = new TaskCompletionSource<bool>();
             authWindow.Closed += (_, _) =>
                 tcs.TrySetResult(authWindow.DataContext is AuthViewModel vm && vm.IsAuthenticated);
@@ -242,7 +310,7 @@ public partial class App : Application
         Window ownerWindow,
         IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var tokenStorage = new TokenStorageService();
+        var tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
         var authManager  = AuthenticationManager.Instance;
 
         // ── 1. Check if already fully authenticated (token valid in memory) ──

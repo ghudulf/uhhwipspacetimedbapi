@@ -1,3 +1,4 @@
+using TicketSalesApp.Services.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -15,23 +16,21 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _clientId;
-        private readonly string _clientSecret;
         private readonly string _authorizationEndpoint;
         private readonly string _tokenEndpoint;
         private readonly string _redirectUri;
+        public string RedirectUri => _redirectUri;
         private readonly TokenStorageService _tokenStorage;
 
         public OAuthService(
             string clientId,
-            string clientSecret,
             string authorizationEndpoint,
             string tokenEndpoint,
             string redirectUri,
             TokenStorageService tokenStorage)
         {
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler());
             _clientId = clientId;
-            _clientSecret = clientSecret;
             _authorizationEndpoint = authorizationEndpoint;
             _tokenEndpoint = tokenEndpoint;
             _redirectUri = redirectUri;
@@ -80,7 +79,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 ["code"] = code,
                 ["redirect_uri"] = _redirectUri,
                 ["client_id"] = _clientId,
-                // ["client_secret"] = _clientSecret,  // REMOVED: Public clients don't send secrets
                 ["code_verifier"] = codeVerifier  // PKCE provides security for public clients
             };
 
@@ -99,7 +97,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Error("Token exchange failed with status {StatusCode}: {Response}", response.StatusCode, responseContent);
+                    Log.Error("Token exchange failed with status {StatusCode}: {Response}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
                     
                     // Check if this is an authorization-related error
                     if (responseContent.Contains("authorization") || 
@@ -112,13 +110,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                         await _tokenStorage.ClearTokensAsync();
                         
                         // Throw a specific exception that the caller can catch and retry
-                        throw new OAuthAuthorizationException($"Authorization failed: {responseContent}. Stored data cleared, please retry the authorization flow.");
+                        throw new OAuthAuthorizationException($"Authorization failed (HTTP {(int)response.StatusCode}). Please retry sign-in.");
                     }
                     
-                    throw new Exception($"Token exchange failed: {responseContent}");
+                    throw new Exception($"Token exchange failed (HTTP {(int)response.StatusCode}).");
                 }
 
-                Log.Debug("Token response content: {Content}", responseContent);
+                Log.Debug("Token response JSON: {Content}", TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(responseContent));
 
                 var tokenResponse = JsonSerializer.Deserialize<OAuthTokenResponse>(responseContent, new JsonSerializerOptions
                 {
@@ -177,7 +175,6 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 ["grant_type"] = "refresh_token",
                 ["refresh_token"] = refreshToken,
                 ["client_id"] = _clientId
-                // ["client_secret"] = _clientSecret  // REMOVED: Public clients don't send secrets
             };
 
             var content = new FormUrlEncodedContent(requestData);
@@ -189,7 +186,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    Log.Warning("Token refresh failed with status {StatusCode}: {Error}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     
                     // If refresh token is invalid or expired, clear stored tokens
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || 
@@ -236,6 +233,10 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
             {
                 return null;
             }
+
+            // Native opaque proofs belong to /api/auth/refresh, never the OpenIddict token endpoint.
+            // Automatic native rotation is owned by the application coordinator after session_expired.
+            if (tokens.SessionKind == "native") return tokens.ExpiresAt > DateTime.UtcNow ? tokens.AccessToken : null;
 
             // Check if access token is still valid (with 5 minute buffer)
             if (tokens.ExpiresAt > DateTime.UtcNow.AddMinutes(5))
@@ -319,127 +320,13 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services
                 var payloadBytes = Convert.FromBase64String(payload);
                 var payloadJson = Encoding.UTF8.GetString(payloadBytes);
                 
-                Log.Debug("Token payload JSON: {Payload}", payloadJson);
-                
-                // Parse as JSON document for structured logging
-                using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
-                var root = doc.RootElement;
-                
-                // Log standard claims
-                if (root.TryGetProperty("sub", out var sub))
-                    Log.Information("  Subject (sub): {Value}", sub.GetString());
-                
-                if (root.TryGetProperty("name", out var name))
-                    Log.Information("  Name: {Value}", name.GetString());
-                
-                if (root.TryGetProperty("email", out var email))
-                    Log.Information("  Email: {Value}", email.GetString());
-                
-                if (root.TryGetProperty("email_verified", out var emailVerified))
-                    Log.Information("  Email Verified: {Value}", emailVerified.GetString());
-                
-                if (root.TryGetProperty("phone_number", out var phone))
-                    Log.Information("  Phone: {Value}", phone.GetString());
-                
-                // Log roles
-                if (root.TryGetProperty("role", out var roles))
-                {
-                    if (roles.ValueKind == System.Text.Json.JsonValueKind.Array)
-                    {
-                        var roleList = new List<string>();
-                        foreach (var role in roles.EnumerateArray())
-                        {
-                            roleList.Add(role.GetString() ?? "");
-                        }
-                        Log.Information("  Roles: {Roles}", string.Join(", ", roleList));
-                    }
-                    else
-                    {
-                        Log.Information("  Role: {Role}", roles.GetString());
-                    }
-                }
-                
-                // Log permissions
-                if (root.TryGetProperty("permission", out var permissions))
-                {
-                    if (permissions.ValueKind == System.Text.Json.JsonValueKind.Array)
-                    {
-                        var permList = new List<string>();
-                        foreach (var perm in permissions.EnumerateArray())
-                        {
-                            permList.Add(perm.GetString() ?? "");
-                        }
-                        Log.Information("  Permissions: {Permissions}", string.Join(", ", permList));
-                    }
-                    else
-                    {
-                        Log.Information("  Permission: {Permission}", permissions.GetString());
-                    }
-                }
-                
-                // Log custom claims
-                if (root.TryGetProperty("primary_role", out var primaryRole))
-                    Log.Information("  Primary Role: {Value}", primaryRole.GetString());
-                
-                if (root.TryGetProperty("identity", out var identity))
-                    Log.Information("  Identity: {Value}", identity.GetString());
-                
-                if (root.TryGetProperty("xuid", out var xuid))
-                    Log.Information("  XUID: {Value}", xuid.GetString());
-                
-                // Log token metadata
-                if (root.TryGetProperty("iat", out var iat))
-                {
-                    var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iat.GetInt64());
-                    Log.Information("  Issued At: {Value}", issuedAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
-                }
-                
-                if (root.TryGetProperty("exp", out var exp))
-                {
-                    var expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64());
-                    Log.Information("  Expires At: {Value}", expiresAt.ToString("yyyy-MM-dd HH:mm:ss UTC"));
-                }
-                
-                if (root.TryGetProperty("iss", out var issuer))
-                    Log.Information("  Issuer: {Value}", issuer.GetString());
-                
-                if (root.TryGetProperty("aud", out var audience))
-                    Log.Information("  Audience: {Value}", audience.GetString());
-                
-                // Log scopes
-                if (root.TryGetProperty("scope", out var scope))
-                    Log.Information("  Scopes: {Value}", scope.GetString());
-                
-                Log.Information("=== End {TokenType} Claims ===", tokenType);
+                Log.Debug("{TokenType} claims JSON (unvalidated diagnostic decoding): {Shape}", tokenType, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(payloadJson));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error parsing {TokenType} claims: {Message}", tokenType, ex.Message);
+                Log.Warning("Unable to decode {TokenType} diagnostic shape: {Failure}", tokenType, ex.GetType().Name);
             }
         }
-    }
-
-    public class OAuthTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string AccessToken { get; set; } = string.Empty;
-        
-        [JsonPropertyName("refresh_token")]
-        public string? RefreshToken { get; set; }
-        
-        [JsonPropertyName("token_type")]
-        public string TokenType { get; set; } = "Bearer";
-        
-        [JsonPropertyName("expires_in")]
-        public int ExpiresIn { get; set; }
-        
-        [JsonPropertyName("id_token")]
-        public string? IdToken { get; set; }
-        
-        [JsonPropertyName("scope")]
-        public string? Scope { get; set; }
-        
-        public DateTime ExpiresAt { get; set; }
     }
 
     /// <summary>

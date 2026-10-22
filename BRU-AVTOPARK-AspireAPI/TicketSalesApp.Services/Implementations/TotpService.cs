@@ -44,11 +44,9 @@
                 {
                     _logger.LogInformation("Setting up TOTP for user: {Username}", username);
 
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+                    var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
                     
                     if (user == null)
                     {
@@ -87,11 +85,9 @@
                         return (false, "Invalid verification code");
                     }
 
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+                    var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
                     
                     if (user == null)
                     {
@@ -100,10 +96,10 @@
                     }
 
                     // Store the secret key
-                    conn.Reducers.StoreTotpSecret(userId, secretKey);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.StoreTotpSecret(userId, secretKey), _ => true);
                     
                     // Enable TOTP for the user
-                    conn.Reducers.EnableTotp(userId);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.EnableTotp(userId), _ => true);
 
                     _logger.LogInformation("TOTP enabled successfully for user ID: {UserId}", userId);
                     return (true, null);
@@ -124,11 +120,9 @@
                 {
                     _logger.LogInformation("Disabling TOTP for user ID: {UserId}", userId);
 
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+                    var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
                     
                     if (user == null)
                     {
@@ -137,10 +131,10 @@
                     }
 
                     // Disable TOTP for the user
-                    conn.Reducers.DisableTotp(userId);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DisableTotp(userId), _ => true);
                     
                     // Deactivate the TOTP secret
-                    conn.Reducers.DeactivateTotpSecret(userId);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.DeactivateTotpSecret(userId), _ => true);
 
                     _logger.LogInformation("TOTP disabled successfully for user ID: {UserId}", userId);
                     return (true, null);
@@ -161,11 +155,9 @@
                 {
                     _logger.LogInformation("Validating TOTP code for user ID: {UserId}", userId);
 
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Check if user exists
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive);
+                    var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.Equals(userId) && u.IsActive));
                     
                     if (user == null)
                     {
@@ -174,8 +166,8 @@
                     }
 
                     // Get the TOTP secret
-                    var totpSecret = conn.Db.TotpSecret.Iter()
-                        .FirstOrDefault(s => s.UserId.Equals(userId) && s.IsActive);
+                    var totpSecret = await _spacetimeService.ReadAsync(c => c.Db.TotpSecret.Iter()
+                        .FirstOrDefault(s => s.UserId.Equals(userId) && s.IsActive));
                     
                     if (totpSecret == null)
                     {
@@ -207,33 +199,31 @@
             {
                 try
                 {
-                    _logger.LogInformation("Validating TOTP code with token: {Token}", tempToken);
+                    _logger.LogInformation("Validating TOTP challenge; credentials omitted");
 
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Find the token
-                    var twoFactorToken = conn.Db.TwoFactorToken.Iter()
-                        .FirstOrDefault(t => t.Token == tempToken && t.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    var twoFactorToken = await _spacetimeService.ReadAsync(c => c.Db.TwoFactorToken.Iter()
+                        .FirstOrDefault(t => t.Token == tempToken && !t.IsUsed && t.ExpiresAt > (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
                     
                     if (twoFactorToken == null)
                     {
-                        _logger.LogWarning("Invalid or expired two-factor token: {Token}", tempToken);
+                        _logger.LogWarning("Invalid or expired two-factor challenge");
                         return (false, "Invalid or expired token");
                     }
 
                     // Get the user
-                    var user = conn.Db.UserProfile.Iter()
-                        .FirstOrDefault(u => u.UserId.Equals(twoFactorToken.UserId));
+                    var user = await _spacetimeService.ReadAsync(c => c.Db.UserProfile.Iter()
+                        .FirstOrDefault(u => u.UserId.Equals(twoFactorToken.UserId) && u.IsActive));
                     
                     if (user == null)
                     {
-                        _logger.LogWarning("User not found for two-factor token: {Token}", tempToken);
+                        _logger.LogWarning("User not found for two-factor challenge");
                         return (false, "User not found");
                     }
 
                     // Get the TOTP secret
-                    var totpSecret = conn.Db.TotpSecret.Iter()
-                        .FirstOrDefault(s => s.UserId.Equals(user.UserId) && s.IsActive);
+                    var totpSecret = await _spacetimeService.ReadAsync(c => c.Db.TotpSecret.Iter()
+                        .FirstOrDefault(s => s.UserId.Equals(user.UserId) && s.IsActive));
                     
                     if (totpSecret == null)
                     {
@@ -249,14 +239,15 @@
                     }
 
                     // Delete the token
-                    conn.Reducers.DeleteTwoFactorToken(twoFactorToken.Id);
+                    await _spacetimeService.ExecuteReducerAsync(new Reducer.UpdateTwoFactorToken(twoFactorToken.Id,
+                        twoFactorToken.UserId, twoFactorToken.Token, true, twoFactorToken.ExpiresAt), _ => true);
 
                     _logger.LogInformation("TOTP code validated successfully with token for user ID: {UserId}", user.UserId);
                     return (true, null);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error validating TOTP code with token: {Token}", tempToken);
+                    _logger.LogError("Error validating TOTP challenge: {ErrorType}", ex.GetType().Name);
                     return (false, "An error occurred while validating TOTP code");
                 }
             }
@@ -268,11 +259,8 @@
             {
                 try
                 {
-                    var conn = _spacetimeService.GetConnection();
-                    
                     // Get user settings
-                    var userSettings = conn.Db.UserSettings.Iter()
-                        .FirstOrDefault(s => s.UserId.Equals(userId));
+                    var userSettings = await _spacetimeService.ReadAsync(c => c.Db.UserSettings.Iter().FirstOrDefault(s => s.UserId == userId));
                     
                     return userSettings?.TotpEnabled ?? false;
                 }
@@ -322,7 +310,7 @@
                     // Try current and previous time steps
                     for (var i = -1; i <= 1; i++)
                     {
-                        var hash = new HMACSHA1(Base32Decode(secretKey));
+                        using var hash = new HMACSHA1(Base32Decode(secretKey));
                         var counterBytes = BitConverter.GetBytes(counter + i).Reverse().ToArray();
                         var hashBytes = hash.ComputeHash(counterBytes);
                         var offset = hashBytes[hashBytes.Length - 1] & 0xf;
@@ -404,5 +392,3 @@
             }
         }
     }
-
-

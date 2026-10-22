@@ -12,12 +12,12 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void DeactivateWebAuthnCredentialHandler(ReducerEventContext ctx, uint id);
+        public delegate void DeactivateWebAuthnCredentialHandler(ReducerEventContext ctx, uint id, SpacetimeDB.Identity? actingUser);
         public event DeactivateWebAuthnCredentialHandler? OnDeactivateWebAuthnCredential;
 
-        public void DeactivateWebAuthnCredential(uint id)
+        public void DeactivateWebAuthnCredential(uint id, SpacetimeDB.Identity? actingUser)
         {
-            conn.InternalCallReducer(new Reducer.DeactivateWebAuthnCredential(id));
+            conn.InternalCallReducer(new Reducer.DeactivateWebAuthnCredential(id, actingUser));
         }
 
         public bool InvokeDeactivateWebAuthnCredential(ReducerEventContext ctx, Reducer.DeactivateWebAuthnCredential args)
@@ -36,7 +36,8 @@ namespace SpacetimeDB.Types
             }
             OnDeactivateWebAuthnCredential(
                 ctx,
-                args.Id
+                args.Id,
+                args.ActingUser
             );
             return true;
         }
@@ -50,10 +51,16 @@ namespace SpacetimeDB.Types
         {
             [DataMember(Name = "id")]
             public uint Id;
+            [DataMember(Name = "acting_user")]
+            public SpacetimeDB.Identity? ActingUser;
 
-            public DeactivateWebAuthnCredential(uint Id)
+            public DeactivateWebAuthnCredential(
+                uint Id,
+                SpacetimeDB.Identity? ActingUser
+            )
             {
                 this.Id = Id;
+                this.ActingUser = ActingUser;
             }
 
             public DeactivateWebAuthnCredential()

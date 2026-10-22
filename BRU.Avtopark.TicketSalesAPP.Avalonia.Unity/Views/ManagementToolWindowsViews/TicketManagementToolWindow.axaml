@@ -7,18 +7,18 @@
              x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.TicketManagementToolWindow"
              x:DataType="vm:TicketManagementViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="20">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-            <TextBox Grid.Column="0"
+            <TextBox AutomationProperties.Name="Поиск билетов" Grid.Column="0"
                      Text="{Binding SearchText}"
                      PlaceholderText="Поиск билетов..."
                      Margin="0,0,10,0"/>
             <Button Grid.Column="1"
                     Command="{Binding AddCommand}"
-                    Content="Добавить билет"/>
+                    Content="Добавить билет" IsEnabled="{Binding CanCreate}"/>
         </Grid>
 
-        <DataGrid Grid.Row="1"
+        <DataGrid AutomationProperties.Name="Билеты" Grid.Row="1"
                   ItemsSource="{Binding Tickets}"
                   SelectedItem="{Binding SelectedTicket}"
                   IsReadOnly="True"
@@ -43,19 +43,26 @@
         </DataGrid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0"
+            <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Column="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="Red"
                        IsVisible="{Binding HasError}"/>
             <Button Grid.Column="1"
                     Command="{Binding EditCommand}"
                     Content="Редактировать"
-                    IsEnabled="{Binding SelectedTicket, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    IsEnabled="{Binding CanEdit}"
                     Margin="0,0,10,0"/>
             <Button Grid.Column="2"
                     Command="{Binding DeleteCommand}"
                     Content="Удалить"
-                    IsEnabled="{Binding SelectedTicket, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    IsEnabled="{Binding CanDelete}"/>
         </Grid>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Назад" Command="{Binding PreviousPageCommand}"/>
+            <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+            <Button Content="Далее" Command="{Binding NextPageCommand}"/>
+            <Button Content="Обновить" Command="{Binding LoadDataCommand}"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="70"/>
+        </StackPanel>
     </Grid>
 </UserControl>

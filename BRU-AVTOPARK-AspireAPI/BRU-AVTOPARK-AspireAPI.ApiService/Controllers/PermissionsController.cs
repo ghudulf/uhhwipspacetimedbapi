@@ -1,3 +1,6 @@
+using BRU.Avtopark.Contracts;
+using BRU_AVTOPARK_AspireAPI.ApiService.Application;
+using TicketSalesApp.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -16,7 +19,7 @@ using BRU_AVTOPARK_AspireAPI.ApiService.Realtime.Infrastructure;
 
 namespace TicketSalesApp.AdminServer.Controllers
 {
-    [ApiController]
+    [ApiController, ApplicationErrorFilter]
     [Route("api/[controller]")]
     [AllowAnonymous] // Allows both custom JWT (manual parsing) and ASP.NET Core auth (OpenIddict)
     public class PermissionsController : BaseController
@@ -56,13 +59,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpGet("realtime/ws")]
         public async Task StreamRealtimeEvents(CancellationToken cancellationToken)
         {
-            if (!IsAuthenticated())
+            if (!await IsAuthenticatedAsync())
             {
                 Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
-            if (!IsAdmin() && !HasPermission("permissions.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
             {
                 Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -70,7 +73,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
             await WebSocketEventStreamWriter.StreamCrudSessionAsync(
                 HttpContext,
-                _realtimeEventBus.SubscribeAsync("permissions", cancellationToken),
+                AuthorizedEventsAsync(_realtimeEventBus.SubscribeAsync("permissions", cancellationToken), "permissions.view", cancellationToken),
                 HandleRealtimeCrudAsync,
                 _logger,
                 cancellationToken);
@@ -85,6 +88,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request contains an unsupported command.</exception>
         private async Task<object> HandleRealtimeCrudAsync(RealtimeCrudRequest request, CancellationToken cancellationToken)
         {
+            await RequireRealtimeCommandAsync("permissions", request.Command ?? "");
             var command = (request.Command ?? string.Empty).Trim().ToLowerInvariant();
             return command switch
             {
@@ -104,7 +108,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="UnauthorizedAccessException">Thrown when the caller is not an administrator and lacks the `permissions.view` permission.</exception>
         private async Task<object> HandleReadAllCommandAsync()
         {
-            if (!IsAdmin() && !HasPermission("permissions.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for permissions.view");
             }
@@ -121,7 +125,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is not provided.</exception>
         private async Task<object> HandleReadCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("permissions.view"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
             {
                 throw new UnauthorizedAccessException("Not authorized for permissions.view");
             }
@@ -145,13 +149,13 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request payload is missing or cannot be deserialized to CreatePermissionModel.</exception>
         private async Task<object> HandleCreateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.create")) throw new UnauthorizedAccessException("Not authorized for permissions.create");
             var model = request.Payload?.Deserialize<CreatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for create");
-            var created = await _permissionService.CreatePermissionAsync(model.Name, model.Description, model.Category);
+            var created = await AdminCreatePermissionAsync(model, request);
 
             object result;
-            if (IsAdmin() || HasPermission("permissions.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
                 result = new { operation = "create", success = created is not null, entity = created, snapshot };
@@ -164,7 +168,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (created is not null)
             {
                 // Log admin action after successful creation
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null)
                 {
                     await _adminLogger.LogActionAsync(
@@ -213,15 +217,15 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when the request is missing the required Id or payload for the update.</exception>
         private async Task<object> HandleUpdateCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("permissions.edit")) throw new UnauthorizedAccessException("Not authorized for permissions.edit");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.edit")) throw new UnauthorizedAccessException("Not authorized for permissions.edit");
             var id = request.Id ?? throw new InvalidOperationException("id is required for update");
             var model = request.Payload?.Deserialize<UpdatePermissionModel>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidOperationException("payload is required for update");
-            var success = await _permissionService.UpdatePermissionAsync(id, model.Name, model.Description, model.Category, model.IsActive);
+            var success = await AdminUpdatePermissionAsync(id, model, request);
             var entity = await _permissionService.GetPermissionByIdAsync(id);
 
             object result;
-            if (IsAdmin() || HasPermission("permissions.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
                 result = new { operation = "update", success, entity, snapshot };
@@ -234,7 +238,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (success)
             {
                 // Log admin action after successful update
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null && entity != null)
                 {
                     await _adminLogger.LogActionAsync(
@@ -283,7 +287,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         /// <exception cref="InvalidOperationException">Thrown when <c>request.Id</c> is missing or when the permission is currently assigned to one or more roles and cannot be deleted.</exception>
         private async Task<object> HandleDeleteCommandAsync(RealtimeCrudRequest request)
         {
-            if (!IsAdmin() && !HasPermission("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.delete")) throw new UnauthorizedAccessException("Not authorized for permissions.delete");
             var id = request.Id ?? throw new InvalidOperationException("id is required for delete");
 
             // Retrieve permission before deletion for logging
@@ -295,10 +299,10 @@ namespace TicketSalesApp.AdminServer.Controllers
                 throw new InvalidOperationException("Cannot delete permission as it is currently assigned to one or more roles");
             }
 
-            var success = await _permissionService.DeletePermissionAsync(id);
+            var success = await AdminBooleanAsync("permissions.delete", new DeletePermissionCommand(id, AdminExpectedRevision(request)), request);
 
             object result;
-            if (IsAdmin() || HasPermission("permissions.view"))
+            if (await IsAdminAsync() || await HasPermissionAsync("permissions.view"))
             {
                 var snapshot = await _permissionService.GetAllPermissionsAsync();
                 result = new { operation = "delete", success, deletedId = id, snapshot };
@@ -311,7 +315,7 @@ namespace TicketSalesApp.AdminServer.Controllers
             if (success)
             {
                 // Log admin action after successful deletion
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId != null && existingPermission != null)
                 {
                     await _adminLogger.LogActionAsync(
@@ -354,7 +358,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("permissions.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view permissions");
                     return Forbid();
@@ -375,7 +379,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permissions", result.Count());
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permissions");
                 return StatusCode(500, new { message = "Error retrieving permissions", error = ex.Message });
@@ -387,7 +391,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("permissions.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view permission {PermissionId}", id);
                     return Forbid();
@@ -413,7 +417,7 @@ namespace TicketSalesApp.AdminServer.Controllers
 
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error retrieving permission {id}", error = ex.Message });
@@ -423,7 +427,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPost]
         public async Task<ActionResult<Permission>> CreatePermission([FromBody] CreatePermissionModel model)
         {
-            if (!IsAdmin() && !HasPermission("permissions.create"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.create"))
             {
                 _logger.LogWarning("Unauthorized attempt to create permission");
                 return Forbid();
@@ -434,7 +438,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Creating new permission: {PermissionName}", model.Name);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -442,11 +446,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
                 
                 // Call the CreatePermission method
-                var permission = await _permissionService.CreatePermissionAsync(
-                    model.Name,
-                    model.Description,
-                    model.Category
-                );
+                var permission = await AdminCreatePermissionAsync(model);
 
                 if (permission == null)
                 {
@@ -465,7 +465,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                     permission.Name, permission.PermissionId);
                 return CreatedAtAction(nameof(GetPermission), new { id = permission.PermissionId }, permission);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error creating permission {PermissionName}", model.Name);
                 return StatusCode(500, new { message = $"Error creating permission {model.Name}", error = ex.Message });
@@ -475,7 +475,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePermission(uint id, [FromBody] UpdatePermissionModel model)
         {
-            if (!IsAdmin() && !HasPermission("permissions.edit"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.edit"))
             {
                 _logger.LogWarning("Unauthorized attempt to update permission");
                 return Forbid();
@@ -486,7 +486,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Updating permission {PermissionId}", id);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -502,13 +502,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the UpdatePermission method
-                var success = await _permissionService.UpdatePermissionAsync(
-                    id,
-                    model.Name,
-                    model.Description,
-                    model.Category,
-                    model.IsActive
-                );
+                var success = await AdminUpdatePermissionAsync(id, model);
 
                 if (!success)
                 {
@@ -526,7 +520,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully updated permission {PermissionId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error updating permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error updating permission {id}", error = ex.Message });
@@ -536,7 +530,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePermission(uint id)
         {
-            if (!IsAdmin() && !HasPermission("permissions.delete"))
+            if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.delete"))
             {
                 _logger.LogWarning("Unauthorized attempt to delete permission");
                 return Forbid();
@@ -547,7 +541,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Attempting to delete permission {PermissionId}", id);
                 
                 // Get the current user ID from token
-                var userId = GetUserId();
+                var userId = await GetUserIdAsync();
                 if (userId == null)
                 {
                     _logger.LogWarning("Failed to get user ID from token");
@@ -571,7 +565,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 }
 
                 // Call the DeletePermission method
-                var success = await _permissionService.DeletePermissionAsync(id);
+                var success = await AdminBooleanAsync("permissions.delete", new DeletePermissionCommand(id, AdminExpectedRevision()));
                 if (!success)
                 {
                     _logger.LogWarning("Failed to delete permission {PermissionId}", id);
@@ -588,7 +582,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Successfully deleted permission {PermissionId}", id);
                 return NoContent();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error deleting permission {PermissionId}", id);
                 return StatusCode(500, new { message = $"Error deleting permission {id}", error = ex.Message });
@@ -600,7 +594,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("permissions.view.categories"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view.categories"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view permission categories");
                     return Forbid();
@@ -611,7 +605,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permission categories", categories.Count());
                 return Ok(categories);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permission categories");
                 return StatusCode(500, new { message = "Error retrieving permission categories", error = ex.Message });
@@ -623,7 +617,7 @@ namespace TicketSalesApp.AdminServer.Controllers
         {
             try
             {
-                if (!IsAdmin() && !HasPermission("permissions.view"))
+                if (!await IsAdminAsync() && !await HasPermissionAsync("permissions.view"))
                 {
                     _logger.LogWarning("Unauthorized attempt to view permissions by category {Category}", category);
                     return Forbid();
@@ -644,7 +638,7 @@ namespace TicketSalesApp.AdminServer.Controllers
                 _logger.LogInformation("Retrieved {Count} permissions for category {Category}", result.Count(), category);
                 return Ok(result); // Return mapped result
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsApplicationFailure(ex))
             {
                 _logger.LogError(ex, "Error retrieving permissions for category {Category}", category);
                 return StatusCode(500, new { message = $"Error retrieving permissions for category {category}", error = ex.Message });
@@ -661,9 +655,10 @@ namespace TicketSalesApp.AdminServer.Controllers
 
     public class UpdatePermissionModel
     {
+        public ulong? ExpectedRevision { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
         public string? Category { get; set; }
         public bool? IsActive { get; set; }
     }
-} 
+}

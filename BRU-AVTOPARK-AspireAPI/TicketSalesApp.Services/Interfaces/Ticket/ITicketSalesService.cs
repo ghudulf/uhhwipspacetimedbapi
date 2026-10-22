@@ -1,8 +1,9 @@
-﻿// Services/Interfaces/ITicketSalesService.cs
+// Services/Interfaces/ITicketSalesService.cs
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SpacetimeDB.Types;
+using SpacetimeDB;
 
 namespace TicketSalesApp.Services.Interfaces
 {
@@ -57,10 +58,12 @@ namespace TicketSalesApp.Services.Interfaces
 
         
         // Create/Update/Delete operations
-        Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null);
-        Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null, string? saleLocation = null, string? saleNotes = null);
-        Task<bool> DeleteSaleAsync(uint saleId);
+        Task<uint?> CreateSaleAsync(uint ticketId, string buyerName, string buyerPhone, string? saleLocation = null, string? saleNotes = null, Identity? actingUser = null, string? operationId = null, CancellationToken cancellationToken = default);
+        Task<bool> UpdateSaleAsync(uint saleId, string? buyerName = null, string? buyerPhone = null, string? saleLocation = null, string? saleNotes = null, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
+        Task<bool> DeleteSaleAsync(uint saleId, Identity? actingUser = null, string? operationId = null, ulong? expectedRevision = null, CancellationToken cancellationToken = default);
         
+        Task<TicketSalesApp.Services.Implementations.IncomeSummary> GetIncomeSummaryAsync(int year, int month, CancellationToken cancellationToken = default);
+
         // Reporting operations
         Task<decimal> GetTotalIncomeAsync(int year, int month);
         Task<List<TransportStatistic>> GetTopTransportsAsync(int year, int month);

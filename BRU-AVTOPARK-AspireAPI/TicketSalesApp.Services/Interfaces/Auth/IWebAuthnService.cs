@@ -12,6 +12,12 @@ namespace TicketSalesApp.Services.Interfaces
     /// </summary>
     public interface IWebAuthnService
     {
+        Task<UserProfile?> FindActiveUserAsync(string username);
+        Task<byte[]> EnsureUserHandleAsync(Identity actor);
+        Task<CredentialCreateOptions> CreateRegistrationOptionsAsync(Identity actor);
+        Task<AssertionOptions> CreateAssertionOptionsAsync(string? username);
+        Task VerifyRegistrationAsync(Identity actor, CredentialCreateOptions options, AuthenticatorAttestationRawResponse response);
+        Task<UserProfile> VerifyAssertionAsync(AssertionOptions options, AuthenticatorAssertionRawResponse response, Identity? expectedActor = null);
         Task<(bool success, CredentialCreateOptions? options, string? errorMessage)> GetCredentialCreateOptionsAsync(Identity userId, string username);
         Task<(bool success, string? errorMessage)> CompleteRegistrationAsync(Identity userId, string username, AuthenticatorAttestationRawResponse attestationResponse);
         Task<(bool success, AssertionOptions? options, string? errorMessage)> GetAssertionOptionsAsync(string username);
@@ -21,4 +27,3 @@ namespace TicketSalesApp.Services.Interfaces
         Task<bool> IsWebAuthnEnabledAsync(Identity userId);
     }
 }
-

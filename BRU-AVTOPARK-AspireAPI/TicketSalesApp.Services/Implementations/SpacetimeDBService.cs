@@ -13,30 +13,47 @@ using System.Collections.Generic; // Import generic collections
 namespace TicketSalesApp.Services.Implementations
 {
     // Define the SpacetimeDBService class implementing ISpacetimeDBService interface
-    public class SpacetimeDBService : ISpacetimeDBService
+    public partial class SpacetimeDBService : ISpacetimeDBService
     {
         // Private fields for configuration, logger, and connection management
         private readonly IConfiguration _configuration; // Configuration for the service
         private readonly ILogger<SpacetimeDBService> _logger; // Logger for the service
+        private readonly Microsoft.AspNetCore.Http.IHttpContextAccessor? _requestContexts;
         private DbConnection? _connection; // Database connection object
+        private string? _connectionToken;
+        private string? _credentialFile;
         private Identity? _localIdentity; // Local identity for the connection
-        private readonly ConcurrentQueue<(string Command, Dictionary<string, object> Args)> _inputQueue; // Thread-safe queue for commands
+
         private volatile bool _isConnecting = false; // Flag to track connection state
         private volatile bool _subscriptionApplied = false; // Flag to track if subscription has been applied
         private readonly bool _logReducerLogsToFile; // Flag to control whether reducer logs are logged to file
 
         // Constructor to initialize configuration and logger
-        public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger)
+        public SpacetimeDBService(IConfiguration configuration, ILogger<SpacetimeDBService> logger,
+            Microsoft.AspNetCore.Http.IHttpContextAccessor? requestContexts = null)
         {
             _configuration = configuration; // Assign configuration
             _logger = logger; // Assign logger
-            _inputQueue = new ConcurrentQueue<(string Command, Dictionary<string, object> Args)>(); // Initialize the input queue
+            _requestContexts = requestContexts;
+
             _logReducerLogsToFile = _configuration.GetValue<bool>("SpacetimeDB:LogReducerLogsToFile", true); // Default to true for backward compatibility
             _logger.LogInformation("SpacetimeDBService initialized");
         }
 
         // Method to establish a connection to the database
         public DbConnection Connect()
+        {
+            lock (_frameGate) return ConnectCore();
+        }
+
+        private long _connectionGeneration;
+        private void ForGeneration(long generation, Action callback)
+        {
+            lock (_frameGate)
+                if (_connectionGeneration == generation) callback();
+        }
+
+        private DbConnection ConnectCore()
         {
             // Prevent multiple connection attempts
             if (_isConnecting)
@@ -55,6 +72,9 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _isConnecting = true;
+                _subscriptionApplied = false;
+                _eventsApplied = false;
+                SetState(DatabaseConnectionState.Connecting);
 
                 // Retrieve host and database name from configuration
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000"; // Default host
@@ -64,19 +84,21 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogInformation("Connecting to SpacetimeDB at {Host} database {Database}", host, databaseName);
 
                 // Initialize authentication token storage
-                AuthToken.Init(".spacetime_csharp_avtopark");
+                _credentialFile = _configuration["SpacetimeDB:CredentialFile"] ?? DatabaseCredentialFile.DefaultPath(host, databaseName);
+                _connectionToken = _configuration["SpacetimeDB:Token"] ?? DatabaseCredentialFile.Read(_credentialFile, host, databaseName)?.Token;
                 _logger.LogDebug("Authentication token initialized");
 
                 // Build the database connection with necessary callbacks
                 _logger.LogDebug("Building database connection with callbacks");
+                var generation = ++_connectionGeneration;
                 _connection = DbConnection.Builder()
                         .WithUri(host) // Set the URI for the connection
                         .WithDatabaseName(databaseName) // Set the database name
-                        .WithToken(AuthToken.Token) // Set the authentication token
+                        .WithToken(_connectionToken) // Set the authentication token
                         .WithConfirmedReads(true) // Enable confirmed reads for durability (default: true). Set to false for low-latency scenarios where eventual consistency is acceptable.
-                        .OnConnect(OnConnected) // Set the on-connect callback
-                        .OnConnectError(OnConnectError) // Set the on-connect-error callback
-                        .OnDisconnect(OnDisconnected) // Set the on-disconnect callback
+                        .OnConnect((conn, identity, token) => ForGeneration(generation, () => OnConnected(conn, identity, token))) // Set the on-connect callback
+                        .OnConnectError(error => ForGeneration(generation, () => OnConnectError(error))) // Set the on-connect-error callback
+                        .OnDisconnect((conn, error) => ForGeneration(generation, () => OnDisconnected(conn, error))) // Set the on-disconnect callback
                         .Build(); // Build the connection
 
                 _logger.LogInformation("Database connection built successfully");
@@ -89,19 +111,6 @@ namespace TicketSalesApp.Services.Implementations
                 _isConnecting = false;
                 throw; // Rethrow the exception
             }
-        }
-
-        // Method to get the current database connection
-        public DbConnection GetConnection()
-        {
-            if (_connection == null)
-            {
-                // Throw an exception if the connection is not initialized
-                _logger.LogError("Attempted to get connection before initialization");
-                throw new InvalidOperationException("SpacetimeDB connection not initialized or not yet established. Call Connect() first and wait for connection to complete.");
-            }
-            _logger.LogDebug("Retrieved existing database connection");
-            return _connection; // Return the current connection
         }
 
         // Method to get database identity from SpacetimeDB API
@@ -117,11 +126,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogDebug("Fetching database identity from: {Url}", identityUrl);
 
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-                var response = await httpClient.GetAsync(identityUrl);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Get, identityUrl, "Bearer", token, 10);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -136,7 +141,7 @@ namespace TicketSalesApp.Services.Implementations
                 _logger.LogDebug("Identity endpoint failed with {Status}, trying describe endpoint", response.StatusCode);
                 
                 var describeUrl = $"{baseUrl}/v1/database/{databaseNameOrIdentity}";
-                var describeResponse = await httpClient.GetAsync(describeUrl);
+                using var describeResponse = await SendDatabaseHttpAsync(HttpMethod.Get, describeUrl, "Bearer", token, 10);
                 
                 if (describeResponse.IsSuccessStatusCode)
                 {
@@ -167,7 +172,7 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
-                var currentToken = AuthToken.Token;
+                var currentToken = _connectionToken;
 
                 if (string.IsNullOrEmpty(currentToken))
                 {
@@ -180,19 +185,15 @@ namespace TicketSalesApp.Services.Implementations
 
                 _logger.LogDebug("Requesting WebSocket token from: {Url}", url);
 
-                using var httpClient = new HttpClient();
                 // Use Basic authorization with the current Spacetime token
                 var authValue = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"token:{currentToken}"));
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {authValue}");
-                httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-                var response = await httpClient.PostAsync(url, null);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Post, url, "Basic", authValue, 10);
                 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to get WebSocket token. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, errorContent);
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     return null;
                 }
 
@@ -224,15 +225,8 @@ namespace TicketSalesApp.Services.Implementations
                 var host = _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000";
                 var databaseName = _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark";
                 
-                // Try multiple token sources in order of preference:
-                // 1. Configuration AdminToken (highest priority - owner token)
-                // 2. Environment variable SPACETIME_TOKEN
-                // 3. WebSocket token (short-lived token from current connection)
-                // 4. AuthToken (client connection token - may not have log permissions)
-                var token = _configuration["SpacetimeDB:AdminToken"]
-                           ?? Environment.GetEnvironmentVariable("SPACETIME_TOKEN")
-                           ?? await GetWebSocketTokenAsync()
-                           ?? AuthToken.Token;
+                // Only the effective, policy-validated optional owner token can fetch logs.
+                var token = _configuration["SpacetimeDB:AdminToken"];
 
                 if (string.IsNullOrEmpty(token))
                 {
@@ -263,11 +257,7 @@ namespace TicketSalesApp.Services.Implementations
                     
                     _logger.LogDebug("Attempting to fetch logs using database identity: {Identity}", databaseIdentity);
                     
-                    using var httpClient1 = new HttpClient();
-                    httpClient1.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                    httpClient1.Timeout = TimeSpan.FromSeconds(30);
-                    
-                    var response1 = await httpClient1.GetAsync(identityUrl);
+                    using var response1 = await SendDatabaseHttpAsync(HttpMethod.Get, identityUrl, "Bearer", token, 30);
                     
                     if (response1.IsSuccessStatusCode)
                     {
@@ -292,11 +282,7 @@ namespace TicketSalesApp.Services.Implementations
                 
                 _logger.LogDebug("Fetching logs using database name: {Name}", databaseName);
 
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-                var response = await httpClient.GetAsync(nameUrl);
+                using var response = await SendDatabaseHttpAsync(HttpMethod.Get, nameUrl, "Bearer", token, 30);
                 
                 if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
@@ -308,7 +294,7 @@ namespace TicketSalesApp.Services.Implementations
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Failed to fetch logs. Status: {StatusCode}, Error: {Error}", 
-                        response.StatusCode, errorContent);
+                        response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(errorContent));
                     _logger.LogInformation("Reducer logs not available via HTTP API. Check SpacetimeDB server console for reducer logs.");
                     return $"Warning: Failed to fetch logs: {response.StatusCode} - {errorContent}";
                 }
@@ -328,15 +314,9 @@ namespace TicketSalesApp.Services.Implementations
         private string GetForbiddenMessage(string databaseName)
         {
             _logger.LogInformation("To enable log fetching:");
-            _logger.LogInformation("  Option 1: Add admin token to appsettings.json:");
-            _logger.LogInformation("    \"SpacetimeDB\": {{");
-            _logger.LogInformation("      \"AdminToken\": \"<your-token-from-spacetime-login-show>\"");
-            _logger.LogInformation("    }}");
-            _logger.LogInformation("  Option 2: Set SPACETIME_TOKEN environment variable");
-            _logger.LogInformation("  Option 3: Use CLI: spacetime logs {DatabaseName}", databaseName);
+            _logger.LogInformation("Configure SpacetimeDB:AdminToken through an owner-only secret file or SpacetimeDB__AdminToken environment variable. See docs/architecture/secrets.md.");
             return $"Warning: Current identity does not have permission to view module logs.\n" +
-                   $"To enable log fetching, add AdminToken to appsettings.json or set SPACETIME_TOKEN env var.\n" +
-                   $"Run 'spacetime login show --token' to get your token.\n\n" +
+                   $"To enable log fetching, configure a private SpacetimeDB__AdminToken secret file or environment variable.\n\n" +
                    $"Alternatively, use the SpacetimeDB CLI:\n" +
                    $"  spacetime logs {databaseName}";
         }
@@ -404,33 +384,31 @@ namespace TicketSalesApp.Services.Implementations
         // Method to check if the subscription has been applied
         public bool IsSubscriptionReady()
         {
-            return _subscriptionApplied;
+            return IsConnected() && _subscriptionApplied && _eventsApplied;
         }
 
         // Method to disconnect from the database
         public void Disconnect()
         {
-            _logger.LogInformation("Disconnecting from SpacetimeDB...");
-
-            if (_connection != null)
+            lock (_frameGate)
             {
-                // Log the disconnection attempt
-                _logger.LogInformation("Disconnecting from SpacetimeDB connection...");
-                _connection.Disconnect(); // Disconnect the connection
-                _connection = null; // Reset the connection
-                _localIdentity = null; // Reset the local identity
-                _logger.LogInformation("SpacetimeDB disconnected successfully");
-            }
-            else
-            {
-                _logger.LogWarning("Disconnect called but no active connection exists");
+                ++_connectionGeneration; // Ignore callbacks from the retired connection.
+                var connection = _connection;
+                foreach (var unsubscribe in _connectionUnsubscriptions) unsubscribe();
+                _connectionUnsubscriptions.Clear();
+                _connection = null;
+                _localIdentity = null;
+                _isConnecting = false;
+                InvalidateReadiness();
+                connection?.Disconnect();
+                _logger.LogInformation("SpacetimeDB disconnected; generation {Generation}", _connectionGeneration);
             }
         }
 
         // Method to enqueue a command for processing
         public void EnqueueCommand(string command, Dictionary<string, object> args)
         {
-            _inputQueue.Enqueue((command, args)); // Add the command to the queue
+            QueueLegacyCommand(command, args);
             _logger.LogDebug("Command enqueued: {Command} with {ArgCount} arguments", command, args.Count);
         }
 
@@ -446,20 +424,17 @@ namespace TicketSalesApp.Services.Implementations
             try
             {
                 _logger.LogTrace("Processing frame tick");
-                _connection.FrameTick();
-                ProcessCommands();
-            }
-            catch (ArgumentException ex) when (ex.Message.Contains("An item with the same key has already been added"))
-            {
-                // This can happen when multiple reducers are called in rapid succession
-                // and the client cache hasn't been fully updated yet. This is not a critical error.
-                _logger.LogWarning("Duplicate key detected during frame tick processing. This is expected when multiple reducers are called rapidly. Key: {Message}", ex.Message);
-                // Continue processing - the data is already in the cache
+                lock (_frameGate)
+                {
+                    _connection?.FrameTick();
+                    ProcessQueuedOperations();
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing frame tick: {ErrorMessage}", ex.Message);
-                // Don't rethrow as this would break the application flow
+                _logger.LogError(ex, "Database frame failed; invalidating cached readiness");
+                Disconnect();
+                SetState(DatabaseConnectionState.Degraded);
             }
         }
 
@@ -492,8 +467,8 @@ namespace TicketSalesApp.Services.Implementations
 
             _logger.LogInformation("Subscribing to event tables");
             var subscriptionHandle = _connection.SubscriptionBuilder()
-                .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
-                .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                .OnApplied(ctx => { _eventsApplied = true; UpdateReadiness(); })
+                .OnError(OnSubscriptionError)
                 .Subscribe(new[] {
                     "SELECT * FROM AuthenticationEvent",
                     "SELECT * FROM TicketSaleEvent",
@@ -528,36 +503,6 @@ namespace TicketSalesApp.Services.Implementations
 
             _logger.LogInformation("Subscribed to {Count} queries successfully", queries.Length);
             return subscriptionHandle;
-        }
-
-        // Private method to process commands from the queue
-        private void ProcessCommands()
-        {
-            if (_connection == null)
-            {
-                _logger.LogDebug("ProcessCommands called but connection not fully established");
-                return;
-            }
-
-            int processedCount = 0;
-            while (_inputQueue.TryDequeue(out var command))
-            {
-                try
-                {
-                    _logger.LogDebug("Processing command: {Command}", command.Command);
-                    ProcessCommand(command.Command, command.Args);
-                    processedCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing command: {Command}, Error: {ErrorMessage}", command.Command, ex.Message);
-                }
-            }
-
-            if (processedCount > 0)
-            {
-                _logger.LogDebug("Processed {Count} commands from queue", processedCount);
-            }
         }
 
         // Private method to process a single command
@@ -1458,7 +1403,16 @@ namespace TicketSalesApp.Services.Implementations
             {
                 _logger.LogInformation("Connected to SpacetimeDB with identity: {Identity}", identity);
                 _localIdentity = identity;
-                AuthToken.SaveToken(token);
+                ObserveReducerCompletions(conn);
+                ObserveApplicationChanges(conn);
+                SetState(DatabaseConnectionState.Subscribing);
+                if (string.IsNullOrEmpty(_configuration["SpacetimeDB:Token"]))
+                {
+                    DatabaseCredentialFile.Save(_credentialFile!, _configuration["SpacetimeDB:Host"] ?? "http://localhost:3000",
+                        _configuration["SpacetimeDB:DatabaseName"] ?? "avtopark", identity.ToString(), token);
+                    _logger.LogInformation("API identity persisted. If access is not provisioned, run tools/DatabaseBootstrap as the deployment owner using this CredentialFile: {CredentialFile}", _credentialFile);
+                }
+                _connectionToken = token;
 
                 // Subscribe to all regular tables (event tables are excluded)
                 conn.SubscriptionBuilder()
@@ -1469,8 +1423,8 @@ namespace TicketSalesApp.Services.Implementations
                 // Subscribe to event tables explicitly (they are excluded from SubscribeToAllTables)
                 _logger.LogInformation("Subscribing to event tables");
                 conn.SubscriptionBuilder()
-                    .OnApplied(ctx => _logger.LogInformation("Event table subscription applied successfully"))
-                    .OnError((ctx, err) => _logger.LogError(err, "Error subscribing to event tables: {ErrorMessage}", err.Message))
+                    .OnApplied(ctx => { _eventsApplied = true; UpdateReadiness(); })
+                    .OnError(OnSubscriptionError)
                     .Subscribe(new[] {
                         "SELECT * FROM AuthenticationEvent",
                         "SELECT * FROM TicketSaleEvent",
@@ -1497,6 +1451,7 @@ namespace TicketSalesApp.Services.Implementations
         {
             // Log the connection error
             _logger.LogError(ex, "Error connecting to SpacetimeDB: {ErrorMessage}", ex.Message);
+            InvalidateReadiness();
             _connection = null; // Reset the connection
             _localIdentity = null; // Reset the local identity
             _isConnecting = false;
@@ -1515,6 +1470,7 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the normal disconnection
                 _logger.LogInformation("Disconnected from SpacetimeDB");
             }
+            InvalidateReadiness();
             _connection = null; // Reset the connection
             _localIdentity = null; // Reset the local identity
             _isConnecting = false;
@@ -1528,7 +1484,9 @@ namespace TicketSalesApp.Services.Implementations
                 // Log the successful subscription application
                 _logger.LogInformation("SpacetimeDB subscription applied successfully");
                 _logger.LogDebug("Database tables are now available in the client cache");
-                _subscriptionApplied = true; // Set the flag to indicate subscription is ready
+                LogTableSnapshots();
+                _subscriptionApplied = true;
+                UpdateReadiness();
             }
             catch (Exception ex)
             {
@@ -1541,7 +1499,9 @@ namespace TicketSalesApp.Services.Implementations
         // Callback method for subscription errors
         private void OnSubscriptionError(ErrorContext ctx, Exception ex)
         {
-            _logger.LogError(ex, "Error in subscription: {ErrorMessage}", ex.Message);
+            _logger.LogError(ex, "Database subscription failed");
+            Disconnect();
+            SetState(DatabaseConnectionState.Degraded);
         }
 
         // ***** Event Table Callback Registration *****
@@ -1556,18 +1516,23 @@ namespace TicketSalesApp.Services.Implementations
 
             // Register AuthenticationEvent callback
             conn.Db.AuthenticationEvent.OnInsert += OnAuthenticationEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.AuthenticationEvent.OnInsert -= OnAuthenticationEvent);
 
             // Register TicketSaleEvent callback
             conn.Db.TicketSaleEvent.OnInsert += OnTicketSaleEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.TicketSaleEvent.OnInsert -= OnTicketSaleEvent);
 
             // Register BusStatusEvent callback
             conn.Db.BusStatusEvent.OnInsert += OnBusStatusEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.BusStatusEvent.OnInsert -= OnBusStatusEvent);
 
             // Register RouteScheduleEvent callback
             conn.Db.RouteScheduleEvent.OnInsert += OnRouteScheduleEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.RouteScheduleEvent.OnInsert -= OnRouteScheduleEvent);
 
             // Register MaintenanceEvent callback
             conn.Db.MaintenanceEvent.OnInsert += OnMaintenanceEvent;
+            _connectionUnsubscriptions.Add(() => conn.Db.MaintenanceEvent.OnInsert -= OnMaintenanceEvent);
 
             _logger.LogInformation("Event table callbacks registered successfully");
         }

@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.EntraAccountLinkWindow"
+        Title="Связать учётную запись Microsoft" AutomationProperties.Name="Связать учётную запись Microsoft"
+        Width="500" Height="350" MinWidth="400" MinHeight="300" WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="24" Spacing="14">
+        <TextBlock Text="Учётная запись Microsoft" FontSize="22" />
+        <TextBlock Text="Связь создаётся только для текущей учётной записи приложения после подтверждения в системном браузере. Отвязка не проверяет наличие другого способа входа." TextWrapping="Wrap" />
+        <TextBlock x:Name="StatusText" Text="Сначала проверьте состояние связи." TextWrapping="Wrap" AutomationProperties.Name="Состояние связи Microsoft" AutomationProperties.LiveSetting="Polite" />
+        <WrapPanel>
+            <Button x:Name="StatusButton" Content="Проверить" Click="Status_Click" AutomationProperties.Name="Проверить связь Microsoft" Margin="0,0,8,8" />
+            <Button x:Name="LinkButton" Content="Связать" IsEnabled="False" Click="Link_Click" AutomationProperties.Name="Связать текущую учётную запись Microsoft" Margin="0,0,8,8" />
+            <Button x:Name="UnlinkButton" Content="Отвязать" IsEnabled="False" Click="Unlink_Click" AutomationProperties.Name="Отвязать текущую учётную запись Microsoft" Margin="0,0,8,8" />
+            <Button Content="Закрыть" Click="Close_Click" IsCancel="True" AutomationProperties.Name="Закрыть управление связью Microsoft" Margin="0,0,8,8" />
+        </WrapPanel>
+    </StackPanel>
+</Window>

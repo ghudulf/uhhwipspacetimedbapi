@@ -96,28 +96,24 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
 
         private AuthenticationManager()
         {
-            var tokenStorage = new TokenStorageService();
+            var tokenStorage = new TokenStorageService(ApiClientService.Instance.CurrentBaseUrl!);
 
             var clientId = "bru-avtopark-desktop-client";
-            var clientSecret = "your-secure-client-secret-here-change-in-production";
 
             // Derive server root from the discovered base URL (set during splash screen)
             var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
-            var serverRoot = baseUrl.EndsWith("api/", StringComparison.OrdinalIgnoreCase)
-                ? baseUrl[..^4].TrimEnd('/')
-                : baseUrl.TrimEnd('/');
+            var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri.TrimEnd('/');
 
             var authorizationEndpoint = $"{serverRoot}/connect/authorize";
             var tokenEndpoint         = $"{serverRoot}/connect/token";
             // Redirect URI must always be localhost — it's a server-side callback endpoint
             // registered in OpenIddict. The LAN IP is only used for authorize/token endpoints.
-            var redirectUri           = "http://localhost:5000/callback";
+            var redirectUri           = BRU.Avtopark.Client.ClientEndpoints.DefaultOAuthCallbackUri;
 
             _serverRoot = serverRoot;
 
             _oauthService = new OAuthService(
                 clientId,
-                clientSecret,
                 authorizationEndpoint,
                 tokenEndpoint,
                 redirectUri,
@@ -192,8 +188,8 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 var authUrl = _oauthService.GenerateAuthorizationUrl(scopes, out var state, out var codeVerifier);
                 
                 Log.Information("Authorization URL generated");
-                Log.Debug("Authorization URL: {AuthUrl}", authUrl);
-                Log.Debug("State: {State}, CodeVerifier length: {Length}", state, codeVerifier.Length);
+                Log.Debug("Authorization endpoint: {AuthUrl}", TicketSalesApp.Services.Diagnostics.SafeDiagnostics.Url(authUrl));
+                Log.Debug("PKCE verifier prepared; length {Length}", codeVerifier.Length);
 
                 // Get the main window
                 var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
@@ -220,7 +216,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 // Create and show OAuth login window
                 var oauthWindow = new OAuthLoginWindow(
                     authUrl,
-                    "http://localhost:5000/callback",
+                    BRU.Avtopark.Client.ClientEndpoints.DefaultOAuthCallbackUri,
                     state,
                     codeVerifier
                 );
@@ -342,6 +338,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
             Log.Information("LOGOUT: WebView session clear flag set");
             
             // Clear OAuth tokens from storage
+            await NativeSessionRefresher.RevokeStoredFamilyAsync();
             await _oauthService.LogoutAsync();
             Log.Information("LOGOUT: Cleared OAuth tokens from storage");
             
@@ -542,15 +539,12 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
 
                 // Build server root URL — strip /api/ suffix because connect/tokeninfo is at root
                 var baseUrl = ApiClientService.Instance.CurrentBaseUrl ?? "http://localhost:5000/api/";
-                var serverRoot = baseUrl.TrimEnd('/');
-                if (serverRoot.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
-                    serverRoot = serverRoot[..^4];
-                serverRoot = serverRoot.TrimEnd('/') + "/";
+                var serverRoot = BRU.Avtopark.Client.ClientEndpoints.ServerRoot(baseUrl).AbsoluteUri;
 
                 var fullUrl = $"{serverRoot}connect/tokeninfo";
                 Log.Information("Fetching token claims from: {Url}", fullUrl);
 
-                using var httpClient = new HttpClient { BaseAddress = new Uri(serverRoot) };
+                using var httpClient = new HttpClient(new TicketSalesApp.Services.Diagnostics.TrafficLoggingHandler()) { BaseAddress = new Uri(serverRoot) };
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", accessToken);
 // what fucking 3 seconds - TOKENINFO IS SLOW 
@@ -614,7 +608,7 @@ public static Task CleanupWebViewDataAsync() => CleanupStateFilesAsync();
                 else
                 {
                     var body = await response.Content.ReadAsStringAsync();
-                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, body);
+                    Log.Warning("Failed to fetch token claims. Status: {StatusCode}, Body: {Body}", response.StatusCode, TicketSalesApp.Services.Diagnostics.TrafficDiagnostics.Json(body));
                 }
             }
             catch (Exception ex)

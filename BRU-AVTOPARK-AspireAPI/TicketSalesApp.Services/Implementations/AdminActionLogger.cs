@@ -36,12 +36,11 @@ public class AdminActionLogger : IAdminActionLogger
             if (string.IsNullOrEmpty(action))
                 throw new ArgumentNullException(nameof(action));
 
-            var conn = _spacetimeService.GetConnection();
             var httpContext = _httpContextAccessor.HttpContext;
             
             // Call the reducer to log the admin action
             // The server will handle ID generation internally
-            conn.Reducers.LogAdminAction(
+            await _spacetimeService.ExecuteReducerAsync(new Reducer.LogAdminAction(
                 userId,
                 action,
                 details ?? string.Empty,
@@ -49,7 +48,7 @@ public class AdminActionLogger : IAdminActionLogger
                 httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown",
                 httpContext?.Request.Headers["User-Agent"].ToString() ?? "Unknown",
                 actingUser
-            );
+            ), _ => true, httpContext?.RequestAborted ?? default);
 
             _logger.LogInformation(
                 "Admin action logged: {Action} by user {UserId} from {IpAddress}",
@@ -75,8 +74,6 @@ public class AdminActionLogger : IAdminActionLogger
             if (string.IsNullOrEmpty(userId))
                 throw new ArgumentNullException(nameof(userId));
 
-            var conn = _spacetimeService.GetConnection();
-            
             // Convert dates to Unix timestamps
             ulong? startTimestamp = startDate.HasValue 
                 ? (ulong)new DateTimeOffset(startDate.Value).ToUnixTimeMilliseconds() 
@@ -87,9 +84,9 @@ public class AdminActionLogger : IAdminActionLogger
                 : null;
             
             // Query logs
-            var logs = conn.Db.AdminActionLog.Iter()
+            var logs = await _spacetimeService.ReadAsync(c => c.Db.AdminActionLog.Iter()
                 .Where(l => l.UserId.ToString() == userId && (actingUser == null || l.UserId == actingUser))
-                .ToList();
+                .ToList(), _httpContextAccessor.HttpContext?.RequestAborted ?? default);
                 
             if (startTimestamp.HasValue)
                 logs = logs.Where(l => l.Timestamp >= startTimestamp.Value).ToList();
@@ -118,8 +115,6 @@ public class AdminActionLogger : IAdminActionLogger
             if (string.IsNullOrEmpty(actionType))
                 throw new ArgumentNullException(nameof(actionType));
 
-            var conn = _spacetimeService.GetConnection();
-            
             // Convert dates to Unix timestamps
             ulong? startTimestamp = startDate.HasValue 
                 ? (ulong)new DateTimeOffset(startDate.Value).ToUnixTimeMilliseconds() 
@@ -130,9 +125,9 @@ public class AdminActionLogger : IAdminActionLogger
                 : null;
             
             // Query logs
-            var logs = conn.Db.AdminActionLog.Iter()
+            var logs = await _spacetimeService.ReadAsync(c => c.Db.AdminActionLog.Iter()
                 .Where(l => l.Action == actionType && (actingUser == null || l.UserId == actingUser))
-                .ToList();
+                .ToList(), _httpContextAccessor.HttpContext?.RequestAborted ?? default);
                 
             if (startTimestamp.HasValue)
                 logs = logs.Where(l => l.Timestamp >= startTimestamp.Value).ToList();
