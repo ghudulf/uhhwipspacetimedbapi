@@ -20,6 +20,7 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
     private bool _newAttempt;
     private readonly uint? _entityId;
     private readonly string? _conflictMessage;
+    private readonly Func<string, string>? _failureMessage;
     public TDraft Draft { get; private set; }
     public TRow? Current { get; private set; }
     public ulong? ExpectedRevision { get; private set; }
@@ -34,11 +35,12 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
 
     public CatalogEditorAttempt(TRow? original, Func<TRow?, TDraft> draft, Func<TRow, ulong> revision,
         Func<TDraft, string?> validate, Func<TDraft, ulong?, string, CancellationToken, Task<MutationResult>> execute,
-        Func<string, CancellationToken, Task<MutationResult?>> receipt, Func<CancellationToken, Task<TRow>> readCurrent, uint? entityId = null, string? conflictMessage = null)
+        Func<string, CancellationToken, Task<MutationResult?>> receipt, Func<CancellationToken, Task<TRow>> readCurrent, uint? entityId = null, string? conflictMessage = null, Func<string, string>? failureMessage = null)
     {
         _create = original == null; _draft = row => draft(row); _revision = revision; _validate = validate;
         _execute = execute; _receipt = receipt; _readCurrent = readCurrent;
         _entityId = entityId; _conflictMessage = conflictMessage;
+        _failureMessage = failureMessage;
         Draft = draft(original); ExpectedRevision = original == null ? null : revision(original);
     }
     public async Task SubmitAsync(Func<bool> canSubmit, CancellationToken ct)
@@ -64,7 +66,8 @@ public sealed class CatalogEditorAttempt<TRow, TDraft> where TRow : class where 
             _newAttempt = !CanReconcile;
             Message = code == "conflict" ? _conflictMessage ?? "Данные изменились или изменение отклонено. Черновик сохранён; можно загрузить актуальные данные."
                 : CanReconcile ? "Результат неизвестен. Проверьте его перед повтором; черновик сохранён."
-                : "Изменение отклонено. Проверьте поля и права доступа. Черновик сохранён.";
+                 : "Изменение отклонено. Проверьте поля и права доступа. Черновик сохранён.";
+            if (_failureMessage != null && !CanReconcile) Message = _failureMessage(code);
         }
         finally { IsBusy = false; Changed?.Invoke(); }
     }

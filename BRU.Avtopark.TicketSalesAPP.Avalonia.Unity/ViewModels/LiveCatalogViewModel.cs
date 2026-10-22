@@ -62,8 +62,10 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
     public bool CanGoNext => !IsBusy && (long)_page * PageSize < _total;
     public bool CanMutate => _active && !ActivityToken.IsCancellationRequested && IsSynchronized && !IsBusy && !HasError && SessionMatches();
     public bool CanCreate => CanMutate && _createAllowed;
-    public bool CanEdit => CanMutate && _editAllowed && SelectedItem != null;
-    public bool CanDelete => CanMutate && _deleteAllowed && SelectedItem != null;
+    public bool CanEdit => CanMutate && _editAllowed && SelectedItem != null && CanEditItem(SelectedItem);
+    public bool CanDelete => CanMutate && _deleteAllowed && SelectedItem != null && CanDeleteItem(SelectedItem);
+    protected virtual bool CanEditItem(TItem item) => true;
+    protected virtual bool CanDeleteItem(TItem item) => true;
     public IAsyncRelayCommand LoadDataCommand { get; }
     public IAsyncRelayCommand PreviousPageCommand { get; }
     public IAsyncRelayCommand NextPageCommand { get; }
@@ -82,7 +84,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
         PreviousPageCommand = new AsyncRelayCommand(async () => { _page--; await LoadData(); }, () => CanGoPrevious);
         NextPageCommand = new AsyncRelayCommand(async () => { _page++; await LoadData(); }, () => CanGoNext);
     }
-    public Task ActivateAsync(CancellationToken cancellationToken = default)
+    public virtual Task ActivateAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
@@ -98,7 +100,7 @@ public abstract class LiveCatalogViewModel<TRow, TItem> : ReactiveObject, IDispo
         api.OnAuthTokenChanged += SessionChanged;
         return _loading = LoadData();
     }
-    public void Deactivate()
+    public virtual void Deactivate()
     {
         _active = false; _generation++;
         _activityCancellation?.Cancel();

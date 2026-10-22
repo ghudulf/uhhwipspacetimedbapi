@@ -36,7 +36,7 @@ public sealed partial class ApplicationOperations
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.UserProfile.Iter().Where(u => Matches(request.Search, u.LegacyUserId.ToString(), u.Login, u.Email, u.PhoneNumber)).OrderBy(u => u.LegacyUserId).ToArray();
-                return new CatalogPageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u, access)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("users.create"), access.Allows("users.edit"), access.Allows("users.delete"));
+                return new CatalogPageResult<UserRow>(Page(rows, request).Select(u => PublicUser(c, u, access)).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("users.create"), access.Allows("users.edit"), access.Allows("users.delete")) { Access = AdministrationAccess(access) };
             }, ct);
         });
         Register<EntityRequest>("users.get", "users.view", false, async (actor, request, _, ct) =>
@@ -57,7 +57,7 @@ public sealed partial class ApplicationOperations
                     return new RoleRow(r.RoleId, r.LegacyRoleId, r.Name, r.Description, r.IsSystem, r.Priority, r.IsActive,
                         permissions.Select(p => p!.PermissionId).ToArray(), permissions.Select(p => p!.Name).ToArray(), c.Db.UserRole.Iter().Count(u => u.RoleId == r.RoleId), Version(c, "roles", r.RoleId),
                         access.Allows("roles.view.permissions") ? permissions.Select(p => ProjectPermission(c, p!)).ToArray() : null);
-                }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("roles.create"), access.Allows("roles.edit"), access.Allows("roles.delete"));
+                }).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("roles.create"), access.Allows("roles.edit"), access.Allows("roles.delete")) { Access = AdministrationAccess(access) };
             }, ct);
         });
         Register<PageRequest>("permissions.list", "permissions.view", false, async (actor, request, _, ct) =>
@@ -66,7 +66,7 @@ public sealed partial class ApplicationOperations
             return await database.ReadAsync(c =>
             {
                 var rows = c.Db.Permission.Iter().Where(p => Matches(request.Search, p.Name, p.Description, p.Category)).OrderBy(p => p.PermissionId).ToArray();
-                return new CatalogPageResult<PermissionRow>(Page(rows, request).Select(p => new PermissionRow(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId))).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("permissions.create"), access.Allows("permissions.edit"), access.Allows("permissions.delete"));
+                return new CatalogPageResult<PermissionRow>(Page(rows, request).Select(p => new PermissionRow(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId))).ToArray(), request.Page, request.PageSize, rows.Length, access.Allows("permissions.create"), access.Allows("permissions.edit"), access.Allows("permissions.delete")) { Access = AdministrationAccess(access) };
             }, ct);
         });
 
@@ -152,6 +152,7 @@ public sealed partial class ApplicationOperations
             .SelectMany(ur => c.Db.RolePermission.RoleId.Filter(ur.RoleId)).Select(rp => c.Db.Permission.PermissionId.Find(rp.PermissionId)).Where(p => p is { IsActive: true })
             .DistinctBy(p => p!.PermissionId).Select(p => ProjectPermission(c, p!)).ToArray() : null);
     private static PermissionRow ProjectPermission(DbConnection c, Permission p) => new(p.PermissionId, p.Name, p.Description, p.Category, p.IsActive, Version(c, "permissions", p.PermissionId));
+    private static AccessSnapshot AdministrationAccess(UserAccessSnapshot access) => new(access.IsActive, access.IsAdministrator, access.Roles, access.Permissions);
     private static void AdminId(uint id) { if (id == 0) throw new OperationException("validation_failed"); }
     private static void AdminOptionalName(string? value, int max) { if (value != null) AdminText(value, max, true); }
     private static void AdminPermissionSet(uint[]? ids) { if (ids != null && (ids.Length > 500 || ids.Any(id => id == 0) || ids.Distinct().Count() != ids.Length)) throw new OperationException("validation_failed"); }
