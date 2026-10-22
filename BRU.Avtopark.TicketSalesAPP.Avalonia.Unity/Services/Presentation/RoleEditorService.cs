@@ -18,10 +18,11 @@ public sealed class RoleDraft
     public uint Priority { get; set; }
     public uint[] PermissionIds { get; set; } = [];
     public bool IntegralCounts { get; set; } = true;
+    public bool ReplacePermissions { get; set; }
 }
-public sealed class RoleEditorService(ControlDialogHost host, Func<bool> canGrant)
+public sealed class RoleEditorService(ControlDialogHost host, Func<bool> canGrant, CatalogEditorDrafts<RoleRow, RoleDraft>? drafts = null)
 {
-    private readonly CatalogEditorDrafts<RoleRow, RoleDraft> _drafts = new();
+    private readonly CatalogEditorDrafts<RoleRow, RoleDraft> _drafts = drafts ?? new();
     public static RoleDraft DraftFrom(RoleRow? row) => new() { Name = row?.Name ?? "", Description = row?.Description ?? "", LegacyRoleId = row?.LegacyRoleId ?? 0, Priority = row?.Priority ?? 0, PermissionIds = row?.PermissionIds.ToArray() ?? [] };
     public static string? Validate(RoleDraft d) => string.IsNullOrWhiteSpace(d.Name) || d.Name.Length > 200 ? "Укажите имя роли (до 200 символов)."
         : d.Description.Length > 2000 || d.Description.Length > 0 && string.IsNullOrWhiteSpace(d.Description) ? "Описание: до 2000 символов."
@@ -44,15 +45,16 @@ public sealed class RoleEditorService(ControlDialogHost host, Func<bool> canGran
         choices.IsEnabled = !readOnly && visible && canGrant();
         var attempt = _drafts.Get(original?.Id ?? 0, () => new CatalogEditorAttempt<RoleRow, RoleDraft>(original, DraftFrom, r => r.Revision, Validate,
             (d, revision, id, cancellation) => original == null
-                ? ApplicationMutationClient.ExecuteAsync("roles.create", new CreateRoleCommand(d.Name, d.Description, d.LegacyRoleId, false, d.Priority, visible && canGrant() ? d.PermissionIds : null), id, origin, token, cancellation)
-                : ApplicationMutationClient.ExecuteAsync("roles.update", new UpdateRoleCommand(original.Id, d.Name, d.Description, d.LegacyRoleId, d.Priority, revision, visible && canGrant() ? d.PermissionIds : null), id, origin, token, cancellation),
+                ? ApplicationMutationClient.ExecuteAsync("roles.create", new CreateRoleCommand(d.Name, d.Description, d.LegacyRoleId, false, d.Priority, d.ReplacePermissions ? d.PermissionIds : null), id, origin, token, cancellation)
+                : ApplicationMutationClient.ExecuteAsync("roles.update", new UpdateRoleCommand(original.Id, d.Name, d.Description, d.LegacyRoleId, d.Priority, revision, d.ReplacePermissions ? d.PermissionIds : null), id, origin, token, cancellation),
             (id, cancellation) => ApplicationQueryClient.ReadAsync<ReceiptRequest, MutationResult?>("mutations.receipt", new(id), cancellation),
-            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, RoleRow>("roles.get", new(original!.Id), cancellation), original?.Id, failureMessage: UserEditorService.Failure));
+            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, RoleRow>("roles.get", new(original!.Id), cancellation), original?.Id,
+            failureMessage: code => $"[{code}] Роль уже существует, запись изменилась или сервер запретил выдачу прав сверх ваших. Administrator и системные роли не изменяются. Черновик сохранён."));
         return await CatalogEditorDialog.ShowAsync(host, readOnly ? "Роль только для чтения" : original == null ? "Добавить роль" : "Редактировать роль", attempt,
             [name, description, legacy, priority, choices],
             d => { d.Name = name.Text ?? ""; d.Description = description.Text ?? ""; d.IntegralCounts = legacy.Value is { } l && l == decimal.Truncate(l) && priority.Value is { } p && p == decimal.Truncate(p);
                 d.LegacyRoleId = (int)(legacy.Value ?? 0); d.Priority = (uint)(priority.Value ?? 0);
-                if (visible && canGrant()) d.PermissionIds = choices.SelectedItems!.Cast<PermissionRow>().Select(p => p.Id).ToArray(); },
+                d.ReplacePermissions = visible && canGrant(); if (d.ReplacePermissions) d.PermissionIds = choices.SelectedItems!.Cast<PermissionRow>().Select(p => p.Id).ToArray(); },
             d => { name.Text = d.Name; description.Text = d.Description; legacy.Value = d.LegacyRoleId; priority.Value = d.Priority;
                 choices.SelectedItems!.Clear(); foreach (var p in permissions.Where(p => d.PermissionIds.Contains(p.Id))) choices.SelectedItems.Add(p); },
             () => !readOnly && canSubmit(), ct, readOnly ? "Administrator и системные роли доступны только для чтения." : notice);

@@ -21,6 +21,7 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
     private readonly Func<TRow, ulong> _revision;
     private readonly HashSet<uint> _uncertainDeletes = new();
     private bool _editing;
+    protected bool IsEditorOpen => _editing;
     public IAsyncRelayCommand AddCommand { get; }
     public IAsyncRelayCommand EditCommand { get; }
     public IAsyncRelayCommand DeleteCommand { get; }
@@ -44,6 +45,21 @@ public abstract class EditableCatalogViewModel<TRow, TItem> : LiveCatalogViewMod
     }
     protected override void SnapshotApplied(CatalogPageResult<TRow> page) => _uncertainDeletes.Clear();
     protected virtual string DeleteConflictMessage => "Удаление отклонено. Запись изменилась или используется связанными записями. Обновите данные.";
+    protected async Task RunAdditionalEditorAsync(Func<Func<bool>, CancellationToken, Task<bool>> show, Func<bool> eligible)
+    {
+        if (_editing || !eligible()) return;
+        var ct = ActivityToken; var api = ApiClientService.Instance; var token = api.AuthToken; var origin = api.CurrentBaseUrl;
+        bool Eligible() => !ct.IsCancellationRequested && api.AuthToken == token && api.CurrentBaseUrl == origin && eligible();
+        _editing = true; EligibilityChanged();
+        try { if (await show(Eligible, ct) && Eligible()) await LoadData(); }
+        catch (Exception exception)
+        {
+            if (ct.IsCancellationRequested) return;
+            HasError = true; ErrorMessage = "Не удалось открыть редактор. Черновик не отправлен.";
+            Log.Warning("{Screen} editor stopped: {Code}", GetType().Name, exception is ApplicationCommandException failure ? failure.Code : exception.GetType().Name);
+        }
+        finally { _editing = false; EligibilityChanged(); }
+    }
     private async Task EditAsync(TRow? row, bool create)
     {
         if (_edit == null || (create ? !CanCreate : !CanEdit) || _editing) return;

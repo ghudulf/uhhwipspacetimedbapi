@@ -29,7 +29,8 @@ public sealed class PermissionEditorService(ControlDialogHost host)
                 ? ApplicationMutationClient.ExecuteAsync("permissions.create", new CreatePermissionCommand(d.Name, d.Description, d.Category), id, origin, token, cancellation)
                 : ApplicationMutationClient.ExecuteAsync("permissions.update", new UpdatePermissionCommand(original.Id, d.Name, d.Description, d.Category, d.IsActive, revision), id, origin, token, cancellation),
             (id, cancellation) => ApplicationQueryClient.ReadAsync<ReceiptRequest, MutationResult?>("mutations.receipt", new(id), cancellation),
-            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, PermissionRow>("permissions.get", new(original!.Id), cancellation), original?.Id, failureMessage: UserEditorService.Failure));
+            cancellation => ApplicationQueryClient.ReadAsync<EntityRequest, PermissionRow>("permissions.get", new(original!.Id), cancellation), original?.Id,
+            failureMessage: code => $"[{code}] Разрешение уже существует, запись изменилась или сервер запретил изменение. Проверьте название, поля и свои права. Черновик сохранён."));
         return await CatalogEditorDialog.ShowAsync(host, original == null ? "Добавить разрешение" : "Редактировать разрешение", attempt, [name, description, category, active],
             d => { d.Name = name.Text ?? ""; d.Description = description.Text ?? ""; d.Category = category.Text ?? ""; d.IsActive = active.IsChecked == true; },
             d => { name.Text = d.Name; description.Text = d.Description; category.Text = d.Category; active.IsChecked = d.IsActive; }, canSubmit, ct);

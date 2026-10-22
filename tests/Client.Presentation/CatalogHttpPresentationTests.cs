@@ -83,8 +83,13 @@ internal static class CatalogHttpPresentationTests
                 if (operation is "users.set-active" or "users.assign-role" or "users.remove-role" or "users.create") context.Response.StatusCode = editCode == "conflict" ? 409 : 503;
                 if (operation == "buses.list" && hideBuses) { context.Response.StatusCode = 403; response = new { code = "forbidden" }; }
                 if (operation == "routes.list" && hideRoutes || operation == "tickets.list" && hideTickets) { context.Response.StatusCode = 403; response = new { code = "forbidden" }; }
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response, response?.GetType() ?? typeof(object), ApiProtocol.Json, lifetime.Token);
-                context.Response.Close();
+                try
+                {
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, response, response?.GetType() ?? typeof(object), ApiProtocol.Json, lifetime.Token);
+                    context.Response.Close();
+                }
+                catch (HttpListenerException) { /* Browser deactivation intentionally aborts in-flight read responses. */ }
+                catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { break; }
             }
         }, lifetime.Token);
         try
@@ -150,6 +155,7 @@ internal static class CatalogHttpPresentationTests
             await LookupFailures();
             await SaleDefaults();
             await AdministrationSecurity();
+            await AdministrationBrowsers();
             foreach (var rowType in new[] { "ScheduleRow", "SaleRow", "UserRow", "RoleRow", "PermissionRow" })
             {
                 var events = outcomes.Events.Where(e => e.Properties.TryGetValue("RowType", out var row) && row.ToString().Contains(rowType) && e.Properties.ContainsKey("OperationId") && e.Properties.ContainsKey("Revision") && e.Properties.ContainsKey("EntityId")).ToArray();
@@ -209,6 +215,53 @@ internal static class CatalogHttpPresentationTests
                 Assert(!dialog.IsCompleted && !Button("Сохранить").IsEnabled, "missing receipt enabled mutation replay");
                 receiptFound = true; Click("Проверить результат"); Assert(await dialog, "service receipt did not settle uncertain attempt");
                 Assert(requests.Count(r => r.Operation == resource + ".update") == 2 && requests.Last(r => r.Operation == "mutations.receipt").Payload.GetProperty("operationId").GetString() == attempts[1].OperationId, "service replayed uncertain update or reconciled another ID");
+            }
+            async Task AdministrationBrowsers()
+            {
+                foreach (var resource in new[] { "roles", "permissions" })
+                {
+                    var owner = new UserControl(); var host = new ControlDialogHost(owner);
+                    var browser = resource == "roles" ? AdministrationCatalogDialog.ShowRolesAsync(host, stop) : AdministrationCatalogDialog.ShowPermissionsAsync(host, stop);
+                    while (!owner.GetLogicalDescendants().OfType<DataGrid>().Any()) await Task.Delay(1, stop);
+                    foreach (var label in new[] { "Назад", "Далее", "Обновить", "Добавить", "Редактировать", "Удалить" })
+                    {
+                        var button = owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == label);
+                        Assert(Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(button)?.GetName() == label && button.Focusable, "administrative browser runtime action/pager has no accessible name/focus");
+                    }
+                    var add = owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Добавить");
+                    Assert(add.Command?.CanExecute(null) == true, resource + " browser add ineligible");
+                    add.Command!.Execute(null);
+                    var field = resource == "roles" ? "Название роли" : "Название разрешения";
+                    while (!owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field))
+                    {
+                        var error = outcomes.Events.LastOrDefault(e => e.MessageTemplate.Text.Contains("editor stopped"));
+                        if (error != null) throw new Exception(resource + " browser nested editor failed: " + error.RenderMessage());
+                        await Task.Delay(1, stop);
+                    }
+                    owner.GetLogicalDescendants().OfType<Button>().First(b => b.Content as string == "Закрыть").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    while (owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field)) await Task.Delay(1, stop);
+                    var grid = owner.GetLogicalDescendants().OfType<DataGrid>().Single(); grid.SelectedItem = grid.ItemsSource!.Cast<object>().First();
+                    while (!owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Редактировать").IsEnabled) await Task.Delay(1, stop);
+                    owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Редактировать").Command!.Execute(null);
+                    while (!owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field)) await Task.Delay(1, stop);
+                    owner.GetLogicalDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == field).Text = "Сохранённый браузерный черновик";
+                    editCode = "commit_outcome_unknown"; receiptFound = false; var before = requests.Count(r => r.Operation == resource + ".update");
+                    owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Сохранить").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    while (!owner.GetLogicalDescendants().OfType<Button>().Any(b => b.Content as string == "Проверить результат" && b.IsVisible && b.IsEnabled)) await Task.Delay(1, stop);
+                    owner.GetLogicalDescendants().OfType<Button>().First(b => b.Content as string == "Закрыть").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    while (owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field)) await Task.Delay(1, stop);
+                    owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Закрыть").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await browser;
+                    browser = resource == "roles" ? AdministrationCatalogDialog.ShowRolesAsync(host, stop) : AdministrationCatalogDialog.ShowPermissionsAsync(host, stop);
+                    while (!owner.GetLogicalDescendants().OfType<DataGrid>().Any()) await Task.Delay(1, stop);
+                    while (!owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Редактировать").IsEnabled) await Task.Delay(1, stop);
+                    owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Редактировать").Command!.Execute(null);
+                    while (!owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field)) await Task.Delay(1, stop);
+                    Assert(owner.GetLogicalDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == field).Text == "Сохранённый браузерный черновик" && !owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Сохранить").IsEnabled, "closing/reopening catalog browser lost uncertain draft/ID block");
+                    receiptFound = true; owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Проверить результат").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    while (owner.GetLogicalDescendants().OfType<TextBox>().Any(t => AutomationProperties.GetName(t) == field)) await Task.Delay(1, stop);
+                    Assert(requests.Count(r => r.Operation == resource + ".update") == before + 1, "reopened catalog browser replayed uncertain mutation");
+                    owner.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "Закрыть").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await browser;
+                }
             }
             async Task AdministrationSecurity()
             {

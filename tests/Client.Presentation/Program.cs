@@ -142,7 +142,7 @@ Dispatcher.UIThread.Post(async () =>
     finally { stop.Cancel(); }
 });
 Dispatcher.UIThread.MainLoop(stop.Token);
-if (failure != null) throw failure;
+if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
 if (!finished) throw new Exception("Presentation tests timed out.");
 
 static SalesReportSnapshot Report(decimal amount) => new("UTC", DateTimeOffset.UtcNow, new(amount, 1, 0),

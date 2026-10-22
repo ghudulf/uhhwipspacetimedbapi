@@ -28,8 +28,8 @@
 
         <!-- Error Message -->
         <TextBlock AutomationProperties.LiveSetting="Polite" Grid.Row="1"
-                   Text="{Binding ErrorMessage}"
-                   IsVisible="{Binding HasError}"
+                   Text="{Binding UiMessage}"
+                   IsVisible="{Binding HasUiMessage}"
                    Foreground="Red"
                    TextWrapping="Wrap"
                    Margin="0,0,0,10"/>

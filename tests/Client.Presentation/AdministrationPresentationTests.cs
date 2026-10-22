@@ -49,6 +49,16 @@ internal static class AdministrationPresentationTests
         updates.Writer.TryWrite(new(Page(Access with { Permissions = [] }), true)); await Until(() => !users.CanAssignRole);
         Check(!users.AssignRoleCommand.CanExecute(null) && users.SelectedUserPermissions.Single().Name == Permission.Name && users.SelectedRolePermissions.Single().Name == Permission.Name, "revoked assignment or permission details incorrect");
         users.Deactivate();
+        var actionGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously); CancellationToken actionToken = default; Func<bool>? actionEligible = null;
+        using var actionRoles = new RoleManagementViewModel((_, _) => Task.FromResult(new CatalogPageResult<RoleRow>([Role], 1, 100, 1, true, true, true)));
+        using var actionUsers = new UserManagementViewModel((_, _) => Task.FromResult(Page(Access)), edit: (_, _, _) => Task.FromResult(false), confirmDelete: (_, _) => Task.FromResult(true), roles: actionRoles,
+            assign: (_, _, _, eligible, ct) => { actionToken = ct; actionEligible = eligible; return actionGate.Task; }, activate: (_, _, _) => Task.FromResult(false));
+        await actionUsers.ActivateAsync(); actionUsers.SelectedUser = actionUsers.Users[0]; actionUsers.SelectedRole = actionUsers.Roles[0];
+        var pendingAction = actionUsers.AssignRoleCommand.ExecuteAsync(null);
+        Check(actionEligible?.Invoke() == true && !actionUsers.RemoveRoleCommand.CanExecute(null) && !actionUsers.SetActiveCommand.CanExecute(null) && !actionUsers.EditCommand.CanExecute(null) && !actionUsers.DeleteCommand.CanExecute(null), "administrative dialog actions were not serialized");
+        ApiClientService.Instance.AuthToken = Guid.NewGuid().ToString("N");
+        Check(actionToken.IsCancellationRequested && !actionEligible!(), "session change failed to cancel/gate role assignment dialog");
+        actionGate.SetResult(false); await pendingAction; actionUsers.Deactivate();
         var previous = Environment.GetEnvironmentVariable("BRU_DEBUG_TRAFFIC");
         try
         {

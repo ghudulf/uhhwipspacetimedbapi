@@ -12,18 +12,27 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Services.Presentation;
 
 public static class AdministrationCatalogDialog
 {
-    public static async Task ShowRolesAsync(ControlDialogHost host, CancellationToken ct)
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ControlDialogHost, Browsers> Sessions = new();
+    public static CatalogEditorDrafts<BRU.Avtopark.Contracts.RoleRow, RoleDraft> RoleDrafts(ControlDialogHost host) => Sessions.GetValue(host, _ => new Browsers()).RoleDrafts;
+    public static Task ShowRolesAsync(ControlDialogHost host, CancellationToken ct) => Sessions.GetValue(host, _ => new Browsers()).ShowRolesAsync(host, ct);
+    public static Task ShowPermissionsAsync(ControlDialogHost host, CancellationToken ct) => Sessions.GetValue(host, _ => new Browsers()).ShowPermissionsAsync(host, ct);
+    // One browser/editor set per owning screen: closing the browser cannot discard an uncertain draft.
+    private sealed class Browsers
     {
-        var owner = new UserControl(); var dialogs = new ControlDialogHost(owner); RoleManagementViewModel? model = null;
-        var editor = new RoleEditorService(dialogs, () => model?.Access is { IsActive: true } a && Array.IndexOf(a.Permissions, "grant_permissions") >= 0);
-        using var roles = model = new RoleManagementViewModel(null, edit: editor.ShowAsync, confirmDelete: (r, cancellation) => dialogs.ConfirmAsync("Удаление роли", $"Удалить роль {r.Name}? Назначенные и системные роли не удаляются.", cancellation));
-        await ShowAsync(host, owner, "Роли (100 строк на страницу)", roles, [nameof(RoleDisplayModel.Name), nameof(RoleDisplayModel.Description), nameof(RoleDisplayModel.LegacyRoleId), nameof(RoleDisplayModel.Priority), nameof(RoleDisplayModel.IsSystem)], ct);
-    }
-    public static async Task ShowPermissionsAsync(ControlDialogHost host, CancellationToken ct)
-    {
-        var owner = new UserControl(); var dialogs = new ControlDialogHost(owner); var editor = new PermissionEditorService(dialogs);
-        using var permissions = new PermissionManagementViewModel(null, edit: editor.ShowAsync, confirmDelete: (r, cancellation) => dialogs.ConfirmAsync("Удаление разрешения", $"Удалить разрешение {r.Name}?", cancellation));
-        await ShowAsync(host, owner, "Разрешения (100 строк на страницу)", permissions, [nameof(PermissionDisplayModel.Name), nameof(PermissionDisplayModel.Description), nameof(PermissionDisplayModel.Category), nameof(PermissionDisplayModel.IsActive)], ct);
+        public CatalogEditorDrafts<BRU.Avtopark.Contracts.RoleRow, RoleDraft> RoleDrafts { get; } = new();
+        private readonly UserControl _roleOwner = new(), _permissionOwner = new();
+        private readonly RoleManagementViewModel _roles;
+        private readonly PermissionManagementViewModel _permissions;
+        public Browsers()
+        {
+            var roleDialogs = new ControlDialogHost(_roleOwner);
+            var roleEditor = new RoleEditorService(roleDialogs, () => _roles?.Access is { IsActive: true } a && Array.IndexOf(a.Permissions, "grant_permissions") >= 0, RoleDrafts);
+            _roles = new RoleManagementViewModel(null, edit: roleEditor.ShowAsync, confirmDelete: (r, ct) => roleDialogs.ConfirmAsync("Удаление роли", $"Удалить роль {r.Name}? Назначенные и системные роли не удаляются.", ct));
+            var permissionDialogs = new ControlDialogHost(_permissionOwner); var permissionEditor = new PermissionEditorService(permissionDialogs);
+            _permissions = new PermissionManagementViewModel(null, edit: permissionEditor.ShowAsync, confirmDelete: (r, ct) => permissionDialogs.ConfirmAsync("Удаление разрешения", $"Удалить разрешение {r.Name}?", ct));
+        }
+        public Task ShowRolesAsync(ControlDialogHost host, CancellationToken ct) => ShowAsync(host, _roleOwner, "Роли (100 строк на страницу)", _roles, [nameof(RoleDisplayModel.Name), nameof(RoleDisplayModel.Description), nameof(RoleDisplayModel.LegacyRoleId), nameof(RoleDisplayModel.Priority), nameof(RoleDisplayModel.IsSystem)], ct);
+        public Task ShowPermissionsAsync(ControlDialogHost host, CancellationToken ct) => ShowAsync(host, _permissionOwner, "Разрешения (100 строк на страницу)", _permissions, [nameof(PermissionDisplayModel.Name), nameof(PermissionDisplayModel.Description), nameof(PermissionDisplayModel.Category), nameof(PermissionDisplayModel.IsActive)], ct);
     }
     private static async Task ShowAsync<TRow, TItem>(ControlDialogHost host, UserControl owner, string title, EditableCatalogViewModel<TRow, TItem> model, string[] columns, CancellationToken ct) where TItem : class
     {

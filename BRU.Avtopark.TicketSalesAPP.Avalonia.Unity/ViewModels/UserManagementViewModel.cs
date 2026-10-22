@@ -63,8 +63,11 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
     public RoleDisplayModel? SelectedRole { get => RolesCatalog.SelectedItem; set { RolesCatalog.SelectedItem = value; DetailsChanged(); } }
     public PermissionDisplayModel[] SelectedUserPermissions => SelectedUser?.Row.PermissionDetails?.Select(p => new PermissionDisplayModel(p)).ToArray() ?? [];
     public PermissionDisplayModel[] SelectedRolePermissions => SelectedRole?.Row.PermissionDetails?.Select(p => new PermissionDisplayModel(p)).ToArray() ?? [];
-    public bool CanAssignRole => CanMutate && SelectedUser != null && RolesCatalog.IsSynchronized && SelectedRole != null && Allows("assign_roles");
-    public bool CanSetActive => CanEdit && Allows("users.edit");
+    public string UiMessage => RolesCatalog.HasError ? ErrorMessage + " Роли недоступны: проверьте право просмотра ролей. Пользователи загружаются независимо." : ErrorMessage;
+    public bool HasUiMessage => HasError || RolesCatalog.HasError;
+    private bool AssignmentEligible => CanMutate && SelectedUser != null && RolesCatalog.IsSynchronized && SelectedRole != null && Allows("assign_roles");
+    public bool CanAssignRole => !IsEditorOpen && AssignmentEligible;
+    public bool CanSetActive => !IsEditorOpen && CanEdit && Allows("users.edit");
     public IAsyncRelayCommand AssignRoleCommand { get; }
     public IAsyncRelayCommand RemoveRoleCommand { get; }
     public IAsyncRelayCommand SetActiveCommand { get; }
@@ -83,16 +86,19 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
         RemoveRoleCommand = new AsyncRelayCommand(() => AssignAsync(true), () => CanAssignRole && _assign != null);
         SetActiveCommand = new AsyncRelayCommand(ActivateUserAsync, () => CanSetActive && _activate != null);
         RolesCatalog.Changed += DetailsChanged;
+        RolesCatalog.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ErrorMessage)) DetailsChanged(); };
+        PropertyChanged += (_, e) => { if (e.PropertyName is nameof(ErrorMessage) or nameof(HasError)) { this.RaisePropertyChanged(nameof(UiMessage)); this.RaisePropertyChanged(nameof(HasUiMessage)); } };
     }
     public override async Task ActivateAsync(CancellationToken ct = default) { await base.ActivateAsync(ct); if (!ActivityToken.IsCancellationRequested) await RolesCatalog.ActivateAsync(ct); }
     public override void Deactivate() { RolesCatalog.Deactivate(); base.Deactivate(); }
     private bool Allows(string permission) => _access is { IsActive: true } && _access.Permissions.Contains(permission, StringComparer.Ordinal);
+    protected override async Task PrepareQueryAsync(CancellationToken ct) { await RolesCatalog.LoadDataCommand.ExecuteAsync(null); ct.ThrowIfCancellationRequested(); }
     protected override void SnapshotApplied(CatalogPageResult<UserRow> page) { base.SnapshotApplied(page); _access = page.Access; DetailsChanged(); }
     protected override void SelectionChanged() { this.RaisePropertyChanged(nameof(SelectedUser)); DetailsChanged(); }
     protected override void EligibilityChanged() { base.EligibilityChanged(); AssignRoleCommand?.NotifyCanExecuteChanged(); RemoveRoleCommand?.NotifyCanExecuteChanged(); SetActiveCommand?.NotifyCanExecuteChanged(); this.RaisePropertyChanged(nameof(CanAssignRole)); this.RaisePropertyChanged(nameof(CanSetActive)); }
     private void DetailsChanged()
     {
-        foreach (var name in new[] { nameof(SelectedRole), nameof(SelectedUserPermissions), nameof(SelectedRolePermissions) }) this.RaisePropertyChanged(name);
+        foreach (var name in new[] { nameof(SelectedRole), nameof(SelectedUserPermissions), nameof(SelectedRolePermissions), nameof(UiMessage), nameof(HasUiMessage) }) this.RaisePropertyChanged(name);
         EligibilityChanged();
         DataGridDiagnostics.DumpRows(nameof(UserManagementViewModel) + ".Roles", Roles);
         DataGridDiagnostics.DumpRows(nameof(UserManagementViewModel) + ".UserPermissions", SelectedUserPermissions);
@@ -101,14 +107,14 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
     private async Task AssignAsync(bool remove)
     {
         if (!CanAssignRole || _assign == null) return; var row = SelectedUser!.Row; var role = SelectedRole!.Row;
-        bool Eligible() => CanAssignRole && SelectedUser?.Row.Id == row.Id && SelectedRole?.Row.Id == role.Id;
-        if (await _assign(row, role, remove, Eligible, ActivityToken) && Eligible()) await LoadData();
+        bool Eligible() => AssignmentEligible && SelectedUser?.Row.Id == row.Id && SelectedRole?.Row.Id == role.Id;
+        await RunAdditionalEditorAsync((eligible, ct) => _assign(row, role, remove, eligible, ct), Eligible);
     }
     private async Task ActivateUserAsync()
     {
         if (!CanSetActive || _activate == null) return; var row = SelectedUser!.Row;
-        bool Eligible() => CanSetActive && SelectedUser?.Row.Id == row.Id;
-        if (await _activate(row, Eligible, ActivityToken) && Eligible()) await LoadData();
+        bool Eligible() => CanEdit && Allows("users.edit") && SelectedUser?.Row.Id == row.Id;
+        await RunAdditionalEditorAsync((eligible, ct) => _activate(row, eligible, ct), Eligible);
     }
     protected override string DeleteConflictMessage => "[conflict] Нельзя удалить себя или последнего активного администратора; запись также могла измениться. Обновите данные.";
     private static Task<MutationResult> DeleteAsync(UserRow row, string id, CancellationToken ct) { var api = ApiClientService.Instance; return ApplicationMutationClient.ExecuteAsync("users.delete", new DeleteUserCommand(row.Id, row.Revision), id, api.CurrentBaseUrl!, api.AuthToken!, ct); }

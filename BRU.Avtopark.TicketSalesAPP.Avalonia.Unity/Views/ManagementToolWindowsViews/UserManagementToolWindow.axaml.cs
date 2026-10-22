@@ -16,7 +16,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
             InitializeComponent();
             var dialogs = new ControlDialogHost(this); var editor = new UserEditorService(dialogs); var assignment = new RoleAssignmentService(dialogs);
             RoleManagementViewModel? roles = null;
-            var roleEditor = new RoleEditorService(dialogs, () => roles?.Access is { IsActive: true } access && System.Array.IndexOf(access.Permissions, "grant_permissions") >= 0);
+            var roleEditor = new RoleEditorService(dialogs, () => roles?.Access is { IsActive: true } access && System.Array.IndexOf(access.Permissions, "grant_permissions") >= 0, AdministrationCatalogDialog.RoleDrafts(dialogs));
             roles = new RoleManagementViewModel(null, edit: roleEditor.ShowAsync, confirmDelete: (r, ct) => dialogs.ConfirmAsync("Удаление роли", $"Удалить роль {r.Name}?", ct));
             DataContext = new UserManagementViewModel(null, edit: editor.ShowAsync, confirmDelete: (r, ct) => dialogs.ConfirmAsync("Удаление пользователя", $"Удалить пользователя {r.Login}? Нельзя удалить себя или последнего активного администратора.", ct),
                 roles: roles, assign: assignment.ShowAsync, activate: assignment.ShowActivationAsync);
@@ -33,7 +33,7 @@ namespace BRU.Avtopark.TicketSalesAPP.Avalonia.Unity.Views.ManagementToolWindows
                 if (DataContext is not UserManagementViewModel vm) return;
                 rolesGrid.ContextMenu.ItemsSource = new[] { Item("Добавить роль", vm.RolesCatalog.AddCommand), Item("Редактировать роль", vm.RolesCatalog.EditCommand), Item("Удалить роль", vm.RolesCatalog.DeleteCommand),
                     Item("Просмотр роли (Administrator / системная — только чтение)", new AsyncRelayCommand(async () => { if (vm.SelectedRole is { } role) await roleEditor.ShowAsync(role.Row, () => false, _lifetime.Token); }, () => vm.SelectedRole != null && vm.RolesCatalog.IsSynchronized)),
-                    Item("Все роли / страницы", new AsyncRelayCommand(() => AdministrationCatalogDialog.ShowRolesAsync(dialogs, _lifetime.Token))) };
+                    Item("Все роли / страницы", new AsyncRelayCommand(async () => { await AdministrationCatalogDialog.ShowRolesAsync(dialogs, _lifetime.Token); await vm.RolesCatalog.LoadDataCommand.ExecuteAsync(null); })) };
             };
             foreach (var name in new[] { "UserPermissionsGrid", "RolePermissionsGrid" })
             {

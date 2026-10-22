@@ -24,7 +24,8 @@ public sealed class ControlDialogHost(UserControl owner)
                 var dialog = new Window { Title = title, Width = 400, Height = 350, Content = content, WindowStartupLocation = WindowStartupLocation.CenterOwner };
                 dialog.Closing += (_, e) => { if (!cancellationToken.IsCancellationRequested && canClose?.Invoke() == false) e.Cancel = true; };
                 using var registration = cancellationToken.Register(() => Dispatcher.UIThread.Post(dialog.Close));
-                if (!cancellationToken.IsCancellationRequested) await dialog.ShowDialog(window);
+                try { if (!cancellationToken.IsCancellationRequested) await dialog.ShowDialog(window); }
+                finally { dialog.Content = null; }
                 return;
             }
             var previous = owner.Content;
@@ -53,6 +54,7 @@ public sealed class ControlDialogHost(UserControl owner)
             finally
             {
                 owner.DetachedFromVisualTree -= Detached;
+                stack.Children.Remove(content);
                 ((ContentControl)grid.Children[0]).Content = null;
                 owner.Content = previous;
                 owner.Focus();
