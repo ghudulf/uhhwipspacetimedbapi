@@ -85,7 +85,7 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
         AssignRoleCommand = new AsyncRelayCommand(() => AssignAsync(false), () => CanAssignRole && _assign != null);
         RemoveRoleCommand = new AsyncRelayCommand(() => AssignAsync(true), () => CanAssignRole && _assign != null);
         SetActiveCommand = new AsyncRelayCommand(ActivateUserAsync, () => CanSetActive && _activate != null);
-        RolesCatalog.Changed += DetailsChanged;
+        RolesCatalog.StateChanged += DetailsChanged;
         RolesCatalog.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ErrorMessage)) DetailsChanged(); };
         PropertyChanged += (_, e) => { if (e.PropertyName is nameof(ErrorMessage) or nameof(HasError)) { this.RaisePropertyChanged(nameof(UiMessage)); this.RaisePropertyChanged(nameof(HasUiMessage)); } };
     }
@@ -122,7 +122,7 @@ public sealed class UserManagementViewModel : EditableCatalogViewModel<UserRow, 
 
 public sealed class RoleManagementViewModel : EditableCatalogViewModel<RoleRow, RoleDisplayModel>
 {
-    public event Action? Changed;
+    public event Action? StateChanged;
     public AccessSnapshot? Access { get; private set; }
     public RoleManagementViewModel(Func<PageRequest, CancellationToken, Task<CatalogPageResult<RoleRow>>>? read,
         Func<PageRequest, CancellationToken, IAsyncEnumerable<QueryUpdate<CatalogPageResult<RoleRow>>>>? watch = null,
@@ -131,9 +131,9 @@ public sealed class RoleManagementViewModel : EditableCatalogViewModel<RoleRow, 
         : base("roles.list", r => r.Id, i => i.RoleId, r => new(r), (i, r) => i.Update(r), i => i.Row, r => r.Revision, delete ?? DeleteAsync, read, watch, edit, confirmDelete) { }
     protected override bool CanEditItem(RoleDisplayModel item) => !item.IsReadOnly;
     protected override bool CanDeleteItem(RoleDisplayModel item) => !item.IsReadOnly;
-    protected override void SelectionChanged() => Changed?.Invoke();
-    protected override void SnapshotApplied(CatalogPageResult<RoleRow> page) { base.SnapshotApplied(page); Access = page.Access; Changed?.Invoke(); }
-    protected override void EligibilityChanged() { base.EligibilityChanged(); Changed?.Invoke(); }
+    protected override void SelectionChanged() => StateChanged?.Invoke();
+    protected override void SnapshotApplied(CatalogPageResult<RoleRow> page) { base.SnapshotApplied(page); Access = page.Access; StateChanged?.Invoke(); }
+    protected override void EligibilityChanged() { base.EligibilityChanged(); StateChanged?.Invoke(); }
     protected override string DeleteConflictMessage => "[conflict] Системная роль, Administrator или назначенная пользователям роль не удаляется. Обновите данные.";
     private static Task<MutationResult> DeleteAsync(RoleRow row, string id, CancellationToken ct) { var api = ApiClientService.Instance; return ApplicationMutationClient.ExecuteAsync("roles.delete", new DeleteRoleCommand(row.Id, row.Revision), id, api.CurrentBaseUrl!, api.AuthToken!, ct); }
 }
